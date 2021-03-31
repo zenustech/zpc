@@ -100,26 +100,23 @@ endif()
 
 # partio
 add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/partio ${CMAKE_CURRENT_BINARY_DIR}/tpls/partio)
-add_dependencies(project_dependencies Zensim::partio)
-target_link_libraries(project_dependencies INTERFACE Zensim::partio)
+add_dependencies(project_dependencies zspartio)
+target_link_libraries(project_dependencies INTERFACE zspartio)
 
 # libnuma
 find_package(NUMA REQUIRED)
 
 # umpire
-find_package(umpire QUIET)
-if (TARGET umpire)
-    set_target_properties(umpire PROPERTIES IMPORTED_GLOBAL TRUE)
-    target_link_libraries(project_dependencies INTERFACE umpire ${NUMA_LIBRARY})
-else()
-    if (ZS_ENABLE_CUDA)
-        set(ENABLE_CUDA On CACHE BOOL "Enable CUDA for Umpire build" FORCE)
-    endif()
-    set(ENABLE_NUMA On CACHE BOOL "Enable NUMA for Umpire build" FORCE)
-    add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/umpire-5.0.0 ${CMAKE_CURRENT_BINARY_DIR}/tpls/umpire)
-    add_dependencies(project_dependencies Zensim::umpire)
-    target_link_libraries(project_dependencies INTERFACE Zensim::umpire)
+if (ZS_ENABLE_CUDA)
+    set(ENABLE_CUDA On CACHE BOOL "Enable CUDA for Umpire build" FORCE)
 endif()
+set(ENABLE_NUMA On CACHE BOOL "Enable NUMA for Umpire build" FORCE)
+add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/umpire-5.0.0 ${CMAKE_CURRENT_BINARY_DIR}/tpls/umpire)
+if (ZS_ENABLE_CUDA)
+    set_target_properties(umpire PROPERTIES  CUDA_ARCHITECTURES OFF)
+endif()
+add_dependencies(project_dependencies umpire)
+target_link_libraries(project_dependencies INTERFACE umpire)
 
 # openvdb
 find_package(OpenVDB QUIET)

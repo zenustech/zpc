@@ -1,0 +1,30 @@
+@PACKAGE_INIT@
+
+#[=[
+set(__supported_components zscuda zscore zsio zsvdb)
+foreach(_comp ${Zensim_FIND_COMPONENTS})
+  if (NOT _comp IN_LIST _supported_components)
+    set(Zensim_FOUND False)
+    set(Zensim_NOT_FOUND_MESSAGE "Unsupported component: ${_comp}")
+  endif()
+endforeach()
+#]=]
+include("${CMAKE_CURRENT_LIST_DIR}/ZensimTarget.cmake")
+
+#include(CMakeFindDependencyMacro)
+
+find_package(OpenGL REQUIRED)
+#find_dependency(OpenGL::GL)
+
+find_package(OpenMP REQUIRED)
+#find_dependency(OpenMP::OpenMP_CXX)
+
+if(UNIX)
+  find_package(Threads REQUIRED)
+#  find_dependency(Threads::Threads)
+endif()
+
+find_package(OpenVDB REQUIRED)
+#find_dependency(OpenVDB::openvdb)
+
+check_required_components(zscuda zscore zsio zsvdb)

@@ -1,0 +1,33 @@
+cmake_minimum_required(VERSION 3.18)
+project(zsuse CXX CUDA)
+list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/Zensim/)
+
+set(ZS_ENABLE_CUDA 1 CACHE BOOL "Enable Cuda" FORCE)
+find_package(Zensim REQUIRED)
+add_executable(zsuse main.cu)
+
+target_compile_options(zsuse PRIVATE
+	$<$<COMPILE_LANGUAGE:CUDA>:-fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>)
+
+set_target_properties(zsuse PROPERTIES
+	CUDA_EXTENSIONS ON
+	CUDA_SEPARABLE_COMPILATION ON
+	LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	POSITION_INDEPENDENT_CODE ON
+	CUDA_ARCHITECTURES OFF)
+
+target_compile_features(zsuse PRIVATE cuda_std_17)
+message(${Zensim_INCLUDE_DIR})
+message(${Zensim_LIBRARIES})
+
+#get_property(INTERFACE_INCLUDES TARGET project_dependencies PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+
+#target_include_directories(zsuse PRIVATE ${Zensim_INCLUDE_DIR} ${Zensim_INCLUDE_DIR}/zensim/tpls)
+
+#target_include_directories(zsuse PRIVATE ${Zensim_INCLUDE_DIR}/zensim/tpls/function_ref)
+
+#target_link_libraries(zsuse PRIVATE ${Zensim_CORE_LIBRARY} ${Zensim_IO_LIBRARY} ${Zensim_CUDA_LIBRARY})
+
+include(/usr/local/lib/cmake/Zensim/ZensimTarget.cmake)
+target_link_libraries(zsuse PRIVATE zscuda zsio project_options project_dependencies Zensim::zscuda)
+

@@ -43,6 +43,7 @@ function(add_cpp_library library)
   set_target_properties(${library}
     PROPERTIES  LINKER_LANGUAGE CXX
                 POSITION_INDEPENDENT_CODE ON
+                CUDA_ARCHITECTURES OFF
                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
   target_link_libraries(${library}
@@ -63,6 +64,7 @@ function(add_shared_cpp_library library)
   set_target_properties(${library}
     PROPERTIES  LINKER_LANGUAGE CXX
                 POSITION_INDEPENDENT_CODE ON
+                CUDA_ARCHITECTURES OFF
                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
   target_link_libraries(${library}

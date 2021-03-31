@@ -88,7 +88,7 @@ include(GNUInstallDirs)
 #set(ZENSIM_CMAKE_MODULES CMake/FindZensim.cmake)
 #install(FILES ${ZENSIM_CMAKE_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name})
 
-set(INSTALL_TARGETS zscore zsio zsvdb project_cxx_dependencies project_dependencies project_options partio)
+set(INSTALL_TARGETS zscore zsio zsvdb project_cxx_dependencies project_dependencies project_options zspartio umpire)
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda project_cuda_dependencies)
 endif()

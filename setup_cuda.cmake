@@ -53,6 +53,7 @@ endfunction(add_cuda_executable)
 function(add_cuda_library library)
   if(CUDA_FOUND)
     add_library(${library} ${ARGN})
+    add_library(${project_name}::${library} ALIAS ${library})
     target_compile_options(${library} 
       PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
     )
@@ -81,6 +82,7 @@ endfunction(add_cuda_library)
 function(add_shared_cuda_library library)
   if(CUDA_FOUND)
     add_library(${library} SHARED ${ARGN})
+    add_library(${project_name}::${library} ALIAS ${library})
     target_compile_options(${library} 
       PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
     )

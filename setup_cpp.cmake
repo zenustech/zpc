@@ -35,6 +35,7 @@ endfunction(add_cpp_executable_debug)
 
 function(add_cpp_library library)
   add_library(${library} ${ARGN})
+  add_library(${project_name}::${library} ALIAS ${library})
   target_compile_options(${library} 
     PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
   )
@@ -54,6 +55,7 @@ endfunction(add_cpp_library)
 
 function(add_shared_cpp_library library)
   add_library(${library} SHARED ${ARGN})
+  add_library(${project_name}::${library} ALIAS ${library})
   target_compile_options(${library} 
     PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
   )

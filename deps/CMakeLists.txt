@@ -100,8 +100,8 @@ endif()
 
 # partio
 add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/partio ${CMAKE_CURRENT_BINARY_DIR}/tpls/partio)
-add_dependencies(project_dependencies partio)
-target_link_libraries(project_dependencies INTERFACE partio)
+add_dependencies(project_dependencies Zensim::partio)
+target_link_libraries(project_dependencies INTERFACE Zensim::partio)
 
 # libnuma
 find_package(NUMA REQUIRED)
@@ -117,8 +117,8 @@ else()
     endif()
     set(ENABLE_NUMA On CACHE BOOL "Enable NUMA for Umpire build" FORCE)
     add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/umpire-5.0.0 ${CMAKE_CURRENT_BINARY_DIR}/tpls/umpire)
-    add_dependencies(project_dependencies umpire)
-    target_link_libraries(project_dependencies INTERFACE umpire)
+    add_dependencies(project_dependencies Zensim::umpire)
+    target_link_libraries(project_dependencies INTERFACE Zensim::umpire)
 endif()
 
 # openvdb

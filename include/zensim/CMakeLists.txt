@@ -156,7 +156,7 @@ endif()
 # related to partio
 add_cpp_library(zsio)
 target_sources(zsio PRIVATE ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
-target_link_libraries(zsio INTERFACE partio zscore zsvdb)
+target_link_libraries(zsio INTERFACE zspartio zscore zsvdb)
 if (ENABLE_PCH)
 target_precompile_headers(zsio INTERFACE ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif()

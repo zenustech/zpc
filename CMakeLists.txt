@@ -28,41 +28,38 @@ option(ZENSIM_CORE_STATIC "Build statically linked version of the core library."
 
 # project base targets
 # ====================
-add_library(project_options INTERFACE)
-add_library(project_warnings INTERFACE)
 add_library(zsproj_deps INTERFACE)
-add_library(project_cxx_dependencies INTERFACE)
+add_library(zsproj_cxx_deps INTERFACE)
 
 include(CMake/ClangSupport.cmake)
 include(CMake/Cache.cmake)
 include(CMake/StaticAnalyzers.cmake)
 include(CMake/Sanitizers.cmake)
-enable_sanitizers(project_options)
+enable_sanitizers(zsproj_deps)
 include(CMake/CompilerWarnings.cmake)
-set_project_warnings(project_warnings)
+# set_project_warnings(zsproj_deps)
 include(CMake/Doxygen.cmake)
 enable_doxygen()
 if (ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which
   # is a good idea if any #define's change
   # consider breaking this out per project as necessary 
-  target_precompile_headers(project_options INTERFACE <vector> <string> <map> <utility> <cstdio>)
+  target_precompile_headers(zsproj_deps INTERFACE <vector> <string> <map> <utility> <cstdio>)
 endif()
 
 # ---- dependencies ---- 
 # ======================
 add_subdirectory(deps)
 
-target_compile_features(zsproj_deps INTERFACE cxx_std_17)
-
-target_link_libraries(project_cxx_dependencies INTERFACE zsproj_deps)
-target_compile_definitions(project_cxx_dependencies
+target_compile_features(zsproj_cxx_deps INTERFACE cxx_std_17)
+target_link_libraries(zsproj_cxx_deps INTERFACE zsproj_deps)
+target_compile_definitions(zsproj_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Data/"
 )
 if (ZS_ENABLE_CUDA)
-  add_library(project_cuda_dependencies INTERFACE)
-  target_compile_features(project_cuda_dependencies INTERFACE cuda_std_17)
-  target_link_libraries(project_cuda_dependencies INTERFACE zsproj_deps)
+  add_library(zsproj_cuda_deps INTERFACE)
+  target_compile_features(zsproj_cuda_deps INTERFACE cuda_std_17)
+  target_link_libraries(zsproj_cuda_deps INTERFACE zsproj_deps)
 endif()
 
 # ---- binaries ----
@@ -91,9 +88,9 @@ include(GNUInstallDirs)
 set(ZSUMPIRE_INSTALL_TARGETS zsumpire zscamp zsumpire_resource zsumpire_strategy zsumpire_alloc zsumpire_op zsumpire_util zsumpire_tpl_judy zscuda_runtime)
 set(ZSPARTIO_INSTALL_TARGETS zspartio)
 
-set(INSTALL_TARGETS zscore zsio zsvdb project_cxx_dependencies zsproj_deps project_options ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
+set(INSTALL_TARGETS zscore zsio zsvdb zsproj_cxx_deps zsproj_deps ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
 if (ZS_ENABLE_CUDA)
-  set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda project_cuda_dependencies)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda zsproj_cuda_deps)
 endif()
 message("project name: ${project_name}")
 message("targets to install: ${INSTALL_TARGETS}")

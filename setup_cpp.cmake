@@ -9,9 +9,7 @@ function(add_cpp_executable binary)
                 RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
   target_link_libraries(${binary}
-    PUBLIC      project_options
-                #project_warnings
-                project_cxx_dependencies
+    PUBLIC      zsproj_cxx_deps
   )
   message("-- [${binary}]\tcpp executable build config")
 endfunction(add_cpp_executable)
@@ -26,9 +24,7 @@ function(add_cpp_executable_debug binary)
                 RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
   target_link_libraries(${binary}
-    PUBLIC      project_options
-                #project_warnings
-                project_cxx_dependencies
+    PUBLIC      zsproj_cxx_deps
   )
   message("-- [${binary}]\tcpp debug executable build config")
 endfunction(add_cpp_executable_debug)
@@ -47,9 +43,7 @@ function(add_cpp_library library)
                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
   target_link_libraries(${library}
-    PUBLIC      project_options
-                #project_warnings
-                project_cxx_dependencies
+    PUBLIC      zsproj_cxx_deps
   )
   message("-- [${library}]\tcpp library build config")
 endfunction(add_cpp_library)
@@ -68,9 +62,7 @@ function(add_shared_cpp_library library)
                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
   target_link_libraries(${library}
-    PUBLIC      project_options
-                #project_warnings
-                project_cxx_dependencies
+    PUBLIC      zsproj_cxx_deps
   )
   message("-- [${library}]\tcpp library build config")
 endfunction(add_shared_cpp_library)

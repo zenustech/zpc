@@ -43,8 +43,7 @@ function(add_cuda_executable binary)
     )
     target_link_libraries(${binary}
         PRIVATE zscuda
-                project_options
-                project_cuda_dependencies
+                zsproj_cuda_deps
     )
     message("-- [${binary}]\tcuda executable build config")
   endif()
@@ -72,8 +71,7 @@ function(add_cuda_library library)
       PUBLIC        CMAKE_GENERATOR_PLATFORM=x64
     )
     target_link_libraries(${library}
-      PUBLIC        project_cuda_dependencies
-                    project_options
+      PUBLIC        zsproj_cuda_deps
     )
     message("-- [${library}]\tcuda executable build config")
   endif()
@@ -101,8 +99,7 @@ function(add_shared_cuda_library library)
       PUBLIC        CMAKE_GENERATOR_PLATFORM=x64
     )
     target_link_libraries(${library}
-      PUBLIC        project_cuda_dependencies
-                    project_options
+      PUBLIC        zsproj_cuda_deps
     )
     message("-- [${library}]\tcuda executable build config")
   endif()

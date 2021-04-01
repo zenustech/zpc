@@ -20,9 +20,9 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "" 1)
 
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
-set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build" FORCE)
+set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build")
 
-option(ZENSIM_INSTALL "Install targets" Off)
+option(ZENSIM_INSTALL "Install targets" On)
 option(ZENSIM_CORE_SHARED "Build dynamically linked version of the core library." ON)
 option(ZENSIM_CORE_STATIC "Build statically linked version of the core library." ON)
 
@@ -88,7 +88,10 @@ include(GNUInstallDirs)
 #set(ZENSIM_CMAKE_MODULES CMake/FindZensim.cmake)
 #install(FILES ${ZENSIM_CMAKE_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name})
 
-set(INSTALL_TARGETS zscore zsio zsvdb project_cxx_dependencies project_dependencies project_options zspartio umpire)
+set(ZSUMPIRE_INSTALL_TARGETS zsumpire zscamp zsumpire_resource zsumpire_strategy zsumpire_alloc zsumpire_op zsumpire_util zsumpire_tpl_judy zscuda_runtime)
+set(ZSPARTIO_INSTALL_TARGETS zspartio)
+
+set(INSTALL_TARGETS zscore zsio zsvdb project_cxx_dependencies project_dependencies project_options ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda project_cuda_dependencies)
 endif()

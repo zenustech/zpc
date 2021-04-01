@@ -1,6 +1,6 @@
 #include "Resource.h"
 
-#include <umpire/strategy/AllocationAdvisor.hpp>
+#include "zensim/tpls/umpire/strategy/AllocationAdvisor.hpp"
 
 namespace zs {
 

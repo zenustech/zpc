@@ -166,7 +166,7 @@ if (ZS_ENABLE_CUDA)
 # related to cuda
 add_cuda_library(zscuda)
 target_sources(zscuda PRIVATE ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES})
-target_link_libraries(zscuda INTERFACE cuda cudadevrt nvrtc zscore cusolver cublas cusparse)
+target_link_libraries(zscuda INTERFACE cudadevrt nvrtc zscore cusolver cublas cusparse)
 if (ENABLE_PCH)
 target_precompile_headers(zscuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()

@@ -1,14 +1,14 @@
 #pragma once
 
-#include <zensim/Reflection.h>
-#include <zensim/Singleton.h>
-#include <zensim/memory/MemoryResource.h>
-
 #include <atomic>
-#include <zensim/tpls/magic_enum.hpp>
-#include <umpire/ResourceManager.hpp>
-#include <umpire/strategy/MixedPool.hpp>
-#include <zensim/execution/ExecutionPolicy.hpp>
+
+#include "zensim/Reflection.h"
+#include "zensim/Singleton.h"
+#include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/memory/MemoryResource.h"
+#include "zensim/tpls/magic_enum.hpp"
+#include "zensim/tpls/umpire/ResourceManager.hpp"
+#include "zensim/tpls/umpire/strategy/MixedPool.hpp"
 
 namespace zs {
 

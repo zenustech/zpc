@@ -99,7 +99,7 @@ if(UNIX)
 endif()
 
 # partio
-add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/partio ${CMAKE_CURRENT_BINARY_DIR}/tpls/partio)
+add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/partio ${CMAKE_CURRENT_BINARY_DIR}/tpls/partio EXCLUDE_FROM_ALL)
 add_dependencies(project_dependencies zspartio)
 target_link_libraries(project_dependencies INTERFACE zspartio)
 
@@ -111,12 +111,16 @@ if (ZS_ENABLE_CUDA)
     set(ENABLE_CUDA On CACHE BOOL "Enable CUDA for Umpire build" FORCE)
 endif()
 set(ENABLE_NUMA On CACHE BOOL "Enable NUMA for Umpire build" FORCE)
-add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/umpire-5.0.0 ${CMAKE_CURRENT_BINARY_DIR}/tpls/umpire)
+set(ENABLE_OPENMP On CACHE BOOL "Enable CUDA for Umpire build" FORCE)
+add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/umpire ${CMAKE_CURRENT_BINARY_DIR}/tpls/umpire EXCLUDE_FROM_ALL)
 if (ZS_ENABLE_CUDA)
-    set_target_properties(umpire PROPERTIES  CUDA_ARCHITECTURES OFF)
+    set_target_properties(zsumpire PROPERTIES  CUDA_ARCHITECTURES OFF)
+    target_compile_options(zsumpire
+      PRIVATE     $<$<COMPILE_LANGUAGE:CUDA>: -fopenmp --allow-unsupported-compiler --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+    )
 endif()
-add_dependencies(project_dependencies umpire)
-target_link_libraries(project_dependencies INTERFACE umpire)
+add_dependencies(project_dependencies zsumpire)
+target_link_libraries(project_dependencies INTERFACE zsumpire)
 
 # openvdb
 find_package(OpenVDB QUIET)

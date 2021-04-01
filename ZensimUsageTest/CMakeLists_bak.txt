@@ -20,7 +20,7 @@ target_compile_features(zsuse PRIVATE cuda_std_17)
 message(${Zensim_INCLUDE_DIR})
 message(${Zensim_LIBRARIES})
 
-#get_property(INTERFACE_INCLUDES TARGET project_dependencies PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+#get_property(INTERFACE_INCLUDES TARGET zsproj_deps PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
 
 #target_include_directories(zsuse PRIVATE ${Zensim_INCLUDE_DIR} ${Zensim_INCLUDE_DIR}/zensim/tpls)
 
@@ -29,5 +29,5 @@ message(${Zensim_LIBRARIES})
 #target_link_libraries(zsuse PRIVATE ${Zensim_CORE_LIBRARY} ${Zensim_IO_LIBRARY} ${Zensim_CUDA_LIBRARY})
 
 include(/usr/local/lib/cmake/Zensim/ZensimTarget.cmake)
-target_link_libraries(zsuse PRIVATE zscuda zsio project_options project_dependencies Zensim::zscuda)
+target_link_libraries(zsuse PRIVATE zscuda zsio project_options zsproj_deps Zensim::zscuda)
 

@@ -30,7 +30,7 @@ option(ZENSIM_CORE_STATIC "Build statically linked version of the core library."
 # ====================
 add_library(project_options INTERFACE)
 add_library(project_warnings INTERFACE)
-add_library(project_dependencies INTERFACE)
+add_library(zsproj_deps INTERFACE)
 add_library(project_cxx_dependencies INTERFACE)
 
 include(CMake/ClangSupport.cmake)
@@ -53,16 +53,16 @@ endif()
 # ======================
 add_subdirectory(deps)
 
-target_compile_features(project_dependencies INTERFACE cxx_std_17)
+target_compile_features(zsproj_deps INTERFACE cxx_std_17)
 
-target_link_libraries(project_cxx_dependencies INTERFACE project_dependencies)
+target_link_libraries(project_cxx_dependencies INTERFACE zsproj_deps)
 target_compile_definitions(project_cxx_dependencies
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Data/"
 )
 if (ZS_ENABLE_CUDA)
   add_library(project_cuda_dependencies INTERFACE)
   target_compile_features(project_cuda_dependencies INTERFACE cuda_std_17)
-  target_link_libraries(project_cuda_dependencies INTERFACE project_dependencies)
+  target_link_libraries(project_cuda_dependencies INTERFACE zsproj_deps)
 endif()
 
 # ---- binaries ----
@@ -74,7 +74,7 @@ endif()
 
 # ---- Library ----
 # =================
-target_include_directories(project_dependencies INTERFACE
+target_include_directories(zsproj_deps INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
 )
@@ -91,7 +91,7 @@ include(GNUInstallDirs)
 set(ZSUMPIRE_INSTALL_TARGETS zsumpire zscamp zsumpire_resource zsumpire_strategy zsumpire_alloc zsumpire_op zsumpire_util zsumpire_tpl_judy zscuda_runtime)
 set(ZSPARTIO_INSTALL_TARGETS zspartio)
 
-set(INSTALL_TARGETS zscore zsio zsvdb project_cxx_dependencies project_dependencies project_options ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
+set(INSTALL_TARGETS zscore zsio zsvdb project_cxx_dependencies zsproj_deps project_options ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda project_cuda_dependencies)
 endif()

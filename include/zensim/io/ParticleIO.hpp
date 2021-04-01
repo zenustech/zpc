@@ -1,10 +1,10 @@
 #pragma once
-#include <Partio.h>
-#include <zensim/math/Vec.h>
-
 #include <array>
 #include <string>
 #include <vector>
+
+#include "zensim/math/Vec.h"
+#include "zensim/tpls/Partio.h"
 
 namespace zs {
 

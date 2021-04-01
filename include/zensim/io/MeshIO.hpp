@@ -1,16 +1,15 @@
-#ifndef __MESH_IO_HPP_
-#define __MESH_IO_HPP_
-#include <Partio.h>
-#include <zensim/math/Vec.h>
-#include <zensim/types/Optional.h>
-
+#pragma once
 #include <array>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <zensim/geometry/Mesh.hpp>
+
+#include "zensim/geometry/Mesh.hpp"
+#include "zensim/math/Vec.h"
+#include "zensim/tpls/Partio.h"
+#include "zensim/types/Optional.h"
 
 namespace zs {
 
@@ -196,5 +195,3 @@ namespace zs {
   }
 
 }  // namespace zs
-
-#endif

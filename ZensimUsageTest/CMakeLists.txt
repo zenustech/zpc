@@ -25,7 +25,7 @@ message("cuda found: ${zscuda_FOUND}")
 message("io found: ${zsio_FOUND}")
 message("vdb found: ${zsvdb_FOUND}")
 message(${Zensim_INCLUDE_DIR})
-get_property(INTERFACE_INCLUDES TARGET Zensim::project_dependencies PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+get_property(INTERFACE_INCLUDES TARGET Zensim::zsproj_deps PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
 message(${INTERFACE_INCLUDES})
 
 #target_include_directories(zsuse PRIVATE ${INTERFACE_INCLUDES})

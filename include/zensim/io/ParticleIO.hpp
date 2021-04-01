@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "zensim/math/Vec.h"
-#include "zensim/tpls/Partio.h"
+#include "zensim/tpls/partio/Partio.h"
 
 namespace zs {
 

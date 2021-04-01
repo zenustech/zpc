@@ -1,11 +1,10 @@
 #pragma once
-#include <zensim/math/Vec.h>
-
 #include <array>
 #include <vector>
 
 #include "LevelSet.h"
 #include "PoissonDisk.hpp"
+#include "zensim/math/Vec.h"
 
 namespace zs {
 

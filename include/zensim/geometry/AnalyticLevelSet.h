@@ -1,8 +1,7 @@
 #pragma once
-#include <zensim/math/Vec.h>
-#include <zensim/types/Polymorphism.h>
-
 #include "LevelSetInterface.h"
+#include "zensim/math/Vec.h"
+#include "zensim/types/Polymorphism.h"
 
 namespace zs {
 

@@ -1,7 +1,6 @@
 #pragma once
-#include <zensim/resource/Resource.h>
-
-#include <zensim/container/Vector.hpp>
+#include "zensim/container/Vector.hpp"
+#include "zensim/resource/Resource.h"
 
 namespace zs {
 

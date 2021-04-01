@@ -1,13 +1,12 @@
-#ifndef __MATH_UTILS_H_
-#define __MATH_UTILS_H_
-
-#include <zensim/math/bit/Bits.h>
-#include <zensim/meta/Meta.h>
-#include <zensim/meta/Sequence.h>
+#pragma once
 
 #include <functional>
 #include <type_traits>
 #include <utility>
+
+#include "zensim/math/bit/Bits.h"
+#include "zensim/meta/Meta.h"
+#include "zensim/meta/Sequence.h"
 
 namespace zs {
 
@@ -105,5 +104,3 @@ namespace zs {
   }
 
 }  // namespace zs
-
-#endif

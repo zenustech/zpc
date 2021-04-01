@@ -1,11 +1,4 @@
-#ifndef __STRUCTURAL_H_
-#define __STRUCTURAL_H_
-
-#include <zensim/math/MathUtils.h>
-#include <zensim/meta/ControlFlow.h>
-#include <zensim/meta/Sequence.h>
-#include <zensim/types/Polymorphism.h>
-
+#pragma once
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -14,6 +7,10 @@
 #include "Property.h"
 #include "StructuralAuxiliary.h"
 #include "StructuralDeclaration.h"
+#include "zensim/math/MathUtils.h"
+#include "zensim/meta/ControlFlow.h"
+#include "zensim/meta/Sequence.h"
+#include "zensim/types/Polymorphism.h"
 
 namespace zs {
 
@@ -132,5 +129,3 @@ namespace zs {
   using f32_ = structural_entity<float>;
 
 }  // namespace zs
-
-#endif

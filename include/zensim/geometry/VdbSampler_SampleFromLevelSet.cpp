@@ -10,10 +10,10 @@
 
 #include <algorithm>
 #include <numeric>
-#include <zensim/Logger.hpp>
 
 #include "PoissonDisk.hpp"
 #include "VdbSampler.h"
+#include "zensim/Logger.hpp"
 
 namespace zs {
 

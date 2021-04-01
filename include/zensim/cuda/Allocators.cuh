@@ -1,6 +1,6 @@
 #pragma once
-#include <zensim/Singleton.h>
-#include <zensim/memory/Allocator.h>
+#include "zensim/Singleton.h"
+#include "zensim/memory/Allocator.h"
 
 namespace zs {
 

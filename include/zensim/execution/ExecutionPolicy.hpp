@@ -1,15 +1,15 @@
 #pragma once
 
 #include <omp.h>
-#include <zensim/math/Vec.h>
-#include <zensim/types/Function.h>
-#include <zensim/types/Iterator.h>
 
 #include <execution>
 #include <numeric>
-#include <zensim/TypeAlias.hpp>
 
 #include "Concurrency.h"
+#include "zensim/TypeAlias.hpp"
+#include "zensim/math/Vec.h"
+#include "zensim/types/Function.h"
+#include "zensim/types/Iterator.h"
 namespace zs {
 
   enum struct execspace_e : char { host = 0, openmp = 0, cuda, hip };

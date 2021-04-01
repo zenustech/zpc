@@ -1,9 +1,9 @@
 /// reference: taichi/common/core.h
 #pragma once
 
-#include <zensim/Singleton.h>
-#include <zensim/tpls/fmt/core.h>
-#include <zensim/tpls/spdlog/spdlog.h>
+#include "zensim/Singleton.h"
+#include "zensim/tpls/fmt/core.h"
+#include "zensim/tpls/spdlog/spdlog.h"
 
 namespace zs {
 

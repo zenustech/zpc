@@ -1,12 +1,12 @@
 #pragma once
-#include <zensim/math/Vec.h>
-
 #include <algorithm>
 #include <fstream>
-#include <zensim/container/DenseGrid.hpp>
-#include <zensim/math/RandomNumber.hpp>
+
+#include "zensim/container/DenseGrid.hpp"
+#include "zensim/math/RandomNumber.hpp"
+#include "zensim/math/Vec.h"
 // #include <taskflow/taskflow.hpp>
-#include <zensim/execution/Concurrency.h>
+#include "zensim/execution/Concurrency.h"
 
 namespace zs {
 

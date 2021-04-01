@@ -1,12 +1,11 @@
 // reference: https://github.com/TheLartians/Observe.git
 
 #pragma once
-#include <zensim/types/Function.h>
-
 #include <mutex>
 #include <shared_mutex>
 
 #include "Object.h"
+#include "zensim/types/Function.h"
 
 namespace zs {
 

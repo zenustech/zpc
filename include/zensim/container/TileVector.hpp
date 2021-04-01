@@ -1,14 +1,12 @@
 #pragma once
-#include <zensim/resource/Resource.h>
-#include <zensim/math/Vec.h>
-#include <zensim/memory/Allocator.h>
-#include <zensim/types/Iterator.h>
-#include <zensim/types/Polymorphism.h>
-#include <zensim/types/Value.h>
-
-#include <zensim/types/RuntimeStructurals.hpp>
-
-#include <zensim/tpls/magic_enum.hpp>
+#include "zensim/math/Vec.h"
+#include "zensim/memory/Allocator.h"
+#include "zensim/resource/Resource.h"
+#include "zensim/tpls/magic_enum.hpp"
+#include "zensim/types/Iterator.h"
+#include "zensim/types/Polymorphism.h"
+#include "zensim/types/RuntimeStructurals.hpp"
+#include "zensim/types/Value.h"
 
 namespace zs {
 

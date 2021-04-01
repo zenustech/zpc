@@ -1,7 +1,6 @@
-#include <zensim/cuda/Cuda.h>
-#include <zensim/types/Iterator.h>
-
-#include <zensim/execution/ExecutionPolicy.hpp>
+#include "zensim/cuda/Cuda.h"
+#include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/types/Iterator.h"
 
 int main() {
   using namespace zs;

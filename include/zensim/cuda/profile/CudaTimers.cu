@@ -1,9 +1,7 @@
-#include <zensim/tpls/fmt/color.h>
-#include <zensim/tpls/fmt/core.h>
-
-#include <zensim/cuda/CudaConstants.inc>
-
 #include "CudaTimers.cuh"
+#include "zensim/cuda/CudaConstants.inc"
+#include "zensim/tpls/fmt/color.h"
+#include "zensim/tpls/fmt/core.h"
 
 namespace zs {
 

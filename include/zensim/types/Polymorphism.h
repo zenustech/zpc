@@ -1,8 +1,8 @@
 #pragma once
-#include <zensim/meta/Sequence.h>
-
 #include <type_traits>
 #include <variant>
+
+#include "zensim/meta/Sequence.h"
 
 namespace zs {
 

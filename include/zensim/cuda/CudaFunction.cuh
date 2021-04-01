@@ -1,11 +1,10 @@
 #pragma once
-#include <zensim/tpls/fmt/core.h>
-
 #include <mutex>
 #include <string>
 
 #include "../Logger.hpp"
 #include "../Platform.hpp"
+#include "zensim/tpls/fmt/core.h"
 
 namespace zs {
 

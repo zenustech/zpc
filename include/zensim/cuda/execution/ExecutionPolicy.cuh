@@ -1,20 +1,21 @@
 #pragma once
 
 #include <cooperative_groups.h>
-#include <zensim/cuda/Cuda.h>
-#include <zensim/types/Tuple.h>
 
 #include <cub/device/device_histogram.cuh>
 #include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_scan.cuh>
 #include <zensim/execution/ExecutionPolicy.hpp>
-// #include <device_types.h>
-#include <zensim/resource/Resource.h>
-#include <zensim/types/Function.h>
 
+#include "zensim/cuda/Cuda.h"
+#include "zensim/types/Tuple.h"
+// #include <device_types.h>
 #include <iterator>
 #include <nvfunctional>
+
+#include "zensim/resource/Resource.h"
+#include "zensim/types/Function.h"
 
 /// extracted from compiler error message...
 template <class Tag, class... CapturedVarTypePack> struct __nv_dl_wrapper_t;

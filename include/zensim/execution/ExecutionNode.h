@@ -1,15 +1,14 @@
 #pragma once
-#include <zensim/tpls/fmt/color.h>
-#include <zensim/meta/Functional.h>
-#include <zensim/types/Function.h>
-#include <zensim/types/Node.h>
-#include <zensim/types/Tuple.h>
-
 #include <exception>
 #include <system_error>
-#include <zensim/types/Event.hpp>
 
 #include "Reflection.h"
+#include "zensim/meta/Functional.h"
+#include "zensim/tpls/fmt/color.h"
+#include "zensim/types/Event.hpp"
+#include "zensim/types/Function.h"
+#include "zensim/types/Node.h"
+#include "zensim/types/Tuple.h"
 
 namespace zs {
 

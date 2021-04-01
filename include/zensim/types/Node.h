@@ -1,14 +1,13 @@
 #pragma once
-#include <zensim/execution/Concurrency.h>
-#include <zensim/types/Object.h>
-#include <zensim/types/Tuple.h>
-
 #include <mutex>
 #include <type_traits>
-#include <zensim/container/Vector.hpp>
 
 #include "Event.hpp"
 #include "Value.h"
+#include "zensim/container/Vector.hpp"
+#include "zensim/execution/Concurrency.h"
+#include "zensim/types/Object.h"
+#include "zensim/types/Tuple.h"
 
 namespace zs {
 

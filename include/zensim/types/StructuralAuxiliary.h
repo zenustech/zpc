@@ -1,7 +1,6 @@
-#ifndef __STRUCTURAL_AUXILIARY_H_
-#define __STRUCTURAL_AUXILIARY_H_
-#include <zensim/math/MathUtils.h>
-#include <zensim/math/Vec.h>
+#pragma once
+#include "zensim/math/MathUtils.h"
+#include "zensim/math/Vec.h"
 
 namespace zs {
 
@@ -40,5 +39,3 @@ namespace zs {
   template <typename Tn, Tn... Ns> using aligned_domain = compact_domain<Tn, next_2pow(Ns)...>;
 
 }  // namespace zs
-
-#endif

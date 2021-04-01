@@ -1,14 +1,13 @@
 #pragma once
-#include <zensim/execution/Concurrency.h>
-#include <zensim/math/Vec.h>
-#include <zensim/memory/Allocator.h>
-
 #include <fstream>
 #include <type_traits>
-#include <zensim/types/RuntimeStructurals.hpp>
 
 #include "LevelSetInterface.h"
 #include "VdbLevelSet.h"
+#include "zensim/execution/Concurrency.h"
+#include "zensim/math/Vec.h"
+#include "zensim/memory/Allocator.h"
+#include "zensim/types/RuntimeStructurals.hpp"
 
 namespace zs {
 

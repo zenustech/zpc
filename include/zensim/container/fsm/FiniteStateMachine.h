@@ -1,8 +1,7 @@
-#ifndef __FINITE_STATE_MACHINE_H_
-#define __FINITE_STATE_MACHINE_H_
-#include <zensim/types/Optional.h>
-#include <zensim/types/Polymorphism.h>
-#include <zensim/types/Property.h>
+#pragma once
+#include "zensim/types/Optional.h"
+#include "zensim/types/Polymorphism.h"
+#include "zensim/types/Property.h"
 
 namespace zs {
 
@@ -24,5 +23,3 @@ namespace zs {
   };
 
 }  // namespace zs
-
-#endif

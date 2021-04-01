@@ -1,9 +1,9 @@
 #pragma once
-#include <zensim/types/Function.h>
-#include <zensim/types/Object.h>
-
 #include <memory>
 #include <memory_resource>
+
+#include "zensim/types/Function.h"
+#include "zensim/types/Object.h"
 
 namespace zs {
 

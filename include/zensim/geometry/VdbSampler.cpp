@@ -16,14 +16,14 @@
 #include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/tree/LeafNode.h>
 #include <openvdb/util/Util.h>
-#include <zensim/memory/Allocator.h>
 
-#include <zensim/Logger.hpp>
 #include <algorithm>
 #include <numeric>
 
 #include "LevelSet.h"
 #include "PoissonDisk.hpp"
+#include "zensim/Logger.hpp"
+#include "zensim/memory/Allocator.h"
 
 namespace zs {
 

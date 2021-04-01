@@ -1,8 +1,6 @@
-#ifndef __ZS_ROTATION_HPP_
-#define __ZS_ROTATION_HPP_
-#include <zensim/tpls/gcem.hpp>
-
+#pragma once
 #include "Vec.h"
+#include "zensim/tpls/gcem.hpp"
 
 namespace zs {
 
@@ -122,5 +120,3 @@ namespace zs {
   };
 
 }  // namespace zs
-
-#endif

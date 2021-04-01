@@ -6,14 +6,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <zensim/tpls/glm/glm.hpp>
-#include <zensim/tpls/glm/gtc/matrix_transform.hpp>
-#include <zensim/tpls/glm/gtc/type_ptr.hpp>
-#include <zensim/tpls/glm/vec2.hpp>
-#include <zensim/tpls/glm/vec3.hpp>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "zensim/tpls/glm/glm.hpp"
+#include "zensim/tpls/glm/gtc/matrix_transform.hpp"
+#include "zensim/tpls/glm/gtc/type_ptr.hpp"
+#include "zensim/tpls/glm/vec2.hpp"
+#include "zensim/tpls/glm/vec3.hpp"
 
 namespace hg::OpenGL {
 

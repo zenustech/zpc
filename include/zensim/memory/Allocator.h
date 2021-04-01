@@ -1,15 +1,14 @@
 #pragma once
 
-#include <zensim/Singleton.h>
-#include <zensim/math/bit/Bits.h>
-#include <zensim/types/Object.h>
-
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <type_traits>
 
 #include "MemoryResource.h"
+#include "zensim/Singleton.h"
+#include "zensim/math/bit/Bits.h"
+#include "zensim/types/Object.h"
 
 namespace zs {
 

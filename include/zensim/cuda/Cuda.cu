@@ -1,10 +1,10 @@
-#include <zensim/tpls/fmt/core.h>
-
 #include <utility>
 
 #include "../Platform.hpp"
 #include "Cuda.h"
 #include "CudaConstants.inc"
+#include "zensim/tpls/fmt/core.h"
+
 
 #define MEM_POOL_CTRL 3
 

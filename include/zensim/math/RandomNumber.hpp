@@ -1,12 +1,10 @@
-#ifndef __RANDOM_NUMBER_HPP__
-#define __RANDOM_NUMBER_HPP__
-
-#include <zensim/math/Vec.h>
-
+#pragma once
 #include <chrono>
 #include <cmath>
 #include <random>
-#include <zensim/math/Rotation.hpp>
+
+#include "zensim/math/Rotation.hpp"
+#include "zensim/math/Vec.h"
 
 namespace zs {
 
@@ -147,4 +145,3 @@ namespace zs {
   };
 
 }  // namespace zs
-#endif

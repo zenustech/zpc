@@ -1,7 +1,6 @@
 #pragma once
-#include <zensim/container/RingBuffer.hpp>
-
 #include "LevelSet.h"
+#include "zensim/container/RingBuffer.hpp"
 
 namespace zs {
 

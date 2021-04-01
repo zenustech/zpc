@@ -1,10 +1,9 @@
 #pragma once
-#include <zensim/execution/Concurrency.h>
-
 #include "Value.h"
+#include "zensim/execution/Concurrency.h"
 // #include <zensim/execution/ExecutionNode.h>
 // #include <zensim/execution/ExecutionPolicy.hpp>
-#include <zensim/Singleton.h>
+#include "zensim/Singleton.h"
 
 namespace zs {
 

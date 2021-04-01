@@ -1,8 +1,6 @@
 #pragma once
 
-#include <zensim/Reflection.h>
 #include <driver_types.h>
-#include <zensim/types/Tuple.h>
 
 #include <cstdint>
 #include <initializer_list>
@@ -17,6 +15,8 @@
 #include "CudaFunction.cuh"
 #include "CudaLaunchConfig.cuh"
 #include "HostUtils.hpp"
+#include "zensim/Reflection.h"
+#include "zensim/types/Tuple.h"
 
 namespace zs {
 

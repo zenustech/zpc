@@ -1,12 +1,11 @@
 #pragma once
 
-#include <zensim/Reflection.h>
-
 #include <type_traits>
 #include <utility>
 
 #include "../TypeAlias.hpp"
 #include "Functional.h"
+#include "zensim/Reflection.h"
 
 namespace zs {
 

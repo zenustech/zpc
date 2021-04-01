@@ -26,7 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <typeindex>
 #include <typeinfo>
-#include <zensim/execution/Stacktrace.hpp>
+
+#include "zensim/execution/Stacktrace.hpp"
 namespace zs {
 
   template <typename T> constexpr const char *type_name() noexcept { return typeid(T).name(); }

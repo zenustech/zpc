@@ -1,9 +1,7 @@
 #pragma once
 
 #include <omp.h>
-#include <zensim/types/Optional.h>
 
-#include <zensim/TypeAlias.hpp>
 #include <atomic>
 #include <condition_variable>
 #include <future>
@@ -13,6 +11,9 @@
 #include <queue>
 #include <shared_mutex>
 #include <thread>
+
+#include "zensim/TypeAlias.hpp"
+#include "zensim/types/Optional.h"
 
 namespace zs {
 

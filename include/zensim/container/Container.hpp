@@ -1,7 +1,6 @@
 #pragma once
-#include <zensim/types/Object.h>
-
-#include <zensim/types/RuntimeStructurals.hpp>
+#include "zensim/types/Object.h"
+#include "zensim/types/RuntimeStructurals.hpp"
 
 namespace zs {
 

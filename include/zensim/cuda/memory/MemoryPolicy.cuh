@@ -1,8 +1,7 @@
 #pragma once
-#include <zensim/memory/Allocator.h>
-#include <zensim/types/Polymorphism.h>
-
-#include <zensim/cuda/Allocators.cuh>
+#include "zensim/cuda/Allocators.cuh"
+#include "zensim/memory/Allocator.h"
+#include "zensim/types/Polymorphism.h"
 
 namespace zs {
 

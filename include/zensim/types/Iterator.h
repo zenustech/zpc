@@ -1,10 +1,10 @@
 #pragma once
-#include <zensim/meta/Sequence.h>
-#include <zensim/types/Tuple.h>
-
 #include <functional>
 #include <iterator>
 #include <type_traits>
+
+#include "zensim/meta/Sequence.h"
+#include "zensim/types/Tuple.h"
 
 namespace zs::detail {
   /// reference type helper

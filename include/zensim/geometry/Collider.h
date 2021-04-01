@@ -1,9 +1,7 @@
 #pragma once
-#include <zensim/types/Polymorphism.h>
-
-#include <zensim/math/Rotation.hpp>
-
 #include "GenericLevelSet.h"
+#include "zensim/math/Rotation.hpp"
+#include "zensim/types/Polymorphism.h"
 
 namespace zs {
 

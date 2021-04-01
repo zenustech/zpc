@@ -1,11 +1,10 @@
-#ifndef __HOST_UTILS_HPP_
-#define __HOST_UTILS_HPP_
-
-#include <zensim/Reflection.h>
+#pragma once
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 
 #include <string>
+
+#include "zensim/Reflection.h"
 
 namespace zs {
 
@@ -91,5 +90,3 @@ namespace zs {
   }
 
 }  // namespace zs
-
-#endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <zensim/io/stb_image.h>
+#include "zensim/io/stb_image.h"
 
 namespace hg::OpenGL {
 

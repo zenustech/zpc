@@ -1,13 +1,12 @@
 #pragma once
 
-#include <zensim/types/Function.h>
-#include <zensim/types/Optional.h>
-
 #include <functional>
-#include <zensim/tpls/tl/function_ref.hpp>
 
 #include "Meta.h"
 #include "Sequence.h"
+#include "zensim/tpls/tl/function_ref.hpp"
+#include "zensim/types/Function.h"
+#include "zensim/types/Optional.h"
 
 namespace zs {
 

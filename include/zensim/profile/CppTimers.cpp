@@ -1,7 +1,7 @@
 #include "CppTimers.hpp"
 
-#include <zensim/tpls/fmt/color.h>
-#include <zensim/tpls/fmt/core.h>
+#include "zensim/tpls/fmt/color.h"
+#include "zensim/tpls/fmt/core.h"
 
 namespace zs {
 

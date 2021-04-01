@@ -1,10 +1,10 @@
-#ifndef __SPATIAL_ENCODER_CUH_
-#define __SPATIAL_ENCODER_CUH_
+#pragma once
 #include <driver_types.h>
 #include <stdint.h>
-#include <zensim/math/bit/Bits.h>
 
 #include <AggregatedAttribs.cuh>
+
+#include "zensim/math/bit/Bits.h"
 
 namespace zs {
 
@@ -132,5 +132,3 @@ namespace zs {
   };
 
 }  // namespace zs
-
-#endif

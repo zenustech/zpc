@@ -1,10 +1,9 @@
-#ifndef __STRUCTURAL_DECLARATION_H_
-#define __STRUCTURAL_DECLARATION_H_
-#include <zensim/math/MathUtils.h>
-#include <zensim/math/Vec.h>
-#include <zensim/memory/MemObj.h>
-
+#pragma once
 #include <type_traits>
+
+#include "zensim/math/MathUtils.h"
+#include "zensim/math/Vec.h"
+#include "zensim/memory/MemObj.h"
 
 namespace zs {
 
@@ -288,5 +287,3 @@ namespace zs {
   };
 
 }  // namespace zs
-
-#endif

@@ -1,16 +1,16 @@
 #pragma once
 
-#include <zensim/math/MathUtils.h>
-#include <zensim/meta/Meta.h>
-#include <zensim/meta/Relationship.h>
-#include <zensim/meta/Sequence.h>
-
 #include <array>
 #include <cmath>
 #include <functional>
-#include <zensim/tpls/gcem.hpp>
 #include <type_traits>
 #include <utility>
+
+#include "zensim/math/MathUtils.h"
+#include "zensim/meta/Meta.h"
+#include "zensim/meta/Relationship.h"
+#include "zensim/meta/Sequence.h"
+#include "zensim/tpls/gcem.hpp"
 
 namespace zs {
 

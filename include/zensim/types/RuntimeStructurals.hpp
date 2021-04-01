@@ -2,20 +2,19 @@
 /// reference:
 /// http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2043r0.pdf
 
-#include <zensim/resource/Resource.h>
-#include <zensim/math/Vec.h>
-#include <zensim/meta/ControlFlow.h>
-#include <zensim/meta/Sequence.h>
-#include <zensim/types/Polymorphism.h>
-#include <zensim/types/Tuple.h>
-
-#include <zensim/Platform.hpp>
 #include <numeric>
 #include <type_traits>
 #include <utility>
 
 #include "Function.h"
 #include "Property.h"
+#include "zensim/Platform.hpp"
+#include "zensim/math/Vec.h"
+#include "zensim/meta/ControlFlow.h"
+#include "zensim/meta/Sequence.h"
+#include "zensim/resource/Resource.h"
+#include "zensim/types/Polymorphism.h"
+#include "zensim/types/Tuple.h"
 
 namespace zs {
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <zensim/Singleton.h>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 #include <cusolverSp.h>
@@ -10,6 +9,7 @@
 
 #include "Cuda.h"
 #include "HostUtils.hpp"
+#include "zensim/Singleton.h"
 
 namespace zs {
 

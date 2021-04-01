@@ -23,12 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 </editor-fold> */
 
-#include <zensim/Reflection.h>
-#include <zensim/tpls/fmt/format.h>
-#include <zensim/execution/Concurrency.h>
-#include <zensim/meta/Sequence.h>
-
-#include <zensim/Logger.hpp>
 #include <memory>
 #include <string>
 #include <typeindex>
@@ -36,6 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Inherit.h"
 #include "Property.h"
+#include "zensim/Logger.hpp"
+#include "zensim/Reflection.h"
+#include "zensim/execution/Concurrency.h"
+#include "zensim/meta/Sequence.h"
+#include "zensim/tpls/fmt/format.h"
 
 namespace zs {
 

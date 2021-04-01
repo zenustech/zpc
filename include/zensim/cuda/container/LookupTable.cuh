@@ -1,10 +1,9 @@
-#ifndef __LOOKUP_TABLE_CUH_
-#define __LOOKUP_TABLE_CUH_
-#include <zensim/cuda/Cuda.h>
-#include <zensim/math/Vec.h>
-
+#pragma once
 #include <mutex>
-#include <zensim/types/RuntimeStructurals.hpp>
+
+#include "zensim/cuda/Cuda.h"
+#include "zensim/math/Vec.h"
+#include "zensim/types/RuntimeStructurals.hpp"
 
 namespace zs {
 
@@ -120,5 +119,3 @@ namespace zs {
   };
 
 }  // namespace zs
-
-#endif

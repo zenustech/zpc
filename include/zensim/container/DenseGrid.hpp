@@ -1,7 +1,8 @@
 #pragma once
 #include <algorithm>
 #include <vector>
-#include <zensim/math/ValueSequence.hpp>
+
+#include "zensim/math/ValueSequence.hpp"
 
 namespace zs {
 

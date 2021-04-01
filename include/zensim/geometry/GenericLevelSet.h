@@ -1,10 +1,9 @@
 
 #pragma once
-#include <zensim/types/Polymorphism.h>
-
 #include "AnalyticLevelSet.h"
 #include "LevelSet.h"
 #include "LevelSetInterface.h"
+#include "zensim/types/Polymorphism.h"
 
 namespace zs {
 

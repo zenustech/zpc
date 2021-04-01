@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cuda.h>
-#include <zensim/math/matrix/Utility.h>
 
 #include "math.h"  // CUDA math library
 #include "qr.cuh"
+#include "zensim/math/matrix/Utility.h"
 
 #define gone 1065353216
 #define gsine_pi_over_eight 1053028117

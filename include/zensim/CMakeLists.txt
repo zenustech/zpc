@@ -152,6 +152,7 @@ target_sources(zsvdb PRIVATE ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES})
 if (ENABLE_PCH)
 target_precompile_headers(zsvdb INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES})
 endif()
+target_link_libraries(zsvdb PRIVATE OpenVDB::openvdb)
 
 # related to partio
 add_cpp_library(zsio)

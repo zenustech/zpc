@@ -24,6 +24,7 @@ if(UNIX)
 #  find_dependency(Threads::Threads)
 endif()
 
+list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/OpenVDB/)
 find_package(OpenVDB REQUIRED)
 #find_dependency(OpenVDB::openvdb)
 

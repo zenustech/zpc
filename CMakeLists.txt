@@ -85,12 +85,12 @@ include(GNUInstallDirs)
 #set(ZENSIM_CMAKE_MODULES CMake/FindZensim.cmake)
 #install(FILES ${ZENSIM_CMAKE_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name})
 
-set(ZSUMPIRE_INSTALL_TARGETS zsumpire zscamp zsumpire_resource zsumpire_strategy zsumpire_alloc zsumpire_op zsumpire_util zsumpire_tpl_judy zscuda_runtime)
+set(ZSUMPIRE_INSTALL_TARGETS zsumpire zscamp zsumpire_alloc zsumpire_resource zsumpire_strategy zsumpire_op zsumpire_util zsumpire_tpl_judy)
 set(ZSPARTIO_INSTALL_TARGETS zspartio)
 
 set(INSTALL_TARGETS zscore zsio zsvdb zsproj_cxx_deps zsproj_deps ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
 if (ZS_ENABLE_CUDA)
-  set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda zsproj_cuda_deps)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda zsproj_cuda_deps cuda_runtime)
 endif()
 message("project name: ${project_name}")
 message("targets to install: ${INSTALL_TARGETS}")
@@ -111,26 +111,18 @@ include(CMakePackageConfigHelpers)
 set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/ZensimConfig.cmake")
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/ZensimConfig.cmake.in
   ${ZENSIM_CONFIG_FILE}
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
+  #INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
+  INSTALL_DESTINATION share/${project_name}/cmake}
 )
 install(
   FILES ${ZENSIM_CONFIG_FILE} 
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
-)
-install(
-  FILES ${ZENSIM_CONFIG_FILE} 
-  DESTINATION /usr/local/share/${project_name}/cmake
+  DESTINATION share/${project_name}/cmake
 )
 # target files export
 install(EXPORT ${project_name}-target 
   FILE ${project_name}Target.cmake
   NAMESPACE ${project_name}:: 
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
-)
-install(EXPORT ${project_name}-target 
-  FILE ${project_name}Target.cmake
-  NAMESPACE ${project_name}:: 
-  DESTINATION /usr/local/share/${project_name}/cmake
+  DESTINATION share/${project_name}/cmake
 )
 
 # target file for build tree

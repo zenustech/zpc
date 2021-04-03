@@ -142,7 +142,7 @@ namespace zs {
       using IterT = remove_cvref_t<ForwardIt>;
       const auto dist = last - first;
       (*this)({dist}, [first, f](typename std::iterator_traits<IterT>::difference_type tid) {
-        f(first + tid);
+        f(*(first + tid));
       });
     }
     template <class ForwardIt, class UnaryFunction>
@@ -152,9 +152,8 @@ namespace zs {
     }
     /// inclusive scan
     template <class InputIt, class OutputIt, class BinaryOperation>
-    constexpr void inclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first,
-                                       InputIt &&last, OutputIt &&d_first,
-                                       BinaryOperation &&binary_op) const {
+    void inclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
+                             OutputIt &&d_first, BinaryOperation &&binary_op) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -173,8 +172,8 @@ namespace zs {
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
-    constexpr void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                                  BinaryOperation &&binary_op = {}) const {
+    void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
+                        BinaryOperation &&binary_op = {}) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
@@ -185,9 +184,8 @@ namespace zs {
     }
     /// exclusive scan
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
-    constexpr void exclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first,
-                                       InputIt &&last, OutputIt &&d_first, T init,
-                                       BinaryOperation &&binary_op) const {
+    void exclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
+                             OutputIt &&d_first, T init, BinaryOperation &&binary_op) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -207,9 +205,9 @@ namespace zs {
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
-    constexpr void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                                  T init = monoid_op<BinaryOperation>::e,
-                                  BinaryOperation &&binary_op = {}) const {
+    void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
+                        T init = monoid_op<BinaryOperation>::e,
+                        BinaryOperation &&binary_op = {}) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
@@ -220,8 +218,8 @@ namespace zs {
     }
     /// reduce
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
-    constexpr void reduce_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                               OutputIt &&d_first, T init, BinaryOperation &&binary_op) const {
+    void reduce_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
+                     OutputIt &&d_first, T init, BinaryOperation &&binary_op) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -241,8 +239,8 @@ namespace zs {
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
-    constexpr void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                          T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {}) const {
+    void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
+                T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {}) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,

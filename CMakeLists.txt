@@ -94,6 +94,7 @@ if (ZS_ENABLE_CUDA)
 endif()
 
 message("project name: ${project_name}")
+message("package version: ${project_version}")
 message("targets to install: ${INSTALL_TARGETS}")
 message("runtime dst: ${CMAKE_INSTALL_BINDIR}/${project_name}")
 message("archive dst: ${CMAKE_INSTALL_LIBDIR}/${project_name}")
@@ -103,8 +104,9 @@ if (NOT APPLE)
   set(CMAKE_INSTALL_RPATH $ORIGIN)
 endif()
 
+# libs, includes
 install(TARGETS ${INSTALL_TARGETS}
-  EXPORT ${project_name}-target
+  EXPORT ${project_name}-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/${project_name}
           COMPONENT ${project_name}_Runtime
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
@@ -114,33 +116,41 @@ install(TARGETS ${INSTALL_TARGETS}
           COMPONENT ${project_name}_Development
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(DIRECTORY include/zensim/ 
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/ 
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim)
-install(DIRECTORY include/zensim/tpls/ 
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/tpls/ 
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim/tpls)
 
 # config, version
 include(CMakePackageConfigHelpers)
-set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/ZensimConfig.cmake")
+set(ZENSIM_CONFIG_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}ConfigVersion.cmake")
+set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}Config.cmake")
+write_basic_package_version_file(
+  ${ZENSIM_CONFIG_VERSION_FILE}
+  VERSION ${project_version}
+  COMPATIBILITY AnyNewerVersion
+)
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/ZensimConfig.cmake.in
   ${ZENSIM_CONFIG_FILE}
   #INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
   INSTALL_DESTINATION share/${project_name}/cmake}
 )
 install(
-  FILES ${ZENSIM_CONFIG_FILE} 
+  FILES ${ZENSIM_CONFIG_FILE} ${ZENSIM_CONFIG_VERSION_FILE} 
   DESTINATION share/${project_name}/cmake
+  # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
 )
 # target files export
-install(EXPORT ${project_name}-target 
-  FILE ${project_name}Target.cmake
+install(EXPORT ${project_name}-targets
+  FILE ${project_name}Targets.cmake
   NAMESPACE ${project_name}:: 
   DESTINATION share/${project_name}/cmake
+  # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
 )
 
 # target file for build tree
-export(EXPORT ${project_name}-target 
-  FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/${project_name}Target.cmake
+export(EXPORT ${project_name}-targets
+  FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/${project_name}Targets.cmake
   NAMESPACE ${project_name}:: 
 )
 endif()

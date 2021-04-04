@@ -92,13 +92,26 @@ set(INSTALL_TARGETS zscore zsio zsvdb zsproj_cxx_deps zsproj_deps ${ZSUMPIRE_INS
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda zsproj_cuda_deps cuda_runtime)
 endif()
+
 message("project name: ${project_name}")
 message("targets to install: ${INSTALL_TARGETS}")
+message("runtime dst: ${CMAKE_INSTALL_BINDIR}/${project_name}")
+message("archive dst: ${CMAKE_INSTALL_LIBDIR}/${project_name}")
+message("include dst: ${CMAKE_INSTALL_INCLUDEDIR}")
+
+if (NOT APPLE)
+  set(CMAKE_INSTALL_RPATH $ORIGIN)
+endif()
+
 install(TARGETS ${INSTALL_TARGETS}
   EXPORT ${project_name}-target
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/${project_name}
+          COMPONENT ${project_name}_Runtime
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
+          COMPONENT ${project_name}_Runtime
+          NAMELINK_COMPONENT ${project_name}_Development
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
+          COMPONENT ${project_name}_Development
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(DIRECTORY include/zensim/ 

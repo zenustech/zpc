@@ -34,10 +34,10 @@ namespace zs {
     // using value_type = typename Derived::value_type;
     // using index_type = typename Derived::index_type;
     template <typename Ti> constexpr decltype(auto) coeff(Ti r, Ti c) {
-      return self()->coeff(r, c);
+      return self().do_coeff(r, c);
     }
     template <typename Ti> constexpr decltype(auto) coeff(Ti r, Ti c) const {
-      return self()->coeff(r, c);
+      return self().do_coeff(r, c);
     }
 
   protected:
@@ -54,16 +54,22 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
-    constexpr value_type coeff(index_type r, index_type c) const { return r == c ? identity : 0; }
+    constexpr value_type do_coeff(index_type r, index_type c) const {
+      return r == c ? identity : 0;
+    }
     value_type identity{1};
   };
-  template <typename ValueType = float, typename IndexType = int> struct YaleMatrix
+  template <typename ValueType = float, typename IndexType = int> struct YaleSparseMatrix
       : MatrixBase<ValueType, IndexType>,
-        MatrixAccessor<YaleMatrix<ValueType, IndexType>> {
+        MatrixAccessor<YaleSparseMatrix<ValueType, IndexType>> {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
-    constexpr value_type &coeff(index_type r, index_type c) {
+    constexpr YaleSparseMatrix(memsrc_e mre, ProcID pid, index_type nrows, index_type ncols,
+                               matrix_order_e order = matrix_order_e::rowMajor)
+        : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order} {}
+
+    constexpr value_type &do_coeff(index_type r, index_type c) {
       index_type i = c;
       index_type j = r;
       if (base_t::isRowMajor()) {
@@ -73,7 +79,7 @@ namespace zs {
       for (index_type st = offsets[i], ed = offsets[i + 1]; st < ed; ++st)
         if (indices[st] == j) return vals[st];
     }
-    constexpr const value_type &coeff(index_type r, index_type c) const {
+    constexpr const value_type &do_coeff(index_type r, index_type c) const {
       index_type i = c;
       index_type j = r;
       if (base_t::isRowMajor()) {

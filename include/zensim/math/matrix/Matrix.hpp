@@ -54,10 +54,23 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
+
     constexpr value_type do_coeff(index_type r, index_type c) const {
       return r == c ? identity : 0;
     }
     value_type identity{1};
+  };
+  template <typename ValueType = float, typename IndexType = int> struct DiagonalMatrix
+      : MatrixBase<ValueType, IndexType>,
+        MatrixAccessor<IdentityMatrix<ValueType, IndexType>> {
+    using base_t = MatrixBase<ValueType, IndexType>;
+    using value_type = ValueType;
+    using index_type = IndexType;
+
+    constexpr value_type do_coeff(index_type r, index_type c) const {
+      return r == c ? diagEntries[r] : 0;
+    }
+    Vector<value_type> diagEntries{};
   };
   template <typename ValueType = float, typename IndexType = int> struct YaleSparseMatrix
       : MatrixBase<ValueType, IndexType>,
@@ -65,15 +78,20 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
+
+    YaleSparseMatrix() = delete;
     constexpr YaleSparseMatrix(memsrc_e mre, ProcID pid, index_type nrows, index_type ncols,
                                matrix_order_e order = matrix_order_e::rowMajor)
-        : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order} {}
+        : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order},
+          offsets{mre, pid},
+          indices{mre, pid},
+          vals{mre, pid} {}
 
     value_type &do_coeff(index_type r, index_type c);
     const value_type &do_coeff(index_type r, index_type c) const;
 
-    zs::Vector<index_type> offsets{memsrc_e::host}, indices{memsrc_e::host};
-    zs::Vector<value_type> vals{memsrc_e::host};
+    Vector<index_type> offsets{}, indices{};
+    Vector<value_type> vals{};
   };
   template <typename ValueType = float, typename IndexType = int> struct CooSparseMatrix
       : MatrixBase<ValueType, IndexType>,
@@ -81,8 +99,8 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
-    Vector<index_type> rowInds{memsrc_e::host}, colInds{memsrc_e::host};
-    Vector<value_type> vals{memsrc_e::host};
+    Vector<index_type> rowInds{}, colInds{};
+    Vector<value_type> vals{};
   };
   template <typename ValueType = float, typename IndexType = int> struct DenseMatrix
       : MatrixBase<ValueType, IndexType>,
@@ -90,7 +108,7 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
-    Vector<value_type> vals{base_t::size(), memsrc_e::host};
+    Vector<value_type> vals{};
   };
 
 }  // namespace zs

@@ -33,8 +33,6 @@ namespace zs {
       = {"HOST", "DEVICE", "DEVICE_CONST", "UM", "PINNED", "FILE"};
 
   struct MemoryHandle {
-    constexpr MemoryHandle(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _memsrc{mre}, _devid{devid} {}
     constexpr ProcID devid() const noexcept { return _devid; }
     constexpr memsrc_e memspace() const noexcept { return _memsrc; }
 
@@ -43,7 +41,6 @@ namespace zs {
       std::swap(_memsrc, o._memsrc);
     }
 
-  protected:
     memsrc_e _memsrc{memsrc_e::host};  // memory source
     ProcID _devid{-1};                 // cpu id
   };

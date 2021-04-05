@@ -1,5 +1,5 @@
 #include "zensim/cuda/Cuda.h"
-#include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/omp/execution/ExecutionPolicy.hpp"
 #include "zensim/types/Iterator.h"
 
 int main() {

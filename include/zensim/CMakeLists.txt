@@ -3,6 +3,9 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     types/Config.cpp
     types/Node.cpp
     math/probability/Probability.cpp
+    math/matrix/MatrixTransform.cpp
+    math/matrix/MatrixCtor.cpp
+    math/matrix/Matrix.cpp
     memory/Allocator.cpp
     profile/CppTimers.cpp
     execution/Stacktrace.cpp
@@ -27,7 +30,15 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 	cuda/DeviceUtils.cu
     cuda/AuxiliaryLibs.cu
 	cuda/profile/CudaTimers.cu
+    cuda/math/matrix/MatrixCtor.cpp
+    cuda/math/matrix/MatrixTransform.cpp
 )
+set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
+    omp/math/matrix/MatrixCtor.cpp
+    omp/math/matrix/MatrixTransform.cpp
+)
+
+## headers
 set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # container
     container/fsm/FiniteStateMachine.h
@@ -57,6 +68,9 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/bit/Bits.h
     math/matrix/MatrixUtils.h
     math/matrix/Utility.h
+    math/matrix/MatrixTransform.hpp
+    math/matrix/MatrixCtor.hpp
+    math/matrix/Matrix.hpp
     math/probability/Probability.h
     math/Hash.hpp
     math/MathUtils.h
@@ -138,12 +152,25 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/container/bvh/Bvh.cuh
     cuda/algorithm/MappingKernels.cuh
     cuda/algorithm/SortKernels.cuh
+
+    cuda/math/matrix/Matrix.hpp
+)
+set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
+    omp/execution/ExecutionPolicy.hpp
+    omp/math/matrix/MatrixCtor.hpp
+    omp/math/matrix/MatrixTransform.hpp
 )
 
 add_cpp_library(zscore)
-target_sources(zscore PRIVATE ${ZENSIM_LIBRARY_CORE_SOURCE_FILES})
+target_sources(zscore PRIVATE 
+    ${ZENSIM_LIBRARY_CORE_SOURCE_FILES}
+    ${ZENSIM_LIBRARY_OMP_SOURCE_FILES}
+)
 if (ENABLE_PCH)
-target_precompile_headers(zscore INTERFACE ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES})
+target_precompile_headers(zscore INTERFACE 
+    ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
+    ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
+)
 endif()
 
 # related to openvdb

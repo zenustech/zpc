@@ -1,8 +1,7 @@
-#ifndef __RING_BUFFER_HPP_
-#define __RING_BUFFER_HPP_
-#include <zensim/math/Vec.h>
-
+#pragma once
 #include <vector>
+
+#include "zensim/math/Vec.h"
 
 namespace zs {
 
@@ -62,5 +61,3 @@ namespace zs {
   };
 
 }  // namespace zs
-
-#endif

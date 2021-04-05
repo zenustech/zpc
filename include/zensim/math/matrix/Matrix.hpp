@@ -69,26 +69,9 @@ namespace zs {
                                matrix_order_e order = matrix_order_e::rowMajor)
         : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order} {}
 
-    constexpr value_type &do_coeff(index_type r, index_type c) {
-      index_type i = c;
-      index_type j = r;
-      if (base_t::isRowMajor()) {
-        i = r;
-        j = c;
-      }
-      for (index_type st = offsets[i], ed = offsets[i + 1]; st < ed; ++st)
-        if (indices[st] == j) return vals[st];
-    }
-    constexpr const value_type &do_coeff(index_type r, index_type c) const {
-      index_type i = c;
-      index_type j = r;
-      if (base_t::isRowMajor()) {
-        i = r;
-        j = c;
-      }
-      for (index_type st = offsets[i], ed = offsets[i + 1]; st < ed; ++st)
-        if (indices[st] == j) return vals[st];
-    }
+    value_type &do_coeff(index_type r, index_type c);
+    const value_type &do_coeff(index_type r, index_type c) const;
+
     zs::Vector<index_type> offsets{memsrc_e::host}, indices{memsrc_e::host};
     zs::Vector<value_type> vals{memsrc_e::host};
   };

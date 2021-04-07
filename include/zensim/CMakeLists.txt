@@ -30,6 +30,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 	cuda/DeviceUtils.cu
     cuda/AuxiliaryLibs.cu
 	cuda/profile/CudaTimers.cu
+    cuda/math/matrix/Matrix.cpp
     cuda/math/matrix/MatrixCtor.cpp
     cuda/math/matrix/MatrixTransform.cpp
 )

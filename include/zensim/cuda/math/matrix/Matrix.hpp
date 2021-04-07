@@ -7,6 +7,7 @@
 
 #include "zensim/cuda/execution/CudaLibExecutionPolicy.cuh"
 #include "zensim/math/matrix/Matrix.hpp"
+#include "zensim/types/Event.hpp"
 
 namespace zs {
 

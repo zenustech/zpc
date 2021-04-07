@@ -84,6 +84,7 @@ namespace zs {
           indices{mre, pid},
           vals{mre, pid} {}
 
+    constexpr auto nnz() const noexcept { return vals.size(); }
     constexpr value_type do_coeff(index_type r, index_type c) const {
       index_type i = c;
       index_type j = r;
@@ -106,6 +107,7 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
+    constexpr auto nnz() const noexcept { return vals.size(); }
     Vector<index_type> rowInds{}, colInds{};
     Vector<value_type> vals{};
   };

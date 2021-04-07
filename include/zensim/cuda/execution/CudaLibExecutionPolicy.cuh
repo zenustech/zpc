@@ -69,8 +69,6 @@ namespace zs {
 
   template <CudaLibraryComponentFlagBit flagbit> struct CudaLibComponentExecutionPolicy
       : CudaLibHandle<flagbit> {
-    constexpr auto& handle() noexcept { return CudaLibHandle<flagbit>::handle; }
-
     template <typename Fn, typename... Args>
     std::enable_if_t<is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
     call(Fn&& fn, Args&&... args) const {
@@ -78,7 +76,7 @@ namespace zs {
       if constexpr (sizeof...(Args) == fts::arity)
         details::check_culib_error(fn(FWD(args)...));
       else
-        details::check_culib_error(fn(handle(), FWD(args)...));
+        details::check_culib_error(fn(CudaLibHandle<flagbit>::handle, FWD(args)...));
     }
 
     CudaLibComponentExecutionPolicy(CudaExecutionPolicy& cupol) : CudaLibHandle<flagbit>{cupol} {}
@@ -88,10 +86,6 @@ namespace zs {
       : std::reference_wrapper<CudaExecutionPolicy>,
         ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
         CudaLibComponentExecutionPolicy<flagbits>... {
-    template <CudaLibraryComponentFlagBit flagbit> constexpr auto& handle() noexcept {
-      return CudaLibComponentExecutionPolicy<flagbit>::handle();
-    }
-
     template <CudaLibraryComponentFlagBit flagbit, typename Fn, typename... Args>
     constexpr std::enable_if_t<
         is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>

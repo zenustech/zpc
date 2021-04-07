@@ -18,8 +18,6 @@ namespace zs {
     culib_cusolverdn = 0x8
   };
 
-  template <CudaLibraryComponentFlagBit flagbit> struct CudaLibHandle {};
-
   namespace details {
     template <typename T> void check_culib_error(T result) {
       if (static_cast<int>(result) != 0) {
@@ -35,6 +33,8 @@ namespace zs {
   }  // namespace details
   template <CudaLibraryComponentFlagBit flagbit> using cudaLibStatus_t =
       typename details::CudaLibStatusType<flagbit>::type;
+
+  template <CudaLibraryComponentFlagBit flagbit> struct CudaLibHandle {};
 
   template <> struct CudaLibHandle<culib_cusparse> {
     cusparseHandle_t handle{nullptr};
@@ -79,7 +79,9 @@ namespace zs {
         details::check_culib_error(fn(CudaLibHandle<flagbit>::handle, FWD(args)...));
     }
 
-    CudaLibComponentExecutionPolicy(CudaExecutionPolicy& cupol) : CudaLibHandle<flagbit>{cupol} {}
+    CudaLibComponentExecutionPolicy(CudaExecutionPolicy& cupol)
+        : cupol{cupol}, CudaLibHandle<flagbit>{cupol} {}
+    CudaExecutionPolicy& cupol;
   };
 
   template <CudaLibraryComponentFlagBit... flagbits> struct CudaLibExecutionPolicy

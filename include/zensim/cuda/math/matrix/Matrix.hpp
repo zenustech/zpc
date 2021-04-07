@@ -24,9 +24,10 @@ namespace zs {
 
     void analyze_pattern(const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol);
     void factorize(const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol);
-    void solve(const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol);
+    void solve(Vector<value_type> &, const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol,
+               const Vector<value_type> &);
 
-    Vector<char> auxSpmBuffer{};
+    // Vector<char> auxSpmBuffer{};
     Vector<char> auxCholBuffer{};
   };
 

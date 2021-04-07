@@ -5,14 +5,13 @@
 #include <cusolver_common.h>
 #include <cusparse_v2.h>
 
-#include "zensim/cuda/container/MatrixHash.cuh"
 #include "zensim/math/matrix/Matrix.hpp"
 
 namespace zs {
 
   template <typename ValueType, typename IndexType> struct CudaYaleSparseMatrix
       : YaleSparseMatrix<ValueType, IndexType>,
-        MatrixAccessor<YaleSparseMatrix<ValueType, IndexType>> {
+        MatrixAccessor<CudaYaleSparseMatrix<ValueType, IndexType>> {
     using base_t = YaleSparseMatrix<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
@@ -23,7 +22,6 @@ namespace zs {
 
     Vector<char> auxSpmBuffer{};
     Vector<char> auxCholBuffer{};
-    Holder<MatrixHash<index_type>> sh{};
   };
 
 }  // namespace zs

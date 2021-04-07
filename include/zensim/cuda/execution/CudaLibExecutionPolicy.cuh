@@ -1,3 +1,4 @@
+#pragma once
 #include <cublas_v2.h>
 #include <cusolverSp.h>
 #include <cusparse_v2.h>
@@ -66,26 +67,41 @@ namespace zs {
     ~CudaLibHandle() { details::check_culib_error(cusolverSpDestroy(handle)); }
   };
 
-  template <CudaLibraryComponentFlagBit... flagbits> struct CudaLibExecutionPolicy
-      : std::reference_wrapper<CudaExecutionPolicy>,
-        ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
-        CudaLibHandle<flagbits>... {
-    template <CudaLibraryComponentFlagBit flagbit> constexpr auto& handle() noexcept {
-      return CudaLibHandle<flagbit>::handle;
-    }
+  template <CudaLibraryComponentFlagBit flagbit> struct CudaLibComponentExecutionPolicy
+      : CudaLibHandle<flagbit> {
+    constexpr auto& handle() noexcept { return CudaLibHandle<flagbit>::handle; }
 
-    template <CudaLibraryComponentFlagBit flagbit, typename Fn, typename... Args> std::enable_if_t<
-        is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<std::decay_t<Fn>>::return_t>>
-    call(Fn&& fn, Args&&... args) {
-      using fts = function_traits<std::decay_t<Fn>>;
+    template <typename Fn, typename... Args>
+    std::enable_if_t<is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
+    call(Fn&& fn, Args&&... args) const {
+      using fts = function_traits<Fn>;
       if constexpr (sizeof...(Args) == fts::arity)
         details::check_culib_error(fn(FWD(args)...));
       else
-        details::check_culib_error(fn(handle<flagbit>(), FWD(args)...));
+        details::check_culib_error(fn(handle(), FWD(args)...));
+    }
+
+    CudaLibComponentExecutionPolicy(CudaExecutionPolicy& cupol) : CudaLibHandle<flagbit>{cupol} {}
+  };
+
+  template <CudaLibraryComponentFlagBit... flagbits> struct CudaLibExecutionPolicy
+      : std::reference_wrapper<CudaExecutionPolicy>,
+        ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
+        CudaLibComponentExecutionPolicy<flagbits>... {
+    template <CudaLibraryComponentFlagBit flagbit> constexpr auto& handle() noexcept {
+      return CudaLibComponentExecutionPolicy<flagbit>::handle();
+    }
+
+    template <CudaLibraryComponentFlagBit flagbit, typename Fn, typename... Args>
+    constexpr std::enable_if_t<
+        is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
+    call(Fn&& fn, Args&&... args) const {
+      CudaLibComponentExecutionPolicy<flagbit>::call(FWD(fn), FWD(args)...);
     }
 
     CudaLibExecutionPolicy(CudaExecutionPolicy& cupol)
-        : std::reference_wrapper<CudaExecutionPolicy>{cupol}, CudaLibHandle<flagbits>{cupol}... {}
+        : std::reference_wrapper<CudaExecutionPolicy>{cupol},
+          CudaLibComponentExecutionPolicy<flagbits>{cupol}... {}
   };
 
 }  // namespace zs

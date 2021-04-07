@@ -33,9 +33,6 @@ namespace zs {
   template <typename Derived> struct MatrixAccessor {
     // using value_type = typename Derived::value_type;
     // using index_type = typename Derived::index_type;
-    template <typename Ti> constexpr decltype(auto) coeff(Ti r, Ti c) {
-      return self().do_coeff(r, c);
-    }
     template <typename Ti> constexpr decltype(auto) coeff(Ti r, Ti c) const {
       return self().do_coeff(r, c);
     }
@@ -87,8 +84,7 @@ namespace zs {
           indices{mre, pid},
           vals{mre, pid} {}
 
-    value_type &do_coeff(index_type r, index_type c);
-    const value_type &do_coeff(index_type r, index_type c) const;
+    constexpr value_type do_coeff(index_type r, index_type c) const;
 
     Vector<index_type> offsets{}, indices{};
     Vector<value_type> vals{};

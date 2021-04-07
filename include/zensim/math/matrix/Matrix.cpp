@@ -7,34 +7,17 @@
 namespace zs {
 
   template <typename ValueType, typename IndexType>
-  ValueType& YaleSparseMatrix<ValueType, IndexType>::do_coeff(IndexType r, IndexType c) {
+  ValueType YaleSparseMatrix<ValueType, IndexType>::do_coeff(IndexType r, IndexType c) const {
     index_type i = c;
     index_type j = r;
     if (base_t::isRowMajor()) {
       i = r;
       j = c;
     }
-    // if (offsets.size() < i)
-    //     throw std::runtime_error("");
+    if (offsets.size() <= i) return 0;
     for (index_type st = offsets[i], ed = offsets[i + 1]; st < ed; ++st)
       if (indices[st] == j) return vals[st];
-    // throw std::runtime_error("");
-  }
-
-  template <typename ValueType, typename IndexType>
-  const ValueType& YaleSparseMatrix<ValueType, IndexType>::do_coeff(IndexType r,
-                                                                    IndexType c) const {
-    index_type i = c;
-    index_type j = r;
-    if (base_t::isRowMajor()) {
-      i = r;
-      j = c;
-    }
-    // if (offsets.size() < i)
-    //     throw std::runtime_error("");
-    for (index_type st = offsets[i], ed = offsets[i + 1]; st < ed; ++st)
-      if (indices[st] == j) return vals[st];
-    // throw std::runtime_error("");
+    return 0;
   }
 
   template struct YaleSparseMatrix<f32, i32>;

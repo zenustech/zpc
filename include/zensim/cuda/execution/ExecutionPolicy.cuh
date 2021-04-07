@@ -249,9 +249,13 @@ namespace zs {
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
     }
 
+    constexpr ProcID getProcid() const noexcept { return procid; }
+    constexpr StreamID getStreamid() const noexcept { return streamid; }
+
   protected:
     // bool do_launch(const ParallelTask &) const noexcept;
     friend struct ExecutionPolicyInterface<CudaExecutionPolicy>;
+    // template <auto flagbit> friend struct CudaLibHandle<flagbit>;
 
     // std::size_t blockGranularity{128};
     ProcID incomingProc{0};

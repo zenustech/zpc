@@ -45,16 +45,15 @@ namespace zs {
   };
 
   template <CudaLibraryComponentFlagBit... flagbits> struct CudaLibExecutionPolicy
-      : ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
+      : std::reference_wrapper<CudaExecutionPolicy>,
+        ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
         CudaLibHandle<flagbits>... {
     template <CudaLibraryComponentFlagBit flagbit> constexpr auto& handle() noexcept {
       return CudaLibHandle<flagbit>::handle;
     }
 
     CudaLibExecutionPolicy(CudaExecutionPolicy& cupol)
-        : _cuPol{cupol}, CudaLibHandle<flagbits>{cupol}... {}
-
-    CudaExecutionPolicy& _cuPol;
+        : std::reference_wrapper<CudaExecutionPolicy>{cupol}, CudaLibHandle<flagbits>{cupol}... {}
   };
 
 }  // namespace zs

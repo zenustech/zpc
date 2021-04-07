@@ -16,6 +16,7 @@ namespace zs {
     if (this->isRowMajor())
       pol.call(cusolverSpXcsrcholAnalysis, this->rows(), this->nnz(), this->descr,
                this->offsets.data(), this->indices.data(), cholInfo);
+    timer.tock("[gpu] analyze pattern");
     // else
     //   pol.call(cusolverSpXcsccholAnalysis, this->cols(), this->nnz(), this->descr,
     //            this->offsets.data(), this->indices.data(), cholInfo);
@@ -39,9 +40,7 @@ namespace zs {
       //            this->vals.data(), this->offsets.data(), this->indices.data(), cholInfo,
       //            &sizeInternal, &sizeChol);
     }
-    timer.tock("[gpu] analyze pattern");
     auxCholBuffer.resize(sizeChol);
-    getchar();
   }
   template <typename V, typename I> void CudaYaleSparseMatrix<V, I>::factorize(
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
@@ -54,7 +53,6 @@ namespace zs {
       pol.call(cusolverSpDcsrcholFactor, this->rows(), this->nnz(), this->descr, this->vals.data(),
                this->offsets.data(), this->indices.data(), cholInfo, auxCholBuffer.data());
       timer.tock("[gpu] cholesky factorization, A = L*L^T");
-      getchar();
       pol.call(cusolverSpDcsrcholZeroPivot, cholInfo, 1e-8, &singularity);
     } else if constexpr (is_same_v<V, float>) {
       timer.tick();
@@ -66,7 +64,6 @@ namespace zs {
     if (0 <= singularity) {
       fmt::print(fg(fmt::color::yellow), "error [gpu] A is not invertible, singularity={}\n",
                  singularity);
-      getchar();
     }
   }
   template <typename V, typename I> void CudaYaleSparseMatrix<V, I>::solve(

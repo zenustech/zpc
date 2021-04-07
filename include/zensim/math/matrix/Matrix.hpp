@@ -84,7 +84,18 @@ namespace zs {
           indices{mre, pid},
           vals{mre, pid} {}
 
-    constexpr value_type do_coeff(index_type r, index_type c) const;
+    constexpr value_type do_coeff(index_type r, index_type c) const {
+      index_type i = c;
+      index_type j = r;
+      if (base_t::isRowMajor()) {
+        i = r;
+        j = c;
+      }
+      if (offsets.size() <= i) return 0;
+      for (index_type st = offsets[i], ed = offsets[i + 1]; st < ed; ++st)
+        if (indices[st] == j) return vals[st];
+      return 0;
+    }
 
     Vector<index_type> offsets{}, indices{};
     Vector<value_type> vals{};

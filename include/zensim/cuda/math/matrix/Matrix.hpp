@@ -5,6 +5,7 @@
 #include <cusolver_common.h>
 #include <cusparse_v2.h>
 
+#include "zensim/cuda/execution/CudaLibExecutionPolicy.cuh"
 #include "zensim/math/matrix/Matrix.hpp"
 
 namespace zs {
@@ -19,6 +20,10 @@ namespace zs {
     cusparseMatDescr_t descr{0};
     cusparseSpMatDescr_t spmDescr{0};
     csrcholInfo_t cholInfo{nullptr};
+
+    void analyze_pattern(const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol);
+    void factorize(const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol);
+    void solve(const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol);
 
     Vector<char> auxSpmBuffer{};
     Vector<char> auxCholBuffer{};

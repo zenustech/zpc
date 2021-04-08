@@ -40,12 +40,17 @@ namespace zs {
     constexpr base_t &self() noexcept { return static_cast<base_t &>(*this); }
     constexpr const base_t &self() const noexcept { return static_cast<const base_t &>(*this); }
 
-    constexpr Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : MemoryHandle{mre, devid}, base_t{buildInstance(mre, devid, 0)}, _size{0} {}
-    Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    constexpr Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1, std::size_t alignment = 0)
+        : MemoryHandle{mre, devid},
+          base_t{buildInstance(mre, devid, 0)},
+          _size{0},
+          _align{alignment} {}
+    Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+           std::size_t alignment = 0)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, count + count / 2)},
-          _size{count} {}
+          _size{count},
+          _align{alignment} {}
 
     ~Vector() {
       if (head()) self().dealloc();
@@ -214,8 +219,9 @@ namespace zs {
         auto memorySource = get_resource_manager().source(mre);
         if (mre == memsrc_e::um) memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
         /// additional parameters should match allocator_type
-        inst.template alloc<allocator_type>(memorySource, 1 << 8, 1 << 17, 2ull << 20, 16,
-                                            512ull << 20, 1 << 10, inst.maxAlignment());
+        inst.template alloc<allocator_type>(
+            memorySource, 1 << 8, 1 << 17, 2ull << 20, 16, 512ull << 20, 1 << 10,
+            _align > inst.maxAlignment() ? _align : inst.maxAlignment());
       }
       return inst;
     }
@@ -230,10 +236,12 @@ namespace zs {
       if (this->memspace() == memsrc_e::um)
         memorySource = memorySource.advisor("PREFERRED_LOCATION", this->devid());
       return memorySource.template allocator<allocator_type>(
-          1 << 8, 1 << 17, 2ull << 20, 16, 512ull << 20, 1 << 10, this->maxAlignment());
+          1 << 8, 1 << 17, 2ull << 20, 16, 512ull << 20, 1 << 10,
+          _align > this->maxAlignment() ? _align : this->maxAlignment());
     }
 
     size_type _size{0};  // size
+    size_type _align{0};
   };
 
 }  // namespace zs

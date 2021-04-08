@@ -77,12 +77,14 @@ namespace zs {
     using index_type = IndexType;
 
     YaleSparseMatrix() = delete;
-    constexpr YaleSparseMatrix(memsrc_e mre, ProcID pid, index_type nrows = 1, index_type ncols = 1,
-                               matrix_order_e order = matrix_order_e::rowMajor)
+    constexpr YaleSparseMatrix(memsrc_e mre, ProcID pid,
+                               matrix_order_e order = matrix_order_e::rowMajor,
+                               index_type nrows = 1, index_type ncols = 1,
+                               std::size_t alignment = alignof(std::max_align_t))
         : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order},
-          offsets{mre, pid},
-          indices{mre, pid},
-          vals{mre, pid} {}
+          offsets{mre, pid, alignment},
+          indices{mre, pid, alignment},
+          vals{mre, pid, alignment} {}
 
     constexpr auto nnz() const noexcept { return vals.size(); }
     constexpr value_type do_coeff(index_type r, index_type c) const {
@@ -107,6 +109,7 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
+
     constexpr auto nnz() const noexcept { return vals.size(); }
     Vector<index_type> rowInds{}, colInds{};
     Vector<value_type> vals{};
@@ -117,6 +120,8 @@ namespace zs {
     using base_t = MatrixBase<ValueType, IndexType>;
     using value_type = ValueType;
     using index_type = IndexType;
+
+    constexpr auto nnz() const noexcept { return base_t::size(); }
     Vector<value_type> vals{};
   };
 

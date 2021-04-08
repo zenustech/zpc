@@ -1,3 +1,4 @@
+#pragma once
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 #include <cusolverSp.h>
@@ -21,8 +22,11 @@ namespace zs {
     using listener_type = Event<cusparseMatDescr_t, csrcholInfo_t>;
 
     template <typename ExecPol>
-    CudaYaleSparseMatrix(const YaleSparseMatrix<value_type, index_type> &mat, ExecPol &pol) noexcept
-        : YaleSparseMatrix<value_type, index_type>{mat}, auxCholBuffer{zs::memsrc_e::um, 0} {
+    CudaYaleSparseMatrix(ExecPol &pol, memsrc_e mre, ProcID pid,
+                         matrix_order_e order = matrix_order_e::rowMajor, index_type nrows = 1,
+                         index_type ncols = 1) noexcept
+        : YaleSparseMatrix<value_type, index_type>{mre, pid, order, nrows, ncols, 512},
+          auxCholBuffer{mre, pid, 512} {
       pol.template call<culib_cusparse>(cusparseCreateMatDescr, &descr);
       pol.template call<culib_cusparse>(cusparseSetMatType, descr, CUSPARSE_MATRIX_TYPE_GENERAL);
       pol.template call<culib_cusparse>(cusparseSetMatIndexBase, descr, CUSPARSE_INDEX_BASE_ZERO);

@@ -77,7 +77,7 @@ namespace zs {
     using index_type = IndexType;
 
     YaleSparseMatrix() = delete;
-    constexpr YaleSparseMatrix(memsrc_e mre, ProcID pid, index_type nrows, index_type ncols,
+    constexpr YaleSparseMatrix(memsrc_e mre, ProcID pid, index_type nrows = 1, index_type ncols = 1,
                                matrix_order_e order = matrix_order_e::rowMajor)
         : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order},
           offsets{mre, pid},

@@ -6,6 +6,8 @@
 #include "ExecutionPolicy.cuh"
 #include "zensim/Logger.hpp"
 #include "zensim/Reflection.h"
+#include "zensim/execution/Concurrency.h"
+#include "zensim/types/Event.hpp"
 #include "zensim/types/Function.h"
 
 namespace zs {
@@ -98,6 +100,8 @@ namespace zs {
     CudaLibExecutionPolicy(CudaExecutionPolicy& cupol)
         : std::reference_wrapper<CudaExecutionPolicy>{cupol},
           CudaLibComponentExecutionPolicy<flagbits>{cupol}... {}
+    template <typename F> void addListener(F&& callback) { _listeners.push(std::move(callback)); }
+    threadsafe_queue<Listener> _listeners{};
   };
 
 }  // namespace zs

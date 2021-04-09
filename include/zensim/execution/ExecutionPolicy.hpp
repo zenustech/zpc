@@ -174,6 +174,11 @@ namespace zs {
     policy.reduce(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
   }
   /// sort
+  template <class ExecutionPolicy, class InputIt, class OutputIt>
+  constexpr void radix_sort(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
+                            OutputIt &&d_first) {
+    policy.radix_sort(FWD(first), FWD(last), FWD(d_first));
+  }
   /// gather/ select (flagged, if, unique)
 
 }  // namespace zs

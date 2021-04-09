@@ -162,11 +162,12 @@ namespace zs {
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
-      cub::DeviceScan::InclusiveScan(nullptr, temp_storage_bytes, first, d_first, binary_op, dist,
-                                     context.streamSpare(streamid));
+      cub::DeviceScan::InclusiveScan(nullptr, temp_storage_bytes, first.operator->(),
+                                     d_first.operator->(), binary_op, dist,
+                                     (cudaStream_t)context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
       cub::DeviceScan::InclusiveScan(d_tmp, temp_storage_bytes, first, d_first, binary_op, dist,
-                                     context.streamSpare(streamid));
+                                     (cudaStream_t)context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -195,10 +196,10 @@ namespace zs {
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_storage_bytes, first, d_first, binary_op, init,
-                                     dist, context.streamSpare(streamid));
+                                     dist, (cudaStream_t)context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
       cub::DeviceScan::ExclusiveScan(d_tmp, temp_storage_bytes, first, d_first, binary_op, init,
-                                     dist, context.streamSpare(streamid));
+                                     dist, (cudaStream_t)context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -229,10 +230,10 @@ namespace zs {
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, first, d_first, dist, binary_op, init,
-                                context.streamSpare(streamid));
+                                (cudaStream_t)context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
       cub::DeviceReduce::Reduce(d_tmp, temp_storage_bytes, first, d_first, dist, binary_op, init,
-                                context.streamSpare(streamid));
+                                (cudaStream_t)context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -260,13 +261,15 @@ namespace zs {
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
-      cub::DeviceRadixSort::SortKeys(nullptr, temp_storage_bytes, first, d_first, dist, 0,
+      cub::DeviceRadixSort::SortKeys(nullptr, temp_storage_bytes, first.operator->(),
+                                     d_first.operator->(), dist, 0,
                                      sizeof(typename std::iterator_traits<IterT>::value_type) * 8,
-                                     context.streamSpare(streamid));
+                                     (cudaStream_t)context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
-      cub::DeviceRadixSort::SortKeys(d_tmp, temp_storage_bytes, first, d_first, dist, 0,
+      cub::DeviceRadixSort::SortKeys(d_tmp, temp_storage_bytes, first.operator->(),
+                                     d_first.operator->(), dist, 0,
                                      sizeof(typename std::iterator_traits<IterT>::value_type) * 8,
-                                     context.streamSpare(streamid));
+                                     (cudaStream_t)context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -276,6 +279,9 @@ namespace zs {
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
+      static_assert(is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::pointer,
+                              typename std::iterator_traits<remove_cvref_t<OutputIt>>::pointer>,
+                    "Input iterator pointer different from output iterator\'s");
       radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
                       FWD(first), FWD(last), FWD(d_first));
     }

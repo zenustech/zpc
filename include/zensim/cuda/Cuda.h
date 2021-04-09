@@ -49,33 +49,33 @@ namespace zs {
         return streams[static_cast<unsigned int>(sid)];
       }
       auto stream(unsigned sid) const { return streams[sid]; }
-      auto stream_compute() const {
+      auto streamCompute() const {
         return streams[static_cast<unsigned int>(StreamIndex::Compute)];
       }
-      auto stream_spare(unsigned sid = 0) const {
+      auto streamSpare(unsigned sid = 0) const {
         return streams[static_cast<unsigned int>(StreamIndex::Spare) + sid];
       }
       // sync
-      void syncCompute() const { driver().syncStream(stream_compute()); }
+      void syncCompute() const { driver().syncStream(streamCompute()); }
       template <StreamIndex sid> void syncStream() const { driver().syncStream(stream<sid>()); }
       void syncStream(unsigned sid) const { driver().syncStream(stream(sid)); }
-      void syncStreamSpare(unsigned sid = 0) const { driver().syncStream(stream_spare(sid)); }
+      void syncStreamSpare(unsigned sid = 0) const { driver().syncStream(streamSpare(sid)); }
 
       // event
-      auto event_compute() const { return events[static_cast<unsigned int>(EventIndex::Compute)]; }
-      auto event_spare(unsigned eid = 0) const {
+      auto eventCompute() const { return events[static_cast<unsigned int>(EventIndex::Compute)]; }
+      auto eventSpare(unsigned eid = 0) const {
         return events[static_cast<unsigned int>(EventIndex::Spare) + eid];
       }
       //
-      auto compute_event_record() { driver().recordEvent(event_compute(), stream_compute()); }
-      auto spare_event_record(unsigned id = 0) {
-        driver().recordEvent(event_spare(id), stream_spare(id));
+      auto recordEventCompute() { driver().recordEvent(eventCompute(), streamCompute()); }
+      auto recordEventSpare(unsigned id = 0) {
+        driver().recordEvent(eventSpare(id), streamSpare(id));
       }
       void computeStreamWaitForEvent(void *event) {
-        driver().streamWaitEvent(stream_compute(), event, 0);
+        driver().streamWaitEvent(streamCompute(), event, 0);
       }
       void spareStreamWaitForEvent(unsigned sid, void *event) {
-        driver().streamWaitEvent(stream_spare(sid), event, 0);
+        driver().streamWaitEvent(streamSpare(sid), event, 0);
       }
 
       /// kernel launch
@@ -174,11 +174,11 @@ namespace zs {
         }
       }
 
-      template <typename... Arguments> void spare_launch(unsigned sid, LaunchConfig &&lc,
-                                                         void (*f)(remove_vref_t<Arguments>...),
-                                                         const Arguments &...args) {
+      template <typename... Arguments> void launchSpare(StreamID sid, LaunchConfig &&lc,
+                                                        void (*f)(remove_vref_t<Arguments>...),
+                                                        const Arguments &...args) {
         if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
-          f<<<lc.dg, lc.db, lc.shmem, (cudaStream_t)stream_spare(sid)>>>(args...);
+          f<<<lc.dg, lc.db, lc.shmem, (cudaStream_t)streamSpare(sid)>>>(args...);
           cudaError_t error = cudaGetLastError();
           if (error != cudaSuccess)
             printf("[Dev %d] Kernel launch failure on [SPARE stream] %s\n", devid,

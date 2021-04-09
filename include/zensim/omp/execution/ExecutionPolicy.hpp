@@ -277,6 +277,37 @@ namespace zs {
       reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
     }
+    template <class InputIt, class OutputIt> void radix_sort_impl(std::random_access_iterator_tag,
+                                                                  InputIt &&first, InputIt &&last,
+                                                                  OutputIt &&d_first) const {
+      using IterT = remove_cvref_t<InputIt>;
+      using DstIterT = remove_cvref_t<OutputIt>;
+      using DiffT = typename std::iterator_traits<IterT>::difference_type;
+      using ValueT = typename std::iterator_traits<DstIterT>::value_type;
+      static_assert(
+          std::is_convertible_v<DiffT, typename std::iterator_traits<DstIterT>::difference_type>,
+          "diff type not compatible");
+      static_assert(std::is_convertible_v<typename std::iterator_traits<IterT>::value_type, ValueT>,
+                    "value type not compatible");
+      const auto dist = last - first;
+      std::vector<ValueT> localRes{};
+      DiffT nths{}, n{};
+#pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) shared(dist, nths, first, last, d_first)
+      {
+        ;
+        ;
+      }
+    }
+    /// radix sort
+    template <class InputIt, class OutputIt>
+    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first) const {
+      static_assert(
+          is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
+                    typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
+          "Input Iterator and Output Iterator should be from the same category");
+      radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
+                      FWD(first), FWD(last), FWD(d_first));
+    }
 
     OmpExecutionPolicy &threads(int numThreads) noexcept {
       _dop = numThreads;

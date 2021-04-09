@@ -10,7 +10,7 @@ namespace zs {
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.cupol.getProcid()).stream_spare(pol.cupol.getStreamid())};
+        Cuda::ref_cuda_context(pol.cupol.getProcid()).streamSpare(pol.cupol.getStreamid())};
     std::size_t sizeInternal, sizeChol;
     timer.tick();
     if (this->isRowMajor())
@@ -47,7 +47,7 @@ namespace zs {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     int singularity{-2};
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.cupol.getProcid()).stream_spare(pol.cupol.getStreamid())};
+        Cuda::ref_cuda_context(pol.cupol.getProcid()).streamSpare(pol.cupol.getStreamid())};
     if constexpr (is_same_v<V, double>) {
       timer.tick();
       pol.call(cusolverSpDcsrcholFactor, this->rows(), this->nnz(), this->descr, this->vals.data(),
@@ -71,7 +71,7 @@ namespace zs {
       const zs::Vector<V> &rhs) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.cupol.getProcid()).stream_spare(pol.cupol.getStreamid())};
+        Cuda::ref_cuda_context(pol.cupol.getProcid()).streamSpare(pol.cupol.getStreamid())};
     if constexpr (is_same_v<V, double>) {
       timer.tick();
       pol.call(cusolverSpDcsrcholSolve, this->rows(), rhs.data(), x.data(), cholInfo,

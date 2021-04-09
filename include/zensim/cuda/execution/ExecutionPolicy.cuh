@@ -118,21 +118,21 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).event_spare(incomingStreamid));
+            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
       // need to work on __device__ func as well
       // if constexpr (arity == 1)
       if (range.size() == 1)
-        context.spare_launch(streamid, {(range[0] + 127) / 128, 128, shmemBytes}, thread_launch,
-                             range[0], f);
+        context.launchSpare(streamid, {(range[0] + 127) / 128, 128, shmemBytes}, thread_launch,
+                            range[0], f);
       // else if constexpr (arity == 2)
       else if (range.size() == 2)
-        context.spare_launch(streamid, {range[0], range[1], shmemBytes}, block_thread_launch, f);
+        context.launchSpare(streamid, {range[0], range[1], shmemBytes}, block_thread_launch, f);
       // else if constexpr (arity == 3)
       else if (range.size() == 3)
-        context.spare_launch(streamid, {range[0], range[1] * range[2], shmemBytes},
-                             block_tile_lane_launch, range[2], f);
+        context.launchSpare(streamid, {range[0], range[1] * range[2], shmemBytes},
+                            block_tile_lane_launch, range[2], f);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.spare_event_record(streamid);
+      context.recordEventSpare(streamid);
     }
 
     /// for_each
@@ -158,17 +158,17 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).event_spare(incomingStreamid));
+            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceScan::InclusiveScan(nullptr, temp_storage_bytes, first, d_first, binary_op, dist,
-                                     context.stream_spare(streamid));
+                                     context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
       cub::DeviceScan::InclusiveScan(d_tmp, temp_storage_bytes, first, d_first, binary_op, dist,
-                                     context.stream_spare(streamid));
+                                     context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.spare_event_record(streamid);
+      context.recordEventSpare(streamid);
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
@@ -190,17 +190,17 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).event_spare(incomingStreamid));
+            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_storage_bytes, first, d_first, binary_op, init,
-                                     dist, context.stream_spare(streamid));
+                                     dist, context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
       cub::DeviceScan::ExclusiveScan(d_tmp, temp_storage_bytes, first, d_first, binary_op, init,
-                                     dist, context.stream_spare(streamid));
+                                     dist, context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.spare_event_record(streamid);
+      context.recordEventSpare(streamid);
     }
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
@@ -224,17 +224,17 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).event_spare(incomingStreamid));
+            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, first, d_first, dist, binary_op, init,
-                                context.stream_spare(streamid));
+                                context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
       cub::DeviceReduce::Reduce(d_tmp, temp_storage_bytes, first, d_first, dist, binary_op, init,
-                                context.stream_spare(streamid));
+                                context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.spare_event_record(streamid);
+      context.recordEventSpare(streamid);
     }
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
@@ -247,6 +247,37 @@ namespace zs {
           "Input Iterator and Output Iterator should be from the same category");
       reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
+    }
+    /// radix sort
+    template <class InputIt, class OutputIt> void radix_sort_impl(std::random_access_iterator_tag,
+                                                                  InputIt &&first, InputIt &&last,
+                                                                  OutputIt &&d_first) const {
+      auto &context = Cuda::context(procid);
+      context.setContext();
+      if (this->shouldWait())
+        context.spareStreamWaitForEvent(
+            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+      using IterT = remove_cvref_t<InputIt>;
+      const auto dist = last - first;
+      std::size_t temp_storage_bytes = 0;
+      cub::DeviceRadixSort::SortKeys(nullptr, temp_storage_bytes, first, d_first, dist, 0,
+                                     sizeof(typename std::iterator_traits<IterT>::value_type) * 8,
+                                     context.streamSpare(streamid));
+      void *d_tmp = context.borrow(temp_storage_bytes);
+      cub::DeviceRadixSort::SortKeys(d_tmp, temp_storage_bytes, first, d_first, dist, 0,
+                                     sizeof(typename std::iterator_traits<IterT>::value_type) * 8,
+                                     context.streamSpare(streamid));
+      if (this->shouldSync()) context.syncStreamSpare(streamid);
+      context.recordEventSpare(streamid);
+    }
+    template <class InputIt, class OutputIt>
+    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first) const {
+      static_assert(
+          is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
+                    typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
+          "Input Iterator and Output Iterator should be from the same category");
+      radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
+                      FWD(first), FWD(last), FWD(d_first));
     }
 
     constexpr ProcID getProcid() const noexcept { return procid; }

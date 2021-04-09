@@ -16,7 +16,7 @@ namespace zs {
     cusparseStatus_t cusparseStatus;
     cusparseStatus = cusparseCreate(&handle);
     checkCudaErrors(cusparseStatus);
-    cusparseSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(0).stream_compute());
+    cusparseSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(0).streamCompute());
   }
   CuSparse::~CuSparse() {
     cusparseStatus_t cusparseStatus;
@@ -28,7 +28,7 @@ namespace zs {
     cusolverStatus_t cusolverStatus;
     cusolverStatus = cusolverSpCreate(&handle);
     checkCudaErrors(cusolverStatus);
-    cusolverSpSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(0).stream_compute());
+    cusolverSpSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(0).streamCompute());
   }
   CuSolverSp::~CuSolverSp() {
     cusolverStatus_t cusolverStatus;
@@ -39,7 +39,7 @@ namespace zs {
     cusolverStatus_t cusolverStatus;
     cusolverStatus = cusolverDnCreate(&handle);
     checkCudaErrors(cusolverStatus);
-    cusolverDnSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(0).stream_compute());
+    cusolverDnSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(0).streamCompute());
   }
   CuSolverDn::~CuSolverDn() {
     cusolverStatus_t cusolverStatus;

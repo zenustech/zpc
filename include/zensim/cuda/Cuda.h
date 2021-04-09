@@ -96,9 +96,9 @@ namespace zs {
         ((driver().memcpyAsync(hdargs[Is], (void *)&args, sizeof(args), stream)), ...);
       }
       // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#offline-compilation
-      template <typename... Arguments> void compute_launch(LaunchConfig &&lc,
-                                                           void (*f)(remove_vref_t<Arguments>...),
-                                                           const Arguments &...args) {
+      template <typename... Arguments> void launchCompute(LaunchConfig &&lc,
+                                                          void (*f)(remove_vref_t<Arguments>...),
+                                                          const Arguments &...args) {
         if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
 #if 1
           f<<<lc.dg, lc.db, lc.shmem, (cudaStream_t)stream<StreamIndex::Compute>()>>>(args...);
@@ -149,7 +149,7 @@ namespace zs {
         passKernelParameters(dargs, stream<StreamIndex::Compute>(),
                              std::make_index_sequence<N>{}, args...);
         using tup = tuple<std::remove_reference_t<Arguments>...>;
-        fmt::print("compute_launch: {}-th({}) {}({})\n", fnid, tag,
+        fmt::print("launchCompute: {}-th({}) {}({})\n", fnid, tag,
                    query_type_name(f), query_type_name<tup>());
         for (int i = 0; i < N; ++i)
           fmt::print("arg {} size {} args_addr {}\t", i, argSizes[i],

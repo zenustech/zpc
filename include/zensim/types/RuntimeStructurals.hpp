@@ -701,7 +701,7 @@ namespace zs {
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes))), ...);
       }
       constexpr void dealloc() {
-        auto &rm = get_resource_manager().self();
+        auto &rm = get_resource_manager().get();
         ((rm.deallocate(zs::get<Is>(self().handles))), ...);
       }
       template <typename... Handles> constexpr void assign(Handles &&...ptrs) {

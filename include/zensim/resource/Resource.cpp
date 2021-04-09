@@ -11,20 +11,18 @@ namespace zs {
         _counter{0} {}
 
   /// Resource
-  umpire::ResourceManager &Resource::self() noexcept { return *this; }
-  const umpire::ResourceManager &Resource::self() const noexcept { return *this; }
   // HOST, DEVICE, DEVICE_CONST, UM, PINNED, FILE
   GeneralAllocator Resource::source(memsrc_e mre) noexcept {
-    return GeneralAllocator{get_resource_manager().self().getAllocator(
+    return GeneralAllocator{get_resource_manager().get().getAllocator(
         memory_source_tag[magic_enum::enum_integer(mre)])};
   }
   GeneralAllocator Resource::source(std::string tag) noexcept {
-    return GeneralAllocator{get_resource_manager().self().getAllocator(tag)};
+    return GeneralAllocator{get_resource_manager().get().getAllocator(tag)};
   }
 
   /// GeneralAllocator
   GeneralAllocator GeneralAllocator::advisor(const std::string &advice_operation, int dev_id) {
-    auto &rm = get_resource_manager().self();
+    auto &rm = get_resource_manager().get();
     auto name = this->getName() + advice_operation;
     if (rm.isAllocator(name)) return GeneralAllocator{rm.getAllocator(name)};
     return GeneralAllocator{rm.makeAllocator<umpire::strategy::AllocationAdvisor>(

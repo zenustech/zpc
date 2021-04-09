@@ -19,8 +19,6 @@ namespace zs {
 
   struct Resource : std::reference_wrapper<umpire::ResourceManager>, Singleton<Resource> {
     Resource();
-    umpire::ResourceManager &self() noexcept;
-    const umpire::ResourceManager &self() const noexcept;
     GeneralAllocator source(memsrc_e mre) noexcept;
     GeneralAllocator source(std::string tag) noexcept;
 
@@ -38,7 +36,7 @@ namespace zs {
     GeneralAllocator advisor(const std::string &advice_operation, int dev_id = 0);
     template <typename Strategy, bool introspection = true, typename... Args>
     GeneralAllocator allocator(Args &&...args) {
-      auto &rm = get_resource_manager().self();
+      auto &rm = get_resource_manager().get();
       auto name = this->getName() + demangle<Strategy>();
       if (rm.isAllocator(name)) return GeneralAllocator{rm.getAllocator(name)};
       return GeneralAllocator{

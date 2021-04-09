@@ -88,7 +88,7 @@ namespace zs {
     constexpr std::uintptr_t tail() const noexcept { return head() + node().size(); }
     /// ctor, assignment operator
     explicit TileVector(const TileVector &o) : MemoryHandle{o.base()}, _size{o.size()} {
-      auto &rm = get_resource_manager().self();
+      auto &rm = get_resource_manager().get();
       base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
       if (o.size()) rm.copy((void *)tmp.address(), (void *)o.head(), o.usedBytes());
       self() = tmp;
@@ -128,7 +128,7 @@ namespace zs {
       if (newSize > oldSize) {
         const auto oldCapacity = capacity();
         if (newSize > oldCapacity) {
-          auto &rm = get_resource_manager().self();
+          auto &rm = get_resource_manager().get();
           if (devid() != -1) {
             base_t tmp{buildInstance(memspace(), devid(), geometric_size_growth(newSize))};
             if (size()) rm.copy((void *)tmp.address(), (void *)head(), usedBytes());

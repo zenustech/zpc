@@ -108,7 +108,7 @@ namespace zs {
     }
     /// ctor, assignment operator
     explicit Vector(const Vector &o) : MemoryHandle{o.base()}, _size{o.size()} {
-      auto &rm = get_resource_manager().self();
+      auto &rm = get_resource_manager().get();
       base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
       if (o.size()) rm.copy((void *)tmp.address(), o.head(), o.usedBytes());
       self() = tmp;
@@ -160,7 +160,7 @@ namespace zs {
       if (newSize > oldSize) {
         const auto oldCapacity = capacity();
         if (newSize > oldCapacity) {
-          auto &rm = get_resource_manager().self();
+          auto &rm = get_resource_manager().get();
           if (devid() != -1) {
             base_t tmp{buildInstance(memspace(), devid(), geometric_size_growth(newSize))};
             if (size()) rm.copy((void *)tmp.address(), (void *)head(), usedBytes());
@@ -192,7 +192,7 @@ namespace zs {
       // difference_type count = std::distance(st, ed); //< def standard iterator
       difference_type count = ed - st;
       if (count <= 0) return end();
-      auto &rm = get_resource_manager().self();
+      auto &rm = get_resource_manager().get();
       size_type unusedCapacity = capacity() - size();
       // this is not optimal
       if (count > unusedCapacity) resize(size() + count);

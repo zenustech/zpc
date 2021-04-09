@@ -70,7 +70,8 @@ namespace zs {
   };
 
   template <CudaLibraryComponentFlagBit flagbit> struct CudaLibComponentExecutionPolicy
-      : CudaLibHandle<flagbit> {
+      : CudaLibHandle<flagbit>,
+        virtual std::reference_wrapper<CudaExecutionPolicy> {
     template <typename Fn, typename... Args>
     std::enable_if_t<is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
     call(Fn&& fn, Args&&... args) const {
@@ -82,12 +83,11 @@ namespace zs {
     }
 
     CudaLibComponentExecutionPolicy(CudaExecutionPolicy& cupol)
-        : cupol{cupol}, CudaLibHandle<flagbit>{cupol} {}
-    CudaExecutionPolicy& cupol;
+        : CudaLibHandle<flagbit>{cupol}, std::reference_wrapper<CudaExecutionPolicy>{cupol} {}
   };
 
   template <CudaLibraryComponentFlagBit... flagbits> struct CudaLibExecutionPolicy
-      : std::reference_wrapper<CudaExecutionPolicy>,
+      : virtual std::reference_wrapper<CudaExecutionPolicy>,
         ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
         CudaLibComponentExecutionPolicy<flagbits>... {
     template <CudaLibraryComponentFlagBit flagbit, typename Fn, typename... Args>

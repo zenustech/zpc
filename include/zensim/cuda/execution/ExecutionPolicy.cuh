@@ -13,6 +13,7 @@
 // #include <device_types.h>
 #include <iterator>
 #include <nvfunctional>
+#include <type_traits>
 
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Function.h"
@@ -249,32 +250,64 @@ namespace zs {
       reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
     }
-    /// radix sort
-    template <class InputIt, class OutputIt> void radix_sort_impl(std::random_access_iterator_tag,
-                                                                  InputIt &&first, InputIt &&last,
-                                                                  OutputIt &&d_first) const {
+    /// histogram sort
+    /// radix sort pair
+    template <class KeyIter, class ValueIter,
+              typename Tn = typename std::iterator_traits<remove_cvref_t<KeyIter>>::difference_type>
+    std::enable_if_t<std::is_convertible_v<
+        typename std::iterator_traits<remove_cvref_t<KeyIter>>::iterator_category,
+        std::random_access_iterator_tag>>
+    radix_sort_pair(KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut,
+                    Tn count = 0, int sbit = 0,
+                    int ebit
+                    = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type)
+                      * 8) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
             streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
-      using IterT = remove_cvref_t<InputIt>;
+      if (count) {
+        std::size_t temp_storage_bytes = 0;
+        cub::DeviceRadixSort::SortPairs(nullptr, temp_storage_bytes, keysIn.operator->(),
+                                        keysOut.operator->(), valsIn.operator->(),
+                                        valsOut.operator->(), count, sbit, ebit,
+                                        (cudaStream_t)context.streamSpare(streamid));
+        void *d_tmp = context.borrow(temp_storage_bytes);
+        cub::DeviceRadixSort::SortPairs(d_tmp, temp_storage_bytes, keysIn.operator->(),
+                                        keysOut.operator->(), valsIn.operator->(),
+                                        valsOut.operator->(), count, sbit, ebit,
+                                        (cudaStream_t)context.streamSpare(streamid));
+      }
+      if (this->shouldSync()) context.syncStreamSpare(streamid);
+      context.recordEventSpare(streamid);
+    }
+    /// radix sort
+    template <class InputIt, class OutputIt>
+    void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
+                         OutputIt &&d_first, int sbit, int ebit) const {
+      auto &context = Cuda::context(procid);
+      context.setContext();
+      if (this->shouldWait())
+        context.spareStreamWaitForEvent(
+            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceRadixSort::SortKeys(nullptr, temp_storage_bytes, first.operator->(),
-                                     d_first.operator->(), dist, 0,
-                                     sizeof(typename std::iterator_traits<IterT>::value_type) * 8,
+                                     d_first.operator->(), dist, sbit, ebit,
                                      (cudaStream_t)context.streamSpare(streamid));
       void *d_tmp = context.borrow(temp_storage_bytes);
       cub::DeviceRadixSort::SortKeys(d_tmp, temp_storage_bytes, first.operator->(),
-                                     d_first.operator->(), dist, 0,
-                                     sizeof(typename std::iterator_traits<IterT>::value_type) * 8,
+                                     d_first.operator->(), dist, sbit, ebit,
                                      (cudaStream_t)context.streamSpare(streamid));
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
     template <class InputIt, class OutputIt>
-    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first) const {
+    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
+                    int ebit
+                    = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type)
+                      * 8) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
@@ -283,7 +316,7 @@ namespace zs {
                               typename std::iterator_traits<remove_cvref_t<OutputIt>>::pointer>,
                     "Input iterator pointer different from output iterator\'s");
       radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
-                      FWD(first), FWD(last), FWD(d_first));
+                      FWD(first), FWD(last), FWD(d_first), sbit, ebit);
     }
 
     constexpr ProcID getProcid() const noexcept { return procid; }

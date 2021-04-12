@@ -51,9 +51,32 @@ namespace zs {
 
     /// constitutive models
     BuilderForSceneParticle &setConstitutiveModel(constitutive_model_e);
+#define SETUP_CONSTITUTIVE_PARAMETER(NAME, ATTRIB)                                         \
+  BuilderForSceneParticle &NAME(float v) {                                                 \
+    /*match([v](auto &model) { model.ATTRIB = v; }, [v](auto &model) {})(config); */       \
+    match([](...) {},                                                                      \
+          [v](auto &model) -> std::enable_if_t<is_same_v<decltype(model.ATTRIB), float>> { \
+            model.ATTRIB = v;                                                              \
+          })(config);                                                                      \
+    return *this;                                                                          \
+  }
+    /// function name, data member name
+    SETUP_CONSTITUTIVE_PARAMETER(density, rho);
+    SETUP_CONSTITUTIVE_PARAMETER(volume, volume);
+    SETUP_CONSTITUTIVE_PARAMETER(bulk, bulk);
+    SETUP_CONSTITUTIVE_PARAMETER(gamma, gamma);
+    SETUP_CONSTITUTIVE_PARAMETER(viscosity, viscosity);
+    SETUP_CONSTITUTIVE_PARAMETER(youngsModulus, E);
+    SETUP_CONSTITUTIVE_PARAMETER(poissonRatio, nu);
+    SETUP_CONSTITUTIVE_PARAMETER(logjp0, logJp0);
+    SETUP_CONSTITUTIVE_PARAMETER(frictionAngle, fa);
+    SETUP_CONSTITUTIVE_PARAMETER(xi, xi);
+    SETUP_CONSTITUTIVE_PARAMETER(beta, beta);
+    SETUP_CONSTITUTIVE_PARAMETER(yieldSurface, yieldSurface);
+    SETUP_CONSTITUTIVE_PARAMETER(cohesion, cohesion);
 
     /// push to scene
-    BuilderForSceneParticle &push(MemoryHandle dst);
+    BuilderForSceneParticle &commit(MemoryHandle dst);
     /// check build status
     BuilderForSceneParticle &output(std::string fn);
 

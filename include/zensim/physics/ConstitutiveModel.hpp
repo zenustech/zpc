@@ -84,4 +84,37 @@ namespace zs {
       = variant<EquationOfStateConfig, NeoHookeanConfig, FixedCorotatedConfig,
                 VonMisesFixedCorotatedConfig, DruckerPragerConfig, NACCConfig>;
 
+  inline void displayConfig(ConstitutiveModelConfig &config) {
+    match(
+        [](EquationOfStateConfig &config) {
+          fmt::print("rho {}, volume {}, dim {}\n", config.rho, config.volume, config.dim);
+          fmt::print("bulk {}, gamma {}, viscosity{}\n", config.bulk, config.gamma,
+                     config.viscosity);
+        },
+        [](NeoHookeanConfig &config) {
+          fmt::print("rho {}, volume {}, dim {}\n", config.rho, config.volume, config.dim);
+          fmt::print("E {}, nu {}\n", config.E, config.nu);
+        },
+        [](FixedCorotatedConfig &config) {
+          fmt::print("rho {}, volume {}, dim {}\n", config.rho, config.volume, config.dim);
+          fmt::print("E {}, nu {}\n", config.E, config.nu);
+        },
+        [](VonMisesFixedCorotatedConfig &config) {
+          fmt::print("rho {}, volume {}, dim {}\n", config.rho, config.volume, config.dim);
+          fmt::print("E {}, nu {}, yieldStress {}\n", config.E, config.nu, config.yieldStress);
+        },
+        [](DruckerPragerConfig &config) {
+          fmt::print("rho {}, volume {}, dim {}\n", config.rho, config.volume, config.dim);
+          fmt::print("E {}, nu {}, logJp0 {}, fric_angle {}, cohesion {}, beta, yieldSurface {}\n",
+                     config.E, config.nu, config.logJp0, config.fa, config.cohesion, config.beta,
+                     config.yieldSurface);
+        },
+        [](NACCConfig &config) {
+          fmt::print("rho {}, volume {}, dim {}\n", config.rho, config.volume, config.dim);
+          fmt::print("E {}, nu {}, logJp0 {}, fric_angle {}, xi {}, beta {}, mohrColumbFric {}\n",
+                     config.E, config.nu, config.logJp0, config.fa, config.xi, config.beta,
+                     config.mohrColumbFriction());
+        })(config);
+  }
+
 }  // namespace zs

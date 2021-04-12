@@ -108,15 +108,16 @@ namespace zs {
   }
 
   BuilderForSceneParticle &BuilderForSceneParticle::output(std::string fn) {
+    displayConfig(config);
     for (auto &&[id, positions] : zip(range(particlePositions.size()), particlePositions))
       write_partio<float, 3>(fn + std::to_string(id) + ".bgeo", positions);
     return *this;
   }
-  BuilderForSceneParticle &BuilderForSceneParticle::push(MemoryHandle dst) {
+  BuilderForSceneParticle &BuilderForSceneParticle::commit(MemoryHandle dst) {
     auto &scene = this->target();
-    auto &particles = scene.particles;
+    auto &dstParticles = scene.particles;
     for (auto &positions : particlePositions) {
-      Particles<f32, 3> dstParticles{positions.size(), dst.memspace(), dst.devid()};
+      Particles<f32, 3> pos{positions.size(), dst.memspace(), dst.devid()};
       auto &rm = get_resource_manager().get();
       // rm.copy();
     }

@@ -32,7 +32,7 @@ namespace zs::detail {
         std::is_convertible_v<decltype(std::declval<U &>().equal_to(std::declval<U>())), bool>,
         std::true_type>;
 #endif
-    template <typename U> static std::true_type test(decltype(&U::equal_to));
+    // template <typename U> static std::true_type test(decltype(&U::equal_to));
 
   public:
     static constexpr bool value = decltype(test<T>(0))();

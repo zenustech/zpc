@@ -42,6 +42,11 @@ namespace zs {
     explicit BuilderForSceneParticle(Scene &scene) : BuilderForScene{scene} {}
     /// particle positions
     BuilderForSceneParticle &addParticles(std::string fn, float dx, float ppc);
+    BuilderForSceneParticle &addCuboid(std::vector<float> mi, std::vector<float> ma, float dx,
+                                       float ppc);
+    BuilderForSceneParticle &addCube(std::vector<float> c, float len, float dx, float ppc);
+    BuilderForSceneParticle &addSphere(std::vector<float> c, float r, float dx, float ppc);
+    // void addParticles(levelset, dx) {}
     // void addParticles(levelset, dx) {}
 
     /// constitutive models
@@ -53,6 +58,7 @@ namespace zs {
     BuilderForSceneParticle &output(std::string fn);
 
     using ParticleModel = std::vector<std::array<float, 3>>;
+
   protected:
     std::vector<ParticleModel> particlePositions;
     ConstitutiveModelConfig config{EquationOfStateConfig{}};

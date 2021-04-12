@@ -135,7 +135,7 @@ namespace zs {
         // Read std vector
         std::ifstream is((std::string{AssetDirPath} + "MpmParticles/particles-1000k.dat"),
                          std::ios::in | std::ios::binary);
-        if (!is) std::runtime_error("particle-1000k.dat file not found!");
+        if (!is) throw std::runtime_error("particle-1000k.dat file not found!");
         std::size_t cnt, tmp;
         is.read((char *)&cnt, sizeof(std::size_t));
         auto estimate = cnt * (side_length.prod() / scaled_ref_box_length.prod());

@@ -3,7 +3,7 @@ project(zsuse CXX CUDA)
 #list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/Zensim/)
 list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/OpenVDB/)
 
-set(ZS_ENABLE_CUDA 1 CACHE BOOL "Enable Cuda" FORCE)
+set(ZS_ENABLE_CUDA 1 CACHE BOOL "Enable Cuda")
 #find_package(Zensim REQUIRED)
 find_package(Zensim COMPONENTS zscuda zsio REQUIRED)
 add_executable(zsuse main.cu)

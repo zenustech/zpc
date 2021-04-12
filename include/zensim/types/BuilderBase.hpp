@@ -9,6 +9,7 @@ namespace zs {
     explicit constexpr BuilderFor(Object &obj) : object{obj} {}
 
   public:
+    constexpr Object &target() noexcept { return object; }
     constexpr operator Object() noexcept { return std::move(object); }
   };
 

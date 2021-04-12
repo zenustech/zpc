@@ -112,7 +112,7 @@ find_package(NUMA REQUIRED)
 
 # umpire
 if (ZS_ENABLE_CUDA)
-    set(ENABLE_CUDA On CACHE BOOL "Enable CUDA for Umpire build" FORCE)
+    set(ENABLE_CUDA On CACHE BOOL "Enable CUDA for Umpire build")
 endif()
 set(ENABLE_NUMA On CACHE BOOL "Enable NUMA for Umpire build")
 set(ENABLE_OPENMP On CACHE BOOL "Enable CUDA for Umpire build")

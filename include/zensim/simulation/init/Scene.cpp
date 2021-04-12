@@ -116,10 +116,19 @@ namespace zs {
   BuilderForSceneParticle &BuilderForSceneParticle::commit(MemoryHandle dst) {
     auto &scene = this->target();
     auto &dstParticles = scene.particles;
+    using TV = typename Particles<f32, 3>::TV;
+    Vector<TV> pos;
     for (auto &positions : particlePositions) {
-      Particles<f32, 3> pos{positions.size(), dst.memspace(), dst.devid()};
+      if (dst.memspace() == memsrc_e::device || dst.memspace() == memsrc_e::device_const
+          || dst.memspace() == memsrc_e::um)
+        pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid(), 512};
+      else
+        pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
       auto &rm = get_resource_manager().get();
-      // rm.copy();
+      rm.copy((void *)pos.head(), (void *)positions.data(), sizeof(f32) * 3 * positions.size());
+      dstParticles.push_back(Particles<f32, 3>{});
+      match([&pos](Particles<f32, 3> &pars) { pars.X = std::move(pos); },
+            [](...) {})(dstParticles.back());
     }
     return *this;
   }

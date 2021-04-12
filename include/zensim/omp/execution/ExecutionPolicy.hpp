@@ -4,6 +4,7 @@
 
 #include "zensim/execution/Concurrency.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/math/bit/Bits.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 namespace zs {
@@ -289,12 +290,28 @@ namespace zs {
           "diff type not compatible");
       static_assert(std::is_convertible_v<typename std::iterator_traits<IterT>::value_type, ValueT>,
                     "value type not compatible");
+
       const auto dist = last - first;
       DiffT nths{}, n{};
-      std::vector<std::size_t> binSizes, binOffsets;
+      const int binBits = bit_length(_dop);
+      const int binCount = 1 << binBits;
+      std::vector<std::atomic_size_t> binSizes(binCount);
+      std::vector<std::size_t> binOffsets(binCount);
       std::reference_wrapper<std::vector<ValueT>> buffers[2];  ///< double buffer strategy
 #pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) shared(dist, nths, first, last, d_first)
-      { const auto binBits = 1; }
+      { ; }
+      for (int bit = ebit; bit >= sbit; bit -= binBits) {
+#pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) shared(dist, nths, first, last, d_first)
+        {
+#pragma omp single
+          {
+            nths = omp_get_num_threads();
+            n = nths < dist ? nths : dist;
+          }
+#pragma omp barrier
+          ;
+        }
+      }
     }
     /// radix sort
     template <class InputIt, class OutputIt>

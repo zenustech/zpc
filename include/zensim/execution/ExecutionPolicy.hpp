@@ -151,6 +151,12 @@ namespace zs {
                           UnaryFunction &&f) {
     policy.for_each(FWD(first), FWD(last), FWD(f));
   }
+  /// transform
+  template <class ExecutionPolicy, class ForwardIt, class UnaryFunction>
+  constexpr void transform(ExecutionPolicy &&policy, ForwardIt &&first, ForwardIt &&last,
+                           UnaryFunction &&f) {
+    policy.for_each(FWD(first), FWD(last), FWD(f));
+  }
   /// scan
   template <class ExecutionPolicy, class InputIt, class OutputIt,
             class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>

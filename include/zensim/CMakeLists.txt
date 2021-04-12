@@ -12,10 +12,14 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     execution/ExecutionNode.cpp
     execution/ExecutionPolicy.cpp
     resource/Resource.cpp
+    # simulation
+    simulation/mpm/Simulator.cpp
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
     io/IO.cpp
     io/stb_image.cpp
+    # simulation
+    simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
     geometry/VdbLevelSet_LoadPhi.cpp
@@ -111,6 +115,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     types/StructuralDeclaration.h
     types/Tuple.h
     types/Value.h
+    types/BuilderBase.hpp
     DynamicLoader.h
     Logger.hpp
     Platform.hpp
@@ -118,6 +123,11 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     Singleton.h
     TypeAlias.hpp
     zensim.hpp
+    # simulation
+    simulation/mpm/Simulator.hpp
+    simulation/init/Structure.hpp
+    simulation/init/Structurefree.hpp
+    simulation/physics/ConstitutiveModel.hpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
     io/IO.h
@@ -126,6 +136,9 @@ set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
     io/stb_image_write.h
     io/stb_image.h
     io/Utility.hpp
+    # simulation
+    simulation/init/Boundary.hpp
+    simulation/init/Scene.hpp
 )
 set(ZENSIM_LIBRARY_TOOL_INCLUDE_FILES
     geometry/VdbLevelSet.h

@@ -131,18 +131,28 @@ namespace zs {
       Vector<TV> X{}, V{};
       Vector<TM> F{};
     } tmp;
-    for (auto &positions : particlePositions) {
-      mass = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
-      pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
-      vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
-      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-        F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
 
-      tmp.M = Vector<T>{positions.size(), memsrc_e::host, -1};
-      tmp.X = Vector<TV>{positions.size(), memsrc_e::host, -1};
-      tmp.V = Vector<TV>{positions.size(), memsrc_e::host, -1};
-      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-        tmp.F = Vector<TM>{positions.size(), memsrc_e::host, -1};
+    mass = Vector<T>{dst.memspace(), dst.devid()};
+    tmp.M = Vector<T>{memsrc_e::host, -1};
+    pos = Vector<TV>{dst.memspace(), dst.devid()};
+    tmp.X = Vector<TV>{memsrc_e::host, -1};
+    vel = Vector<TV>{dst.memspace(), dst.devid()};
+    tmp.V = Vector<TV>{memsrc_e::host, -1};
+    if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
+      F = Vector<TM>{dst.memspace(), dst.devid()};
+      tmp.F = Vector<TM>{memsrc_e::host, -1};
+    }
+    for (auto &positions : particlePositions) {
+      mass.resize(positions.size());
+      tmp.M.resize(positions.size());
+      pos.resize(positions.size());
+      tmp.X.resize(positions.size());
+      vel.resize(positions.size());
+      tmp.V.resize(positions.size());
+      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
+        F.resize(positions.size());
+        tmp.F.resize(positions.size());
+      }
       /// -> bridge
       // default mass, vel, F
       assert_with_msg(sizeof(float) * 3 == sizeof(TV), "fatal: TV size not as expected!");
@@ -170,6 +180,9 @@ namespace zs {
       if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
         rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
       /// modify scene
+      // constitutive model
+      scene.models.emplace_back(config, Scene::model_e::Particle, dstParticles.size());
+      // particles
       dstParticles.push_back(Particles<f32, 3>{});
       match(
           [&mass, &pos, &vel, &F, this](Particles<f32, 3> &pars) {
@@ -185,4 +198,5 @@ namespace zs {
     return *this;
   }
 
+  SimOptionsBuilder SimOptions::create() { return {}; }
 }  // namespace zs

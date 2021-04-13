@@ -51,6 +51,7 @@ namespace zs {
     using Block = GridBlock<V, d, chn_bits, domain_bits>;
 
     Vector<Block> blocks;
+    V dx;
   };
 
   using GeneralGridBlocks

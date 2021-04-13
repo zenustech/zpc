@@ -13,14 +13,16 @@ namespace zs {
   /// scene setup
   struct Scene {
     enum struct model_e : char { None = 0, LevelSet, Particle, Mesh, Nodes, Grid };
-    using ModelHandle = std::pair<model_e, int>;
+    static constexpr int numConstitutiveModels
+        = magic_enum::enum_integer(constitutive_model_e::NumConstitutiveModels);
+
     // std::vector<GeneralLevelSet> levelsets;
     std::vector<GeneralParticles> particles;
     std::vector<GeneralMesh> meshes;
     std::vector<GeneralNodes> nodes;
     std::vector<GeneralGridBlocks> grids;
-    std::array<ModelHandle, magic_enum::enum_integer(constitutive_model_e::NumConstitutiveModels)>
-        elasticity_models;
+    /// (constitutive model [elasticity, plasticity], geometry type, local model index)
+    std::vector<std::tuple<ConstitutiveModelConfig, model_e, std::size_t>> models;
     static SceneBuilder create();
   };
 
@@ -94,9 +96,12 @@ namespace zs {
   };
 
   /// simulator setup
+  struct SimOptionsBuilder;
   struct SimOptions {
     float fps;
     float dt;
+    float dx;
+    static SimOptionsBuilder create();
   };
 
   struct BuilderForSimOptions : BuilderFor<SimOptions> {
@@ -107,6 +112,10 @@ namespace zs {
     }
     BuilderForSimOptions &dt(float v) {
       this->object.dt = v;
+      return *this;
+    }
+    BuilderForSimOptions &dx(float v) {
+      this->object.dx = v;
       return *this;
     }
   };

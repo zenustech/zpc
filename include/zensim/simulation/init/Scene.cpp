@@ -132,32 +132,17 @@ namespace zs {
       Vector<TM> F{};
     } tmp;
     for (auto &positions : particlePositions) {
-      if (dst.memspace() == memsrc_e::device || dst.memspace() == memsrc_e::device_const
-          || dst.memspace() == memsrc_e::um) {
-        mass = Vector<T>{positions.size(), dst.memspace(), dst.devid(), 512};
-        pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid(), 512};
-        vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid(), 512};
-        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-          F = Vector<TM>{positions.size(), dst.memspace(), dst.devid(), 512};
+      mass = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
+      pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
+      vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
+      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+        F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
 
-        tmp.M = Vector<T>{positions.size(), memsrc_e::host, -1, 512};
-        tmp.X = Vector<TV>{positions.size(), memsrc_e::host, -1, 512};
-        tmp.V = Vector<TV>{positions.size(), memsrc_e::host, -1, 512};
-        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-          tmp.F = Vector<TM>{positions.size(), memsrc_e::host, -1, 512};
-      } else {
-        mass = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
-        pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
-        vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
-        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-          F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
-
-        tmp.M = Vector<T>{positions.size(), memsrc_e::host, -1};
-        tmp.X = Vector<TV>{positions.size(), memsrc_e::host, -1};
-        tmp.V = Vector<TV>{positions.size(), memsrc_e::host, -1};
-        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-          tmp.F = Vector<TM>{positions.size(), memsrc_e::host, -1};
-      }
+      tmp.M = Vector<T>{positions.size(), memsrc_e::host, -1};
+      tmp.X = Vector<TV>{positions.size(), memsrc_e::host, -1};
+      tmp.V = Vector<TV>{positions.size(), memsrc_e::host, -1};
+      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+        tmp.F = Vector<TM>{positions.size(), memsrc_e::host, -1};
       /// -> bridge
       // default mass, vel, F
       assert_with_msg(sizeof(float) * 3 == sizeof(TV), "fatal: TV size not as expected!");

@@ -4,23 +4,31 @@
 
 namespace zs {
 
-  template <typename PG> struct MPMSimulatorBuilder;
-  template <typename PGrid> struct MPMSimulator {
+  struct MPMSimulatorBuilder;
+  struct MPMSimulator {
     ;
 
+    static MPMSimulatorBuilder create();
+
   protected:
-    friend struct MPMSimulatorBuilder<PGrid>;
-    Scene scene;
     SimOptions simOptions;
   };
 
-  template <typename PG> struct MPMSimulatorBuilder : BuilderFor<MPMSimulator<PG>> {
-    MPMSimulatorBuilder() : BuilderFor<MPMSimulator<PG>>{simulator} {}
+  struct BuilderForMPMSimulatorOptions;
+  struct BuilderForMPMSimulatorScene;
+  struct BuilderForMPMSimulator : BuilderFor<MPMSimulator> {
+    explicit BuilderForMPMSimulator(MPMSimulator& simulator)
+        : BuilderFor<MPMSimulator>{simulator} {}
 
-    MPMSimulatorBuilder& scene(SceneBuilder& sceneBuilder) { simulator.scene = sceneBuilder; }
+    BuilderForMPMSimulator& addScene(Scene& scene);
+  };
 
+  struct MPMSimulatorBuilder : BuilderForMPMSimulator {
+    MPMSimulatorBuilder() : BuilderForMPMSimulator{_simulator} {}
+
+  protected:
     float dx;
-    MPMSimulator<PG>& simulator;
+    MPMSimulator _simulator;
   };
 
 }  // namespace zs

@@ -11,8 +11,10 @@
 #include "zensim/geometry/VdbSampler.h"
 #include "zensim/io/ParticleIO.hpp"
 #include "zensim/math/Vec.h"
+#include "zensim/physics/ConstitutiveModel.hpp"
 #include "zensim/tpls/fmt/color.h"
 #include "zensim/tpls/fmt/core.h"
+#include "zensim/tpls/magic_enum.hpp"
 
 namespace zs {
 
@@ -116,20 +118,85 @@ namespace zs {
   BuilderForSceneParticle &BuilderForSceneParticle::commit(MemoryHandle dst) {
     auto &scene = this->target();
     auto &dstParticles = scene.particles;
+    using T = typename Particles<f32, 3>::T;
     using TV = typename Particles<f32, 3>::TV;
-    Vector<TV> pos;
+    using TM = typename Particles<f32, 3>::TM;
+    // dst
+    Vector<T> mass{};
+    Vector<TV> pos{}, vel{};
+    Vector<TM> F{};
+    // bridge on host
+    struct {
+      Vector<T> M{};
+      Vector<TV> X{}, V{};
+      Vector<TM> F{};
+    } tmp;
     for (auto &positions : particlePositions) {
       if (dst.memspace() == memsrc_e::device || dst.memspace() == memsrc_e::device_const
-          || dst.memspace() == memsrc_e::um)
+          || dst.memspace() == memsrc_e::um) {
+        mass = Vector<T>{positions.size(), dst.memspace(), dst.devid(), 512};
         pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid(), 512};
-      else
+        vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid(), 512};
+        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+          F = Vector<TM>{positions.size(), dst.memspace(), dst.devid(), 512};
+
+        tmp.M = Vector<T>{positions.size(), memsrc_e::host, -1, 512};
+        tmp.X = Vector<TV>{positions.size(), memsrc_e::host, -1, 512};
+        tmp.V = Vector<TV>{positions.size(), memsrc_e::host, -1, 512};
+        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+          tmp.F = Vector<TM>{positions.size(), memsrc_e::host, -1, 512};
+      } else {
+        mass = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
         pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
+        vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
+        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+          F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
+
+        tmp.M = Vector<T>{positions.size(), memsrc_e::host, -1};
+        tmp.X = Vector<TV>{positions.size(), memsrc_e::host, -1};
+        tmp.V = Vector<TV>{positions.size(), memsrc_e::host, -1};
+        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+          tmp.F = Vector<TM>{positions.size(), memsrc_e::host, -1};
+      }
+      /// -> bridge
+      // default mass, vel, F
+      assert_with_msg(sizeof(float) * 3 == sizeof(TV), "fatal: TV size not as expected!");
+      {
+        std::vector<T> defaultMass(positions.size(), match([](auto &config) {
+                                     return config.rho * config.volume;
+                                   })(config));
+        memcpy(tmp.M.head(), defaultMass.data(), sizeof(T) * positions.size());
+
+        memcpy(tmp.X.head(), positions.data(), sizeof(TV) * positions.size());
+
+        std::vector<std::array<T, 3>> defaultVel(positions.size(), {0, 0, 0});
+        memcpy(tmp.V.head(), defaultVel.data(), sizeof(TV) * positions.size());
+
+        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
+          std::vector<std::array<T, 3 * 3>> defaultF(positions.size(), {1, 0, 0, 0, 1, 0, 0, 0, 1});
+          memcpy(tmp.F.head(), defaultF.data(), sizeof(TM) * positions.size());
+        }
+      }
+      /// -> dst
       auto &rm = get_resource_manager().get();
-      rm.copy((void *)pos.head(), (void *)positions.data(), sizeof(f32) * 3 * positions.size());
+      rm.copy((void *)mass.head(), (void *)tmp.M.head(), sizeof(T) * mass.size());
+      rm.copy((void *)pos.head(), (void *)tmp.X.head(), sizeof(TV) * pos.size());
+      rm.copy((void *)vel.head(), (void *)tmp.V.head(), sizeof(TV) * vel.size());
+      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+        rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
+      /// modify scene
       dstParticles.push_back(Particles<f32, 3>{});
-      match([&pos](Particles<f32, 3> &pars) { pars.X = std::move(pos); },
-            [](...) {})(dstParticles.back());
+      match(
+          [&mass, &pos, &vel, &F, this](Particles<f32, 3> &pars) {
+            pars.M = std::move(mass);
+            pars.X = std::move(pos);
+            pars.V = std::move(vel);
+            if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+              pars.F = std::move(F);
+          },
+          [](...) {})(dstParticles.back());
     }
+    particlePositions.clear();
     return *this;
   }
 

@@ -8,7 +8,6 @@
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/tpls/magic_enum.hpp"
 #include "zensim/tpls/umpire/ResourceManager.hpp"
-#include "zensim/tpls/umpire/strategy/MixedPool.hpp"
 
 namespace zs {
 

@@ -2,6 +2,7 @@
 #include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/tpls/magic_enum.hpp"
+#include "zensim/tpls/umpire/strategy/AlignedAllocator.hpp"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/RuntimeStructurals.hpp"
 
@@ -24,7 +25,6 @@ namespace zs {
                   "element is not default-constructible or trivially-copyable!");
     using base_t = vector_instance<T>;
     using value_type = remove_cvref_t<T>;
-    using allocator_type = typename umpire::strategy::MixedPool;
     using pointer = value_type *;
     using const_pointer = const pointer;
     using reference = value_type &;
@@ -219,9 +219,7 @@ namespace zs {
         auto memorySource = get_resource_manager().source(mre);
         if (mre == memsrc_e::um) memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
         /// additional parameters should match allocator_type
-        inst.template alloc<allocator_type>(
-            memorySource, 1 << 8, 1 << 17, 2ull << 20, 16, 512ull << 20, 1 << 10,
-            _align > inst.maxAlignment() ? _align : inst.maxAlignment());
+        inst.alloc(memorySource);
       }
       return inst;
     }
@@ -235,9 +233,7 @@ namespace zs {
       auto memorySource = get_resource_manager().source(this->memspace());
       if (this->memspace() == memsrc_e::um)
         memorySource = memorySource.advisor("PREFERRED_LOCATION", this->devid());
-      return memorySource.template allocator<allocator_type>(
-          1 << 8, 1 << 17, 2ull << 20, 16, 512ull << 20, 1 << 10,
-          _align > this->maxAlignment() ? _align : this->maxAlignment());
+      return memorySource;
     }
 
     size_type _size{0};  // size

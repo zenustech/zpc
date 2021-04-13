@@ -19,6 +19,7 @@ set(ZENSIM_LIBRARY_IO_SOURCE_FILES
     io/IO.cpp
     io/stb_image.cpp
     # simulation
+    simulation/init/Boundary.cpp
     simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES

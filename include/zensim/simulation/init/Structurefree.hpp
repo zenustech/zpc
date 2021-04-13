@@ -1,3 +1,4 @@
+#pragma once
 #include "zensim/TypeAlias.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
@@ -6,11 +7,12 @@
 namespace zs {
 
   template <typename ValueT = f32, int d = 3> struct Particles {
+    using T = ValueT;
     using TV = ValueT[d];
     using TM = ValueT[d][d];
     using TMAffine = ValueT[d + 1][d + 1];
     static constexpr int dim = d;
-    Vector<ValueT> M;
+    Vector<T> M;
     Vector<TV> X, V;
     Vector<TM> F;
   };

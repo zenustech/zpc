@@ -1,3 +1,4 @@
+#pragma once
 #include "zensim/TypeAlias.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/types/Polymorphism.h"

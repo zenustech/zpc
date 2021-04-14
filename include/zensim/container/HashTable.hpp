@@ -20,18 +20,18 @@ namespace zs {
   template <typename Key, typename Index, typename Status = int> using hash_table_instance
       = ds::instance_t<ds::dense, hash_table_snode<Key, Index, Status>>;
 
-  template <typename Tn_, int dim, typename Index, typename Fn> struct HashTable
-      : hash_table_instance<vec<std::make_signed_t<Tn_>, dim>, Index, int>,
+  template <typename Tn_, int dim_, typename Index> struct HashTable
+      : hash_table_instance<vec<std::make_signed_t<Tn_>, dim_>, Index, int>,
         MemoryHandle {
+    static constexpr int dim = dim_;
     using Tn = std::make_signed_t<Tn_>;
-    using hf_t = Fn;
     using key_t = vec<Tn, dim>;
     using value_t = Index;
     using status_t = int;
     using base_t = hash_table_instance<key_t, value_t, status_t>;
-    static_assert(
-        std::is_convertible_v<decltype(std::declval<Fn>()(std::declval<key_t>())), value_t>,
-        "hash function not compatible with hash table key-value type");
+    // static_assert(
+    //    std::is_convertible_v<decltype(std::declval<Fn>()(std::declval<key_t>())), value_t>,
+    //    "hash function not compatible with hash table key-value type");
 
     static constexpr value_t sentinel_v{-1};
     static constexpr status_t status_sentinel_v{-1};
@@ -40,27 +40,24 @@ namespace zs {
     constexpr auto &self() noexcept { return static_cast<base_t &>(*this); }
     constexpr const auto &self() const noexcept { return static_cast<const base_t &>(*this); }
 
-    HashTable(const Fn &hf, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+    HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1,
               std::size_t alignment = 0)
         : base_t{buildInstance(mre, devid, 0)},
           MemoryHandle{mre, devid},
-          _hf{hf},
           _tableSize{0},
           _cnt{mre, devid},
           _activeKeys{mre, devid},
           _align{alignment} {}
 
-    HashTable(const Fn &hf, value_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+    HashTable(value_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
               std::size_t alignment = 0)
         : base_t{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
           MemoryHandle{mre, devid},
-          _hf{hf},
           _tableSize{next_2pow(tableSize) * reserve_ratio_v},
           _cnt{1, mre, devid},
           _activeKeys{_tableSize, mre, devid},
           _align{alignment} {}
 
-    hf_t _hf;  ///< hash function
     value_t _tableSize;
     Vector<value_t> _cnt;
     Vector<key_t> _activeKeys;
@@ -91,15 +88,12 @@ namespace zs {
     }
   };
 
-  template <typename DomainT, int dim, typename CounterT, typename Fn, typename... Args>
-  auto make_hash_table(Fn &&f, Args &&...args) {
-    return HashTable<DomainT, dim, CounterT, remove_cvref_t<Fn>>{FWD(f), FWD(args)...};
-  }
+  using GeneralHashTable = variant<HashTable<i32, 2, i32>, HashTable<i32, 2, i64>, HashTable<i32, 3, i32>, HashTable<i32, 3, i64>>;
 
   template <execspace_e, typename HashTableT, typename = void>
   struct HashTableProxy;  ///< proxy to work within each backends
   template <typename HashTableT> struct HashTableProxy<execspace_e::host, HashTableT> {
-    using hf_t = typename HashTableT::hf_t;
+    using Tn = typename HashTableT::Tn;
     using table_t = typename HashTableT::base_t;
     using key_t = typename HashTableT::key_t;
     using value_t = typename HashTableT::value_t;
@@ -108,8 +102,7 @@ namespace zs {
     constexpr HashTableProxy() = default;
     ~HashTableProxy() = default;
     explicit HashTableProxy(HashTableT &table)
-        : _hf{table._hf},
-          _table{table.self()},
+        : _table{table.self()},
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()},
           _activeKeys{table._activeKeys.data()} {}
@@ -117,16 +110,25 @@ namespace zs {
     value_t insert(const key_t &key);
     value_t query(const key_t &key) const;
 
-    hf_t _hf;
+protected:
+    constexpr value_t do_hash(const key_t &key) const {
+      Tn ret = key[0];
+      for (int d = 0; d < HashTableT::dim; ++d) 
+        hash_combine(ret, key[d]);
+      return static_cast<value_t>(ret);
+    }
     table_t _table;
-    value_t _tableSize;
+    const value_t _tableSize;
     value_t *_cnt;
     key_t *_activeKeys;
   };
 
-  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, typename Fn>
-  decltype(auto) proxy(HashTable<Tn, dim, Index, Fn> &table) {
-    return HashTableProxy<ExecSpace, HashTable<Tn, dim, Index, Fn>>{table};
+  template <execspace_e ExecSpace, typename Tn, int dim, typename Index>
+  decltype(auto) proxy(HashTable<Tn, dim, Index> &table) {
+    return HashTableProxy<ExecSpace, HashTable<Tn, dim, Index>>{table};
   }
+
+  template <typename ExecPol, typename Tn, int dim, typename Index>
+  void refit(ExecPol &&pol, HashTable<Tn, dim, Index> &table);
 
 }  // namespace zs

@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/simulation/init/Scene.hpp"
 #include "zensim/types/BuilderBase.hpp"
+#include "zensim/container/HashTable.hpp"
 
 namespace zs {
 
@@ -20,8 +21,8 @@ namespace zs {
         models;  // (constitutive model, id)
     /// background grid
     GeneralGridBlocks gridBlocks;
-    /// sparsity info
-    // hash table
+    /// sparsity info (hash table)
+    GeneralHashTable hashTable;
     /// transfer operator
     // apic/ flip
     /// simulation setup

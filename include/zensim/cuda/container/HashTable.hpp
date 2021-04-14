@@ -8,7 +8,7 @@
 namespace zs {
 
   template <typename HashTableT> struct HashTableProxy<execspace_e::cuda, HashTableT> {
-    using hf_t = typename HashTableT::hf_t;
+    using Tn = typename HashTableT::Tn;
     using table_t = typename HashTableT::base_t;
     using key_t = typename HashTableT::key_t;
     using value_t = typename HashTableT::value_t;
@@ -16,13 +16,49 @@ namespace zs {
 
     constexpr HashTableProxy() = default;
     ~HashTableProxy() = default;
+
     explicit HashTableProxy(HashTableT &table)
-        : _hf{table._hf},
-          _table{table.self()},
+        : _table{table.self()},
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()},
           _activeKeys{table._activeKeys.data()} {}
 
+    __forceinline__ __device__ value_t insert(const key_t &key) {
+      using namespace placeholders;
+      constexpr key_t key_sentinel_v = key_t::uniform(static_cast<typename key_t::value_type>(-1));
+      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
+      key_t storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
+      for (; !(storedKey == key_sentinel_v || storedKey == key);) {
+        hashedentry = (hashedentry + 127) % _tableSize;
+        storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
+      }
+      if (storedKey == key_sentinel_v) {
+        auto localno = atomicAdd(_cnt, 1);
+        _table(_1, hashedentry) = localno;
+        _activeKeys[localno] = key;
+        return localno;  ///< only the one that inserts returns the actual index
+      }
+      return HashTableT::sentinel_v;
+    }
+    /// make sure no one else is inserting in the same time!
+    __forceinline__ __device__ value_t query(const key_t &key) const {
+      using namespace placeholders;
+      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
+      while (true) {
+        if (key == (key_t)_table(_0, hashedentry)) return _table(_1, hashedentry);
+        if (_table(_1, hashedentry) == HashTableT::sentinel_v) return HashTableT::sentinel_v;
+        hashedentry += 127;  ///< search next entry
+        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
+      }
+    }
+
+  protected:
+    __forceinline__ __device__ value_t do_hash(const key_t &key) const {
+      Tn ret = key[0];
+      for (int d = 0; d < HashTableT::dim; ++d) 
+        hash_combine(ret, key[d]);
+      return static_cast<value_t>(ret);
+    }
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                                                   const key_t &val) {
       using namespace placeholders;
@@ -51,38 +87,9 @@ namespace zs {
       }
       return return_val;
     }
-    __forceinline__ __device__ value_t insert(const key_t &key) {
-      using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(static_cast<typename key_t::value_type>(-1));
-      value_t hashedentry = (_hf(key) % _tableSize + _tableSize) % _tableSize;
-      key_t storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
-      for (; !(storedKey == key_sentinel_v || storedKey == key);) {
-        hashedentry = (hashedentry + 127) % _tableSize;
-        storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
-      }
-      if (storedKey == key_sentinel_v) {
-        auto localno = atomicAdd(_cnt, 1);
-        _table(_1, hashedentry) = localno;
-        _activeKeys[localno] = key;
-        return localno;  ///< only the one that inserts returns the actual index
-      }
-      return HashTableT::sentinel_v;
-    }
-    /// make sure no one else is inserting in the same time!
-    __forceinline__ __device__ value_t query(const key_t &key) const {
-      using namespace placeholders;
-      value_t hashedentry = (_hf(key) % _tableSize + _tableSize) % _tableSize;
-      while (true) {
-        if (key == (key_t)_table(_0, hashedentry)) return _table(_1, hashedentry);
-        if (_table(_1, hashedentry) == HashTableT::sentinel_v) return HashTableT::sentinel_v;
-        hashedentry += 127;  ///< search next entry
-        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
-      }
-    }
 
-    hf_t _hf;
     table_t _table;
-    value_t _tableSize;
+    const value_t _tableSize;
     value_t *_cnt;
     key_t *_activeKeys;
   };

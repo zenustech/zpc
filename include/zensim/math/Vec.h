@@ -143,10 +143,10 @@ using vec =
     /// think this does not break rule of five
     /// https://github.com/kokkos/kokkos/issues/177
     constexpr vec_impl &operator=(const vec_impl &o) = default;
-    constexpr volatile vec_impl &operator=(const vec_impl &o) volatile {
-      for (Tn i = 0; i < extent; ++i) data()[i] = o.data()[i];
-      return *this;
-    }
+    //constexpr volatile vec_impl &operator=(const vec_impl &o) volatile = default;
+    //  for (Tn i = 0; i < extent; ++i) data()[i] = o.data()[i];
+    //  return *this;
+    //}
 
     static constexpr vec_impl from_array(const std::array<T, extent> &arr) noexcept {
       vec_impl r{};

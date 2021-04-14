@@ -106,7 +106,6 @@ namespace zs {
   constexpr cuda_execution_tag exec_cuda{};
   constexpr hip_execution_tag exec_hip{};
 
-  /// sequential execution
   constexpr SequentialExecutionPolicy par_exec(sequential_execution_tag) noexcept {
     return SequentialExecutionPolicy{};
   }

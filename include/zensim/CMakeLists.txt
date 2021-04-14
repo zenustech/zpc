@@ -52,6 +52,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/DenseGrid.hpp
     container/RingBuffer.hpp
     container/TileVector.hpp
+    container/HashTable.hpp
     container/Vector.hpp
     # execution
     execution/Concurrency.h
@@ -161,6 +162,7 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/math/matrix/qr.cuh
     cuda/math/matrix/svd.cuh
     cuda/execution/ExecutionPolicy.cuh
+    cuda/container/HashTable.hpp
     cuda/container/HashTable.cuh
     cuda/container/LookupTable.cuh
     cuda/container/MatrixHash.cuh

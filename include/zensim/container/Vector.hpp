@@ -2,7 +2,6 @@
 #include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/tpls/magic_enum.hpp"
-#include "zensim/tpls/umpire/strategy/AlignedAllocator.hpp"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/RuntimeStructurals.hpp"
 

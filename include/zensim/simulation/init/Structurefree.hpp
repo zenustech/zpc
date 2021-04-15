@@ -12,6 +12,8 @@ namespace zs {
     using TM = ValueT[d][d];
     using TMAffine = ValueT[d + 1][d + 1];
     static constexpr int dim = d;
+    constexpr ProcID devid() const noexcept { return X.devid(); }
+    constexpr std::size_t size() const noexcept { return X.size(); }
     Vector<T> M;
     Vector<TV> X, V;
     Vector<TM> F;

@@ -4,6 +4,7 @@
 #include "zensim/Singleton.h"
 #include "zensim/tpls/fmt/core.h"
 #include "zensim/tpls/spdlog/spdlog.h"
+#include "zensim/tpls/spdlog/sinks/basic_file_sink.h"
 
 namespace zs {
 

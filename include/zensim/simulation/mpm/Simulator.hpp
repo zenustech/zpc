@@ -12,15 +12,16 @@ namespace zs {
     /// construct
     static MPMSimulatorBuilder create();
 
-  protected:
-    friend struct BuilderForMPMSimulator;
-    friend struct MPMSimulatorBuilder;
+    std::size_t numModels() const noexcept { return particles.size(); }
+    std::size_t numPartitions() const noexcept { return partitions.size(); }
+
     /// particle
     std::vector<GeneralParticles> particles;
     std::vector<std::tuple<ConstitutiveModelConfig, std::size_t>>
         models;  // (constitutive model, id)
     ///
     std::vector<MemoryHandle> memDsts;
+    std::vector<std::vector<std::size_t>> modelPartitions;
     /// background grid
     std::vector<GeneralGridBlocks> gridBlocks;
     /// sparsity info (hash table)

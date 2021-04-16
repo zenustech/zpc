@@ -35,6 +35,9 @@ namespace zs {
   struct MemoryHandle {
     constexpr ProcID devid() const noexcept { return _devid; }
     constexpr memsrc_e memspace() const noexcept { return _memsrc; }
+    constexpr MemoryHandle memoryHandle() const noexcept {
+      return static_cast<MemoryHandle>(*this);
+    }
 
     void swap(MemoryHandle &o) noexcept {
       std::swap(_devid, o._devid);

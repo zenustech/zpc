@@ -132,25 +132,23 @@ namespace zs {
       Vector<TM> F{};
     } tmp;
 
-    mass = Vector<T>{dst.memspace(), dst.devid()};
     tmp.M = Vector<T>{memsrc_e::host, -1};
-    pos = Vector<TV>{dst.memspace(), dst.devid()};
     tmp.X = Vector<TV>{memsrc_e::host, -1};
-    vel = Vector<TV>{dst.memspace(), dst.devid()};
     tmp.V = Vector<TV>{memsrc_e::host, -1};
-    if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
-      F = Vector<TM>{dst.memspace(), dst.devid()};
+    if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
       tmp.F = Vector<TM>{memsrc_e::host, -1};
-    }
+
     for (auto &positions : particlePositions) {
-      mass.resize(positions.size());
+      const bool hasF
+          = config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState);
+      mass = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
       tmp.M.resize(positions.size());
-      pos.resize(positions.size());
+      pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
       tmp.X.resize(positions.size());
-      vel.resize(positions.size());
+      vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
       tmp.V.resize(positions.size());
       if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
-        F.resize(positions.size());
+        F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
         tmp.F.resize(positions.size());
       }
       /// -> bridge
@@ -167,7 +165,7 @@ namespace zs {
         std::vector<std::array<T, 3>> defaultVel(positions.size(), {0, 0, 0});
         memcpy(tmp.V.head(), defaultVel.data(), sizeof(TV) * positions.size());
 
-        if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
+        if (hasF) {
           std::vector<std::array<T, 3 * 3>> defaultF(positions.size(), {1, 0, 0, 0, 1, 0, 0, 0, 1});
           memcpy(tmp.F.head(), defaultF.data(), sizeof(TM) * positions.size());
         }
@@ -177,20 +175,20 @@ namespace zs {
       rm.copy((void *)mass.head(), (void *)tmp.M.head(), sizeof(T) * mass.size());
       rm.copy((void *)pos.head(), (void *)tmp.X.head(), sizeof(TV) * pos.size());
       rm.copy((void *)vel.head(), (void *)tmp.V.head(), sizeof(TV) * vel.size());
-      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-        rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
+      if (hasF) rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
       /// modify scene
       // constitutive model
       scene.models.emplace_back(config, Scene::model_e::Particle, dstParticles.size());
       // particles
       dstParticles.push_back(Particles<f32, 3>{});
       match(
-          [&mass, &pos, &vel, &F, this](Particles<f32, 3> &pars) {
+          [&mass, &pos, &vel, &F, hasF, this](Particles<f32, 3> &pars) {
             pars.M = std::move(mass);
             pars.X = std::move(pos);
             pars.V = std::move(vel);
-            if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
-              pars.F = std::move(F);
+            if (hasF) pars.F = std::move(F);
+            fmt::print("moving {} paticles [{}, {}]\n", pars.X.size(),
+                       magic_enum::enum_name(pars.X.memspace()), static_cast<int>(pars.X.devid()));
           },
           [](...) {})(dstParticles.back());
     }

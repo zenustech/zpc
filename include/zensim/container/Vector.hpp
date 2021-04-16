@@ -106,7 +106,7 @@ namespace zs {
       return self()(idx);
     }
     /// ctor, assignment operator
-    explicit Vector(const Vector &o) : MemoryHandle{o.base()}, _size{o.size()} {
+    explicit Vector(const Vector &o) : MemoryHandle{o.memoryHandle()}, _size{o.size()} {
       auto &rm = get_resource_manager().get();
       base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
       if (o.size()) rm.copy((void *)tmp.address(), o.head(), o.usedBytes());
@@ -124,7 +124,7 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     explicit Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
-      base() = std::exchange(o.base(), defaultVector.base());
+      base() = std::exchange(o.base(), defaultVector.memoryHandle());
       self() = std::exchange(o.self(), defaultVector.self());
       _size = std::exchange(o._size, defaultVector.size());
     }
@@ -238,5 +238,23 @@ namespace zs {
     size_type _size{0};  // size
     size_type _align{0};
   };
+
+  template <execspace_e, typename VectorT, typename = void> struct VectorProxy;
+
+  template <execspace_e Space, typename VectorT> struct VectorProxy<Space, VectorT>
+      : VectorT::base_t {
+    using vector_t = typename VectorT::base_t;
+    using size_type = typename VectorT::size_type;
+
+    constexpr VectorProxy() = default;
+    ~VectorProxy() = default;
+    explicit VectorProxy(VectorT &vector) : vector_t{vector.self()}, _vectorSize{vector.size()} {}
+
+    size_type _vectorSize;
+  };
+
+  template <execspace_e ExecSpace, typename T> decltype(auto) proxy(Vector<T> &vec) {
+    return VectorProxy<ExecSpace, Vector<T>>{vec};
+  }
 
 }  // namespace zs

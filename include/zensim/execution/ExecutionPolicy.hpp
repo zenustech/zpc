@@ -5,6 +5,7 @@
 
 #include "Concurrency.h"
 #include "zensim/TypeAlias.hpp"
+#include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 namespace zs {
@@ -96,10 +97,18 @@ namespace zs {
   struct CudaExecutionPolicy;
   struct OmpExecutionPolicy;
 
+#if 1
   struct sequential_execution_tag {};
   struct omp_execution_tag {};
   struct cuda_execution_tag {};
   struct hip_execution_tag {};
+#else
+  template <execspace_e> struct execution_tag {};
+  using sequential_execution_tag = execution_tag<execspace_e::host>;
+  using omp_execution_tag = execution_tag<execspace_e::openmp>;
+  using cuda_execution_tag = execution_tag<execspace_e::cuda>;
+  using hip_execution_tag = execution_tag<execspace_e::hip>;
+#endif
 
   constexpr sequential_execution_tag exec_seq{};
   constexpr omp_execution_tag exec_omp{};

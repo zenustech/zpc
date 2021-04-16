@@ -38,6 +38,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/math/matrix/Matrix.cpp
     cuda/math/matrix/MatrixCtor.cpp
     cuda/math/matrix/MatrixTransform.cpp
+    cuda/simulation/mpm/Simulator.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp
@@ -130,6 +131,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     simulation/init/Structure.hpp
     simulation/init/Structurefree.hpp
     simulation/physics/ConstitutiveModel.hpp
+    simulation/transfer/P2G.hpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
     io/IO.h
@@ -161,16 +163,19 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/math/matrix/Givens.cuh
     cuda/math/matrix/qr.cuh
     cuda/math/matrix/svd.cuh
+    cuda/math/matrix/Matrix.hpp # recent
     cuda/execution/ExecutionPolicy.cuh
+    # container
     cuda/container/HashTable.hpp
     cuda/container/HashTable.cuh
     cuda/container/LookupTable.cuh
     cuda/container/MatrixHash.cuh
     cuda/container/bvh/Bvh.cuh
+    cuda/container/Vector.hpp # recent
     cuda/algorithm/MappingKernels.cuh
     cuda/algorithm/SortKernels.cuh
-
-    cuda/math/matrix/Matrix.hpp
+    # simulation
+    cuda/simulation/transfer/P2G.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/execution/ExecutionPolicy.hpp

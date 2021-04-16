@@ -40,8 +40,7 @@ namespace zs {
     constexpr auto &self() noexcept { return static_cast<base_t &>(*this); }
     constexpr const auto &self() const noexcept { return static_cast<const base_t &>(*this); }
 
-    HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1,
-              std::size_t alignment = 0)
+    HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1, std::size_t alignment = 0)
         : base_t{buildInstance(mre, devid, 0)},
           MemoryHandle{mre, devid},
           _tableSize{0},
@@ -49,13 +48,13 @@ namespace zs {
           _activeKeys{mre, devid},
           _align{alignment} {}
 
-    HashTable(value_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+    HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
               std::size_t alignment = 0)
         : base_t{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
           MemoryHandle{mre, devid},
-          _tableSize{next_2pow(tableSize) * reserve_ratio_v},
+          _tableSize{static_cast<value_t>(next_2pow(tableSize) * reserve_ratio_v)},
           _cnt{1, mre, devid},
-          _activeKeys{_tableSize, mre, devid},
+          _activeKeys{tableSize, mre, devid},
           _align{alignment} {}
 
     value_t _tableSize;
@@ -88,7 +87,8 @@ namespace zs {
     }
   };
 
-  using GeneralHashTable = variant<HashTable<i32, 2, i32>, HashTable<i32, 2, i64>, HashTable<i32, 3, i32>, HashTable<i32, 3, i64>>;
+  using GeneralHashTable = variant<HashTable<i32, 2, i32>, HashTable<i32, 2, i64>,
+                                   HashTable<i32, 3, i32>, HashTable<i32, 3, i64>>;
 
   template <execspace_e, typename HashTableT, typename = void>
   struct HashTableProxy;  ///< proxy to work within each backends
@@ -110,11 +110,10 @@ namespace zs {
     value_t insert(const key_t &key);
     value_t query(const key_t &key) const;
 
-protected:
+  protected:
     constexpr value_t do_hash(const key_t &key) const {
       Tn ret = key[0];
-      for (int d = 0; d < HashTableT::dim; ++d) 
-        hash_combine(ret, key[d]);
+      for (int d = 0; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);
     }
     table_t _table;

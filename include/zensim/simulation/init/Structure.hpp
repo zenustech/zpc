@@ -50,6 +50,9 @@ namespace zs {
   struct GridBlocks<GridBlock<V, d, chn_bits, domain_bits>> {
     using Block = GridBlock<V, d, chn_bits, domain_bits>;
 
+    constexpr GridBlocks(float dx = 1.f, std::size_t numBlocks = 0, memsrc_e mre = memsrc_e::host,
+                         ProcID devid = -1, std::size_t alignment = 0)
+        : blocks{numBlocks, mre, devid, alignment}, dx{dx} {}
     Vector<Block> blocks;
     V dx;
   };

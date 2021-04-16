@@ -1,5 +1,6 @@
 #pragma once
 #include "zensim/container/HashTable.hpp"
+#include "zensim/memory/MemoryResource.h"
 #include "zensim/simulation/init/Scene.hpp"
 #include "zensim/types/BuilderBase.hpp"
 
@@ -19,11 +20,11 @@ namespace zs {
     std::vector<std::tuple<ConstitutiveModelConfig, std::size_t>>
         models;  // (constitutive model, id)
     ///
-    std::vector<ProcID> memDsts;
+    std::vector<MemoryHandle> memDsts;
     /// background grid
     std::vector<GeneralGridBlocks> gridBlocks;
     /// sparsity info (hash table)
-    std::vector<GeneralHashTable> hashTables;
+    std::vector<GeneralHashTable> partitions;
     /// transfer operator
     // apic/ flip
     /// simulation setup

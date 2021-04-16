@@ -1,6 +1,7 @@
 #include "Simulator.hpp"
 
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/tpls/magic_enum.hpp"
 
 namespace zs {
 
@@ -24,27 +25,43 @@ namespace zs {
   }
 
   BuilderForMPMSimulator::operator MPMSimulator() noexcept {
-    std::map<ProcID, std::size_t> procMap{};
-    std::vector<ProcID> memDsts(0);
+    std::vector<MemoryHandle> memDsts(0);
+    auto searchHandle = [&memDsts](MemoryHandle mh) -> int {
+      for (auto&& [id, entry] : zs::zip(zs::range(memDsts.size()), memDsts))
+        if (mh.memspace() == entry.memspace() && mh.devid() == entry.devid()) return id;
+      return -1;
+    };
     std::vector<std::size_t> numParticles(0);
     for (auto&& particles : this->target().particles) {
       match([&](auto& ps) {
-        if (procMap.find(ps.devid()) == procMap.end()) {
-          procMap.emplace(ps.devid(), memDsts.size());
-          memDsts.push_back(ps.devid());
+        auto did = searchHandle(ps.handle());
+        if (did == -1) {
+          memDsts.push_back(ps.handle());
           numParticles.push_back(ps.size());
         } else
-          numParticles[procMap[ps.devid()]] += ps.size();
+          numParticles[did] += ps.size();
       })(particles);
     }
     fmt::print("target processor\n");
-    for (auto proc : memDsts) fmt::print("{} ", static_cast<int>(proc));
+    for (auto mh : memDsts)
+      fmt::print("[{}, {}] ", magic_enum::enum_name(mh.memspace()), static_cast<int>(mh.devid()));
     fmt::print("\ntotal num particles per processor\n");
     for (auto np : numParticles) fmt::print("{} ", np);
     fmt::print("\n");
 
     std::vector<std::size_t> numBlocks(numParticles.size());
     for (auto&& [dst, src] : zs::zip(numBlocks, numParticles)) dst = src / 8 / 64;
+
+    /// grid blocks, partitions
+    this->target().gridBlocks.resize(memDsts.size());
+    this->target().partitions.resize(memDsts.size());
+    for (auto&& [memDst, nblocks, gridBlocks, partition] :
+         zs::zip(memDsts, numBlocks, this->target().gridBlocks, this->target().partitions)) {
+      gridBlocks = GridBlocks<GridBlock<dat32, 3, 4, 2>>{target().simOptions.dx, nblocks,
+                                                         memDst.memspace(), memDst.devid()};
+      partition = HashTable<i32, 3, i32>{nblocks, memDst.memspace(), memDst.devid()};
+    }
+    this->target().memDsts = std::move(memDsts);
     return std::move(this->target());
   }
 

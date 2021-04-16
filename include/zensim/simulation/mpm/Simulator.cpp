@@ -26,21 +26,36 @@ namespace zs {
 
   BuilderForMPMSimulator::operator MPMSimulator() noexcept {
     std::vector<MemoryHandle> memDsts(0);
+    std::vector<std::vector<std::tuple<std::size_t, std::size_t>>> groups(0);
     auto searchHandle = [&memDsts](MemoryHandle mh) -> int {
       for (auto&& [id, entry] : zs::zip(zs::range(memDsts.size()), memDsts))
         if (mh.memspace() == entry.memspace() && mh.devid() == entry.devid()) return id;
       return -1;
     };
+    auto searchModel = [&models = this->target().models](int objId) {
+      int modelid{0};
+      for (auto&& [model, id] : models) {
+        if (id == objId) return modelid;
+        modelid++;
+      }
+      return -1;
+    };
     std::vector<std::size_t> numParticles(0);
+    std::size_t id = 0;
     for (auto&& particles : this->target().particles) {
       match([&](auto& ps) {
         auto did = searchHandle(ps.handle());
         if (did == -1) {
           memDsts.push_back(ps.handle());
           numParticles.push_back(ps.size());
-        } else
+          groups.emplace_back(std::move(std::vector<std::tuple<std::size_t, std::size_t>>{
+              std::make_tuple(searchModel(id), id)}));
+        } else {
           numParticles[did] += ps.size();
+          groups[did].push_back(std::make_tuple(searchModel(id), id));
+        }
       })(particles);
+      id++;
     }
     fmt::print("target processor\n");
     for (auto mh : memDsts)
@@ -48,10 +63,16 @@ namespace zs {
     fmt::print("\ntotal num particles per processor\n");
     for (auto np : numParticles) fmt::print("{} ", np);
     fmt::print("\n");
+    for (auto&& [groupid, groups] : zs::zip(zs::range(groups.size()), groups)) {
+      fmt::print("group {}: ", groupid);
+      for (auto&& [modelid, objid] : groups) fmt::print("[{}, {}] ", modelid, objid);
+      fmt::print("\n");
+    }
 
     std::vector<std::size_t> numBlocks(numParticles.size());
     for (auto&& [dst, src] : zs::zip(numBlocks, numParticles)) dst = src / 8 / 64;
 
+    /// particle model groups
     /// grid blocks, partitions
     this->target().gridBlocks.resize(memDsts.size());
     this->target().partitions.resize(memDsts.size());
@@ -62,6 +83,8 @@ namespace zs {
       partition = HashTable<i32, 3, i32>{nblocks, memDst.memspace(), memDst.devid()};
     }
     this->target().memDsts = std::move(memDsts);
+    this->target().groups = std::move(groups);
+
     return std::move(this->target());
   }
 

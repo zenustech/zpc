@@ -19,9 +19,9 @@ namespace zs {
     std::vector<GeneralParticles> particles;
     std::vector<std::tuple<ConstitutiveModelConfig, std::size_t>>
         models;  // (constitutive model, id)
-    ///
+    /// parallel execution helper
     std::vector<MemoryHandle> memDsts;
-    std::vector<std::vector<std::size_t>> modelPartitions;
+    std::vector<std::vector<std::tuple<std::size_t, std::size_t>>> groups;  // (model id, object id)
     /// background grid
     std::vector<GeneralGridBlocks> gridBlocks;
     /// sparsity info (hash table)

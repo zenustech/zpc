@@ -662,13 +662,10 @@ namespace zs {
       template <auto I = 0> constexpr bool illegal_alignment(const std::size_t &alignment) {
         return alignment % node<I>().align() != 0;
       }
-      template <typename... Ps> constexpr bool any(Ps &&...ps) const noexcept {
-        return (ps || ...);
-      }
       /// pmr-compliant
       template <typename Allocator> void alloc(Allocator allocator, std::size_t alignment) {
         auto nodesizes = snode_sizes();
-        if (any(illegal_alignment<Is>(alignment)...))
+        if ((illegal_alignment<Is>(alignment) || ...))
           // throw std::bad_alloc("misalignment during snode instance allocation!");
           throw std::bad_alloc();
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes), alignment)),

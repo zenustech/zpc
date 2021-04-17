@@ -7,7 +7,7 @@ namespace zs {
   //
   //  this is from boost
   //
-  template <typename ST, typename T> constexpr void hash_combine(ST &seed, const T &val) {
+  template <typename T> constexpr void hash_combine(std::size_t &seed, const T &val) {
     seed ^= (val + 0x9e3779b9 + (seed << 6) + (seed >> 2));
   }
 

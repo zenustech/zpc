@@ -32,6 +32,7 @@ namespace zs {
       constexpr key_t key_sentinel_v = key_t::uniform(static_cast<typename key_t::value_type>(-1));
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       key_t storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
+#if 1
       for (; !(storedKey == key_sentinel_v || storedKey == key);) {
         hashedentry = (hashedentry + 127) % _tableSize;
         storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
@@ -42,6 +43,24 @@ namespace zs {
         _activeKeys[localno] = key;
         return localno;  ///< only the one that inserts returns the actual index
       }
+#else
+      while (!((storedKey = _table(_0, hashedentry)) == key)) {
+        if (storedKey == key_sentinel_v) {
+          storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
+        }
+        if (_table(_0, hashedentry) == key) {  ///< found entry
+          if (storedKey == key_sentinel_v) {   ///< new entry
+            auto localno = atomicAdd((unsigned_value_t *)_cnt, (unsigned_value_t)1);
+            _table(_1, hashedentry) = localno;
+            _activeKeys[localno] = key;
+            return localno;
+          }
+          return _table(_1, hashedentry);
+        }
+        hashedentry += 127;  ///< search next entry
+        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
+      }
+#endif
       return HashTableT::sentinel_v;
     }
     /// make sure no one else is inserting in the same time!
@@ -58,9 +77,9 @@ namespace zs {
 
   protected:
     __forceinline__ __device__ value_t do_hash(const key_t &key) const {
-      Tn ret = key[0];
-      for (int d = 0; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
-      return static_cast<value_t>(ret);
+      std::size_t ret = key[0];
+      for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
+      return ret;
     }
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                                                   const key_t &val) {
@@ -79,10 +98,10 @@ namespace zs {
             /// <deprecating volatile - JF Bastien - CppCon2019>
             /// access non-volatile using volatile semantics
             /// use cast
-            return_val = *const_cast<key_t *>(dest);
+            (void)(return_val = *const_cast<key_t *>(dest));
             /// https://github.com/kokkos/kokkos/commit/2fd9fb04a94ecba29a04a0894c99e1d9c16ad66a
             if (return_val == key_sentinel_v) {
-              for (int d = 0; d < dim; ++d) dest->data()[d] = val[d];
+              for (int d = 0; d < dim; ++d) (void)(dest->data()[d] = val[d]);
               // (void)(*dest = val);
             }
             __threadfence();

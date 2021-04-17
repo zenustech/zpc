@@ -3,6 +3,7 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/math/bit/Bits.h"
+#include "zensim/memory/MemoryResource.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/RuntimeStructurals.hpp"
@@ -54,6 +55,13 @@ namespace zs {
           _cnt{1, mre, devid},
           _activeKeys{tableSize, mre, devid},
           _align{alignment} {}
+
+    inline value_t size() const {
+      auto &rm = get_resource_manager().get();
+      Vector<value_t> res{1, memsrc_e::host, -1};
+      rm.copy(res.data(), _cnt.data());
+      return res[0];
+    }
 
     value_t _tableSize;
     Vector<value_t> _cnt;

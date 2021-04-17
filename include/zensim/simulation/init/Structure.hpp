@@ -48,6 +48,8 @@ namespace zs {
   template <typename Block> struct GridBlocks;
   template <typename V, int d, int chn_bits, int domain_bits>
   struct GridBlocks<GridBlock<V, d, chn_bits, domain_bits>> {
+    using value_type = V;
+    using block_t = GridBlock<V, d, chn_bits, domain_bits>;
     using Block = GridBlock<V, d, chn_bits, domain_bits>;
 
     constexpr GridBlocks(float dx = 1.f, std::size_t numBlocks = 0, memsrc_e mre = memsrc_e::host,
@@ -63,6 +65,34 @@ namespace zs {
                 GridBlocks<GridBlock<dat32, 2, 4, 2>>, GridBlocks<GridBlock<dat32, 3, 4, 2>>,
                 GridBlocks<GridBlock<dat64, 2, 4, 2>>, GridBlocks<GridBlock<dat64, 3, 4, 2>>>;
 
+  template <execspace_e, typename GridBlocksT, typename = void> struct GridBlocksProxy;
+  template <execspace_e space, typename GridBlocksT> struct GridBlocksProxy<space, GridBlocksT> {
+    using value_type = typename GridBlocksT::value_type;
+    using size_type = std::size_t;
+    using block_t = typename GridBlocksT::block_t;
+
+    constexpr GridBlocksProxy() = default;
+    ~GridBlocksProxy() = default;
+    explicit GridBlocksProxy(GridBlocksT &gridblocks)
+        : _gridBlocks{gridblocks.blocks.data()},
+          _blockCount{gridblocks.blocks.size()},
+          _dx{gridblocks.dx} {}
+
+    constexpr block_t &operator[](size_type i) { return _gridBlocks[i]; }
+    constexpr const block_t &operator[](size_type i) const { return _gridBlocks[i]; }
+
+  protected:
+    block_t *_gridBlocks;
+    size_type _blockCount;
+    value_type _dx;
+  };
+
+  template <execspace_e ExecSpace, typename V, int d, int chn_bits, int domain_bits>
+  decltype(auto) proxy(GridBlocks<GridBlock<V, d, chn_bits, domain_bits>> &blocks) {
+    return GridBlocksProxy<ExecSpace, GridBlocks<GridBlock<V, d, chn_bits, domain_bits>>>{blocks};
+  }
+
+  ///
   template <typename I = i32, int d = 3> struct Nodes {
     using IV = I[d];
     Vector<IV> nodes;

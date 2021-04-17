@@ -24,13 +24,54 @@ namespace zs {
   using GeneralParticles
       = variant<Particles<f32, 2>, Particles<f64, 2>, Particles<f32, 3>, Particles<f64, 3>>;
 
+  template <execspace_e, typename ParticlesT, typename = void> struct ParticlesProxy;
+  template <execspace_e space, typename ParticlesT> struct ParticlesProxy<space, ParticlesT> {
+    using T = typename ParticlesT::T;
+    using TV = typename ParticlesT::TV;
+    using TM = typename ParticlesT::TM;
+    static constexpr int dim = ParticlesT::dim;
+    using size_type = std::size_t;
+
+    constexpr ParticlesProxy() = default;
+    ~ParticlesProxy() = default;
+    explicit ParticlesProxy(ParticlesT &particles)
+        : _M{particles.M.data()},
+          _X{particles.X.data()},
+          _V{particles.V.data()},
+          _F{particles.F.data()},
+          _particleCount{particles.size()} {}
+
+    constexpr auto &mass(size_type parid) { return _M[parid]; }
+    constexpr auto mass(size_type parid) const { return _M[parid]; }
+    constexpr auto &pos(size_type parid) { return _X[parid]; }
+    constexpr const auto &pos(size_type parid) const { return _X[parid]; }
+    constexpr auto &vel(size_type parid) { return _V[parid]; }
+    constexpr const auto &vel(size_type parid) const { return _V[parid]; }
+    constexpr auto &F(size_type parid) { return _F[parid]; }
+    constexpr const auto &F(size_type parid) const { return _F[parid]; }
+    constexpr auto size() const noexcept { return _particleCount; }
+
+  protected:
+    T *_M;
+    TV *_X, *_V;
+    TM *_F;
+    size_type _particleCount;
+  };
+
+  template <execspace_e ExecSpace, typename V, int d>
+  decltype(auto) proxy(Particles<V, d> &particles) {
+    return ParticlesProxy<ExecSpace, Particles<V, d>>{particles};
+  }
+
+  ///
+
   /// sizeof(float) = 4
   /// bin_size = 64
   /// attrib_size = 16
   template <typename V = dat32, int channel_bits = 4, int counter_bits = 6> struct ParticleBin {
     constexpr decltype(auto) operator[](int c) noexcept { return _data[c]; }
     constexpr decltype(auto) operator[](int c) const noexcept { return _data[c]; }
-    constexpr auto& operator()(int c, int pid) noexcept { return _data[c][pid]; }
+    constexpr auto &operator()(int c, int pid) noexcept { return _data[c][pid]; }
     constexpr auto operator()(int c, int pid) const noexcept { return _data[c][pid]; }
 
   protected:

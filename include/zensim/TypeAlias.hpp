@@ -14,16 +14,33 @@ namespace zs {
   using f32 = float;
   using f64 = double;
 
-  using dat32 = union {
+  union dat32 {
     f32 f;
     i32 i;
     u32 u;
+    template <typename T> T &cast() noexcept;
+    template <typename T> T cast() const noexcept;
   };
-  using dat64 = union {
+  template <> constexpr f32 &dat32::cast<f32>() noexcept { return f; }
+  template <> constexpr i32 &dat32::cast<i32>() noexcept { return i; }
+  template <> constexpr u32 &dat32::cast<u32>() noexcept { return u; }
+  template <> constexpr f32 dat32::cast<f32>() const noexcept { return f; }
+  template <> constexpr i32 dat32::cast<i32>() const noexcept { return i; }
+  template <> constexpr u32 dat32::cast<u32>() const noexcept { return u; }
+
+  union dat64 {
     f64 d;
     i64 l;
     u64 ul;
+    template <typename T> T &cast() noexcept;
+    template <typename T> T cast() const noexcept;
   };
+  template <> constexpr f64 &dat64::cast<f64>() noexcept { return d; }
+  template <> constexpr i64 &dat64::cast<i64>() noexcept { return l; }
+  template <> constexpr u64 &dat64::cast<u64>() noexcept { return ul; }
+  template <> constexpr f64 dat64::cast<f64>() const noexcept { return d; }
+  template <> constexpr i64 dat64::cast<i64>() const noexcept { return l; }
+  template <> constexpr u64 dat64::cast<u64>() const noexcept { return ul; }
 
   // kokkos::ObservingRawPtr<T>, OptionalRef<T>
   // vsg::ref_ptr<T>

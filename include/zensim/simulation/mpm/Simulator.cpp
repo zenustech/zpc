@@ -80,7 +80,7 @@ namespace zs {
          zs::zip(memDsts, numBlocks, this->target().gridBlocks, this->target().partitions)) {
       gridBlocks = GridBlocks<GridBlock<dat32, 3, 4, 2>>{target().simOptions.dx, nblocks,
                                                          memDst.memspace(), memDst.devid()};
-      partition = HashTable<i32, 3, i32>{nblocks, memDst.memspace(), memDst.devid()};
+      partition = HashTable<i32, 3, int>{nblocks, memDst.memspace(), memDst.devid()};
     }
     this->target().memDsts = std::move(memDsts);
     this->target().groups = std::move(groups);

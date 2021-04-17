@@ -1,17 +1,21 @@
 #pragma once
 #include <cuda_runtime_api.h>
 
+#include <type_traits>
 #include <zensim/execution/ExecutionPolicy.hpp>
 
 #include "zensim/container/HashTable.hpp"
+#include "zensim/math/Hash.hpp"
 
 namespace zs {
 
   template <typename HashTableT> struct HashTableProxy<execspace_e::cuda, HashTableT> {
+    static constexpr int dim = HashTableT::dim;
     using Tn = typename HashTableT::Tn;
     using table_t = typename HashTableT::base_t;
     using key_t = typename HashTableT::key_t;
     using value_t = typename HashTableT::value_t;
+    using unsigned_value_t = std::make_unsigned_t<value_t>;
     using status_t = typename HashTableT::status_t;
 
     constexpr HashTableProxy() = default;
@@ -33,7 +37,7 @@ namespace zs {
         storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
       }
       if (storedKey == key_sentinel_v) {
-        auto localno = atomicAdd(_cnt, 1);
+        auto localno = atomicAdd((unsigned_value_t *)_cnt, (unsigned_value_t)1);
         _table(_1, hashedentry) = localno;
         _activeKeys[localno] = key;
         return localno;  ///< only the one that inserts returns the actual index
@@ -55,8 +59,7 @@ namespace zs {
   protected:
     __forceinline__ __device__ value_t do_hash(const key_t &key) const {
       Tn ret = key[0];
-      for (int d = 0; d < HashTableT::dim; ++d) 
-        hash_combine(ret, key[d]);
+      for (int d = 0; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);
     }
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
@@ -70,14 +73,18 @@ namespace zs {
       unsigned int done_active = 0;
       while (active != done_active) {
         if (!done) {
-          if (atomicCAS(lock, HashTableT::status_sentinel_v, (status_t)0) == HashTableT::status_sentinel_v) {
+          if (atomicCAS(lock, HashTableT::status_sentinel_v, (status_t)0)
+              == HashTableT::status_sentinel_v) {
             __threadfence();
             /// <deprecating volatile - JF Bastien - CppCon2019>
             /// access non-volatile using volatile semantics
             /// use cast
             return_val = *const_cast<key_t *>(dest);
             /// https://github.com/kokkos/kokkos/commit/2fd9fb04a94ecba29a04a0894c99e1d9c16ad66a
-            if (return_val == key_sentinel_v) (void)(*dest = val);
+            if (return_val == key_sentinel_v) {
+              for (int d = 0; d < dim; ++d) dest->data()[d] = val[d];
+              // (void)(*dest = val);
+            }
             __threadfence();
             atomicExch(lock, HashTableT::status_sentinel_v);
             done = 1;

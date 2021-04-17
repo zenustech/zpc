@@ -29,7 +29,7 @@ namespace zs {
 
     __forceinline__ __device__ value_t insert(const key_t &key) {
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(static_cast<typename key_t::value_type>(-1));
+      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       key_t storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
 #if 1
@@ -41,6 +41,7 @@ namespace zs {
         auto localno = atomicAdd((unsigned_value_t *)_cnt, (unsigned_value_t)1);
         _table(_1, hashedentry) = localno;
         _activeKeys[localno] = key;
+        if (localno >= _tableSize - 20) printf("proximity!!! %d -> %d\n", localno, _tableSize);
         return localno;  ///< only the one that inserts returns the actual index
       }
 #else
@@ -75,16 +76,21 @@ namespace zs {
       }
     }
 
+    table_t _table;
+    const value_t _tableSize;
+    value_t *_cnt;
+    key_t *_activeKeys;
+
   protected:
     __forceinline__ __device__ value_t do_hash(const key_t &key) const {
       std::size_t ret = key[0];
       for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
-      return ret;
+      return static_cast<value_t>(ret);
     }
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                                                   const key_t &val) {
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(static_cast<typename key_t::value_type>(-1));
+      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
       key_t return_val;
       int done = 0;
       unsigned int mask = __activemask();
@@ -113,11 +119,6 @@ namespace zs {
       }
       return return_val;
     }
-
-    table_t _table;
-    const value_t _tableSize;
-    value_t *_cnt;
-    key_t *_activeKeys;
   };
 
 }  // namespace zs

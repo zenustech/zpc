@@ -5,6 +5,21 @@
 
 namespace zs {
 
+  template <typename Table> struct CleanSparsity<HashTableProxy<execspace_e::cuda, Table>> {
+    using table_t = HashTableProxy<execspace_e::cuda, Table>;
+
+    explicit CleanSparsity(wrapv<execspace_e::cuda>, Table& table)
+        : table{proxy<execspace_e::cuda>(table)} {}
+
+    __forceinline__ __device__ void operator()(typename Table::value_t entry) noexcept {
+      using namespace placeholders;
+      table._table(_0, entry) = Table::key_t::uniform(Table::key_scalar_sentinel_v);
+      if (entry == 0) *table._cnt = 0;
+    }
+
+    table_t table;
+  };
+
   template <typename T, typename Table, typename X>
   struct ComputeSparsity<T, HashTableProxy<execspace_e::cuda, Table>,
                          VectorProxy<execspace_e::cuda, X>> {

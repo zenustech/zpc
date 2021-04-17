@@ -29,10 +29,9 @@ namespace zs {
     using value_t = Index;
     using status_t = int;
     using base_t = hash_table_instance<key_t, value_t, status_t>;
-    // static_assert(
-    //    std::is_convertible_v<decltype(std::declval<Fn>()(std::declval<key_t>())), value_t>,
-    //    "hash function not compatible with hash table key-value type");
 
+    // static constexpr Tn key_scalar_sentinel_v = std::numeric_limits<Tn>::max();
+    static constexpr Tn key_scalar_sentinel_v = -1;
     static constexpr value_t sentinel_v{-1};
     static constexpr status_t status_sentinel_v{-1};
     static constexpr std::size_t reserve_ratio_v = 4;
@@ -113,8 +112,8 @@ namespace zs {
 
   protected:
     constexpr value_t do_hash(const key_t &key) const {
-      Tn ret = key[0];
-      for (int d = 0; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
+      std::size_t ret = key[0];
+      for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);
     }
     table_t _table;

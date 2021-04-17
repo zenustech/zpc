@@ -14,6 +14,7 @@ namespace zs {
     __forceinline__ __device__ void operator()(typename Table::value_t entry) noexcept {
       using namespace placeholders;
       table._table(_0, entry) = Table::key_t::uniform(Table::key_scalar_sentinel_v);
+      table._table(_2, entry) = -1;
       if (entry == 0) *table._cnt = 0;
     }
 

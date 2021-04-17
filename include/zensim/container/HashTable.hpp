@@ -30,8 +30,7 @@ namespace zs {
     using status_t = int;
     using base_t = hash_table_instance<key_t, value_t, status_t>;
 
-    // static constexpr Tn key_scalar_sentinel_v = std::numeric_limits<Tn>::max();
-    static constexpr Tn key_scalar_sentinel_v = -1;
+    static constexpr Tn key_scalar_sentinel_v = std::numeric_limits<Tn>::max();
     static constexpr value_t sentinel_v{-1};
     static constexpr status_t status_sentinel_v{-1};
     static constexpr std::size_t reserve_ratio_v = 4;

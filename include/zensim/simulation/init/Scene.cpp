@@ -124,11 +124,13 @@ namespace zs {
     // dst
     Vector<T> mass{};
     Vector<TV> pos{}, vel{};
+    Vector<T> J{};
     Vector<TM> F{};
     // bridge on host
     struct {
       Vector<T> M{};
       Vector<TV> X{}, V{};
+      Vector<T> J{};
       Vector<TM> F{};
     } tmp;
 
@@ -137,6 +139,8 @@ namespace zs {
     tmp.V = Vector<TV>{memsrc_e::host, -1};
     if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
       tmp.F = Vector<TM>{memsrc_e::host, -1};
+    else
+      tmp.J = Vector<T>{memsrc_e::host, -1};
 
     for (auto &positions : particlePositions) {
       const bool hasF
@@ -150,6 +154,9 @@ namespace zs {
       if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
         F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
         tmp.F.resize(positions.size());
+      } else {
+        J = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
+        tmp.J.resize(positions.size());
       }
       /// -> bridge
       // default mass, vel, F
@@ -168,6 +175,9 @@ namespace zs {
         if (hasF) {
           std::vector<std::array<T, 3 * 3>> defaultF(positions.size(), {1, 0, 0, 0, 1, 0, 0, 0, 1});
           memcpy(tmp.F.head(), defaultF.data(), sizeof(TM) * positions.size());
+        } else {
+          std::vector<T> defaultJ(positions.size(), 1.f);
+          memcpy(tmp.J.head(), defaultJ.data(), sizeof(T) * positions.size());
         }
       }
       /// -> dst
@@ -175,18 +185,24 @@ namespace zs {
       rm.copy((void *)mass.head(), (void *)tmp.M.head(), sizeof(T) * mass.size());
       rm.copy((void *)pos.head(), (void *)tmp.X.head(), sizeof(TV) * pos.size());
       rm.copy((void *)vel.head(), (void *)tmp.V.head(), sizeof(TV) * vel.size());
-      if (hasF) rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
+      if (hasF)
+        rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
+      else
+        rm.copy((void *)J.head(), (void *)tmp.J.head(), sizeof(T) * J.size());
       /// modify scene
       // constitutive model
       scene.models.emplace_back(config, Scene::model_e::Particle, dstParticles.size());
       // particles
       dstParticles.push_back(Particles<f32, 3>{});
       match(
-          [&mass, &pos, &vel, &F, hasF, this](Particles<f32, 3> &pars) {
+          [&mass, &pos, &vel, &F, &J, hasF, this](Particles<f32, 3> &pars) {
             pars.M = std::move(mass);
             pars.X = std::move(pos);
             pars.V = std::move(vel);
-            if (hasF) pars.F = std::move(F);
+            if (hasF)
+              pars.F = std::move(F);
+            else
+              pars.J = std::move(J);
             fmt::print("moving {} paticles [{}, {}]\n", pars.X.size(),
                        magic_enum::enum_name(pars.X.memspace()), static_cast<int>(pars.X.devid()));
           },

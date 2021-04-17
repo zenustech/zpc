@@ -18,6 +18,7 @@ namespace zs {
     constexpr std::size_t size() const noexcept { return X.size(); }
     Vector<T> M;
     Vector<TV> X, V;
+    Vector<T> J;
     Vector<TM> F;
   };
 
@@ -38,6 +39,7 @@ namespace zs {
         : _M{particles.M.data()},
           _X{particles.X.data()},
           _V{particles.V.data()},
+          _J{particles.J.data()},
           _F{particles.F.data()},
           _particleCount{particles.size()} {}
 
@@ -47,6 +49,10 @@ namespace zs {
     constexpr const auto &pos(size_type parid) const { return _X[parid]; }
     constexpr auto &vel(size_type parid) { return _V[parid]; }
     constexpr const auto &vel(size_type parid) const { return _V[parid]; }
+    /// deformation for water
+    constexpr auto &J(size_type parid) { return _J[parid]; }
+    constexpr const auto &J(size_type parid) const { return _J[parid]; }
+    /// deformation for solid
     constexpr auto &F(size_type parid) { return _F[parid]; }
     constexpr const auto &F(size_type parid) const { return _F[parid]; }
     constexpr auto size() const noexcept { return _particleCount; }
@@ -54,6 +60,7 @@ namespace zs {
   protected:
     T *_M;
     TV *_X, *_V;
+    T *_J;
     TM *_F;
     size_type _particleCount;
   };

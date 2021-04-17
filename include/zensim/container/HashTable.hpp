@@ -87,12 +87,13 @@ namespace zs {
     }
   };
 
-  using GeneralHashTable = variant<HashTable<i32, 2, i32>, HashTable<i32, 2, i64>,
-                                   HashTable<i32, 3, i32>, HashTable<i32, 3, i64>>;
+  using GeneralHashTable = variant<HashTable<i32, 2, int>, HashTable<i32, 2, long long int>,
+                                   HashTable<i32, 3, int>, HashTable<i32, 3, long long int>>;
 
   template <execspace_e, typename HashTableT, typename = void>
   struct HashTableProxy;  ///< proxy to work within each backends
   template <typename HashTableT> struct HashTableProxy<execspace_e::host, HashTableT> {
+    static constexpr int dim = HashTableT::dim;
     using Tn = typename HashTableT::Tn;
     using table_t = typename HashTableT::base_t;
     using key_t = typename HashTableT::key_t;

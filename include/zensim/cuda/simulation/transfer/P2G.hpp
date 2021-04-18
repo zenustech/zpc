@@ -84,7 +84,7 @@ namespace zs {
     vec<int, dim> lo, hi;
   };
 
-  template <p2g_e scheme, typename ModelT, typename ParticlesT, typename TableT,
+  template <transfer_scheme_e scheme, typename ModelT, typename ParticlesT, typename TableT,
             typename GridBlocksT>
   struct P2GTransfer<scheme, ModelT, ParticlesProxy<execspace_e::cuda, ParticlesT>,
                      HashTableProxy<execspace_e::cuda, TableT>,
@@ -97,9 +97,8 @@ namespace zs {
     static_assert(particles_t::dim == partition_t::dim && particles_t::dim == gridblocks_t::dim,
                   "[particle-partition-grid] dimension mismatch");
 
-    explicit P2GTransfer(wrapv<execspace_e::cuda>, wrapv<p2g_e::apic>, float dt,
-                         const ModelT& model, ParticlesT& particles, TableT& table,
-                         GridBlocksT& gridblocks)
+    explicit P2GTransfer(wrapv<execspace_e::cuda>, wrapv<scheme>, float dt, const ModelT& model,
+                         ParticlesT& particles, TableT& table, GridBlocksT& gridblocks)
         : model{model},
           particles{proxy<execspace_e::cuda>(particles)},
           partition{proxy<execspace_e::cuda>(table)},

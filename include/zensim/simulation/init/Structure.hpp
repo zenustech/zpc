@@ -28,6 +28,7 @@ namespace zs {
   template <typename V = dat32, int d = 3, int channel_bits = 4, int domain_bits = 2>
   struct GridBlock {
     using value_type = V;
+    using size_type = int;
     static constexpr int dim = d;
     using IV = vec<int, dim>;
     static constexpr int num_chns = 1 << channel_bits;
@@ -36,6 +37,8 @@ namespace zs {
 
     constexpr auto &operator()(int c, IV loc) noexcept { return _data[c][offset(loc)]; }
     constexpr auto operator()(int c, IV loc) const noexcept { return _data[c][offset(loc)]; }
+    constexpr auto &operator()(int c, size_type cellid) noexcept { return _data[c][cellid]; }
+    constexpr auto operator()(int c, size_type cellid) const noexcept { return _data[c][cellid]; }
 
   protected:
     constexpr int offset(const IV &loc) const noexcept {
@@ -57,6 +60,7 @@ namespace zs {
     using block_t = GridBlock<V, d, chn_bits, domain_bits>;
     static constexpr int dim = block_t::dim;
     using IV = typename block_t::IV;
+    using size_type = typename Vector<block_t>::size_type;
 
     constexpr GridBlocks(float dx = 1.f, std::size_t numBlocks = 0, memsrc_e mre = memsrc_e::host,
                          ProcID devid = -1, std::size_t alignment = 0)
@@ -74,10 +78,10 @@ namespace zs {
   template <execspace_e, typename GridBlocksT, typename = void> struct GridBlocksProxy;
   template <execspace_e space, typename GridBlocksT> struct GridBlocksProxy<space, GridBlocksT> {
     using value_type = typename GridBlocksT::value_type;
-    using size_type = std::size_t;
     using block_t = typename GridBlocksT::block_t;
     static constexpr int dim = block_t::dim;
     using IV = typename block_t::IV;
+    using size_type = typename GridBlocksT::size_type;
 
     constexpr GridBlocksProxy() = default;
     ~GridBlocksProxy() = default;

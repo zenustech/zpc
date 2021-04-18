@@ -132,6 +132,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     simulation/init/Structurefree.hpp
     simulation/physics/ConstitutiveModel.hpp
     simulation/transfer/P2G.hpp
+    simulation/transfer/G2P.hpp
+    simulation/gridop/GridOp.hpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
     io/IO.h
@@ -176,6 +178,8 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/algorithm/SortKernels.cuh
     # simulation
     cuda/simulation/transfer/P2G.hpp
+    cuda/simulation/transfer/G2P.hpp
+    cuda/simulation/gridop/GridOp.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/execution/ExecutionPolicy.hpp

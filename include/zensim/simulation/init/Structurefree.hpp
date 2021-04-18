@@ -2,6 +2,7 @@
 #include "zensim/TypeAlias.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
+#include "zensim/resource/Resource.h"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {
@@ -16,6 +17,16 @@ namespace zs {
     constexpr memsrc_e space() const noexcept { return X.memspace(); }
     constexpr ProcID devid() const noexcept { return X.devid(); }
     constexpr std::size_t size() const noexcept { return X.size(); }
+
+    std::vector<std::array<ValueT, dim>> retrievePositions() const {
+      auto &rm = get_resource_manager().get();
+      Vector<TV> Xtmp{X.size(), memsrc_e::host, -1};
+      rm.copy((void *)Xtmp.data(), (void *)X.data());
+      std::vector<std::array<ValueT, dim>> ret(X.size());
+      memcpy(ret.data(), Xtmp.data(), sizeof(TV) * X.size());
+      return ret;
+    }
+
     Vector<T> M;
     Vector<TV> X, V;
     Vector<T> J;

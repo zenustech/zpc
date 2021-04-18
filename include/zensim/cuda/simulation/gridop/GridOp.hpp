@@ -16,10 +16,10 @@ namespace zs {
                                                typename gridblock_t::size_type cellid) noexcept {
       auto &block = gridblocks[blockid];
       using VT = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
-      VT mass = block(0, cellid);
+      VT mass = block(0, cellid).asFloat();
       if (mass > (VT)0) {
         mass = (VT)1 / mass;
-        vec<VT, 3> vel;
+        vec<VT, gridblocks_t::dim> vel;
         for (int d = 0; d < gridblocks_t::dim; ++d) {
           vel[d] = block(d + 1, cellid).asFloat() * mass;
         }

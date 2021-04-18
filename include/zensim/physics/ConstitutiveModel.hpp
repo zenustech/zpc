@@ -1,6 +1,7 @@
 #pragma once
 #include <tuple>
 
+#include "zensim/math/Vec.h"
 #include "zensim/tpls/gcem.hpp"
 #include "zensim/types/Polymorphism.h"
 
@@ -115,6 +116,18 @@ namespace zs {
                      config.E, config.nu, config.logJp0, config.fa, config.xi, config.beta,
                      config.mohrColumbFriction());
         })(config);
+  }
+
+  /// temporary
+  constexpr vec<float, 3> bspline_weight(float p, float const dx_inv) {
+    vec<float, 3> dw{0.f, 0.f, 0.f};
+    float d = p * dx_inv;  ///< normalized offset
+    dw[0] = 0.5f * (1.5 - d) * (1.5 - d);
+    d -= 1.0f;
+    dw[1] = 0.75 - d * d;
+    d = 0.5f + d;
+    dw[2] = 0.5 * d * d;
+    return dw;
   }
 
 }  // namespace zs

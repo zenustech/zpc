@@ -19,7 +19,7 @@ namespace zs {
     Vector<T> M;
     Vector<TV> X, V;
     Vector<T> J;
-    Vector<TM> F;
+    Vector<TM> F, C;
   };
 
   using GeneralParticles
@@ -41,6 +41,7 @@ namespace zs {
           _V{particles.V.data()},
           _J{particles.J.data()},
           _F{particles.F.data()},
+          _C{particles.C.data()},
           _particleCount{particles.size()} {}
 
     constexpr auto &mass(size_type parid) { return _M[parid]; }
@@ -55,13 +56,16 @@ namespace zs {
     /// deformation for solid
     constexpr auto &F(size_type parid) { return _F[parid]; }
     constexpr const auto &F(size_type parid) const { return _F[parid]; }
+    /// for apic transfer only
+    constexpr auto &C(size_type parid) { return _C[parid]; }
+    constexpr const auto &C(size_type parid) const { return _C[parid]; }
     constexpr auto size() const noexcept { return _particleCount; }
 
   protected:
     T *_M;
     TV *_X, *_V;
     T *_J;
-    TM *_F;
+    TM *_F, *_C;
     size_type _particleCount;
   };
 

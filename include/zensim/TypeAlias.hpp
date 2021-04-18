@@ -2,9 +2,12 @@
 #include <cstdint>
 #include <memory>
 
+// #include "zensim/meta/ControlFlow.h"
+
 namespace zs {
 
   using uint = unsigned int;
+  // using i16 = conditional_t<sizeof(short) == 2, short, int16_t>;
   using i16 = int16_t;
   using i32 = int32_t;
   using i64 = int64_t;
@@ -20,9 +23,12 @@ namespace zs {
     u32 u;
     template <typename T> T &cast() noexcept;
     template <typename T> T cast() const noexcept;
-    constexpr float asFloat() const noexcept { return f; }
-    constexpr float asSignedInteger() const noexcept { return i; }
-    constexpr float asUnsignedInteger() const noexcept { return u; }
+    constexpr f32 &asFloat() noexcept { return f; }
+    constexpr i32 &asSignedInteger() noexcept { return i; }
+    constexpr u32 &asUnsignedInteger() noexcept { return u; }
+    constexpr f32 asFloat() const noexcept { return f; }
+    constexpr i32 asSignedInteger() const noexcept { return i; }
+    constexpr u32 asUnsignedInteger() const noexcept { return u; }
   };
   template <> constexpr f32 &dat32::cast<f32>() noexcept { return f; }
   template <> constexpr i32 &dat32::cast<i32>() noexcept { return i; }
@@ -37,9 +43,12 @@ namespace zs {
     u64 ul;
     template <typename T> T &cast() noexcept;
     template <typename T> T cast() const noexcept;
-    constexpr float asFloat() const noexcept { return d; }
-    constexpr float asSignedInteger() const noexcept { return l; }
-    constexpr float asUnsignedInteger() const noexcept { return ul; }
+    constexpr f64 &asFloat() noexcept { return d; }
+    constexpr i64 &asSignedInteger() noexcept { return l; }
+    constexpr u64 &asUnsignedInteger() noexcept { return ul; }
+    constexpr f64 asFloat() const noexcept { return d; }
+    constexpr i64 asSignedInteger() const noexcept { return l; }
+    constexpr u64 asUnsignedInteger() const noexcept { return ul; }
   };
   template <> constexpr f64 &dat64::cast<f64>() noexcept { return d; }
   template <> constexpr i64 &dat64::cast<i64>() noexcept { return l; }

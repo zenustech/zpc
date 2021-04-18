@@ -125,13 +125,13 @@ namespace zs {
     Vector<T> mass{};
     Vector<TV> pos{}, vel{};
     Vector<T> J{};
-    Vector<TM> F{};
+    Vector<TM> F{}, C{};
     // bridge on host
     struct {
       Vector<T> M{};
       Vector<TV> X{}, V{};
       Vector<T> J{};
-      Vector<TM> F{};
+      Vector<TM> F{}, C{};
     } tmp;
 
     tmp.M = Vector<T>{memsrc_e::host, -1};
@@ -141,6 +141,7 @@ namespace zs {
       tmp.F = Vector<TM>{memsrc_e::host, -1};
     else
       tmp.J = Vector<T>{memsrc_e::host, -1};
+    tmp.C = Vector<TM>{memsrc_e::host, -1};
 
     for (auto &positions : particlePositions) {
       const bool hasF
@@ -158,6 +159,8 @@ namespace zs {
         J = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
         tmp.J.resize(positions.size());
       }
+      C = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
+      tmp.C.resize(positions.size());
       /// -> bridge
       // default mass, vel, F
       assert_with_msg(sizeof(float) * 3 == sizeof(TV), "fatal: TV size not as expected!");
@@ -179,6 +182,8 @@ namespace zs {
           std::vector<T> defaultJ(positions.size(), 1.f);
           memcpy(tmp.J.head(), defaultJ.data(), sizeof(T) * positions.size());
         }
+        std::vector<std::array<T, 3 * 3>> defaultC(positions.size(), {0, 0, 0, 0, 0, 0, 0, 0, 0});
+        memcpy(tmp.C.head(), defaultC.data(), sizeof(TM) * positions.size());
       }
       /// -> dst
       auto &rm = get_resource_manager().get();
@@ -189,13 +194,14 @@ namespace zs {
         rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
       else
         rm.copy((void *)J.head(), (void *)tmp.J.head(), sizeof(T) * J.size());
+      rm.copy((void *)C.head(), (void *)tmp.C.head(), sizeof(TM) * C.size());
       /// modify scene
       // constitutive model
       scene.models.emplace_back(config, Scene::model_e::Particle, dstParticles.size());
       // particles
       dstParticles.push_back(Particles<f32, 3>{});
       match(
-          [&mass, &pos, &vel, &F, &J, hasF, this](Particles<f32, 3> &pars) {
+          [&mass, &pos, &vel, &F, &J, &C, hasF, this](Particles<f32, 3> &pars) {
             pars.M = std::move(mass);
             pars.X = std::move(pos);
             pars.V = std::move(vel);
@@ -203,6 +209,7 @@ namespace zs {
               pars.F = std::move(F);
             else
               pars.J = std::move(J);
+            pars.C = std::move(C);
             fmt::print("moving {} paticles [{}, {}]\n", pars.X.size(),
                        magic_enum::enum_name(pars.X.memspace()), static_cast<int>(pars.X.devid()));
           },

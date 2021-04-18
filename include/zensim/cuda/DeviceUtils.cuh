@@ -1,5 +1,4 @@
-#ifndef __DEVICE_UTILS_CUH_
-#define __DEVICE_UTILS_CUH_
+#pragma once
 
 #include <cooperative_groups.h>
 #include <device_types.h>
@@ -147,5 +146,3 @@ namespace zs {
   }
 
 }  // namespace zs
-
-#endif

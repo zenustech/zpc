@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/TypeAlias.hpp"
 #include "zensim/container/Vector.hpp"
+#include "zensim/tpls/gcem_incl/pow.hpp"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {
@@ -26,8 +27,12 @@ namespace zs {
   /// attrib_size = 16
   template <typename V = dat32, int d = 3, int channel_bits = 4, int domain_bits = 2>
   struct GridBlock {
+    using value_type = V;
     static constexpr int dim = d;
     using IV = vec<int, dim>;
+    static constexpr int num_chns = 1 << channel_bits;
+    static constexpr int side_length = 1 << domain_bits;
+    static constexpr int space = gcem::pow(side_length, dim);
 
     constexpr auto &operator()(int c, IV loc) noexcept { return _data[c][offset(loc)]; }
     constexpr auto operator()(int c, IV loc) const noexcept { return _data[c][offset(loc)]; }
@@ -50,12 +55,13 @@ namespace zs {
   struct GridBlocks<GridBlock<V, d, chn_bits, domain_bits>> {
     using value_type = V;
     using block_t = GridBlock<V, d, chn_bits, domain_bits>;
-    using Block = GridBlock<V, d, chn_bits, domain_bits>;
+    static constexpr int dim = block_t::dim;
+    using IV = typename block_t::IV;
 
     constexpr GridBlocks(float dx = 1.f, std::size_t numBlocks = 0, memsrc_e mre = memsrc_e::host,
                          ProcID devid = -1, std::size_t alignment = 0)
         : blocks{numBlocks, mre, devid, alignment}, dx{dx} {}
-    Vector<Block> blocks;
+    Vector<block_t> blocks;
     V dx;
   };
 
@@ -70,6 +76,8 @@ namespace zs {
     using value_type = typename GridBlocksT::value_type;
     using size_type = std::size_t;
     using block_t = typename GridBlocksT::block_t;
+    static constexpr int dim = block_t::dim;
+    using IV = typename block_t::IV;
 
     constexpr GridBlocksProxy() = default;
     ~GridBlocksProxy() = default;
@@ -81,7 +89,6 @@ namespace zs {
     constexpr block_t &operator[](size_type i) { return _gridBlocks[i]; }
     constexpr const block_t &operator[](size_type i) const { return _gridBlocks[i]; }
 
-  protected:
     block_t *_gridBlocks;
     size_type _blockCount;
     value_type _dx;

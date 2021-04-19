@@ -33,7 +33,7 @@ namespace zs {
     using IV = vec<int, dim>;
     static constexpr int num_chns = 1 << channel_bits;
     static constexpr int side_length = 1 << domain_bits;
-    static constexpr int space = gcem::pow(side_length, dim);
+    static constexpr int space = 1 << (domain_bits * dim);
 
     constexpr auto &operator()(int c, IV loc) noexcept { return _data[c][offset(loc)]; }
     constexpr auto operator()(int c, IV loc) const noexcept { return _data[c][offset(loc)]; }
@@ -50,7 +50,7 @@ namespace zs {
         ret = (loc[0] << (domain_bits + domain_bits)) + (loc[1] << domain_bits) + loc[2];
       return ret;
     }
-    V _data[1 << channel_bits][(1 << domain_bits) << dim];
+    V _data[1 << channel_bits][space];
   };
 
   template <typename Block> struct GridBlocks;

@@ -8,12 +8,16 @@
 
 namespace zs {
 
+  template <typename ParticlesT> struct SetParticleAttribute;
   template <typename Table> struct CleanSparsity;
   template <typename T, typename Table, typename Position> struct ComputeSparsity;
   template <typename Table> struct EnlargeSparsity;
   template <transfer_scheme_e, typename ConstitutiveModel, typename ParticlesT, typename TableT,
             typename GridBlocksT>
   struct P2GTransfer;
+
+  template <execspace_e space, typename ParticlesT> SetParticleAttribute(wrapv<space>, ParticlesT)
+      -> SetParticleAttribute<ParticlesProxy<space, ParticlesT>>;
 
   template <execspace_e space, typename Table> CleanSparsity(wrapv<space>, Table)
       -> CleanSparsity<HashTableProxy<space, Table>>;

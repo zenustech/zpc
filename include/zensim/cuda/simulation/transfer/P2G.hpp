@@ -3,9 +3,31 @@
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/physics/ConstitutiveModel.hpp"
+#include "zensim/simulation/init/Structurefree.hpp"
 #include "zensim/simulation/transfer/P2G.hpp"
 
 namespace zs {
+
+  template <typename ParticlesT>
+  struct SetParticleAttribute<ParticlesProxy<execspace_e::cuda, ParticlesT>> {
+    using particles_t = ParticlesProxy<execspace_e::cuda, ParticlesT>;
+
+    explicit SetParticleAttribute(wrapv<execspace_e::cuda>, ParticlesT& particles)
+        : particles{proxy<execspace_e::cuda>(particles)} {}
+
+    __forceinline__ __device__ void operator()(typename particles_t::size_type parid) noexcept {
+      if constexpr (particles_t::dim == 3) {
+        for (int i = 0; i < 3; ++i)
+          for (int j = 0; j < 3; ++j) {
+            if (particles.C(parid)[i][j] != 0)
+              printf("parid %d, C(%d, %d): %e\n", (int)parid, i, j, particles.C(parid)[i][j]);
+            // particles.C(parid)[i][j] = 0;
+          }
+      }
+    }
+
+    particles_t particles;
+  };
 
   template <typename Table> struct CleanSparsity<HashTableProxy<execspace_e::cuda, Table>> {
     using table_t = HashTableProxy<execspace_e::cuda, Table>;
@@ -122,13 +144,32 @@ namespace zs {
         float J = particles.J(parid);
         float mass = particles.mass(parid);
         float vol = model.volume * J;  ///< this is hack!
+#if 0
+        if (parid < 10)
+          printf("particle %d: mass %e, J %f, vol %e, dx_inv %f\n", parid, mass, J, vol, dx_inv);
+#endif
 
         float pressure = model.bulk * (powf(J, -model.gamma) - 1.f);
+        // float pressure = model.bulk * (1 / J / J / J / J / J / J / J - 1);
+
+#if 0
+        auto calcnorm = [](vec9 v) {
+          float sum = 0.f;
+          for (int i = 0; i < 9; ++i) sum += v[i] * v[i];
+          return sum;
+        };
+#endif
 
         vec9 contrib,
             C{particles.C(parid)[0][0], particles.C(parid)[1][0], particles.C(parid)[2][0],
               particles.C(parid)[0][1], particles.C(parid)[1][1], particles.C(parid)[2][1],
               particles.C(parid)[0][2], particles.C(parid)[1][2], particles.C(parid)[2][2]};
+#if 0
+        if (calcnorm(C) > 0.f)
+          printf("particle %d: C cols [[%e, %e, %e], [%e, %e, %e], [%e, %e, %e]]\n", (int)parid,
+                 C[0], C[1], C[2], C[3], C[4], C[5], C[6], C[7], C[8]);
+#endif
+
         contrib[0] = ((C[0] + C[0]) * D_inv * model.viscosity - pressure) * vol;
         contrib[1] = (C[1] + C[3]) * D_inv * model.viscosity * vol;
         contrib[2] = (C[2] + C[6]) * D_inv * model.viscosity * vol;
@@ -149,6 +190,14 @@ namespace zs {
         vec<vec3, 3> dws;
         for (int d = 0; d < 3; ++d) dws[d] = bspline_weight(local_pos[d], dx_inv);
 
+#if 0
+        if (parid < 10) {
+          printf("particle %d: local_offset %f, %f, %f\n", parid, local_pos[0], local_pos[1],
+                 local_pos[2]);
+        }
+#endif
+
+        // float weightsum = 0.f;
         for (int i = 0; i < 3; ++i)
           for (int j = 0; j < 3; ++j)
             for (int k = 0; k < 3; ++k) {
@@ -157,11 +206,24 @@ namespace zs {
               ivec3 offset{i, j, k};
               vec3 xixp = offset * dx - local_pos;
               VT W = dws[0][i] * dws[1][j] * dws[2][k];
+              // weightsum += W;
               ivec3 local_index = global_base_index + offset;
               VT wm = mass * W;
               int blockno = partition.query(ivec3{local_index[0] / gridblock_t::side_length,
                                                   local_index[1] / gridblock_t::side_length,
                                                   local_index[2] / gridblock_t::side_length});
+
+#if 0
+              if (calcnorm(contrib) > 0.f) {
+                printf("particle %d: contrib cols [[%e, %e, %e], [%e, %e, %e], [%e, %e, %e]]\n",
+                       (int)parid, contrib[0], contrib[1], contrib[2], contrib[3], contrib[4],
+                       contrib[5], contrib[6], contrib[7], contrib[8]);
+                printf("particle %d -> scattering [%d, %d, %d] weight: %f, xixp [%f, %f, %f]\n",
+                       (int)parid, offset[0], offset[1], offset[2], (float)W, xixp[0], xixp[1],
+                       xixp[2]);
+              }
+#endif
+
               auto& grid_block = gridblocks[blockno];
               for (int d = 0; d < 3; ++d) local_index[d] %= gridblock_t::side_length;
               atomicAddFloat(&grid_block(0, local_index).asFloat(), wm);
@@ -177,7 +239,22 @@ namespace zs {
                   &grid_block(3, local_index).asFloat(),
                   (VT)(wm * vel[2]
                        + (contrib[2] * xixp[0] + contrib[5] * xixp[1] + contrib[8] * xixp[2]) * W));
+#if 0
+              float checkedChn = (VT)(
+                  wm * vel[0]
+                  + (contrib[0] * xixp[0] + contrib[3] * xixp[1] + contrib[6] * xixp[2]) * W);
+              if (checkedChn > 1e-8) {
+                auto loc = global_base_index + offset;
+                printf("particle %d adds to node (%d, %d, %d) %f!\n", parid, loc[0], loc[1], loc[2],
+                       checkedChn);
+              }
+#endif
             }
+#if 0
+        if (weightsum > 1 + 1e-6 || weightsum < 1 - 1e-6) {
+          printf("particle %d weight sum %f not right!\n", parid, weightsum);
+        }
+#endif
       }
     }
 

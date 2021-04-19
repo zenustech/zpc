@@ -50,7 +50,6 @@ namespace zs {
         vec3 local_pos = pos - local_base_index * dx;
 
         vec3x3 ws;
-#pragma unroll 3
         for (int dd = 0; dd < 3; ++dd) {
           float d = local_pos[dd] * dx_inv - ((int)std::lround(local_pos[dd] * dx_inv) - 1);
           ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
@@ -62,9 +61,7 @@ namespace zs {
         }
 
         vec9 C{vec9::zeros()};
-#pragma unroll 3
         for (char i = 0; i < 3; i++)
-#pragma unroll 3
           for (char j = 0; j < 3; j++)
             for (char k = 0; k < 3; k++) {
               ivec3 offset{i, j, k};

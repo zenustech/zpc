@@ -1,7 +1,28 @@
 #pragma once
+#include "zensim/cuda/DeviceUtils.cuh"
 #include "zensim/simulation/gridop/GridOp.hpp"
 
 namespace zs {
+
+  template <typename GridBlocksT>
+  struct CleanGridBlocks<GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
+    using gridblocks_t = GridBlocksProxy<execspace_e::cuda, GridBlocksT>;
+    using gridblock_t = typename gridblocks_t::block_t;
+
+    explicit CleanGridBlocks(wrapv<execspace_e::cuda>, GridBlocksT &gridblocks)
+        : gridblocks{proxy<execspace_e::cuda>(gridblocks)} {}
+
+    __forceinline__ __device__ void operator()(typename gridblocks_t::size_type blockid,
+                                               typename gridblock_t::size_type cellid) noexcept {
+      auto &block = gridblocks[blockid];
+      using VT = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
+      block(0, cellid).asFloat() = static_cast<VT>(0);
+      for (int d = 0; d < gridblocks_t::dim; ++d)
+        block(d + 1, cellid).asFloat() = static_cast<VT>(0);
+    }
+
+    gridblocks_t gridblocks;
+  };
 
   template <transfer_scheme_e scheme, typename GridBlocksT>
   struct ComputeGridBlockVelocity<scheme, GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
@@ -9,8 +30,12 @@ namespace zs {
     using gridblock_t = typename gridblocks_t::block_t;
 
     explicit ComputeGridBlockVelocity(wrapv<execspace_e::cuda>, wrapv<scheme>,
-                                      GridBlocksT &gridblocks, float dt, float gravity)
-        : gridblocks{proxy<execspace_e::cuda>(gridblocks)}, dt{dt}, gravity{gravity} {}
+                                      GridBlocksT &gridblocks, float dt, float gravity,
+                                      float *maxVel)
+        : gridblocks{proxy<execspace_e::cuda>(gridblocks)},
+          dt{dt},
+          gravity{gravity},
+          maxVel{maxVel} {}
 
     __forceinline__ __device__ void operator()(typename gridblocks_t::size_type blockid,
                                                typename gridblock_t::size_type cellid) noexcept {
@@ -24,12 +49,21 @@ namespace zs {
           vel[d] = block(d + 1, cellid).asFloat() * mass;
         }
         vel[1] += gravity * dt;
+
+        /// write back
+        for (int d = 0; d < gridblocks_t::dim; ++d) block(d + 1, cellid).asFloat() = vel[d];
+
+        /// cfl dt
+        float ret{0.f};
+        for (int d = 0; d < gridblocks_t::dim; ++d) ret += vel[d] * vel[d];
+        atomicMax<float>(maxVel, ret);
       }
     }
 
     gridblocks_t gridblocks;
     float dt;
     float gravity;
+    float *maxVel;
   };
 
 }  // namespace zs

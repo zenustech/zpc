@@ -1,4 +1,6 @@
 #pragma once
+#include <zensim/resource/Resource.h>
+
 #include "zensim/container/HashTable.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/simulation/init/Scene.hpp"
@@ -14,6 +16,13 @@ namespace zs {
 
     std::size_t numModels() const noexcept { return particles.size(); }
     std::size_t numPartitions() const noexcept { return partitions.size(); }
+    float getMaxVel(int partI) const {
+      Vector<float> ret{1, memsrc_e::host, -1};
+      auto& rm = get_resource_manager().get();
+      rm.copy(ret.data(), maxVelSqrNorms[partI].data());
+      return ret[0];
+    }
+    float* maxVelPtr(int partI) const { return maxVelSqrNorms[partI].data(); }
 
     /// particle
     std::vector<GeneralParticles> particles;
@@ -26,6 +35,7 @@ namespace zs {
     std::vector<GeneralGridBlocks> gridBlocks;
     /// sparsity info (hash table)
     std::vector<GeneralHashTable> partitions;
+    std::vector<Vector<float>> maxVelSqrNorms;
     /// transfer operator
     // apic/ flip
     /// simulation setup

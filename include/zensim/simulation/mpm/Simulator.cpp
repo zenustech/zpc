@@ -76,11 +76,13 @@ namespace zs {
     /// grid blocks, partitions
     this->target().gridBlocks.resize(memDsts.size());
     this->target().partitions.resize(memDsts.size());
-    for (auto&& [memDst, nblocks, gridBlocks, partition] :
-         zs::zip(memDsts, numBlocks, this->target().gridBlocks, this->target().partitions)) {
+    this->target().maxVelSqrNorms.resize(memDsts.size());
+    for (auto&& [memDst, nblocks, gridBlocks, partition, maxVel] :
+         zs::zip(memDsts, numBlocks, this->target().gridBlocks, this->target().partitions, this->target().maxVelSqrNorms)) {
       gridBlocks = GridBlocks<GridBlock<dat32, 3, 4, 2>>{target().simOptions.dx, nblocks,
                                                          memDst.memspace(), memDst.devid()};
       partition = HashTable<i32, 3, int>{nblocks, memDst.memspace(), memDst.devid()};
+      maxVel = Vector<float>{1, memDst.memspace(), memDst.devid()};
     }
     this->target().memDsts = std::move(memDsts);
     this->target().groups = std::move(groups);

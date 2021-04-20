@@ -71,7 +71,7 @@ namespace zs {
 
     std::vector<std::size_t> numBlocks(numParticles.size());
     for (auto&& [dst, src] : zs::zip(numBlocks, numParticles)) dst = src / 8;
-    for (auto&& [id, n] : zs::zip(range(numBlocks.size(), numBlocks)))
+    for (auto&& [id, n] : zs::zip(range(numBlocks.size()), numBlocks))
       fmt::print("allocating {} blocks for partition {} in total!\n", n, id);
 
     /// particle model groups

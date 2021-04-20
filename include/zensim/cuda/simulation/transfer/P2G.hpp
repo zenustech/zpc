@@ -38,6 +38,7 @@ namespace zs {
     __forceinline__ __device__ void operator()(typename Table::value_t entry) noexcept {
       using namespace placeholders;
       table._table(_0, entry) = Table::key_t::uniform(Table::key_scalar_sentinel_v);
+      table._table(_1, entry) = Table::sentinel_v;  // necessary for query to terminate
       table._table(_2, entry) = -1;
       if (entry == 0) *table._cnt = 0;
     }
@@ -152,24 +153,10 @@ namespace zs {
         float pressure = model.bulk * (powf(J, -model.gamma) - 1.f);
         // float pressure = model.bulk * (1 / J / J / J / J / J / J / J - 1);
 
-#if 0
-        auto calcnorm = [](vec9 v) {
-          float sum = 0.f;
-          for (int i = 0; i < 9; ++i) sum += v[i] * v[i];
-          return sum;
-        };
-#endif
-
         vec9 contrib,
             C{particles.C(parid)[0][0], particles.C(parid)[1][0], particles.C(parid)[2][0],
               particles.C(parid)[0][1], particles.C(parid)[1][1], particles.C(parid)[2][1],
               particles.C(parid)[0][2], particles.C(parid)[1][2], particles.C(parid)[2][2]};
-
-#if 0
-        if (calcnorm(C) > 0.f)
-          printf("particle %d: C cols [[%e, %e, %e], [%e, %e, %e], [%e, %e, %e]]\n", (int)parid,
-                 C[0], C[1], C[2], C[3], C[4], C[5], C[6], C[7], C[8]);
-#endif
 
         contrib[0] = ((C[0] + C[0]) * model.viscosity - pressure) * vol;
         contrib[1] = (C[1] + C[3]) * model.viscosity * vol;

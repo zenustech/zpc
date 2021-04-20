@@ -1,4 +1,6 @@
 #pragma once
+#include <zensim/execution/ExecutionPolicy.hpp>
+
 #include "zensim/cuda/DeviceUtils.cuh"
 #include "zensim/simulation/gridop/GridOp.hpp"
 
@@ -24,16 +26,24 @@ namespace zs {
     gridblocks_t gridblocks;
   };
 
-  template <typename GridBlocksT>
-  struct PrintGridBlocks<GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
+  template <typename TableT, typename GridBlocksT>
+  struct PrintGridBlocks<HashTableProxy<execspace_e::cuda, TableT>,
+                         GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
+    using partition_t = HashTableProxy<execspace_e::cuda, TableT>;
     using gridblocks_t = GridBlocksProxy<execspace_e::cuda, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
 
-    explicit PrintGridBlocks(wrapv<execspace_e::cuda>, GridBlocksT &gridblocks)
-        : gridblocks{proxy<execspace_e::cuda>(gridblocks)} {}
+    explicit PrintGridBlocks(wrapv<execspace_e::cuda>, TableT &table, GridBlocksT &gridblocks)
+        : partition{proxy<execspace_e::cuda>(table)},
+          gridblocks{proxy<execspace_e::cuda>(gridblocks)} {}
 
     __forceinline__ __device__ void operator()(typename gridblocks_t::size_type blockid,
                                                typename gridblock_t::size_type cellid) noexcept {
+      auto blockkey = partition._activeKeys[blockid];
+      auto checkedid = partition.query(blockkey);
+      if (checkedid != blockid && cellid == 0)
+        printf("%d-th block(%d, %d, %d) table index: %d\n", blockid, blockkey[0], blockkey[1],
+               blockkey[2], checkedid);
       auto &block = gridblocks[blockid];
       using VT = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
       if (blockid == 0 && cellid == 0) printf("block space: %d\n", gridblock_t::space);
@@ -43,6 +53,7 @@ namespace zs {
                block(3, cellid).asFloat());
     }
 
+    partition_t partition;
     gridblocks_t gridblocks;
   };
 
@@ -71,14 +82,6 @@ namespace zs {
           vel[d] = block(d + 1, cellid).asFloat() * mass;
         }
         vel[1] += gravity * dt;
-
-#if 0
-        if (blockid < 1)
-          printf("block %d, cell %d, mass %e, (%e, %e, %e) ref:(%e, %e, %e)\n", (int)blockid,
-                 (int)cellid, block(0, cellid).asFloat(), (float)vel[0], (float)vel[1],
-                 (float)vel[2], (float)block(1, cellid).asFloat(),
-                 (float)block(2, cellid).asFloat(), (float)block(3, cellid).asFloat());
-#endif
 
         /// write back
         for (int d = 0; d < gridblocks_t::dim; ++d) block(d + 1, cellid).asFloat() = vel[d];

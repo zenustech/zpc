@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/container/Structure.hpp"
 #include "zensim/container/Structurefree.hpp"
+#include "zensim/geometry/Collider.h"
 #include "zensim/geometry/LevelSet.h"
 #include "zensim/math/Vec.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
@@ -21,6 +22,7 @@ namespace zs {
     std::vector<GeneralMesh> meshes;
     std::vector<GeneralNodes> nodes;
     std::vector<GeneralGridBlocks> grids;
+    std::vector<GeneralBoundary> boundaries;
     /// (constitutive model [elasticity, plasticity], geometry type, local model index)
     std::vector<std::tuple<ConstitutiveModelConfig, model_e, std::size_t>> models;
     static SceneBuilder create();
@@ -28,10 +30,12 @@ namespace zs {
 
   struct BuilderForSceneParticle;
   struct BuilderForSceneMesh;
+  struct BuilderForSceneBoundary;
   struct BuilderForScene : BuilderFor<Scene> {
     explicit BuilderForScene(Scene &scene) : BuilderFor<Scene>{scene} {}
     BuilderForSceneParticle particle();
     BuilderForSceneMesh mesh();
+    BuilderForSceneBoundary boundary();
   };
 
   struct SceneBuilder : BuilderForScene {
@@ -93,6 +97,29 @@ namespace zs {
 
     // std::vector<Mesh> meshes;
     ConstitutiveModelConfig config{EquationOfStateConfig{}};
+  };
+  struct BuilderForSceneBoundary : BuilderForScene {
+    explicit BuilderForSceneBoundary(Scene &scene) : BuilderForScene{scene} {}
+    /// particle positions
+    BuilderForSceneBoundary &addVdbLevelset(std::string fn, float dx);
+    BuilderForSceneBoundary &addCuboid(std::vector<float> mi, std::vector<float> ma);
+    BuilderForSceneBoundary &addCube(std::vector<float> c, float len);
+    BuilderForSceneBoundary &addSphere(std::vector<float> c, float r);
+    BuilderForSceneBoundary &addPlane(std::vector<float> o, std::vector<float> dir);
+
+    BuilderForSceneBoundary &setBoundaryType(collider_e type);
+
+    /// push to scene
+    BuilderForSceneBoundary &commit(MemoryHandle dst);
+    /// check build status
+    BuilderForSceneBoundary &output(std::string fn);
+
+  protected:
+    std::vector<AnalyticLevelSet<analytic_geometry_e::Plane, float, 3>> planes;
+    std::vector<AnalyticLevelSet<analytic_geometry_e::Cuboid, float, 3>> cuboids;
+    std::vector<AnalyticLevelSet<analytic_geometry_e::Sphere, float, 3>> spheres;
+    std::vector<LevelSet<float, 3>> vdbLevelsets;
+    collider_e boundaryType;
   };
 
   /// simulator setup

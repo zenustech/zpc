@@ -25,7 +25,7 @@ namespace zs {
 
     explicit CleanSparsity(wrapv<space>, Table& table) : table{proxy<space>(table)} {}
 
-    __forceinline__ __device__ void operator()(typename Table::value_t entry) noexcept {
+    constexpr void operator()(typename Table::value_t entry) noexcept {
       using namespace placeholders;
       table._table(_0, entry) = Table::key_t::uniform(Table::key_scalar_sentinel_v);
       table._table(_1, entry) = Table::sentinel_v;  // necessary for query to terminate
@@ -44,7 +44,7 @@ namespace zs {
     explicit ComputeSparsity(wrapv<space>, T dx, int blockLen, Table& table, X& pos)
         : dxinv{1.0 / dx}, blockLen{blockLen}, table{proxy<space>(table)}, pos{proxy<space>(pos)} {}
 
-    __forceinline__ __device__ void operator()(typename positions_t::size_type parid) noexcept {
+    constexpr void operator()(typename positions_t::size_type parid) noexcept {
       if constexpr (table_t::dim == 3) {
         auto coord = vec<int, 3>{gcem::round(pos(parid)[0] * dxinv) - 2,
                                  gcem::round(pos(parid)[1] * dxinv) - 2,
@@ -58,7 +58,7 @@ namespace zs {
                                  gcem::round(pos(parid)[1] * dxinv) - 2};
         vec<int, 2> blockid = coord;
         for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
-        blockid /= blockLen;
+        blockid = blockid / blockLen;
         table.insert(blockid);
       }
     }

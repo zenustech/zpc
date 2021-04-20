@@ -78,4 +78,12 @@ namespace zs {
                 Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>>,
                 Collider<LevelSet<T, dim>>, Collider<HeightField<T>>>;
 
+  using GeneralBoundary = variant<Collider<AnalyticLevelSet<analytic_geometry_e::Plane, f32, 3>>,
+                                  Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, f32, 3>>,
+                                  Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 3>>,
+                                  Collider<LevelSet<f32, 3>>,
+                                  Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, f32, 2>>,
+                                  Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 2>>,
+                                  Collider<LevelSet<f32, 2>>, Collider<HeightField<f32>>>;
+
 }  // namespace zs

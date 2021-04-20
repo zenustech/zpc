@@ -15,7 +15,7 @@ namespace zs {
     explicit SetParticleAttribute(wrapv<space>, ParticlesT& particles)
         : particles{proxy<space>(particles)} {}
 
-    __forceinline__ __device__ void operator()(typename particles_t::size_type parid) noexcept {
+    constexpr void operator()(typename particles_t::size_type parid) noexcept {
       if constexpr (particles_t::dim == 3) {
         for (int i = 0; i < 3; ++i)
           for (int j = 0; j < 3; ++j) {

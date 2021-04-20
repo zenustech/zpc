@@ -31,7 +31,7 @@ namespace zs {
   struct EquationOfStateConfig : MaterialConfig {
     float bulk{4e4f};
     float gamma{7.15f};
-    float viscosity{0.01f};
+    float viscosity{0.f};
   };
   struct NeoHookeanConfig : MaterialConfig {
     float E{5e4f};

@@ -59,6 +59,7 @@ namespace zs {
 
     __forceinline__ __device__ void operator()(typename positions_t::size_type parid) noexcept {
       if constexpr (table_t::dim == 3) {
+        // if (parid < 5) printf("parid: %d, dxinv: %e\n", (int)parid, dxinv);
         auto coord = vec<int, 3>{std::lround(pos(parid)[0] * dxinv) - 2,
                                  std::lround(pos(parid)[1] * dxinv) - 2,
                                  std::lround(pos(parid)[2] * dxinv) - 2};
@@ -132,23 +133,22 @@ namespace zs {
     }
 
     __forceinline__ __device__ void operator()(typename particles_t::size_type parid) noexcept {
-      if constexpr (particles_t::dim == 3 && std::is_same_v<model_t, EquationOfStateConfig>) {
+      if constexpr (particles_t::dim == 3
+                    && std::is_same_v<
+                        model_t,
+                        EquationOfStateConfig> && sizeof(typename gridblock_t::value_type) == 4) {
         float const dx = gridblocks._dx.asFloat();
         float const dx_inv = dxinv();
         float const D_inv = 4.f * dx_inv * dx_inv;
         using ivec3 = vec<int, 3>;
         using vec3 = vec<float, 3>;
         using vec9 = vec<float, 9>;
+        using vec3x3 = vec<float, 3, 3>;
         vec3 local_pos{particles.pos(parid)[0], particles.pos(parid)[1], particles.pos(parid)[2]};
         vec3 vel{particles.vel(parid)[0], particles.vel(parid)[1], particles.vel(parid)[2]};
         float J = particles.J(parid);
         float mass = particles.mass(parid);
-        float vol = model.volume * J;  ///< this is hack!
-#if 0
-        if (parid < 10)
-          printf("particle %d: mass %e, J %f, vol %e, dx_inv %f\n", parid, mass, J, vol, dx_inv);
-#endif
-
+        float vol = model.volume * J;
         float pressure = model.bulk * (powf(J, -model.gamma) - 1.f);
         // float pressure = model.bulk * (1 / J / J / J / J / J / J / J - 1);
 
@@ -164,38 +164,41 @@ namespace zs {
             C{particles.C(parid)[0][0], particles.C(parid)[1][0], particles.C(parid)[2][0],
               particles.C(parid)[0][1], particles.C(parid)[1][1], particles.C(parid)[2][1],
               particles.C(parid)[0][2], particles.C(parid)[1][2], particles.C(parid)[2][2]};
+
 #if 0
         if (calcnorm(C) > 0.f)
           printf("particle %d: C cols [[%e, %e, %e], [%e, %e, %e], [%e, %e, %e]]\n", (int)parid,
                  C[0], C[1], C[2], C[3], C[4], C[5], C[6], C[7], C[8]);
 #endif
 
-        contrib[0] = ((C[0] + C[0]) * D_inv * model.viscosity - pressure) * vol;
-        contrib[1] = (C[1] + C[3]) * D_inv * model.viscosity * vol;
-        contrib[2] = (C[2] + C[6]) * D_inv * model.viscosity * vol;
+        contrib[0] = ((C[0] + C[0]) * model.viscosity - pressure) * vol;
+        contrib[1] = (C[1] + C[3]) * model.viscosity * vol;
+        contrib[2] = (C[2] + C[6]) * model.viscosity * vol;
 
-        contrib[3] = (C[3] + C[1]) * D_inv * model.viscosity * vol;
-        contrib[4] = ((C[4] + C[4]) * D_inv * model.viscosity - pressure) * vol;
-        contrib[5] = (C[5] + C[7]) * D_inv * model.viscosity * vol;
+        contrib[3] = (C[3] + C[1]) * model.viscosity * vol;
+        contrib[4] = ((C[4] + C[4]) * model.viscosity - pressure) * vol;
+        contrib[5] = (C[5] + C[7]) * model.viscosity * vol;
 
-        contrib[6] = (C[6] + C[2]) * D_inv * model.viscosity * vol;
-        contrib[7] = (C[7] + C[5]) * D_inv * model.viscosity * vol;
-        contrib[8] = ((C[8] + C[8]) * D_inv * model.viscosity - pressure) * vol;
+        contrib[6] = (C[6] + C[2]) * model.viscosity * vol;
+        contrib[7] = (C[7] + C[5]) * model.viscosity * vol;
+        contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
 
         contrib = (C * mass - contrib * dt) * D_inv;
         ivec3 global_base_index{int(std::lround(local_pos[0] * dx_inv) - 1),
                                 int(std::lround(local_pos[1] * dx_inv) - 1),
                                 int(std::lround(local_pos[2] * dx_inv) - 1)};
         local_pos = local_pos - global_base_index * dx;
-        vec<vec3, 3> dws;
-        for (int d = 0; d < 3; ++d) dws[d] = bspline_weight(local_pos[d], dx_inv);
 
-#if 0
-        if (parid < 10) {
-          printf("particle %d: local_offset %f, %f, %f\n", parid, local_pos[0], local_pos[1],
-                 local_pos[2]);
+        vec3x3 ws;
+        for (char dd = 0; dd < 3; ++dd) {
+          // float d = local_pos[dd] * dx_inv - ((int)std::lround(local_pos[dd] * dx_inv) - 1);
+          float d = (local_pos[dd] - (std::lround(local_pos[dd] * dx_inv) - 1) * dx) * dx_inv;
+          ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
+          d -= 1.0f;
+          ws(dd, 1) = 0.75 - d * d;
+          d = 0.5f + d;
+          ws(dd, 2) = 0.5 * d * d;
         }
-#endif
 
         // float weightsum = 0.f;
         for (int i = 0; i < 3; ++i)
@@ -205,56 +208,30 @@ namespace zs {
                   std::declval<typename gridblock_t::value_type>().asFloat())>;
               ivec3 offset{i, j, k};
               vec3 xixp = offset * dx - local_pos;
-              VT W = dws[0][i] * dws[1][j] * dws[2][k];
+              float W = ws(0, i) * ws(1, j) * ws(2, k);
               // weightsum += W;
-              ivec3 local_index = global_base_index + offset;
               VT wm = mass * W;
+              ivec3 local_index = global_base_index + offset;
               int blockno = partition.query(ivec3{local_index[0] / gridblock_t::side_length,
                                                   local_index[1] / gridblock_t::side_length,
                                                   local_index[2] / gridblock_t::side_length});
 
-#if 0
-              if (calcnorm(contrib) > 0.f) {
-                printf("particle %d: contrib cols [[%e, %e, %e], [%e, %e, %e], [%e, %e, %e]]\n",
-                       (int)parid, contrib[0], contrib[1], contrib[2], contrib[3], contrib[4],
-                       contrib[5], contrib[6], contrib[7], contrib[8]);
-                printf("particle %d -> scattering [%d, %d, %d] weight: %f, xixp [%f, %f, %f]\n",
-                       (int)parid, offset[0], offset[1], offset[2], (float)W, xixp[0], xixp[1],
-                       xixp[2]);
-              }
-#endif
-
               auto& grid_block = gridblocks[blockno];
               for (int d = 0; d < 3; ++d) local_index[d] %= gridblock_t::side_length;
-              atomicAddFloat(&grid_block(0, local_index).asFloat(), wm);
-              atomicAddFloat(
+              atomicAdd(&grid_block(0, local_index).asFloat(), wm);
+              atomicAdd(
                   &grid_block(1, local_index).asFloat(),
                   (VT)(wm * vel[0]
                        + (contrib[0] * xixp[0] + contrib[3] * xixp[1] + contrib[6] * xixp[2]) * W));
-              atomicAddFloat(
+              atomicAdd(
                   &grid_block(2, local_index).asFloat(),
                   (VT)(wm * vel[1]
                        + (contrib[1] * xixp[0] + contrib[4] * xixp[1] + contrib[7] * xixp[2]) * W));
-              atomicAddFloat(
+              atomicAdd(
                   &grid_block(3, local_index).asFloat(),
                   (VT)(wm * vel[2]
                        + (contrib[2] * xixp[0] + contrib[5] * xixp[1] + contrib[8] * xixp[2]) * W));
-#if 0
-              float checkedChn = (VT)(
-                  wm * vel[0]
-                  + (contrib[0] * xixp[0] + contrib[3] * xixp[1] + contrib[6] * xixp[2]) * W);
-              if (checkedChn > 1e-8) {
-                auto loc = global_base_index + offset;
-                printf("particle %d adds to node (%d, %d, %d) %f!\n", parid, loc[0], loc[1], loc[2],
-                       checkedChn);
-              }
-#endif
             }
-#if 0
-        if (weightsum > 1 + 1e-6 || weightsum < 1 - 1e-6) {
-          printf("particle %d weight sum %f not right!\n", parid, weightsum);
-        }
-#endif
       }
     }
 

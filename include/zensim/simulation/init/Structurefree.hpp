@@ -33,8 +33,12 @@ namespace zs {
     Vector<TM> F, C;
   };
 
+#if 0
   using GeneralParticles
       = variant<Particles<f32, 2>, Particles<f64, 2>, Particles<f32, 3>, Particles<f64, 3>>;
+#else
+  using GeneralParticles = variant<Particles<f32, 3>>;
+#endif
 
   template <execspace_e, typename ParticlesT, typename = void> struct ParticlesProxy;
   template <execspace_e space, typename ParticlesT> struct ParticlesProxy<space, ParticlesT> {

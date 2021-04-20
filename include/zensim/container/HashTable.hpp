@@ -34,7 +34,7 @@ namespace zs {
     static constexpr Tn key_scalar_sentinel_v = std::numeric_limits<Tn>::max();
     static constexpr value_t sentinel_v{-1};
     static constexpr status_t status_sentinel_v{-1};
-    static constexpr std::size_t reserve_ratio_v = 4;
+    static constexpr std::size_t reserve_ratio_v = 16;
 
     constexpr auto &self() noexcept { return static_cast<base_t &>(*this); }
     constexpr const auto &self() const noexcept { return static_cast<const base_t &>(*this); }
@@ -93,8 +93,12 @@ namespace zs {
     }
   };
 
+#if 0
   using GeneralHashTable = variant<HashTable<i32, 2, int>, HashTable<i32, 2, long long int>,
                                    HashTable<i32, 3, int>, HashTable<i32, 3, long long int>>;
+#else
+  using GeneralHashTable = variant<HashTable<i32, 3, int>>;
+#endif
 
   template <execspace_e, typename HashTableT, typename = void>
   struct HashTableProxy;  ///< proxy to work within each backends

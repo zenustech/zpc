@@ -50,7 +50,7 @@ namespace zs {
         ret = (loc[0] << (domain_bits + domain_bits)) + (loc[1] << domain_bits) + loc[2];
       return ret;
     }
-    V _data[1 << channel_bits][space];
+    V _data[num_chns][space];
   };
 
   template <typename Block> struct GridBlocks;
@@ -69,11 +69,15 @@ namespace zs {
     V dx;
   };
 
+#if 0
   using GeneralGridBlocks
       = variant<GridBlocks<GridBlock<dat32, 2, 3, 2>>, GridBlocks<GridBlock<dat32, 3, 3, 2>>,
                 GridBlocks<GridBlock<dat64, 2, 3, 2>>, GridBlocks<GridBlock<dat64, 3, 3, 2>>,
                 GridBlocks<GridBlock<dat32, 2, 4, 2>>, GridBlocks<GridBlock<dat32, 3, 4, 2>>,
                 GridBlocks<GridBlock<dat64, 2, 4, 2>>, GridBlocks<GridBlock<dat64, 3, 4, 2>>>;
+#else
+  using GeneralGridBlocks = variant<GridBlocks<GridBlock<dat32, 3, 2, 2>>>;
+#endif
 
   template <execspace_e, typename GridBlocksT, typename = void> struct GridBlocksProxy;
   template <execspace_e space, typename GridBlocksT> struct GridBlocksProxy<space, GridBlocksT> {

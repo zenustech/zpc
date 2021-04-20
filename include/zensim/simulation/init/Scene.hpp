@@ -47,6 +47,7 @@ namespace zs {
 
   struct BuilderForSceneParticle : BuilderForScene {
     explicit BuilderForSceneParticle(Scene &scene) : BuilderForScene{scene} {}
+    ~BuilderForSceneParticle() { commit(MemoryHandle{memsrc_e::host, -1}); }
     /// particle positions
     BuilderForSceneParticle &addParticles(std::string fn, float dx, float ppc);
     BuilderForSceneParticle &addCuboid(std::vector<float> mi, std::vector<float> ma, float dx,
@@ -100,6 +101,7 @@ namespace zs {
   };
   struct BuilderForSceneBoundary : BuilderForScene {
     explicit BuilderForSceneBoundary(Scene &scene) : BuilderForScene{scene} {}
+    ~BuilderForSceneBoundary() { commit(MemoryHandle{memsrc_e::host, -1}); }
     /// particle positions
     BuilderForSceneBoundary &addVdbLevelset(std::string fn, float dx);
     BuilderForSceneBoundary &addCuboid(std::vector<float> mi, std::vector<float> ma);
@@ -119,7 +121,7 @@ namespace zs {
     std::vector<AnalyticLevelSet<analytic_geometry_e::Cuboid, float, 3>> cuboids;
     std::vector<AnalyticLevelSet<analytic_geometry_e::Sphere, float, 3>> spheres;
     std::vector<LevelSet<float, 3>> vdbLevelsets;
-    collider_e boundaryType;
+    collider_e boundaryType{collider_e::Sticky};
   };
 
   /// simulator setup

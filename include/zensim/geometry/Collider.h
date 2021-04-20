@@ -72,6 +72,8 @@ namespace zs {
     TV dbdt{TV::zeros()};
   };
 
+  template <typename Ls, typename... Args> Collider(Ls, Args...) -> Collider<Ls>;
+
   template <typename T, int dim> using GenericCollider
       = variant<Collider<AnalyticLevelSet<analytic_geometry_e::Plane, T, dim>>,
                 Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, T, dim>>,

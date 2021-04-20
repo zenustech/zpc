@@ -26,6 +26,9 @@ namespace zs {
     return BuilderForSceneParticle{this->target()};
   }
   BuilderForSceneMesh BuilderForScene::mesh() { return BuilderForSceneMesh{this->target()}; }
+  BuilderForSceneBoundary BuilderForScene::boundary() {
+    return BuilderForSceneBoundary{this->target()};
+  }
 
   BuilderForSceneParticle &BuilderForSceneParticle::addParticles(std::string fn, float dx,
                                                                  float ppc) {
@@ -219,5 +222,62 @@ namespace zs {
     return *this;
   }
 
+  ///
+  BuilderForSceneBoundary &BuilderForSceneBoundary::addVdbLevelset(std::string fn, float dx) {
+    // ;
+    return *this;
+  }
+  BuilderForSceneBoundary &BuilderForSceneBoundary::addCuboid(std::vector<float> mi,
+                                                              std::vector<float> ma) {
+    cuboids.emplace_back(vec<float, 3>{mi[0], mi[1], mi[2]}, vec<float, 3>{ma[0], ma[1], ma[2]});
+    return *this;
+  }
+  BuilderForSceneBoundary &BuilderForSceneBoundary::addCube(std::vector<float> c, float len) {
+    vec<float, 3> o{c[0], c[1], c[2]};
+    cuboids.emplace_back(o - len / 2, o + len / 2);
+    return *this;
+  }
+  BuilderForSceneBoundary &BuilderForSceneBoundary::addSphere(std::vector<float> c, float r) {
+    spheres.emplace_back(vec<float, 3>{c[0], c[1], c[2]}, r);
+    return *this;
+  }
+  BuilderForSceneBoundary &BuilderForSceneBoundary::addPlane(std::vector<float> o,
+                                                             std::vector<float> n) {
+    planes.emplace_back(vec<float, 3>{o[0], o[1], o[2]}, vec<float, 3>{n[0], n[1], n[2]});
+    return *this;
+  }
+  BuilderForSceneBoundary &BuilderForSceneBoundary::setBoundaryType(collider_e type) {
+    boundaryType = type;
+    return *this;
+  }
+  BuilderForSceneBoundary &BuilderForSceneBoundary::commit(MemoryHandle dst) {
+    auto &scene = this->target();
+    auto &dstBoundaries = scene.boundaries;
+    /// cuboid
+    {
+      for (auto &&als : cuboids) dstBoundaries.emplace_back(Collider{als, boundaryType});
+      cuboids.clear();
+    }
+    /// sphere
+    {
+      for (auto &&als : spheres) dstBoundaries.emplace_back(Collider{als, boundaryType});
+      spheres.clear();
+    }
+    /// plane
+    {
+      for (auto &&als : planes) dstBoundaries.emplace_back(Collider{als, boundaryType});
+      planes.clear();
+    }
+    /// vdb levelset
+    if constexpr (false) {
+      dst.memspace();
+      dst.devid();
+      auto &rm = get_resource_manager().get();
+      ;
+    }
+    return *this;
+  }
+
+  ///
   SimOptionsBuilder SimOptions::create() { return {}; }
 }  // namespace zs

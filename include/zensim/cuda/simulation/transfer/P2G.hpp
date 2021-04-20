@@ -61,14 +61,14 @@ namespace zs {
     __forceinline__ __device__ void operator()(typename positions_t::size_type parid) noexcept {
       if constexpr (table_t::dim == 3) {
         // if (parid < 5) printf("parid: %d, dxinv: %e\n", (int)parid, dxinv);
-        auto coord = vec<int, 3>{std::lround(pos(parid)[0] * dxinv) - 2,
-                                 std::lround(pos(parid)[1] * dxinv) - 2,
-                                 std::lround(pos(parid)[2] * dxinv) - 2};
+        auto coord = vec<int, 3>{gcem::round(pos(parid)[0] * dxinv) - 2,
+                                 gcem::round(pos(parid)[1] * dxinv) - 2,
+                                 gcem::round(pos(parid)[2] * dxinv) - 2};
         auto blockid = coord / blockLen;
         table.insert(blockid);
       } else if constexpr (table_t::dim == 2) {
-        auto coord = vec<int, 2>{std::lround(pos(parid)[0] * dxinv) - 2,
-                                 std::lround(pos(parid)[1] * dxinv) - 2};
+        auto coord = vec<int, 2>{gcem::round(pos(parid)[0] * dxinv) - 2,
+                                 gcem::round(pos(parid)[1] * dxinv) - 2};
         auto blockid = coord / blockLen;
         table.insert(blockid);
       }
@@ -171,15 +171,15 @@ namespace zs {
         contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
 
         contrib = (C * mass - contrib * dt) * D_inv;
-        ivec3 global_base_index{int(std::lround(local_pos[0] * dx_inv) - 1),
-                                int(std::lround(local_pos[1] * dx_inv) - 1),
-                                int(std::lround(local_pos[2] * dx_inv) - 1)};
+        ivec3 global_base_index{int(gcem::round(local_pos[0] * dx_inv) - 1),
+                                int(gcem::round(local_pos[1] * dx_inv) - 1),
+                                int(gcem::round(local_pos[2] * dx_inv) - 1)};
         local_pos = local_pos - global_base_index * dx;
 
         vec3x3 ws;
         for (char dd = 0; dd < 3; ++dd) {
-          // float d = local_pos[dd] * dx_inv - ((int)std::lround(local_pos[dd] * dx_inv) - 1);
-          float d = (local_pos[dd] - (std::lround(local_pos[dd] * dx_inv) - 1) * dx) * dx_inv;
+          // float d = local_pos[dd] * dx_inv - (gcem::round(local_pos[dd] * dx_inv) - 1);
+          float d = (local_pos[dd] - (gcem::round(local_pos[dd] * dx_inv) - 1) * dx) * dx_inv;
           ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
           d -= 1.0f;
           ws(dd, 1) = 0.75 - d * d;

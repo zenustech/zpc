@@ -45,13 +45,13 @@ namespace zs {
         vec3 vel{vec3::zeros()};
 
         ivec3 global_base_index{};
-        for (int d = 0; d < 3; ++d) global_base_index[d] = (int)std::lround(pos[d] * dx_inv) - 1;
+        for (int d = 0; d < 3; ++d) global_base_index[d] = (int)gcem::round(pos[d] * dx_inv) - 1;
         ivec3 local_base_index = global_base_index;
         vec3 local_pos = pos - local_base_index * dx;
 
         vec3x3 ws;
         for (int dd = 0; dd < 3; ++dd) {
-          float d = local_pos[dd] * dx_inv - ((int)std::lround(local_pos[dd] * dx_inv) - 1);
+          float d = local_pos[dd] * dx_inv - (gcem::round(local_pos[dd] * dx_inv) - 1);
           ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
           d -= 1.0f;
           ws(dd, 1) = 0.75 - d * d;

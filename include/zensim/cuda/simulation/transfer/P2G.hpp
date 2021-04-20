@@ -1,9 +1,9 @@
 #pragma once
+#include "zensim/container/Structurefree.hpp"
 #include "zensim/cuda/DeviceUtils.cuh"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/physics/ConstitutiveModel.hpp"
-#include "zensim/simulation/init/Structurefree.hpp"
 #include "zensim/simulation/transfer/P2G.hpp"
 
 namespace zs {

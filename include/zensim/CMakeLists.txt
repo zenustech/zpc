@@ -55,6 +55,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/TileVector.hpp
     container/HashTable.hpp
     container/Vector.hpp
+    container/Structure.hpp
+    container/Structurefree.hpp
     # execution
     execution/Concurrency.h
     execution/ExecutionNode.h
@@ -128,8 +130,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     zensim.hpp
     # simulation
     simulation/mpm/Simulator.hpp
-    simulation/init/Structure.hpp
-    simulation/init/Structurefree.hpp
     simulation/physics/ConstitutiveModel.hpp
     simulation/transfer/P2G.hpp
     simulation/transfer/G2P.hpp

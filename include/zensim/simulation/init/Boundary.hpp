@@ -1,6 +1,6 @@
 #pragma once
 #include "Structure.hpp"
-#include "Structurefree.hpp"
+#include "zensim/container/Structurefree.hpp"
 #include "zensim/geometry/Collider.h"
 #include "zensim/geometry/LevelSet.h"
 #include "zensim/math/Vec.h"

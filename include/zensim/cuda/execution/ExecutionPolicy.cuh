@@ -106,13 +106,13 @@ namespace zs {
       return res;
     }
     template <typename Tn, typename F>
-    void operator()(std::initializer_list<Tn> range, const F &f) const {
+    void operator()(std::initializer_list<Tn> range, F &&f) const {
       (*this)(std::vector<Tn>{range}, f);
     }
     template <typename Range, typename F,
               enable_if_t<((std::declval<Range &>.end() - std::declval<Range &>.begin()) > 0)> = 0>
-    void operator()(Range &&range, const F &f) const {
-      (*this)({range.end() - range.begin()}, f);
+    void operator()(Range &&range, F &&f) const {
+      (*this)({range.end() - range.begin()}, FWD(f));
     }
     template <typename Tn, typename F> void operator()(const std::vector<Tn> &range, F &&f) const {
       auto &context = Cuda::context(procid);

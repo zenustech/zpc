@@ -64,12 +64,16 @@ namespace zs {
         auto coord = vec<int, 3>{gcem::round(pos(parid)[0] * dxinv) - 2,
                                  gcem::round(pos(parid)[1] * dxinv) - 2,
                                  gcem::round(pos(parid)[2] * dxinv) - 2};
-        auto blockid = coord / blockLen;
+        vec<int, 3> blockid = coord;
+        for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
+        blockid = blockid / blockLen;
         table.insert(blockid);
       } else if constexpr (table_t::dim == 2) {
         auto coord = vec<int, 2>{gcem::round(pos(parid)[0] * dxinv) - 2,
                                  gcem::round(pos(parid)[1] * dxinv) - 2};
-        auto blockid = coord / blockLen;
+        vec<int, 2> blockid = coord;
+        for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
+        blockid /= blockLen;
         table.insert(blockid);
       }
     }
@@ -199,12 +203,17 @@ namespace zs {
               // weightsum += W;
               VT wm = mass * W;
               ivec3 local_index = global_base_index + offset;
-              int blockno = partition.query(ivec3{local_index[0] / gridblock_t::side_length,
-                                                  local_index[1] / gridblock_t::side_length,
-                                                  local_index[2] / gridblock_t::side_length});
+
+              ivec3 block_coord = local_index;
+              for (int d = 0; d < particles_t::dim; ++d)
+                block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
+              block_coord = block_coord / gridblock_t::side_length;
+              int blockno = partition.query(block_coord);
 
               auto& grid_block = gridblocks[blockno];
-              for (int d = 0; d < 3; ++d) local_index[d] %= gridblock_t::side_length;
+              // for (int d = 0; d < 3; ++d) local_index[d] %= gridblock_t::side_length;
+              local_index = local_index - block_coord * gridblock_t::side_length;
+
               atomicAdd(&grid_block(0, local_index).asFloat(), wm);
               atomicAdd(
                   &grid_block(1, local_index).asFloat(),

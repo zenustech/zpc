@@ -2,7 +2,7 @@
 #include <zensim/execution/ExecutionPolicy.hpp>
 
 #include "zensim/cuda/DeviceUtils.cuh"
-#include "zensim/simulation/gridop/GridOp.hpp"
+#include "zensim/simulation/grid/GridOp.hpp"
 
 namespace zs {
 

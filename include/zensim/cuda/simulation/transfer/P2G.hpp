@@ -78,8 +78,7 @@ namespace zs {
 
         vec3x3 ws;
         for (char dd = 0; dd < 3; ++dd) {
-          // float d = local_pos[dd] * dx_inv - (gcem::round(local_pos[dd] * dx_inv) - 1);
-          float d = (local_pos[dd] - (gcem::round(local_pos[dd] * dx_inv) - 1) * dx) * dx_inv;
+          float d = local_pos[dd] * dx_inv - (gcem::round(local_pos[dd] * dx_inv) - 1);
           ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
           d -= 1.0f;
           ws(dd, 1) = 0.75 - d * d;
@@ -100,15 +99,22 @@ namespace zs {
               VT wm = mass * W;
               ivec3 local_index = global_base_index + offset;
 
+#if 0
+              int blockno = partition.query(local_index / gridblock_t::side_length);
+#else
               ivec3 block_coord = local_index;
               for (int d = 0; d < particles_t::dim; ++d)
                 block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
               block_coord = block_coord / gridblock_t::side_length;
               int blockno = partition.query(block_coord);
+#endif
 
               auto& grid_block = gridblocks[blockno];
-              // for (int d = 0; d < 3; ++d) local_index[d] %= gridblock_t::side_length;
+#if 0
+              for (int d = 0; d < 3; ++d) local_index[d] %= gridblock_t::side_length;
+#else
               local_index = local_index - block_coord * gridblock_t::side_length;
+#endif
 
               atomicAdd(&grid_block(0, local_index).asFloat(), wm);
               atomicAdd(

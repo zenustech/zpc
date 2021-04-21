@@ -76,7 +76,6 @@ namespace zs {
               int blockno = partition.query(block_coord);
 
               auto& grid_block = gridblocks[blockno];
-              // for (int d = 0; d < 3; ++d) local_index[d] %= gridblock_t::side_length;
               local_index = local_index - block_coord * gridblock_t::side_length;
               vec3 vi{grid_block(1, local_index).asFloat(), grid_block(2, local_index).asFloat(),
                       grid_block(3, local_index).asFloat()};

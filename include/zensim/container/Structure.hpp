@@ -25,12 +25,12 @@ namespace zs {
   /// sizeof(float) = 4
   /// bin_size = 64
   /// attrib_size = 16
-  template <typename V = dat32, int d = 3, int channel_bits = 4, int domain_bits = 2>
+  template <typename V = dat32, int dim_ = 3, int channel_bits = 4, int domain_bits = 2>
   struct GridBlock {
     using value_type = V;
     using size_type = int;
-    static constexpr int dim = d;
-    using IV = vec<int, dim>;
+    static constexpr int dim = dim_;
+    using IV = vec<size_type, dim>;
     static constexpr int num_chns = 1 << channel_bits;
     static constexpr int side_length = 1 << domain_bits;
     static constexpr int space = 1 << (domain_bits * dim);
@@ -39,15 +39,18 @@ namespace zs {
     constexpr auto operator()(int c, IV loc) const noexcept { return _data[c][offset(loc)]; }
     constexpr auto &operator()(int c, size_type cellid) noexcept { return _data[c][cellid]; }
     constexpr auto operator()(int c, size_type cellid) const noexcept { return _data[c][cellid]; }
+    static constexpr IV to_coord(size_type cellid) {
+      IV ret{IV::zeros()};
+      for (int d = dim - 1; d >= 0 && cellid > 0; --d, cellid >>= domain_bits)
+        ret[d] = cellid % side_length;
+      return ret;
+    }
 
   protected:
     constexpr int offset(const IV &loc) const noexcept {
       // using Seq = typename gen_seq<d>::template uniform_values_t<vseq_t, (1 << domain_bits)>;
-      int ret{0};
-      if constexpr (d == 2)
-        ret = (loc[0] << domain_bits) + loc[1];
-      else if constexpr (d == 3)
-        ret = (loc[0] << (domain_bits + domain_bits)) + (loc[1] << domain_bits) + loc[2];
+      size_type ret{0};
+      for (int d = 0; d < dim; ++d) ret = (ret << domain_bits) + loc[d];
       return ret;
     }
     V _data[num_chns][space];

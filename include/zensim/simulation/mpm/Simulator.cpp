@@ -17,6 +17,7 @@ namespace zs {
     for (int i = 0; i < scene.particles.size(); ++i)
       /// range-based for loop might not be safe after moved
       this->target().particles.push_back(std::move(scene.particles[i]));
+    this->target().boundaries = std::move(scene.boundaries);
     return *this;
   }
   BuilderForMPMSimulator& BuilderForMPMSimulator::setSimOptions(const SimOptions& ops) {

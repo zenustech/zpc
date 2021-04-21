@@ -37,6 +37,8 @@ namespace zs {
     std::vector<GeneralHashTable> partitions;
     std::vector<Vector<float>> maxVelSqrNorms;
     /// transfer operator
+    /// boundary
+    std::vector<GeneralBoundary> boundaries;
     // apic/ flip
     /// simulation setup
     SimOptions simOptions;

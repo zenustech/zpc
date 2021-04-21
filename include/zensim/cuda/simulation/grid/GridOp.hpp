@@ -99,4 +99,42 @@ namespace zs {
     float *maxVel;
   };
 
+  template <typename ColliderT, typename TableT, typename GridBlocksT>
+  struct ApplyBoundaryConditionOnGridBlocks<ColliderT, HashTableProxy<execspace_e::cuda, TableT>,
+                                            GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
+    using collider_t = ColliderT;
+    using partition_t = HashTableProxy<execspace_e::cuda, TableT>;
+    using gridblocks_t = GridBlocksProxy<execspace_e::cuda, GridBlocksT>;
+    using gridblock_t = typename gridblocks_t::block_t;
+
+    explicit ApplyBoundaryConditionOnGridBlocks(wrapv<execspace_e::cuda>, ColliderT &collider,
+                                                TableT &table, GridBlocksT &gridblocks)
+        : collider{collider},
+          partition{proxy<execspace_e::cuda>(table)},
+          gridblocks{proxy<execspace_e::cuda>(gridblocks)} {}
+
+    __forceinline__ __device__ void operator()(typename gridblocks_t::size_type blockid,
+                                               typename gridblock_t::size_type cellid) noexcept {
+      auto blockkey = partition._activeKeys[blockid];
+      auto &block = gridblocks[blockid];
+      using VT = typename collider_t::T;
+      VT dx = static_cast<VT>(gridblocks._dx.asFloat());
+
+      if (block(0, cellid).asFloat() > 0) {
+        vec<VT, gridblocks_t::dim> vel,
+            pos = (blockkey * gridblock_t::side_length + gridblock_t::to_coord(cellid)) * dx;
+        for (int d = 0; d < gridblocks_t::dim; ++d)
+          vel[d] = static_cast<VT>(block(d + 1, cellid).asFloat());
+
+        collider.resolveCollision(pos, vel);
+
+        for (int d = 0; d < gridblocks_t::dim; ++d) block(d + 1, cellid).asFloat() = vel[d];
+      }
+    }
+
+    collider_t collider;
+    partition_t partition;
+    gridblocks_t gridblocks;
+  };
+
 }  // namespace zs

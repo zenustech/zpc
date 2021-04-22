@@ -27,6 +27,15 @@ namespace zs {
       return ret;
     }
 
+    void append(const Particles &other) {
+      M.append(other.M);
+      X.append(other.X);
+      V.append(other.V);
+      J.append(other.J);
+      F.append(other.F);
+      C.append(other.C);
+    }
+
     Vector<T> M;
     Vector<TV> X, V;
     Vector<T> J;

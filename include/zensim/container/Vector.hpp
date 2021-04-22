@@ -1,4 +1,6 @@
 #pragma once
+#include <type_traits>
+
 #include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/tpls/magic_enum.hpp"
@@ -39,13 +41,14 @@ namespace zs {
     constexpr base_t &self() noexcept { return static_cast<base_t &>(*this); }
     constexpr const base_t &self() const noexcept { return static_cast<const base_t &>(*this); }
 
-    constexpr Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1, std::size_t alignment = 0)
+    constexpr Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+                     std::size_t alignment = std::alignment_of_v<T>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, 0)},
           _size{0},
           _align{alignment} {}
     Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
-           std::size_t alignment = 0)
+           std::size_t alignment = std::alignment_of_v<T>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, count + count / 2)},
           _size{count},
@@ -111,6 +114,9 @@ namespace zs {
       base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
       if (o.size()) rm.copy((void *)tmp.address(), o.head(), o.usedBytes());
       self() = tmp;
+      base() = o.base();
+      _size = o._size;  // size
+      _align = o._align;
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
@@ -127,6 +133,7 @@ namespace zs {
       base() = std::exchange(o.base(), defaultVector.memoryHandle());
       self() = std::exchange(o.self(), defaultVector.self());
       _size = std::exchange(o._size, defaultVector.size());
+      _align = std::exchange(o._align, std::alignment_of_v<T>);
     }
     /// make move-assignment safe for self-assignment
     Vector &operator=(Vector &&o) noexcept {

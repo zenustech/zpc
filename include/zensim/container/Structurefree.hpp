@@ -7,6 +7,14 @@
 
 namespace zs {
 
+  enum ParticleAttributeFlagBit : char {
+    None = 0,
+    Particle_J = 0x1,
+    Particle_F = 0x2,
+    Particle_C = 0x4
+  };
+  using ParticleAttributeFlagBits = char;
+
   template <typename ValueT = f32, int d = 3> struct Particles {
     using T = ValueT;
     using TV = ValueT[d];
@@ -34,6 +42,14 @@ namespace zs {
       J.append(other.J);
       F.append(other.F);
       C.append(other.C);
+    }
+    void resize(std::size_t newSize) {
+      M.resize(newSize);
+      X.resize(newSize);
+      V.resize(newSize);
+      if (J.size()) J.resize(newSize);
+      if (F.size()) F.resize(newSize);
+      if (C.size()) C.resize(newSize);
     }
 
     Vector<T> M;

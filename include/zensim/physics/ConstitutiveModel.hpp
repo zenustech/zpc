@@ -85,6 +85,13 @@ namespace zs {
       = variant<EquationOfStateConfig, NeoHookeanConfig, FixedCorotatedConfig,
                 VonMisesFixedCorotatedConfig, DruckerPragerConfig, NACCConfig>;
 
+  constexpr bool particleHasF(const ConstitutiveModelConfig &model) noexcept {
+    return model.index() != 0;
+  }
+  constexpr bool particleHasJ(const ConstitutiveModelConfig &model) noexcept {
+    return model.index() == 0;
+  }
+
   inline void displayConfig(ConstitutiveModelConfig &config) {
     match(
         [](EquationOfStateConfig &config) {

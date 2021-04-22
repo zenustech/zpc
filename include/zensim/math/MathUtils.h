@@ -80,6 +80,14 @@ namespace zs {
     return a.i;
   }
 
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr auto lower_trunc(T v) noexcept {
+    if constexpr (sizeof(v) == 4)
+      return v > 0 ? (i32)v : ((i32)v) - 1;
+    else if constexpr (sizeof(v) == 8)
+      return v > 0 ? (i64)v : ((i64)v) - 1;
+  }
+
   ///
   /// borrowed from gvdb_library/kernels/cuda_gvdb.cuh
   ///

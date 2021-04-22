@@ -46,18 +46,16 @@ namespace zs {
 
         ivec3 global_base_index{};
         for (int d = 0; d < 3; ++d) global_base_index[d] = (int)gcem::round(pos[d] * dx_inv) - 1;
-        ivec3 local_base_index = global_base_index;
-        vec3 local_pos = pos - local_base_index * dx;
+        vec3 local_pos = pos - global_base_index * dx;
 
         vec3x3 ws;
-        for (int dd = 0; dd < 3; ++dd) {
+        for (char dd = 0; dd < 3; ++dd) {
           float d = local_pos[dd] * dx_inv - (gcem::round(local_pos[dd] * dx_inv) - 1);
           ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
           d -= 1.0f;
           ws(dd, 1) = 0.75 - d * d;
           d = 0.5f + d;
           ws(dd, 2) = 0.5 * d * d;
-          local_base_index[dd] = ((local_base_index[dd] - 1) % gridblock_t::side_length) + 1;
         }
 
         vec9 C{vec9::zeros()};

@@ -191,12 +191,18 @@ namespace zs {
       // difference_type count = std::distance(st, ed); //< def standard iterator
       difference_type count = ed - st;
       if (count <= 0) return end();
-      auto &rm = get_resource_manager().get();
       size_type unusedCapacity = capacity() - size();
       // this is not optimal
-      if (count > unusedCapacity) resize(size() + count);
-      rm.copy(&end(), &(*st), sizeof(T) * count);
+      if (count > unusedCapacity) {
+        resize(size() + count);
+      } else {
+        _size += count;
+      }
+      auto &rm = get_resource_manager().get();
+      rm.copy((void *)&(*end()), (void *)&(*st), sizeof(T) * count);
+      return end();
     }
+    iterator append(const Vector &other) { return append(other.begin(), other.end()); }
     constexpr const_pointer data() const noexcept { return (pointer)head(); }
     constexpr pointer data() noexcept { return (pointer)head(); }
     constexpr reference front() noexcept { return (*this)(0); }

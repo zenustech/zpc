@@ -71,14 +71,14 @@ namespace zs {
         contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
 
         contrib = (C * mass - contrib * dt) * D_inv;
-        ivec3 global_base_index{int(gcem::round(local_pos[0] * dx_inv) - 1),
-                                int(gcem::round(local_pos[1] * dx_inv) - 1),
-                                int(gcem::round(local_pos[2] * dx_inv) - 1)};
+        ivec3 global_base_index{lower_trunc(local_pos[0] * dx_inv + 0.5) - 1,
+                                lower_trunc(local_pos[1] * dx_inv + 0.5) - 1,
+                                lower_trunc(local_pos[2] * dx_inv + 0.5) - 1};
         local_pos = local_pos - global_base_index * dx;
 
         vec3x3 ws;
         for (char dd = 0; dd < 3; ++dd) {
-          float d = local_pos[dd] * dx_inv - (gcem::round(local_pos[dd] * dx_inv) - 1);
+          float d = local_pos[dd] * dx_inv - (lower_trunc(local_pos[dd] * dx_inv + 0.5) - 1);
           ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
           d -= 1.0f;
           ws(dd, 1) = 0.75 - d * d;

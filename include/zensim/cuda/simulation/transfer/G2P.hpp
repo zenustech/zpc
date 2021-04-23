@@ -45,12 +45,12 @@ namespace zs {
         vec3 vel{vec3::zeros()};
 
         ivec3 global_base_index{};
-        for (int d = 0; d < 3; ++d) global_base_index[d] = (int)gcem::round(pos[d] * dx_inv) - 1;
+        for (int d = 0; d < 3; ++d) global_base_index[d] = lower_trunc(pos[d] * dx_inv + 0.5) - 1;
         vec3 local_pos = pos - global_base_index * dx;
 
         vec3x3 ws;
         for (char dd = 0; dd < 3; ++dd) {
-          float d = local_pos[dd] * dx_inv - (gcem::round(local_pos[dd] * dx_inv) - 1);
+          float d = local_pos[dd] * dx_inv - (lower_trunc(local_pos[dd] * dx_inv + 0.5) - 1);
           ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
           d -= 1.0f;
           ws(dd, 1) = 0.75 - d * d;
@@ -79,7 +79,7 @@ namespace zs {
                       grid_block(3, local_index).asFloat()};
 
               vel += vi * W;
-              for (int i = 0; i < 9; ++i) C[i] += W * vi(i % 3) * xixp(i / 3);
+              for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3);
             }
         pos += vel * dt;
 
@@ -89,7 +89,7 @@ namespace zs {
         particles.J(parid) = J;
         for (int i = 0; i < 3; ++i) particles.pos(parid)[i] = pos[i];
         for (int i = 0; i < 3; ++i) particles.vel(parid)[i] = vel[i];
-        for (int i = 0; i < 9; ++i) particles.C(parid)[i % 3][i / 3] = C[i];
+        for (int i = 0; i < 9; ++i) particles.C(parid)[i / 3][i % 3] = C[i];
       }
     }
 

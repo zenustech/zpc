@@ -45,22 +45,13 @@ namespace zs {
         : dxinv{1.0 / dx}, blockLen{blockLen}, table{proxy<space>(table)}, pos{proxy<space>(pos)} {}
 
     constexpr void operator()(typename positions_t::size_type parid) noexcept {
-      if constexpr (table_t::dim == 3) {
-        auto coord = vec<int, 3>{gcem::round(pos(parid)[0] * dxinv) - 2,
-                                 gcem::round(pos(parid)[1] * dxinv) - 2,
-                                 gcem::round(pos(parid)[2] * dxinv) - 2};
-        vec<int, 3> blockid = coord;
-        for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
-        blockid = blockid / blockLen;
-        table.insert(blockid);
-      } else if constexpr (table_t::dim == 2) {
-        auto coord = vec<int, 2>{gcem::round(pos(parid)[0] * dxinv) - 2,
-                                 gcem::round(pos(parid)[1] * dxinv) - 2};
-        vec<int, 2> blockid = coord;
-        for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
-        blockid = blockid / blockLen;
-        table.insert(blockid);
-      }
+      vec<int, table_t::dim> coord{};
+      for (int d = 0; d < table_t::dim; ++d)
+        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) - 2;
+      auto blockid = coord;
+      for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
+      blockid = blockid / blockLen;
+      table.insert(blockid);
     }
 
     T dxinv;

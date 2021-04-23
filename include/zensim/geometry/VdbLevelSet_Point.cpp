@@ -41,6 +41,41 @@ namespace zs {
     ret.as<PDGPtr>()->setName("Points");
     return ret;
   }
+  std::vector<std::array<float, 3>> particleGridToArray(const OpenVDBStruct &pdg) {
+    using namespace openvdb::tools::local_util;
+    using PDGPtr = openvdb::points::PointDataGrid::Ptr;
+    std::vector<std::array<float, 3>> ret{};
+    if (pdg.is<PDGPtr>()) {
+      auto &grid = pdg.as<PDGPtr>();
+      openvdb::Index64 count = openvdb::points::pointCount(grid->tree());
+      ret.reserve(count);
+      // std::cout << "PointCount=" << count << std::endl;
+      // Iterate over all the leaf nodes in the grid.
+      for (auto leafIter = grid->tree().cbeginLeaf(); leafIter; ++leafIter) {
+        // Verify the leaf origin.
+        // std::cout << "Leaf" << leafIter->origin() << std::endl;
+        // Extract the position attribute from the leaf by name (P is position).
+        const openvdb::points::AttributeArray &array = leafIter->constAttributeArray("P");
+        // Create a read-only AttributeHandle. Position always uses Vec3f.
+        openvdb::points::AttributeHandle<openvdb::Vec3f> positionHandle(array);
+        // Iterate over the point indices in the leaf.
+        for (auto indexIter = leafIter->beginIndexOn(); indexIter; ++indexIter) {
+          // Extract the voxel-space position of the point.
+          openvdb::Vec3f voxelPosition = positionHandle.get(*indexIter);
+          // Extract the world-space position of the voxel.
+          const openvdb::Vec3d xyz = indexIter.getCoord().asVec3d();
+          // Compute the world-space position of the point.
+          openvdb::Vec3f worldPosition = grid->transform().indexToWorld(voxelPosition + xyz);
+          // Verify the index and world-space position of the point
+          // std::cout << "* PointIndex=[" << *indexIter << "] ";
+          // std::cout << "WorldPosition=" << worldPosition << std::endl;
+          ret.emplace_back(
+              std::array<float, 3>{worldPosition[0], worldPosition[1], worldPosition[2]});
+        }
+      }
+    }
+    return ret;
+  }
 
   bool writeGridToFile(const OpenVDBStruct &grid, std::string fn) {
     using PDGPtr = openvdb::points::PointDataGrid::Ptr;

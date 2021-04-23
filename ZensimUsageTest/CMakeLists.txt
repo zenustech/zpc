@@ -5,7 +5,7 @@ list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/OpenVDB/)
 
 set(ZS_ENABLE_CUDA 1 CACHE BOOL "Enable Cuda")
 #find_package(Zensim REQUIRED)
-find_package(Zensim COMPONENTS zscuda zsio REQUIRED)
+find_package(Zensim COMPONENTS zensim REQUIRED)
 add_executable(zsuse main.cu)
 
 target_compile_options(zsuse PRIVATE
@@ -29,5 +29,5 @@ get_property(INTERFACE_INCLUDES TARGET Zensim::zsproj_deps PROPERTY INTERFACE_IN
 message(${INTERFACE_INCLUDES})
 
 #target_include_directories(zsuse PRIVATE ${INTERFACE_INCLUDES})
-target_link_libraries(zsuse PRIVATE Zensim::zscuda Zensim::zsio)
+target_link_libraries(zsuse PRIVATE Zensim::zensim)
 

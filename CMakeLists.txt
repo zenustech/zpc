@@ -88,7 +88,7 @@ include(GNUInstallDirs)
 set(ZSUMPIRE_INSTALL_TARGETS zsumpire zscamp zsumpire_alloc zsumpire_resource zsumpire_strategy zsumpire_op zsumpire_util zsumpire_tpl_judy)
 set(ZSPARTIO_INSTALL_TARGETS zspartio)
 
-set(INSTALL_TARGETS zscore zsio zsvdb zsproj_cxx_deps zsproj_deps ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
+set(INSTALL_TARGETS zensim zscore zstool zsproj_cxx_deps zsproj_deps ${ZSUMPIRE_INSTALL_TARGETS} ${ZSPARTIO_INSTALL_TARGETS})
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zscuda zsproj_cuda_deps cuda_runtime cuda)
 endif()

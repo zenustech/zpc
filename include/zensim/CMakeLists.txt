@@ -190,6 +190,8 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/math/matrix/MatrixTransform.hpp
 )
 
+add_library(zensim INTERFACE)
+
 add_cpp_library(zscore)
 target_sources(zscore PRIVATE 
     ${ZENSIM_LIBRARY_CORE_SOURCE_FILES}
@@ -201,22 +203,17 @@ target_precompile_headers(zscore INTERFACE
     ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
 endif()
+target_link_libraries(zensim INTERFACE zscore)  #
 
-# related to openvdb
-add_cpp_library(zsvdb)
-target_sources(zsvdb PRIVATE ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES})
+# openvdb, partio
+add_cpp_library(zstool)
+target_sources(zstool PRIVATE ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
 if (ENABLE_PCH)
-target_precompile_headers(zsvdb INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES})
+target_precompile_headers(zstool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif()
-target_link_libraries(zsvdb PRIVATE OpenVDB::openvdb)
-
-# related to partio
-add_cpp_library(zsio)
-target_sources(zsio PRIVATE ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
-target_link_libraries(zsio INTERFACE zspartio zscore zsvdb)
-if (ENABLE_PCH)
-target_precompile_headers(zsio INTERFACE ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
-endif()
+target_link_libraries(zstool INTERFACE zspartio zscore)
+target_link_libraries(zstool PRIVATE OpenVDB::openvdb)
+target_link_libraries(zensim INTERFACE zstool)  #
 
 # related to cuda
 if (ZS_ENABLE_CUDA)
@@ -228,5 +225,6 @@ target_link_libraries(zscuda INTERFACE cuda_runtime cuda cudadevrt nvrtc zscore 
 if (ENABLE_PCH)
 target_precompile_headers(zscuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
+target_link_libraries(zensim INTERFACE zscuda)  #
 
 endif()

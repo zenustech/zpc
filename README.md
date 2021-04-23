@@ -59,7 +59,7 @@ Directly include the codebase as a submodule, and follow the examples in the *Pr
 
 Create a sub-folder in *Projects* with a cmake file at its root.
 
-Make good use of these predefined CMake functions: add_cpp_executable/ add_cuda_executable, and these internal targets: zsio, zscuda, ....
+Make good use of these predefined CMake functions: add_cpp_executable/ add_cuda_executable, and these internal targets: zensim, zscuda, ....
 
 > Testing
 

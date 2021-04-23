@@ -1,4 +1,5 @@
 #pragma once
+#include <any>
 #include <string>
 
 #include "zensim/container/DenseGrid.hpp"
@@ -12,5 +13,14 @@ namespace zs {
 
   tuple<DenseGrid<float, int, 3>, DenseGrid<vec<float, 3>, int, 3>, vec<float, 3>, vec<float, 3>>
   readPhiVelFromVdbFile(const std::string &fn, float dx);
+
+  struct OpenVDBStruct {
+    template <typename T> constexpr OpenVDBStruct(T &&obj) : object{FWD(obj)} {}
+    template <typename T> T &as() { return std::any_cast<T &>(object); }
+    template <typename T> const T &as() const { return std::any_cast<const T &>(object); }
+    template <typename T> bool is() const noexcept { return object.type() == typeid(T); }
+
+    std::any object;
+  };
 
 }  // namespace zs

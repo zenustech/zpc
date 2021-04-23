@@ -23,6 +23,7 @@ set(ZENSIM_LIBRARY_IO_SOURCE_FILES
     simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
+    geometry/VdbLevelSet_Point.cpp
     geometry/VdbLevelSet_LoadPhi.cpp
     geometry/VdbLevelSet_LoadPhiVel.cpp
     geometry/VdbSampler_SampleFromLevelSet.cpp

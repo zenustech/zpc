@@ -23,4 +23,7 @@ namespace zs {
     std::any object;
   };
 
+  OpenVDBStruct particleArrayToGrid(const std::vector<std::array<float, 3>> &);
+  bool writeGridToFile(const OpenVDBStruct &, std::string fn);
+
 }  // namespace zs

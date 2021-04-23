@@ -32,12 +32,15 @@ function(add_cuda_executable binary)
     add_executable(${binary} ${ARGN})
     # seems not working
     target_compile_options(${binary} 
-      PRIVATE     $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -fopenmp --allow-unsupported-compiler --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+      PRIVATE     $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -dlto -fopenmp --allow-unsupported-compiler --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+    )
+    target_link_options(${binary} 
+      PUBLIC       $<$<LINK_LANGUAGE:CUDA>:-dlto>
     )
     set_target_properties(${binary}
       PROPERTIES  CUDA_EXTENSIONS ON
                   CUDA_SEPARABLE_COMPILATION ON
-                  #LINKER_LANGUAGE CUDA
+                  LINKER_LANGUAGE CUDA
                   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                   CUDA_ARCHITECTURES OFF
     )
@@ -54,14 +57,15 @@ function(add_cuda_library library)
     add_library(${library} ${ARGN})
     add_library(${project_name}::${library} ALIAS ${library})
     target_compile_options(${library} 
-      PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+      PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -dlto -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
     )
-    #target_link_options(${library} 
-    #  PRIVATE       $<$<LINKER_LANGUAGE:CUDA>:-arch=sm_75>
-    #)
+    target_link_options(${library} 
+      PUBLIC       $<$<LINK_LANGUAGE:CUDA>:-dlto>
+    )
     set_target_properties(${library}
       PROPERTIES  CUDA_EXTENSIONS ON
                   CUDA_SEPARABLE_COMPILATION ON
+                  LINKER_LANGUAGE CUDA
                   #CUDA_RESOLVE_DEVICE_SYMBOLS OFF
                   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                   POSITION_INDEPENDENT_CODE ON
@@ -82,14 +86,15 @@ function(add_shared_cuda_library library)
     add_library(${library} SHARED ${ARGN})
     add_library(${project_name}::${library} ALIAS ${library})
     target_compile_options(${library} 
-      PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+      PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -dlto -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
     )
-    #target_link_options(${library} 
-    #  PRIVATE       $<$<LINKER_LANGUAGE:CUDA>:-arch=sm_75>
-    #)
+    target_link_options(${library} 
+      PUBLIC       $<$<LINK_LANGUAGE:CUDA>:-dlto>
+    )
     set_target_properties(${library}
       PROPERTIES  CUDA_EXTENSIONS ON
                   CUDA_SEPARABLE_COMPILATION ON
+                  LINKER_LANGUAGE CUDA
                   #CUDA_RESOLVE_DEVICE_SYMBOLS OFF
                   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                   POSITION_INDEPENDENT_CODE ON

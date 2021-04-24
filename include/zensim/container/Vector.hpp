@@ -15,22 +15,19 @@ namespace zs {
   template <typename T, typename Index = std::size_t> using vector_instance
       = ds::instance_t<ds::dense, vector_snode<wrapt<T>, Index>>;
 
-#define VEC_ITER_OP(IterT, OP) \
-  constexpr bool operator OP(const IterT &o) const noexcept { return _idx OP o._idx; }
-
-  template <typename T>
-  struct Vector : Inherit<Object, Vector<T>>, vector_instance<T>, MemoryHandle {
+  template <typename T, typename Index = std::size_t>
+  struct Vector : Inherit<Object, Vector<T, Index>>, vector_instance<T, Index>, MemoryHandle {
     /// according to rule of 5(6)/0
     /// is_trivial<T> has to be true
     static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
                   "element is not default-constructible or trivially-copyable!");
-    using base_t = vector_instance<T>;
+    using base_t = vector_instance<T, Index>;
     using value_type = remove_cvref_t<T>;
     using pointer = value_type *;
     using const_pointer = const pointer;
     using reference = value_type &;
-    using const_reference = const T &;
-    using size_type = typename std::size_t;
+    using const_reference = const value_type &;
+    using size_type = Index;
     using difference_type = std::make_signed_t<size_type>;
     using iterator_category = std::random_access_iterator_tag;  // std::contiguous_iterator_tag;
 
@@ -109,14 +106,13 @@ namespace zs {
       return self()(idx);
     }
     /// ctor, assignment operator
-    explicit Vector(const Vector &o) : MemoryHandle{o.memoryHandle()}, _size{o.size()} {
+    explicit Vector(const Vector &o)
+        : MemoryHandle{o.memoryHandle()}, _size{o.size()}, _align{o._align} {
       auto &rm = get_resource_manager().get();
       base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
       if (o.size()) rm.copy((void *)tmp.address(), o.head(), o.usedBytes());
       self() = tmp;
       base() = o.base();
-      _size = o._size;  // size
-      _align = o._align;
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
@@ -146,6 +142,7 @@ namespace zs {
       base().swap(o.base());
       std::swap(self(), o.self());
       std::swap(_size, o._size);
+      std::swap(_align, o._align);
     }
 
     // constexpr operator base_t &() noexcept { return self(); }
@@ -224,7 +221,7 @@ namespace zs {
       using namespace ds;
       constexpr auto dec = ds::static_decorator{};
       uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
-      vector_snode<wrapt<T>> node{dec, dom, zs::make_tuple(wrapt<T>{}), vseq_t<1>{}};
+      vector_snode<wrapt<T>, size_type> node{dec, dom, zs::make_tuple(wrapt<T>{}), vseq_t<1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
 
       if (capacity) {
@@ -235,7 +232,7 @@ namespace zs {
       }
       return inst;
     }
-    constexpr std::size_t geometric_size_growth(std::size_t newSize) noexcept {
+    constexpr size_type geometric_size_growth(size_type newSize) noexcept {
       size_type geometricSize = capacity();
       geometricSize = geometricSize + geometricSize / 2;
       if (newSize > geometricSize) return newSize;
@@ -266,8 +263,9 @@ namespace zs {
     size_type _vectorSize;
   };
 
-  template <execspace_e ExecSpace, typename T> decltype(auto) proxy(Vector<T> &vec) {
-    return VectorProxy<ExecSpace, Vector<T>>{vec};
+  template <execspace_e ExecSpace, typename T, typename Index>
+  decltype(auto) proxy(Vector<T, Index> &vec) {
+    return VectorProxy<ExecSpace, Vector<T, Index>>{vec};
   }
 
 }  // namespace zs

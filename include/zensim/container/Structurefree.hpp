@@ -1,5 +1,6 @@
 #pragma once
 #include "zensim/TypeAlias.hpp"
+#include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/resource/Resource.h"
@@ -24,7 +25,7 @@ namespace zs {
     constexpr MemoryHandle handle() const noexcept { return static_cast<MemoryHandle>(X); }
     constexpr memsrc_e space() const noexcept { return X.memspace(); }
     constexpr ProcID devid() const noexcept { return X.devid(); }
-    constexpr std::size_t size() const noexcept { return X.size(); }
+    constexpr auto size() const noexcept { return X.size(); }
 
     std::vector<std::array<ValueT, dim>> retrievePositions() const {
       auto &rm = get_resource_manager().get();
@@ -118,6 +119,58 @@ namespace zs {
   }
 
   ///
+  /// tiles particles
+  ///
+  template <auto Length, typename ValueT = f32, int d = 3> struct TiledParticles {
+    using T = ValueT;
+    using TV = vec<ValueT, d>;
+    using TM = vec<ValueT, d, d>;
+    using TMAffine = vec<ValueT, d + 1, d + 1>;
+    using size_type = std::size_t;
+    static constexpr int dim = d;
+    static constexpr auto lane_width = Length;
+    template <typename TT> using Tiles = TileVector<TT, lane_width, size_type, int>;
+    template <typename TT> using tiles_t =
+        typename TileVector<TT, lane_width, size_type, int>::base_t;
+
+    constexpr MemoryHandle handle() const noexcept { return static_cast<MemoryHandle>(X); }
+    constexpr memsrc_e space() const noexcept { return X.memspace(); }
+    constexpr ProcID devid() const noexcept { return X.devid(); }
+    constexpr auto size() const noexcept { return X.size(); }
+
+    void resize(std::size_t newSize) { X.resize(newSize); }
+
+    Tiles<TV> X;
+  };
+
+  template <execspace_e, typename ParticlesT, typename = void> struct TiledParticlesProxy;
+  template <execspace_e space, typename TiledParticlesT>
+  struct TiledParticlesProxy<space, TiledParticlesT> {
+    using T = typename TiledParticlesT::T;
+    using TV = typename TiledParticlesT::TV;
+    using TM = typename TiledParticlesT::TM;
+    static constexpr int dim = TiledParticlesT::dim;
+    using size_type = typename TiledParticlesT::size_type;
+    template <typename TT> using tiles_t = typename TiledParticlesT::template tiles_t<TT>;
+
+    constexpr TiledParticlesProxy() = default;
+    ~TiledParticlesProxy() = default;
+    explicit TiledParticlesProxy(TiledParticlesT &particles)
+        : _X{particles.X.data()}, _particleCount{particles.size()} {}
+
+    constexpr auto &pos(size_type parid) { return _X[parid]; }
+    constexpr const auto &pos(size_type parid) const { return _X[parid]; }
+    constexpr auto size() const noexcept { return _particleCount; }
+
+  protected:
+    tiles_t<TV> _X;
+    size_type _particleCount;
+  };
+
+  template <execspace_e ExecSpace, auto Length, typename V, int d>
+  decltype(auto) proxy(TiledParticles<Length, V, d> &particles) {
+    return TiledParticlesProxy<ExecSpace, TiledParticles<Length, V, d>>{particles};
+  }
 
   /// sizeof(float) = 4
   /// bin_size = 64

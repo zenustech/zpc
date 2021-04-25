@@ -23,6 +23,8 @@ namespace zs {
     std::any object;
   };
 
+  OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn);
+  void checkFloatGrid(OpenVDBStruct &grid);
   OpenVDBStruct particleArrayToGrid(const std::vector<std::array<float, 3>> &);
   std::vector<std::array<float, 3>> particleGridToArray(const OpenVDBStruct &);
   bool writeGridToFile(const OpenVDBStruct &, std::string fn);

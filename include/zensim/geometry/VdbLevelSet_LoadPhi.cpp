@@ -11,6 +11,102 @@
 
 namespace zs {
 
+  OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn) {
+    using GridType = openvdb::FloatGrid;
+    using TreeType = GridType::TreeType;
+    openvdb::io::File file(fn);
+    file.open();
+    openvdb::GridPtrVecPtr grids = file.getGrids();
+    file.close();
+
+    using SDFPtr = typename GridType::Ptr;
+    SDFPtr grid;
+    for (openvdb::GridPtrVec::iterator iter = grids->begin(); iter != grids->end(); ++iter) {
+      openvdb::GridBase::Ptr it = *iter;
+      if ((*iter)->isType<GridType>()) {
+        grid = openvdb::gridPtrCast<GridType>(*iter);
+        /// display meta data
+        for (openvdb::MetaMap::MetaIterator it = grid->beginMeta(); it != grid->endMeta(); ++it) {
+          const std::string &name = it->first;
+          openvdb::Metadata::Ptr value = it->second;
+          std::string valueAsString = value->str();
+          std::cout << name << " = " << valueAsString << std::endl;
+        }
+        break;
+      }
+    }
+    return OpenVDBStruct{grid};
+  }
+
+  void checkFloatGrid(OpenVDBStruct &grid) {
+    using GridType = openvdb::FloatGrid;
+    using TreeType = GridType::TreeType;
+    using RootType = TreeType::RootNodeType;  // level 3 RootNode
+    assert(RootType::LEVEL == 3);
+    using Int1Type = RootType::ChildNodeType;  // level 2 InternalNode
+    using Int2Type = Int1Type::ChildNodeType;  // level 1 InternalNode
+    using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
+    using SDFPtr = typename GridType::Ptr;
+    SDFPtr &gridPtr = grid.as<SDFPtr>();
+    for (GridType::ValueOnIter iter = gridPtr->beginValueOn(); iter.test(); ++iter) {
+      // Print the coordinates of all voxels whose vector value has
+      // a length greater than -10, and print the bounding box coordinates
+      // of all tiles whose vector value length is greater than 10.
+      // if (iter.getValue() > -10) {
+      if (iter.isValueOn()) {
+        auto box = iter.getBoundingBox();
+        auto st = box.getStart();
+        auto ed = box.getEnd();
+
+        fmt::print("iter-> level {}, box ({}, {}, {}) - ({}, {}, {}).\t", iter.getLevel(), st[0],
+                   st[1], st[2], ed[0], ed[1], ed[2]);
+
+        switch (iter.getDepth()) {
+          case 0: {
+            RootType *node = nullptr;
+            iter.getNode<RootType>(node);
+            if (node) {
+              fmt::print("");
+            }
+            break;
+          }
+          case 1: {
+            Int1Type *node = nullptr;
+            iter.getNode<Int1Type>(node);
+            if (node) {
+            }
+            break;
+          }
+          case 2: {
+            Int2Type *node = nullptr;
+            iter.getNode<Int2Type>(node);
+            if (node) {
+            }
+            break;
+          }
+          case 3: {
+            LeafType *node = nullptr;
+            iter.getNode<LeafType>(node);
+            if (node) {
+            }
+            break;
+          }
+        }
+        if (!iter.isValueOn()) {
+          fmt::print("not active value???\n");
+          getchar();
+        }
+        if (iter.isVoxelValue()) {
+          fmt::print("voxel {}, {}, {}, value {}\n", iter.getCoord()[0], iter.getCoord()[1],
+                     iter.getCoord()[2], iter.getValue());
+        } else {
+          fmt::print("wow, it is a box???\n");
+          getchar();
+        }
+      }
+    }
+  }
+
   // https://www.openvdb.org/documentation/doxygen/codeExamples.html#sGettingMetadata
   tuple<DenseGrid<float, int, 3>, vec<float, 3>, vec<float, 3>> readPhiFromVdbFile(
       const std::string &fn, float dx) {

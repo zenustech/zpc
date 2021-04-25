@@ -3,6 +3,7 @@
 #include <string>
 
 #include "zensim/container/DenseGrid.hpp"
+#include "zensim/container/SparseStructure.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Tuple.h"
 
@@ -24,6 +25,8 @@ namespace zs {
   };
 
   OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn);
+  AdaptiveFloatGrid convertFloatGridToAdaptiveGrid(const OpenVDBStruct &grid,
+                                                   const MemoryHandle mh);
   void checkFloatGrid(OpenVDBStruct &grid);
   OpenVDBStruct particleArrayToGrid(const std::vector<std::array<float, 3>> &);
   std::vector<std::array<float, 3>> particleGridToArray(const OpenVDBStruct &);

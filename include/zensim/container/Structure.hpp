@@ -68,6 +68,8 @@ namespace zs {
     constexpr GridBlocks(float dx = 1.f, std::size_t numBlocks = 0, memsrc_e mre = memsrc_e::host,
                          ProcID devid = -1, std::size_t alignment = 0)
         : blocks{numBlocks, mre, devid, alignment}, dx{dx} {}
+
+    void resize(size_type newSize) { blocks.resize(newSize); }
     Vector<block_t> blocks;
     V dx;
   };

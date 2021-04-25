@@ -56,6 +56,12 @@ namespace zs {
           _activeKeys{tableSize, mre, devid},
           _align{alignment} {}
 
+    void resize(value_t newSize) {
+      newSize = next_2pow(newSize) * reserve_ratio_v;
+      _activeKeys.resize(newSize);
+      _tableSize = newSize;
+    }
+
     inline value_t size() const {
       auto &rm = get_resource_manager().get();
       Vector<value_t> res{1, memsrc_e::host, -1};

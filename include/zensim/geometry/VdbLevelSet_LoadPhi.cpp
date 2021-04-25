@@ -38,6 +38,23 @@ namespace zs {
     return OpenVDBStruct{grid};
   }
 
+  AdaptiveFloatGrid convertFloatGridToAdaptiveGrid(const OpenVDBStruct &grid,
+                                                   const MemoryHandle mh) {
+    using GridType = openvdb::FloatGrid;
+    using TreeType = GridType::TreeType;
+    using RootType = TreeType::RootNodeType;  // level 3 RootNode
+    assert(RootType::LEVEL == 3);
+    using Int1Type = RootType::ChildNodeType;  // level 2 InternalNode
+    using Int2Type = Int1Type::ChildNodeType;  // level 1 InternalNode
+    using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
+    using SDFPtr = typename GridType::Ptr;
+    const SDFPtr &gridPtr = grid.as<SDFPtr>();
+    AdaptiveFloatGrid ret{mh};
+    ret.dx = gridPtr->transform().voxelSize()[0];
+
+    return ret;
+  }
+
   void checkFloatGrid(OpenVDBStruct &grid) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;
@@ -48,11 +65,16 @@ namespace zs {
     using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
     using SDFPtr = typename GridType::Ptr;
     SDFPtr &gridPtr = grid.as<SDFPtr>();
+    fmt::print("grid meta -> voxel dx {}, {}, {}\n", gridPtr->transform().voxelSize()[0],
+               gridPtr->transform().voxelSize()[1], gridPtr->transform().voxelSize()[2]);
+    float dx = gridPtr->transform().voxelSize()[0];
+    getchar();
+#if 0
     for (GridType::ValueOnIter iter = gridPtr->beginValueOn(); iter.test(); ++iter) {
       // Print the coordinates of all voxels whose vector value has
       // a length greater than -10, and print the bounding box coordinates
       // of all tiles whose vector value length is greater than 10.
-      // if (iter.getValue() > -10) {
+      // if (iter.getValue() > -10)
       if (iter.isValueOn()) {
         auto box = iter.getBoundingBox();
         auto st = box.getStart();
@@ -66,7 +88,7 @@ namespace zs {
             RootType *node = nullptr;
             iter.getNode<RootType>(node);
             if (node) {
-              fmt::print("");
+              fmt::print("it is a root node");
             }
             break;
           }
@@ -74,6 +96,7 @@ namespace zs {
             Int1Type *node = nullptr;
             iter.getNode<Int1Type>(node);
             if (node) {
+              fmt::print("it is a depth 1 node");
             }
             break;
           }
@@ -81,6 +104,7 @@ namespace zs {
             Int2Type *node = nullptr;
             iter.getNode<Int2Type>(node);
             if (node) {
+              fmt::print("it is a depth 2 node");
             }
             break;
           }
@@ -100,11 +124,60 @@ namespace zs {
           fmt::print("voxel {}, {}, {}, value {}\n", iter.getCoord()[0], iter.getCoord()[1],
                      iter.getCoord()[2], iter.getValue());
         } else {
-          fmt::print("wow, it is a box???\n");
+          fmt::print("wow, it is a box??? adaptive value {}\n", iter.getValue());
           getchar();
         }
       }
     }
+#else
+    for (TreeType::NodeIter iter = gridPtr->tree().beginNode(); iter.test(); ++iter) {
+      // Print the coordinates of all voxels whose vector value has
+      // a length greater than -10, and print the bounding box coordinates
+      // of all tiles whose vector value length is greater than 10.
+      // if (iter.getValue() > -10)
+      auto box = iter.getBoundingBox();
+      auto st = box.getStart();
+      auto ed = box.getEnd();
+      auto coord = iter.getCoord();
+
+      fmt::print(
+          "node iter -> depth{}, level {}, box ({}, {}, {}) - ({}, {}, {}). coord ({}, {}, "
+          "{})\n",
+          iter.getDepth(), iter.getLevel(), st[0], st[1], st[2], ed[0], ed[1], ed[2], coord[0],
+          coord[1], coord[2]);
+
+      switch (iter.getDepth()) {
+        case 0: {
+          RootType *node = nullptr;
+          iter.getNode<RootType>(node);
+          if (node) {
+          }
+          break;
+        }
+        case 1: {
+          Int1Type *node = nullptr;
+          iter.getNode<Int1Type>(node);
+          if (node) {
+          }
+          break;
+        }
+        case 2: {
+          Int2Type *node = nullptr;
+          iter.getNode<Int2Type>(node);
+          if (node) {
+          }
+          break;
+        }
+        case 3: {
+          LeafType *node = nullptr;
+          iter.getNode<LeafType>(node);
+          if (node) {
+          }
+          break;
+        }
+      }
+    }
+#endif
   }
 
   // https://www.openvdb.org/documentation/doxygen/codeExamples.html#sGettingMetadata

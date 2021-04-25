@@ -1,33 +1,26 @@
 #pragma once
-#include "zensim/math/Vec.h"
+
 #include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Iterator.h"
-#include "zensim/types/Polymorphism.h"
 #include "zensim/types/RuntimeStructurals.hpp"
 
 namespace zs {
 
-  template <auto Length, typename Snode, typename ChnCounter>  ///< length should be power of 2
-  using tile_snode = ds::snode_t<ds::decorations<ds::soa>, ds::static_domain<Length>, tuple<Snode>,
-                                 tuple<ChnCounter>>;
+  template <typename Snode, typename Chn = int, typename Index = std::size_t> using soa_vector_snode
+      = ds::snode_t<ds::decorations<ds::soa>, ds::uniform_domain<0, Index, 1, index_seq<0>>,
+                    tuple<Snode>, tuple<Chn>>;
+  template <typename T, typename Chn = int, typename Index = std::size_t> using soa_vector_instance
+      = ds::instance_t<ds::dense, soa_vector_snode<wrapt<T>, Chn, Index>>;
 
-  template <auto Length, typename Snode, typename ChnCounter, typename Index> using aosoa_snode
-      = ds::snode_t<ds::static_decorator<>, ds::uniform_domain<0, Index, 1, index_seq<0>>,
-                    tuple<tile_snode<Length, Snode, ChnCounter>>, vseq_t<1>>;
-  //                    typename gen_seq<sizeof...(Snodes)>::template uniform_vseq<1>
-
-  template <auto Length, typename T, typename ChnCounter, typename Index> using aosoa_instance
-      = ds::instance_t<ds::dense, aosoa_snode<Length, wrapt<T>, ChnCounter, Index>>;
-
-  template <typename T, auto Length = 8, typename Index = std::size_t, typename ChnCounter = char>
-  struct TileVector : Inherit<Object, TileVector<T, Length, Index, ChnCounter>>,
-                      aosoa_instance<Length, T, ChnCounter, Index>,
-                      MemoryHandle {
+  template <typename T, typename ChnCounter, typename Index = std::size_t> struct SoAVector
+      : Inherit<Object, SoAVector<T, ChnCounter, Index>>,
+        soa_vector_instance<T, ChnCounter, Index>,
+        MemoryHandle {
     static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
                   "element is not default-constructible or trivially-copyable!");
-    using base_t = aosoa_instance<Length, T, ChnCounter, Index>;
+    using base_t = soa_vector_instance<T, ChnCounter, Index>;
     using value_type = remove_cvref_t<T>;
     using pointer = value_type *;
     using const_pointer = const pointer;
@@ -37,7 +30,6 @@ namespace zs {
     using size_type = Index;
     using difference_type = std::make_signed_t<size_type>;
     using iterator_category = std::random_access_iterator_tag;  // std::contiguous_iterator_tag;
-    static constexpr auto lane_width = Length;
 
     constexpr MemoryHandle &base() noexcept { return static_cast<MemoryHandle &>(*this); }
     constexpr const MemoryHandle &base() const noexcept {
@@ -46,20 +38,20 @@ namespace zs {
     constexpr base_t &self() noexcept { return static_cast<base_t &>(*this); }
     constexpr const base_t &self() const noexcept { return static_cast<const base_t &>(*this); }
 
-    constexpr TileVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1,
-                         std::size_t alignment = std::alignment_of_v<value_type>)
+    constexpr SoAVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+                        std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, 0, 0)},
           _size{0},
           _align{alignment} {}
-    TileVector(channel_counter_type numChns = 1, size_type count = 0, memsrc_e mre = memsrc_e::host,
-               ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
+    SoAVector(channel_counter_type numChns = 1, size_type count = 0, memsrc_e mre = memsrc_e::host,
+              ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, numChns, count + count / 2)},
           _size{count},
           _align{alignment} {}
 
-    ~TileVector() {
+    ~SoAVector() {
       if (head()) self().dealloc();
     }
 
@@ -67,7 +59,7 @@ namespace zs {
       constexpr iterator(const base_t &range, size_type idx, channel_counter_type chn = 0)
           : _range{range}, _idx{idx}, _chn{chn} {}
 
-      constexpr reference dereference() { return _range(_idx / lane_width)(_idx % lane_width); }
+      constexpr reference dereference() { return _range(_chn, _idx); }
       constexpr bool equal_to(iterator it) const noexcept { return it._idx == _idx; }
       constexpr void advance(difference_type offset) noexcept { _idx += offset; }
       constexpr difference_type distance_to(iterator it) const noexcept { return it._idx - _idx; }
@@ -81,9 +73,7 @@ namespace zs {
       constexpr const_iterator(const base_t &range, size_type idx, channel_counter_type chn = 0)
           : _range{range}, _idx{idx}, _chn{chn} {}
 
-      constexpr const_reference dereference() {
-        return _range(_idx / lane_width)(_idx % lane_width);
-      }
+      constexpr const_reference dereference() { return _range(_chn, _idx); }
       constexpr bool equal_to(const_iterator it) const noexcept { return it._idx == _idx; }
       constexpr void advance(difference_type offset) noexcept { _idx += offset; }
       constexpr difference_type distance_to(const_iterator it) const noexcept {
@@ -106,20 +96,21 @@ namespace zs {
     constexpr size_type capacity() const noexcept { return self().node().extent(); }
     constexpr bool empty() noexcept { return size() == 0; }
     constexpr pointer head() const noexcept { return reinterpret_cast<pointer>(self().address()); }
+    constexpr pointer tail() const noexcept { return reinterpret_cast<pointer>(head() + size()); }
 
     /// element access
     constexpr reference operator[](
         const std::tuple<channel_counter_type, size_type> index) noexcept {
       const auto [chn, idx] = index;
-      return self()(idx / lane_width)(chn, idx % lane_width);
+      return self()(chn, idx);
     }
     constexpr conditional_t<std::is_fundamental_v<value_type>, value_type, const_reference>
     operator[](const std::tuple<channel_counter_type, size_type> index) const noexcept {
       const auto [chn, idx] = index;
-      return self()(idx / lane_width)(chn, idx % lane_width);
+      return self()(chn, idx);
     }
     /// ctor, assignment operator
-    explicit TileVector(const TileVector &o)
+    explicit SoAVector(const SoAVector &o)
         : MemoryHandle{o.memoryHandle()}, _size{o.size()}, _align{o._align} {
       auto &rm = get_resource_manager().get();
       base_t tmp{buildInstance(o.memspace(), o.devid(), numChannels(), o.capacity())};
@@ -127,9 +118,9 @@ namespace zs {
       self() = tmp;
       base() = o.base();
     }
-    TileVector &operator=(const TileVector &o) {
+    SoAVector &operator=(const SoAVector &o) {
       if (this == &o) return *this;
-      TileVector tmp{o};
+      SoAVector tmp{o};
       swap(tmp);
       return *this;
     }
@@ -137,21 +128,21 @@ namespace zs {
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
     /// explicit noexcept
     /// leave the source object in a valid (default constructed) state
-    explicit TileVector(TileVector &&o) noexcept {
-      const TileVector defaultVector{};
+    explicit SoAVector(SoAVector &&o) noexcept {
+      const SoAVector defaultVector{};
       base() = std::exchange(o.base(), defaultVector.memoryHandle());
       self() = std::exchange(o.self(), defaultVector.self());
       _size = std::exchange(o._size, defaultVector.size());
       _align = std::exchange(o._align, std::alignment_of_v<T>);
     }
     /// make move-assignment safe for self-assignment
-    TileVector &operator=(TileVector &&o) noexcept {
+    SoAVector &operator=(SoAVector &&o) noexcept {
       if (this == &o) return *this;
-      TileVector tmp{std::move(o)};
+      SoAVector tmp{std::move(o)};
       swap(tmp);
       return *this;
     }
-    void swap(TileVector &o) noexcept {
+    void swap(SoAVector &o) noexcept {
       base().swap(o.base());
       std::swap(self(), o.self());
       std::swap(_size, o._size);
@@ -165,7 +156,11 @@ namespace zs {
     void resize(size_type newSize) {
       const auto oldSize = size();
       if (newSize < oldSize) {
-        static_assert(std::is_trivially_destructible_v<T>, "not trivially destructible");
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+          static_assert(!std::is_trivial_v<T>, "should not activate this scope");
+          pointer ed = tail();
+          for (pointer e = head() + newSize; e < ed; ++e) e->~T();
+        }
         _size = newSize;
         return;
       }
@@ -193,7 +188,7 @@ namespace zs {
     }
 
     constexpr channel_counter_type numChannels() const noexcept {
-      return self().node().child(wrapv<0>{}).channel_count();
+      return self().node().channel_count();
     }
     constexpr const_pointer data() const noexcept { return (pointer)head(); }
     constexpr pointer data() noexcept { return (pointer)head(); }
@@ -206,12 +201,10 @@ namespace zs {
     constexpr auto buildInstance(memsrc_e mre, ProcID devid, channel_counter_type numChns,
                                  size_type capacity) {
       using namespace ds;
-      tile_snode<lane_width, wrapt<T>, channel_counter_type> tilenode{
-          ds::decorations<ds::soa>{}, static_domain<lane_width>{}, zs::make_tuple(wrapt<T>{}),
-          zs::make_tuple(numChns)};
-      uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{}, capacity / lane_width + 1};
-      aosoa_snode<lane_width, wrapt<T>, channel_counter_type, size_type> node{
-          ds::static_decorator{}, dom, zs::make_tuple(tilenode), vseq_t<1>{}};
+      constexpr auto dec = ds::static_decorator{};
+      uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
+      soa_vector_snode<wrapt<T>, channel_counter_type, size_type> node{
+          dec, dom, zs::make_tuple(wrapt<T>{}), zs::make_tuple(numChns)};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
 
       if (capacity) {
@@ -239,24 +232,24 @@ namespace zs {
     size_type _align{0};
   };
 
-  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorProxy;
+  template <execspace_e, typename SoAVectorT, typename = void> struct SoAVectorProxy;
 
-  template <execspace_e Space, typename TileVectorT> struct TileVectorProxy<Space, TileVectorT>
-      : TileVectorT::base_t {
-    using tile_vector_t = typename TileVectorT::base_t;
-    using size_type = typename TileVectorT::size_type;
+  template <execspace_e Space, typename SoAVectorT> struct SoAVectorProxy<Space, SoAVectorT>
+      : SoAVectorT::base_t {
+    using soa_vector_t = typename SoAVectorT::base_t;
+    using size_type = typename SoAVectorT::size_type;
 
-    constexpr TileVectorProxy() = default;
-    ~TileVectorProxy() = default;
-    explicit TileVectorProxy(TileVectorT &tilevector)
-        : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {}
+    constexpr SoAVectorProxy() = default;
+    ~SoAVectorProxy() = default;
+    explicit SoAVectorProxy(SoAVectorT &soavector)
+        : soa_vector_t{soavector.self()}, _vectorSize{soavector.size()} {}
 
     size_type _vectorSize;
   };
 
-  template <execspace_e ExecSpace, auto Length, typename T, typename ChnT, typename IndexT>
-  decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT> &vec) {
-    return TileVectorProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{vec};
+  template <execspace_e ExecSpace, typename T, typename ChnT, typename IndexT>
+  decltype(auto) proxy(SoAVector<T, ChnT, IndexT> &vec) {
+    return SoAVectorProxy<ExecSpace, SoAVector<T, ChnT, IndexT>>{vec};
   }
 
 }  // namespace zs

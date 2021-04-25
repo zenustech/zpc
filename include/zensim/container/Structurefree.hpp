@@ -56,6 +56,9 @@ namespace zs {
     Vector<TV> X, V;
     Vector<T> J;
     Vector<TM> F, C;
+    /// aux channels
+    // SoAVector<dat32> aux32;
+    // SoAVector<dat64> aux64;
   };
 
 #if 0

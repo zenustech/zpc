@@ -6,6 +6,7 @@
 
 #include "zensim/math/bit/Bits.h"
 #include "zensim/meta/Meta.h"
+#include "zensim/meta/Relationship.h"
 #include "zensim/meta/Sequence.h"
 
 namespace zs {

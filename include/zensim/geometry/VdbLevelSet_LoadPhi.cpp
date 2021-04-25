@@ -140,38 +140,93 @@ namespace zs {
       auto ed = box.getEnd();
       auto coord = iter.getCoord();
 
-      fmt::print(
-          "node iter -> depth{}, level {}, box ({}, {}, {}) - ({}, {}, {}). coord ({}, {}, "
-          "{})\n",
-          iter.getDepth(), iter.getLevel(), st[0], st[1], st[2], ed[0], ed[1], ed[2], coord[0],
-          coord[1], coord[2]);
+      fmt::print("node iter -> depth{}, level {}, box ({}, {}, {}) - ({}, {}, {}). ",
+                 iter.getDepth(), iter.getLevel(), st[0], st[1], st[2], ed[0], ed[1], ed[2]);
 
       switch (iter.getDepth()) {
         case 0: {
           RootType *node = nullptr;
           iter.getNode<RootType>(node);
+          fmt::print("root childCnt {}, tileCnt {}, voxelCnt {}\n", node->childCount(),
+                     node->onTileCount(), node->onVoxelCount());
+          if (node->onTileCount()) {
+            fmt::print("has tile! ");
+            getchar();
+          }
           if (node) {
+            // getchar();
+            for (auto cell = node->beginValueOn(); cell; ++cell)
+              fmt::print("\troot local xyz child ({}, {}, {}) value {}\n", cell.getCoord()[0],
+                         cell.getCoord()[1], cell.getCoord()[2], cell.getValue());
           }
           break;
         }
         case 1: {
           Int1Type *node = nullptr;
           iter.getNode<Int1Type>(node);
+          fmt::print("int1 childCnt {}, tileCnt {}, voxelCnt {}\n", node->childCount(),
+                     node->onTileCount(), node->onVoxelCount());
+          if (node->onTileCount()) {
+            fmt::print("has tile! ");
+            getchar();
+          }
           if (node) {
+            for (int i = 0; i < 32; ++i)
+              for (int j = 0; j < 32; ++j)
+                for (int k = 0; k < 32; ++k) {
+                  if (node->isValueOn(openvdb::Coord(i, j, k)))
+                    fmt::print("int1 local xyz child ({}, {}, {}) is active\n", i, j, k);
+                }
+            for (auto cell = node->beginValueOn(); cell; ++cell)
+              fmt::print("\tint1 local xyz child ({}, {}, {}) value {}\n", cell.getCoord()[0],
+                         cell.getCoord()[1], cell.getCoord()[2], cell.getValue());
+            // getchar();
           }
           break;
         }
         case 2: {
           Int2Type *node = nullptr;
           iter.getNode<Int2Type>(node);
+          fmt::print("int2 childCnt {}, tileCnt {}, voxelCnt {}\n", node->childCount(),
+                     node->onTileCount(), node->onVoxelCount());
+          if (node->onTileCount()) {
+            fmt::print("has tile! ");
+            getchar();
+          }
           if (node) {
+            for (int i = 0; i < 16; ++i)
+              for (int j = 0; j < 16; ++j)
+                for (int k = 0; k < 16; ++k) {
+                  if (node->isValueOn(openvdb::Coord(i, j, k)))
+                    fmt::print("int2 local xyz child ({}, {}, {}) is active\n", i, j, k);
+                }
+            for (auto cell = node->beginValueOn(); cell; ++cell)
+              fmt::print("\tint2 local xyz child ({}, {}, {}) value {}\n", cell.getCoord()[0],
+                         cell.getCoord()[1], cell.getCoord()[2], cell.getValue());
+            // getchar();
           }
           break;
         }
         case 3: {
           LeafType *node = nullptr;
           iter.getNode<LeafType>(node);
+          fmt::print("leaf childCnt {}, tileCnt {}, voxelCnt {}\n", node->childCount(),
+                     node->onTileCount(), node->onVoxelCount());
+          if (node->onTileCount()) {
+            fmt::print("has tile! ");
+            getchar();
+          }
           if (node) {
+            for (int i = 0; i < 8; ++i)
+              for (int j = 0; j < 8; ++j)
+                for (int k = 0; k < 8; ++k) {
+                  if (node->isValueOn(openvdb::Coord(i, j, k)))
+                    fmt::print("\tleaf local xyz child ({}, {}, {}) is active\n", i, j, k);
+                }
+            for (auto cell = node->beginValueOn(); cell; ++cell)
+              fmt::print("\tleaf local xyz child ({}, {}, {}) value {}\n", cell.getCoord()[0],
+                         cell.getCoord()[1], cell.getCoord()[2], cell.getValue());
+            // getchar();
           }
           break;
         }

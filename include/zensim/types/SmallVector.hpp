@@ -7,16 +7,15 @@ namespace zs {
 
   struct SmallString {
     using size_type = char;
-    static constexpr auto nbytes = 4 * sizeof(void *);  ///< 4 * 8 - 1 = 31 bytes
+    static constexpr auto nbytes = 4 * sizeof(void *);  ///< 4 * 8 - 1 = 31 bytes (chars)
 
     constexpr SmallString() noexcept : buf{} {
       for (auto &c : buf) c = '\0';
     }
     constexpr SmallString(const char tmp[]) : buf{} {
       size_type i = 0;
-      for (; i < nbytes && buf[i]; ++i) buf[i] = tmp[i];
-      for (; i < nbytes; ++i) buf[i] = '\0';
-      buf[nbytes - 1] = '\0';
+      for (; i + 1 < nbytes && tmp[i]; ++i) buf[i] = tmp[i];
+      buf[i] = '\0';
     }
     SmallString(const std::string &str) {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;

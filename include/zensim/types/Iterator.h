@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <type_traits>
 
 #include "zensim/meta/Sequence.h"
@@ -374,6 +375,17 @@ namespace zs {
   template <typename BaseT, auto Diff> IndexIterator(BaseT, integral_v<decltype(Diff), Diff>)
       -> IndexIterator<BaseT, integral_v<decltype(Diff), Diff>>;
 
+  struct CounterIterator : IteratorInterface<CounterIterator> {
+    using T = std::size_t;
+
+    constexpr CounterIterator(T base = 0) : base{base} {}
+    constexpr void increment() noexcept { ++base; }
+    constexpr T dereference() const noexcept { return base; }
+    template <typename Iter> constexpr bool equal_to(Iter it) const noexcept { return false; }
+
+    T base;
+  };
+
   // zip
   template <typename, typename, typename = void> struct zip_iterator;
 
@@ -470,6 +482,15 @@ namespace zs {
   template <typename... Args> constexpr auto zip(Args &&...args) {
     auto begin = make_iterator<zip_iterator>(std::begin(FWD(args))...);
     auto end = make_iterator<zip_iterator>(std::end(FWD(args))...);
+    return detail::iter_range(std::move(begin), std::move(end));
+  }
+
+  template <typename... Args> constexpr auto enumerate(Args &&...args) {
+    auto begin = make_iterator<zip_iterator>(make_iterator<CounterIterator>((std::size_t)0),
+                                             std::begin(FWD(args))...);
+    auto end = make_iterator<zip_iterator>(
+        make_iterator<CounterIterator>(std::numeric_limits<std::size_t>::max()),
+        std::end(FWD(args))...);
     return detail::iter_range(std::move(begin), std::move(end));
   }
 

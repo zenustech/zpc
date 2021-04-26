@@ -122,6 +122,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     types/Tuple.h
     types/Value.h
     types/BuilderBase.hpp
+    types/SmallVector.hpp
     DynamicLoader.h
     Logger.hpp
     Platform.hpp
@@ -183,6 +184,8 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/simulation/transfer/P2G.hpp
     cuda/simulation/transfer/G2P.hpp
     cuda/simulation/grid/GridOp.hpp
+    # physics
+    cuda/physics/ConstitutiveModel.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/execution/ExecutionPolicy.hpp

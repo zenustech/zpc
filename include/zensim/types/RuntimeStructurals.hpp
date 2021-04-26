@@ -14,6 +14,7 @@
 #include "zensim/meta/Sequence.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Polymorphism.h"
+#include "zensim/types/SmallVector.hpp"
 #include "zensim/types/Tuple.h"
 
 namespace zs {
@@ -880,5 +881,7 @@ template <typename T> struct accessor {
 #endif
 
   }  // namespace ds
+
+  using PropertyTag = tuple<SmallString, int>;
 
 }  // namespace zs

@@ -1,6 +1,5 @@
 #pragma once
 #include "Vector.hpp"
-#include "zensim/container/SmallVector.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
@@ -22,8 +21,6 @@ namespace zs {
 
   template <auto Length, typename T, typename ChnCounter, typename Index> using aosoa_instance
       = ds::instance_t<ds::dense, aosoa_snode<Length, wrapt<T>, ChnCounter, Index>>;
-
-  using AttribTag = tuple<SmallString, int>;
 
   template <typename T, auto Length = 8, typename Index = std::size_t, typename ChnCounter = char>
   struct TileVector : Inherit<Object, TileVector<T, Length, Index, ChnCounter>>,
@@ -64,7 +61,7 @@ namespace zs {
           _tags{numChns, mre, devid, alignment},
           _size{count},
           _align{alignment} {}
-    TileVector(Vector<AttribTag> channelTags, size_type count = 0, memsrc_e mre = memsrc_e::host,
+    TileVector(Vector<PropertyTag> channelTags, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, channelTags.size(), count)},
@@ -253,7 +250,7 @@ namespace zs {
       return memorySource;
     }
 
-    Vector<AttribTag> _tags;
+    Vector<PropertyTag> _tags;
     size_type _size{0};  // size
     size_type _align{0};
   };

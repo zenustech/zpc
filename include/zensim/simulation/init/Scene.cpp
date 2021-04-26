@@ -137,25 +137,26 @@ namespace zs {
       Vector<TM> F{}, C{};
     } tmp;
 
+    const bool hasF
+        = config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState);
+
     tmp.M = Vector<T>{memsrc_e::host, -1};
     tmp.X = Vector<TV>{memsrc_e::host, -1};
     tmp.V = Vector<TV>{memsrc_e::host, -1};
-    if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState))
+    if (hasF)
       tmp.F = Vector<TM>{memsrc_e::host, -1};
     else
       tmp.J = Vector<T>{memsrc_e::host, -1};
     tmp.C = Vector<TM>{memsrc_e::host, -1};
 
     for (auto &positions : particlePositions) {
-      const bool hasF
-          = config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState);
       mass = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
       tmp.M.resize(positions.size());
       pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
       tmp.X.resize(positions.size());
       vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
       tmp.V.resize(positions.size());
-      if (config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState)) {
+      if (hasF) {
         F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
         tmp.F.resize(positions.size());
       } else {

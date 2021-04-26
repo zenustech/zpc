@@ -17,7 +17,7 @@ namespace zs {
     NumConstitutiveModels
   };
 
-  template <typename T> std::tuple<T, T> lame_parameters(T E, T nu) {
+  template <typename T> constexpr std::tuple<T, T> lame_parameters(T E, T nu) {
     T mu = 0.5 * E / (1 + nu);
     T lam = E * nu / ((1 + nu) * (1 - 2 * nu));
     return std::make_tuple(mu, lam);
@@ -30,7 +30,7 @@ namespace zs {
   };
   struct EquationOfStateConfig : MaterialConfig {
     float bulk{4e4f};
-    float gamma{7.15f};
+    float gamma{7.15f};  ///< set to 7 by force
     float viscosity{0.f};
   };
   struct NeoHookeanConfig : MaterialConfig {
@@ -62,6 +62,7 @@ namespace zs {
     float fa{45.f};
     float xi{0.8f};  ///< hardening factor
     float beta{0.5f};
+    bool hardeningOn{true};
     constexpr float bulk() const noexcept {
       return 2.f / 3.f * (E / (2 * (1 + nu))) + (E * nu / ((1 + nu) * (1 - 2 * nu)));
     }

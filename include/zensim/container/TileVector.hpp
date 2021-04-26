@@ -1,4 +1,6 @@
 #pragma once
+#include "Vector.hpp"
+#include "zensim/container/SmallVector.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
@@ -20,6 +22,8 @@ namespace zs {
 
   template <auto Length, typename T, typename ChnCounter, typename Index> using aosoa_instance
       = ds::instance_t<ds::dense, aosoa_snode<Length, wrapt<T>, ChnCounter, Index>>;
+
+  using AttribTag = tuple<SmallString, int>;
 
   template <typename T, auto Length = 8, typename Index = std::size_t, typename ChnCounter = char>
   struct TileVector : Inherit<Object, TileVector<T, Length, Index, ChnCounter>>,
@@ -50,12 +54,21 @@ namespace zs {
                          std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, 0, 0)},
+          _tags{mre, devid, alignment},
           _size{0},
           _align{alignment} {}
     TileVector(channel_counter_type numChns = 1, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, numChns, count + count / 2)},
+          base_t{buildInstance(mre, devid, numChns, count)},
+          _tags{numChns, mre, devid, alignment},
+          _size{count},
+          _align{alignment} {}
+    TileVector(Vector<AttribTag> channelTags, size_type count = 0, memsrc_e mre = memsrc_e::host,
+               ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
+        : MemoryHandle{mre, devid},
+          base_t{buildInstance(mre, devid, channelTags.size(), count)},
+          _tags{channelTags.clone(MemoryHandle{mre, devid})},
           _size{count},
           _align{alignment} {}
 
@@ -120,7 +133,7 @@ namespace zs {
     }
     /// ctor, assignment operator
     explicit TileVector(const TileVector &o)
-        : MemoryHandle{o.memoryHandle()}, _size{o.size()}, _align{o._align} {
+        : MemoryHandle{o.memoryHandle()}, _tags{o._tags}, _size{o.size()}, _align{o._align} {
       auto &rm = get_resource_manager().get();
       base_t tmp{buildInstance(o.memspace(), o.devid(), numChannels(), o.capacity())};
       if (o.size()) rm.copy((void *)tmp.address(), o.head());
@@ -132,6 +145,11 @@ namespace zs {
       TileVector tmp{o};
       swap(tmp);
       return *this;
+    }
+    TileVector clone(const MemoryHandle &mh) {
+      TileVector ret{_tags, capacity(), mh.memspace(), mh.devid(), _align};
+      get_resource_manager().get().copy((void *)ret.head(), (void *)head());
+      return ret;
     }
     /// assignment or destruction after std::move
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
@@ -235,6 +253,7 @@ namespace zs {
       return memorySource;
     }
 
+    Vector<AttribTag> _tags;
     size_type _size{0};  // size
     size_type _align{0};
   };
@@ -245,11 +264,16 @@ namespace zs {
       : TileVectorT::base_t {
     using tile_vector_t = typename TileVectorT::base_t;
     using size_type = typename TileVectorT::size_type;
+    using channel_counter_type = typename TileVectorT::channel_counter_type;
 
     constexpr TileVectorProxy() = default;
     ~TileVectorProxy() = default;
     explicit TileVectorProxy(TileVectorT &tilevector)
         : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {}
+
+    constexpr channel_counter_type numChannels() const noexcept {
+      return this->node().child(wrapv<0>{}).channel_count();
+    }
 
     size_type _vectorSize;
   };

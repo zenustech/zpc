@@ -47,7 +47,7 @@ namespace zs {
     SoAVector(channel_counter_type numChns = 1, size_type count = 0, memsrc_e mre = memsrc_e::host,
               ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, numChns, count + count / 2)},
+          base_t{buildInstance(mre, devid, numChns, count)},
           _size{count},
           _align{alignment} {}
 
@@ -96,7 +96,6 @@ namespace zs {
     constexpr size_type capacity() const noexcept { return self().node().extent(); }
     constexpr bool empty() noexcept { return size() == 0; }
     constexpr pointer head() const noexcept { return reinterpret_cast<pointer>(self().address()); }
-    constexpr pointer tail() const noexcept { return reinterpret_cast<pointer>(head() + size()); }
 
     /// element access
     constexpr reference operator[](
@@ -123,6 +122,11 @@ namespace zs {
       SoAVector tmp{o};
       swap(tmp);
       return *this;
+    }
+    SoAVector clone(const MemoryHandle &mh) {
+      SoAVector ret{numChannels(), capacity(), mh.memspace(), mh.devid(), _align};
+      get_resource_manager().get().copy((void *)ret.head(), (void *)head());
+      return ret;
     }
     /// assignment or destruction after std::move
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
@@ -238,11 +242,16 @@ namespace zs {
       : SoAVectorT::base_t {
     using soa_vector_t = typename SoAVectorT::base_t;
     using size_type = typename SoAVectorT::size_type;
+    using channel_counter_type = typename SoAVectorT::channel_counter_type;
 
     constexpr SoAVectorProxy() = default;
     ~SoAVectorProxy() = default;
     explicit SoAVectorProxy(SoAVectorT &soavector)
         : soa_vector_t{soavector.self()}, _vectorSize{soavector.size()} {}
+
+    constexpr channel_counter_type numChannels() const noexcept {
+      return this->node().child(wrapv<0>{}).channel_count();
+    }
 
     size_type _vectorSize;
   };

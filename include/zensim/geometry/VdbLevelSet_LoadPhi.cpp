@@ -155,9 +155,11 @@ namespace zs {
           }
           if (node) {
             // getchar();
-            for (auto cell = node->beginValueOn(); cell; ++cell)
+            for (auto cell = node->beginValueOn(); cell; ++cell) {
               fmt::print("\troot local xyz child ({}, {}, {}) value {}\n", cell.getCoord()[0],
                          cell.getCoord()[1], cell.getCoord()[2], cell.getValue());
+              getchar();
+            }
           }
           break;
         }
@@ -177,10 +179,11 @@ namespace zs {
                   if (node->isValueOn(openvdb::Coord(i, j, k)))
                     fmt::print("int1 local xyz child ({}, {}, {}) is active\n", i, j, k);
                 }
-            for (auto cell = node->beginValueOn(); cell; ++cell)
+            for (auto cell = node->beginValueOn(); cell; ++cell) {
               fmt::print("\tint1 local xyz child ({}, {}, {}) value {}\n", cell.getCoord()[0],
                          cell.getCoord()[1], cell.getCoord()[2], cell.getValue());
-            // getchar();
+              getchar();
+            }
           }
           break;
         }
@@ -200,10 +203,11 @@ namespace zs {
                   if (node->isValueOn(openvdb::Coord(i, j, k)))
                     fmt::print("int2 local xyz child ({}, {}, {}) is active\n", i, j, k);
                 }
-            for (auto cell = node->beginValueOn(); cell; ++cell)
+            for (auto cell = node->beginValueOn(); cell; ++cell) {
               fmt::print("\tint2 local xyz child ({}, {}, {}) value {}\n", cell.getCoord()[0],
                          cell.getCoord()[1], cell.getCoord()[2], cell.getValue());
-            // getchar();
+              getchar();
+            }
           }
           break;
         }

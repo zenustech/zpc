@@ -19,8 +19,8 @@ namespace zs {
   struct Vector : Inherit<Object, Vector<T, Index>>, vector_instance<T, Index>, MemoryHandle {
     /// according to rule of 5(6)/0
     /// is_trivial<T> has to be true
-    static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
-                  "element is not default-constructible or trivially-copyable!");
+    static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
+    static_assert(std::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
     using base_t = vector_instance<T, Index>;
     using value_type = remove_cvref_t<T>;
     using pointer = value_type *;
@@ -47,9 +47,14 @@ namespace zs {
     Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
            std::size_t alignment = std::alignment_of_v<T>)
         : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, count + count / 2)},
+          base_t{buildInstance(mre, devid, count)},
           _size{count},
           _align{alignment} {}
+    Vector(std::initializer_list<T> vals) : Vector{vals.size(), memsrc_e::host, -1, std::alignment_of_v<T>} {
+      size_type i = 0;
+      for (const auto &src : vals)
+        (*this)[i++] = src;
+    }
 
     ~Vector() {
       if (head()) self().dealloc();
@@ -119,6 +124,11 @@ namespace zs {
       Vector tmp{o};
       swap(tmp);
       return *this;
+    }
+    Vector clone(const MemoryHandle &mh) {
+      Vector ret{capacity(), mh.memspace(), mh.devid(), _align};
+      get_resource_manager().get().copy((void *)ret.head(), (void *)head());
+      return ret;
     }
     /// assignment or destruction after std::move
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4

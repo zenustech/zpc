@@ -43,8 +43,8 @@ namespace zs {
         : base_t{buildInstance(mre, devid, 0)},
           MemoryHandle{mre, devid},
           _tableSize{0},
-          _cnt{mre, devid},
-          _activeKeys{mre, devid},
+          _cnt{mre, devid, alignment},
+          _activeKeys{mre, devid, alignment},
           _align{alignment} {}
 
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
@@ -52,14 +52,22 @@ namespace zs {
         : base_t{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
           MemoryHandle{mre, devid},
           _tableSize{static_cast<value_t>(next_2pow(tableSize) * reserve_ratio_v)},
-          _cnt{1, mre, devid},
-          _activeKeys{tableSize, mre, devid},
+          _cnt{1, mre, devid, alignment},
+          _activeKeys{tableSize, mre, devid, alignment},
           _align{alignment} {}
 
     void resize(value_t newSize) {
       newSize = next_2pow(newSize) * reserve_ratio_v;
       _activeKeys.resize(newSize);
       _tableSize = newSize;
+    }
+    HashTable clone(const MemoryHandle &mh) const {
+      HashTable ret{};
+      ret._tableSize = _tableSize;
+      ret._cnt = _cnt.clone(mh);
+      ret._activeKeys = _activeKeys.clone(mh);
+      ret._align = _align;
+      return ret;
     }
 
     inline value_t size() const {

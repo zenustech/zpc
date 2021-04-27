@@ -125,7 +125,7 @@ namespace zs {
       swap(tmp);
       return *this;
     }
-    Vector clone(const MemoryHandle &mh) {
+    Vector clone(const MemoryHandle &mh) const {
       Vector ret{capacity(), mh.memspace(), mh.devid(), _align};
       get_resource_manager().get().copy((void *)ret.head(), (void *)head());
       return ret;
@@ -139,7 +139,7 @@ namespace zs {
       base() = std::exchange(o.base(), defaultVector.memoryHandle());
       self() = std::exchange(o.self(), defaultVector.self());
       _size = std::exchange(o._size, defaultVector.size());
-      _align = std::exchange(o._align, std::alignment_of_v<T>);
+      _align = std::exchange(o._align, defaultVector._align);
     }
     /// make move-assignment safe for self-assignment
     Vector &operator=(Vector &&o) noexcept {

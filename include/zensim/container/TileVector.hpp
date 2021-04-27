@@ -51,21 +51,22 @@ namespace zs {
                          std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, 0, 0)},
-          _tags{mre, devid, alignment},
+          _tags{memsrc_e::host, -1, alignment},
           _size{0},
           _align{alignment} {}
     TileVector(channel_counter_type numChns = 1, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, numChns, count)},
-          _tags{numChns, mre, devid, alignment},
+          _tags{numChns, memsrc_e::host, -1, alignment},
           _size{count},
           _align{alignment} {}
-    TileVector(Vector<PropertyTag> channelTags, size_type count = 0, memsrc_e mre = memsrc_e::host,
-               ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
+    TileVector(const Vector<PropertyTag> &channelTags, size_type count = 0,
+               memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+               std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, numTotalChannels(channelTags), count)},
-          _tags{channelTags.clone(MemoryHandle{mre, devid})},
+          _tags{std::move(channelTags.clone(MemoryHandle{memsrc_e::host, -1}))},
           _size{count},
           _align{alignment} {}
 
@@ -74,12 +75,9 @@ namespace zs {
     }
 
     auto numTotalChannels(const Vector<PropertyTag> &tags) {
-      return tags.size();
-#if 0
       tuple_element_t<1, PropertyTag> cnt = 0;
       for (Vector<PropertyTag>::size_type i = 0; i < tags.size(); ++i) cnt += get<1>(tags[i]);
       return cnt;
-#endif
     }
     struct iterator : IteratorInterface<iterator> {
       constexpr iterator(const base_t &range, size_type idx, channel_counter_type chn = 0)
@@ -151,7 +149,7 @@ namespace zs {
       swap(tmp);
       return *this;
     }
-    TileVector clone(const MemoryHandle &mh) {
+    TileVector clone(const MemoryHandle &mh) const {
       TileVector ret{_tags, capacity(), mh.memspace(), mh.devid(), _align};
       get_resource_manager().get().copy((void *)ret.head(), (void *)head());
       return ret;
@@ -164,8 +162,9 @@ namespace zs {
       const TileVector defaultVector{};
       base() = std::exchange(o.base(), defaultVector.memoryHandle());
       self() = std::exchange(o.self(), defaultVector.self());
+      _tags = std::exchange(o._tags, defaultVector._tags);
       _size = std::exchange(o._size, defaultVector.size());
-      _align = std::exchange(o._align, std::alignment_of_v<T>);
+      _align = std::exchange(o._align, defaultVector._align);
     }
     /// make move-assignment safe for self-assignment
     TileVector &operator=(TileVector &&o) noexcept {

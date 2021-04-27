@@ -64,7 +64,7 @@ namespace zs {
     TileVector(Vector<PropertyTag> channelTags, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, channelTags.size(), count)},
+          base_t{buildInstance(mre, devid, numTotalChannels(channelTags), count)},
           _tags{channelTags.clone(MemoryHandle{mre, devid})},
           _size{count},
           _align{alignment} {}
@@ -73,6 +73,14 @@ namespace zs {
       if (head()) self().dealloc();
     }
 
+    auto numTotalChannels(const Vector<PropertyTag> &tags) {
+      return tags.size();
+#if 0
+      tuple_element_t<1, PropertyTag> cnt = 0;
+      for (Vector<PropertyTag>::size_type i = 0; i < tags.size(); ++i) cnt += get<1>(tags[i]);
+      return cnt;
+#endif
+    }
     struct iterator : IteratorInterface<iterator> {
       constexpr iterator(const base_t &range, size_type idx, channel_counter_type chn = 0)
           : _range{range}, _idx{idx}, _chn{chn} {}

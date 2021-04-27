@@ -54,7 +54,7 @@ namespace zs {
           _tags{memsrc_e::host, -1, alignment},
           _size{0},
           _align{alignment} {}
-    TileVector(channel_counter_type numChns = 1, size_type count = 0, memsrc_e mre = memsrc_e::host,
+    TileVector(channel_counter_type numChns = 0, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, numChns, count)},
@@ -176,6 +176,7 @@ namespace zs {
     void swap(TileVector &o) noexcept {
       base().swap(o.base());
       std::swap(self(), o.self());
+      _tags.swap(o._tags);
       std::swap(_size, o._size);
       std::swap(_align, o._align);
     }
@@ -216,6 +217,32 @@ namespace zs {
 
     constexpr channel_counter_type numChannels() const noexcept {
       return self().node().child(wrapv<0>{}).channel_count();
+    }
+    constexpr auto propertyOffsets() const {
+      std::vector<channel_counter_type> offsets(_tags.size());
+      for (Vector<PropertyTag>::size_type i = 0; i < _tags.size(); ++i)
+        offsets[i] = (i ? offsets[i - 1] + get<1>(_tags[i - 1]) : 0);
+      return offsets;
+    }
+    template <auto N>
+    constexpr auto extractPropertyTag(const std::array<SmallString, N> &propNames) const {
+      const auto offsets = propertyOffsets();
+      vec<channel_counter_type, N> propOffsets{}, propSizes{};
+      for (decltype(N) dst = 0; dst < N; ++dst) {
+        Vector<PropertyTag>::size_type i = 0;
+        for (; i < _tags.size(); ++i) {
+          if (zs::get<0>(_tags[i]) == propNames[dst]) {
+            propSizes[dst] = zs::get<1>(_tags[i]);
+            propOffsets[dst] = offsets[i];
+            break;
+          }
+        }
+        if (i == _tags.size()) {
+          propSizes[dst] = 0;
+          propOffsets[dst] = -1;
+        }
+      }
+      return std::make_tuple(propOffsets, propSizes);
     }
     constexpr const_pointer data() const noexcept { return (pointer)head(); }
     constexpr pointer data() noexcept { return (pointer)head(); }
@@ -262,29 +289,68 @@ namespace zs {
     size_type _align{0};
   };
 
-  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorProxy;
+  template <execspace_e, int N, typename TileVectorT, typename = void> struct TileVectorProxy;
+  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorUnnamedProxy;
 
-  template <execspace_e Space, typename TileVectorT> struct TileVectorProxy<Space, TileVectorT>
-      : TileVectorT::base_t {
+  template <execspace_e Space, int N, typename TileVectorT>
+  struct TileVectorProxy<Space, N, TileVectorT> : TileVectorT::base_t {
     using tile_vector_t = typename TileVectorT::base_t;
     using size_type = typename TileVectorT::size_type;
     using channel_counter_type = typename TileVectorT::channel_counter_type;
+    static constexpr auto lane_width = TileVectorT::lane_width;
 
     constexpr TileVectorProxy() = default;
     ~TileVectorProxy() = default;
-    explicit TileVectorProxy(TileVectorT &tilevector)
-        : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {}
+    explicit TileVectorProxy(const std::array<SmallString, N> &tagNames, TileVectorT &tilevector)
+        : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {
+      _tagNames = vec<SmallString, N>::from_array(tagNames);
+      std::tie(_tagOffsets, _tagSizes) = tilevector.extractPropertyTag(tagNames);
+#if 1
+      for (int i = 0; i < N; ++i)
+        fmt::print("({}, {}, {}) ", _tagNames[i], (int)_tagOffsets[i], (int)_tagSizes[i]);
+      fmt::print("\n");
+#endif
+    }
+    constexpr auto &operator()(channel_counter_type c, size_type i) {
+      return static_cast<tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
+    }
+    constexpr const auto &operator()(channel_counter_type c, size_type i) const {
+      return static_cast<const tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
+    }
+    constexpr auto propIndex(const char propName[]) const {
+      decltype(N) i = 0;
+      for (; i < N; ++i)
+        if (_tagNames[i] == propName) break;
+      return i;
+    }
+    constexpr auto &operator()(const char propName[], channel_counter_type c, size_type i) {
+      return static_cast<tile_vector_t &>(*this)(i / lane_width)(
+          _tagOffsets[propIndex(propName)] + c, i % lane_width);
+    }
+    constexpr const auto &operator()(const char propName[], channel_counter_type c,
+                                     size_type i) const {
+      return static_cast<const tile_vector_t &>(*this)(i / lane_width)(
+          _tagOffsets[propIndex(propName)] + c, i % lane_width);
+    }
 
     constexpr channel_counter_type numChannels() const noexcept {
       return this->node().child(wrapv<0>{}).channel_count();
     }
-
     size_type _vectorSize;
+    vec<SmallString, N> _tagNames;
+    vec<channel_counter_type, N> _tagOffsets, _tagSizes;
   };
 
-  template <execspace_e ExecSpace, auto Length, typename T, typename ChnT, typename IndexT>
-  decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT> &vec) {
-    return TileVectorProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{vec};
+#if 0
+  template <execspace_e ExecSpace, int N, typename TileVectorT>
+  TileVectorProxy(std::array<SmallString, N>, TileVectorT)
+      -> TileVectorProxy<ExecSpace, N, TileVectorT>;
+#endif
+
+  template <execspace_e ExecSpace, auto N, typename T, auto Length, typename IndexT, typename ChnT>
+  decltype(auto) proxy(const std::array<SmallString, N> &tagNames,
+                       TileVector<T, Length, IndexT, ChnT> &vec) {
+    return TileVectorProxy<ExecSpace, N, TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
   }
 
 }  // namespace zs

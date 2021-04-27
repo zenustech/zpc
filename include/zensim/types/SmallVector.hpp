@@ -27,6 +27,17 @@ namespace zs {
     constexpr SmallString(SmallString &&) noexcept = default;
     constexpr SmallString &operator=(SmallString &&) noexcept = default;
 
+    constexpr bool operator==(const SmallString &str) const noexcept {
+      for (size_type i = 0; i < nbytes && buf[i] && str.buf[i]; ++i)
+        if (buf[i] != str.buf[i]) return false;
+      return true;
+    }
+    constexpr bool operator==(const char str[]) const noexcept {
+      for (size_type i = 0; i < nbytes && buf[i] && str[i]; ++i)
+        if (buf[i] != str[i]) return false;
+      return true;
+    }
+
     std::string asString() const { return std::string{buf}; }
     constexpr const char *asChars() const noexcept { return buf; }
     constexpr operator const char *() const noexcept { return buf; }

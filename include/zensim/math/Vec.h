@@ -591,4 +591,11 @@ using vec =
   /// affine map = linear map + translation matrix+(0, 0, 1) point(vec+{1})
   /// vector(vec+{0}) homogeneous coordinates
 
+  template <typename... Args> constexpr auto make_array(Args &&...args) {
+    return std::array<std::common_type_t<remove_cvref_t<Args>...>, sizeof...(Args)>{FWD(args)...};
+  }
+  template <typename RetT, typename... Args> constexpr auto make_array(Args &&...args) {
+    return std::array<RetT, sizeof...(Args)>{FWD(args)...};
+  }
+
 }  // namespace zs

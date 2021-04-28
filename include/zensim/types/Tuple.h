@@ -238,9 +238,22 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr operator tuple<Ts...>() const noexcept { return *this; }
   };
 
+  template <typename T> struct is_vec;
   template <typename... Ts> struct tuple
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
     using typename tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>::tuple_types;
+
+    template <typename Vec>
+    constexpr std::enable_if_t<is_vec<Vec>::value, tuple &> operator=(const Vec &v) {
+      assign_impl(v, std::index_sequence_for<Ts...>{});
+      return *this;
+    }
+
+  private:
+    template <typename Vec, std::size_t... Is>
+    constexpr void assign_impl(const Vec &v, index_seq<Is...>) {
+      ((void)(this->template get<Is>() = v.data()[Is]), ...);
+    }
   };
 
   template <typename... Args> tuple(Args...) -> tuple<Args...>;

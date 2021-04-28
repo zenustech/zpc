@@ -11,6 +11,7 @@
 #include "zensim/meta/Relationship.h"
 #include "zensim/meta/Sequence.h"
 #include "zensim/tpls/gcem.hpp"
+#include "zensim/types/Tuple.h"
 
 namespace zs {
 
@@ -149,6 +150,31 @@ using vec =
       return *this;
     }
 #endif
+    template <typename... Args, std::size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
+    static constexpr vec_impl from_tuple(const std::tuple<Args...> &tup, index_seq<Is...>) {
+      vec_impl ret{};
+      ((void)(ret.data()[Is] = std::get<Is>(tup)), ...);
+      return ret;
+    }
+    template <typename... Args, enable_if_t<sizeof...(Args) == extent> = 0>
+    static constexpr vec_impl from_tuple(const std::tuple<Args...> &tup) {
+      return from_tuple(tup, std::index_sequence_for<Args...>{});
+    }
+    template <typename... Args, enable_if_t<sizeof...(Args) == extent> = 0>
+    constexpr vec_impl &operator=(const std::tuple<Args...> &tup) {
+      *this = from_tuple(tup);
+      return *this;
+    }
+    template <typename... Args, std::size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
+    static constexpr vec_impl from_tuple(const zs::tuple<Args...> &tup, index_seq<Is...>) {
+      vec_impl ret{};
+      ((void)(ret.data()[Is] = zs::get<Is>(tup)), ...);
+      return ret;
+    }
+    template <typename... Args, enable_if_t<sizeof...(Args) == extent> = 0>
+    static constexpr vec_impl from_tuple(const zs::tuple<Args...> &tup) {
+      return from_tuple(tup, std::index_sequence_for<Args...>{});
+    }
 
     static constexpr vec_impl from_array(const std::array<T, extent> &arr) noexcept {
       vec_impl r{};

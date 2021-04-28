@@ -244,6 +244,13 @@ namespace zs {
       }
       return std::make_tuple(propOffsets, propSizes);
     }
+    template <auto N>
+    const auto &preparePropertyNames(const std::array<SmallString, N> &propNames) {
+      Vector<SmallString> hostPropNames{N, memsrc_e::host, -1};
+      for (decltype(N) i = 0; i < N; ++i) hostPropNames[i] = propNames[i];
+      _tagNames = hostPropNames.clone(base());
+      return _tagNames;
+    }
     constexpr const_pointer data() const noexcept { return (pointer)head(); }
     constexpr pointer data() noexcept { return (pointer)head(); }
     constexpr reference front() noexcept { return (*this)(0); }
@@ -285,6 +292,7 @@ namespace zs {
     }
 
     Vector<PropertyTag> _tags;
+    Vector<SmallString> _tagNames;
     size_type _size{0};  // size
     size_type _align{0};
   };
@@ -294,6 +302,7 @@ namespace zs {
 
   template <execspace_e Space, int N, typename TileVectorT>
   struct TileVectorProxy<Space, N, TileVectorT> : TileVectorT::base_t {
+    using value_type = typename TileVectorT::value_type;
     using tile_vector_t = typename TileVectorT::base_t;
     using size_type = typename TileVectorT::size_type;
     using channel_counter_type = typename TileVectorT::channel_counter_type;
@@ -303,7 +312,8 @@ namespace zs {
     ~TileVectorProxy() = default;
     explicit TileVectorProxy(const std::array<SmallString, N> &tagNames, TileVectorT &tilevector)
         : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {
-      _tagNames = vec<SmallString, N>::from_array(tagNames);
+      // _tagNames = vec<SmallString, N>::from_array(tagNames);
+      _tagNames = tilevector.preparePropertyNames(tagNames).data();
       std::tie(_tagOffsets, _tagSizes) = tilevector.extractPropertyTag(tagNames);
 #if 1
       for (int i = 0; i < N; ++i)
@@ -311,10 +321,10 @@ namespace zs {
       fmt::print("\n");
 #endif
     }
-    constexpr auto &operator()(channel_counter_type c, size_type i) {
+    constexpr auto &operator()(const channel_counter_type c, const size_type i) {
       return static_cast<tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
     }
-    constexpr const auto &operator()(channel_counter_type c, size_type i) const {
+    constexpr const auto &operator()(const channel_counter_type c, const size_type i) const {
       return static_cast<const tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
     }
     constexpr auto propIndex(const char propName[]) const {
@@ -323,21 +333,53 @@ namespace zs {
         if (_tagNames[i] == propName) break;
       return i;
     }
-    constexpr auto &operator()(const char propName[], channel_counter_type c, size_type i) {
+    constexpr auto &operator()(const char propName[], const channel_counter_type c,
+                               const size_type i) {
       return static_cast<tile_vector_t &>(*this)(i / lane_width)(
           _tagOffsets[propIndex(propName)] + c, i % lane_width);
     }
-    constexpr const auto &operator()(const char propName[], channel_counter_type c,
-                                     size_type i) const {
+    constexpr const auto &operator()(const char propName[], const channel_counter_type c,
+                                     const size_type i) const {
       return static_cast<const tile_vector_t &>(*this)(i / lane_width)(
           _tagOffsets[propIndex(propName)] + c, i % lane_width);
+    }
+    template <auto... Ns> constexpr auto pack(const char propName[], const size_type i) const {
+      using RetT = vec<value_type, Ns...>;
+      RetT ret{};
+      const auto a = i / lane_width, b = i % lane_width;
+      const auto chnOffset = _tagOffsets[propIndex(propName)];
+      for (channel_counter_type i = 0; i < RetT::extent; ++i)
+        ret.data()[i] = static_cast<tile_vector_t &>(*this)(a)(chnOffset + i, b);
+      return ret;
+    }
+    template <std::size_t... Is> constexpr auto tuple_impl(const channel_counter_type chnOffset,
+                                                           const size_type i, index_seq<Is...>) {
+      const auto a = i / lane_width, b = i % lane_width;
+#if 0
+      using Tuple = typename gen_seq<N>::template uniform_types_t<std::tuple, value_type &>;
+      return Tuple{static_cast<tile_vector_t &>(*this)(a)(chnOffset + Is, b)...};
+#else
+      return zs::forward_as_tuple(static_cast<tile_vector_t &>(*this)(a)(chnOffset + Is, b)...);
+#endif
+    }
+    template <std::size_t... Is> constexpr auto stdtuple_impl(const channel_counter_type chnOffset,
+                                                              const size_type i, index_seq<Is...>) {
+      const auto a = i / lane_width, b = i % lane_width;
+      return std::forward_as_tuple(static_cast<tile_vector_t &>(*this)(a)(chnOffset + Is, b)...);
+    }
+    template <auto d> constexpr auto tuple(const char propName[], const size_type i) {
+      return tuple_impl(_tagOffsets[propIndex(propName)], i, std::make_index_sequence<d>{});
+    }
+    template <auto d> constexpr auto stdtuple(const char propName[], const size_type i) {
+      return stdtuple_impl(_tagOffsets[propIndex(propName)], i, std::make_index_sequence<d>{});
     }
 
     constexpr channel_counter_type numChannels() const noexcept {
       return this->node().child(wrapv<0>{}).channel_count();
     }
     size_type _vectorSize;
-    vec<SmallString, N> _tagNames;
+    // vec<SmallString, N> _tagNames;
+    const SmallString *_tagNames;
     vec<channel_counter_type, N> _tagOffsets, _tagSizes;
   };
 

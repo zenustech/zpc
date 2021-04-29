@@ -87,7 +87,7 @@ namespace zs {
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);
           J = (1 + (C[0] + C[4] + C[8]) * dt * D_inv) * J;
-          if (J < 0.1) J = 0.1;
+          if (J < 0.05) J = 0.1;
           particles.J(parid) = J;
         } else {
           vec9 oldF{particles.F(parid)[0][0], particles.F(parid)[1][0], particles.F(parid)[2][0],
@@ -96,11 +96,11 @@ namespace zs {
               tmp, F;
           for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt * D_inv + ((d & 0x3) ? 0.f : 1.f);
           matrixMatrixMultiplication3d(tmp.data(), oldF.data(), F.data());
-          for (int d = 0; d < 9; ++d) particles.F(parid)[d / 3][d % 3] = F[d];
+          for (int d = 0; d < 9; ++d) particles.F(parid)[d % 3][d / 3] = F[d];
         }
         for (int i = 0; i < 3; ++i) particles.pos(parid)[i] = pos[i];
         for (int i = 0; i < 3; ++i) particles.vel(parid)[i] = vel[i];
-        for (int i = 0; i < 9; ++i) particles.C(parid)[i / 3][i % 3] = C[i];
+        for (int i = 0; i < 9; ++i) particles.C(parid)[i % 3][i / 3] = C[i];
       }
     }
 

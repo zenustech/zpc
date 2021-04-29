@@ -1,9 +1,7 @@
-#ifndef __EIGEN_DECOMPOSITION_CUH__
-#define __EIGEN_DECOMPOSITION_CUH__
-
+#pragma once
 #include <device_types.h>
 
-#include "MatrixUtils.h"
+#include "zensim/math/matrix/MatrixUtils.h"
 
 namespace zs {
 
@@ -189,5 +187,3 @@ namespace zs {
   }  // namespace math
 
 }  // namespace zs
-
-#endif

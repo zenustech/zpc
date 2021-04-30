@@ -124,19 +124,17 @@ namespace zs {
     using T = typename Particles<f32, 3>::T;
     using TV = typename Particles<f32, 3>::TV;
     using TM = typename Particles<f32, 3>::TM;
-    // dst
-    Vector<T> mass{};
-    Vector<TV> pos{}, vel{};
-    Vector<T> J{};
-    Vector<TM> F{}, C{};
     // bridge on host
     struct {
       Vector<T> M{};
       Vector<TV> X{}, V{};
-      Vector<T> J{};
+      Vector<T> J{}, logJp0{};
       Vector<TM> F{}, C{};
     } tmp;
 
+    const bool hasPlasticity
+        = config.index() == magic_enum::enum_integer(constitutive_model_e::DruckerPrager)
+          || config.index() == magic_enum::enum_integer(constitutive_model_e::NACC);
     const bool hasF
         = config.index() != magic_enum::enum_integer(constitutive_model_e::EquationOfState);
 
@@ -148,23 +146,18 @@ namespace zs {
     else
       tmp.J = Vector<T>{memsrc_e::host, -1};
     tmp.C = Vector<TM>{memsrc_e::host, -1};
+    if (hasPlasticity) tmp.logJp0 = Vector<T>{memsrc_e::host, -1};
 
     for (auto &positions : particlePositions) {
-      mass = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
       tmp.M.resize(positions.size());
-      pos = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
       tmp.X.resize(positions.size());
-      vel = Vector<TV>{positions.size(), dst.memspace(), dst.devid()};
       tmp.V.resize(positions.size());
-      if (hasF) {
-        F = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
+      if (hasF)
         tmp.F.resize(positions.size());
-      } else {
-        J = Vector<T>{positions.size(), dst.memspace(), dst.devid()};
+      else
         tmp.J.resize(positions.size());
-      }
-      C = Vector<TM>{positions.size(), dst.memspace(), dst.devid()};
       tmp.C.resize(positions.size());
+      if (hasPlasticity) tmp.logJp0.resize(positions.size());
       /// -> bridge
       // default mass, vel, F
       assert_with_msg(sizeof(float) * 3 == sizeof(TV), "fatal: TV size not as expected!");
@@ -188,32 +181,29 @@ namespace zs {
         }
         std::vector<std::array<T, 3 * 3>> defaultC(positions.size(), {0, 0, 0, 0, 0, 0, 0, 0, 0});
         memcpy(tmp.C.head(), defaultC.data(), sizeof(TM) * positions.size());
+        if (hasPlasticity) {
+          std::vector<T> defaultLogJp0(
+              positions.size(),
+              match([](auto &config) -> decltype(config.logJp0) { return config.logJp0; },
+                    [](...) { return 0.f; })(config));
+          memcpy(tmp.logJp0.head(), defaultLogJp0.data(), sizeof(T) * positions.size());
+        }
       }
-      /// -> dst
-      auto &rm = get_resource_manager().get();
-      rm.copy((void *)mass.head(), (void *)tmp.M.head(), sizeof(T) * mass.size());
-      rm.copy((void *)pos.head(), (void *)tmp.X.head(), sizeof(TV) * pos.size());
-      rm.copy((void *)vel.head(), (void *)tmp.V.head(), sizeof(TV) * vel.size());
-      if (hasF)
-        rm.copy((void *)F.head(), (void *)tmp.F.head(), sizeof(TM) * F.size());
-      else
-        rm.copy((void *)J.head(), (void *)tmp.J.head(), sizeof(T) * J.size());
-      rm.copy((void *)C.head(), (void *)tmp.C.head(), sizeof(TM) * C.size());
-      /// modify scene
       // constitutive model
       scene.models.emplace_back(config, Scene::model_e::Particle, dstParticles.size());
       // particles
       dstParticles.push_back(Particles<f32, 3>{});
       match(
-          [&mass, &pos, &vel, &F, &J, &C, hasF, this](Particles<f32, 3> &pars) {
-            pars.M = std::move(mass);
-            pars.X = std::move(pos);
-            pars.V = std::move(vel);
+          [&tmp, &dst, hasF, hasPlasticity, this](Particles<f32, 3> &pars) {
+            pars.M = tmp.M.clone(dst);
+            pars.X = tmp.X.clone(dst);
+            pars.V = tmp.V.clone(dst);
             if (hasF)
-              pars.F = std::move(F);
+              pars.F = tmp.F.clone(dst);
             else
-              pars.J = std::move(J);
-            pars.C = std::move(C);
+              pars.J = tmp.J.clone(dst);
+            pars.C = tmp.C.clone(dst);
+            if (hasPlasticity) pars.logJp = tmp.logJp0.clone(dst);
             fmt::print("moving {} paticles [{}, {}]\n", pars.X.size(),
                        magic_enum::enum_name(pars.X.memspace()), static_cast<int>(pars.X.devid()));
           },

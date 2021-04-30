@@ -78,19 +78,18 @@ namespace zs {
           } else if constexpr (is_same_v<model_t, VonMisesFixedCorotatedConfig>) {
             compute_stress_vonmisesfixedcorotated(model.volume, mu, lambda, model.yieldStress, F,
                                                   contrib);
-          }
-#if 0
-          /// with plasticity additionally
-          else if constexpr (is_same_v<model_t, DruckerPragerConfig>) {
+          } else {
+            /// with plasticity additionally
             float logJp = particles.logJp(parid);
-            compute_stress_sand(model.volume, mu, lambda, model.cohesion, model.beta,
-                                model.yieldSurface, model.volumeCorrection, logJp, F, contrib);
-          } else if constexpr (mt == material_e::NACC) {
-            float logJp = particles.logJp(parid);
-            compute_stress_nacc(model.volume, mu, lambda, model.bulk(), model.xi,
-                                model.beta, model.Msqr(), model.hardeningOn, logJp, F, contrib);
+            if constexpr (is_same_v<model_t, DruckerPragerConfig>) {
+              compute_stress_sand(model.volume, mu, lambda, model.cohesion, model.beta,
+                                  model.yieldSurface, model.volumeCorrection, logJp, F, contrib);
+            } else if constexpr (is_same_v<model_t, NACCConfig>) {
+              compute_stress_nacc(model.volume, mu, lambda, model.bulk(), model.xi, model.beta,
+                                  model.Msqr(), model.hardeningOn, logJp, F, contrib);
+            }
+            particles.logJp(parid) = logJp;
           }
-#endif
         }
 
         contrib = C * mass * D_inv - contrib * dt * D_inv;

@@ -57,11 +57,12 @@ namespace zs {
 
     Vector<T> M;
     Vector<TV> X, V;
-    Vector<T> J;
+    Vector<T> J, logJp;
     Vector<TM> F, C;
     /// aux channels
     // SoAVector<dat32> aux32;
     // SoAVector<dat64> aux64;
+    TileVector<f32, 32> particleBins;  // (mass, pos, vel, J, F, C, logJp)
   };
 
 #if 0
@@ -88,6 +89,7 @@ namespace zs {
           _J{particles.J.data()},
           _F{particles.F.data()},
           _C{particles.C.data()},
+          _logJp{particles.logJp.data()},
           _particleCount{particles.size()} {}
 
     constexpr auto &mass(size_type parid) { return _M[parid]; }
@@ -105,6 +107,9 @@ namespace zs {
     /// for apic transfer only
     constexpr auto &C(size_type parid) { return _C[parid]; }
     constexpr const auto &C(size_type parid) const { return _C[parid]; }
+    /// plasticity
+    constexpr auto &logJp(size_type parid) { return _logJp[parid]; }
+    constexpr const auto &logJp(size_type parid) const { return _logJp[parid]; }
     constexpr auto size() const noexcept { return _particleCount; }
 
   protected:
@@ -112,6 +117,7 @@ namespace zs {
     TV *_X, *_V;
     T *_J;
     TM *_F, *_C;
+    T *_logJp;
     size_type _particleCount;
   };
 

@@ -53,6 +53,7 @@ namespace zs {
     float fa{30.f};  ///< friction angle
     float cohesion{0.f};
     float beta{1.f};
+    bool volumeCorrection{true};
     float yieldSurface{0.816496580927726f * 2.f * 0.5f / (3.f - 0.5f)};
   };
   struct NACCConfig : MaterialConfig {

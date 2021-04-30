@@ -107,18 +107,15 @@ target_include_directories(zsproj_deps
                 $<INSTALL_INTERFACE:include/zensim/tpls/partio>
 )
 
-# libnuma
-find_package(NUMA REQUIRED)
-
 # umpire
 if (ZS_ENABLE_CUDA)
     set(ENABLE_CUDA On CACHE BOOL "Enable CUDA for Umpire build")
 endif()
-set(ENABLE_NUMA On CACHE BOOL "Enable NUMA for Umpire build")
+set(ENABLE_NUMA OFF CACHE BOOL "Enable NUMA for Umpire build")
 set(ENABLE_OPENMP On CACHE BOOL "Enable CUDA for Umpire build")
 add_subdirectory(${PROJECT_SOURCE_DIR}/include/zensim/tpls/umpire ${CMAKE_CURRENT_BINARY_DIR}/tpls/umpire EXCLUDE_FROM_ALL)
 add_dependencies(zsproj_deps zsumpire)
-target_link_libraries(zsproj_deps INTERFACE zsumpire numa)
+target_link_libraries(zsproj_deps INTERFACE zsumpire)
 
 # openvdb
 find_package(OpenVDB REQUIRED)

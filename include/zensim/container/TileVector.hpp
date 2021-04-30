@@ -54,7 +54,7 @@ namespace zs {
           _tags{memsrc_e::host, -1, alignment},
           _size{0},
           _align{alignment} {}
-    TileVector(channel_counter_type numChns = 0, size_type count = 0, memsrc_e mre = memsrc_e::host,
+    TileVector(channel_counter_type numChns, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, numChns, count)},
@@ -196,19 +196,11 @@ namespace zs {
         const auto oldCapacity = capacity();
         if (newSize > oldCapacity) {
           auto &rm = get_resource_manager().get();
-          if (devid() != -1) {
-            base_t tmp{
-                buildInstance(memspace(), devid(), numChannels(), geometric_size_growth(newSize))};
-            if (size()) rm.copy((void *)tmp.address(), (void *)head());
-            if (oldCapacity > 0) rm.deallocate((void *)head());
-
-            self() = tmp;
-          } else {
-            /// expect this to throw if failed
-            this->assign(rm.reallocate((void *)this->address(),
-                                       sizeof(T) * geometric_size_growth(newSize),
-                                       getCurrentAllocator()));
-          }
+          base_t tmp{
+              buildInstance(memspace(), devid(), numChannels(), geometric_size_growth(newSize))};
+          if (size()) rm.copy((void *)tmp.address(), (void *)head());
+          if (oldCapacity > 0) rm.deallocate((void *)head());
+          self() = tmp;
           _size = newSize;
           return;
         }

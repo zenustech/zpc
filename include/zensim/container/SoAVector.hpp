@@ -172,19 +172,11 @@ namespace zs {
         const auto oldCapacity = capacity();
         if (newSize > oldCapacity) {
           auto &rm = get_resource_manager().get();
-          if (devid() != -1) {
-            base_t tmp{
-                buildInstance(memspace(), devid(), numChannels(), geometric_size_growth(newSize))};
-            if (size()) rm.copy((void *)tmp.address(), (void *)head());
-            if (oldCapacity > 0) rm.deallocate((void *)head());
-
-            self() = tmp;
-          } else {
-            /// expect this to throw if failed
-            this->assign(rm.reallocate((void *)this->address(),
-                                       sizeof(T) * geometric_size_growth(newSize),
-                                       getCurrentAllocator()));
-          }
+          base_t tmp{
+              buildInstance(memspace(), devid(), numChannels(), geometric_size_growth(newSize))};
+          if (size()) rm.copy((void *)tmp.address(), (void *)head());
+          if (oldCapacity > 0) rm.deallocate((void *)head());
+          self() = tmp;
           _size = newSize;
           return;
         }

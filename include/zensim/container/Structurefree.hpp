@@ -18,9 +18,11 @@ namespace zs {
 
   template <typename ValueT = f32, int d = 3> struct Particles {
     using T = ValueT;
-    using TV = ValueT[d];
-    using TM = ValueT[d][d];
-    using TMAffine = ValueT[d + 1][d + 1];
+    // using TV = ValueT[d];
+    using TV = vec<T, d>;
+    // using TM = vec<T, d, d>;
+    using TM = vec<T, d * d>;
+    using TMAffine = vec<T, (d + 1) * (d + 1)>;
     static constexpr int dim = d;
     constexpr MemoryHandle handle() const noexcept { return static_cast<MemoryHandle>(X); }
     constexpr memsrc_e space() const noexcept { return X.memspace(); }

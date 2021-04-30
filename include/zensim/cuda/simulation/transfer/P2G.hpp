@@ -43,13 +43,10 @@ namespace zs {
         using vec9 = vec<float, 9>;
         using vec3x3 = vec<float, 3, 3>;
 
-        vec3 local_pos{particles.pos(parid)[0], particles.pos(parid)[1], particles.pos(parid)[2]};
-        vec3 vel{particles.vel(parid)[0], particles.vel(parid)[1], particles.vel(parid)[2]};
+        vec3 local_pos{particles.pos(parid)};
+        vec3 vel{particles.vel(parid)};
         float mass = particles.mass(parid);
-        vec9 contrib,
-            C{particles.C(parid)[0][0], particles.C(parid)[1][0], particles.C(parid)[2][0],
-              particles.C(parid)[0][1], particles.C(parid)[1][1], particles.C(parid)[2][1],
-              particles.C(parid)[0][2], particles.C(parid)[1][2], particles.C(parid)[2][2]};
+        vec9 contrib, C{particles.C(parid)};
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);
@@ -75,9 +72,7 @@ namespace zs {
 
         } else {
           const auto [mu, lambda] = lame_parameters(model.E, model.nu);
-          vec9 F{particles.F(parid)[0][0], particles.F(parid)[1][0], particles.F(parid)[2][0],
-                 particles.F(parid)[0][1], particles.F(parid)[1][1], particles.F(parid)[2][1],
-                 particles.F(parid)[0][2], particles.F(parid)[1][2], particles.F(parid)[2][2]};
+          vec9 F{particles.F(parid)};
           if constexpr (is_same_v<model_t, FixedCorotatedConfig>) {
             compute_stress_fixedcorotated(model.volume, mu, lambda, F, contrib);
           } else if constexpr (is_same_v<model_t, VonMisesFixedCorotatedConfig>) {
@@ -98,7 +93,7 @@ namespace zs {
 #endif
         }
 
-        contrib = (C * mass - contrib * dt) * D_inv;
+        contrib = C * mass * D_inv - contrib * dt * D_inv;
         ivec3 global_base_index{lower_trunc(local_pos[0] * dx_inv + 0.5) - 1,
                                 lower_trunc(local_pos[1] * dx_inv + 0.5) - 1,
                                 lower_trunc(local_pos[2] * dx_inv + 0.5) - 1};

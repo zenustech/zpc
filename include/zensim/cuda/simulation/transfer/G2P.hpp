@@ -42,7 +42,7 @@ namespace zs {
         using vec3 = vec<float, 3>;
         using vec9 = vec<float, 9>;
         using vec3x3 = vec<float, 3, 3>;
-        vec3 pos{particles.pos(parid)[0], particles.pos(parid)[1], particles.pos(parid)[2]};
+        vec3 pos{particles.pos(parid)};
         vec3 vel{vec3::zeros()};
 
         ivec3 global_base_index{};
@@ -90,17 +90,14 @@ namespace zs {
           if (J < 0.05) J = 0.1;
           particles.J(parid) = J;
         } else {
-          vec9 oldF{particles.F(parid)[0][0], particles.F(parid)[1][0], particles.F(parid)[2][0],
-                    particles.F(parid)[0][1], particles.F(parid)[1][1], particles.F(parid)[2][1],
-                    particles.F(parid)[0][2], particles.F(parid)[1][2], particles.F(parid)[2][2]},
-              tmp, F;
+          vec9 oldF{particles.F(parid)}, tmp, F;
           for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt * D_inv + ((d & 0x3) ? 0.f : 1.f);
           matrixMatrixMultiplication3d(tmp.data(), oldF.data(), F.data());
-          for (int d = 0; d < 9; ++d) particles.F(parid)[d % 3][d / 3] = F[d];
+          particles.F(parid) = F;
         }
-        for (int i = 0; i < 3; ++i) particles.pos(parid)[i] = pos[i];
-        for (int i = 0; i < 3; ++i) particles.vel(parid)[i] = vel[i];
-        for (int i = 0; i < 9; ++i) particles.C(parid)[i % 3][i / 3] = C[i];
+        particles.pos(parid) = pos;
+        particles.vel(parid) = vel;
+        particles.C(parid) = C;
       }
     }
 

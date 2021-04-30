@@ -19,8 +19,8 @@ namespace zs {
       if constexpr (particles_t::dim == 3) {
         for (int i = 0; i < 3; ++i)
           for (int j = 0; j < 3; ++j) {
-            if (particles.C(parid)[i][j] != 0)
-              printf("parid %d, C(%d, %d): %e\n", (int)parid, i, j, particles.C(parid)[i][j]);
+            if (particles.C(parid)[i * 3 + j] != 0)
+              printf("parid %d, C(%d, %d): %e\n", (int)parid, i, j, particles.C(parid)[i * 3 + j]);
           }
       }
     }

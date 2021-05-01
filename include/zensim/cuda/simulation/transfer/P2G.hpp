@@ -108,7 +108,6 @@ namespace zs {
           ws(dd, 2) = 0.5 * d * d;
         }
 
-        // float weightsum = 0.f;
         for (int i = 0; i < 3; ++i)
           for (int j = 0; j < 3; ++j)
             for (int k = 0; k < 3; ++k) {
@@ -117,7 +116,6 @@ namespace zs {
               ivec3 offset{i, j, k};
               vec3 xixp = offset * dx - local_pos;
               float W = ws(0, i) * ws(1, j) * ws(2, k);
-              // weightsum += W;
               VT wm = mass * W;
               ivec3 local_index = global_base_index + offset;
 

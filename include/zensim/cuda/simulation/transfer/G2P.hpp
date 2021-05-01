@@ -49,39 +49,29 @@ namespace zs {
         for (int d = 0; d < 3; ++d) global_base_index[d] = lower_trunc(pos[d] * dx_inv + 0.5) - 1;
         vec3 local_pos = pos - global_base_index * dx;
 
-        vec3x3 ws;
-        for (char dd = 0; dd < 3; ++dd) {
-          float d = local_pos[dd] * dx_inv - (lower_trunc(local_pos[dd] * dx_inv + 0.5) - 1);
-          ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
-          d -= 1.0f;
-          ws(dd, 1) = 0.75 - d * d;
-          d = 0.5f + d;
-          ws(dd, 2) = 0.5 * d * d;
-        }
+        vec3x3 ws = bspline_weight(local_pos, dx_inv);
 
         vec9 C{vec9::zeros()};
-        for (char i = 0; i < 3; i++)
-          for (char j = 0; j < 3; j++)
-            for (char k = 0; k < 3; k++) {
-              ivec3 offset{i, j, k};
-              vec3 xixp = offset * dx - local_pos;
-              ivec3 local_index = global_base_index + offset;
-              float W = ws(0, i) * ws(1, j) * ws(2, k);
+        for (auto&& [i, j, k] : zs::ndrange<3>(3)) {
+          ivec3 offset{i, j, k};
+          vec3 xixp = offset * dx - local_pos;
+          ivec3 local_index = global_base_index + offset;
+          float W = ws(0, i) * ws(1, j) * ws(2, k);
 
-              ivec3 block_coord = local_index;
-              for (int d = 0; d < particles_t::dim; ++d)
-                block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
-              block_coord = block_coord / gridblock_t::side_length;
-              int blockno = partition.query(block_coord);
+          ivec3 block_coord = local_index;
+          for (int d = 0; d < particles_t::dim; ++d)
+            block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
+          block_coord = block_coord / gridblock_t::side_length;
+          int blockno = partition.query(block_coord);
 
-              auto& grid_block = gridblocks[blockno];
-              local_index = local_index - block_coord * gridblock_t::side_length;
-              vec3 vi{grid_block(1, local_index).asFloat(), grid_block(2, local_index).asFloat(),
-                      grid_block(3, local_index).asFloat()};
+          auto& grid_block = gridblocks[blockno];
+          local_index = local_index - block_coord * gridblock_t::side_length;
+          vec3 vi{grid_block(1, local_index).asFloat(), grid_block(2, local_index).asFloat(),
+                  grid_block(3, local_index).asFloat()};
 
-              vel += vi * W;
-              for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3);
-            }
+          vel += vi * W;
+          for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3);
+        }
         pos += vel * dt;
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {

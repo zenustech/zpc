@@ -427,6 +427,14 @@ namespace zs {
       -> Collapse<type_seq<Tn...>, std::index_sequence_for<Tn...>>;
 
   template <typename... Tn> constexpr auto ndrange(Tn &&...ns) { return Collapse{FWD(ns)...}; }
+  namespace detail {
+    template <typename T, std::size_t... Is> constexpr auto ndrange_impl(T n, index_seq<Is...>) {
+      return Collapse{(Is + 1 ? n : n)...};
+    }
+  }  // namespace detail
+  template <auto d> constexpr auto ndrange(decltype(d) n) {
+    return detail::ndrange_impl(n, std::make_index_sequence<d>{});
+  }
 
   // zip
   template <typename, typename, typename = void> struct zip_iterator;

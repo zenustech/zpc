@@ -128,14 +128,27 @@ namespace zs {
   }
 
   /// temporary
-  constexpr vec<float, 3> bspline_weight(float p, float const dx_inv) {
-    vec<float, 3> dw{0.f, 0.f, 0.f};
-    float d = p * dx_inv;  ///< normalized offset
+  template <typename T> constexpr vec<T, 3> bspline_weight(T p, T const dx_inv) noexcept {
+    vec<T, 3> dw{};
+    T d = p * dx_inv - (lower_trunc(p * dx_inv + 0.5) - 1);
     dw[0] = 0.5f * (1.5 - d) * (1.5 - d);
     d -= 1.0f;
     dw[1] = 0.75 - d * d;
     d = 0.5f + d;
     dw[2] = 0.5 * d * d;
+    return dw;
+  }
+  template <typename T, auto dim>
+  constexpr vec<T, dim, 3> bspline_weight(const vec<T, dim> &p, T const dx_inv) noexcept {
+    vec<T, dim, 3> dw{};
+    for (int i = 0; i < dim; ++i) {
+      T d = p(i) * dx_inv - (lower_trunc(p(i) * dx_inv + 0.5) - 1);
+      dw(i, 0) = 0.5f * (1.5 - d) * (1.5 - d);
+      d -= 1.0f;
+      dw(i, 1) = 0.75 - d * d;
+      d = 0.5f + d;
+      dw(i, 2) = 0.5 * d * d;
+    }
     return dw;
   }
 

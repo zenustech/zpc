@@ -37,6 +37,16 @@ namespace zs {
       memcpy(ret.data(), Xtmp.data(), sizeof(TV) * X.size());
       return ret;
     }
+#define CHECK_ATTRIBUTE(ATTRIB) \
+  constexpr bool has##ATTRIB() const noexcept { return ATTRIB.size() > 0; }
+
+    CHECK_ATTRIBUTE(M)
+    CHECK_ATTRIBUTE(X)
+    CHECK_ATTRIBUTE(V)
+    CHECK_ATTRIBUTE(J)
+    CHECK_ATTRIBUTE(logJp)
+    CHECK_ATTRIBUTE(F)
+    CHECK_ATTRIBUTE(C)
 
     void append(const Particles &other) {
       M.append(other.M);

@@ -55,6 +55,11 @@ namespace zs {
       size_type i = 0;
       for (const auto &src : vals) (*this)[i++] = src;
     }
+    Vector(const std::vector<T> &vals)
+        : Vector{vals.size(), memsrc_e::host, -1, std::alignment_of_v<T>} {
+      size_type i = 0;
+      for (const auto &src : vals) (*this)[i++] = src;
+    }
 
     ~Vector() {
       if (head()) self().dealloc();

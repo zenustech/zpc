@@ -4,6 +4,7 @@
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/cuda/physics/ConstitutiveModel.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/physics/ConstitutiveModel.hpp"
 #include "zensim/simulation/transfer/P2G.hpp"
 
 namespace zs {
@@ -98,50 +99,34 @@ namespace zs {
                                 lower_trunc(local_pos[2] * dx_inv + 0.5) - 1};
         local_pos = local_pos - global_base_index * dx;
 
-        vec3x3 ws;
-        for (char dd = 0; dd < 3; ++dd) {
-          float d = local_pos[dd] * dx_inv - (lower_trunc(local_pos[dd] * dx_inv + 0.5) - 1);
-          ws(dd, 0) = 0.5f * (1.5 - d) * (1.5 - d);
-          d -= 1.0f;
-          ws(dd, 1) = 0.75 - d * d;
-          d = 0.5f + d;
-          ws(dd, 2) = 0.5 * d * d;
+        vec3x3 ws = bspline_weight(local_pos, dx_inv);
+
+        for (auto&& [i, j, k] : zs::ndrange<3>(3)) {
+          using VT
+              = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
+          ivec3 offset{i, j, k};
+          vec3 xixp = offset * dx - local_pos;
+          float W = ws(0, i) * ws(1, j) * ws(2, k);
+          VT wm = mass * W;
+          ivec3 local_index = global_base_index + offset;
+
+          ivec3 block_coord = local_index;
+          for (int d = 0; d < particles_t::dim; ++d)
+            block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
+          block_coord = block_coord / gridblock_t::side_length;
+          int blockno = partition.query(block_coord);
+          auto& grid_block = gridblocks[blockno];
+
+          local_index = local_index - block_coord * gridblock_t::side_length;
+
+          atomicAdd(&grid_block(0, local_index).asFloat(), wm);
+          for (int d = 0; d < 3; ++d)
+            atomicAdd(
+                &grid_block(d + 1, local_index).asFloat(),
+                (VT)(wm * vel[d]
+                     + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2])
+                           * W));
         }
-
-        for (int i = 0; i < 3; ++i)
-          for (int j = 0; j < 3; ++j)
-            for (int k = 0; k < 3; ++k) {
-              using VT = std::decay_t<decltype(
-                  std::declval<typename gridblock_t::value_type>().asFloat())>;
-              ivec3 offset{i, j, k};
-              vec3 xixp = offset * dx - local_pos;
-              float W = ws(0, i) * ws(1, j) * ws(2, k);
-              VT wm = mass * W;
-              ivec3 local_index = global_base_index + offset;
-
-              ivec3 block_coord = local_index;
-              for (int d = 0; d < particles_t::dim; ++d)
-                block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
-              block_coord = block_coord / gridblock_t::side_length;
-              int blockno = partition.query(block_coord);
-              auto& grid_block = gridblocks[blockno];
-
-              local_index = local_index - block_coord * gridblock_t::side_length;
-
-              atomicAdd(&grid_block(0, local_index).asFloat(), wm);
-              atomicAdd(
-                  &grid_block(1, local_index).asFloat(),
-                  (VT)(wm * vel[0]
-                       + (contrib[0] * xixp[0] + contrib[3] * xixp[1] + contrib[6] * xixp[2]) * W));
-              atomicAdd(
-                  &grid_block(2, local_index).asFloat(),
-                  (VT)(wm * vel[1]
-                       + (contrib[1] * xixp[0] + contrib[4] * xixp[1] + contrib[7] * xixp[2]) * W));
-              atomicAdd(
-                  &grid_block(3, local_index).asFloat(),
-                  (VT)(wm * vel[2]
-                       + (contrib[2] * xixp[0] + contrib[5] * xixp[1] + contrib[8] * xixp[2]) * W));
-            }
       }
     }
 

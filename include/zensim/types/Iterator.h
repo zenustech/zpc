@@ -396,7 +396,7 @@ namespace zs {
 
     struct iterator : IteratorInterface<iterator> {
       constexpr iterator(wrapv<0>, const std::tuple<Tn...> &ns)
-          : ns{ns}, it{(Is == Is ? 0 : 0)...} {}
+          : ns{ns}, it{(Is + 1 > 0 ? 0 : 0)...} {}
       constexpr iterator(wrapv<1>, const std::tuple<Tn...> &ns)
           : ns{ns}, it{(Is == 0 ? std::get<0>(ns) : 0)...} {}
 

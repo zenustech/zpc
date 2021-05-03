@@ -1,8 +1,19 @@
 #include "Resource.h"
 
+#include "zensim/memory/operations/Copy.hpp"
 #include "zensim/tpls/umpire/strategy/AllocationAdvisor.hpp"
+#if ZS_ENABLE_CUDA
+#  include "zensim/cuda/memory/operations/Copy.hpp"
+#endif
 
 namespace zs {
+
+  void copy(MemoryEntity dst, MemoryEntity src, std::size_t size) {
+    if (dst.descr.onHost() && src.descr.onHost())
+      mem_copy<execspace_e::host>{}(dst, src, size);
+    else
+      mem_copy<execspace_e::cuda>{}(dst, src, size);
+  }
 
   Resource &get_resource_manager() noexcept { return Resource::instance(); }
 

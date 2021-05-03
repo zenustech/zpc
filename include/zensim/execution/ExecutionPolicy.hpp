@@ -10,7 +10,12 @@
 #include "zensim/types/Iterator.h"
 namespace zs {
 
-  enum struct execspace_e : char { host = 0, openmp = 0, cuda, hip };
+  enum struct execspace_e : char { host = 0, openmp, cuda, hip };
+  constexpr const char *execution_space_tag[]
+      = {"HOST", "OPENMP", "CUDA", "HIP"};
+  constexpr const char *get_execution_space_tag(execspace_e execpol) {
+    return execution_space_tag[magic_enum::enum_integer(execpol)];
+  }
 
   struct DeviceHandle {
     NodeID nodeid{0};   ///<

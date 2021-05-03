@@ -2,6 +2,7 @@
 
 #include <atomic>
 
+#include "zensim/Memory.hpp"
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
@@ -15,6 +16,8 @@ namespace zs {
   struct Resource;
 
   Resource &get_resource_manager() noexcept;
+
+  void copy(MemoryEntity dst, MemoryEntity src, std::size_t size);
 
   struct Resource : std::reference_wrapper<umpire::ResourceManager>, Singleton<Resource> {
     Resource();

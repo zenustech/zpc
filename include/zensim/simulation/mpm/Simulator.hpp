@@ -18,8 +18,8 @@ namespace zs {
     std::size_t numPartitions() const noexcept { return partitions.size(); }
     float getMaxVel(int partI) const {
       Vector<float> ret{1, memsrc_e::host, -1};
-      auto& rm = get_resource_manager().get();
-      rm.copy(ret.data(), maxVelSqrNorms[partI].data());
+      copy({ret.base(), ret.data()}, {maxVelSqrNorms[partI].base(), maxVelSqrNorms[partI].data()},
+           sizeof(float));
       return ret[0];
     }
     float* maxVelPtr(int partI) const { return maxVelSqrNorms[partI].data(); }

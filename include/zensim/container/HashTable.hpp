@@ -71,9 +71,8 @@ namespace zs {
     }
 
     inline value_t size() const {
-      auto &rm = get_resource_manager().get();
       Vector<value_t> res{1, memsrc_e::host, -1};
-      rm.copy(res.data(), _cnt.data());
+      copy({res.base(), res.data()}, {_cnt.base(), _cnt.data()}, sizeof(value_t));
       return res[0];
     }
 

@@ -110,10 +110,12 @@ namespace zs {
     }
     /// ctor, assignment operator
     explicit SoAVector(const SoAVector &o)
-        : MemoryHandle{o.memoryHandle()}, _size{o.size()}, _align{o._align} {
-      auto &rm = get_resource_manager().get();
+        : MemoryHandle{o.base()}, _size{o.size()}, _align{o._align} {
       base_t tmp{buildInstance(o.memspace(), o.devid(), numChannels(), o.capacity())};
-      if (o.size()) rm.copy((void *)tmp.address(), o.head());
+      if (o.size()) {
+        copy({o.base(), (void *)tmp.address()}, {o.base(), o.head()},
+             ds::snode_size(o.self().template node<0>()));
+      }
       self() = tmp;
       base() = o.base();
     }
@@ -125,7 +127,8 @@ namespace zs {
     }
     SoAVector clone(const MemoryHandle &mh) const {
       SoAVector ret{numChannels(), capacity(), mh.memspace(), mh.devid(), _align};
-      get_resource_manager().get().copy((void *)ret.head(), (void *)head());
+      copy({mh, (void *)ret.data()}, {base(), (void *)data()},
+           ds::snode_size(self().template node<0>()));
       return ret;
     }
     /// assignment or destruction after std::move
@@ -134,7 +137,7 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     explicit SoAVector(SoAVector &&o) noexcept {
       const SoAVector defaultVector{};
-      base() = std::exchange(o.base(), defaultVector.memoryHandle());
+      base() = std::exchange(o.base(), defaultVector.base());
       self() = std::exchange(o.self(), defaultVector.self());
       _size = std::exchange(o._size, defaultVector.size());
       _align = std::exchange(o._align, defaultVector._align);
@@ -174,7 +177,9 @@ namespace zs {
           auto &rm = get_resource_manager().get();
           base_t tmp{
               buildInstance(memspace(), devid(), numChannels(), geometric_size_growth(newSize))};
-          if (size()) rm.copy((void *)tmp.address(), (void *)head());
+          if (size())
+            copy({base(), (void *)tmp.address()}, {base(), (void *)head()},
+                 ds::snode_size(tmp.template node<0>()));
           if (oldCapacity > 0) rm.deallocate((void *)head());
           self() = tmp;
           _size = newSize;

@@ -116,11 +116,9 @@ namespace zs {
       return self()(idx);
     }
     /// ctor, assignment operator
-    explicit Vector(const Vector &o)
-        : MemoryHandle{o.memoryHandle()}, _size{o.size()}, _align{o._align} {
-      auto &rm = get_resource_manager().get();
+    explicit Vector(const Vector &o) : MemoryHandle{o.base()}, _size{o.size()}, _align{o._align} {
       base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
-      if (o.size()) rm.copy((void *)tmp.address(), o.head(), o.usedBytes());
+      if (o.size()) copy({base(), (void *)tmp.address()}, {o.base(), o.head()}, o.usedBytes());
       self() = tmp;
       base() = o.base();
     }
@@ -132,7 +130,7 @@ namespace zs {
     }
     Vector clone(const MemoryHandle &mh) const {
       Vector ret{capacity(), mh.memspace(), mh.devid(), _align};
-      get_resource_manager().get().copy((void *)ret.head(), (void *)head());
+      get_resource_manager().get().copy((void *)ret.data(), (void *)this->data());
       return ret;
     }
     /// assignment or destruction after std::move
@@ -141,7 +139,7 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     explicit Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
-      base() = std::exchange(o.base(), defaultVector.memoryHandle());
+      base() = std::exchange(o.base(), defaultVector.base());
       self() = std::exchange(o.self(), defaultVector.self());
       _size = std::exchange(o._size, defaultVector.size());
       _align = std::exchange(o._align, defaultVector._align);
@@ -180,7 +178,7 @@ namespace zs {
         if (newSize > oldCapacity) {
           auto &rm = get_resource_manager().get();
           base_t tmp{buildInstance(memspace(), devid(), geometric_size_growth(newSize))};
-          if (size()) rm.copy((void *)tmp.address(), (void *)head(), usedBytes());
+          if (size()) copy({base(), (void *)tmp.address()}, {base(), (void *)head()}, usedBytes());
           if (oldCapacity > 0) rm.deallocate((void *)head());
           self() = tmp;
           _size = newSize;
@@ -209,8 +207,7 @@ namespace zs {
       } else {
         _size += count;
       }
-      auto &rm = get_resource_manager().get();
-      rm.copy((void *)&(*end()), (void *)&(*st), sizeof(T) * count);
+      copy({base(), (void *)&(*end())}, {base(), (void *)&(*st)}, sizeof(T) * count);
       return end();
     }
     iterator append(const Vector &other) { return append(other.begin(), other.end()); }

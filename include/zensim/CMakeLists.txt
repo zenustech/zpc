@@ -91,6 +91,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/ValueSequence.hpp
     math/Vec.h
     # memory
+    # memory/Memory.hpp
+    memory/operations/Copy.hpp
     memory/Allocator.h
     memory/MemObj.h
     memory/MemoryResource.h
@@ -164,6 +166,7 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/Allocators.cuh
     cuda/profile/CudaTimers.cuh
     cuda/memory/MemoryPolicy.cuh
+    cuda/memory/operations/Copy.hpp
     cuda/math/bit/SpatialEncoder.cuh
     cuda/math/matrix/EigenDecomposition.cuh
     cuda/math/matrix/Givens.cuh
@@ -195,8 +198,26 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
 )
 
 add_library(zensim INTERFACE)
+set(ZENSIM_CORE_SOURCE_FILES)
 
 add_cpp_library(zscore)
+set(ZENSIM_CORE_SOURCE_FILES ${ZENSIM_CORE_SOURCE_FILES}
+    ${ZENSIM_LIBRARY_CORE_SOURCE_FILES}
+    ${ZENSIM_LIBRARY_OMP_SOURCE_FILES}
+)
+target_compile_options(zscore 
+  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+)
+# -fsanitize=address memory thread
+set_target_properties(zscore
+  PROPERTIES  LINKER_LANGUAGE CXX
+              POSITION_INDEPENDENT_CODE ON
+              CUDA_ARCHITECTURES OFF
+              LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(zscore
+  PUBLIC      zsproj_cxx_deps
+)
 target_sources(zscore PRIVATE 
     ${ZENSIM_LIBRARY_CORE_SOURCE_FILES}
     ${ZENSIM_LIBRARY_OMP_SOURCE_FILES}
@@ -222,13 +243,34 @@ target_link_libraries(zensim INTERFACE zstool)  #
 # related to cuda
 if (ZS_ENABLE_CUDA)
 
-set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} PROPERTIES  LANGUAGE CUDA)
-add_cuda_library(zscuda)
-target_sources(zscuda PRIVATE ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES})
-target_link_libraries(zscuda INTERFACE cuda_runtime cuda cudadevrt nvrtc zscore cusolver cublas cusparse)
+# ad-hoc (temporary)
+target_compile_definitions(zscore PRIVATE ZS_ENABLE_CUDA=1)
+set_source_files_properties(resource/Resource.cpp PROPERTIES  LANGUAGE CUDA)
+set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
+set(ZENSIM_CORE_SOURCE_FILES ${ZENSIM_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES})
+target_link_libraries(zscore INTERFACE cuda_runtime cuda cudadevrt nvrtc zscore cusolver cublas cusparse zsproj_cuda_deps)
 if (ENABLE_PCH)
-target_precompile_headers(zscuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
+target_precompile_headers(zscore INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
-target_link_libraries(zensim INTERFACE zscuda)  #
+target_compile_options(zscore 
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -dlto -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+)
+target_link_options(zscore 
+  PRIVATE       $<$<LINK_LANGUAGE:CUDA>:-dlto>
+)
+set_target_properties(zscore
+  PROPERTIES  CUDA_EXTENSIONS ON
+              CUDA_SEPARABLE_COMPILATION ON
+              LINKER_LANGUAGE CUDA
+              #CUDA_RESOLVE_DEVICE_SYMBOLS OFF
+              LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+              POSITION_INDEPENDENT_CODE ON
+              CUDA_ARCHITECTURES OFF
+)
+target_compile_definitions(zscore 
+  PRIVATE     CMAKE_GENERATOR_PLATFORM=x64
+)
 
 endif()
+
+target_sources(zscore PRIVATE ${ZENSIM_CORE_SOURCE_FILES})

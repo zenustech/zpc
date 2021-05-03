@@ -94,9 +94,9 @@ namespace zs {
         }
 
         contrib = C * mass * D_inv - contrib * dt * D_inv;
-        ivec3 global_base_index{lower_trunc(local_pos[0] * dx_inv + 0.5) - 1,
-                                lower_trunc(local_pos[1] * dx_inv + 0.5) - 1,
-                                lower_trunc(local_pos[2] * dx_inv + 0.5) - 1};
+        ivec3 global_base_index{(int)lower_trunc(local_pos[0] * dx_inv + 0.5) - 1,
+                                (int)lower_trunc(local_pos[1] * dx_inv + 0.5) - 1,
+                                (int)lower_trunc(local_pos[2] * dx_inv + 0.5) - 1};
         local_pos = local_pos - global_base_index * dx;
 
         vec3x3 ws = bspline_weight(local_pos, dx_inv);

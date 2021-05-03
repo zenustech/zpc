@@ -1,7 +1,7 @@
 @PACKAGE_INIT@
 
 #[=[
-set(__supported_components zscuda zscore zstool zensim)
+set(__supported_components zscore zstool zensim)
 foreach(_comp ${Zensim_FIND_COMPONENTS})
   if (NOT _comp IN_LIST _supported_components)
     set(Zensim_FOUND False)
@@ -28,4 +28,4 @@ list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/OpenVDB/)
 find_package(OpenVDB REQUIRED)
 #find_dependency(OpenVDB::openvdb)
 
-check_required_components(zscuda zscore zstool zensim)
+check_required_components(zscore zstool zensim)

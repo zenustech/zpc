@@ -4,6 +4,7 @@
 
 #include "zensim/types/Function.h"
 #include "zensim/types/Object.h"
+#include "zensim/tpls/magic_enum.hpp"
 
 namespace zs {
 
@@ -31,6 +32,9 @@ namespace zs {
   enum struct memsrc_e : char { host = 0, device, device_const, um, pinned, file };
   constexpr const char *memory_source_tag[]
       = {"HOST", "DEVICE", "DEVICE_CONST", "UM", "PINNED", "FILE"};
+  constexpr const char *get_memory_source_tag(memsrc_e loc) {
+    return memory_source_tag[magic_enum::enum_integer(loc)];
+  }
 
   struct MemoryHandle {
     constexpr ProcID devid() const noexcept { return _devid; }
@@ -44,8 +48,20 @@ namespace zs {
       std::swap(_memsrc, o._memsrc);
     }
 
+    constexpr bool onHost() const noexcept {
+      return _memsrc == memsrc_e::host;
+    }
+    constexpr const char *memSpaceName() const {
+      return get_memory_source_tag(memspace());
+    }
+
     memsrc_e _memsrc{memsrc_e::host};  // memory source
     ProcID _devid{-1};                 // cpu id
+  };
+
+  struct MemoryEntity {
+    MemoryHandle descr;
+    void* ptr;
   };
 
 }  // namespace zs

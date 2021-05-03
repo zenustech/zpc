@@ -23,6 +23,7 @@ namespace zs {
     // using TM = vec<T, d, d>;
     using TM = vec<T, d * d>;
     using TMAffine = vec<T, (d + 1) * (d + 1)>;
+    using size_type = typename Vector<TV>::size_type;
     static constexpr int dim = d;
     constexpr MemoryHandle handle() const noexcept { return static_cast<MemoryHandle>(X); }
     constexpr memsrc_e space() const noexcept { return X.memspace(); }
@@ -30,9 +31,9 @@ namespace zs {
     constexpr auto size() const noexcept { return X.size(); }
 
     std::vector<std::array<ValueT, dim>> retrievePositions() const {
-      auto &rm = get_resource_manager().get();
       Vector<TV> Xtmp{X.size(), memsrc_e::host, -1};
-      rm.copy((void *)Xtmp.data(), (void *)X.data());
+      copy({MemoryHandle{memsrc_e::host, -1}, (void *)Xtmp.data()}, {X.base(), (void *)X.data()},
+           X.size() * sizeof(TV));
       std::vector<std::array<ValueT, dim>> ret(X.size());
       memcpy(ret.data(), Xtmp.data(), sizeof(TV) * X.size());
       return ret;

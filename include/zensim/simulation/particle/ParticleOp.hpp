@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/container/Structurefree.hpp"
+#include "zensim/geometry/Structurefree.hpp"
 
 namespace zs {
 

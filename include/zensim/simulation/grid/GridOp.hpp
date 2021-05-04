@@ -1,7 +1,7 @@
 #pragma once
 #include "../transfer/Scheme.hpp"
 #include "zensim/container/HashTable.hpp"
-#include "zensim/container/Structure.hpp"
+#include "zensim/geometry/Structure.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Collider.h"
 

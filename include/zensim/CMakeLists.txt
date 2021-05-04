@@ -56,8 +56,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/TileVector.hpp
     container/HashTable.hpp
     container/Vector.hpp
-    container/Structure.hpp
-    container/Structurefree.hpp
+    geometry/Structure.hpp
+    geometry/Structurefree.hpp
     # execution
     execution/Concurrency.h
     execution/ExecutionNode.h
@@ -76,6 +76,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/Mesh.hpp
     geometry/PoissonDisk.hpp
     geometry/SparseLevelSet.hpp
+    geometry/AdaptiveLevelSet.hpp
     # math
     math/bit/Bits.h
     math/matrix/MatrixUtils.h
@@ -182,7 +183,7 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/container/MatrixHash.cuh
     cuda/container/bvh/Bvh.cuh
     cuda/container/Vector.hpp # recent
-    cuda/container/Structurefree.hpp # recent
+    cuda/geometry/Structurefree.hpp # recent
     cuda/algorithm/MappingKernels.cuh
     cuda/algorithm/SortKernels.cuh
     # simulation

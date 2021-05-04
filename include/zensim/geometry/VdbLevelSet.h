@@ -3,7 +3,7 @@
 #include <string>
 
 #include "zensim/container/DenseGrid.hpp"
-#include "zensim/container/SparseStructure.hpp"
+#include "zensim/geometry/AdaptiveLevelSet.hpp"
 #include "zensim/geometry/SparseLevelSet.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Tuple.h"

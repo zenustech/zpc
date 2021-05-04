@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/container/Structurefree.hpp"
+#include "zensim/geometry/Structurefree.hpp"
 #include "zensim/cuda/DeviceUtils.cuh"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/cuda/physics/ConstitutiveModel.hpp"

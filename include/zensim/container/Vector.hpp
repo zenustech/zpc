@@ -130,7 +130,7 @@ namespace zs {
     }
     Vector clone(const MemoryHandle &mh) const {
       Vector ret{capacity(), mh.memspace(), mh.devid(), _align};
-      get_resource_manager().get().copy((void *)ret.data(), (void *)this->data());
+      copy({mh, (void *)ret.data()}, {base(), (void *)this->data()}, usedBytes());
       return ret;
     }
     /// assignment or destruction after std::move

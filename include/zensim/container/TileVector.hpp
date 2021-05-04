@@ -175,7 +175,8 @@ namespace zs {
     }
     TileVector clone(const MemoryHandle &mh) const {
       TileVector ret{_tags, capacity(), mh.memspace(), mh.devid(), _align};
-      get_resource_manager().get().copy((void *)ret.data(), (void *)data());
+      copy({mh, (void *)ret.data()}, {base(), (void *)data()},
+           ds::snode_size(self().template node<0>()));
       return ret;
     }
     /// assignment or destruction after std::move

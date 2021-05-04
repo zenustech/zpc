@@ -75,6 +75,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/LevelSetSequence.hpp
     geometry/Mesh.hpp
     geometry/PoissonDisk.hpp
+    geometry/UniformLevelSet.hpp
     # math
     math/bit/Bits.h
     math/matrix/MatrixUtils.h

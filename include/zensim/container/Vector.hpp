@@ -50,7 +50,7 @@ namespace zs {
           base_t{buildInstance(mre, devid, count)},
           _size{count},
           _align{alignment} {}
-    Vector(std::initializer_list<T> vals)
+    explicit Vector(std::initializer_list<T> vals)
         : Vector{vals.size(), memsrc_e::host, -1, std::alignment_of_v<T>} {
       size_type i = 0;
       for (const auto &src : vals) (*this)[i++] = src;
@@ -124,7 +124,7 @@ namespace zs {
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
-      Vector tmp{o};
+      Vector tmp(o);
       swap(tmp);
       return *this;
     }
@@ -147,7 +147,7 @@ namespace zs {
     /// make move-assignment safe for self-assignment
     Vector &operator=(Vector &&o) noexcept {
       if (this == &o) return *this;
-      Vector tmp{std::move(o)};
+      Vector tmp(std::move(o));
       swap(tmp);
       return *this;
     }

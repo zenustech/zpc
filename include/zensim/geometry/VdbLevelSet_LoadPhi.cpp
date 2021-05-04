@@ -67,17 +67,48 @@ namespace zs {
     using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
     using SDFPtr = typename GridType::Ptr;
     const SDFPtr &gridPtr = grid.as<SDFPtr>();
+    using TV = typename SparseLevelSet<3>::table_t::key_t;
+
     SparseLevelSet<3> ret{};
     const auto leafCount = gridPtr->tree().leafCount();
     ret._dx = gridPtr->transform().voxelSize()[0];
     ret._sideLength = 8;
     ret._space = 512;
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
+    ret._tiles = typename SparseLevelSet<3>::tiles_t{
+        {{"sdf", 1}, {"vel", 3}}, leafCount, memsrc_e::host, -1};
 
     auto table = proxy<execspace_e::host>(ret._table);
+    auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
+    table.clear();
+    for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
+      const TreeType::LeafNodeType &node = *iter;
+      if (node.onVoxelCount() > 0) {
+        auto cell = node.beginValueOn();
+        TV coord{};
+        for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
+        auto blockid = coord;
+        for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
+          blockid[d] += (coord[d] < 0 ? -ret._sideLength + 1 : 0);
+        blockid = blockid / ret._sideLength;
+        auto blockno = table.insert(blockid);
+        fmt::print("inserting {}, {}, {} at {}\n", blockid[0], blockid[1], blockid[2], blockno);
+        blockid = blockid * ret._sideLength;
+        for (auto cell = node.beginValueOn(); cell; ++cell) {
+          for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
+            coord[d] = cell.getCoord()[d] - blockid(d);
+          auto sdf = cell.getValue();
+          fmt::print("\tlocal child ({}, {}, {}) value {}\n", coord[0], coord[1], coord[2], sdf);
+        }
+      } else {
+        fmt::print("what the heck?\n");
+        getchar();
+      }
+      fmt::print("leaf childCnt {}, tileCnt {}, voxelCnt {}\n", node.childCount(),
+                 node.onTileCount(), node.onVoxelCount());
+    }
 
     fmt::print("convert to uniform levelset: \ttotal leaf count {}\n", leafCount);
-
     return ret.clone(mh);
   }
 

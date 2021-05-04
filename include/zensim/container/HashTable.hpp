@@ -1,6 +1,7 @@
 #pragma once
 #include "Vector.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/math/Hash.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/math/bit/Bits.h"
 #include "zensim/memory/MemoryResource.h"
@@ -131,8 +132,44 @@ namespace zs {
           _cnt{table._cnt.data()},
           _activeKeys{table._activeKeys.data()} {}
 
-    value_t insert(const key_t &key);
-    value_t query(const key_t &key) const;
+    void clear() {
+      using namespace placeholders;
+      // reset counter
+      *_cnt = 0;
+      // reset table
+      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      for (value_t entry = 0; entry < _tableSize; ++entry) {
+        _table(_0, entry) = key_sentinel_v;
+        _table(_1, entry) = HashTableT::sentinel_v;
+      }
+    }
+
+    value_t insert(const key_t &key) {
+      using namespace placeholders;
+      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
+      auto storedKey = _table(_0, hashedentry);
+      for (; !(storedKey == key_sentinel_v || storedKey == key);) {
+        hashedentry = (hashedentry + 127) % _tableSize;
+        storedKey = _table(_0, hashedentry);
+      }
+      auto localno = (*_cnt)++;
+      _table(_0, hashedentry) = key;
+      _table(_1, hashedentry) = localno;
+      _activeKeys[localno] = key;
+      if (localno >= _tableSize - 20) printf("proximity!!! %d -> %d\n", localno, _tableSize);
+      return localno;  ///< only the one that inserts returns the actual index
+    }
+    value_t query(const key_t &key) const {
+      using namespace placeholders;
+      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
+      while (true) {
+        if (key == (key_t)_table(_0, hashedentry)) return _table(_1, hashedentry);
+        if (_table(_1, hashedentry) == HashTableT::sentinel_v) return HashTableT::sentinel_v;
+        hashedentry += 127;  ///< search next entry
+        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
+      }
+    }
 
   protected:
     constexpr value_t do_hash(const key_t &key) const {

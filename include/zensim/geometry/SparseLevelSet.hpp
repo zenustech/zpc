@@ -7,8 +7,9 @@ namespace zs {
 
   template <int dim_ = 3> struct SparseLevelSet {
     static constexpr int dim = dim_;
+    static constexpr int lane_width = 32;
     using value_type = f32;
-    using tiles_t = TileVector<value_type, 32>;
+    using tiles_t = TileVector<value_type, lane_width>;
     using table_t = HashTable<i64, dim, i64>;
 
     explicit SparseLevelSet(int sideLengthBits = 3, value_type dx = 1.f)

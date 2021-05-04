@@ -75,9 +75,9 @@ namespace zs {
       if (head()) self().dealloc();
     }
     void initPropertyTags(const channel_counter_type N) {
-      _tagNames = Vector<SmallString>{N, memspace(), devid()};
-      _tagSizes = Vector<channel_counter_type>{N, memspace(), devid()};
-      _tagOffsets = Vector<channel_counter_type>{N, memspace(), devid()};
+      _tagNames = Vector<SmallString>{static_cast<std::size_t>(N), memspace(), devid()};
+      _tagSizes = Vector<channel_counter_type>{static_cast<std::size_t>(N), memspace(), devid()};
+      _tagOffsets = Vector<channel_counter_type>{static_cast<std::size_t>(N), memspace(), devid()};
     }
 
     auto numTotalChannels(const std::vector<PropertyTag> &tags) {
@@ -332,7 +332,9 @@ namespace zs {
     constexpr TileVectorProxy() = default;
     ~TileVectorProxy() = default;
     explicit TileVectorProxy(const std::vector<SmallString> &tagNames, TileVectorT &tilevector)
-        : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()}, N{tagNames.size()} {
+        : tile_vector_t{tilevector.self()},
+          _vectorSize{tilevector.size()},
+          N{static_cast<channel_counter_type>(tagNames.size())} {
       tilevector.preparePropertyNames(tagNames);
       _tagNames = tilevector.tagNameHandle();
       _tagOffsets = tilevector.tagOffsetHandle();

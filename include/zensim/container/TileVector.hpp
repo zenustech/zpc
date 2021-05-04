@@ -72,30 +72,12 @@ namespace zs {
           _align{alignment} {}
 
     ~TileVector() {
-      deinitPropertyTags();
       if (head()) self().dealloc();
     }
-    void deinitPropertyTags() {
-      if (_tagNames) {
-        auto memorySource = get_resource_manager().source(this->memspace());
-        if (this->memspace() == memsrc_e::um)
-          memorySource = memorySource.advisor("PREFERRED_LOCATION", this->devid());
-        memorySource.deallocate(_tagNames);
-        memorySource.deallocate(_tagSizes);
-        memorySource.deallocate(_tagOffsets);
-        _tagNames = nullptr;
-        _tagSizes = nullptr;
-        _tagOffsets = nullptr;
-      }
-    }
     void initPropertyTags(const channel_counter_type N) {
-      deinitPropertyTags();
-      auto memorySource = get_resource_manager().source(this->memspace());
-      if (this->memspace() == memsrc_e::um)
-        memorySource = memorySource.advisor("PREFERRED_LOCATION", this->devid());
-      _tagNames = (SmallString *)memorySource.allocate(sizeof(SmallString) * N);
-      _tagSizes = (channel_counter_type *)memorySource.allocate(sizeof(channel_counter_type) * N);
-      _tagOffsets = (channel_counter_type *)memorySource.allocate(sizeof(channel_counter_type) * N);
+      _tagNames = Vector<SmallString>{N, memspace(), devid()};
+      _tagSizes = Vector<channel_counter_type>{N, memspace(), devid()};
+      _tagOffsets = Vector<channel_counter_type>{N, memspace(), devid()};
     }
 
     auto numTotalChannels(const std::vector<PropertyTag> &tags) {
@@ -169,7 +151,7 @@ namespace zs {
     }
     TileVector &operator=(const TileVector &o) {
       if (this == &o) return *this;
-      TileVector tmp{o};
+      TileVector tmp(o);
       swap(tmp);
       return *this;
     }
@@ -194,7 +176,7 @@ namespace zs {
     /// make move-assignment safe for self-assignment
     TileVector &operator=(TileVector &&o) noexcept {
       if (this == &o) return *this;
-      TileVector tmp{std::move(o)};
+      TileVector tmp(std::move(o));
       swap(tmp);
       return *this;
     }
@@ -272,11 +254,11 @@ namespace zs {
         fmt::print("chk {}, {}, {}\n", hostPropNames[i], (int)hostPropOffsets[i],
                    (int)hostPropSizes[i]);
 #endif
-      copy({base(), _tagNames}, {{memsrc_e::host, -1}, (void *)hostPropNames.data()},
+      copy({base(), _tagNames.data()}, {{memsrc_e::host, -1}, (void *)hostPropNames.data()},
            sizeof(SmallString) * N);
-      copy({base(), _tagSizes}, {{memsrc_e::host, -1}, (void *)hostPropSizes.data()},
+      copy({base(), _tagSizes.data()}, {{memsrc_e::host, -1}, (void *)hostPropSizes.data()},
            sizeof(channel_counter_type) * N);
-      copy({base(), _tagOffsets}, {{memsrc_e::host, -1}, (void *)hostPropOffsets.data()},
+      copy({base(), _tagOffsets.data()}, {{memsrc_e::host, -1}, (void *)hostPropOffsets.data()},
            sizeof(channel_counter_type) * N);
     }
     constexpr const_pointer data() const noexcept { return (pointer)head(); }
@@ -286,12 +268,13 @@ namespace zs {
     constexpr reference back() noexcept { return (*this)(size() - 1); }
     constexpr const_reference back() const noexcept { (*this)(size() - 1); }
 
-    constexpr const SmallString *tagNameHandle() const noexcept { return _tagNames; }
-    constexpr const channel_counter_type *tagSizeHandle() const noexcept { return _tagSizes; }
-    constexpr const channel_counter_type *tagOffsetHandle() const noexcept { return _tagOffsets; }
-    constexpr SmallString *tagNameHandle() noexcept { return _tagNames; }
-    constexpr channel_counter_type *tagSizeHandle() noexcept { return _tagSizes; }
-    constexpr channel_counter_type *tagOffsetHandle() noexcept { return _tagOffsets; }
+    constexpr const SmallString *tagNameHandle() const noexcept { return _tagNames.data(); }
+    constexpr const channel_counter_type *tagSizeHandle() const noexcept {
+      return _tagSizes.data();
+    }
+    constexpr const channel_counter_type *tagOffsetHandle() const noexcept {
+      return _tagOffsets.data();
+    }
 
   protected:
     constexpr auto buildInstance(memsrc_e mre, ProcID devid, channel_counter_type numChns,
@@ -328,9 +311,9 @@ namespace zs {
 
     std::vector<PropertyTag> _tags;  // on host
     /// for proxy use
-    SmallString *_tagNames{nullptr};
-    channel_counter_type *_tagSizes{nullptr};
-    channel_counter_type *_tagOffsets{nullptr};
+    Vector<SmallString> _tagNames;
+    Vector<channel_counter_type> _tagSizes;
+    Vector<channel_counter_type> _tagOffsets;
     size_type _size{0};  // size
     size_type _align{0};
   };

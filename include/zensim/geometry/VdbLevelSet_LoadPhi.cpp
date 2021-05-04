@@ -4,6 +4,7 @@
 #include <openvdb/tools/GridOperators.h>
 #include <openvdb/tools/Interpolation.h>
 #include <openvdb/tools/VolumeToMesh.h>
+#include <zensim/memory/MemoryResource.h>
 
 #include "VdbLevelSet.h"
 #include "zensim/Logger.hpp"
@@ -53,6 +54,31 @@ namespace zs {
     ret.dx = gridPtr->transform().voxelSize()[0];
 
     return ret;
+  }
+
+  SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
+                                                     const MemoryHandle mh) {
+    using GridType = openvdb::FloatGrid;
+    using TreeType = GridType::TreeType;
+    using RootType = TreeType::RootNodeType;  // level 3 RootNode
+    assert(RootType::LEVEL == 3);
+    using Int1Type = RootType::ChildNodeType;  // level 2 InternalNode
+    using Int2Type = Int1Type::ChildNodeType;  // level 1 InternalNode
+    using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
+    using SDFPtr = typename GridType::Ptr;
+    const SDFPtr &gridPtr = grid.as<SDFPtr>();
+    SparseLevelSet<3> ret{};
+    const auto leafCount = gridPtr->tree().leafCount();
+    ret._dx = gridPtr->transform().voxelSize()[0];
+    ret._sideLength = 8;
+    ret._space = 512;
+    ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
+
+    auto table = proxy<execspace_e::host>(ret._table);
+
+    fmt::print("convert to uniform levelset: \ttotal leaf count {}\n", leafCount);
+
+    return ret.clone(mh);
   }
 
   void checkFloatGrid(OpenVDBStruct &grid) {
@@ -130,6 +156,7 @@ namespace zs {
       }
     }
 #else
+    i64 leafCount = 0;
     for (TreeType::NodeIter iter = gridPtr->tree().beginNode(); iter.test(); ++iter) {
       // Print the coordinates of all voxels whose vector value has
       // a length greater than -10, and print the bounding box coordinates
@@ -212,6 +239,7 @@ namespace zs {
           break;
         }
         case 3: {
+          leafCount++;
           LeafType *node = nullptr;
           iter.getNode<LeafType>(node);
           fmt::print("leaf childCnt {}, tileCnt {}, voxelCnt {}\n", node->childCount(),
@@ -236,6 +264,7 @@ namespace zs {
         }
       }
     }
+    fmt::print("check grid: leaf count {}\n", leafCount);
 #endif
   }
 

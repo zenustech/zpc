@@ -75,7 +75,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/LevelSetSequence.hpp
     geometry/Mesh.hpp
     geometry/PoissonDisk.hpp
-    geometry/UniformLevelSet.hpp
+    geometry/SparseLevelSet.hpp
     # math
     math/bit/Bits.h
     math/matrix/MatrixUtils.h
@@ -191,6 +191,8 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/simulation/grid/GridOp.hpp
     # physics
     cuda/physics/ConstitutiveModel.hpp
+    #
+    cuda/geometry/SparseLevelSet.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/execution/ExecutionPolicy.hpp

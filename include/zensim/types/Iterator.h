@@ -302,12 +302,12 @@ namespace zs {
   };
   template <typename T, typename... Args>
   constexpr LegacyIterator<T> make_iterator(Args &&...args) {
-    return LegacyIterator<T>{FWD(args)...};
+    return LegacyIterator<T>(FWD(args)...);
   }
   template <template <typename...> class T, typename... Args>
   constexpr auto make_iterator(Args &&...args) {
-    using IterT = decltype(T{FWD(args)...});
-    return LegacyIterator<IterT>{T{FWD(args)...}};
+    using IterT = decltype(T(FWD(args)...));
+    return LegacyIterator<IterT>(T(FWD(args)...));
   }
 
   namespace detail {

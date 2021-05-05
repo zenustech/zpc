@@ -120,7 +120,6 @@ namespace zs {
       base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
       if (o.size()) copy({base(), (void *)tmp.address()}, {o.base(), o.head()}, o.usedBytes());
       self() = tmp;
-      base() = o.base();
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;

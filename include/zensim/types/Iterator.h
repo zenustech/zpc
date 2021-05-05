@@ -406,7 +406,7 @@ namespace zs {
       }
       template <std::size_t I> constexpr void increment_impl() noexcept {
         index_t<I> n = ++std::get<I>(it);
-        if constexpr (I)
+        if constexpr (I > 0)
           if (n >= std::get<I>(ns)) {
             std::get<I>(it) = 0;
             increment_impl<I - 1>();

@@ -65,7 +65,7 @@ namespace zs {
       return HashTableT::sentinel_v;
     }
     /// make sure no one else is inserting in the same time!
-    __forceinline__ __device__ value_t query(const key_t &key) const {
+    constexpr value_t query(const key_t &key) const {
       using namespace placeholders;
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       while (true) {
@@ -82,7 +82,7 @@ namespace zs {
     key_t *_activeKeys;
 
   protected:
-    __forceinline__ __device__ value_t do_hash(const key_t &key) const {
+    constexpr value_t do_hash(const key_t &key) const {
       std::size_t ret = key[0];
       for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);

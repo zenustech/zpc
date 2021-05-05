@@ -71,13 +71,26 @@ namespace zs {
 
     SparseLevelSet<3> ret{};
     const auto leafCount = gridPtr->tree().leafCount();
-    ret._dx = gridPtr->transform().voxelSize()[0];
     ret._sideLength = 8;
     ret._space = 512;
+    ret._dx = gridPtr->transform().voxelSize()[0];
+    ret._backgroundValue = gridPtr->background();
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
     ret._tiles = typename SparseLevelSet<3>::tiles_t{
-        {{"sdf", 1}, {"vel", 3}}, leafCount, memsrc_e::host, -1};
+        {{"sdf", 1}, {"vel", 3}}, leafCount * ret._space, memsrc_e::host, -1};
+    {
+      openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
+      auto world_min = gridPtr->indexToWorld(box.min());
+      auto world_max = gridPtr->indexToWorld(box.max());
+      for (size_t d = 0; d < 3; d++) {
+        ret._min(d) = world_min[d];
+        ret._max(d) = world_max[d];
+      }
+    }
 
+    // fmt::print("background value: {}. box: [{}, {}, {} - {}, {}, {}]\n", ret._backgroundValue,
+    //           ret._min[0], ret._min[1], ret._min[2], ret._max[0], ret._max[1],
+    //           ret._max[2]);  // 0.6
     auto table = proxy<execspace_e::host>(ret._table);
     auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
     table.clear();
@@ -92,13 +105,18 @@ namespace zs {
           blockid[d] += (coord[d] < 0 ? -ret._sideLength + 1 : 0);
         blockid = blockid / ret._sideLength;
         auto blockno = table.insert(blockid);
-        fmt::print("inserting {}, {}, {} at {}\n", blockid[0], blockid[1], blockid[2], blockno);
-        blockid = blockid * ret._sideLength;
-        for (auto cell = node.beginValueOn(); cell; ++cell) {
+        // fmt::print("inserting {}, {}, {} at {}\n", blockid[0], blockid[1], blockid[2], blockno);
+        // blockid = blockid * ret._sideLength;
+        int cellid = 0;
+        for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
+          auto sdf = cell.getValue();
+          tiles.val("sdf", blockno * ret._space + cellid) = sdf;
+          tiles.template tuple<3>("sdf", blockno * ret._space + cellid) = TV::zeros();
+#if 0
           for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
             coord[d] = cell.getCoord()[d] - blockid(d);
-          auto sdf = cell.getValue();
           fmt::print("\tlocal child ({}, {}, {}) value {}\n", coord[0], coord[1], coord[2], sdf);
+#endif
         }
       } else {
         fmt::print("what the heck?\n");

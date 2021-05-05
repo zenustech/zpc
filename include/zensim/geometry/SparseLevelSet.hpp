@@ -1,7 +1,9 @@
 #pragma once
-#include "LevelSetInterface.h"
+#include <utility>
+
 #include "zensim/container/HashTable.hpp"
 #include "zensim/container/TileVector.hpp"
+#include "zensim/geometry/LevelSetInterface.h"
 
 namespace zs {
 
@@ -9,8 +11,11 @@ namespace zs {
     static constexpr int dim = dim_;
     static constexpr int lane_width = 32;
     using value_type = f32;
+    using index_type = i64;
+    using TV = vec<value_type, dim>;
+    using IV = vec<index_type, dim>;
     using tiles_t = TileVector<value_type, lane_width>;
-    using table_t = HashTable<i64, dim, i64>;
+    using table_t = HashTable<index_type, dim, i64>;
 
     explicit SparseLevelSet(int sideLengthBits = 3, value_type dx = 1.f)
         : _sideLength{1 << sideLengthBits}, _space{1 << (sideLengthBits * dim)}, _dx{dx} {}
@@ -20,23 +25,25 @@ namespace zs {
       ret._sideLength = _sideLength;
       ret._space = _space;
       ret._dx = _dx;
-      ret._defaultValue = _defaultValue;
+      ret._backgroundValue = _backgroundValue;
       ret._table = _table.clone(mh);
       ret._tiles = _tiles.clone(mh);
+      ret._min = _min;
+      ret._max = _max;
       return ret;
     }
 
     int _sideLength{8};  // tile side length
     int _space{512};     // voxels per tile
     value_type _dx;
-    value_type _defaultValue;
+    value_type _backgroundValue;
     table_t _table;
     tiles_t _tiles;
+    TV _min, _max;
   };
 
   template <execspace_e, typename SparseLevelSetT, typename = void> struct SparseLevelSetProxy;
 
-#if 0
   template <execspace_e Space, typename SparseLevelSetT>
   struct SparseLevelSetProxy<Space, SparseLevelSetT>
       : LevelSetInterface<SparseLevelSetProxy<Space, SparseLevelSetT>,
@@ -44,27 +51,104 @@ namespace zs {
     using table_t = typename SparseLevelSetT::table_t;
     using tiles_t = typename SparseLevelSetT::tiles_t;
     using T = typename SparseLevelSetT::value_type;
+    using Ti = typename SparseLevelSetT::index_type;
+    using TV = typename SparseLevelSetT::TV;
+    using IV = typename SparseLevelSetT::IV;
     static constexpr int dim = SparseLevelSetT::dim;
-    using TV = vec<T, dim>;
+
+    template <typename Val, std::size_t... Is>
+    static constexpr auto arena_type_impl(index_seq<Is...>) {
+      return vec<Val, (Is + 1 > 0 ? 2 : 2)...>{};
+    }
+    template <typename Val, int d> static constexpr auto arena_type() {
+      return arena_type_impl<Val>(std::make_index_sequence<d>{});
+    }
+    //-> conditional_t<d <= 1, Val[2], decltype(arena_type_impl<Val, d - 1>())[2]>;
+
+    template <typename Val> using Arena = decltype(arena_type<Val, dim>());
+    constexpr auto offset(i64 bid, IV cellCoord) const noexcept {
+      auto res{cellCoord[0]};
+      for (int d = 1; d < dim; ++d) res = res * _sideLength + cellCoord[d];
+      return bid * _space + res;
+    }
 
     constexpr SparseLevelSetProxy() = default;
     ~SparseLevelSetProxy() = default;
     explicit SparseLevelSetProxy(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
-        : table{proxy<Space>(ls._table)}, tiles{proxy<Space>(tagNames, ls._tiles)} {}
+        : _sideLength{ls._sideLength},
+          _space{ls._space},
+          _dx{ls._dx},
+          _backgroundValue{ls._backgroundValue},
+          table{proxy<Space>(ls._table)},
+          tiles{proxy<Space>(tagNames, ls._tiles)},
+          _min{ls._min},
+          _max{ls._max} {}
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {}
-    constexpr TV getNormal(const TV &X) const noexcept {}
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept {}
-    constexpr decltype(auto) getBoundingBox() const noexcept {}
+    constexpr T getSignedDistance(const TV &X) const noexcept {
+      /// world to local
+      Arena<T> arena{};
+      IV loc{};
+      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor(X(d) / _dx);
+      // for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
+      TV diff = X / _dx - loc;
+      // printf("diff [%f, %f, %f]\n", diff(0), diff(1), diff(2));
+      if constexpr (dim == 2) {
+        for (auto &&[dx, dy] : ndrange<dim>(2)) {
+          IV coord{loc(0) + dx, loc(1) + dy};
+          auto blockid = coord;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
+          blockid = blockid / _sideLength;
+          auto blockno = table.query(blockid);
+          if (blockno != table_t::sentinel_v) {
+            arena(dx, dy) = tiles.val(
+                "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+          } else
+            arena(dx, dy) = _backgroundValue;
+        }
+      } else if constexpr (dim == 3) {
+        for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
+          IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
+          auto blockid = coord;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
+          blockid = blockid / _sideLength;
+          auto blockno = table.query(blockid);
+          if (blockno != table_t::sentinel_v) {
+            arena(dx, dy, dz) = tiles.val(
+                "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+          } else
+            arena(dx, dy, dz) = _backgroundValue;
+        }
+      } else
+        ZS_UNREACHABLE;
+      return trilinear_interop<0>(diff, arena);
+    }
+    constexpr TV getNormal(const TV &X) const noexcept { return TV::zeros(); }  // temporary
+    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
+  protected:
+    template <std::size_t d, typename Field>
+    constexpr auto trilinear_interop(const TV &diff, const Field &arena) const noexcept {
+      if constexpr (d == dim - 1)
+        return linear_interop(diff(d), arena(0), arena(1));
+      else
+        return linear_interop(diff(d), trilinear_interop<d + 1>(diff, arena[0]),
+                              trilinear_interop<d + 1>(diff, arena[1]));
+      return (T)1;
+    }
+
+    int _sideLength;  // tile side length
+    int _space;       // voxels per tile
+    T _dx;
+    T _backgroundValue;
     HashTableProxy<Space, table_t> table;
     TileVectorProxy<Space, tiles_t> tiles;
+    TV _min, _max;
   };
 
-  template <execspace_e ExecSpace>
-  decltype(auto) proxy(const std::vector<SmallString> &tagNames, SparseLevelSet &levelset) {
-    return SparseLevelSetProxy<ExecSpace, SparseLevelSet>{tagNames, levelset};
+  template <execspace_e ExecSpace, int dim>
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames, SparseLevelSet<dim> &levelset) {
+    return SparseLevelSetProxy<ExecSpace, SparseLevelSet<dim>>{tagNames, levelset};
   }
-#endif
 
 }  // namespace zs

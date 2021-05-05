@@ -157,7 +157,8 @@ namespace zs {
       _table(_0, hashedentry) = key;
       _table(_1, hashedentry) = localno;
       _activeKeys[localno] = key;
-      if (localno >= _tableSize - 20) printf("proximity!!! %d -> %d\n", localno, _tableSize);
+      if (localno >= _tableSize - 20)
+        printf("proximity!!! %lld -> %lld\n", (long long int)localno, (long long int)_tableSize);
       return localno;  ///< only the one that inserts returns the actual index
     }
     value_t query(const key_t &key) const {

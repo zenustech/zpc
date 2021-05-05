@@ -1,5 +1,4 @@
 #pragma once
-#include "VdbLevelSet.h"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Object.h"
 

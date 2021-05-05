@@ -452,12 +452,15 @@ namespace zs {
                                        std::random_access_iterator_tag>)&&...)>>> {
     constexpr zip_iterator(Iters &&...its) : iters{std::make_tuple<Iters...>(FWD(its)...)} {}
 
-    template <size_t Idx, class T> constexpr auto getElement(T &v) {
-      if constexpr (std::is_reference<decltype(*std::get<Idx>(v))>::value) {
-        return std::reference_wrapper(*std::get<Idx>(v));
-      } else {
-        return *std::get<Idx>(v);
-      }
+    template <size_t Idx, class T> constexpr auto getElement(T &v)
+        -> std::enable_if_t<!std::is_reference<decltype(*std::get<Idx>(v))>::value,
+                            decltype(*std::get<Idx>(v))> {
+      return *std::get<Idx>(v);
+    }
+    template <size_t Idx, class T> constexpr auto getElement(T &v)
+        -> std::enable_if_t<std::is_reference<decltype(*std::get<Idx>(v))>::value,
+                            decltype(std::reference_wrapper(*std::get<Idx>(v)))> {
+      return std::reference_wrapper(*std::get<Idx>(v));
     }
     // constexpr auto dereference() { return std::forward_as_tuple((*std::get<Is>(iters))...); }
     constexpr auto dereference() { return std::make_tuple(getElement<Is>(iters)...); }

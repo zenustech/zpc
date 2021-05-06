@@ -65,11 +65,6 @@ namespace zs {
       _table.assign(_tableStorage.data());
     }
 
-    void resize(value_t newSize) {
-      newSize = next_2pow(newSize) * reserve_ratio_v;
-      _activeKeys.resize(newSize);
-      _tableSize = newSize;
-    }
     HashTable clone(const MemoryHandle &mh) const {
       HashTable ret{};
       ret.base() = mh;

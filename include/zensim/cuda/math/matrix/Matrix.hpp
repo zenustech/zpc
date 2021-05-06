@@ -47,6 +47,9 @@ namespace zs {
     void factorize(const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol);
     void solve(Vector<value_type> &, const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol,
                const Vector<value_type> &);
+    void cgsolve(Vector<value_type> &,
+                 const CudaLibExecutionPolicy<culib_cusparse, culib_cublas, culib_cusolversp> &pol,
+                 const Vector<value_type> &);
 
     // Vector<char> auxSpmBuffer{};
     Vector<char> auxCholBuffer{};

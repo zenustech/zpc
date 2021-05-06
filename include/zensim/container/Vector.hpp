@@ -210,7 +210,7 @@ namespace zs {
       return end();
     }
     iterator append(const Vector &other) { return append(other.begin(), other.end()); }
-    constexpr const_pointer data() const noexcept { return (pointer)head(); }
+    constexpr const_pointer data() const noexcept { return (const_pointer)head(); }
     constexpr pointer data() noexcept { return (pointer)head(); }
     constexpr reference front() noexcept { return (*this)(0); }
     constexpr const_reference front() const noexcept { (*this)(0); }
@@ -218,7 +218,7 @@ namespace zs {
     constexpr const_reference back() const noexcept { (*this)(size() - 1); }
 
   protected:
-    constexpr size_type usedBytes() const noexcept { return sizeof(T) * size(); }
+    constexpr std::size_t usedBytes() const noexcept { return sizeof(T) * size(); }
 
     constexpr auto buildInstance(memsrc_e mre, ProcID devid, size_type capacity) {
       using namespace ds;

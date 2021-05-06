@@ -128,6 +128,10 @@ namespace zs {
     constexpr size_type capacity() const noexcept { return self().node().extent(); }
     constexpr bool empty() noexcept { return size() == 0; }
     constexpr pointer head() const noexcept { return reinterpret_cast<pointer>(self().address()); }
+    constexpr const_pointer data() const noexcept {
+      return reinterpret_cast<const_pointer>(self().address());
+    }
+    constexpr pointer data() noexcept { return reinterpret_cast<pointer>(self().address()); }
 
     /// element access
     constexpr reference operator[](
@@ -143,7 +147,7 @@ namespace zs {
     /// ctor, assignment operator
     explicit TileVector(const TileVector &o)
         : MemoryHandle{o.base()}, _tags{o._tags}, _size{o.size()}, _align{o._align} {
-      base_t tmp{buildInstance(o.memspace(), o.devid(), o.numChannels(), o.capacity())};
+      base_t tmp{buildInstance(o.memspace(), o.devid(), o.numChannels(), o.size())};
       if (o.size())
         copy({base(), (void *)tmp.address()}, {o.base(), o.data()},
              ds::snode_size(o.self().template node<0>()));
@@ -156,7 +160,9 @@ namespace zs {
       return *this;
     }
     TileVector clone(const MemoryHandle &mh) const {
-      TileVector ret{_tags, capacity(), mh.memspace(), mh.devid(), _align};
+      // capacity() is the count of tiles
+      // use size() that represents the number of elements!
+      TileVector ret{_tags, size(), mh.memspace(), mh.devid(), _align};
       copy({mh, (void *)ret.data()}, {base(), (void *)data()},
            ds::snode_size(self().template node<0>()));
       return ret;
@@ -191,30 +197,7 @@ namespace zs {
     // constexpr operator base_t &() noexcept { return self(); }
     // constexpr operator base_t() const noexcept { return self(); }
     // void relocate(memsrc_e mre, ProcID devid) {}
-    void clear() { resize(0); }
-    void resize(size_type newSize) {
-      const auto oldSize = size();
-      if (newSize < oldSize) {
-        static_assert(std::is_trivially_destructible_v<T>, "not trivially destructible");
-        _size = newSize;
-        return;
-      }
-      if (newSize > oldSize) {
-        const auto oldCapacity = capacity();
-        if (newSize > oldCapacity) {
-          auto &rm = get_resource_manager().get();
-          base_t tmp{
-              buildInstance(memspace(), devid(), numChannels(), geometric_size_growth(newSize))};
-          if (size())
-            copy({base(), (void *)tmp.address()}, {base(), data()},
-                 ds::snode_size(self().template node<0>()));
-          if (oldCapacity > 0) rm.deallocate((void *)head());
-          self() = tmp;
-          _size = newSize;
-          return;
-        }
-      }
-    }
+    void clear() { *this = TileVector{_tags, 0, memspace(), devid(), _align}; }
 
     constexpr channel_counter_type numChannels() const noexcept {
       return self().node().child(wrapv<0>{}).channel_count();
@@ -261,12 +244,6 @@ namespace zs {
       copy({base(), _tagOffsets.data()}, {{memsrc_e::host, -1}, (void *)hostPropOffsets.data()},
            sizeof(channel_counter_type) * N);
     }
-    constexpr const_pointer data() const noexcept { return (pointer)head(); }
-    constexpr pointer data() noexcept { return (pointer)head(); }
-    constexpr reference front() noexcept { return (*this)(0); }
-    constexpr const_reference front() const noexcept { (*this)(0); }
-    constexpr reference back() noexcept { return (*this)(size() - 1); }
-    constexpr const_reference back() const noexcept { (*this)(size() - 1); }
 
     constexpr const SmallString *tagNameHandle() const noexcept { return _tagNames.data(); }
     constexpr const channel_counter_type *tagSizeHandle() const noexcept {
@@ -295,12 +272,6 @@ namespace zs {
         inst.alloc(memorySource);
       }
       return inst;
-    }
-    constexpr std::size_t geometric_size_growth(std::size_t newSize) noexcept {
-      size_type geometricSize = capacity();
-      geometricSize = geometricSize + geometricSize / 2;
-      if (newSize > geometricSize) return newSize;
-      return geometricSize;
     }
     constexpr GeneralAllocator getCurrentAllocator() {
       auto memorySource = get_resource_manager().source(this->memspace());

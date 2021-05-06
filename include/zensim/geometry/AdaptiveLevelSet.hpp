@@ -19,7 +19,6 @@ namespace zs {
             blocks{1.f, 0, mh.memspace(), mh.devid()} {}
 
       void resize(const std::size_t numBlocks) {
-        tables.resize(numBlocks);
         blocks.resize(numBlocks);
       }
 

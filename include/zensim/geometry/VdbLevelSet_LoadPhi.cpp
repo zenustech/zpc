@@ -67,7 +67,8 @@ namespace zs {
     using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
     using SDFPtr = typename GridType::Ptr;
     const SDFPtr &gridPtr = grid.as<SDFPtr>();
-    using TV = typename SparseLevelSet<3>::table_t::key_t;
+    using IV = typename SparseLevelSet<3>::table_t::key_t;
+    using TV = vec<f32, 3>;
 
     SparseLevelSet<3> ret{};
     const auto leafCount = gridPtr->tree().leafCount();
@@ -88,9 +89,18 @@ namespace zs {
       }
     }
 
-    // fmt::print("background value: {}. box: [{}, {}, {} - {}, {}, {}]\n", ret._backgroundValue,
-    //           ret._min[0], ret._min[1], ret._min[2], ret._max[0], ret._max[1],
-    //           ret._max[2]);  // 0.6
+    auto sample = [&gridPtr](const TV &X_input) -> float {
+      TV X = X_input;
+      openvdb::tools::GridSampler<typename openvdb::FloatGrid::TreeType, openvdb::tools::BoxSampler>
+          interpolator(gridPtr->constTree(), gridPtr->transform());
+      openvdb::math::Vec3<float> P(X(0), X(1), X(2));
+      float phi = interpolator.wsSample(P);  // ws denotes world space
+      return (float)phi;
+    };
+    gridPtr->transform().print();
+    fmt::print("background value: {}. box: [{}, {}, {} - {}, {}, {}]\n", ret._backgroundValue,
+               ret._min[0], ret._min[1], ret._min[2], ret._max[0], ret._max[1],
+               ret._max[2]);  // 0.6
     auto table = proxy<execspace_e::host>(ret._table);
     auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
     table.clear();
@@ -98,7 +108,7 @@ namespace zs {
       const TreeType::LeafNodeType &node = *iter;
       if (node.onVoxelCount() > 0) {
         auto cell = node.beginValueOn();
-        TV coord{};
+        IV coord{};
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
         auto blockid = coord;
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
@@ -111,17 +121,37 @@ namespace zs {
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
           tiles.val("sdf", blockno * ret._space + cellid) = sdf;
-          tiles.template tuple<3>("sdf", blockno * ret._space + cellid) = TV::zeros();
+#if 1
+          if (cellid == 21 || (blockid == IV::zeros() && cellid == 8)) {
+            auto loc = vec<int, 3>{cellid / 64 % 8, cellid / 8 % 8, cellid % 8};
+            fmt::print(
+                "blockno: {}, blockid({}, {}, {}), cellid {} ({}, {}, {}), coord ({}, {}, {}), val "
+                "{}\n",
+                blockno, blockid(0), blockid(1), blockid(2), cellid, loc(0), loc(1), loc(2),
+                cell.getCoord()[0], cell.getCoord()[1], cell.getCoord()[2], sdf);
+          }
+#endif
+          tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
 #if 0
           for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
             coord[d] = cell.getCoord()[d] - blockid(d);
           fmt::print("\tlocal child ({}, {}, {}) value {}\n", coord[0], coord[1], coord[2], sdf);
 #endif
         }
+        if constexpr (true) {
+          auto tt = zs::proxy<zs::execspace_e::host>({"sdf", "vel"}, ret);
+          fmt::print("sdf: {}, check: {}\n", tt.getSignedDistance({0, 1, 0}), sample({0, 1, 0}));
+          if constexpr (false) {
+            auto tmp = ret.clone(zs::MemoryHandle{zs::memsrc_e::host, -1});
+            auto tt = zs::proxy<zs::execspace_e::host>({"sdf", "vel"}, tmp);
+            fmt::print("check again sdf: {}\n", tt.getSignedDistance({0, 0, 0}));
+          }
+        }
       } else {
         fmt::print("what the heck?\n");
         getchar();
       }
+
       fmt::print("leaf childCnt {}, tileCnt {}, voxelCnt {}\n", node.childCount(),
                  node.onTileCount(), node.onVoxelCount());
     }

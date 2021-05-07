@@ -188,7 +188,19 @@ namespace zs {
       }
       return trilinear_interop<0>(diff, arena);
     }
-    constexpr TV getNormal(const TV &X) const noexcept { return TV::zeros(); }  // temporary
+    constexpr TV getNormal(const TV &X) const noexcept {
+      TV diff{}, v1{}, v2{};
+      T eps = (T)1e-6;
+      /// compute a local partial derivative
+      for (int i = 0; i < dim; i++) {
+        v1 = X;
+        v2 = X;
+        v1(i) = X(i) + eps;
+        v2(i) = X(i) - eps;
+        diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
+      }
+      return diff.normalized();
+    }
     constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
     constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 

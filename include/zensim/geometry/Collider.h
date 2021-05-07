@@ -80,7 +80,7 @@ namespace zs {
                 Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>>,
                 Collider<LevelSet<T, dim>>, Collider<HeightField<T>>>;
 
-  template <typename LS> struct Boundary {
+  template <typename LS> struct LevelSetBoundary {
     using T = typename LS::value_type;
     static constexpr int dim = LS::dim;
     using TV = vec<T, dim>;
@@ -109,10 +109,13 @@ namespace zs {
     TV dbdt{TV::zeros()};
   };
 
-  template <typename Ls, typename... Args> Boundary(Ls, Args...) -> Boundary<Ls>;
+  template <typename Ls, typename... Args> LevelSetBoundary(Ls, Args...) -> LevelSetBoundary<Ls>;
 
-  // Boundary<SparseLevelSet<3>>,
-  using GeneralBoundary = variant<Collider<AnalyticLevelSet<analytic_geometry_e::Plane, f32, 3>>,
+  template <typename> struct is_levelset_boundary : std::false_type {};
+  template <typename LS> struct is_levelset_boundary<LevelSetBoundary<LS>> : std::true_type {};
+
+  using GeneralBoundary = variant<LevelSetBoundary<SparseLevelSet<3>>,
+                                  Collider<AnalyticLevelSet<analytic_geometry_e::Plane, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 3>>,
                                   Collider<LevelSet<f32, 3>>,

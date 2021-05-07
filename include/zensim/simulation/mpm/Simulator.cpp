@@ -1,6 +1,7 @@
 #include "Simulator.hpp"
 
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/geometry/Collider.h"
 #include "zensim/tpls/magic_enum.hpp"
 
 namespace zs {
@@ -18,6 +19,15 @@ namespace zs {
       /// range-based for loop might not be safe after moved
       this->target().particles.push_back(std::move(scene.particles[i]));
     this->target().boundaries = std::move(scene.boundaries);
+#if 0
+    for (auto&& boundary : this->target().boundaries) {
+      match([](auto& b)
+                -> std::enable_if_t<is_levelset_boundary<remove_cvref_t<decltype(b)>>::value> {
+                  b = b.clone(MemoryHandle{memsrc_e::um, -5});
+                },
+            [](...) {})(boundary);
+    }
+#endif
     return *this;
   }
   BuilderForMPMSimulator& BuilderForMPMSimulator::setSimOptions(const SimOptions& ops) {

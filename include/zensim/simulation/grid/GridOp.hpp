@@ -1,9 +1,9 @@
 #pragma once
 #include "../transfer/Scheme.hpp"
 #include "zensim/container/HashTable.hpp"
-#include "zensim/geometry/Structure.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Collider.h"
+#include "zensim/geometry/Structure.hpp"
 
 namespace zs {
 
@@ -25,6 +25,12 @@ namespace zs {
   template <execspace_e space, typename LevelsetT, typename TableT, typename GridBlocksT>
   ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT, GridBlocksT)
       -> ApplyBoundaryConditionOnGridBlocks<Collider<LevelsetT>, HashTableProxy<space, TableT>,
+                                            GridBlocksProxy<space, GridBlocksT>>;
+  template <execspace_e space, typename TableT, typename GridBlocksT>
+  ApplyBoundaryConditionOnGridBlocks(wrapv<space>, LevelSetBoundary<SparseLevelSet<3>>, TableT,
+                                     GridBlocksT)
+      -> ApplyBoundaryConditionOnGridBlocks<Collider<SparseLevelSetProxy<space, SparseLevelSet<3>>>,
+                                            HashTableProxy<space, TableT>,
                                             GridBlocksProxy<space, GridBlocksT>>;
 
 }  // namespace zs

@@ -2,6 +2,7 @@
 #include <zensim/execution/ExecutionPolicy.hpp>
 
 #include "zensim/cuda/DeviceUtils.cuh"
+#include "zensim/geometry/Collider.h"
 #include "zensim/simulation/grid/GridOp.hpp"
 
 namespace zs {
@@ -110,6 +111,13 @@ namespace zs {
     explicit ApplyBoundaryConditionOnGridBlocks(wrapv<execspace_e::cuda>, ColliderT &collider,
                                                 TableT &table, GridBlocksT &gridblocks)
         : collider{collider},
+          partition{proxy<execspace_e::cuda>(table)},
+          gridblocks{proxy<execspace_e::cuda>(gridblocks)} {}
+    template <typename Boundary, enable_if_t<is_levelset_boundary<Boundary>::value> = 0>
+    ApplyBoundaryConditionOnGridBlocks(wrapv<execspace_e::cuda>, Boundary &boundary, TableT &table,
+                                       GridBlocksT &gridblocks)
+        : collider{Collider{proxy<execspace_e::cuda>(boundary.levelset), boundary.type, boundary.s,
+                            boundary.dsdt, boundary.R, boundary.omega, boundary.b, boundary.dbdt}},
           partition{proxy<execspace_e::cuda>(table)},
           gridblocks{proxy<execspace_e::cuda>(gridblocks)} {}
 

@@ -103,7 +103,7 @@ namespace zs {
     explicit BuilderForSceneBoundary(Scene &scene) : BuilderForScene{scene} {}
     ~BuilderForSceneBoundary() { commit(MemoryHandle{memsrc_e::host, -1}); }
     /// particle positions
-    BuilderForSceneBoundary &addSparseLevelset(std::string fn);
+    BuilderForSceneBoundary &addSparseLevelSet(std::string fn);
     BuilderForSceneBoundary &addVdbLevelset(std::string fn, float dx);
     BuilderForSceneBoundary &addCuboid(std::vector<float> mi, std::vector<float> ma);
     BuilderForSceneBoundary &addCube(std::vector<float> c, float len);

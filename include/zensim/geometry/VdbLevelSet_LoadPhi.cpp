@@ -56,8 +56,7 @@ namespace zs {
     return ret;
   }
 
-  SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
-                                                     const MemoryHandle mh) {
+  SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;
     using RootType = TreeType::RootNodeType;  // level 3 RootNode
@@ -88,6 +87,7 @@ namespace zs {
         ret._max(d) = world_max[d];
       }
     }
+    openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
 
     auto sample = [&gridPtr](const TV &X_input) -> float {
       TV X = X_input;
@@ -98,9 +98,15 @@ namespace zs {
       return (float)phi;
     };
     gridPtr->transform().print();
-    fmt::print("background value: {}. box: [{}, {}, {} - {}, {}, {}]\n", ret._backgroundValue,
-               ret._min[0], ret._min[1], ret._min[2], ret._max[0], ret._max[1],
-               ret._max[2]);  // 0.6
+    fmt::print("background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
+               ret._backgroundValue, ret._dx, ret._min[0], ret._min[1], ret._min[2], ret._max[0],
+               ret._max[1], ret._max[2]);
+
+    auto w2v = v2w.inverse();
+    vec<float, 4, 4> transform;
+    for (auto &&[r, c] : ndrange<2>(4)) transform(r, c) = w2v[r][c];
+    ret._w2v = transform;
+
     auto table = proxy<execspace_e::host>(ret._table);
     auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
     table.clear();
@@ -139,23 +145,24 @@ namespace zs {
 #endif
         }
         if constexpr (false) {
+          auto point = TV{0, 1.0, 0};
           auto tt = zs::proxy<zs::execspace_e::host>({"sdf", "vel"}, ret);
-          (void)tt.getSignedDistance({0, 0.25, 0});
+          (void)tt.getSignedDistance(point);
           fmt::print("sdf: {}, check: {}\tret address: table{}, tile{}\n",
-                     tt.getSignedDistance({0, 0.25, 0}), sample({0, 0.25, 0}),
+                     tt.getSignedDistance(point), sample(point),
                      (std::intptr_t)ret._table.self().address(),
                      (std::intptr_t)ret._tiles.self().address());
-          if constexpr (true) {
+          if constexpr (false) {
             auto tmp = ret;
             auto tmp1{tmp};
             /// there should not be more than one proxy accessing the same container at a time!
             // auto tt1 = zs::proxy<zs::execspace_e::host>({"sdf", "vel"}, tmp);
-            //(void)tt1.getSignedDistance({0, 0.25, 0});
+            //(void)tt1.getSignedDistance({0, 1.0, 0});
             fmt::print("check again sdf: {}\tclone ret address: table{}, tile{}\n",
-                       tt.getSignedDistance({0, 0.25, 0}),
+                       tt.getSignedDistance({0, 1.0, 0}),
                        (std::intptr_t)tmp._table.self().address(),
                        (std::intptr_t)tmp._tiles.self().address());
-            fmt::print("check again sdf: {}\n", tt.getSignedDistance({0, 0.25, 0}));
+            fmt::print("check again sdf: {}\n", tt.getSignedDistance({0, 1.0, 0}));
           }
         }
       } else {
@@ -173,7 +180,11 @@ namespace zs {
       fmt::print("tmp tile cap: {}, table size: {}, dx: {}, background value: {}\n",
                  tmp._tiles.size(), tmp._table.size(), tmp._dx, tmp._backgroundValue);
     }
-    return ret.clone(mh);
+    return ret;
+  }
+  SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
+                                                     const MemoryHandle mh) {
+    return convertFloatGridToSparseLevelSet(grid).clone(mh);
   }
 
   void checkFloatGrid(OpenVDBStruct &grid) {

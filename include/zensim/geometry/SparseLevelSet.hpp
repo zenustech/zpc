@@ -14,6 +14,7 @@ namespace zs {
     using index_type = i64;
     using TV = vec<value_type, dim>;
     using IV = vec<index_type, dim>;
+    using Affine = vec<value_type, dim + 1, dim + 1>;
     using tiles_t = TileVector<value_type, lane_width>;
     using table_t = HashTable<index_type, dim, i64>;
 
@@ -32,6 +33,7 @@ namespace zs {
       ret._tiles = _tiles.clone(mh);
       ret._min = _min;
       ret._max = _max;
+      ret._w2v = _w2v;
       return ret;
     }
 
@@ -42,6 +44,7 @@ namespace zs {
     table_t _table;
     tiles_t _tiles;
     TV _min, _max;
+    Affine _w2v;
   };
 
   template <execspace_e, typename SparseLevelSetT, typename = void> struct SparseLevelSetProxy;
@@ -56,6 +59,7 @@ namespace zs {
     using Ti = typename SparseLevelSetT::index_type;
     using TV = typename SparseLevelSetT::TV;
     using IV = typename SparseLevelSetT::IV;
+    using Affine = typename SparseLevelSetT::Affine;
     static constexpr int dim = SparseLevelSetT::dim;
 
     template <typename Val, std::size_t... Is>
@@ -84,15 +88,18 @@ namespace zs {
           table{proxy<Space>(ls._table)},
           tiles{proxy<Space>(tagNames, ls._tiles)},
           _min{ls._min},
-          _max{ls._max} {}
+          _max{ls._max},
+          _w2v{ls._w2v} {}
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {
+    constexpr T getSignedDistance(const TV &x) const noexcept {
       /// world to local
       auto arena = Arena<T>::uniform(_backgroundValue);
       IV loc{};
-      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor(X(d) / _dx);
+      TV X = x * _w2v;
+      // TV X = x / _dx;
+      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor(X(d));
       // for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
-      TV diff = X / _dx - loc;
+      TV diff = X - loc;
       if constexpr (dim == 2) {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy};
@@ -142,6 +149,7 @@ namespace zs {
     HashTableProxy<Space, table_t> table;
     TileVectorProxy<Space, tiles_t> tiles;
     TV _min, _max;
+    Affine _w2v;
   };
 
   template <execspace_e ExecSpace, int dim>

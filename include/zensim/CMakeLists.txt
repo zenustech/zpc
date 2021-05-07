@@ -1,7 +1,5 @@
 set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     DynamicLoader.cpp
-    types/Config.cpp
-    types/Node.cpp
     math/probability/Probability.cpp
     math/matrix/MatrixTransform.cpp
     math/matrix/MatrixCtor.cpp
@@ -9,7 +7,6 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     memory/Allocator.cpp
     profile/CppTimers.cpp
     execution/Stacktrace.cpp
-    execution/ExecutionNode.cpp
     execution/ExecutionPolicy.cpp
     resource/Resource.cpp
     # simulation
@@ -60,9 +57,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/Structurefree.hpp
     # execution
     execution/Concurrency.h
-    execution/ExecutionNode.h
     execution/ExecutionPolicy.hpp
-    execution/Executor.h
     execution/Stacktrace.hpp
     execution/SyncPrimitive.hpp
     # geometry
@@ -109,12 +104,10 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # resource
     resource/Resource.h
     # types
-    types/Config.h
     types/Event.hpp
     types/Function.h
     types/Inherit.h
     types/Iterator.h
-    types/Node.h
     types/Object.h
     types/Optional.h
     types/Polymorphism.h

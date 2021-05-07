@@ -120,8 +120,7 @@ namespace zs {
         int cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
-          tiles.val("sdf", blockno * ret._space + cellid) = sdf;
-#if 1
+#if 0
           if (cellid == 21 || (blockid == IV::zeros() && cellid == 8)) {
             auto loc = vec<int, 3>{cellid / 64 % 8, cellid / 8 % 8, cellid % 8};
             fmt::print(
@@ -131,6 +130,7 @@ namespace zs {
                 cell.getCoord()[0], cell.getCoord()[1], cell.getCoord()[2], sdf);
           }
 #endif
+          tiles.val("sdf", blockno * ret._space + cellid) = sdf;
           tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
 #if 0
           for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
@@ -138,13 +138,24 @@ namespace zs {
           fmt::print("\tlocal child ({}, {}, {}) value {}\n", coord[0], coord[1], coord[2], sdf);
 #endif
         }
-        if constexpr (true) {
+        if constexpr (false) {
           auto tt = zs::proxy<zs::execspace_e::host>({"sdf", "vel"}, ret);
-          fmt::print("sdf: {}, check: {}\n", tt.getSignedDistance({0, 1, 0}), sample({0, 1, 0}));
-          if constexpr (false) {
-            auto tmp = ret.clone(zs::MemoryHandle{zs::memsrc_e::host, -1});
-            auto tt = zs::proxy<zs::execspace_e::host>({"sdf", "vel"}, tmp);
-            fmt::print("check again sdf: {}\n", tt.getSignedDistance({0, 0, 0}));
+          (void)tt.getSignedDistance({0, 0.25, 0});
+          fmt::print("sdf: {}, check: {}\tret address: table{}, tile{}\n",
+                     tt.getSignedDistance({0, 0.25, 0}), sample({0, 0.25, 0}),
+                     (std::intptr_t)ret._table.self().address(),
+                     (std::intptr_t)ret._tiles.self().address());
+          if constexpr (true) {
+            auto tmp = ret;
+            auto tmp1{tmp};
+            /// there should not be more than one proxy accessing the same container at a time!
+            // auto tt1 = zs::proxy<zs::execspace_e::host>({"sdf", "vel"}, tmp);
+            //(void)tt1.getSignedDistance({0, 0.25, 0});
+            fmt::print("check again sdf: {}\tclone ret address: table{}, tile{}\n",
+                       tt.getSignedDistance({0, 0.25, 0}),
+                       (std::intptr_t)tmp._table.self().address(),
+                       (std::intptr_t)tmp._tiles.self().address());
+            fmt::print("check again sdf: {}\n", tt.getSignedDistance({0, 0.25, 0}));
           }
         }
       } else {
@@ -152,11 +163,16 @@ namespace zs {
         getchar();
       }
 
-      fmt::print("leaf childCnt {}, tileCnt {}, voxelCnt {}\n", node.childCount(),
-                 node.onTileCount(), node.onVoxelCount());
+      // fmt::print("leaf childCnt {}, tileCnt {}, voxelCnt {}\n", node.childCount(),
+      //           node.onTileCount(), node.onVoxelCount());
     }
 
-    fmt::print("convert to uniform levelset: \ttotal leaf count {}\n", leafCount);
+    // fmt::print("convert to uniform levelset: \ttotal leaf count {}\n", leafCount);
+    if constexpr (false) {
+      auto &tmp = ret;
+      fmt::print("tmp tile cap: {}, table size: {}, dx: {}, background value: {}\n",
+                 tmp._tiles.size(), tmp._table.size(), tmp._dx, tmp._backgroundValue);
+    }
     return ret.clone(mh);
   }
 

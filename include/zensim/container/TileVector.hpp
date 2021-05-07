@@ -72,7 +72,7 @@ namespace zs {
           _align{alignment} {}
 
     ~TileVector() {
-      if (head()) self().dealloc();
+      if (self().address()) self().dealloc();
     }
     void initPropertyTags(const channel_counter_type N) {
       _tagNames = Vector<SmallString>{static_cast<std::size_t>(N), memspace(), devid()};
@@ -146,12 +146,14 @@ namespace zs {
     }
     /// ctor, assignment operator
     explicit TileVector(const TileVector &o)
-        : MemoryHandle{o.base()}, _tags{o._tags}, _size{o.size()}, _align{o._align} {
-      base_t tmp{buildInstance(o.memspace(), o.devid(), o.numChannels(), o.size())};
-      if (o.size())
-        copy({base(), (void *)tmp.address()}, {o.base(), o.data()},
+        : base_t{buildInstance(o.memspace(), o.devid(), o.numChannels(), o.size())},
+          MemoryHandle{o.base()},
+          _tags{o._tags},
+          _size{o.size()},
+          _align{o._align} {
+      if (ds::snode_size(o.self().template node<0>()) > 0)
+        copy({base(), (void *)self().address()}, {o.base(), o.data()},
              ds::snode_size(o.self().template node<0>()));
-      self() = tmp;
     }
     TileVector &operator=(const TileVector &o) {
       if (this == &o) return *this;
@@ -175,7 +177,7 @@ namespace zs {
       const TileVector defaultVector{};
       base() = std::exchange(o.base(), defaultVector.base());
       self() = std::exchange(o.self(), defaultVector.self());
-      _tags = std::exchange(o._tags, defaultVector._tags);
+      _tags = std::move(o._tags);
       _size = std::exchange(o._size, defaultVector.size());
       _align = std::exchange(o._align, defaultVector._align);
     }
@@ -211,6 +213,7 @@ namespace zs {
     }
     void preparePropertyNames(const std::vector<SmallString> &propNames) {
       const auto N = propNames.size();
+      if (N <= 0) return;
       Vector<SmallString> hostPropNames{N, memsrc_e::host, -1};
       Vector<channel_counter_type> hostPropSizes{N, memsrc_e::host, -1};
       Vector<channel_counter_type> hostPropOffsets{N, memsrc_e::host, -1};
@@ -232,11 +235,6 @@ namespace zs {
         }
       }
       initPropertyTags(N);
-#if 0
-      for (int i = 0; i < N; ++i)
-        fmt::print("chk {}, {}, {}\n", hostPropNames[i], (int)hostPropOffsets[i],
-                   (int)hostPropSizes[i]);
-#endif
       copy({base(), _tagNames.data()}, {{memsrc_e::host, -1}, (void *)hostPropNames.data()},
            sizeof(SmallString) * N);
       copy({base(), _tagSizes.data()}, {{memsrc_e::host, -1}, (void *)hostPropSizes.data()},
@@ -255,7 +253,7 @@ namespace zs {
 
   protected:
     constexpr auto buildInstance(memsrc_e mre, ProcID devid, channel_counter_type numChns,
-                                 size_type capacity) {
+                                 size_type capacity) const {
       using namespace ds;
       tile_snode<lane_width, wrapt<T>, channel_counter_type> tilenode{
           ds::decorations<ds::soa>{}, static_domain<lane_width>{}, zs::make_tuple(wrapt<T>{}),

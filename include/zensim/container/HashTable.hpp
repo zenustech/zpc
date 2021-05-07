@@ -22,7 +22,10 @@ namespace zs {
   template <typename Key, typename Index, typename Status = int> using hash_table_instance
       = ds::instance_t<ds::dense, hash_table_snode<Key, Index, Status>>;
 
-  template <typename Tn_, int dim_, typename Index> struct HashTable : MemoryHandle {
+  template <typename Tn_, int dim_, typename Index> struct HashTable
+      : Inherit<Object, HashTable<Tn_, dim_, Index>>,
+        hash_table_instance<vec<std::make_signed_t<Tn_>, dim_>, Index, int>,
+        MemoryHandle {
     static constexpr int dim = dim_;
     using Tn = std::make_signed_t<Tn_>;
     using key_t = vec<Tn, dim>;
@@ -39,61 +42,83 @@ namespace zs {
     constexpr const MemoryHandle &base() const noexcept {
       return static_cast<const MemoryHandle &>(*this);
     }
-    constexpr auto &self() noexcept { return _table; }
-    constexpr const auto &self() const noexcept { return _table; }
+    constexpr auto &self() noexcept { return static_cast<base_t &>(*this); }
+    constexpr const auto &self() const noexcept { return static_cast<const base_t &>(*this); }
 
     HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1, std::size_t alignment = 0)
-        : _table{buildInstance(mre, devid, 0)},
-          MemoryHandle{mre, devid},
+        : MemoryHandle{mre, devid},
+          base_t{buildInstance(mre, devid, 0)},
           _tableSize{0},
           _cnt{mre, devid, alignment},
           _activeKeys{mre, devid, alignment},
-          _tableStorage{0, mre, devid},
-          _align{alignment} {
-      _table.assign(_tableStorage.data());
-    }
+          _align{alignment} {}
 
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
               std::size_t alignment = 0)
-        : _table{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
-          MemoryHandle{mre, devid},
+        : MemoryHandle{mre, devid},
+          base_t{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
           _tableSize{static_cast<value_t>(next_2pow(tableSize) * reserve_ratio_v)},
           _cnt{1, mre, devid, alignment},
           _activeKeys{next_2pow(tableSize) * reserve_ratio_v, mre, devid, alignment},
-          _tableStorage{evaluateTableSize(_tableSize), mre, devid},
-          _align{alignment} {
-      _table.assign(_tableStorage.data());
+          _align{alignment} {}
+    ~HashTable() {
+      if (self().address()) self().dealloc();
     }
 
-    HashTable clone(const MemoryHandle &mh) const {
-      HashTable ret{};
-      ret.base() = mh;
-      ret._tableSize = _tableSize;
-      ret._cnt = _cnt.clone(mh);
-      ret._activeKeys = _activeKeys.clone(mh);
-      ret._tableStorage = _tableStorage.clone(mh);
-      ret._table = buildInstance(mh.memspace(), mh.devid(), _tableSize);
-      ret._table.assign(ret._tableStorage.data());
-      ret._align = _align;
-      return ret;
-    }
-    HashTable(const HashTable &o)
-        : _table{buildInstance(o.memspace(), o.devid(), o._tableSize)},
-          MemoryHandle{o.base()},
+    explicit HashTable(const HashTable &o)
+        : MemoryHandle{o.base()},
+          base_t{buildInstance(o.memspace(), o.devid(), o._tableSize)},
           _tableSize{o._tableSize},
           _cnt{o._cnt},
           _activeKeys{o._activeKeys},
-          _tableStorage{o._tableStorage},
           _align{o._align} {
-      _table.assign(_tableStorage.data());
+      if (ds::snode_size(o.self().template node<0>()) > 0)
+        copy({base(), (void *)self().address()}, {o.base(), (void *)o.self().address()},
+             ds::snode_size(o.self().template node<0>()));
     }
     HashTable &operator=(const HashTable &o) {
       if (this == &o) return *this;
-      *this = std::move(o.clone(memoryHandle()));
+      HashTable tmp(o);
+      swap(tmp);
       return *this;
     }
-    constexpr HashTable(HashTable &&o) noexcept = default;
-    HashTable &operator=(HashTable &&o) noexcept = default;
+    HashTable clone(const MemoryHandle &mh) const {
+      HashTable ret{_tableSize / reserve_ratio_v, mh.memspace(), mh.devid(), _align};
+      if (_cnt.size() > 0)
+        copy({ret._cnt.base(), ret._cnt.data()}, {_cnt.base(), _cnt.data()}, sizeof(value_t));
+      if (_activeKeys.size() > 0)
+        copy({ret._activeKeys.base(), ret._activeKeys.data()},
+             {_activeKeys.base(), _activeKeys.data()}, sizeof(key_t) * _activeKeys.size());
+      if (ds::snode_size(self().template node<0>()) > 0)
+        copy({ret.base(), (void *)ret.self().address()}, {base(), (void *)self().address()},
+             ds::snode_size(self().template node<0>()));
+      return ret;
+    }
+
+    explicit HashTable(HashTable &&o) noexcept {
+      const HashTable defaultTable{};
+      base() = std::exchange(o.base(), defaultTable.base());
+      self() = std::exchange(o.self(), defaultTable.self());
+      _tableSize = std::exchange(o._tableSize, defaultTable._tableSize);
+      /// critical! use user-defined move assignment constructor!
+      _cnt = std::move(o._cnt);
+      _activeKeys = std::move(o._activeKeys);
+      _align = std::exchange(o._align, defaultTable._align);
+    }
+    HashTable &operator=(HashTable &&o) noexcept {
+      if (this == &o) return *this;
+      HashTable tmp(std::move(o));
+      swap(tmp);
+      return *this;
+    }
+    void swap(HashTable &o) noexcept {
+      base().swap(o.base());
+      std::swap(self(), o.self());
+      std::swap(_tableSize, o._tableSize);
+      _cnt.swap(o._cnt);
+      _activeKeys.swap(o._activeKeys);
+      std::swap(_align, o._align);
+    }
 
     inline value_t size() const {
       Vector<value_t> res{1, memsrc_e::host, -1};
@@ -104,26 +129,22 @@ namespace zs {
     value_t _tableSize;
     Vector<value_t> _cnt;
     Vector<key_t> _activeKeys;
-    Vector<std::max_align_t> _tableStorage;
-    base_t _table;
     std::size_t _align;
 
   protected:
-    constexpr auto evaluateTableSize(value_t capacity) const noexcept {
-      using namespace ds;
-      uniform_domain<0, Tn, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
-      hash_table_snode<key_t, value_t, status_t> node{
-          ds::decorations<ds::soa>{}, dom,
-          zs::make_tuple(wrapt<key_t>{}, wrapt<value_t>{}, wrapt<status_t>{}), vseq_t<1, 1, 1>{}};
-      return snode_size(node) / sizeof(std::max_align_t) + 1;
-    }
-    constexpr auto buildInstance(memsrc_e mre, ProcID devid, value_t capacity) const noexcept {
+    constexpr auto buildInstance(memsrc_e mre, ProcID devid, value_t capacity) const {
       using namespace ds;
       uniform_domain<0, Tn, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
       hash_table_snode<key_t, value_t, status_t> node{
           ds::decorations<ds::soa>{}, dom,
           zs::make_tuple(wrapt<key_t>{}, wrapt<value_t>{}, wrapt<status_t>{}), vseq_t<1, 1, 1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
+      if (capacity) {
+        auto memorySource = get_resource_manager().source(mre);
+        if (mre == memsrc_e::um) memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
+        /// additional parameters should match allocator_type
+        inst.alloc(memorySource);
+      }
       return inst;
     }
   };

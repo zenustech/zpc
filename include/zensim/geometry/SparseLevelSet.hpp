@@ -17,8 +17,10 @@ namespace zs {
     using tiles_t = TileVector<value_type, lane_width>;
     using table_t = HashTable<index_type, dim, i64>;
 
+#if 0
     explicit SparseLevelSet(int sideLengthBits = 3, value_type dx = 1.f)
         : _sideLength{1 << sideLengthBits}, _space{1 << (sideLengthBits * dim)}, _dx{dx} {}
+#endif
 
     SparseLevelSet clone(const MemoryHandle mh) const {
       SparseLevelSet ret{};
@@ -86,12 +88,11 @@ namespace zs {
 
     constexpr T getSignedDistance(const TV &X) const noexcept {
       /// world to local
-      Arena<T> arena{};
+      auto arena = Arena<T>::uniform(_backgroundValue);
       IV loc{};
       for (int d = 0; d < dim; ++d) loc(d) = gcem::floor(X(d) / _dx);
       // for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
       TV diff = X / _dx - loc;
-      // printf("diff [%f, %f, %f]\n", diff(0), diff(1), diff(2));
       if constexpr (dim == 2) {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy};
@@ -102,8 +103,7 @@ namespace zs {
           if (blockno != table_t::sentinel_v) {
             arena(dx, dy) = tiles.val(
                 "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
-          } else
-            arena(dx, dy) = _backgroundValue;
+          }
         }
       } else if constexpr (dim == 3) {
         for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
@@ -115,11 +115,9 @@ namespace zs {
           if (blockno != table_t::sentinel_v) {
             arena(dx, dy, dz) = tiles.val(
                 "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
-          } else
-            arena(dx, dy, dz) = _backgroundValue;
+          }
         }
-      } else
-        ZS_UNREACHABLE;
+      }
       return trilinear_interop<0>(diff, arena);
     }
     constexpr TV getNormal(const TV &X) const noexcept { return TV::zeros(); }  // temporary

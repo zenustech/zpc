@@ -50,6 +50,7 @@ namespace zs {
           base_t{buildInstance(mre, devid, count)},
           _size{count},
           _align{alignment} {}
+#if 0
     explicit Vector(std::initializer_list<T> vals)
         : Vector{vals.size(), memsrc_e::host, -1, std::alignment_of_v<T>} {
       size_type i = 0;
@@ -60,9 +61,10 @@ namespace zs {
       size_type i = 0;
       for (const auto &src : vals) (*this)[i++] = src;
     }
+#endif
 
     ~Vector() {
-      if (head()) self().dealloc();
+      if (data()) self().dealloc();
     }
 
     struct iterator : IteratorInterface<iterator> {
@@ -116,10 +118,12 @@ namespace zs {
       return self()(idx);
     }
     /// ctor, assignment operator
-    explicit Vector(const Vector &o) : MemoryHandle{o.base()}, _size{o.size()}, _align{o._align} {
-      base_t tmp{buildInstance(o.memspace(), o.devid(), o.capacity())};
-      if (o.size()) copy({base(), (void *)tmp.address()}, {o.base(), o.head()}, o.usedBytes());
-      self() = tmp;
+    explicit Vector(const Vector &o)
+        : base_t{buildInstance(o.memspace(), o.devid(), o.capacity())},
+          MemoryHandle{o.base()},
+          _size{o.size()},
+          _align{o._align} {
+      if (o.data()) copy({base(), data()}, {o.base(), o.data()}, o.usedBytes());
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
@@ -152,7 +156,9 @@ namespace zs {
     }
     void swap(Vector &o) noexcept {
       base().swap(o.base());
+      // fmt::print("before swap: self {}, o {}\n", self().address(), o.self().address());
       std::swap(self(), o.self());
+      // fmt::print("after swap: self {}, o {}\n", self().address(), o.self().address());
       std::swap(_size, o._size);
       std::swap(_align, o._align);
     }
@@ -177,8 +183,8 @@ namespace zs {
         if (newSize > oldCapacity) {
           auto &rm = get_resource_manager().get();
           base_t tmp{buildInstance(memspace(), devid(), geometric_size_growth(newSize))};
-          if (size()) copy({base(), (void *)tmp.address()}, {base(), (void *)head()}, usedBytes());
-          if (oldCapacity > 0) rm.deallocate((void *)head());
+          if (size()) copy({base(), (void *)tmp.address()}, {base(), (void *)data()}, usedBytes());
+          if (oldCapacity > 0) rm.deallocate((void *)data());
           self() = tmp;
           _size = newSize;
           return;
@@ -220,7 +226,7 @@ namespace zs {
   protected:
     constexpr std::size_t usedBytes() const noexcept { return sizeof(T) * size(); }
 
-    constexpr auto buildInstance(memsrc_e mre, ProcID devid, size_type capacity) {
+    constexpr auto buildInstance(memsrc_e mre, ProcID devid, size_type capacity) const {
       using namespace ds;
       constexpr auto dec = ds::static_decorator{};
       uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{}, capacity};

@@ -19,6 +19,8 @@ namespace zs {
 
   void copy(MemoryEntity dst, MemoryEntity src, std::size_t size);
 
+  GeneralAllocator get_memory_source(memsrc_e mre, ProcID devid, char *const advice = nullptr);
+
   struct Resource : std::reference_wrapper<umpire::ResourceManager>, Singleton<Resource> {
     Resource();
     GeneralAllocator source(memsrc_e mre) noexcept;

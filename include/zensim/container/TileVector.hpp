@@ -262,20 +262,8 @@ namespace zs {
       aosoa_snode<lane_width, wrapt<T>, channel_counter_type, size_type> node{
           ds::static_decorator{}, dom, zs::make_tuple(tilenode), vseq_t<1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
-
-      if (capacity) {
-        auto memorySource = get_resource_manager().source(mre);
-        if (mre == memsrc_e::um) memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
-        /// additional parameters should match allocator_type
-        inst.alloc(memorySource);
-      }
+      if (capacity) inst.alloc(get_memory_source(mre, devid));
       return inst;
-    }
-    constexpr GeneralAllocator getCurrentAllocator() {
-      auto memorySource = get_resource_manager().source(this->memspace());
-      if (this->memspace() == memsrc_e::um)
-        memorySource = memorySource.advisor("PREFERRED_LOCATION", this->devid());
-      return memorySource;
     }
 
     std::vector<PropertyTag> _tags;  // on host

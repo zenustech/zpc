@@ -232,13 +232,7 @@ namespace zs {
       uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
       vector_snode<wrapt<T>, size_type> node{dec, dom, zs::make_tuple(wrapt<T>{}), vseq_t<1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
-
-      if (capacity) {
-        auto memorySource = get_resource_manager().source(mre);
-        if (mre == memsrc_e::um) memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
-        /// additional parameters should match allocator_type
-        inst.alloc(memorySource);
-      }
+      if (capacity) inst.alloc(get_memory_source(mre, devid));
       return inst;
     }
     constexpr size_type geometric_size_growth(size_type newSize) noexcept {
@@ -246,12 +240,6 @@ namespace zs {
       geometricSize = geometricSize + geometricSize / 2;
       if (newSize > geometricSize) return newSize;
       return geometricSize;
-    }
-    constexpr GeneralAllocator getCurrentAllocator() {
-      auto memorySource = get_resource_manager().source(this->memspace());
-      if (this->memspace() == memsrc_e::um)
-        memorySource = memorySource.advisor("PREFERRED_LOCATION", this->devid());
-      return memorySource;
     }
 
     size_type _size{0};  // size

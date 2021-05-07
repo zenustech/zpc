@@ -139,12 +139,7 @@ namespace zs {
           ds::decorations<ds::soa>{}, dom,
           zs::make_tuple(wrapt<key_t>{}, wrapt<value_t>{}, wrapt<status_t>{}), vseq_t<1, 1, 1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
-      if (capacity) {
-        auto memorySource = get_resource_manager().source(mre);
-        if (mre == memsrc_e::um) memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
-        /// additional parameters should match allocator_type
-        inst.alloc(memorySource);
-      }
+      if (capacity) inst.alloc(get_memory_source(mre, devid));
       return inst;
     }
   };

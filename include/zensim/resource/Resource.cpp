@@ -15,6 +15,20 @@ namespace zs {
       mem_copy<execspace_e::cuda>{}(dst, src, size);
   }
 
+  GeneralAllocator get_memory_source(memsrc_e mre, ProcID devid, char *const advice) {
+    auto memorySource = get_resource_manager().source(mre);
+    if (advice == nullptr) {
+      if (mre == memsrc_e::um) {
+        if (devid < -1)
+          memorySource = memorySource.advisor("READ_MOSTLY", devid);
+        else
+          memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
+      }
+    } else
+      memorySource = memorySource.advisor(advice, devid);
+    return memorySource;
+  }
+
   Resource &get_resource_manager() noexcept { return Resource::instance(); }
 
   Resource::Resource()

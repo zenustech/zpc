@@ -688,13 +688,11 @@ namespace zs {
         }
         return alignment;
       }
-      template <typename AllocationStrategy, typename... Args>
-      constexpr void alloc(GeneralAllocator &memorySource, Args &&...args) {
-        auto allocator = memorySource.allocator<AllocationStrategy>(std::forward<Args>(args)...);
+      constexpr void alloc(GeneralAllocator &allocator) {
         auto nodesizes = snode_sizes();
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes))), ...);
       }
-      constexpr void alloc(GeneralAllocator &allocator) {
+      constexpr void alloc(GeneralAllocator &&allocator) {
         auto nodesizes = snode_sizes();
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes))), ...);
       }

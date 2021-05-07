@@ -1,8 +1,8 @@
 #pragma once
-#include "zensim/geometry/Structure.hpp"
-#include "zensim/geometry/Structurefree.hpp"
 #include "zensim/geometry/Collider.h"
 #include "zensim/geometry/LevelSet.h"
+#include "zensim/geometry/Structure.hpp"
+#include "zensim/geometry/Structurefree.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
 #include "zensim/tpls/magic_enum.hpp"
@@ -10,6 +10,7 @@
 
 namespace zs {
 
+#if 0
   struct BoundaryBuilder;
   /// scene setup
   struct Boundary {
@@ -74,5 +75,6 @@ namespace zs {
   protected:
     // std::vector<> sequences;
   };
+#endif
 
 }  // namespace zs

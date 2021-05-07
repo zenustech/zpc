@@ -80,6 +80,38 @@ namespace zs {
                 Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>>,
                 Collider<LevelSet<T, dim>>, Collider<HeightField<T>>>;
 
+  template <typename LS> struct Boundary {
+    using T = typename LS::value_type;
+    static constexpr int dim = LS::dim;
+    using TV = vec<T, dim>;
+
+    constexpr void setCollisionType(collider_e ct) noexcept { type = ct; }
+    constexpr void setTranslation(TV b_in, TV dbdt_in) noexcept {
+      b = b_in;
+      dbdt = dbdt_in;
+    }
+    constexpr void setRotation(Rotation<T, dim> R_in, AngularVelocity<T, dim> omega_in) noexcept {
+      R = R_in;
+      omega = omega_in;
+    }
+
+    // levelset
+    LS levelset;
+    collider_e type{collider_e::Sticky};  ///< runtime
+    /** scale **/
+    T s{1};
+    T dsdt{0};
+    /** rotation **/
+    Rotation<T, dim> R{};
+    AngularVelocity<T, dim> omega{};
+    /** translation **/
+    TV b{TV::zeros()};
+    TV dbdt{TV::zeros()};
+  };
+
+  template <typename Ls, typename... Args> Boundary(Ls, Args...) -> Boundary<Ls>;
+
+  // Boundary<SparseLevelSet<3>>,
   using GeneralBoundary = variant<Collider<AnalyticLevelSet<analytic_geometry_e::Plane, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 3>>,

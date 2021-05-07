@@ -2,6 +2,7 @@
 
 namespace zs {
 
+#if 0
   BuilderForBoundaryHeightField BuilderForBoundary::heightfield() {
     return BuilderForBoundaryHeightField{this->target()};
   }
@@ -11,5 +12,6 @@ namespace zs {
   BuilderForBoundaryLevelsetSequence BuilderForBoundary::sequence() {
     return BuilderForBoundaryLevelsetSequence{this->target()};
   }
+#endif
 
 }  // namespace zs

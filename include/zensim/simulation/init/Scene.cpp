@@ -214,6 +214,11 @@ namespace zs {
   }
 
   ///
+  BuilderForSceneBoundary &BuilderForSceneBoundary::addSparseLevelset(std::string fn) {
+    auto vdbGrid = zs::loadFloatGridFromVdbFile(fn);
+    sparseLevelSets.emplace_back(zs::convertFloatGridToSparseLevelSet(vdbGrid));
+    return *this;
+  }
   BuilderForSceneBoundary &BuilderForSceneBoundary::addVdbLevelset(std::string fn, float dx) {
     // ;
     return *this;
@@ -265,6 +270,8 @@ namespace zs {
       dst.devid();
       auto &rm = get_resource_manager().get();
       ;
+      for (auto &&spls : sparseLevelSets) dstBoundaries.emplace_back(Boundary{spls, boundaryType});
+      sparseLevelSets.clear();
     }
     return *this;
   }

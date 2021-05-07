@@ -613,6 +613,40 @@ using vec =
     }
     return r;
   }
+  template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
+  constexpr auto operator*(vec_impl<T1, std::integer_sequence<Tn, N0>> const &x,
+                           vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A) noexcept {
+    using R = std::common_type_t<T0, T1>;
+    vec_impl<R, std::integer_sequence<Tn, N1>> r{};
+    for (Tn i = 0; i < N1; ++i) {
+      r(i) = 0;
+      for (Tn j = 0; j < N0; ++j) r(i) += A(j, i) * x(j);
+    }
+    return r;
+  }
+  /// affine transform
+  template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
+  constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A,
+                           vec_impl<T1, std::integer_sequence<Tn, N1 - 1>> const &x) noexcept {
+    using R = std::common_type_t<T0, T1>;
+    vec_impl<R, std::integer_sequence<Tn, N0 - 1>> r{};
+    for (Tn i = 0; i < N0 - 1; ++i) {
+      r(i) = 0;
+      for (Tn j = 0; j < N1; ++j) r(i) += A(i, j) * (j == N1 - 1 ? (T1)1 : x(j));
+    }
+    return r;
+  }
+  template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
+  constexpr auto operator*(vec_impl<T1, std::integer_sequence<Tn, N0 - 1>> const &x,
+                           vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A) noexcept {
+    using R = std::common_type_t<T0, T1>;
+    vec_impl<R, std::integer_sequence<Tn, N1 - 1>> r{};
+    for (Tn i = 0; i < N1 - 1; ++i) {
+      r(i) = 0;
+      for (Tn j = 0; j < N0; ++j) r(i) += A(j, i) * (j == N0 - 1 ? (T1)1 : x(j));
+    }
+    return r;
+  }
 
   /// affine map = linear map + translation matrix+(0, 0, 1) point(vec+{1})
   /// vector(vec+{0}) homogeneous coordinates

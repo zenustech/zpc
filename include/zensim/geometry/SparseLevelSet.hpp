@@ -18,11 +18,24 @@ namespace zs {
     using tiles_t = TileVector<value_type, lane_width>;
     using table_t = HashTable<index_type, dim, i64>;
 
-#if 0
-    explicit SparseLevelSet(int sideLengthBits = 3, value_type dx = 1.f)
-        : _sideLength{1 << sideLengthBits}, _space{1 << (sideLengthBits * dim)}, _dx{dx} {}
-#endif
+    constexpr SparseLevelSet() = default;
 
+    SparseLevelSet(const SparseLevelSet &o)
+        : _sideLength{o._sideLength},
+          _space{o._space},
+          _dx{o._dx},
+          _backgroundValue{o._backgroundValue},
+          _table{o._table},
+          _tiles{o._tiles},
+          _min{o._min},
+          _max{o._max},
+          _w2v{o._w2v} {}
+    SparseLevelSet &operator=(const SparseLevelSet &o) {
+      if (this == &o) return *this;
+      SparseLevelSet tmp(o);
+      swap(tmp);
+      return *this;
+    }
     SparseLevelSet clone(const MemoryHandle mh) const {
       SparseLevelSet ret{};
       ret._sideLength = _sideLength;
@@ -36,15 +49,44 @@ namespace zs {
       ret._w2v = _w2v;
       return ret;
     }
+    SparseLevelSet(SparseLevelSet &&o) noexcept {
+      const SparseLevelSet defaultLS{};
+      _sideLength = std::exchange(o._sideLength, defaultLS._sideLength);
+      _space = std::exchange(o._space, defaultLS._space);
+      _dx = std::exchange(o._dx, defaultLS._dx);
+      _backgroundValue = std::exchange(o._backgroundValue, defaultLS._backgroundValue);
+      _table = std::move(o._table);
+      _tiles = std::move(o._tiles);
+      _min = std::exchange(o._min, defaultLS._min);
+      _max = std::exchange(o._max, defaultLS._max);
+      _w2v = std::exchange(o._w2v, defaultLS._w2v);
+    }
+    SparseLevelSet &operator=(SparseLevelSet &&o) noexcept {
+      if (this == &o) return *this;
+      SparseLevelSet tmp(std::move(o));
+      swap(tmp);
+      return *this;
+    }
+    void swap(SparseLevelSet &o) noexcept {
+      std::swap(_sideLength, _sideLength);
+      std::swap(_space, _space);
+      std::swap(_dx, _dx);
+      std::swap(_backgroundValue, _backgroundValue);
+      _table.swap(o._table);
+      _tiles.swap(o._tiles);
+      std::swap(_min, _min);
+      std::swap(_max, _max);
+      std::swap(_w2v, _w2v);
+    }
 
     int _sideLength{8};  // tile side length
     int _space{512};     // voxels per tile
-    value_type _dx;
-    value_type _backgroundValue;
-    table_t _table;
-    tiles_t _tiles;
-    TV _min, _max;
-    Affine _w2v;
+    value_type _dx{1};
+    value_type _backgroundValue{0};
+    table_t _table{};
+    tiles_t _tiles{};
+    TV _min{}, _max{};
+    Affine _w2v{};
   };
 
   template <execspace_e, typename SparseLevelSetT, typename = void> struct SparseLevelSetProxy;
@@ -69,7 +111,6 @@ namespace zs {
     template <typename Val, int d> static constexpr auto arena_type() {
       return arena_type_impl<Val>(std::make_index_sequence<d>{});
     }
-    //-> conditional_t<d <= 1, Val[2], decltype(arena_type_impl<Val, d - 1>())[2]>;
 
     template <typename Val> using Arena = decltype(arena_type<Val, dim>());
     constexpr auto offset(i64 bid, IV cellCoord) const noexcept {
@@ -85,8 +126,20 @@ namespace zs {
           _space{ls._space},
           _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
+          _unnamed{false},
           table{proxy<Space>(ls._table)},
           tiles{proxy<Space>(tagNames, ls._tiles)},
+          _min{ls._min},
+          _max{ls._max},
+          _w2v{ls._w2v} {}
+    explicit SparseLevelSetProxy(SparseLevelSetT &ls)
+        : _sideLength{ls._sideLength},
+          _space{ls._space},
+          _dx{ls._dx},
+          _backgroundValue{ls._backgroundValue},
+          _unnamed{true},
+          table{proxy<Space>(ls._table)},
+          unnamedTiles{proxy<Space>(ls._tiles)},
           _min{ls._min},
           _max{ls._max},
           _w2v{ls._w2v} {}
@@ -108,8 +161,12 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = tiles.val(
-                "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            if (_unnamed)
+              arena(dx, dy) = unnamedTiles.val(
+                  0, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            else
+              arena(dx, dy) = tiles.val(
+                  "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
           }
         }
       } else if constexpr (dim == 3) {
@@ -120,8 +177,12 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy, dz) = tiles.val(
-                "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            if (_unnamed)
+              arena(dx, dy, dz) = unnamedTiles.val(
+                  0, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            else
+              arena(dx, dy, dz) = tiles.val(
+                  "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
           }
         }
       }
@@ -147,7 +208,9 @@ namespace zs {
     T _dx;
     T _backgroundValue;
     HashTableProxy<Space, table_t> table;
+    bool _unnamed{false};
     TileVectorProxy<Space, tiles_t> tiles;
+    TileVectorUnnamedProxy<Space, tiles_t> unnamedTiles;
     TV _min, _max;
     Affine _w2v;
   };
@@ -155,6 +218,10 @@ namespace zs {
   template <execspace_e ExecSpace, int dim>
   decltype(auto) proxy(const std::vector<SmallString> &tagNames, SparseLevelSet<dim> &levelset) {
     return SparseLevelSetProxy<ExecSpace, SparseLevelSet<dim>>{tagNames, levelset};
+  }
+
+  template <execspace_e ExecSpace, int dim> decltype(auto) proxy(SparseLevelSet<dim> &levelset) {
+    return SparseLevelSetProxy<ExecSpace, SparseLevelSet<dim>>{levelset};
   }
 
 }  // namespace zs

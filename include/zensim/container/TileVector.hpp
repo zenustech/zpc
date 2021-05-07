@@ -290,6 +290,69 @@ namespace zs {
   template <execspace_e, typename TileVectorT, typename = void> struct TileVectorProxy;
   template <execspace_e, typename TileVectorT, typename = void> struct TileVectorUnnamedProxy;
 
+  template <execspace_e Space, typename TileVectorT>
+  struct TileVectorUnnamedProxy<Space, TileVectorT> : TileVectorT::base_t {
+    using value_type = typename TileVectorT::value_type;
+    using tile_vector_t = typename TileVectorT::base_t;
+    using size_type = typename TileVectorT::size_type;
+    using channel_counter_type = typename TileVectorT::channel_counter_type;
+    static constexpr auto lane_width = TileVectorT::lane_width;
+
+    constexpr TileVectorUnnamedProxy() = default;
+    ~TileVectorUnnamedProxy() = default;
+    explicit TileVectorUnnamedProxy(TileVectorT &tilevector)
+        : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {}
+    constexpr auto &operator()(const channel_counter_type c, const size_type i) {
+      return static_cast<tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
+    }
+    constexpr const auto &operator()(const channel_counter_type c, const size_type i) const {
+      return static_cast<const tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
+    }
+
+    constexpr auto &val(channel_counter_type chn, const size_type i) {
+      return static_cast<tile_vector_t &>(*this)(i / lane_width)(chn, i % lane_width);
+    }
+    constexpr const auto &val(channel_counter_type chn, const size_type i) const {
+      return static_cast<const tile_vector_t &>(*this)(i / lane_width)(chn, i % lane_width);
+    }
+
+    template <auto... Ns> constexpr auto pack(channel_counter_type chn, const size_type i) const {
+      using RetT = vec<value_type, Ns...>;
+      RetT ret{};
+      const auto a = i / lane_width, b = i % lane_width;
+      for (channel_counter_type i = 0; i < RetT::extent; ++i)
+        ret.data()[i] = static_cast<tile_vector_t &>(*this)(a)(chn + i, b);
+      return ret;
+    }
+    template <std::size_t... Is> constexpr auto tuple_impl(const channel_counter_type chnOffset,
+                                                           const size_type i, index_seq<Is...>) {
+      const auto a = i / lane_width, b = i % lane_width;
+#if 0
+      using Tuple = typename gen_seq<N>::template uniform_types_t<std::tuple, value_type &>;
+      return Tuple{static_cast<tile_vector_t &>(*this)(a)(chnOffset + Is, b)...};
+#else
+      return zs::forward_as_tuple(static_cast<tile_vector_t &>(*this)(a)(chnOffset + Is, b)...);
+#endif
+    }
+    template <std::size_t... Is> constexpr auto stdtuple_impl(const channel_counter_type chnOffset,
+                                                              const size_type i, index_seq<Is...>) {
+      const auto a = i / lane_width, b = i % lane_width;
+      return std::forward_as_tuple(static_cast<tile_vector_t &>(*this)(a)(chnOffset + Is, b)...);
+    }
+    template <auto d> constexpr auto tuple(channel_counter_type chn, const size_type i) {
+      return tuple_impl(chn, i, std::make_index_sequence<d>{});
+    }
+    template <auto d> constexpr auto stdtuple(channel_counter_type chn, const size_type i) {
+      return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
+    }
+
+    constexpr channel_counter_type numChannels() const noexcept {
+      return this->node().child(wrapv<0>{}).channel_count();
+    }
+
+    size_type _vectorSize{0};
+  };
+
   template <execspace_e Space, typename TileVectorT> struct TileVectorProxy<Space, TileVectorT>
       : TileVectorT::base_t {
     using value_type = typename TileVectorT::value_type;
@@ -388,6 +451,10 @@ namespace zs {
   decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                        TileVector<T, Length, IndexT, ChnT> &vec) {
     return TileVectorProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
+  }
+  template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
+  decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT> &vec) {
+    return TileVectorUnnamedProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{vec};
   }
 
 }  // namespace zs

@@ -80,11 +80,22 @@ namespace zs {
         {{"sdf", 1}, {"vel", 3}}, leafCount * ret._space, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
+      auto corner = box.min();
+      auto length = box.max() - box.min();
       auto world_min = gridPtr->indexToWorld(box.min());
       auto world_max = gridPtr->indexToWorld(box.max());
       for (size_t d = 0; d < 3; d++) {
         ret._min(d) = world_min[d];
         ret._max(d) = world_max[d];
+      }
+      for (auto &&[dx, dy, dz] : ndrange<3>(2)) {
+        auto coord
+            = corner + decltype(length){dx ? length[0] : 0, dy ? length[1] : 0, dz ? length[2] : 0};
+        auto pos = gridPtr->indexToWorld(coord);
+        for (int d = 0; d < 3; d++) {
+          ret._min(d) = pos[d] < ret._min(d) ? pos[d] : ret._min(d);
+          ret._max(d) = pos[d] > ret._max(d) ? pos[d] : ret._max(d);
+        }
       }
     }
     openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
@@ -104,7 +115,7 @@ namespace zs {
 
     auto w2v = v2w.inverse();
     vec<float, 4, 4> transform;
-    for (auto &&[r, c] : ndrange<2>(4)) transform(r, c) = w2v[r][c];
+    for (auto &&[r, c] : ndrange<2>(4)) transform(r, c) = w2v[r][c];  /// use [] for access
     ret._w2v = transform;
 
     auto table = proxy<execspace_e::host>(ret._table);

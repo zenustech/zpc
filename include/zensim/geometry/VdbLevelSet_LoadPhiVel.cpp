@@ -57,13 +57,25 @@ namespace zs {
 
     /// bounding box
     TV bmin, bmax;
-    openvdb::CoordBBox box = phigrid->evalActiveVoxelBoundingBox();
-    auto world_min = phigrid->indexToWorld(box.min());
-    auto world_max = phigrid->indexToWorld(box.max());
-
-    for (size_t d = 0; d < dim; d++) {
-      bmin(d) = world_min[d];
-      bmax(d) = world_max[d];
+    {
+      openvdb::CoordBBox box = phigrid->evalActiveVoxelBoundingBox();
+      auto corner = box.min();
+      auto length = box.max() - box.min();
+      auto world_min = phigrid->indexToWorld(box.min());
+      auto world_max = phigrid->indexToWorld(box.max());
+      for (size_t d = 0; d < 3; d++) {
+        bmin(d) = world_min[d];
+        bmax(d) = world_max[d];
+      }
+      for (auto &&[dx, dy, dz] : ndrange<3>(2)) {
+        auto coord
+            = corner + decltype(length){dx ? length[0] : 0, dy ? length[1] : 0, dz ? length[2] : 0};
+        auto pos = phigrid->indexToWorld(coord);
+        for (int d = 0; d < 3; d++) {
+          bmin(d) = pos[d] < bmin(d) ? pos[d] : bmin(d);
+          bmax(d) = pos[d] > bmax(d) ? pos[d] : bmax(d);
+        }
+      }
     }
 
     vec<int, 3> extents = ((bmax - bmin) / dx).cast<int>() + 1;

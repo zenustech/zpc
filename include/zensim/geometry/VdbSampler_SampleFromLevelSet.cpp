@@ -14,6 +14,7 @@
 #include "PoissonDisk.hpp"
 #include "VdbSampler.h"
 #include "zensim/Logger.hpp"
+#include "zensim/types/Iterator.h"
 
 namespace zs {
 
@@ -24,12 +25,25 @@ namespace zs {
     using TV = vec<float, 3>;
     using STDV3 = std::array<float, 3>;
     TV minCorner, maxCorner;
-    openvdb::CoordBBox box = vdbls->evalActiveVoxelBoundingBox();
-    auto world_min = vdbls->indexToWorld(box.min());
-    auto world_max = vdbls->indexToWorld(box.max());
-    for (size_t d = 0; d < 3; d++) {
-      minCorner(d) = world_min[d];
-      maxCorner(d) = world_max[d];
+    {
+      openvdb::CoordBBox box = vdbls->evalActiveVoxelBoundingBox();
+      auto corner = box.min();
+      auto length = box.max() - box.min();
+      auto world_min = vdbls->indexToWorld(box.min());
+      auto world_max = vdbls->indexToWorld(box.max());
+      for (size_t d = 0; d < 3; d++) {
+        minCorner(d) = world_min[d];
+        maxCorner(d) = world_max[d];
+      }
+      for (auto &&[dx, dy, dz] : ndrange<3>(2)) {
+        auto coord
+            = corner + decltype(length){dx ? length[0] : 0, dy ? length[1] : 0, dz ? length[2] : 0};
+        auto pos = vdbls->indexToWorld(coord);
+        for (int d = 0; d < 3; d++) {
+          minCorner(d) = pos[d] < minCorner(d) ? pos[d] : minCorner(d);
+          maxCorner(d) = pos[d] > maxCorner(d) ? pos[d] : maxCorner(d);
+        }
+      }
     }
 
     PoissonDisk<float, 3> pd{};

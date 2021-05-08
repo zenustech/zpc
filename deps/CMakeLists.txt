@@ -12,7 +12,10 @@ endif()
 # opengl
 find_package(OpenGL)
 if (TARGET OpenGL::GL)
-    set_target_properties(OpenGL::GL PROPERTIES IMPORTED_GLOBAL TRUE)
+    get_target_property(OPENGL_IMPORT_STATUS OpenGL::GL IMPORTED_GLOBAL)
+    if (NOT OPENGL_IMPORT_STATUS)
+        set_target_properties(OpenGL::GL PROPERTIES IMPORTED_GLOBAL TRUE)
+    endif()
     target_link_libraries(zsproj_deps INTERFACE OpenGL::GL)
 else()
     message(FATAL_ERROR "OpenGL not found!")
@@ -21,7 +24,12 @@ endif()
 # openmp
 find_package(OpenMP)
 if (TARGET OpenMP::OpenMP_CXX)
-    set_target_properties(OpenMP::OpenMP_CXX PROPERTIES IMPORTED_GLOBAL TRUE)
+    # https://gitlab.kitware.com/cmake/cmake/-/issues/17256
+    # this target already imported in zen
+    get_target_property(OPENMP_IMPORT_STATUS OpenMP::OpenMP_CXX IMPORTED_GLOBAL)
+    if (NOT OPENMP_IMPORT_STATUS)
+        set_target_properties(OpenMP::OpenMP_CXX PROPERTIES IMPORTED_GLOBAL TRUE)
+    endif()
     target_link_libraries(zsproj_deps INTERFACE OpenMP::OpenMP_CXX)
 else()
     message(FATAL_ERROR "OpenMP not found!")
@@ -94,7 +102,10 @@ the above are all header-only third-party dependency libraries
 
 if(UNIX)
   find_package(Threads REQUIRED)
-  set_target_properties(Threads::Threads PROPERTIES IMPORTED_GLOBAL TRUE)
+  get_target_property(THREADS_IMPORT_STATUS Threads::Threads IMPORTED_GLOBAL)
+  if (NOT THREADS_IMPORT_STATUS)
+    set_target_properties(Threads::Threads PROPERTIES IMPORTED_GLOBAL TRUE)
+  endif()
   target_link_libraries(zsproj_deps INTERFACE Threads::Threads)
 endif()
 
@@ -119,5 +130,8 @@ target_link_libraries(zsproj_deps INTERFACE zsumpire)
 
 # openvdb
 find_package(OpenVDB REQUIRED)
-set_target_properties(OpenVDB::openvdb PROPERTIES IMPORTED_GLOBAL TRUE)
+get_target_property(OPENVDB_IMPORT_STATUS OpenVDB::openvdb IMPORTED_GLOBAL)
+if (NOT OPENVDB_IMPORT_STATUS)
+    set_target_properties(OpenVDB::openvdb PROPERTIES IMPORTED_GLOBAL TRUE)
+endif()
 # target_link_libraries(zsproj_deps INTERFACE OpenVDB::openvdb)

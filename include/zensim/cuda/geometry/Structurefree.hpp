@@ -1,9 +1,9 @@
 #pragma once
 #include <zensim/execution/ExecutionPolicy.hpp>
 
-#include "zensim/geometry/Structurefree.hpp"
 #include "zensim/cuda/Cuda.h"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
+#include "zensim/geometry/Structurefree.hpp"
 #include "zensim/types/SmallVector.hpp"
 
 namespace zs {
@@ -12,7 +12,7 @@ namespace zs {
     if (particles.space() == memsrc_e::device || particles.space() == memsrc_e::um
         || particles.space() == memsrc_e::device_const) {
       constexpr auto dim = d;
-      std::vector<zs::PropertyTag> properties{{"mass", 1}, {"pos", dim}, {"vel", dim}};
+      std::vector<PropertyTag> properties{{"mass", 1}, {"pos", dim}, {"vel", dim}};
       if (particles.hasC()) properties.push_back({"C", dim * dim});
       if (particles.hasF()) properties.push_back({"F", dim * dim});
       if (particles.hasJ()) properties.push_back({"J", 1});
@@ -21,7 +21,7 @@ namespace zs {
       particles.particleBins
           = TileVector<f32, 32>{properties, particles.size(), particles.space(), particles.devid()};
       std::vector<SmallString> attribNames(properties.size());
-      for (auto &&[dst, src] : zs::zip(attribNames, properties)) dst = zs::get<0>(src);
+      for (auto &&[dst, src] : zip(attribNames, properties)) dst = zs::get<0>(src);
       auto cuPol = cuda_exec().device(particles.devid());
       cuPol(
           {particles.size()},

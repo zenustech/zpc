@@ -81,12 +81,13 @@ namespace zs {
     return a.i;
   }
 
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  template <typename T, enable_if_t<is_same_v<T, double>> = 0>
   constexpr auto lower_trunc(T v) noexcept {
-    if constexpr (is_same_v<T, float>)
-      return v > 0 ? (i32)v : ((i32)v) - 1;
-    else if constexpr (is_same_v<T, double>)
-      return v > 0 ? (i64)v : ((i64)v) - 1;
+    return v > 0 ? (i64)v : ((i64)v) - 1;
+  }
+  template <typename T, enable_if_t<is_same_v<T, float>> = 0>
+  constexpr auto lower_trunc(T v) noexcept {
+    return v > 0 ? (i32)v : ((i32)v) - 1;
   }
 
   ///

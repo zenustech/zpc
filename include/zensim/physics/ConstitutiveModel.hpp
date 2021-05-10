@@ -2,6 +2,7 @@
 #include <tuple>
 
 #include "zensim/math/Vec.h"
+#include "zensim/tpls/fmt/core.h"
 #include "zensim/tpls/gcem.hpp"
 #include "zensim/types/Polymorphism.h"
 

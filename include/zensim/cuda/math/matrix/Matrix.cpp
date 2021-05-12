@@ -89,6 +89,9 @@ namespace zs {
       const CudaLibExecutionPolicy<culib_cusparse, culib_cublas, culib_cusolversp> &pol,
       const zs::Vector<V> &rhs) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
+
+    if (x.size() == 0 || rhs.size() == 0 || x.size() != rhs.size()) return;
+
     CudaTimer timer{
         Cuda::ref_cuda_context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
 
@@ -101,18 +104,32 @@ namespace zs {
 
       double r1;
 
+      V a, b, na, dot;
       double alpha = 1.0;
       double alpham1 = -1.0;
       double beta = 0.0;
       double r0 = 0.;
-      auto r = rhs, p = x, Ax = x;
+      // zs::Vector<V> r = rhs, p = x, Ax = x;
+      zs::Vector<V> r{rhs};
+      zs::Vector<V> p{x};
+      zs::Vector<V> Ax{x};
+      /// descriptor for matA
       sparse.call(cusparseCreateCsr, &spmDescr, this->rows(), this->cols(), this->nnz(),
                   this->offsets.data(), this->indices.data(), this->vals.data(), CUSPARSE_INDEX_32I,
                   CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F);
+#if 0
+      fmt::print("size: {}\n", x.size());
+      fmt::print("x addr {}, rhs addr {}\n", (std::uintptr_t)x.data(), (std::uintptr_t)rhs.data());
+      fmt::print("p addr {}\n", (std::uintptr_t)p.data());
+      fmt::print("Ax addr {}\n", (std::uintptr_t)Ax.data());
+#endif
+      /// descriptor for vecx
       cusparseDnVecDescr_t vecx = NULL;
       sparse.call(cusparseCreateDnVec, &vecx, this->rows(), x.data(), CUDA_R_64F);
+      /// descriptor for vecp
       cusparseDnVecDescr_t vecp = NULL;
       sparse.call(cusparseCreateDnVec, &vecp, this->rows(), p.data(), CUDA_R_64F);
+      /// descriptor for vecAx
       cusparseDnVecDescr_t vecAx = NULL;
       sparse.call(cusparseCreateDnVec, &vecAx, this->rows(), Ax.data(), CUDA_R_64F);
 
@@ -122,41 +139,57 @@ namespace zs {
                   &beta, vecAx, CUDA_R_64F, CUSPARSE_MV_ALG_DEFAULT, &bufferSize);
       auxCholBuffer.resize(bufferSize);
 
+      /// matA * vecx -> vecAx
       sparse.call(cusparseSpMV, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, spmDescr, vecx, &beta,
-                  vecAx, CUDA_R_32F, CUSPARSE_MV_ALG_DEFAULT, auxCholBuffer.data());
+                  vecAx, CUDA_R_64F, CUSPARSE_MV_ALG_DEFAULT, auxCholBuffer.data());
 
+      /// r - Ax
       blas.call(cublasDaxpy, this->rows(), &alpham1, Ax.data(), 1, r.data(), 1);
+      /// r * r -> r1
       blas.call(cublasDdot, this->rows(), r.data(), 1, r.data(), 1, &r1);
 
       int k = 1;
 
-#if 0
+      const V tol = 1e-9;
+      const int max_iter = 10000;
       while (r1 > tol * tol && k <= max_iter) {
         if (k > 1) {
           b = r1 / r0;
-          cublasStatus = cublasSscal(cublasHandle, N, &b, d_p, 1);
-          cublasStatus = cublasSaxpy(cublasHandle, N, &alpha, d_r, 1, d_p, 1);
+          blas.call(cublasDscal, this->rows(), &b, p.data(), 1);
+          blas.call(cublasDaxpy, this->rows(), &alpha, r.data(), 1, p.data(), 1);
+          // cublasStatus = cublasSscal(cublasHandle, N, &b, d_p, 1);
+          // cublasStatus = cublasSaxpy(cublasHandle, N, &alpha, d_r, 1, d_p, 1);
         } else {
-          cublasStatus = cublasScopy(cublasHandle, N, d_r, 1, d_p, 1);
+          /// p = r
+          blas.call(cublasDcopy, this->rows(), r.data(), 1, p.data(), 1);
+          // cublasStatus = cublasScopy(cublasHandle, N, d_r, 1, d_p, 1);
         }
 
-        checkCudaErrors(cusparseSpMV(cusparseHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA,
-                                     vecp, &beta, vecAx, CUDA_R_32F, CUSPARSE_MV_ALG_DEFAULT,
-                                     &buffer));
-        cublasStatus = cublasSdot(cublasHandle, N, d_p, 1, d_Ax, 1, &dot);
+        /// Ap = A * p
+        sparse.call(cusparseSpMV, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, spmDescr, vecp, &beta,
+                    vecAx, CUDA_R_64F, CUSPARSE_MV_ALG_DEFAULT, auxCholBuffer.data());
+
+        /// dot = p.dot(Ap)
+        blas.call(cublasDdot, this->rows(), p.data(), 1, Ax.data(), 1, &dot);
+        // cublasStatus = cublasSdot(cublasHandle, N, d_p, 1, d_Ax, 1, &dot);
+        /// alpha =
         a = r1 / dot;
 
-        cublasStatus = cublasSaxpy(cublasHandle, N, &a, d_p, 1, d_x, 1);
+        /// x = x + alpha * p
+        blas.call(cublasDaxpy, this->rows(), &a, p.data(), 1, x.data(), 1);
+        // cublasStatus = cublasSaxpy(cublasHandle, N, &a, d_p, 1, d_x, 1);
         na = -a;
-        cublasStatus = cublasSaxpy(cublasHandle, N, &na, d_Ax, 1, d_r, 1);
+        /// r = r - alpha * Ap
+        blas.call(cublasDaxpy, this->rows(), &na, Ax.data(), 1, r.data(), 1);
+        // cublasStatus = cublasSaxpy(cublasHandle, N, &na, d_Ax, 1, d_r, 1);
 
         r0 = r1;
-        cublasStatus = cublasSdot(cublasHandle, N, d_r, 1, d_r, 1, &r1);
+        blas.call(cublasDdot, this->rows(), r.data(), 1, r.data(), 1, &r1);
+        // cublasStatus = cublasSdot(cublasHandle, N, d_r, 1, d_r, 1, &r1);
         cudaDeviceSynchronize();
         printf("iteration = %3d, residual = %e\n", k, sqrt(r1));
         k++;
       }
-#endif
 
       timer.tock("[gpu] system conjugate gradient solve");
     } else if constexpr (is_same_v<V, float>) {

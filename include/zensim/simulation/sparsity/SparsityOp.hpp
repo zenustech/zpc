@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/container/HashTable.hpp"
 #include "zensim/container/Vector.hpp"
+#include "zensim/geometry/Structurefree.hpp"
 
 namespace zs {
 

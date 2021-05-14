@@ -145,7 +145,7 @@ namespace zs {
       return self()(idx / lane_width)(chn, idx % lane_width);
     }
     /// ctor, assignment operator
-    explicit TileVector(const TileVector &o)
+    TileVector(const TileVector &o)
         : base_t{buildInstance(o.memspace(), o.devid(), o.numChannels(), o.size())},
           MemoryHandle{o.base()},
           _tags{o._tags},
@@ -173,7 +173,7 @@ namespace zs {
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
     /// explicit noexcept
     /// leave the source object in a valid (default constructed) state
-    explicit TileVector(TileVector &&o) noexcept {
+    TileVector(TileVector &&o) noexcept {
       const TileVector defaultVector{};
       base() = std::exchange(o.base(), defaultVector.base());
       self() = std::exchange(o.self(), defaultVector.self());

@@ -113,6 +113,20 @@ namespace zs {
       zs::Vector<V> r{rhs};
       zs::Vector<V> p{x};
       zs::Vector<V> Ax{x};
+#if 0
+      {
+        fmt::print("ref x: size {}, addr {}\n", x.size(), x.self().address());
+        {
+          auto xx = x;
+          fmt::print("assigned copied x: size {}, addr {}\n", xx.size(), xx.self().address());
+        }
+        {
+          auto xx{x};
+          fmt::print("ref copied x: size {}, addr {}\n", xx.size(), xx.self().address());
+        }
+        getchar();
+      }
+#endif
       /// descriptor for matA
       sparse.call(cusparseCreateCsr, &spmDescr, this->rows(), this->cols(), this->nnz(),
                   this->offsets.data(), this->indices.data(), this->vals.data(), CUSPARSE_INDEX_32I,

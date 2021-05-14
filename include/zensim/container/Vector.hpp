@@ -44,8 +44,8 @@ namespace zs {
           base_t{buildInstance(mre, devid, 0)},
           _size{0},
           _align{alignment} {}
-    Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
-           std::size_t alignment = std::alignment_of_v<T>)
+    explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+                    std::size_t alignment = std::alignment_of_v<T>)
         : MemoryHandle{mre, devid},
           base_t{buildInstance(mre, devid, count)},
           _size{count},
@@ -118,7 +118,7 @@ namespace zs {
       return self()(idx);
     }
     /// ctor, assignment operator
-    explicit Vector(const Vector &o)
+    Vector(const Vector &o)
         : base_t{buildInstance(o.memspace(), o.devid(), o.capacity())},
           MemoryHandle{o.base()},
           _size{o.size()},
@@ -140,7 +140,7 @@ namespace zs {
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
     /// explicit noexcept
     /// leave the source object in a valid (default constructed) state
-    explicit Vector(Vector &&o) noexcept {
+    Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
       base() = std::exchange(o.base(), defaultVector.base());
       self() = std::exchange(o.self(), defaultVector.self());

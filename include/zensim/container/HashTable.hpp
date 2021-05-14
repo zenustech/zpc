@@ -65,7 +65,7 @@ namespace zs {
       if (self().address()) self().dealloc();
     }
 
-    explicit HashTable(const HashTable &o)
+    HashTable(const HashTable &o)
         : MemoryHandle{o.base()},
           base_t{buildInstance(o.memspace(), o.devid(), o._tableSize)},
           _tableSize{o._tableSize},
@@ -95,7 +95,7 @@ namespace zs {
       return ret;
     }
 
-    explicit HashTable(HashTable &&o) noexcept {
+    HashTable(HashTable &&o) noexcept {
       const HashTable defaultTable{};
       base() = std::exchange(o.base(), defaultTable.base());
       self() = std::exchange(o.self(), defaultTable.self());

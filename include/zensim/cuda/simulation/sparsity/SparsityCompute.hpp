@@ -4,7 +4,7 @@
 
 namespace zs {
 
-  GeneralHashTable partition_for_particles_cuda_impl(const GeneralParticles &particles, float dx,
+  GeneralHashTable partition_for_particles_cuda_impl(GeneralParticles &particles, float dx,
                                                      int blocklen);
 
 }  // namespace zs

@@ -5,9 +5,8 @@
 
 namespace zs {
 
-  GeneralHashTable partition_for_particles_host_impl(const GeneralParticles& particles, float dx,
+  GeneralHashTable partition_for_particles_host_impl(GeneralParticles& particles, float dx,
                                                      int blocklen);
-  GeneralHashTable partition_for_particles(const GeneralParticles& particles, float dx,
-                                           int blocklen);
+  GeneralHashTable partition_for_particles(GeneralParticles& particles, float dx, int blocklen);
 
 }  // namespace zs

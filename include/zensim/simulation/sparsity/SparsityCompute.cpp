@@ -7,15 +7,14 @@
 
 namespace zs {
 
-  GeneralHashTable partition_for_particles_host_impl(const GeneralParticles &particles, float dx,
+  GeneralHashTable partition_for_particles_host_impl(GeneralParticles &particles, float dx,
                                                      int blocklen) {
     throw std::runtime_error(
         fmt::format("copy operation backend {} for [{}, {}, {}] -> [{}, {}, {}] not implemented\n",
                     get_execution_space_tag(execspace_e::host)));
   }
 
-  GeneralHashTable partition_for_particles(const GeneralParticles &particles, float dx,
-                                           int blocklen) {
+  GeneralHashTable partition_for_particles(GeneralParticles &particles, float dx, int blocklen) {
     auto mh = match([](auto &p) { return p.handle(); })(particles);
     if (mh.onHost())
       return partition_for_particles_host_impl(particles, dx, blocklen);

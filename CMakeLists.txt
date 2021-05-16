@@ -28,14 +28,13 @@ option(ZENSIM_CORE_STATIC "Build statically linked version of the core library."
 
 # project base targets
 # ====================
-add_library(zsproj_deps INTERFACE)
+# add_library(zsproj_deps INTERFACE)
 add_library(zsproj_cxx_deps INTERFACE)
 
 include(CMake/ClangSupport.cmake)
 include(CMake/Cache.cmake)
 include(CMake/StaticAnalyzers.cmake)
 include(CMake/Sanitizers.cmake)
-enable_sanitizers(zsproj_deps)
 include(CMake/CompilerWarnings.cmake)
 # set_project_warnings(zsproj_deps)
 include(CMake/Doxygen.cmake)
@@ -49,7 +48,9 @@ endif()
 
 # ---- dependencies ---- 
 # ======================
-add_subdirectory(deps)
+# add_subdirectory(deps)
+add_subdirectory(include/zensim/tpls)
+enable_sanitizers(zsproj_deps)
 
 target_compile_features(zsproj_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zsproj_cxx_deps INTERFACE zsproj_deps)

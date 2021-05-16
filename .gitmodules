@@ -1,0 +1,3 @@
+[submodule "include/zensim/tpls"]
+	path = include/zensim/tpls
+	url = git@github.com:zensim-dev/tpls.git

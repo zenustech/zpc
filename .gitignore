@@ -26,5 +26,4 @@ Tests/Script/script_example
 Tests/CuLinSolver/test_cusolver
 Tests/Execution/test_exec
 Tests/Execution/test_iter
-include/zensim/tpls/
 Data/

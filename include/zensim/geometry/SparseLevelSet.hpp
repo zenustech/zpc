@@ -20,16 +20,6 @@ namespace zs {
 
     constexpr SparseLevelSet() = default;
 
-    SparseLevelSet(const SparseLevelSet &o)
-        : _sideLength{o._sideLength},
-          _space{o._space},
-          _dx{o._dx},
-          _backgroundValue{o._backgroundValue},
-          _table{o._table},
-          _tiles{o._tiles},
-          _min{o._min},
-          _max{o._max},
-          _w2v{o._w2v} {}
     SparseLevelSet clone(const MemoryHandle mh) const {
       SparseLevelSet ret{};
       ret._sideLength = _sideLength;

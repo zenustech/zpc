@@ -30,12 +30,6 @@ namespace zs {
           _min{o._min},
           _max{o._max},
           _w2v{o._w2v} {}
-    SparseLevelSet &operator=(const SparseLevelSet &o) {
-      if (this == &o) return *this;
-      SparseLevelSet tmp(o);
-      swap(tmp);
-      return *this;
-    }
     SparseLevelSet clone(const MemoryHandle mh) const {
       SparseLevelSet ret{};
       ret._sideLength = _sideLength;
@@ -48,35 +42,6 @@ namespace zs {
       ret._max = _max;
       ret._w2v = _w2v;
       return ret;
-    }
-    SparseLevelSet(SparseLevelSet &&o) noexcept {
-      const SparseLevelSet defaultLS{};
-      _sideLength = std::exchange(o._sideLength, defaultLS._sideLength);
-      _space = std::exchange(o._space, defaultLS._space);
-      _dx = std::exchange(o._dx, defaultLS._dx);
-      _backgroundValue = std::exchange(o._backgroundValue, defaultLS._backgroundValue);
-      _table = std::move(o._table);
-      _tiles = std::move(o._tiles);
-      _min = std::exchange(o._min, defaultLS._min);
-      _max = std::exchange(o._max, defaultLS._max);
-      _w2v = std::exchange(o._w2v, defaultLS._w2v);
-    }
-    SparseLevelSet &operator=(SparseLevelSet &&o) noexcept {
-      if (this == &o) return *this;
-      SparseLevelSet tmp(std::move(o));
-      swap(tmp);
-      return *this;
-    }
-    void swap(SparseLevelSet &o) noexcept {
-      std::swap(_sideLength, _sideLength);
-      std::swap(_space, _space);
-      std::swap(_dx, _dx);
-      std::swap(_backgroundValue, _backgroundValue);
-      _table.swap(o._table);
-      _tiles.swap(o._tiles);
-      std::swap(_min, _min);
-      std::swap(_max, _max);
-      std::swap(_w2v, _w2v);
     }
 
     int _sideLength{8};  // tile side length
@@ -121,7 +86,7 @@ namespace zs {
 
     constexpr SparseLevelSetProxy() = default;
     ~SparseLevelSetProxy() = default;
-    explicit SparseLevelSetProxy(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
+    SparseLevelSetProxy(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
         : _sideLength{ls._sideLength},
           _space{ls._space},
           _dx{ls._dx},
@@ -132,7 +97,7 @@ namespace zs {
           _min{ls._min},
           _max{ls._max},
           _w2v{ls._w2v} {}
-    explicit SparseLevelSetProxy(SparseLevelSetT &ls)
+    SparseLevelSetProxy(SparseLevelSetT &ls)
         : _sideLength{ls._sideLength},
           _space{ls._space},
           _dx{ls._dx},

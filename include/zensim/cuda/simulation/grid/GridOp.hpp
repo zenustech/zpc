@@ -108,8 +108,10 @@ namespace zs {
     using gridblocks_t = GridBlocksProxy<execspace_e::cuda, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
 
-    explicit ApplyBoundaryConditionOnGridBlocks(wrapv<execspace_e::cuda>, ColliderT &collider,
-                                                TableT &table, GridBlocksT &gridblocks)
+    template <typename Boundary = ColliderT,
+              enable_if_t<!is_levelset_boundary<Boundary>::value> = 0>
+    ApplyBoundaryConditionOnGridBlocks(wrapv<execspace_e::cuda>, Boundary &collider, TableT &table,
+                                       GridBlocksT &gridblocks)
         : collider{collider},
           partition{proxy<execspace_e::cuda>(table)},
           gridblocks{proxy<execspace_e::cuda>(gridblocks)} {}

@@ -336,8 +336,6 @@ namespace zs {
   };
 
   constexpr CudaExecutionPolicy cuda_exec() noexcept { return CudaExecutionPolicy{}; }
-  constexpr CudaExecutionPolicy par_exec(cuda_execution_tag) noexcept {
-    return CudaExecutionPolicy{};
-  }
+  constexpr CudaExecutionPolicy par_exec(cuda_exec_tag) noexcept { return CudaExecutionPolicy{}; }
 
 }  // namespace zs

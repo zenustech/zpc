@@ -62,7 +62,7 @@ namespace zs {
           _activeKeys{next_2pow(tableSize) * reserve_ratio_v, mre, devid, alignment},
           _align{alignment} {}
     ~HashTable() {
-      if (self().address()) self().dealloc();
+      if (self().address() && self().node().extent() > 0) self().dealloc();
     }
 
     HashTable(const HashTable &o)

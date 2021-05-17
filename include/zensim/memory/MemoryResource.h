@@ -2,9 +2,9 @@
 #include <memory>
 #include <memory_resource>
 
+#include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Object.h"
-#include "zensim/tpls/magic_enum.hpp"
 
 namespace zs {
 
@@ -30,6 +30,19 @@ namespace zs {
 
   // HOST, DEVICE, DEVICE_CONST, UM, PINNED, FILE
   enum struct memsrc_e : char { host = 0, device, device_const, um, pinned, file };
+
+  using host_mem_tag = wrapv<memsrc_e::host>;
+  using device_mem_tag = wrapv<memsrc_e::device>;
+  using device_const_mem_tag = wrapv<memsrc_e::device_const>;
+  using um_mem_tag = wrapv<memsrc_e::um>;
+  using file_mem_tag = wrapv<memsrc_e::file>;
+
+  constexpr host_mem_tag mem_host{};
+  constexpr device_mem_tag mem_device{};
+  constexpr device_const_mem_tag mem_device_const{};
+  constexpr um_mem_tag mem_um{};
+  constexpr file_mem_tag mem_file{};
+
   constexpr const char *memory_source_tag[]
       = {"HOST", "DEVICE", "DEVICE_CONST", "UM", "PINNED", "FILE"};
   constexpr const char *get_memory_source_tag(memsrc_e loc) {
@@ -48,12 +61,8 @@ namespace zs {
       std::swap(_memsrc, o._memsrc);
     }
 
-    constexpr bool onHost() const noexcept {
-      return _memsrc == memsrc_e::host;
-    }
-    constexpr const char *memSpaceName() const {
-      return get_memory_source_tag(memspace());
-    }
+    constexpr bool onHost() const noexcept { return _memsrc == memsrc_e::host; }
+    constexpr const char *memSpaceName() const { return get_memory_source_tag(memspace()); }
 
     memsrc_e _memsrc{memsrc_e::host};  // memory source
     ProcID _devid{-1};                 // cpu id
@@ -61,7 +70,7 @@ namespace zs {
 
   struct MemoryEntity {
     MemoryHandle descr;
-    void* ptr;
+    void *ptr;
   };
 
 }  // namespace zs

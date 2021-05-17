@@ -72,7 +72,7 @@ namespace zs {
           _align{alignment} {}
 
     ~TileVector() {
-      if (self().address()) self().dealloc();
+      if (self().node().extent() > 0 && self().address()) self().dealloc();
     }
     void initPropertyTags(const channel_counter_type N) {
       _tagNames = Vector<SmallString>{static_cast<std::size_t>(N), memspace(), devid()};

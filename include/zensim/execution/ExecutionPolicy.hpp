@@ -11,8 +11,18 @@
 namespace zs {
 
   enum struct execspace_e : char { host = 0, openmp, cuda, hip };
-  constexpr const char *execution_space_tag[]
-      = {"HOST", "OPENMP", "CUDA", "HIP"};
+
+  using host_exec_tag = wrapv<execspace_e::host>;
+  using omp_exec_tag = wrapv<execspace_e::openmp>;
+  using cuda_exec_tag = wrapv<execspace_e::cuda>;
+  using hip_exec_tag = wrapv<execspace_e::hip>;
+
+  constexpr host_exec_tag exec_seq{};
+  constexpr omp_exec_tag exec_omp{};
+  constexpr cuda_exec_tag exec_cuda{};
+  constexpr hip_exec_tag exec_hip{};
+
+  constexpr const char *execution_space_tag[] = {"HOST", "OPENMP", "CUDA", "HIP"};
   constexpr const char *get_execution_space_tag(execspace_e execpol) {
     return execution_space_tag[magic_enum::enum_integer(execpol)];
   }
@@ -102,25 +112,7 @@ namespace zs {
   struct CudaExecutionPolicy;
   struct OmpExecutionPolicy;
 
-#if 1
-  struct sequential_execution_tag {};
-  struct omp_execution_tag {};
-  struct cuda_execution_tag {};
-  struct hip_execution_tag {};
-#else
-  template <execspace_e> struct execution_tag {};
-  using sequential_execution_tag = execution_tag<execspace_e::host>;
-  using omp_execution_tag = execution_tag<execspace_e::openmp>;
-  using cuda_execution_tag = execution_tag<execspace_e::cuda>;
-  using hip_execution_tag = execution_tag<execspace_e::hip>;
-#endif
-
-  constexpr sequential_execution_tag exec_seq{};
-  constexpr omp_execution_tag exec_omp{};
-  constexpr cuda_execution_tag exec_cuda{};
-  constexpr hip_execution_tag exec_hip{};
-
-  constexpr SequentialExecutionPolicy par_exec(sequential_execution_tag) noexcept {
+  constexpr SequentialExecutionPolicy par_exec(host_exec_tag) noexcept {
     return SequentialExecutionPolicy{};
   }
   constexpr SequentialExecutionPolicy seq_exec() noexcept { return SequentialExecutionPolicy{}; }

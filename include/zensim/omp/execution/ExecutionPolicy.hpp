@@ -344,7 +344,7 @@ namespace zs {
   inline OmpExecutionPolicy omp_exec() noexcept {
     return OmpExecutionPolicy{}.threads(std::thread::hardware_concurrency());
   }
-  inline OmpExecutionPolicy par_exec(omp_execution_tag) noexcept {
+  inline OmpExecutionPolicy par_exec(omp_exec_tag) noexcept {
     return OmpExecutionPolicy{}.threads(std::thread::hardware_concurrency());
   }
 

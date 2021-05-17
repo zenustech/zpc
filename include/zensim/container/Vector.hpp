@@ -64,7 +64,7 @@ namespace zs {
 #endif
 
     ~Vector() {
-      if (data()) self().dealloc();
+      if (data() && capacity() > 0) self().dealloc();
     }
 
     struct iterator : IteratorInterface<iterator> {
@@ -184,7 +184,7 @@ namespace zs {
           auto &rm = get_resource_manager().get();
           base_t tmp{buildInstance(memspace(), devid(), geometric_size_growth(newSize))};
           if (size()) copy({base(), (void *)tmp.address()}, {base(), (void *)data()}, usedBytes());
-          if (oldCapacity > 0) rm.deallocate((void *)data());
+          if (oldCapacity > 0 && data()) rm.deallocate((void *)data());
           self() = tmp;
           _size = newSize;
           return;

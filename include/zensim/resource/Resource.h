@@ -17,7 +17,13 @@ namespace zs {
 
   Resource &get_resource_manager() noexcept;
 
+  void copy(host_exec_tag, void *dst, void *src, std::size_t size);
   void copy(MemoryEntity dst, MemoryEntity src, std::size_t size);
+
+  template <typename MemTag> void *allocate(MemTag, std::size_t size, std::size_t alignment);
+  template <typename MemTag>
+  void deallocate(MemTag, void *ptr, std::size_t size, std::size_t alignment);
+  template <typename MemTag> void copy(MemTag, void *dst, void *src, std::size_t size);
 
   GeneralAllocator get_memory_source(memsrc_e mre, ProcID devid, char *const advice = nullptr);
 

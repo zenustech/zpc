@@ -12,6 +12,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     # simulation
     simulation/mpm/Simulator.cpp
     simulation/sparsity/SparsityCompute.cpp
+    memory/operations/Copy.cpp
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
     io/IO.cpp
@@ -39,6 +40,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/math/matrix/MatrixTransform.cpp
     cuda/simulation/mpm/Simulator.cpp
     cuda/simulation/sparsity/SparsityCompute.cpp
+    cuda/memory/operations/Copy.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp

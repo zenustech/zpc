@@ -23,29 +23,29 @@ namespace zs {
 
   template <typename MemTag> void *allocate(MemTag, std::size_t size, std::size_t alignment) {
     throw std::runtime_error(
-        fmt::format("allocate(tag {}, size {}, alignment {}) not implemented\n", demangle<MemTag>(),
+        fmt::format("allocate(tag {}, size {}, alignment {}) not implemented\n", get_memory_source_tag(MemTag{}),
                     size, alignment));
   }
   template <typename MemTag>
   void deallocate(MemTag, void *ptr, std::size_t size, std::size_t alignment) {
     throw std::runtime_error(
         fmt::format("deallocate(tag {}, ptr {}, size {}, alignment {}) not implemented\n",
-                    demangle<MemTag>(), reinterpret_cast<std::uintptr_t>(ptr), size, alignment));
+                    get_memory_source_tag(MemTag{}), reinterpret_cast<std::uintptr_t>(ptr), size, alignment));
   }
   template <typename MemTag> void memset(MemTag, void *addr, int chval, std::size_t size) {
     throw std::runtime_error(
         fmt::format("memset(tag {}, ptr {}, charval {}, size {}) not implemented\n",
-                    demangle<MemTag>(), reinterpret_cast<std::uintptr_t>(addr), chval, size));
+                    get_memory_source_tag(MemTag{}), reinterpret_cast<std::uintptr_t>(addr), chval, size));
   }
   template <typename MemTag> void copy(MemTag, void *dst, void *src, std::size_t size) {
     throw std::runtime_error(fmt::format("copy(tag {}, dst {}, src {}, size {}) not implemented\n",
-                                         demangle<MemTag>(), reinterpret_cast<std::uintptr_t>(dst),
+                                         get_memory_source_tag(MemTag{}), reinterpret_cast<std::uintptr_t>(dst),
                                          reinterpret_cast<std::uintptr_t>(src), size));
   }
   template <typename MemTag, typename... Args>
   void advise(MemTag, std::string advice, void *addr, Args...) {
     throw std::runtime_error(fmt::format(
-        "advise(tag {}, advise {}, addr {}) with {} args not implemented\n", demangle<MemTag>(),
+        "advise(tag {}, advise {}, addr {}) with {} args not implemented\n", get_memory_source_tag(MemTag{}),
         advice, reinterpret_cast<std::uintptr_t>(addr), sizeof...(Args)));
   }
 

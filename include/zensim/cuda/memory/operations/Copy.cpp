@@ -15,6 +15,9 @@ namespace zs {
     Cuda::instance().free(ptr);
   }
 
+  void memset(device_mem_tag, void *addr, int chval, std::size_t size) {
+    Cuda::instance().memset(addr, chval, size);
+  }
   void copy(device_mem_tag, void *dst, void *src, std::size_t size) {
     Cuda::instance().memcpy(dst, src, size);
   }
@@ -27,6 +30,9 @@ namespace zs {
   void deallocate(device_const_mem_tag, void *ptr, std::size_t size, std::size_t alignment) {
     Cuda::instance().free(ptr);
   }
+  void memset(device_const_mem_tag, void *addr, int chval, std::size_t size) {
+    Cuda::instance().memset(addr, chval, size);
+  }
   void copy(device_const_mem_tag, void *dst, void *src, std::size_t size);
 
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment) {
@@ -36,6 +42,9 @@ namespace zs {
   }
   void deallocate(um_mem_tag, void *ptr, std::size_t size, std::size_t alignment) {
     Cuda::instance().free(ptr);
+  }
+  void memset(um_mem_tag, void *addr, int chval, std::size_t size) {
+    Cuda::instance().memset(addr, chval, size);
   }
   void copy(um_mem_tag, void *dst, void *src, std::size_t size) {
     Cuda::instance().memcpy(dst, src, size);

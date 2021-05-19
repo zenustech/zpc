@@ -1,5 +1,4 @@
 #pragma once
-#include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/memory/MemoryResource.h"
 
 namespace zs {

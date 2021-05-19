@@ -1,5 +1,4 @@
 #pragma once
-#include "zensim/cuda/Cuda.h"
 #include "zensim/memory/MemOps.hpp"
 
 namespace zs {

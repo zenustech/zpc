@@ -6,8 +6,11 @@
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
-#include "zensim/memory/MemoryResource.h"
 #include "zensim/memory/MemOps.hpp"
+#if ZS_ENABLE_CUDA
+#include "zensim/cuda/memory/MemOps.hpp"
+#endif
+#include "zensim/memory/MemoryResource.h"
 #include "zensim/tpls/magic_enum.hpp"
 #include "zensim/tpls/umpire/ResourceManager.hpp"
 
@@ -39,6 +42,7 @@ namespace zs {
       return static_cast<const umpire::Allocator &>(*this);
     }
     GeneralAllocator advisor(const std::string &advice_operation, int dev_id = 0);
+#if 0 
     template <typename Strategy, bool introspection = true, typename... Args>
     GeneralAllocator allocator(Args &&...args) {
       auto &rm = get_resource_manager().get();
@@ -47,6 +51,7 @@ namespace zs {
       return GeneralAllocator{
           rm.makeAllocator<Strategy>(name, self(), std::forward<Args>(args)...)};
     }
+#endif
   };
 
 }  // namespace zs

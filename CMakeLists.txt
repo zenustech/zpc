@@ -12,7 +12,7 @@ project(${project_name}
     DESCRIPTION ${project_description}
     LANGUAGES   CXX)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake "/usr/local/lib/cmake/OpenVDB/")
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 
 # options
 # ========
@@ -55,7 +55,7 @@ enable_sanitizers(zsproj_deps)
 target_compile_features(zsproj_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zsproj_cxx_deps INTERFACE zsproj_deps)
 target_compile_definitions(zsproj_cxx_deps
-    INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Data/"
+    INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )
 if (ZS_ENABLE_CUDA)
   add_library(zsproj_cuda_deps INTERFACE)

@@ -12,7 +12,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     # simulation
     simulation/mpm/Simulator.cpp
     simulation/sparsity/SparsityCompute.cpp
-    memory/operations/Copy.cpp
+    memory/MemOps.cpp
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
     io/IO.cpp
@@ -40,7 +40,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/math/matrix/MatrixTransform.cpp
     cuda/simulation/mpm/Simulator.cpp
     cuda/simulation/sparsity/SparsityCompute.cpp
-    cuda/memory/operations/Copy.cpp
+    cuda/memory/MemOps.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp
@@ -93,7 +93,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/Vec.h
     # memory
     # memory/Memory.hpp
-    memory/operations/Copy.hpp
+    memory/MemOps.hpp
     memory/Allocator.h
     memory/MemObj.h
     memory/MemoryResource.h
@@ -166,7 +166,7 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/Allocators.cuh
     cuda/profile/CudaTimers.cuh
     cuda/memory/MemoryPolicy.cuh
-    cuda/memory/operations/Copy.hpp
+    cuda/memory/MemOps.hpp
     cuda/math/bit/SpatialEncoder.cuh
     cuda/math/matrix/EigenDecomposition.cuh
     cuda/math/matrix/Givens.cuh
@@ -248,7 +248,6 @@ if (ZS_ENABLE_CUDA)
 
 # ad-hoc (temporary)
 target_compile_definitions(zscore PRIVATE ZS_ENABLE_CUDA=1)
-set_source_files_properties(resource/Resource.cpp PROPERTIES  LANGUAGE CUDA)
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
 set(ZENSIM_CORE_SOURCE_FILES ${ZENSIM_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES})
 target_link_libraries(zscore INTERFACE cuda_runtime cuda cudadevrt nvrtc zscore cusolver cublas cusparse zsproj_cuda_deps)

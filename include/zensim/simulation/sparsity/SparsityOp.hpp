@@ -43,7 +43,7 @@ namespace zs {
     using positions_t = VectorProxy<space, X>;
 
     explicit ComputeSparsity(wrapv<space>, T dx, int blockLen, Table& table, X& pos)
-        : dxinv{1.0 / dx}, blockLen{blockLen}, table{proxy<space>(table)}, pos{proxy<space>(pos)} {}
+        : dxinv{(T)1.0 / dx}, blockLen{blockLen}, table{proxy<space>(table)}, pos{proxy<space>(pos)} {}
 
     constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};

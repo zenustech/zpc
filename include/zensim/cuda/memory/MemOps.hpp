@@ -1,6 +1,6 @@
 #pragma once
 #include "zensim/cuda/Cuda.h"
-#include "zensim/memory/operations/Copy.hpp"
+#include "zensim/memory/MemOps.hpp"
 
 namespace zs {
 
@@ -19,11 +19,5 @@ namespace zs {
   void memset(um_mem_tag, void *addr, int chval, std::size_t size);
   void copy(um_mem_tag, void *dst, void *src, std::size_t size);
   void advise(um_mem_tag, std::string advice, void *addr, std::size_t bytes, ProcID did);
-
-  template <> struct mem_copy<execspace_e::cuda> {
-    void operator()(MemoryEntity dst, MemoryEntity src, std::size_t size) const {
-      cudaMemcpy(dst.ptr, src.ptr, size, cudaMemcpyDefault);
-    }
-  };
 
 }  // namespace zs

@@ -3,7 +3,6 @@
 #include <atomic>
 #include <stdexcept>
 
-#include "zensim/Memory.hpp"
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
 #include "zensim/execution/Concurrency.h"

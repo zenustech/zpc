@@ -16,7 +16,7 @@ namespace zs {
       = ds::instance_t<ds::dense, vector_snode<wrapt<T>, Index>>;
 
   template <typename T, typename Index = std::size_t>
-  struct Vector : Inherit<Object, Vector<T, Index>>, vector_instance<T, Index>, MemoryHandle {
+  struct Vector : Object, vector_instance<T, Index>, MemoryHandle {
     /// according to rule of 5(6)/0
     /// is_trivial<T> has to be true
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
@@ -68,7 +68,8 @@ namespace zs {
     }
 
     struct iterator : IteratorInterface<iterator> {
-      constexpr iterator(const base_t &range, size_type idx) : _range{range}, _idx{idx} {}
+      template <typename Ti> constexpr iterator(const base_t &range, Ti &&idx)
+          : _range{range}, _idx{static_cast<size_type>(idx)} {}
 
       constexpr reference dereference() { return _range(_idx); }
       constexpr bool equal_to(iterator it) const noexcept { return it._idx == _idx; }
@@ -80,7 +81,8 @@ namespace zs {
       size_type _idx{0};
     };
     struct const_iterator : IteratorInterface<const_iterator> {
-      constexpr const_iterator(const base_t &range, size_type idx) : _range{range}, _idx{idx} {}
+      template <typename Ti> constexpr const_iterator(const base_t &range, Ti &&idx)
+          : _range{range}, _idx{static_cast<size_type>(idx)} {}
 
       constexpr const_reference dereference() { return _range(_idx); }
       constexpr bool equal_to(const_iterator it) const noexcept { return it._idx == _idx; }

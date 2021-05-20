@@ -17,9 +17,8 @@ namespace zs {
   template <typename Tn, typename Key, typename Index, typename Status = int>
   using hash_table_instance = ds::instance_t<ds::dense, hash_table_snode<Tn, Key, Index, Status>>;
 
-  template <typename Tn_, int dim, typename Index, typename Fn> struct HashTable
-      : Inherit<Object, HashTable<Tn_, dim, Index, Fn>>,
-        hash_table_instance<Index, vec<Tn_, dim>, Index, int> {
+  template <typename Tn_, int dim, typename Index, typename Fn>
+  struct HashTable : Object, hash_table_instance<Index, vec<Tn_, dim>, Index, int> {
     using Tn = Tn_;
     using key_t = vec<Tn, dim>;
     using value_t = Index;

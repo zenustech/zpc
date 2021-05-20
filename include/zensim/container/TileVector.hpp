@@ -24,9 +24,7 @@ namespace zs {
       = ds::instance_t<ds::dense, aosoa_snode<Length, wrapt<T>, ChnCounter, Index>>;
 
   template <typename T, auto Length = 8, typename Index = std::size_t, typename ChnCounter = char>
-  struct TileVector : Inherit<Object, TileVector<T, Length, Index, ChnCounter>>,
-                      aosoa_instance<Length, T, ChnCounter, Index>,
-                      MemoryHandle {
+  struct TileVector : Object, aosoa_instance<Length, T, ChnCounter, Index>, MemoryHandle {
     static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
                   "element is not default-constructible or trivially-copyable!");
     using base_t = aosoa_instance<Length, T, ChnCounter, Index>;

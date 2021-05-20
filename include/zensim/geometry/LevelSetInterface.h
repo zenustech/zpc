@@ -4,8 +4,7 @@
 
 namespace zs {
 
-  template <typename Derived, typename T, int dim> struct LevelSetInterface
-      : Inherit<Object, LevelSetInterface<Derived, T, dim>> {
+  template <typename Derived, typename T, int dim> struct LevelSetInterface {
     using TV = vec<T, dim>;
     constexpr T getSignedDistance(const TV &X) const noexcept {
       return self().getSignedDistance(X);

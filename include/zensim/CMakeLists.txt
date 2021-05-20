@@ -51,7 +51,6 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
 set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # container
     container/fsm/FiniteStateMachine.h
-    container/Container.hpp
     container/DenseGrid.hpp
     container/RingBuffer.hpp
     container/TileVector.hpp
@@ -92,10 +91,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/ValueSequence.hpp
     math/Vec.h
     # memory
-    # memory/Memory.hpp
     memory/MemOps.hpp
     memory/Allocator.h
-    memory/MemObj.h
     memory/MemoryResource.h
     # meta
     meta/ControlFlow.h
@@ -110,16 +107,12 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # types
     types/Event.hpp
     types/Function.h
-    types/Inherit.h
     types/Iterator.h
     types/Object.h
     types/Optional.h
     types/Polymorphism.h
     types/Property.h
     types/RuntimeStructurals.hpp
-    types/Structural.h
-    types/StructuralAuxiliary.h
-    types/StructuralDeclaration.h
     types/Tuple.h
     types/Value.h
     types/BuilderBase.hpp
@@ -130,7 +123,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     Reflection.h
     Singleton.h
     TypeAlias.hpp
-    zensim.hpp
     # simulation
     simulation/mpm/Simulator.hpp
     simulation/physics/ConstitutiveModel.hpp
@@ -165,9 +157,7 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/AuxiliaryLibs.cuh
     cuda/Allocators.cuh
     cuda/profile/CudaTimers.cuh
-    cuda/memory/MemoryPolicy.cuh
     cuda/memory/MemOps.hpp
-    cuda/math/bit/SpatialEncoder.cuh
     cuda/math/matrix/EigenDecomposition.cuh
     cuda/math/matrix/Givens.cuh
     cuda/math/matrix/qr.cuh

@@ -53,9 +53,7 @@ namespace zs {
     ProcID did;
   };
 
-  struct stack_memory_source : Singleton<stack_memory_source>,
-                               mr_t,
-                               Inherit<Object, stack_memory_source> {
+  struct stack_memory_source : Singleton<stack_memory_source>, mr_t, Object {
   protected:
     void *do_allocate(std::size_t bytes, std::size_t alignment) override;
     void do_deallocate(void *p, std::size_t bytes, std::size_t alignment) override;
@@ -99,7 +97,7 @@ namespace zs {
   // the member types of std::allocator_traits<X> are complete types.
 
   /// for automatic dynamic memory management
-  struct memory_pools : Singleton<memory_pools>, mr_t, Inherit<Object, memory_pools> {
+  struct memory_pools : Singleton<memory_pools>, mr_t {
     /// https://stackoverflow.com/questions/46509152/why-in-x86-64-the-virtual-address-are-4-bits-shorter-than-physical-48-bits-vs
 
     using poolid = char;
@@ -143,8 +141,7 @@ namespace zs {
     std::array<std::unique_ptr<mr_t>, nPools> _pools;
   };
 
-  template <std::size_t... Ns>
-  struct static_memory_pools : mr_t, Inherit<Object, static_memory_pools<Ns...>> {
+  template <std::size_t... Ns> struct static_memory_pools : mr_t {
     using poolid = char;
     static constexpr poolid nPools = sizeof...(Ns);
     static constexpr std::size_t block_bits[nPools] = {Ns...};

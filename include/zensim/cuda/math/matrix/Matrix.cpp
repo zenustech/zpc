@@ -95,13 +95,13 @@ namespace zs {
     CudaTimer timer{
         Cuda::ref_cuda_context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
 
-    const auto &sparse = static_cast<const CudaLibComponentExecutionPolicy<culib_cusparse> &>(pol);
-    const auto &blas = static_cast<const CudaLibComponentExecutionPolicy<culib_cublas> &>(pol);
-    const auto &solversp
-        = static_cast<const CudaLibComponentExecutionPolicy<culib_cusolversp> &>(pol);
     if constexpr (is_same_v<V, double>) {
       timer.tick();
-
+      const auto &sparse
+          = static_cast<const CudaLibComponentExecutionPolicy<culib_cusparse> &>(pol);
+      const auto &blas = static_cast<const CudaLibComponentExecutionPolicy<culib_cublas> &>(pol);
+      // const auto &solversp
+      //    = static_cast<const CudaLibComponentExecutionPolicy<culib_cusolversp> &>(pol);
       double r1;
 
       V a, b, na, dot;

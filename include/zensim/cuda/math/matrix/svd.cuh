@@ -3,7 +3,7 @@
 #include <cuda.h>
 
 #include "math.h"  // CUDA math library
-#include "qr.cuh"
+#include "zensim/math/matrix/qr.hpp"
 #include "zensim/math/matrix/Utility.h"
 
 #define gone 1065353216

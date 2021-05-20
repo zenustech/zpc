@@ -2,7 +2,6 @@
 #include "Utility.hpp"
 #include "zensim/Singleton.h"
 #include "zensim/execution/Concurrency.h"
-#include "zensim/tpls/tl/function_ref.hpp"
 
 namespace zs {
 

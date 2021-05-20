@@ -33,7 +33,6 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/Cuda.cu
 	cuda/Allocators.cu
 	cuda/DeviceUtils.cu
-    cuda/AuxiliaryLibs.cu
 	cuda/profile/CudaTimers.cu
     cuda/math/matrix/Matrix.cpp
     cuda/math/matrix/MatrixCtor.cpp
@@ -50,7 +49,6 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
 ## headers
 set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # container
-    container/fsm/FiniteStateMachine.h
     container/DenseGrid.hpp
     container/RingBuffer.hpp
     container/TileVector.hpp
@@ -82,13 +80,14 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/matrix/MatrixTransform.hpp
     math/matrix/MatrixCtor.hpp
     math/matrix/Matrix.hpp
+    math/matrix/Givens.hpp
+    math/matrix/qr.hpp
     math/probability/Probability.h
     math/Hash.hpp
     math/MathUtils.h
     math/Matrix.hpp
     math/RandomNumber.hpp
     math/Rotation.hpp
-    math/ValueSequence.hpp
     math/Vec.h
     # memory
     memory/MemOps.hpp
@@ -154,13 +153,10 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/HostUtils.hpp
     cuda/CudaFunction.cuh
     cuda/CudaLaunchConfig.cuh
-    cuda/AuxiliaryLibs.cuh
     cuda/Allocators.cuh
     cuda/profile/CudaTimers.cuh
     cuda/memory/MemOps.hpp
     cuda/math/matrix/EigenDecomposition.cuh
-    cuda/math/matrix/Givens.cuh
-    cuda/math/matrix/qr.cuh
     cuda/math/matrix/svd.cuh
     cuda/math/matrix/Matrix.hpp # recent
     cuda/execution/ExecutionPolicy.cuh

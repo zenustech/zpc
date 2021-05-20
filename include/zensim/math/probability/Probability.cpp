@@ -2,11 +2,7 @@
 
 #include <cmath>
 
-#ifdef _WIN32
-#  ifndef M_PI
-#    define M_PI 3.14159265358979323846
-#  endif
-#endif
+#include "zensim/tpls/gcem.hpp"
 
 namespace zs {
 
@@ -14,24 +10,24 @@ namespace zs {
     double pdf = 1;
     int i;
     for (i = 1; i <= k; ++i) pdf *= (double)lambda / i;
-    return pdf * exp(-1.0 * lambda);
+    return pdf * gcem::exp(-1.0 * lambda);
   }
 
   double PDF(double u, double o, int x) {
-    static const double co = 1. / sqrt(2 * M_PI);
+    constexpr double co = 1. / gcem::sqrt(2 * GCEM_PI);
     double index = -(x - u) * (x - u) / 2 / o / o;
-    return co / o * exp(index);
+    return co / o * gcem::exp(index);
   }
   double anti_normal_PDF(double u, double o, int x) {
-    static const double co = 1. / sqrt(2 * M_PI);
+    constexpr double co = 1. / gcem::sqrt(2 * GCEM_PI);
     double index = -(x - u) * (x - u) / 2 / o / o;
-    return 1 - co / o * exp(index);
+    return 1 - co / o * gcem::exp(index);
   }
 
   int rand_p(double lambda) {
     double u = (double)rand() / RAND_MAX;
     int x = 0;
-    double cdf = exp(-1.0 * lambda);
+    double cdf = gcem::exp(-1.0 * lambda);
     while (u >= cdf) {
       x++;
       cdf += PDF(lambda, x);

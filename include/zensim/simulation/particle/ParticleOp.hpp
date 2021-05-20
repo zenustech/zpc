@@ -16,13 +16,10 @@ namespace zs {
         : particles{proxy<space>(particles)} {}
 
     constexpr void operator()(typename particles_t::size_type parid) noexcept {
-      if constexpr (particles_t::dim == 3) {
-        for (int i = 0; i < 3; ++i)
-          for (int j = 0; j < 3; ++j) {
-            if (particles.C(parid)[i * 3 + j] != 0)
-              printf("parid %d, C(%d, %d): %e\n", (int)parid, i, j, particles.C(parid)[i * 3 + j]);
-          }
-      }
+      for (const auto& [i, j] : ndrange<2>(particles_t::dim))
+        if (particles.C(parid)[i * particles_t::dim + j] != 0)
+          printf("parid %d, C(%d, %d): %e\n", (int)parid, i, j,
+                 particles.C(parid)[i * particles_t::dim + j]);
     }
 
     particles_t particles;

@@ -1,6 +1,4 @@
-#ifndef __PROBABILITY_H_
-#define __PROBABILITY_H_
-
+#pragma once
 #include <cmath>
 #include <cstdlib>
 
@@ -14,5 +12,3 @@ namespace zs {
   int rand_normal(double u, double o);
   int rand_anti_normal(double u, double o);
 }  // namespace zs
-
-#endif

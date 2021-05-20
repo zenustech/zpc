@@ -1,5 +1,4 @@
-#ifndef __MATRIX_UTILITY_H__
-#define __MATRIX_UTILITY_H__
+#pragma once
 
 namespace zs {
 
@@ -55,5 +54,3 @@ namespace zs {
   }  // namespace math
 
 }  // namespace zs
-
-#endif

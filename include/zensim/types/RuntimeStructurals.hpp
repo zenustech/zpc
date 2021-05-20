@@ -869,16 +869,6 @@ namespace zs {
     template <instance_type it, typename... Snodes> using instance_t
         = instance<it, type_seq<Snodes...>, std::index_sequence_for<Snodes...>>;
 
-#if 0
-/// accessor is a sub-instance
-template <typename T> struct accessor {
-  static constexpr integrals domain = ...; /// full domain
-  constexpr T &operator()(const vec<Tn, N> &coord) noexcept { ; }
-  constexpr const T &operator()(const vec<Tn, N> &coord) const noexcept { ; }
-  Handle handle;
-};
-#endif
-
   }  // namespace ds
 
   using PropertyTag = tuple<SmallString, int>;

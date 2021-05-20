@@ -1,5 +1,4 @@
-#ifndef __MATRIX_UTILS_H__
-#define __MATRIX_UTILS_H__
+#pragma once
 
 #include "Utility.h"
 
@@ -409,5 +408,3 @@ constexpr void mat3_cast(const T *q, T *mat)
 #endif
 
 }  // namespace zs
-
-#endif

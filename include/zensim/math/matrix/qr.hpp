@@ -1,6 +1,5 @@
-#ifndef __QR_CUH_
-#define __QR_CUH_
-#include "Givens.cuh"
+#pragma once
+#include "Givens.hpp"
 
 namespace zs {
 
@@ -18,10 +17,9 @@ namespace zs {
      R is guaranteed to be the closest rotation to A.
      */
     template <typename T>
-    __forceinline__ __host__ __device__ void polarDecomposition(const T A[4], GivensRotation<T>& R,
-                                                                T S[4]) {
+    constexpr void polarDecomposition(const T A[4], GivensRotation<T>& R, T S[4]) {
       double x[2] = {A[0] + A[3], A[1] - A[2]};
-      double denominator = sqrt(x[0] * x[0] + x[1] * x[1]);
+      double denominator = gcem::sqrt(x[0] * x[0] + x[1] * x[1]);
       R.c = (T)1, R.s = (T)0;
       if (denominator != 0) {
         /*
@@ -47,8 +45,7 @@ namespace zs {
        R is guaranteed to be the closest rotation to A.
     */
     template <typename T>
-    __forceinline__ __host__ __device__ void polarDecomposition(const T A[4], const T R[4],
-                                                                const T S[4]) {
+    constexpr void polarDecomposition(const T A[4], const T R[4], const T S[4]) {
       GivensRotation<T> r(0, 1);
       polarDecomposition(A, r, S);
       r.fill<2>(R);
@@ -57,5 +54,3 @@ namespace zs {
   }  // namespace math
 
 }  // namespace zs
-
-#endif

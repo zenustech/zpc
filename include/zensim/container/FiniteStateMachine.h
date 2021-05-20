@@ -1,11 +1,9 @@
 #pragma once
 #include "zensim/types/Optional.h"
 #include "zensim/types/Polymorphism.h"
-#include "zensim/types/Property.h"
 
 namespace zs {
 
-  /// CRTP
   template <typename Derived, typename StateVariant> class FSM {
   public:
     FSM(StateVariant&& state) : _state(state) {}

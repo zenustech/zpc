@@ -5,6 +5,7 @@
 #include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Object.h"
+#include "zensim/types/Polymorphism.h"
 
 namespace zs {
 
@@ -35,13 +36,44 @@ namespace zs {
   using device_mem_tag = wrapv<memsrc_e::device>;
   using device_const_mem_tag = wrapv<memsrc_e::device_const>;
   using um_mem_tag = wrapv<memsrc_e::um>;
+  using pinned_mem_tag = wrapv<memsrc_e::pinned>;
   using file_mem_tag = wrapv<memsrc_e::file>;
+
+  using mem_tags = variant<host_mem_tag, device_mem_tag, device_const_mem_tag, um_mem_tag,
+                           pinned_mem_tag, file_mem_tag>;
 
   constexpr host_mem_tag mem_host{};
   constexpr device_mem_tag mem_device{};
   constexpr device_const_mem_tag mem_device_const{};
   constexpr um_mem_tag mem_um{};
+  constexpr pinned_mem_tag mem_pinned{};
   constexpr file_mem_tag mem_file{};
+
+  constexpr mem_tags to_memory_source_tag(memsrc_e loc) {
+    mem_tags ret{};
+    switch (loc) {
+      case memsrc_e::host:
+        ret = mem_host;
+        break;
+      case memsrc_e::device:
+        ret = mem_device;
+        break;
+      case memsrc_e::device_const:
+        ret = mem_device_const;
+        break;
+      case memsrc_e::um:
+        ret = mem_um;
+        break;
+      case memsrc_e::pinned:
+        ret = mem_pinned;
+        break;
+      case memsrc_e::file:
+        ret = mem_file;
+        break;
+      default:;
+    }
+    return ret;
+  }
 
   constexpr const char *memory_source_tag[]
       = {"HOST", "DEVICE", "DEVICE_CONST", "UM", "PINNED", "FILE"};
@@ -72,35 +104,5 @@ namespace zs {
     MemoryHandle descr;
     void *ptr;
   };
-
-  /// memory operations
-  template <typename MemTag> void *allocate(MemTag, std::size_t size, std::size_t alignment) {
-    throw std::runtime_error(
-        fmt::format("allocate(tag {}, size {}, alignment {}) not implemented\n",
-                    get_memory_source_tag(MemTag{}), size, alignment));
-  }
-  template <typename MemTag>
-  void deallocate(MemTag, void *ptr, std::size_t size, std::size_t alignment) {
-    throw std::runtime_error(fmt::format(
-        "deallocate(tag {}, ptr {}, size {}, alignment {}) not implemented\n",
-        get_memory_source_tag(MemTag{}), reinterpret_cast<std::uintptr_t>(ptr), size, alignment));
-  }
-  template <typename MemTag> void memset(MemTag, void *addr, int chval, std::size_t size) {
-    throw std::runtime_error(fmt::format(
-        "memset(tag {}, ptr {}, charval {}, size {}) not implemented\n",
-        get_memory_source_tag(MemTag{}), reinterpret_cast<std::uintptr_t>(addr), chval, size));
-  }
-  template <typename MemTag> void copy(MemTag, void *dst, void *src, std::size_t size) {
-    throw std::runtime_error(fmt::format(
-        "copy(tag {}, dst {}, src {}, size {}) not implemented\n", get_memory_source_tag(MemTag{}),
-        reinterpret_cast<std::uintptr_t>(dst), reinterpret_cast<std::uintptr_t>(src), size));
-  }
-  template <typename MemTag, typename... Args>
-  void advise(MemTag, std::string advice, void *addr, Args...) {
-    throw std::runtime_error(
-        fmt::format("advise(tag {}, advise {}, addr {}) with {} args not implemented\n",
-                    get_memory_source_tag(MemTag{}), advice, reinterpret_cast<std::uintptr_t>(addr),
-                    sizeof...(Args)));
-  }
 
 }  // namespace zs

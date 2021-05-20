@@ -1,8 +1,12 @@
 #include "Resource.h"
 
-#include "zensim/tpls/umpire/strategy/AllocationAdvisor.hpp"
-
 namespace zs {
+
+  void record_allocation(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
+                         std::size_t alignment) {
+    get_resource_manager().record(tag, ptr, name, size, alignment);
+  }
+  void erase_allocation(void *ptr) { get_resource_manager().erase(ptr); }
 
   void copy(MemoryEntity dst, MemoryEntity src, std::size_t size) {
     if (dst.descr.onHost() && src.descr.onHost())
@@ -11,43 +15,46 @@ namespace zs {
       copy(mem_device, dst.ptr, src.ptr, size);
   }
 
-  GeneralAllocator get_memory_source(memsrc_e mre, ProcID devid, char *const advice) {
-    auto memorySource = get_resource_manager().source(mre);
-    if (advice == nullptr) {
+  GeneralAllocator get_memory_source(memsrc_e mre, ProcID devid, std::string_view advice) {
+    const mem_tags tag = to_memory_source_tag(mre);
+    GeneralAllocator ret{};
+    if (advice.empty()) {
       if (mre == memsrc_e::um) {
         if (devid < -1)
-          memorySource = memorySource.advisor("READ_MOSTLY", devid);
+          match([&ret, devid](auto &tag) {
+            ret.construct<advisor_allocator>(tag, "READ_MOSTLY", devid);
+          })(tag);
         else
-          memorySource = memorySource.advisor("PREFERRED_LOCATION", devid);
-      }
+          match([&ret, devid](auto &tag) {
+            ret.construct<advisor_allocator>(tag, "PREFERRED_LOCATION", devid);
+          })(tag);
+      } else
+        match([&ret](auto &tag) { ret.construct<raw_allocator>(tag); })(tag);
+      // ret.construct<raw_allocator>(tag);
     } else
-      memorySource = memorySource.advisor(advice, devid);
-    return memorySource;
+      match([&ret, &advice, devid](auto &tag) {
+        ret.construct<advisor_allocator>(tag, advice, devid);
+      })(tag);
+    return ret;
+  }
+
+  void Resource::record(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
+                        std::size_t alignment) {
+    _records.set(ptr, AllocationRecord{tag, size, alignment, std::string(name)});
+  }
+  void Resource::erase(void *ptr) { _records.erase(ptr); }
+
+  void Resource::deallocate(void *ptr) {
+    if (_records.find(ptr) != nullptr) {
+      std::unique_lock lk(_rw);
+      const auto &r = _records.get(ptr);
+      match([&r, ptr](auto &tag) { zs::deallocate(tag, ptr, r.size, r.alignment); })(r.tag);
+    } else
+      throw std::runtime_error(
+          fmt::format("allocation record {} not found in records!", (std::uintptr_t)ptr));
+    _records.erase(ptr);
   }
 
   Resource &get_resource_manager() noexcept { return Resource::instance(); }
-
-  Resource::Resource()
-      : std::reference_wrapper<umpire::ResourceManager>{umpire::ResourceManager::getInstance()},
-        _counter{0} {}
-
-  /// Resource
-  // HOST, DEVICE, DEVICE_CONST, UM, PINNED, FILE
-  GeneralAllocator Resource::source(memsrc_e mre) noexcept {
-    return GeneralAllocator{get_resource_manager().get().getAllocator(
-        memory_source_tag[magic_enum::enum_integer(mre)])};
-  }
-  GeneralAllocator Resource::source(std::string tag) noexcept {
-    return GeneralAllocator{get_resource_manager().get().getAllocator(tag)};
-  }
-
-  /// GeneralAllocator
-  GeneralAllocator GeneralAllocator::advisor(const std::string &advice_operation, int dev_id) {
-    auto &rm = get_resource_manager().get();
-    auto name = this->getName() + advice_operation;
-    if (rm.isAllocator(name)) return GeneralAllocator{rm.getAllocator(name)};
-    return GeneralAllocator{rm.makeAllocator<umpire::strategy::AllocationAdvisor>(
-        name, self(), advice_operation, dev_id)};
-  }
 
 }  // namespace zs

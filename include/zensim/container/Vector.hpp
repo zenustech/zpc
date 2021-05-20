@@ -181,10 +181,10 @@ namespace zs {
       if (newSize > oldSize) {
         const auto oldCapacity = capacity();
         if (newSize > oldCapacity) {
-          auto &rm = get_resource_manager().get();
+          auto &rm = get_resource_manager();
           base_t tmp{buildInstance(memspace(), devid(), geometric_size_growth(newSize))};
           if (size()) copy({base(), (void *)tmp.address()}, {base(), (void *)data()}, usedBytes());
-          if (oldCapacity > 0 && data()) rm.deallocate((void *)data());
+          if (oldCapacity > 0 && data()) self().dealloc();  // rm.deallocate((void *)data());
           self() = tmp;
           _size = newSize;
           return;

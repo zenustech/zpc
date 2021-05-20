@@ -675,7 +675,8 @@ namespace zs {
       template <typename Allocator>
       constexpr void dealloc(Allocator allocator, std::size_t alignment) {
         auto nodesizes = snode_sizes();
-        ((allocator.deallocate(zs::get<Is>(self().handles), zs::get<Is>(nodesizes), alignment)),
+        ((allocator.deallocate((void *)zs::get<Is>(self().handles), zs::get<Is>(nodesizes),
+                               alignment)),
          ...);
       }
       /// umpire-compliant
@@ -697,8 +698,8 @@ namespace zs {
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes))), ...);
       }
       constexpr void dealloc() {
-        auto &rm = get_resource_manager().get();
-        ((rm.deallocate(zs::get<Is>(self().handles))), ...);
+        auto &rm = get_resource_manager();
+        ((rm.deallocate((void *)zs::get<Is>(self().handles))), ...);
       }
       template <typename... Handles> constexpr void assign(Handles &&...ptrs) {
         ((zs::get<Is>(self().handles) = std::forward<Handles>(ptrs)), ...);

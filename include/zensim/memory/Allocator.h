@@ -5,12 +5,51 @@
 #include <memory>
 #include <type_traits>
 
+#include "MemOps.hpp"
 #include "MemoryResource.h"
 #include "zensim/Singleton.h"
 #include "zensim/math/bit/Bits.h"
+#include "zensim/memory/MemOps.hpp"
 #include "zensim/types/Object.h"
 
 namespace zs {
+
+  extern void record_allocation(mem_tags, void *, std::string_view, std::size_t, std::size_t);
+  template <typename MemTag> struct raw_allocator : mr_t, Singleton<raw_allocator<MemTag>> {
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+      if (bytes) {
+        auto ret = zs::allocate(MemTag{}, bytes, alignment);
+        record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
+        return ret;
+      } else
+        return nullptr;
+    }
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+      zs::deallocate(MemTag{}, ptr, bytes, alignment);
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+  };
+
+  template <typename MemTag> struct advisor_allocator : mr_t {
+    advisor_allocator(std::string_view option = "PREFERRED_LOCATION", ProcID did = 0,
+                      mr_t *up = &raw_allocator<MemTag>::instance())
+        : upstream{up}, option{option}, did{did} {}
+    ~advisor_allocator() = default;
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+      void *ret = upstream->allocate(bytes, alignment);
+      advise(MemTag{}, option, ret, bytes, did);
+      return ret;
+    }
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+      upstream->deallocate(ptr, bytes, alignment);
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+
+  private:
+    mr_t *upstream;
+    std::string option;
+    ProcID did;
+  };
 
   struct heap_memory_source : Singleton<heap_memory_source>,
                               mr_t,

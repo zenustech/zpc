@@ -7,17 +7,6 @@
 
 namespace zs {
 
-  /// heap memory resource
-  void *heap_memory_source::do_allocate(std::size_t bytes, std::size_t alignment) {
-    return aligned_alloc(alignment, bytes);
-  }
-  void heap_memory_source::do_deallocate(void *p, std::size_t bytes, std::size_t alignment) {
-    return free(p);
-  }
-  bool heap_memory_source::do_is_equal(const mr_t &other) const noexcept {
-    return this == dynamic_cast<heap_memory_source *>(const_cast<mr_t *>(&other));
-  }
-
   /// stack memory resource
   void *stack_memory_source::do_allocate(std::size_t bytes, std::size_t alignment) {
     /// maybe variadic length array is appropriate

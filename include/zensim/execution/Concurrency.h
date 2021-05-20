@@ -100,6 +100,11 @@ namespace zs {
     std::map<key_t, value_t> _map{};
     mutable std::shared_mutex _rw{};
 
+    auto begin() { return std::begin(_map); }
+    auto end() { return std::end(_map); }
+    auto begin() const { return std::begin(_map); }
+    auto end() const { return std::end(_map); }
+
     void set(const key_t &key, const value_t &value) {
       std::unique_lock lk(_rw);
       _map.insert_or_assign(key, value);

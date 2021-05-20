@@ -65,6 +65,8 @@ namespace zs {
       }
 #endif
     };
+    Resource() = default;
+    ~Resource();
 
     void record(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
                 std::size_t alignment);

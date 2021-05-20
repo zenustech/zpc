@@ -1,5 +1,7 @@
 #include "Resource.h"
 
+#include "zensim/memory/MemoryResource.h"
+
 namespace zs {
 
   void record_allocation(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
@@ -38,6 +40,15 @@ namespace zs {
     return ret;
   }
 
+  Resource::~Resource() {
+    for (auto &&record : _records) {
+      const auto &[ptr, info] = record;
+      fmt::print("recycling allocation [{}], tag [{}], size [{}], alignment [{}], allocator [{}]\n",
+                 (std::uintptr_t)ptr,
+                 match([](auto &tag) { return get_memory_source_tag(tag); })(info.tag), info.size,
+                 info.alignment, info.allocatorType);
+    }
+  }
   void Resource::record(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
                         std::size_t alignment) {
     _records.set(ptr, AllocationRecord{tag, size, alignment, std::string(name)});

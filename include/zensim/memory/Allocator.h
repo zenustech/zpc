@@ -15,6 +15,7 @@
 namespace zs {
 
   extern void record_allocation(mem_tags, void *, std::string_view, std::size_t, std::size_t);
+  extern void erase_allocation(void *);
   template <typename MemTag> struct raw_allocator : mr_t, Singleton<raw_allocator<MemTag>> {
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       if (bytes) {
@@ -26,6 +27,7 @@ namespace zs {
     }
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
       zs::deallocate(MemTag{}, ptr, bytes, alignment);
+      erase_allocation(ptr);
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
@@ -49,15 +51,6 @@ namespace zs {
     mr_t *upstream;
     std::string option;
     ProcID did;
-  };
-
-  struct heap_memory_source : Singleton<heap_memory_source>,
-                              mr_t,
-                              Inherit<Object, heap_memory_source> {
-  protected:
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
-    void do_deallocate(void *p, std::size_t bytes, std::size_t alignment) override;
-    bool do_is_equal(const mr_t &other) const noexcept override;
   };
 
   struct stack_memory_source : Singleton<stack_memory_source>,

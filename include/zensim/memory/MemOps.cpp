@@ -4,7 +4,7 @@ namespace zs {
 
   void *allocate(host_mem_tag, std::size_t size, std::size_t alignment) {
     void *ret{nullptr};
-    ret = std::malloc(size);
+    ret = std::aligned_alloc(alignment, size);
     return ret;
   }
   void deallocate(host_mem_tag, void *ptr, std::size_t size, std::size_t alignment) {

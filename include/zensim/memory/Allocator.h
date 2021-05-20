@@ -60,9 +60,6 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override;
   };
 
-  mr_callback display_mr_callback(std::string tag);
-  mr_callback logging_mr_callback(std::string tag);
-
   class handle_resource : mr_t {
   public:
     explicit handle_resource(mr_t *upstream) noexcept;

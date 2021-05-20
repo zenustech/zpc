@@ -11,7 +11,16 @@ namespace zs {
   void memset(host_mem_tag, void *addr, int chval, std::size_t size);
   void copy(host_mem_tag, void *dst, void *src, std::size_t size);
 
-  /// memory operations
+#if 0
+  /// dispatch mem op calls
+  void *allocate_dispatch(mem_tags tag, std::size_t size, std::size_t alignment);
+  void deallocate_dispatch(mem_tags tag, void *ptr, std::size_t size, std::size_t alignment);
+  void memset_dispatch(mem_tags tag, void *addr, int chval, std::size_t size);
+  void copy_dispatch(mem_tags tag, void *dst, void *src, std::size_t size);
+  void advise_dispatch(mem_tags tag, std::string advice, void *addr, std::size_t bytes, ProcID did);
+#endif
+
+  /// default memory operation implementations (fallback)
   template <typename MemTag> void *allocate(MemTag, std::size_t size, std::size_t alignment) {
     throw std::runtime_error(
         fmt::format("allocate(tag {}, size {}, alignment {}) not implemented\n",

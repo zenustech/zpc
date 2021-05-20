@@ -62,31 +62,6 @@ namespace zs {
     return this == dynamic_cast<handle_resource *>(const_cast<mr_t *>(&other));
   }
 
-  /// logging resource
-  mr_callback display_mr_callback(std::string tag) {
-    mr_callback tmp{};
-    tmp.alloc = [tag](std::size_t bytes, std::size_t alignment) {
-      fmt::print("{}", "[{}]:\tAllocating {} bytes\n", tag, bytes);
-    };
-    tmp.dealloc = [tag](void *p, std::size_t bytes, std::size_t alignment) {
-      fmt::print("{}", "[{}]:\tDeallocating {} bytes\n", tag, bytes);
-    };
-    tmp.is_equal = [](const mr_t &o) {};
-    return tmp;
-  }
-
-  mr_callback logging_mr_callback(std::string tag) {
-    mr_callback tmp{};
-    tmp.alloc = [tag](std::size_t bytes, std::size_t alignment) {
-      ZS_TRACE(fmt::format("[{}]:\tAllocating {} bytes\n", tag, bytes));
-    };
-    tmp.dealloc = [tag](void *p, std::size_t bytes, std::size_t alignment) {
-      ZS_TRACE(fmt::format("[{}]:\tDeallocating {} bytes\n", tag, bytes));
-    };
-    tmp.is_equal = [](const mr_t &o) {};
-    return tmp;
-  }
-
   /// stack allocator
   stack_allocator::stack_allocator(mr_t *mr, std::size_t totalMemBytes, std::size_t alignBytes)
       : _mr{mr}, _align{alignBytes} {

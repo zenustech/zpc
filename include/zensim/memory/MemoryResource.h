@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <memory_resource>
+#include <stdexcept>
 
 #include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Function.h"
@@ -14,20 +15,6 @@ namespace zs {
   using unsynchronized_pool_resource = pmr::unsynchronized_pool_resource;
   using synchronized_pool_resource = pmr::synchronized_pool_resource;
   template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;
-
-  struct mr_callback : Inherit<Object, mr_callback> {
-    std::function<void(std::size_t, std::size_t)> alloc{};
-    std::function<void(void *, std::size_t, std::size_t)> dealloc{};
-    std::function<void(const mr_t &)> is_equal{};
-  };
-
-  inline mr_callback default_mr_callback() {
-    mr_callback tmp{};
-    tmp.alloc = [](std::size_t bytes, std::size_t alignment) {};
-    tmp.dealloc = [](void *p, std::size_t bytes, std::size_t alignment) {};
-    tmp.is_equal = [](const mr_t &o) {};
-    return tmp;
-  }
 
   // HOST, DEVICE, DEVICE_CONST, UM, PINNED, FILE
   enum struct memsrc_e : char { host = 0, device, device_const, um, pinned, file };
@@ -95,6 +82,7 @@ namespace zs {
 
     constexpr bool onHost() const noexcept { return _memsrc == memsrc_e::host; }
     constexpr const char *memSpaceName() const { return get_memory_source_tag(memspace()); }
+    constexpr mem_tags getTag() const { return to_memory_source_tag(_memsrc); }
 
     memsrc_e _memsrc{memsrc_e::host};  // memory source
     ProcID _devid{-1};                 // cpu id
@@ -104,5 +92,22 @@ namespace zs {
     MemoryHandle descr;
     void *ptr;
   };
+
+  // host = 0, device, device_const, um, pinned file
+  constexpr mem_tags memop_tag(const MemoryHandle a, const MemoryHandle b) {
+    auto spaceA = magic_enum::enum_integer(a._memsrc);
+    auto spaceB = magic_enum::enum_integer(b._memsrc);
+    if (spaceA > spaceB) std::swap(spaceA, spaceB);
+    if (a._memsrc == b._memsrc) return to_memory_source_tag(a._memsrc);
+    /// avoid um issue
+    else if (spaceB < magic_enum::enum_integer(memsrc_e::um))
+      return to_memory_source_tag(memsrc_e::device);
+    else if (spaceB == magic_enum::enum_integer(memsrc_e::um))
+      return to_memory_source_tag(memsrc_e::um);
+    else
+      throw std::runtime_error(fmt::format("memop_tag for ({}, {}) is undefined!",
+                                           get_memory_source_tag(a._memsrc),
+                                           get_memory_source_tag(b._memsrc)));
+  }
 
 }  // namespace zs

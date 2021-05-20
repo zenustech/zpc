@@ -276,5 +276,3 @@ target_compile_definitions(zscore
 )
 
 endif()
-
-target_sources(zscore PRIVATE ${ZENSIM_CORE_SOURCE_FILES})

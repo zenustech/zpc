@@ -54,6 +54,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/TileVector.hpp
     container/HashTable.hpp
     container/Vector.hpp
+    container/Bvh.hpp
     geometry/Structure.hpp
     geometry/Structurefree.hpp
     # execution
@@ -162,10 +163,8 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/execution/ExecutionPolicy.cuh
     # container
     cuda/container/HashTable.hpp
-    cuda/container/HashTable.cuh
     cuda/container/LookupTable.cuh
     cuda/container/MatrixHash.cuh
-    cuda/container/bvh/Bvh.cuh
     cuda/container/Vector.hpp # recent
     cuda/geometry/Structurefree.hpp # recent
     cuda/algorithm/MappingKernels.cuh

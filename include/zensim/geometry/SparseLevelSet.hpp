@@ -26,6 +26,7 @@ namespace zs {
       ret._space = _space;
       ret._dx = _dx;
       ret._backgroundValue = _backgroundValue;
+      ret._backgroundVecValue = _backgroundVecValue;
       ret._table = _table.clone(mh);
       ret._tiles = _tiles.clone(mh);
       ret._min = _min;
@@ -38,6 +39,7 @@ namespace zs {
     int _space{512};     // voxels per tile
     value_type _dx{1};
     value_type _backgroundValue{0};
+    TV _backgroundVecValue{TV::zeros()};
     table_t _table{};
     tiles_t _tiles{};
     TV _min{}, _max{};
@@ -81,6 +83,7 @@ namespace zs {
           _space{ls._space},
           _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
+          _backgroundVecValue{ls._backgroundVecValue},
           _unnamed{false},
           table{proxy<Space>(ls._table)},
           tiles{proxy<Space>(tagNames, ls._tiles)},
@@ -92,6 +95,7 @@ namespace zs {
           _space{ls._space},
           _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
+          _backgroundVecValue{ls._backgroundVecValue},
           _unnamed{true},
           table{proxy<Space>(ls._table)},
           unnamedTiles{proxy<Space>(ls._tiles)},
@@ -156,24 +160,69 @@ namespace zs {
       }
       return diff.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
+      if (tiles.numChannels() != 1 + dim) return TV::zeros();
+      /// world to local
+      auto arena = Arena<TV>::uniform(_backgroundVecValue);
+      IV loc{};
+      TV X = x * _w2v;
+      // TV X = x / _dx;
+      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor(X(d));
+      // for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
+      TV diff = X - loc;
+      if constexpr (dim == 2) {
+        for (auto &&[dx, dy] : ndrange<dim>(2)) {
+          IV coord{loc(0) + dx, loc(1) + dy};
+          auto blockid = coord;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
+          blockid = blockid / _sideLength;
+          auto blockno = table.query(blockid);
+          if (blockno != table_t::sentinel_v) {
+            if (_unnamed)
+              arena(dx, dy) = unnamedTiles.template pack<dim>(
+                  1, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            else
+              arena(dx, dy) = tiles.template pack<dim>(
+                  "vel", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+          }
+        }
+      } else if constexpr (dim == 3) {
+        for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
+          IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
+          auto blockid = coord;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
+          blockid = blockid / _sideLength;
+          auto blockno = table.query(blockid);
+          if (blockno != table_t::sentinel_v) {
+            if (_unnamed)
+              arena(dx, dy, dz) = unnamedTiles.template pack<dim>(
+                  1, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            else
+              arena(dx, dy, dz) = tiles.template pack<dim>(
+                  "vel", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+          }
+        }
+      }
+      return trilinear_interop<0>(diff, arena);
+    }
     constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
   protected:
-    template <std::size_t d, typename Field>
+    template <std::size_t d, typename Field, enable_if_t<(d == dim - 1)> = 0>
     constexpr auto trilinear_interop(const TV &diff, const Field &arena) const noexcept {
-      if constexpr (d == dim - 1)
-        return linear_interop(diff(d), arena(0), arena(1));
-      else
-        return linear_interop(diff(d), trilinear_interop<d + 1>(diff, arena[0]),
-                              trilinear_interop<d + 1>(diff, arena[1]));
-      return (T)1;
+      return linear_interop(diff(d), arena(0), arena(1));
+    }
+    template <std::size_t d, typename Field, enable_if_t<(d != dim - 1)> = 0>
+    constexpr auto trilinear_interop(const TV &diff, const Field &arena) const noexcept {
+      return linear_interop(diff(d), trilinear_interop<d + 1>(diff, arena[0]),
+                            trilinear_interop<d + 1>(diff, arena[1]));
     }
 
     int _sideLength;  // tile side length
     int _space;       // voxels per tile
     T _dx;
     T _backgroundValue;
+    TV _backgroundVecValue;
     HashTableProxy<Space, table_t> table;
     bool _unnamed{false};
     TileVectorProxy<Space, tiles_t> tiles;

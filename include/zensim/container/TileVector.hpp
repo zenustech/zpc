@@ -306,8 +306,8 @@ namespace zs {
       using RetT = vec<value_type, Ns...>;
       RetT ret{};
       const auto a = i / lane_width, b = i % lane_width;
-      for (channel_counter_type i = 0; i < RetT::extent; ++i)
-        ret.data()[i] = static_cast<tile_vector_t &>(*this)(a)(chn + i, b);
+      for (channel_counter_type d = 0; d < RetT::extent; ++d)
+        ret.val(d) = static_cast<const tile_vector_t &>(*this)(a)(chn + d, b);
       return ret;
     }
     template <std::size_t... Is> constexpr auto tuple_impl(const channel_counter_type chnOffset,
@@ -396,8 +396,8 @@ namespace zs {
       RetT ret{};
       const auto a = i / lane_width, b = i % lane_width;
       const auto chnOffset = _tagOffsets[propIndex(propName)];
-      for (channel_counter_type i = 0; i < RetT::extent; ++i)
-        ret.data()[i] = static_cast<tile_vector_t &>(*this)(a)(chnOffset + i, b);
+      for (channel_counter_type d = 0; d < RetT::extent; ++d)
+        ret.val(d) = static_cast<const tile_vector_t &>(*this)(a)(chnOffset + d, b);
       return ret;
     }
     template <std::size_t... Is> constexpr auto tuple_impl(const channel_counter_type chnOffset,

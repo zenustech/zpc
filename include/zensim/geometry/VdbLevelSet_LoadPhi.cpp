@@ -14,7 +14,6 @@ namespace zs {
 
   OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn) {
     using GridType = openvdb::FloatGrid;
-    using TreeType = GridType::TreeType;
     openvdb::io::File file(fn);
     file.open();
     openvdb::GridPtrVecPtr grids = file.getGrids();
@@ -77,7 +76,7 @@ namespace zs {
     ret._backgroundValue = gridPtr->background();
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
     ret._tiles = typename SparseLevelSet<3>::tiles_t{
-        {{"sdf", 1}, {"vel", 3}}, leafCount * ret._space, memsrc_e::host, -1};
+        {{"sdf", 1}}, leafCount * ret._space, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -100,14 +99,6 @@ namespace zs {
     }
     openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
 
-    auto sample = [&gridPtr](const TV &X_input) -> float {
-      TV X = X_input;
-      openvdb::tools::GridSampler<typename openvdb::FloatGrid::TreeType, openvdb::tools::BoxSampler>
-          interpolator(gridPtr->constTree(), gridPtr->transform());
-      openvdb::math::Vec3<float> P(X(0), X(1), X(2));
-      float phi = interpolator.wsSample(P);  // ws denotes world space
-      return (float)phi;
-    };
     gridPtr->transform().print();
     fmt::print("background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
                ret._backgroundValue, ret._dx, ret._min[0], ret._min[1], ret._min[2], ret._max[0],
@@ -119,7 +110,7 @@ namespace zs {
     ret._w2v = transform;
 
     auto table = proxy<execspace_e::host>(ret._table);
-    auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
+    auto tiles = proxy<execspace_e::host>({"sdf"}, ret._tiles);
     table.clear();
     for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
       const TreeType::LeafNodeType &node = *iter;
@@ -136,7 +127,7 @@ namespace zs {
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
           tiles.val("sdf", blockno * ret._space + cellid) = sdf;
-          tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
+          // tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
         }
       }
     }

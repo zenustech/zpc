@@ -26,11 +26,20 @@ namespace zs {
   };
 
   OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn);
+  OpenVDBStruct loadVec3fGridFromVdbFile(const std::string &fn);
+
   AdaptiveFloatGrid convertFloatGridToAdaptiveGrid(const OpenVDBStruct &grid,
                                                    const MemoryHandle mh);
+
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid);
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
                                                      const MemoryHandle mh);
+
+  SparseLevelSet<3> convertLevelSetGridToSparseLevelSet(const OpenVDBStruct &sdf,
+                                                        const OpenVDBStruct &vel);
+  SparseLevelSet<3> convertLevelSetGridToSparseLevelSet(const OpenVDBStruct &sdf,
+                                                        const OpenVDBStruct &vel,
+                                                        const MemoryHandle mh);
   void checkFloatGrid(OpenVDBStruct &grid);
   OpenVDBStruct particleArrayToGrid(const std::vector<std::array<float, 3>> &);
   std::vector<std::array<float, 3>> particleGridToArray(const OpenVDBStruct &);

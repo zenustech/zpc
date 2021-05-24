@@ -243,7 +243,7 @@ if (ENABLE_PCH)
 target_precompile_headers(zscore INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
 target_compile_options(zscore 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -dlto -fopenmp --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
 )
 target_link_options(zscore 
   PRIVATE       $<$<LINK_LANGUAGE:CUDA>:-dlto>

@@ -130,7 +130,7 @@ namespace zs {
     template <typename V = T, enable_if_t<std::is_arithmetic_v<V>> = 0> constexpr Value(V v = 0)
         : _val{static_cast<value_t>(v)} {}
     template <typename V = T, enable_if_t<is_vec<V>::value> = 0>
-    constexpr Value(V v = T::uniform(0)) : _val{static_cast<value_t>(std::move(v))} {}
+    constexpr Value(V v = V::uniform(0)) : _val{static_cast<value_t>(std::move(v))} {}
     template <typename V = T, enable_if_t<is_same_v<std::string, V>> = 0> constexpr Value(V v = "")
         : _val{static_cast<value_t>(std::move(v))} {}
 

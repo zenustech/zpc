@@ -106,33 +106,33 @@ namespace zs {
     auto end() const { return std::end(_map); }
 
     void set(const key_t &key, const value_t &value) {
-      std::unique_lock lk(_rw);
+      std::unique_lock<std::shared_mutex> lk(_rw);
       _map.insert_or_assign(key, value);
     }
     void erase(const key_t &key) {
-      std::unique_lock lk(_rw);
+      std::unique_lock<std::shared_mutex> lk(_rw);
       _map.erase(key);
     }
     template <typename... Args> decltype(auto) emplace(Args &&...args) {
-      std::unique_lock lk(_rw);
+      std::unique_lock<std::shared_mutex> lk(_rw);
       return _map.emplace(std::forward<Args>(args)...);
     }
     const value_t &get(const key_t &key) const {
-      std::shared_lock lk(_rw);
+      std::shared_lock<std::shared_mutex> lk(_rw);
       return _map.at(key);
     }
     value_t &get(const key_t &key) {
-      std::shared_lock lk(_rw);
+      std::shared_lock<std::shared_mutex> lk(_rw);
       return _map.at(key);
     }
     /// pointer-semantic in case value_t is unique_ptr
     ConstRefPtr<value_t> find(const key_t &key) const {
-      std::shared_lock lk(_rw);
+      std::shared_lock<std::shared_mutex> lk(_rw);
       if (auto it = _map.find(key); it != _map.end()) return &(it->second);
       return nullptr;
     }
     RefPtr<value_t> find(const key_t &key) {
-      std::shared_lock lk(_rw);
+      std::shared_lock<std::shared_mutex> lk(_rw);
       if (auto it = _map.find(key); it != _map.end()) return &(it->second);
       return nullptr;
     }

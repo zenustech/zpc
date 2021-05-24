@@ -113,8 +113,8 @@ namespace zs {
 
     memory_pools(mr_t *source) {
       for (char i = 0; i < nPools; ++i) {
-        pmr::pool_options opt{.max_blocks_per_chunk = 0,
-                              .largest_required_pool_block = block_sizes(i)};
+        pmr::pool_options opt{/*.max_blocks_per_chunk = */0,
+                              /*.largest_required_pool_block = */block_sizes(i)};
         /// thread-safe version
         _pools[i] = std::make_unique<synchronized_pool_resource>(opt, source);
       }
@@ -154,8 +154,8 @@ namespace zs {
 
     static_memory_pools(mr_t *source) {
       for (char i = 0; i < nPools; ++i) {
-        pmr::pool_options opt{.max_blocks_per_chunk = 0,
-                              .largest_required_pool_block = block_sizes(i)};
+        pmr::pool_options opt{/*.max_blocks_per_chunk = */0,
+                              /*.largest_required_pool_block = */block_sizes(i)};
         _pools[i] = std::make_unique<unsynchronized_pool_resource>(opt, source);
       }
     }

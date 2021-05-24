@@ -195,28 +195,26 @@ namespace zs {
       bool bitmasked{default_decorator::bitmasked};
     };
 
-    struct default_decorator_args : virtual public default_decorator {};
-
     template <typename> struct vsetter;
     template <padding_policy paddingIn> struct vsetter<wrapv<paddingIn>>
-        : virtual public default_decorator_args {
+        : public virtual default_decorator {
       static constexpr padding_policy paddingp{paddingIn};
     };
     template <layout_policy layoutIn> struct vsetter<wrapv<layoutIn>>
-        : virtual public default_decorator_args {
+        : public virtual default_decorator {
       static constexpr layout_policy layoutp{layoutIn};
     };
     template <alloc_policy allocIn> struct vsetter<wrapv<allocIn>>
-        : virtual public default_decorator_args {
+        : public virtual default_decorator {
       static constexpr alloc_policy allocp{allocIn};
     };
     template <bool bitmaskedIn> struct vsetter<wrapv<bitmaskedIn>>
-        : virtual public default_decorator_args {
+        : public virtual default_decorator {
       static constexpr bool bitmasked{bitmaskedIn};
     };
-    template <std::size_t, typename Base> class type_discriminator : public Base {};
-    template <typename Setter1 = default_decorator_args, typename Setter2 = default_decorator_args,
-              typename Setter3 = default_decorator_args, typename Setter4 = default_decorator_args>
+    template <std::size_t, typename Base> class type_discriminator : public virtual Base {};
+    template <typename Setter1 = default_decorator, typename Setter2 = default_decorator,
+              typename Setter3 = default_decorator, typename Setter4 = default_decorator>
     struct decorator_compositor : public type_discriminator<1, Setter1>,
                                   public type_discriminator<2, Setter2>,
                                   public type_discriminator<3, Setter3>,

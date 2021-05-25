@@ -12,7 +12,8 @@ project(${project_name}
     DESCRIPTION ${project_description}
     LANGUAGES   CXX)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 
 # options
 # ========
@@ -21,6 +22,7 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "" 1)
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build")
+set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
 
 option(ZENSIM_INSTALL "Install targets" On)
 option(ZENSIM_CORE_SHARED "Build dynamically linked version of the core library." ON)
@@ -65,7 +67,7 @@ endif()
 
 # ---- binaries ----
 # ==================
-include(setup_cpp.cmake)
+# include(setup_cpp.cmake)
 if (ZS_ENABLE_CUDA)
     include(setup_cuda.cmake)
 endif()

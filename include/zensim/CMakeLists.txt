@@ -220,22 +220,10 @@ target_precompile_headers(zscore INTERFACE
     ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
 endif()
-target_link_libraries(zensim INTERFACE zscore)  #
-
-# openvdb, partio
-add_cpp_library(zstool)
-target_sources(zstool PRIVATE ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
-if (ENABLE_PCH)
-target_precompile_headers(zstool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
-endif()
-target_link_libraries(zstool INTERFACE zspartio zscore)
-target_link_libraries(zstool PRIVATE OpenVDB::openvdb)
-target_link_libraries(zensim INTERFACE zstool)  #
 
 # related to cuda
 if (ZS_ENABLE_CUDA)
 
-# ad-hoc (temporary)
 target_compile_definitions(zscore PRIVATE ZS_ENABLE_CUDA=1)
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
 target_link_libraries(zscore PUBLIC zsproj_cuda_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
@@ -260,4 +248,27 @@ target_compile_definitions(zscore
   PRIVATE     CMAKE_GENERATOR_PLATFORM=x64
 )
 
+target_link_libraries(zensim INTERFACE zscore)  # zscore -> zensim
+
+endif(ZS_ENABLE_CUDA)
+
+# openvdb, partio
+if (ZS_ENABLE_OPENVDB)
+
+add_library(zstool ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
+if (ENABLE_PCH)
+target_precompile_headers(zstool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif()
+target_compile_options(zstool
+  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp>
+)
+set_target_properties(zstool
+  PROPERTIES  POSITION_INDEPENDENT_CODE ON
+              LINKER_LANGUAGE CXX
+)
+target_link_libraries(zstool INTERFACE zspartio zscore zsproj_cxx_deps)
+target_link_libraries(zstool PRIVATE OpenVDB::openvdb)
+
+target_link_libraries(zensim INTERFACE zstool)  # zscore -> zensim
+
+endif(ZS_ENABLE_OPENVDB)

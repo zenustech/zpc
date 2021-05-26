@@ -198,7 +198,11 @@ endif()
 add_library(zscore ${ZENSIM_CORE_SOURCE_FILES})
 
 target_compile_options(zscore 
-  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+#  PRIVATE       $<$<CXX_COMPILER_ID:MSVC>:/O2 /openmp NOMINMAX> 
+#                $<$<CXX_COMPILER_ID:GNU>:-O3 -fopenmp>
+#                $<$<CXX_COMPILER_ID:Clang>:-O3 -fopenmp>
+#  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, -fuse-ld=lld, > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 # -fsanitize=address memory thread
 set_target_properties(zscore
@@ -260,7 +264,8 @@ if (ENABLE_PCH)
 target_precompile_headers(zstool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif()
 target_compile_options(zstool
-  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp>
+# MSVC, GNU, Clang
+  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, -fuse-ld=lld, > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 set_target_properties(zstool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON

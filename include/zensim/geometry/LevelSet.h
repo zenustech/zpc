@@ -134,7 +134,7 @@ namespace zs {
     template <typename Allocator, typename... Dims>
     constexpr auto buildInstance(Allocator &&allocator, Dims &&...dims) {
       using namespace ds;
-      auto dec = dynamic_decorator{soa, compact, alloc_ahead, false};
+      auto dec = dynamic_decorator{soa, compact, alloc_ahead};
       /// not sure why this domain type could cause deduction problem
       dynamic_domain<0, tuple<Tn...>, std::index_sequence_for<Tn...>> dom{
           wrapv<0>{}, (int)std::forward<Dims>(dims)...};

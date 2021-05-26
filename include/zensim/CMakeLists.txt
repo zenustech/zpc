@@ -11,7 +11,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     resource/Resource.cpp
     # simulation
     simulation/mpm/Simulator.cpp
-    simulation/sparsity/SparsityCompute.cpp
+    # simulation/sparsity/SparsityCompute.cpp
     memory/MemOps.cpp
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
@@ -31,14 +31,14 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/Cuda.cu
-	cuda/Allocators.cu
-	cuda/DeviceUtils.cu
-	cuda/profile/CudaTimers.cu
-    cuda/math/matrix/Matrix.cpp
+	  cuda/Allocators.cu
+	  cuda/DeviceUtils.cu
+	  cuda/profile/CudaTimers.cu
+    # cuda/math/matrix/Matrix.cpp
     cuda/math/matrix/MatrixCtor.cpp
     cuda/math/matrix/MatrixTransform.cpp
     cuda/simulation/mpm/Simulator.cpp
-    cuda/simulation/sparsity/SparsityCompute.cpp
+    # cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES

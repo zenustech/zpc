@@ -169,63 +169,69 @@ namespace zs {
     /******************************************************************/
     /// for snode
     enum padding_policy : char { compact = 0, sum_pow2_align = 1, max_pow2_align = 2 };
-    enum layout_policy : char { aos = 0, soa = 1 };
-    enum alloc_policy : char { alloc_ahead = 0, alloc_on_demand = 1 };
+    template <padding_policy v>
+    struct padding_policy_t : wrapv<v> {}; 
+    template <padding_policy v, enable_if_t<(v >= compact && v <= max_pow2_align)> = 0>
+    padding_policy_t<v> snode_policy() { return padding_policy_t<v>{}; }
+
+    enum layout_policy : char { aos = 10, soa = 11 };
+    template <layout_policy v>
+    struct layout_policy_t : wrapv<v> {}; 
+    template <layout_policy v, enable_if_t<(v >= aos && v <= soa)> = 0>
+    layout_policy_t<v> snode_policy() { return layout_policy_t<v>{}; }
+
+    enum alloc_policy : char { alloc_ahead = 100, alloc_on_demand = 101 };
+    template <alloc_policy v>
+    struct alloc_policy_t : wrapv<v> {}; 
+    template <alloc_policy v, enable_if_t<(v >= alloc_ahead && v <= alloc_on_demand)> = 0>
+    alloc_policy_t<v> snode_policy() { return alloc_policy_t<v>{}; }
 
     struct default_decorator {
       static constexpr layout_policy layoutp{layout_policy::aos};
       static constexpr padding_policy paddingp{padding_policy::compact};
       static constexpr alloc_policy allocp{alloc_policy::alloc_ahead};
-      static constexpr bool bitmasked{false};
     };
     template <layout_policy layoutIn = default_decorator::layoutp,
               padding_policy paddingIn = default_decorator::paddingp,
-              alloc_policy allocIn = default_decorator::allocp,
-              bool bitmaskedIn = default_decorator::bitmasked>
+              alloc_policy allocIn = default_decorator::allocp>
     struct static_decorator {
-      static constexpr layout_policy layoutp{layoutIn};
-      static constexpr padding_policy paddingp{paddingIn};
-      static constexpr alloc_policy allocp{allocIn};
-      static constexpr bool bitmasked{bitmaskedIn};
+      static constexpr layout_policy layoutp = layoutIn;
+      static constexpr padding_policy paddingp = paddingIn;
+      static constexpr alloc_policy allocp = allocIn;
     };
     struct dynamic_decorator {
       layout_policy layoutp{default_decorator::layoutp};
       padding_policy paddingp{default_decorator::paddingp};
       alloc_policy allocp{default_decorator::allocp};
-      bool bitmasked{default_decorator::bitmasked};
     };
 
     template <typename> struct vsetter;
-    template <padding_policy paddingIn> struct vsetter<wrapv<paddingIn>>
+    template <padding_policy paddingIn> struct vsetter<padding_policy_t<paddingIn>>
         : public virtual default_decorator {
-      static constexpr padding_policy paddingp{paddingIn};
+      static constexpr padding_policy paddingp = paddingIn;
     };
-    template <layout_policy layoutIn> struct vsetter<wrapv<layoutIn>>
+    template <layout_policy layoutIn> struct vsetter<layout_policy_t<layoutIn>>
         : public virtual default_decorator {
-      static constexpr layout_policy layoutp{layoutIn};
+      static constexpr layout_policy layoutp = layoutIn;
     };
-    template <alloc_policy allocIn> struct vsetter<wrapv<allocIn>>
+    template <alloc_policy allocIn> struct vsetter<alloc_policy_t<allocIn>>
         : public virtual default_decorator {
-      static constexpr alloc_policy allocp{allocIn};
-    };
-    template <bool bitmaskedIn> struct vsetter<wrapv<bitmaskedIn>>
-        : public virtual default_decorator {
-      static constexpr bool bitmasked{bitmaskedIn};
+      static constexpr alloc_policy allocp = allocIn;
     };
     template <std::size_t, typename Base> class type_discriminator : public virtual Base {};
     template <typename Setter1 = default_decorator, typename Setter2 = default_decorator,
-              typename Setter3 = default_decorator, typename Setter4 = default_decorator>
+              typename Setter3 = default_decorator>
     struct decorator_compositor : public type_discriminator<1, Setter1>,
                                   public type_discriminator<2, Setter2>,
-                                  public type_discriminator<3, Setter3>,
-                                  public type_discriminator<4, Setter4> {};
+                                  public type_discriminator<3, Setter3> {};
+
     template <typename> struct decorator_extracter;
     template <typename DecorationSetter> struct decorator_extracter {
       using type = static_decorator<DecorationSetter::layoutp, DecorationSetter::paddingp,
-                                    DecorationSetter::allocp, DecorationSetter::bitmasked>;
+                                    DecorationSetter::allocp>;
     };
     template <auto... Settings> using decorations =
-        typename decorator_extracter<decorator_compositor<vsetter<wrapv<Settings>>...>>::type;
+        typename decorator_extracter<decorator_compositor<vsetter<decltype(snode_policy<Settings>())>...>>::type;
 
     /******************************************************************/
     /**                       snode signature                         */
@@ -448,7 +454,7 @@ namespace zs {
               std::size_t... Is>
     struct snode<Decorator, Domain, tuple<Ts...>, tuple<Tn...>, std::index_sequence<Is...>>
         : Decorator, Domain, tuple<snode_attrib_wrapper<Ts>...>, tuple<Tn...> {
-      static_assert(sizeof...(Ts) == sizeof...(Tn), "[snode] dimension mismatch");
+      // static_assert(sizeof...(Ts) == sizeof...(Tn), "[snode] dimension mismatch");
       using domain = Domain;
       using Decorator::allocp;
       using Decorator::layoutp;

@@ -67,6 +67,7 @@ namespace zs::detail {
     static constexpr bool value = decltype(test<T>(0))();
   };
   /// check sentinel support
+#if 1
   template <typename T> struct has_sentinel {
   private:
     template <typename U> static std::false_type test(...);
@@ -77,6 +78,11 @@ namespace zs::detail {
   public:
     static constexpr bool value = decltype(test<T>(0, 0))();
   };
+#else
+  template <typename T> struct has_sentinel {
+    static constexpr bool value = false;
+  };
+#endif
   /// check single pass declaration
   template <typename T> struct decl_single_pass {
   private:
@@ -387,9 +393,14 @@ namespace zs {
   };
 
   template <typename Ts, typename Indices, typename = void> struct Collapse;
+  
+  template <typename... Tn>
+  constexpr bool all_integral() {
+    return (std::is_integral_v<Tn> && ...);
+  }
   template <typename... Tn, std::size_t... Is>
   struct Collapse<type_seq<Tn...>, index_seq<Is...>,
-                  std::enable_if_t<(std::is_integral_v<Tn> && ...)>> {
+                  std::enable_if_t<all_integral<Tn...>()>> {
     template <std::size_t I> using index_t = std::tuple_element_t<I, std::tuple<Tn...>>;
     static constexpr std::size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
@@ -438,13 +449,17 @@ namespace zs {
 
   // zip
   template <typename, typename, typename = void> struct zip_iterator;
+  
+  template <typename... Ts>
+  constexpr bool all_convertible_to_raiter() {
+    return (std::is_convertible_v<typename std::iterator_traits<Ts>::iterator_category,
+                                          std::random_access_iterator_tag> && ...);
+  }
 
   /// for serial execution
   template <typename... Iters, std::size_t... Is>
   struct zip_iterator<std::tuple<Iters...>, index_seq<Is...>,
-                      std::enable_if_t<!((std::is_convertible_v<
-                                          typename std::iterator_traits<Iters>::iterator_category,
-                                          std::random_access_iterator_tag>)&&...)>>
+                      std::enable_if_t<!all_convertible_to_raiter<Iters...>()>>
       : IteratorInterface<zip_iterator<
             std::tuple<Iters...>, index_seq<Is...>,
             std::enable_if_t<!(
@@ -475,9 +490,7 @@ namespace zs {
   /// for parallel execution
   template <typename... Iters, std::size_t... Is>
   struct zip_iterator<std::tuple<Iters...>, index_seq<Is...>,
-                      std::enable_if_t<((std::is_convertible_v<
-                                         typename std::iterator_traits<Iters>::iterator_category,
-                                         std::random_access_iterator_tag>)&&...)>>
+                      std::enable_if_t<all_convertible_to_raiter<Iters...>()>>
       : IteratorInterface<zip_iterator<
             std::tuple<Iters...>, index_seq<Is...>,
             std::enable_if_t<(

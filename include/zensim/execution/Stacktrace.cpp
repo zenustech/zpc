@@ -2,8 +2,12 @@
 #include "Stacktrace.hpp"
 
 // backtrace() function for retrieving the stacktrace
-#include <cxxabi.h>
+#ifdef _MSC_VER       // MSVC compiler
+// #include <dbghelp.h>  // For UnDecorateSymbolName
+#else
+#include <cxxabi.h>  // For abi::__cxa_demangle
 #include <execinfo.h>
+#endif
 
 #include <exception>
 #include <iostream>
@@ -16,6 +20,9 @@ namespace Kokkos {
     char **backtrace_symbols(void *const *, int) { return nullptr; }
 
     std::string demangle(const std::string &name) {
+#ifdef _MSC_VER       // MSVC compiler
+      return name;
+#else
       size_t found_end = name.find_first_of("+)", 0, 2);
       if (found_end == std::string::npos) {
         found_end = name.size();
@@ -44,6 +51,7 @@ namespace Kokkos {
         }
       }
       return s;
+#endif
     }
 
     class Stacktrace {

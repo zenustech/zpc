@@ -107,7 +107,7 @@ namespace zs {
       using namespace ds;
       uniform_domain<0, Tn, dim, typename gen_seq<dim>::ascend> dom{
           wrapv<0>{}, (Tn)((extent(Is) + SideLength - 1) / SideLength)...};
-      auto node = snode{static_decorator{}, dom,
+      auto node = snode{static_decorator<>{}, dom,
                         zs::make_tuple(lut_block_snode<value_t, dim, SideLength>{}), vseq_t<1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
       inst.alloc(allocator, alignof(value_t));

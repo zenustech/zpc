@@ -230,7 +230,7 @@ namespace zs {
 
     constexpr auto buildInstance(memsrc_e mre, ProcID devid, size_type capacity) const {
       using namespace ds;
-      constexpr auto dec = ds::static_decorator{};
+      constexpr auto dec = ds::static_decorator<>{};
       uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
       vector_snode<wrapt<T>, size_type> node{dec, dom, zs::make_tuple(wrapt<T>{}), vseq_t<1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};

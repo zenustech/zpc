@@ -258,7 +258,7 @@ namespace zs {
           zs::make_tuple(numChns)};
       uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{}, capacity / lane_width + 1};
       aosoa_snode<lane_width, wrapt<T>, channel_counter_type, size_type> node{
-          ds::static_decorator{}, dom, zs::make_tuple(tilenode), vseq_t<1>{}};
+          ds::static_decorator<>{}, dom, zs::make_tuple(tilenode), vseq_t<1>{}};
       auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
       if (capacity) inst.alloc(get_memory_source(mre, devid));
       return inst;

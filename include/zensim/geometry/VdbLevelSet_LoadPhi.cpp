@@ -4,11 +4,11 @@
 #include <openvdb/tools/GridOperators.h>
 #include <openvdb/tools/Interpolation.h>
 #include <openvdb/tools/VolumeToMesh.h>
-#include <zensim/memory/MemoryResource.h>
 
 #include "VdbLevelSet.h"
 #include "zensim/Logger.hpp"
 #include "zensim/execution/Concurrency.h"
+#include "zensim/memory/MemoryResource.h"
 
 namespace zs {
 

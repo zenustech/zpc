@@ -1,7 +1,6 @@
 #pragma once
-#include <zensim/execution/ExecutionPolicy.hpp>
-
 #include "zensim/cuda/DeviceUtils.cuh"
+#include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Collider.h"
 #include "zensim/simulation/grid/GridOp.hpp"
 

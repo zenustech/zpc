@@ -1,8 +1,7 @@
 #pragma once
-#include <zensim/resource/Resource.h>
-
 #include "zensim/container/HashTable.hpp"
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/resource/Resource.h"
 #include "zensim/simulation/init/Scene.hpp"
 #include "zensim/types/BuilderBase.hpp"
 

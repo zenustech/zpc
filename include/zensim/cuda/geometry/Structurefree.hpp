@@ -1,8 +1,7 @@
 #pragma once
-#include <zensim/execution/ExecutionPolicy.hpp>
-
 #include "zensim/cuda/Cuda.h"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
+#include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Structurefree.hpp"
 #include "zensim/types/SmallVector.hpp"
 

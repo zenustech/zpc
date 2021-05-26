@@ -1,17 +1,16 @@
 #include "Scene.hpp"
 
-#include <zensim/geometry/AnalyticLevelSet.h>
-#include <zensim/memory/MemoryResource.h>
-#include <zensim/resource/Resource.h>
-
 #include <filesystem>
 #include <stdexcept>
 
+#include "zensim/geometry/AnalyticLevelSet.h"
 #include "zensim/geometry/GeometrySampler.h"
 #include "zensim/geometry/VdbSampler.h"
 #include "zensim/io/ParticleIO.hpp"
 #include "zensim/math/Vec.h"
+#include "zensim/memory/MemoryResource.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
+#include "zensim/resource/Resource.h"
 #include "zensim/tpls/fmt/color.h"
 #include "zensim/tpls/fmt/core.h"
 #include "zensim/tpls/magic_enum.hpp"

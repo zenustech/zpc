@@ -2,9 +2,9 @@
 #include <cuda_runtime_api.h>
 
 #include <type_traits>
-#include <zensim/execution/ExecutionPolicy.hpp>
 
 #include "zensim/container/HashTable.hpp"
+#include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/Hash.hpp"
 
 namespace zs {

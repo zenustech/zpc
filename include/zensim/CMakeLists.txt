@@ -202,7 +202,7 @@ target_compile_options(zscore
 #                $<$<CXX_COMPILER_ID:GNU>:-O3 -fopenmp>
 #                $<$<CXX_COMPILER_ID:Clang>:-O3 -fopenmp>
 #  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
-  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, -fuse-ld=lld, > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 # -fsanitize=address memory thread
 set_target_properties(zscore
@@ -265,13 +265,13 @@ target_precompile_headers(zstool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} 
 endif()
 target_compile_options(zstool
 # MSVC, GNU, Clang
-  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, -fuse-ld=lld, > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 set_target_properties(zstool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON
               LINKER_LANGUAGE CXX
 )
-target_link_libraries(zstool INTERFACE zspartio zscore zsproj_cxx_deps)
+target_link_libraries(zstool PUBLIC zspartio zscore zsproj_cxx_deps)
 target_link_libraries(zstool PRIVATE OpenVDB::openvdb)
 
 target_link_libraries(zensim INTERFACE zstool)  # zscore -> zensim

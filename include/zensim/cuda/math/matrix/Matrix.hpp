@@ -50,6 +50,9 @@ namespace zs {
     void cgsolve(Vector<value_type> &,
                  const CudaLibExecutionPolicy<culib_cusparse, culib_cublas, culib_cusolversp> &pol,
                  const Vector<value_type> &);
+    void pcgsolve(const Vector<value_type> &, Vector<value_type> &,
+                  const CudaLibExecutionPolicy<culib_cusparse, culib_cublas, culib_cusolversp> &pol,
+                  const Vector<value_type> &);
 
     // Vector<char> auxSpmBuffer{};
     Vector<char> auxCholBuffer{};

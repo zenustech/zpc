@@ -244,7 +244,7 @@ set_target_properties(zscore
   PROPERTIES  CUDA_EXTENSIONS ON
               CUDA_SEPARABLE_COMPILATION ON
               LINKER_LANGUAGE CUDA
-              #CUDA_RESOLVE_DEVICE_SYMBOLS OFF
+              CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
               CUDA_ARCHITECTURES OFF
 )

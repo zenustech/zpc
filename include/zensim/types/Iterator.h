@@ -21,9 +21,7 @@ namespace zs::detail {
   /// check equal to
   template <typename T> struct has_equal_to {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
 #if 0
     /// this definition is not good
     template <typename U> static std::true_type test(
@@ -45,9 +43,7 @@ namespace zs::detail {
   /// check increment impl
   template <typename T> struct has_increment {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
     template <typename U> static constexpr std::true_type test(decltype(&U::increment)) {
       return std::true_type{};
     }
@@ -58,9 +54,7 @@ namespace zs::detail {
   /// check decrement impl
   template <typename T> struct has_decrement {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
     template <typename U> static constexpr std::true_type test(decltype(&U::decrement)) {
       return std::true_type{};
     }
@@ -71,9 +65,7 @@ namespace zs::detail {
   /// check advance impl
   template <typename T> struct has_distance_to {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
     template <typename U> static constexpr auto test(char)
         -> decltype(std::declval<U &>().distance_to(std::declval<U>()), std::true_type{}) {
       return std::true_type{};
@@ -85,9 +77,7 @@ namespace zs::detail {
   /// check sentinel support
   template <typename T> struct has_sentinel {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
     template <typename U> static constexpr std::true_type test(
         decltype(&U::sentinel_type),
         enable_if_t<std::is_convertible_v<std::invoke_result_t<decltype(&U::at_end)>, bool>>) {
@@ -100,9 +90,7 @@ namespace zs::detail {
   /// check single pass declaration
   template <typename T> struct decl_single_pass {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
     template <typename U> static constexpr std::true_type test(decltype(&U::single_pass_iterator)) {
       return std::true_type{};
     }
@@ -113,10 +101,9 @@ namespace zs::detail {
   /// infer difference type
   template <typename T> struct has_difference_type {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
-    template <typename U> static constexpr std::true_type test(void_t<typename U::difference_type> *) {
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
+    template <typename U>
+    static constexpr std::true_type test(void_t<typename U::difference_type> *) {
       return std::true_type{};
     }
 
@@ -137,9 +124,7 @@ namespace zs::detail {
   /// check advance impl
   template <typename T> struct has_advance {
   private:
-    template <typename U> static constexpr std::false_type test(...) {
-      return std::false_type{};
-    }
+    template <typename U> static constexpr std::false_type test(...) { return std::false_type{}; }
     template <typename U> static constexpr auto test(char)
         -> decltype(std::declval<U &>().advance(std::declval<infer_difference_type_t<U>>()),
                     std::true_type{}) {
@@ -419,14 +404,12 @@ namespace zs {
   };
 
   template <typename Ts, typename Indices, typename = void> struct Collapse;
-  
-  template <typename... Tn>
-  constexpr bool all_integral() {
+
+  template <typename... Tn> constexpr bool all_integral() {
     return (std::is_integral_v<Tn> && ...);
   }
   template <typename... Tn, std::size_t... Is>
-  struct Collapse<type_seq<Tn...>, index_seq<Is...>,
-                  std::enable_if_t<all_integral<Tn...>()>> {
+  struct Collapse<type_seq<Tn...>, index_seq<Is...>, std::enable_if_t<all_integral<Tn...>()>> {
     template <std::size_t I> using index_t = std::tuple_element_t<I, std::tuple<Tn...>>;
     static constexpr std::size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
@@ -460,6 +443,10 @@ namespace zs {
     std::tuple<Tn...> ns;
   };
 
+  template <typename Tn, int dim> using collapse_t
+      = Collapse<typename gen_seq<dim>::template uniform_types_t<type_seq, int>,
+                 std::make_index_sequence<dim>>;
+
   template <typename... Tn> Collapse(Tn...)
       -> Collapse<type_seq<Tn...>, std::index_sequence_for<Tn...>>;
 
@@ -475,11 +462,10 @@ namespace zs {
 
   // zip
   template <typename, typename, typename = void> struct zip_iterator;
-  
-  template <typename... Ts>
-  constexpr bool all_convertible_to_raiter() {
+
+  template <typename... Ts> constexpr bool all_convertible_to_raiter() {
     return (std::is_convertible_v<typename std::iterator_traits<Ts>::iterator_category,
-                                          std::random_access_iterator_tag> && ...);
+                                  std::random_access_iterator_tag> && ...);
   }
 
   /// for serial execution

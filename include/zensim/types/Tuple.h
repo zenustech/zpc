@@ -59,7 +59,7 @@ template <std::size_t I, typename T> struct tuple_value {
       I, T,
       std::enable_if_t<
           (std::is_fundamental_v<
-              T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>),
+               T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>),
           void>> {
     /// by index
     constexpr T &get(std::integral_constant<std::size_t, I>) noexcept { return value; }
@@ -260,7 +260,8 @@ template <std::size_t I, typename T> struct tuple_value {
 
   template <typename> struct is_tuple : std::false_type {};
   template <typename... Ts> struct is_tuple<tuple<Ts...>> : std::true_type {};
-  template <typename... Ts> struct is_tuple<std::tuple<Ts...>> : std::true_type {};
+  template <typename> struct is_std_tuple : std::false_type {};
+  template <typename... Ts> struct is_std_tuple<std::tuple<Ts...>> : std::true_type {};
 
   /** tuple_size */
   template <typename T> using tuple_size = std::integral_constant<std::size_t, T::tuple_size>;

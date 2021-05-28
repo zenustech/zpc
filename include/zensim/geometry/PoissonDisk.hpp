@@ -128,17 +128,17 @@ namespace zs {
         // Figure out the number of offsets
         TV scaled_ref_box_length{120.0, 120.0, 120.0};
         scaled_ref_box_length = scaled_ref_box_length * minDistance;
-        TV side_length = maxCorner - minCorner;
+        TV sideLength = maxCorner - minCorner;
         IV offset_number;
         for (int d = 0; d < dim; ++d)
-          offset_number[d] = std::ceil(side_length[d] / scaled_ref_box_length[d]) + 1;
+          offset_number[d] = std::ceil(sideLength[d] / scaled_ref_box_length[d]) + 1;
         // Read std vector
         std::ifstream is((std::string{AssetDirPath} + "MpmParticles/particles-1000k.dat"),
                          std::ios::in | std::ios::binary);
         if (!is) throw std::runtime_error("particle-1000k.dat file not found!");
         std::size_t cnt, tmp;
         is.read((char *)&cnt, sizeof(std::size_t));
-        auto estimate = cnt * (side_length.prod() / scaled_ref_box_length.prod());
+        auto estimate = cnt * (sideLength.prod() / scaled_ref_box_length.prod());
         samples.reserve(estimate);
 
         is.read((char *)&tmp, sizeof(std::size_t));  ///< neglect this
@@ -205,7 +205,7 @@ namespace zs {
         printf(
             "[PoissonDiskSampling]\tcnt: %d, minDistance: %f, sidelen: %f, "
             "%f, %f, scaledlen: %f, %f, %f\n",
-            (int)samples.size(), minDistance, side_length[0], side_length[1], side_length[2],
+            (int)samples.size(), minDistance, sideLength[0], sideLength[1], sideLength[2],
             scaled_ref_box_length[0], scaled_ref_box_length[1], scaled_ref_box_length[2]);
 
       } else if (dim == 2) {

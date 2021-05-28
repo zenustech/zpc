@@ -55,6 +55,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/HashTable.hpp
     container/Vector.hpp
     container/Bvh.hpp
+    container/IndexBuckets.hpp
     geometry/Structure.hpp
     geometry/Structurefree.hpp
     # execution
@@ -132,6 +133,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     simulation/particle/ParticleOp.hpp
     simulation/sparsity/SparsityOp.hpp
     simulation/sparsity/SparsityCompute.hpp
+    simulation/Utils.hpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
     io/IO.h
@@ -235,7 +237,8 @@ if (ENABLE_PCH)
 target_precompile_headers(zscore INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
 target_compile_options(zscore 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+  PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
 )
 target_link_options(zscore 
   PRIVATE       $<$<LINK_LANGUAGE:CUDA>:-dlto>

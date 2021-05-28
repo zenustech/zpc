@@ -60,12 +60,12 @@ namespace zs {
 
           ivec3 block_coord = local_index;
           for (int d = 0; d < particles_t::dim; ++d)
-            block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
-          block_coord = block_coord / gridblock_t::side_length;
+            block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length() + 1 : 0);
+          block_coord = block_coord / gridblock_t::side_length();
           int blockno = partition.query(block_coord);
 
           auto& grid_block = gridblocks[blockno];
-          local_index = local_index - block_coord * gridblock_t::side_length;
+          local_index = local_index - block_coord * gridblock_t::side_length();
           vec3 vi{grid_block(1, local_index).asFloat(), grid_block(2, local_index).asFloat(),
                   grid_block(3, local_index).asFloat()};
 

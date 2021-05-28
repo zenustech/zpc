@@ -131,7 +131,7 @@ namespace zs {
 
       if (block(0, cellid).asFloat() > 0) {
         vec<VT, gridblocks_t::dim> vel,
-            pos = (blockkey * gridblock_t::side_length + gridblock_t::to_coord(cellid)) * dx;
+            pos = (blockkey * gridblock_t::side_length() + gridblock_t::to_coord(cellid)) * dx;
         for (int d = 0; d < gridblocks_t::dim; ++d)
           vel[d] = static_cast<VT>(block(d + 1, cellid).asFloat());
 

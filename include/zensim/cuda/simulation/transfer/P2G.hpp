@@ -1,10 +1,11 @@
 #pragma once
-#include "zensim/geometry/Structurefree.hpp"
 #include "zensim/cuda/DeviceUtils.cuh"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/cuda/physics/ConstitutiveModel.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/geometry/Structurefree.hpp"
 #include "zensim/physics/ConstitutiveModel.hpp"
+#include "zensim/simulation/Utils.hpp"
 #include "zensim/simulation/transfer/P2G.hpp"
 
 namespace zs {
@@ -94,6 +95,7 @@ namespace zs {
         }
 
         contrib = C * mass * D_inv - contrib * dt * D_inv;
+#if 1
         ivec3 global_base_index{(int)lower_trunc(local_pos[0] * dx_inv + 0.5) - 1,
                                 (int)lower_trunc(local_pos[1] * dx_inv + 0.5) - 1,
                                 (int)lower_trunc(local_pos[2] * dx_inv + 0.5) - 1};
@@ -112,12 +114,12 @@ namespace zs {
 
           ivec3 block_coord = local_index;
           for (int d = 0; d < particles_t::dim; ++d)
-            block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length + 1 : 0);
-          block_coord = block_coord / gridblock_t::side_length;
+            block_coord[d] += (local_index[d] < 0 ? -gridblock_t::side_length() + 1 : 0);
+          block_coord = block_coord / gridblock_t::side_length();
           int blockno = partition.query(block_coord);
           auto& grid_block = gridblocks[blockno];
 
-          local_index = local_index - block_coord * gridblock_t::side_length;
+          local_index = local_index - block_coord * gridblock_t::side_length();
 
           atomicAdd(&grid_block(0, local_index).asFloat(), wm);
           for (int d = 0; d < 3; ++d)
@@ -127,6 +129,26 @@ namespace zs {
                      + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2])
                            * W));
         }
+#else
+        using VT
+            = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
+        LocalArena<particles_t::dim, kernel_e::quadratic, VT> arena{dx, local_pos};
+        for (auto loc : arena.range()) {
+          auto [blockno, local_index]
+              = unpack_coord_in_grid(arena.coord(loc), gridblock_t::side_length(), partition);
+          auto xixp = arena.diff(loc);
+          VT W = arena.weight(loc);
+          VT wm = mass * W;
+          auto grid_block = gridblocks[blockno];
+          atomicAdd(&grid_block(0, local_index).asFloat(), wm);
+          for (int d = 0; d < 3; ++d)
+            atomicAdd(
+                &grid_block(d + 1, local_index).asFloat(),
+                (VT)(wm * vel[d]
+                     + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2])
+                           * W));
+        }
+#endif
       }
     }
 

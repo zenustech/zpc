@@ -31,9 +31,9 @@ namespace zs {
     using size_type = int;
     static constexpr int dim = dim_;
     using IV = vec<size_type, dim>;
-    static constexpr int num_chns = 1 << channel_bits;
-    static constexpr int side_length = 1 << domain_bits;
-    static constexpr int space = 1 << (domain_bits * dim);
+    static constexpr int num_chns() noexcept { return 1 << channel_bits; }
+    static constexpr int side_length() noexcept { return 1 << domain_bits; }
+    static constexpr int space() noexcept { return 1 << domain_bits * dim; }
 
     constexpr auto &operator()(int c, IV loc) noexcept { return _data[c][offset(loc)]; }
     constexpr auto operator()(int c, IV loc) const noexcept { return _data[c][offset(loc)]; }
@@ -42,7 +42,7 @@ namespace zs {
     static constexpr IV to_coord(size_type cellid) {
       IV ret{IV::zeros()};
       for (int d = dim - 1; d >= 0 && cellid > 0; --d, cellid >>= domain_bits)
-        ret[d] = cellid % side_length;
+        ret[d] = cellid % side_length();
       return ret;
     }
 
@@ -53,7 +53,7 @@ namespace zs {
       for (int d = 0; d < dim; ++d) ret = (ret << domain_bits) + loc[d];
       return ret;
     }
-    V _data[num_chns][space];
+    V _data[num_chns()][space()];
   };
 
   template <typename Block> struct GridBlocks;

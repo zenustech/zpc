@@ -602,13 +602,23 @@ using vec =
     using Tn = std::common_type_t<std::decay_t<Args>...>;
     return vec<Tn, sizeof...(Args)>{std::forward<Args>(args)...};
   }
-  template <typename T, typename Tup, std::size_t... Is, enable_if_t<is_tuple<Tup>::value> = 0>
-  constexpr vec<T, Tup::extent> make_vec_impl(Tup &&tup, index_seq<Is...>) {
-    return vec<T, Tup::extent>{get<Is>(tup)...};
+  /// make vec from std tuple
+  template <typename T, typename... Ts, std::size_t... Is>
+  constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const std::tuple<Ts...> &tup, index_seq<Is...>) {
+    return vec<T, (sizeof...(Ts))>{std::get<Is>(tup)...};
   }
-  template <typename T, typename Tup, enable_if_t<is_tuple<Tup>::value> = 0>
-  constexpr vec<T, Tup::extent> make_vec(Tup &&tup) {
-    return make_vec_impl(FWD(tup), std::make_index_sequence<Tup::extent>{});
+  template <typename T, typename... Ts>
+  constexpr auto make_vec(const std::tuple<Ts...> &tup) {
+    return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
+  }
+  /// make vec from zs tuple
+  template <typename T, typename... Ts, std::size_t... Is>
+  constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const tuple<Ts...> &tup, index_seq<Is...>) {
+    return vec<T, (sizeof...(Ts))>{get<Is>(tup)...};
+  }
+  template <typename T, typename... Ts>
+  constexpr auto make_vec(const tuple<Ts...> &tup) {
+    return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
   }
 
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>

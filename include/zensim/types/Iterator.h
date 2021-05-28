@@ -345,7 +345,10 @@ namespace zs {
     }
   }  // namespace detail
 
+  ///
   /// iterator
+  ///
+  // index iterator
   template <typename Data, typename StrideT> struct IndexIterator
       : IteratorInterface<IndexIterator<Data, StrideT>> {
     using T = Data;
@@ -392,24 +395,14 @@ namespace zs {
   template <typename BaseT, auto Diff> IndexIterator(BaseT, integral_v<decltype(Diff), Diff>)
       -> IndexIterator<BaseT, integral_v<decltype(Diff), Diff>>;
 
-  struct CounterIterator : IteratorInterface<CounterIterator> {
-    using T = std::size_t;
-
-    constexpr CounterIterator(T base = 0) : base{base} {}
-    constexpr void increment() noexcept { ++base; }
-    constexpr T dereference() const noexcept { return base; }
-    template <typename Iter> constexpr bool equal_to(Iter it) const noexcept { return false; }
-
-    T base;
-  };
-
-  template <typename Ts, typename Indices, typename = void> struct Collapse;
+  // collapse iterator
+  template <typename Ts, typename Indices> struct Collapse;
 
   template <typename... Tn> constexpr bool all_integral() {
     return (std::is_integral_v<Tn> && ...);
   }
-  template <typename... Tn, std::size_t... Is>
-  struct Collapse<type_seq<Tn...>, index_seq<Is...>, std::enable_if_t<all_integral<Tn...>()>> {
+  template <typename... Tn, std::size_t... Is> struct Collapse<type_seq<Tn...>, index_seq<Is...>> {
+    static_assert(all_integral<Tn...>(), "not all types in Collapse is integral!");
     template <std::size_t I> using index_t = std::tuple_element_t<I, std::tuple<Tn...>>;
     static constexpr std::size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
@@ -460,23 +453,21 @@ namespace zs {
     return detail::ndrange_impl(n, std::make_index_sequence<d>{});
   }
 
-  // zip
-  template <typename, typename, typename = void> struct zip_iterator;
-
+  // zip iterator
+  template <typename, typename> struct zip_iterator;
   template <typename... Ts> constexpr bool all_convertible_to_raiter() {
     return (std::is_convertible_v<typename std::iterator_traits<Ts>::iterator_category,
                                   std::random_access_iterator_tag> && ...);
   }
 
-  /// for serial execution
   template <typename... Iters, std::size_t... Is>
-  struct zip_iterator<std::tuple<Iters...>, index_seq<Is...>,
-                      std::enable_if_t<!all_convertible_to_raiter<Iters...>()>>
-      : IteratorInterface<zip_iterator<
-            std::tuple<Iters...>, index_seq<Is...>,
-            std::enable_if_t<!(
-                (std::is_convertible_v<typename std::iterator_traits<Iters>::iterator_category,
-                                       std::random_access_iterator_tag>)&&...)>>> {
+  struct zip_iterator<std::tuple<Iters...>, index_seq<Is...>>
+      : IteratorInterface<zip_iterator<std::tuple<Iters...>, index_seq<Is...>>> {
+    static constexpr bool all_random_access_iter = all_convertible_to_raiter<Iters...>();
+    using difference_type = conditional_t<
+        all_convertible_to_raiter<Iters...>(),
+        std::common_type_t<typename std::iterator_traits<Iters>::difference_type...>, void>;
+
     constexpr zip_iterator(Iters &&...its) : iters{std::make_tuple<Iters...>(FWD(its)...)} {}
 
     template <size_t Idx, class T> constexpr auto getElement(T &v)
@@ -494,45 +485,22 @@ namespace zs {
     constexpr bool equal_to(const zip_iterator &it) const {
       return ((std::get<Is>(iters) == std::get<Is>(it.iters)) || ...);
     }
-    constexpr void increment() { ((void)(++std::get<Is>(iters)), ...); }
-
-  protected:
-    std::tuple<Iters...> iters;
-  };
-  /// for parallel execution
-  template <typename... Iters, std::size_t... Is>
-  struct zip_iterator<std::tuple<Iters...>, index_seq<Is...>,
-                      std::enable_if_t<all_convertible_to_raiter<Iters...>()>>
-      : IteratorInterface<zip_iterator<
-            std::tuple<Iters...>, index_seq<Is...>,
-            std::enable_if_t<(
-                (std::is_convertible_v<typename std::iterator_traits<Iters>::iterator_category,
-                                       std::random_access_iterator_tag>)&&...)>>> {
-    using difference_type
-        = std::common_type_t<typename std::iterator_traits<Iters>::difference_type...>;
-
-    constexpr zip_iterator(Iters &&...its) : iters{std::make_tuple<Iters...>(FWD(its)...)} {}
-
-  protected:
-    template <typename DerefT, enable_if_t<std::is_reference<DerefT>::value> = 0>
-    constexpr auto getRef(DerefT &&deref) {
-      return std::reference_wrapper(deref);
+    template <bool Cond = !all_random_access_iter, enable_if_t<Cond> = 0>
+    constexpr void increment() {
+      ((void)(++std::get<Is>(iters)), ...);
     }
-    template <typename DerefT, enable_if_t<!std::is_reference<DerefT>::value> = 0>
-    constexpr auto getRef(DerefT &&deref) {
-      return deref;
+    template <bool Cond = all_random_access_iter, enable_if_t<Cond> = 0>
+    constexpr void advance(difference_type offset) {
+      ((void)(std::get<Is>(iters) += offset), ...);
     }
-
-  public:
-    // constexpr auto dereference() { return std::forward_as_tuple((*std::get<Is>(iters))...); }
-    constexpr auto dereference() { return std::make_tuple(getRef(*std::get<Is>(iters))...); }
-    constexpr bool equal_to(const zip_iterator &it) const {
-      return ((std::get<Is>(iters) == std::get<Is>(it.iters)) || ...);
-    }
-    constexpr void advance(difference_type offset) { ((void)(std::get<Is>(iters) += offset), ...); }
+    template <bool Cond = all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr difference_type distance_to(const zip_iterator &it) const {
-      return static_cast<difference_type>(std::get<sizeof...(Is) - 1>(it.iters)
-                                          - std::get<sizeof...(Is) - 1>(iters));
+      difference_type dist = std::numeric_limits<difference_type>::max();
+      ((void)(dist = dist < (std::get<Is>(it.iters) - std::get<Is>(iters))
+                         ? dist
+                         : (std::get<Is>(it.iters) - std::get<Is>(iters))),
+       ...);
+      return dist;
     }
 
   protected:
@@ -542,7 +510,10 @@ namespace zs {
   template <typename... Iters> zip_iterator(Iters...)
       -> zip_iterator<std::tuple<Iters...>, std::index_sequence_for<Iters...>>;
 
-  /// range
+  ///
+  /// ranges
+  ///
+  // index range
   template <typename T> constexpr auto range(T begin, T end, T increment) {
     auto actualEnd = end - ((end - begin) % increment);
     // static_assert(detail::has_distance_to<LegacyIterator<IndexIterator<T>>>::value, "WTF1???");
@@ -557,17 +528,19 @@ namespace zs {
   }
   template <typename T> constexpr auto range(T end) { return range<T>(0, end); }
 
+  // zip range
   template <typename... Args> constexpr auto zip(Args &&...args) {
     auto begin = make_iterator<zip_iterator>(std::begin(FWD(args))...);
     auto end = make_iterator<zip_iterator>(std::end(FWD(args))...);
     return detail::iter_range(std::move(begin), std::move(end));
   }
 
+  // enumeration range
   template <typename... Args> constexpr auto enumerate(Args &&...args) {
-    auto begin = make_iterator<zip_iterator>(make_iterator<CounterIterator>((std::size_t)0),
-                                             std::begin(FWD(args))...);
+    auto begin = make_iterator<zip_iterator>(
+        make_iterator<IndexIterator>((std::make_signed_t<std::size_t>)0), std::begin(FWD(args))...);
     auto end = make_iterator<zip_iterator>(
-        make_iterator<CounterIterator>(std::numeric_limits<std::size_t>::max()),
+        make_iterator<IndexIterator>(std::numeric_limits<std::make_signed_t<std::size_t>>::max()),
         std::end(FWD(args))...);
     return detail::iter_range(std::move(begin), std::move(end));
   }

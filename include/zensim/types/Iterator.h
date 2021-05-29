@@ -470,18 +470,17 @@ namespace zs {
 
     constexpr zip_iterator(Iters &&...its) : iters{std::make_tuple<Iters...>(FWD(its)...)} {}
 
-    template <size_t Idx, class T> constexpr auto getElement(T &v)
-        -> std::enable_if_t<!std::is_reference<decltype(*std::get<Idx>(v))>::value,
-                            decltype(*std::get<Idx>(v))> {
-      return *std::get<Idx>(v);
-    }
-    template <size_t Idx, class T> constexpr auto getElement(T &v)
-        -> std::enable_if_t<std::is_reference<decltype(*std::get<Idx>(v))>::value,
-                            decltype(std::reference_wrapper(*std::get<Idx>(v)))> {
-      return std::reference_wrapper(*std::get<Idx>(v));
-    }
     // constexpr auto dereference() { return std::forward_as_tuple((*std::get<Is>(iters))...); }
-    constexpr auto dereference() { return std::make_tuple(getElement<Is>(iters)...); }
+    template <typename DerefT, enable_if_t<std::is_reference_v<DerefT>> = 0>
+    constexpr auto getRef(DerefT &&deref) {
+      return std::ref(deref);
+    }
+    template <typename DerefT, enable_if_t<!std::is_reference_v<DerefT>> = 0>
+    constexpr decltype(auto) getRef(DerefT &&deref) {
+      return FWD(deref);
+    }
+    constexpr auto dereference() { return std::make_tuple(getRef(*std::get<Is>(iters))...); }
+
     constexpr bool equal_to(const zip_iterator &it) const {
       return ((std::get<Is>(iters) == std::get<Is>(it.iters)) || ...);
     }

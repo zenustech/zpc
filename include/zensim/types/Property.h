@@ -64,6 +64,9 @@ namespace zs {
     static_assert(Feature<T>::value, "T does not satisfy the feature!");
   };
 
+  template <typename> struct is_atomic : std::false_type {};
+  template <typename T> struct is_atomic<std::atomic<T>> : std::true_type {};
+
 #if 0
 /// reference: C++ templates - 21.2.3
 template<typename Derived, typename Value, typename Category, typename Reference = Value&, typename Distance = std::ptrdiff_t> struct IteratorInterface {

@@ -46,7 +46,7 @@ namespace zs {
                blockkey[2], checkedid);
       auto &block = gridblocks[blockid];
       using VT = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
-      if (blockid == 0 && cellid == 0) printf("block space: %d\n", gridblock_t::space);
+      if (blockid == 0 && cellid == 0) printf("block space: %d\n", gridblock_t::space());
       if (blockid == 0)  // || (float)block(1, cellid).asFloat() > 0)
         printf("(%d, %d): mass %e, (%e, %e, %e)\n", (int)blockid, (int)cellid,
                block(0, cellid).asFloat(), block(1, cellid).asFloat(), block(2, cellid).asFloat(),

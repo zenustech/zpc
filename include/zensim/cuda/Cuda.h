@@ -1,5 +1,16 @@
 #pragma once
 
+/// kokkos/core/src/setup/Kokkos_Setup_Cuda.hpp
+#if !ZS_ENABLE_CUDA
+#  error "ZS_ENABLE_CUDA was not enabled, but Cuda.h was included anyway."
+#endif
+
+#if ZS_ENABLE_CUDA && !defined(__CUDACC__)
+#  error "ZS_ENABLE_CUDA defined but the compiler is not defining the __CUDACC__ macro as expected"
+// Some tooling environments will still function better if we do this here.
+#  define __CUDACC__
+#endif
+
 #include <driver_types.h>
 
 #include <cstdint>

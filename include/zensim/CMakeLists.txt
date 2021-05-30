@@ -199,6 +199,7 @@ if (ZS_ENABLE_CUDA)
 endif()
 add_library(zscore ${ZENSIM_CORE_SOURCE_FILES})
 
+target_compile_definitions(zscore PUBLIC ZS_ENABLE_OPENMP=1)
 target_compile_options(zscore 
 #  PRIVATE       $<$<CXX_COMPILER_ID:MSVC>:/O2 /openmp NOMINMAX> 
 #                $<$<CXX_COMPILER_ID:GNU>:-O3 -fopenmp>
@@ -230,7 +231,7 @@ endif()
 # related to cuda
 if (ZS_ENABLE_CUDA)
 
-target_compile_definitions(zscore PRIVATE ZS_ENABLE_CUDA=1)
+target_compile_definitions(zscore PUBLIC ZS_ENABLE_CUDA=1)
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
 target_link_libraries(zscore PUBLIC zsproj_cuda_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 if (ENABLE_PCH)

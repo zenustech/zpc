@@ -1,5 +1,4 @@
 #pragma once
-#include "zensim/Platform.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Iterator.h"
@@ -12,31 +11,30 @@ namespace zs {
   constexpr wrapv<kernel_e::cubic> kernel_cubic;
 
   template <typename Tn, int dim, typename Ti, typename Table>
-  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti&& sideLength, Table&& table) {
+  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength,
+                                      const Table &table) {
     using IV = vec<Tn, dim>;
     IV blockCoord = coord;
-    for (int d = 0; d < dim; ++d)
-      blockCoord[d] += (coord[d] < 0 ? -sideLength + 1 : 0);
-    blockCoord = blockCoord  / sideLength;
+    for (int d = 0; d < dim; ++d) blockCoord[d] += (coord[d] < 0 ? -sideLength + 1 : 0);
+    blockCoord = blockCoord / sideLength;
     return std::make_tuple(table.query(blockCoord), coord - blockCoord * sideLength);
   }
   template <typename Tn, int dim, typename Ti>
-  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti&& sideLength) {
+  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength) {
     using IV = vec<Tn, dim>;
     IV blockCoord = coord;
-    for (int d = 0; d < dim; ++d)
-      blockCoord[d] += (coord[d] < 0 ? -sideLength + 1 : 0);
-    blockCoord = blockCoord  / sideLength;
+    for (int d = 0; d < dim; ++d) blockCoord[d] += (coord[d] < 0 ? -sideLength + 1 : 0);
+    blockCoord = blockCoord / sideLength;
     return std::make_tuple(blockCoord, coord - blockCoord * sideLength);
   }
   template <typename Tn, int dim, typename Ti, typename Table, typename Grid>
-  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti&& sideLength, Table&& table, Grid&& grid) {
+  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength, const Table &table,
+                                      Grid &&grid) {
     using IV = vec<Tn, dim>;
     IV blockCoord = coord;
-    for (int d = 0; d < dim; ++d)
-      blockCoord[d] += (coord[d] < 0 ? -sideLength + 1 : 0);
-    blockCoord = blockCoord  / sideLength;
-    return std::make_tuple(grid[table.query(blockCoord)], coord - blockCoord * sideLength);
+    for (int d = 0; d < dim; ++d) blockCoord[d] += (coord[d] < 0 ? -sideLength + 1 : 0);
+    blockCoord = blockCoord / sideLength;
+    return std::forward_as_tuple(grid[table.query(blockCoord)], coord - blockCoord * sideLength);
   }
 
   template <int dim_, kernel_e kt = kernel_e::quadratic, typename T = f32, typename Ti = int>
@@ -44,18 +42,18 @@ namespace zs {
     using value_type = T;
     using index_type = Ti;
     static constexpr int dim = dim_;
-    static constexpr index_type width = magic_enum::enum_integer(kernel_e::quadratic);
+    static constexpr index_type width = magic_enum::enum_integer(kt);
     using TV = vec<value_type, dim>;
     using TM = vec<value_type, dim, width>;
     using IV = vec<index_type, dim>;
 
-    constexpr LocalArena(value_type dx, TV pos) : dx{dx} {
-      for (int d = 0; d < dim; ++d) corner[d] = lower_trunc(pos[d] * dx + (T)0.5) - 1;
-      localPos = pos - corner * dx;
+    constexpr void init(const value_type dx_, const TV &pos) {
+      dx = dx_;
+      const auto dxInv = (T)1 / dx;
+      for (int d = 0; d < dim; ++d) corner[d] = lower_trunc(pos[d] * dxInv + (T)0.5) - 1;
+      localPos = pos - this->corner * dx;
       if constexpr (kt == kernel_e::quadratic)
         weights = bspline_weight(pos - corner * dx, (T)1 / dx);
-      else
-        ZS_UNREACHABLE;
     }
 
     constexpr auto range() const noexcept { return ndrange<dim>(width); }
@@ -74,7 +72,9 @@ namespace zs {
       return make_vec<index_type>(loc);
     }
 
-    template <typename... Tn, enable_if_all<(!is_std_tuple<Tn>() && ... && (sizeof...(Tn) == dim))> = 0> constexpr auto weight(Tn &&...is) const noexcept {
+    template <typename... Tn,
+              enable_if_all<(!is_std_tuple<Tn>() && ... && (sizeof...(Tn) == dim))> = 0>
+    constexpr auto weight(Tn &&...is) const noexcept {
       return weight(std::forward_as_tuple(FWD(is)...));
     }
 
@@ -88,10 +88,18 @@ namespace zs {
       return offset(pos) + corner;
     }
 
-    TV localPos;
-    TM weights;
-    IV corner;
-    const value_type dx;
+    TV localPos{TV::zeros()};
+    TM weights{TM::zeros()};
+    IV corner{IV::zeros()};
+    value_type dx{0};
   };
+
+  template <kernel_e kt = kernel_e::quadratic, typename Ti = int, int dim = 3, typename T = f32,
+            typename TT = T>
+  constexpr LocalArena<dim, kt, T, Ti> make_local_arena(TT dx, const vec<T, dim> &pos) {
+    LocalArena<dim, kt, T, Ti> ret{};
+    ret.init(dx, pos);
+    return ret;
+  }
 
 }  // namespace zs

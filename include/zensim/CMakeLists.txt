@@ -11,6 +11,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     resource/Resource.cpp
     # simulation
     simulation/mpm/Simulator.cpp
+    simulation/particle/Query.cpp
     # simulation/sparsity/SparsityCompute.cpp
     memory/MemOps.cpp
 )
@@ -38,6 +39,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/math/matrix/MatrixCtor.cpp
     cuda/math/matrix/MatrixTransform.cpp
     cuda/simulation/mpm/Simulator.cpp
+    cuda/simulation/particle/Query.cpp
     # cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
 )
@@ -131,6 +133,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     simulation/transfer/G2P.hpp
     simulation/grid/GridOp.hpp
     simulation/particle/ParticleOp.hpp
+    simulation/particle/Query.hpp
     simulation/sparsity/SparsityOp.hpp
     simulation/sparsity/SparsityCompute.hpp
     simulation/Utils.hpp
@@ -176,6 +179,7 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/simulation/transfer/G2P.hpp
     cuda/simulation/grid/GridOp.hpp
     cuda/simulation/sparsity/SparsityCompute.hpp
+    cuda/simulation/particle/Query.hpp
     # physics
     cuda/physics/ConstitutiveModel.hpp
     #

@@ -32,7 +32,6 @@ namespace zs {
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       key_t storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
-#if 1
       for (; !(storedKey == key_sentinel_v || storedKey == key);) {
         hashedentry = (hashedentry + 127) % _tableSize;
         storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
@@ -44,24 +43,6 @@ namespace zs {
         if (localno >= _tableSize - 20) printf("proximity!!! %d -> %d\n", localno, _tableSize);
         return localno;  ///< only the one that inserts returns the actual index
       }
-#else
-      while (!((storedKey = _table(_0, hashedentry)) == key)) {
-        if (storedKey == key_sentinel_v) {
-          storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
-        }
-        if (_table(_0, hashedentry) == key) {  ///< found entry
-          if (storedKey == key_sentinel_v) {   ///< new entry
-            auto localno = atomicAdd((unsigned_value_t *)_cnt, (unsigned_value_t)1);
-            _table(_1, hashedentry) = localno;
-            _activeKeys[localno] = key;
-            return localno;
-          }
-          return _table(_1, hashedentry);
-        }
-        hashedentry += 127;  ///< search next entry
-        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
-      }
-#endif
       return HashTableT::sentinel_v;
     }
     /// make sure no one else is inserting in the same time!

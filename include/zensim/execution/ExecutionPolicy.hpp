@@ -6,6 +6,7 @@
 #include "Concurrency.h"
 #include "zensim/TypeAlias.hpp"
 #include "zensim/tpls/magic_enum.hpp"
+#include "zensim/tpls/fmt/format.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 namespace zs {
@@ -26,6 +27,39 @@ namespace zs {
   constexpr const char *get_execution_space_tag(execspace_e execpol) {
     return execution_space_tag[magic_enum::enum_integer(execpol)];
   }
+
+  template <typename Func, typename ExecTag, typename Args, typename = void> struct ExecutionDispatcher {
+    static_assert(is_same_v<ExecTag, host_exec_tag> || is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, cuda_exec_tag> || is_same_v<ExecTag, hip_exec_tag>, "Unknown execution tag is passed to the ExecutionDispatcher!");
+
+    template <typename... Ts>
+    constexpr ExecutionDispatcher(Ts...) {}
+
+    auto operator()() {
+      throw std::runtime_error(fmt::format("build_neighbor_list(tag {}, ...) not implemented\n",
+                                         get_execution_space_tag(ExecTag{})));
+    }
+  };
+
+  template <typename Func, typename ExecTag, typename... Args>
+  struct ExecutionDispatcher<Func, ExecTag, std::tuple<Args&&...>, void_t<decltype(std::declval<Func>()(std::declval<ExecTag>(), std::declval<Args>()...))>> {
+    static_assert(is_same_v<ExecTag, host_exec_tag> || is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, cuda_exec_tag> || is_same_v<ExecTag, hip_exec_tag>, "Unknown execution tag is passed to the ExecutionDispatcher!");
+
+    template <typename F, typename Tag, typename... Ts>
+    constexpr ExecutionDispatcher(F&&f, Tag&&tag, Ts&&... args) : f{FWD(f)}, tag{FWD(tag)}, args{std::forward_as_tuple(FWD(args)...)} {}
+
+    auto operator()() {
+      return std::apply(f, std::tuple_cat(tag, args));
+    }
+
+    Func &f;
+    ExecTag tag;
+    std::tuple<Args&&...> args;
+  };
+
+  template <typename F, typename Tag, typename... Args>
+  ExecutionDispatcher(F&&, Tag, Args...) -> ExecutionDispatcher<remove_cvref_t<F>, remove_cvref_t<Tag>, std::tuple<Args&&...>>;
+
+  #define ExecutionDispatcher()
 
   struct DeviceHandle {
     NodeID nodeid{0};   ///<

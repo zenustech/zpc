@@ -13,13 +13,13 @@ namespace zs {
 
   template <typename ExecTag>
   auto build_neighbor_list(ExecTag tag, const GeneralParticles &particles, float dx)
-      -> decltype(build_neighbor_list_impl(tag, particles, dx),
-                  std::declval<GeneralIndexBuckets>()) {
+      -> remove_cvref_t<decltype(build_neighbor_list_impl(tag, particles, dx),
+                                 std::declval<GeneralIndexBuckets>())> {
     return build_neighbor_list_impl(tag, particles, dx);
   }
 
   template <typename ExecTag, typename... Args>
-  GeneralIndexBuckets build_neighbor_list(ExecTag, Args&&...) {
+  GeneralIndexBuckets build_neighbor_list(ExecTag, Args &&...) {
     throw std::runtime_error(fmt::format("build_neighbor_list(tag {}, ...) not implemented\n",
                                          get_execution_space_tag(ExecTag{})));
     return {};

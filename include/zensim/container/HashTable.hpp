@@ -134,7 +134,7 @@ namespace zs {
   protected:
     constexpr auto buildInstance(memsrc_e mre, ProcID devid, value_t capacity) const {
       using namespace ds;
-      uniform_domain<0, Tn, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
+      uniform_domain<0, value_t, 1, index_seq<0>> dom{wrapv<0>{}, capacity};
       hash_table_snode<key_t, value_t, status_t> node{
           ds::decorations<ds::soa>{}, dom,
           zs::make_tuple(wrapt<key_t>{}, wrapt<value_t>{}, wrapt<status_t>{}), vseq_t<1, 1, 1>{}};

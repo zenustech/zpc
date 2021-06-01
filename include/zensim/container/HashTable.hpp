@@ -11,10 +11,6 @@
 
 namespace zs {
 
-  /// Tn:       domain type
-  /// Key:      key type
-  /// Index:    hash table type (counter type)
-  /// Status:   atomic operation state
   template <typename Key, typename Index, typename Status> using hash_table_snode
       = ds::snode_t<ds::decorations<ds::soa>, ds::uniform_domain<0, Index, 1, index_seq<0>>,
                     zs::tuple<wrapt<Key>, wrapt<Index>, Status>, vseq_t<1, 1, 1>>;

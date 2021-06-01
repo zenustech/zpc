@@ -9,11 +9,12 @@ namespace zs {
   using uint = unsigned int;
   // using i16 = conditional_t<sizeof(short) == 2, short, int16_t>;
   using i16 = int16_t;
-  using i32 = int32_t;
-  using i64 = int64_t;
+  using i32 = std::conditional_t<sizeof(int) == 4, int, int32_t>;
+  using i64 = std::conditional_t<sizeof(long long int) == 8, long long int, int64_t>;
   using u16 = uint16_t;
-  using u32 = uint32_t;
-  using u64 = uint64_t;
+  using u32 = std::conditional_t<sizeof(unsigned int) == 4, unsigned int, uint32_t>;
+  using u64
+      = std::conditional_t<sizeof(unsigned long long int) == 8, unsigned long long int, uint64_t>;
   using f32 = float;
   using f64 = double;
 

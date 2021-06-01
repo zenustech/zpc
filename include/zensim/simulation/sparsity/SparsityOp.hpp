@@ -12,8 +12,8 @@ namespace zs {
   template <execspace_e space, typename Table> CleanSparsity(wrapv<space>, Table)
       -> CleanSparsity<HashTableProxy<space, Table>>;
 
-  template <execspace_e space, typename T, typename Table, typename X>
-  ComputeSparsity(wrapv<space>, T, int, Table, X)
+  template <execspace_e space, typename T, typename Table, typename X, typename... Args>
+  ComputeSparsity(wrapv<space>, T, int, Table, X, Args...)
       -> ComputeSparsity<T, HashTableProxy<space, Table>, VectorProxy<space, X>>;
 
   template <execspace_e space, typename Table>
@@ -28,16 +28,6 @@ namespace zs {
 
     constexpr void operator()(typename Table::value_t entry) noexcept {
       using namespace placeholders;
-#if 0
-      if (entry <= 2) {
-        std::intptr_t addr = reinterpret_cast<std::intptr_t>((void*)&table._table(_1, entry));
-        if (addr != table._table.template channel_offset<1>())
-          printf("WTF? entry: %d, addr: %lld, real: %lld, expected: %lld, calc: %lld\n", (int)entry,
-                 (long long int)addr, (long long int)addr - table._table.template address<0>(),
-                 (long long int)table._table.template channel_offset<1>(),
-                 (long long int)table._table.template element_offset(_1, 0, entry));
-      }
-#endif
       table._table(_0, entry) = Table::key_t::uniform(Table::key_scalar_sentinel_v);
       table._table(_1, entry) = Table::sentinel_v;  // necessary for query to terminate
       table._table(_2, entry) = -1;
@@ -52,26 +42,29 @@ namespace zs {
     using table_t = HashTableProxy<space, Table>;
     using positions_t = VectorProxy<space, X>;
 
-    explicit ComputeSparsity(wrapv<space>, T dx, int blockLen, Table& table, X& pos)
-        : dxinv{(T)1.0 / dx},
+    explicit ComputeSparsity(wrapv<space>, T dx, int blockLen, Table& table, X& pos,
+                             int offset = -2)
+        : table{proxy<space>(table)},
+          pos{proxy<space>(pos)},
+          dxinv{(T)1.0 / dx},
           blockLen{blockLen},
-          table{proxy<space>(table)},
-          pos{proxy<space>(pos)} {}
+          offset{offset} {}
 
     constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
       for (int d = 0; d < table_t::dim; ++d)
-        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) - 2;
+        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
       auto blockid = coord;
       for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
       blockid = blockid / blockLen;
       table.insert(blockid);
     }
 
-    T dxinv;
-    int blockLen;
     table_t table;
     positions_t pos;
+    T dxinv;
+    int blockLen;
+    int offset;
   };
 
   template <execspace_e space, typename Table>

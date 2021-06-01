@@ -24,13 +24,14 @@ namespace zs {
       IndexBuckets ret{};
       ret._table = _table.clone(mh);
       ret._indices = _indices.clone(mh);
+      ret._offsets = _offsets.clone(mh);
       ret._counts = _counts.clone(mh);
       ret._dx = _dx;
       return ret;
     }
 
     table_t _table{};
-    vector_t _indices{}, _counts{};
+    vector_t _indices{}, _offsets{}, _counts{};
     value_type _dx{1};
   };
 
@@ -47,10 +48,14 @@ namespace zs {
     constexpr IndexBucketsProxy() = default;
     ~IndexBucketsProxy() = default;
     IndexBucketsProxy(IndexBucketsT &ibs)
-        : table{ibs._table}, indices{ibs._indices}, counts{ibs._counts}, dx{ibs._dx} {}
+        : table{proxy<Space>(ibs._table)},
+          indices{proxy<Space>(ibs._indices)},
+          offsets{proxy<Space>(ibs._offsets)},
+          counts{proxy<Space>(ibs._counts)},
+          dx{ibs._dx} {}
 
     HashTableProxy<Space, table_t> table;
-    VectorProxy<Space, vector_t> indices, counts;
+    VectorProxy<Space, vector_t> indices, offsets, counts;
     value_type dx;
   };
 

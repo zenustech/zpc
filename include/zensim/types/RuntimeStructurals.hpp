@@ -169,22 +169,25 @@ namespace zs {
     /******************************************************************/
     /// for snode
     enum padding_policy : char { compact = 0, sum_pow2_align = 1, max_pow2_align = 2 };
-    template <padding_policy v>
-    struct padding_policy_t : wrapv<v> {}; 
+    template <padding_policy v> struct padding_policy_t : wrapv<v> {};
     template <padding_policy v, enable_if_t<(v >= compact && v <= max_pow2_align)> = 0>
-    padding_policy_t<v> snode_policy() { return padding_policy_t<v>{}; }
+    padding_policy_t<v> snode_policy() {
+      return padding_policy_t<v>{};
+    }
 
     enum layout_policy : char { aos = 10, soa = 11 };
-    template <layout_policy v>
-    struct layout_policy_t : wrapv<v> {}; 
+    template <layout_policy v> struct layout_policy_t : wrapv<v> {};
     template <layout_policy v, enable_if_t<(v >= aos && v <= soa)> = 0>
-    layout_policy_t<v> snode_policy() { return layout_policy_t<v>{}; }
+    layout_policy_t<v> snode_policy() {
+      return layout_policy_t<v>{};
+    }
 
     enum alloc_policy : char { alloc_ahead = 100, alloc_on_demand = 101 };
-    template <alloc_policy v>
-    struct alloc_policy_t : wrapv<v> {}; 
+    template <alloc_policy v> struct alloc_policy_t : wrapv<v> {};
     template <alloc_policy v, enable_if_t<(v >= alloc_ahead && v <= alloc_on_demand)> = 0>
-    alloc_policy_t<v> snode_policy() { return alloc_policy_t<v>{}; }
+    alloc_policy_t<v> snode_policy() {
+      return alloc_policy_t<v>{};
+    }
 
     struct default_decorator {
       static constexpr layout_policy layoutp{layout_policy::aos};
@@ -230,8 +233,8 @@ namespace zs {
       using type = static_decorator<DecorationSetter::layoutp, DecorationSetter::paddingp,
                                     DecorationSetter::allocp>;
     };
-    template <auto... Settings> using decorations =
-        typename decorator_extracter<decorator_compositor<vsetter<decltype(snode_policy<Settings>())>...>>::type;
+    template <auto... Settings> using decorations = typename decorator_extracter<
+        decorator_compositor<vsetter<decltype(snode_policy<Settings>())>...>>::type;
 
     /******************************************************************/
     /**                       snode signature                         */
@@ -405,7 +408,7 @@ namespace zs {
       template <std::size_t I> constexpr std::size_t element_stride() const noexcept {
         switch (allocp) {
           case alloc_ahead:
-            return (layoutp == aos ? element_storage_size() : attrib_size<chmap(I)>());
+            return (layoutp == aos ? element_storage_size() : attrib_size<I>());
           case alloc_on_demand:
             return sizeof(void *) * (layoutp == aos ? channel_count() : 1);
           default:
@@ -427,7 +430,8 @@ namespace zs {
             case alloc_ahead:
               return (layoutp == aos ? 1 : extent()) * (attrib_offset + attrib_size<I>() * chno);
             case alloc_on_demand:
-              return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);
+              return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno)
+                     * sizeof(void *);  // ?
             default:
               ZS_UNREACHABLE
           }
@@ -435,7 +439,7 @@ namespace zs {
           if constexpr (allocp == alloc_ahead)
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + attrib_size<I>() * chno);
           else if constexpr (allocp == alloc_on_demand)
-            return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);
+            return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);  // ?
           else
             ZS_UNREACHABLE
         }
@@ -567,7 +571,7 @@ namespace zs {
         if constexpr (is_same_v<Decorator, dynamic_decorator>) {
           switch (allocp) {
             case alloc_ahead:
-              return (layoutp == aos ? element_storage_size() : attrib_size<chmap(I)>());
+              return (layoutp == aos ? element_storage_size() : attrib_size<I>());
             case alloc_on_demand:
               return sizeof(void *) * (layoutp == aos ? channel_count() : 1);
             default:
@@ -575,7 +579,7 @@ namespace zs {
           }
         } else {
           if constexpr (allocp == alloc_ahead)
-            return (layoutp == aos ? element_storage_size() : attrib_size<chmap(I)>());
+            return (layoutp == aos ? element_storage_size() : attrib_size<I>());
           else if constexpr (allocp == alloc_on_demand)
             return sizeof(void *) * (layoutp == aos ? channel_count() : 1);
           else
@@ -598,7 +602,8 @@ namespace zs {
             case alloc_ahead:
               return (layoutp == aos ? 1 : extent()) * (attrib_offset + attrib_size<I>() * chno);
             case alloc_on_demand:
-              return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);
+              return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno)
+                     * sizeof(void *);  // ?
             default:
               ZS_UNREACHABLE
           }
@@ -606,7 +611,7 @@ namespace zs {
           if constexpr (allocp == alloc_ahead)
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + attrib_size<I>() * chno);
           else if constexpr (allocp == alloc_on_demand)
-            return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);
+            return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);  // ?
           else
             ZS_UNREACHABLE
         }

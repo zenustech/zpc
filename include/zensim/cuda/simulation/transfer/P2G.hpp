@@ -13,8 +13,7 @@ namespace zs {
   template <transfer_scheme_e scheme, typename ModelT, typename ParticlesT, typename TableT,
             typename GridBlocksT>
   struct P2GTransfer<scheme, ModelT, ParticlesProxy<execspace_e::cuda, ParticlesT>,
-                     HashTableProxy<execspace_e::cuda, TableT>,
-                     GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
+      HashTableProxy<execspace_e::cuda, TableT>, GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
     using model_t = ModelT;  ///< constitutive model
     using particles_t = ParticlesProxy<execspace_e::cuda, ParticlesT>;
     using partition_t = HashTableProxy<execspace_e::cuda, TableT>;
@@ -40,15 +39,15 @@ namespace zs {
       float const dx_inv = dxinv();
       if constexpr (particles_t::dim == 3) {
         float const D_inv = 4.f * dx_inv * dx_inv;
-        using ivec3 = vec<int, 3>;
-        using vec3 = vec<float, 3>;
-        using vec9 = vec<float, 9>;
-        using vec3x3 = vec<float, 3, 3>;
+        using ivec3 = vec<int, particles_t::dim>;
+        using vec3 = vec<float, particles_t::dim>;
+        using vec9 = vec<float, particles_t::dim * particles_t::dim>;
+        using vec3x3 = vec<float, particles_t::dim, particles_t::dim>;
 
         vec3 local_pos{particles.pos(parid)};
         vec3 vel{particles.vel(parid)};
         float mass = particles.mass(parid);
-        vec9 contrib, C{particles.C(parid)};
+        vec9 contrib{}, C{particles.C(parid)};
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);

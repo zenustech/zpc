@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/container/HashTable.hpp"
 #include "zensim/container/Vector.hpp"
+#include "zensim/execution/Atomics.hpp"
 #include "zensim/geometry/Structurefree.hpp"
 
 namespace zs {
@@ -8,6 +9,9 @@ namespace zs {
   template <typename Table> struct CleanSparsity;
   template <typename T, typename Table, typename Position> struct ComputeSparsity;
   template <typename Table> struct EnlargeSparsity;
+  template <typename T, typename Table, typename Position, typename Count> struct SpatiallyCount;
+  template <typename T, typename Table, typename Position, typename Indices>
+  struct SpatiallyDistribute;
 
   template <execspace_e space, typename Table> CleanSparsity(wrapv<space>, Table)
       -> CleanSparsity<HashTableProxy<space, Table>>;
@@ -19,6 +23,19 @@ namespace zs {
   template <execspace_e space, typename Table>
   EnlargeSparsity(wrapv<space>, Table, vec<int, Table::dim>, vec<int, Table::dim>)
       -> EnlargeSparsity<HashTableProxy<space, Table>>;
+
+  template <execspace_e space, typename T, typename Table, typename X, typename Count,
+            typename... Args>
+  SpatiallyCount(wrapv<space>, T, Table, X, Count, Args...)
+      -> SpatiallyCount<T, HashTableProxy<space, Table>, VectorProxy<space, X>,
+                        VectorProxy<space, Count>>;
+
+  template <execspace_e space, typename T, typename Table, typename X, typename Indices,
+            typename... Args>
+  SpatiallyDistribute(wrapv<space>, T, Table, X, Indices counts, Indices offsets, Indices indices,
+                      Args...)
+      -> SpatiallyDistribute<T, HashTableProxy<space, Table>, VectorProxy<space, X>,
+                             VectorProxy<space, Indices>>;
 
   /// implementations
   template <execspace_e space, typename Table> struct CleanSparsity<HashTableProxy<space, Table>> {
@@ -92,6 +109,79 @@ namespace zs {
 
     table_t table;
     vec<int, dim> lo, hi;
+  };
+
+  template <execspace_e space, typename T, typename Table, typename X, typename CountT>
+  struct SpatiallyCount<T, HashTableProxy<space, Table>, VectorProxy<space, X>,
+                        VectorProxy<space, CountT>> {
+    using table_t = HashTableProxy<space, Table>;
+    using positions_t = VectorProxy<space, X>;
+    using counters_t = VectorProxy<space, CountT>;
+
+    explicit SpatiallyCount(wrapv<space>, T dx, Table& table, X& pos, CountT& cnts,
+                            int blockLen = 1, int offset = 0)
+        : table{proxy<space>(table)},
+          pos{proxy<space>(pos)},
+          counts{proxy<space>(cnts)},
+          dxinv{(T)1.0 / dx},
+          blockLen{blockLen},
+          offset{offset} {}
+
+    constexpr void operator()(typename positions_t::size_type parid) noexcept {
+      vec<int, table_t::dim> coord{};
+      for (int d = 0; d < table_t::dim; ++d)
+        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
+      auto blockid = coord;
+      for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
+      blockid = blockid / blockLen;
+      atomic_add(wrapv<space>{}, &counts(table.query(blockid)), (typename CountT::value_type)1);
+    }
+
+    table_t table;
+    positions_t pos;
+    counters_t counts;
+    T dxinv;
+    int blockLen;
+    int offset;
+  };
+
+  template <execspace_e space, typename T, typename Table, typename X, typename Indices>
+  struct SpatiallyDistribute<T, HashTableProxy<space, Table>, VectorProxy<space, X>,
+                             VectorProxy<space, Indices>> {
+    using table_t = HashTableProxy<space, Table>;
+    using positions_t = VectorProxy<space, X>;
+    using indices_t = VectorProxy<space, Indices>;
+
+    explicit SpatiallyDistribute(wrapv<space>, T dx, Table& table, X& pos, Indices& cnts,
+                                 Indices& offsets, Indices& indices, int blockLen = 1,
+                                 int offset = 0)
+        : table{proxy<space>(table)},
+          pos{proxy<space>(pos)},
+          counts{proxy<space>(cnts)},
+          offsets{proxy<space>(offsets)},
+          indices{proxy<space>(indices)},
+          dxinv{(T)1.0 / dx},
+          blockLen{blockLen},
+          offset{offset} {}
+
+    constexpr void operator()(typename positions_t::size_type parid) noexcept {
+      vec<int, table_t::dim> coord{};
+      for (int d = 0; d < table_t::dim; ++d)
+        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
+      auto blockid = coord;
+      for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
+      blockid = blockid / blockLen;
+      auto cellno = table.query(blockid);
+      auto dst = atomic_add(wrapv<space>{}, &counts(cellno), (typename Indices::value_type)1);
+      indices(offsets(cellno) + dst) = parid;
+    }
+
+    table_t table;
+    positions_t pos;
+    indices_t counts, offsets, indices;
+    T dxinv;
+    int blockLen;
+    int offset;
   };
 
 }  // namespace zs

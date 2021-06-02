@@ -25,16 +25,16 @@ namespace zs {
       auto &table = indexBuckets._table;
       table = {pars.size(), memLoc, did};
 
-      if constexpr (false) {
+      if constexpr (true) {
         auto node = table.self().node();
-        auto indicies = node.chsrc;
+        auto indices = node.chsrc;
         auto chmap = node.chmap;
         for (int i = 0; i < 3; ++i) fmt::print("{}\t", chmap[i]);
         fmt::print("done chmap\n");
         fmt::print("ptr size: {} vs {} vs {}\n", sizeof(void *), sizeof(uintptr_t),
                    sizeof(std::uintptr_t));
         fmt::print("alignment: {} ", node.alignment());
-        for (int i = 0; i < 3; ++i) fmt::print(", {}", indicies(i));
+        for (int i = 0; i < 3; ++i) fmt::print(", {}", indices(i));
         fmt::print("\ntableSize: {}, totalBytes: {}, eleStride<1>: {}, eleSize: {}\n",
                    table._tableSize, node.size(), node.template element_stride<1>(),
                    node.element_size());
@@ -60,30 +60,27 @@ namespace zs {
       auto cudaPol = cuda_exec().device(did).sync(true);
       cudaPol({table._tableSize}, CleanSparsity{exec_cuda, table});
       cudaPol({pars.size()},
-              ComputeSparsity{exec_cuda, dx, 1, table, const_cast<particles_t &>(pars).X, (int)-1});
+              ComputeSparsity{exec_cuda, dx, 1, table, const_cast<particles_t &>(pars).X, -1});
       cudaPol({table.size()}, EnlargeSparsity{exec_cuda, table, table_t::key_t ::uniform(0),
                                               table_t::key_t ::uniform(3)});
-      // indices, counts
+      /// counts, offsets, indices
+      // counts
       auto &counts = indexBuckets._counts;
       auto numCells = table.size();
       counts = vector_t{(std::size_t)numCells, memLoc, did};
       memset(mem_device, counts.data(), 0, sizeof(typename vector_t::value_type) * counts.size());
-#if 0
+      auto tmp = counts;  // zero-ed array
       cudaPol({pars.size()},
-              [tab = proxy<execspace_e::cuda>(table), cnts = proxy<execspace_e::cuda>(counts),
-               pos = proxy<execspace_e::cuda>(pars.X),
-               dxinv = 1.0 / dx] __device__(typename particles_t::size_type parid) {
-                vec<int, dim> coord{};
-                for (int d = 0; d < dim; ++d) coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5);
-                auto cellno = tab.query(coord);
-                atomicAdd(&cnts(parid), 1);
-              });
-
+              SpatiallyCount{exec_cuda, dx, table, const_cast<particles_t &>(pars).X, counts, 0});
+      // offsets
       auto &offsets = indexBuckets._offsets;
       offsets = vector_t{(std::size_t)numCells, memLoc, did};
       exclusive_scan(cudaPol, counts.begin(), counts.end(), offsets.begin());
-#endif
-
+      // indices
+      auto &indices = indexBuckets._indices;
+      indices = vector_t{pars.size(), memLoc, did};
+      cudaPol({pars.size()}, SpatiallyCount{exec_cuda, dx, table, const_cast<particles_t &>(pars).X,
+                                            tmp, offsets, indices});
       return indexBuckets;
     })(particles);
   }

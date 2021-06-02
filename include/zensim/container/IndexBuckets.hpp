@@ -30,6 +30,9 @@ namespace zs {
       return ret;
     }
 
+    constexpr auto numEntries() const noexcept { return _indices.size(); }
+    constexpr auto numBuckets() const noexcept { return _counts.size() - 1; }
+
     table_t _table{};
     vector_t _indices{}, _offsets{}, _counts{};
     value_type _dx{1};
@@ -53,6 +56,10 @@ namespace zs {
           offsets{proxy<Space>(ibs._offsets)},
           counts{proxy<Space>(ibs._counts)},
           dx{ibs._dx} {}
+
+    constexpr auto coord(const index_type bucketno) const noexcept {
+      return table._activeKeys[bucketno];
+    }
 
     HashTableProxy<Space, table_t> table;
     VectorProxy<Space, vector_t> indices, offsets, counts;

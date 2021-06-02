@@ -25,7 +25,7 @@ namespace zs {
       auto &table = indexBuckets._table;
       table = {pars.size(), memLoc, did};
 
-      if constexpr (true) {
+      if constexpr (false) {
         auto node = table.self().node();
         auto indices = node.chsrc;
         auto chmap = node.chmap;
@@ -60,18 +60,16 @@ namespace zs {
       auto cudaPol = cuda_exec().device(did).sync(true);
       cudaPol({table._tableSize}, CleanSparsity{exec_cuda, table});
       cudaPol({pars.size()},
-              ComputeSparsity{exec_cuda, dx, 1, table, const_cast<particles_t &>(pars).X, -1});
-      cudaPol({table.size()}, EnlargeSparsity{exec_cuda, table, table_t::key_t ::uniform(0),
-                                              table_t::key_t ::uniform(3)});
+              ComputeSparsity{exec_cuda, dx, 1, table, const_cast<particles_t &>(pars).X, 0});
       /// counts, offsets, indices
       // counts
       auto &counts = indexBuckets._counts;
-      auto numCells = table.size();
+      auto numCells = table.size() + 1;
       counts = vector_t{(std::size_t)numCells, memLoc, did};
       memset(mem_device, counts.data(), 0, sizeof(typename vector_t::value_type) * counts.size());
       auto tmp = counts;  // zero-ed array
-      cudaPol({pars.size()},
-              SpatiallyCount{exec_cuda, dx, table, const_cast<particles_t &>(pars).X, counts, 0});
+      cudaPol({pars.size()}, SpatiallyCount{exec_cuda, dx, table, const_cast<particles_t &>(pars).X,
+                                            counts, 1, 0});
       // offsets
       auto &offsets = indexBuckets._offsets;
       offsets = vector_t{(std::size_t)numCells, memLoc, did};
@@ -79,8 +77,9 @@ namespace zs {
       // indices
       auto &indices = indexBuckets._indices;
       indices = vector_t{pars.size(), memLoc, did};
-      cudaPol({pars.size()}, SpatiallyCount{exec_cuda, dx, table, const_cast<particles_t &>(pars).X,
-                                            tmp, offsets, indices});
+      cudaPol({pars.size()},
+              SpatiallyDistribute{exec_cuda, dx, table, const_cast<particles_t &>(pars).X, tmp,
+                                  offsets, indices, 1, 0});
       return indexBuckets;
     })(particles);
   }

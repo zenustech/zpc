@@ -9,7 +9,7 @@ namespace zs {
   constexpr T atomic_add(ExecTag, T* dest, const T val) noexcept {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
 #if ZS_ENABLE_CUDA
-      return atomicAdd(dest, val);
+      return atomicAdd((std::make_unsigned_t<T>*)dest, (std::make_unsigned_t<T>)val);
 #endif
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;

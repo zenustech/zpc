@@ -40,7 +40,8 @@ namespace zs {
         auto localno = atomicAdd((unsigned_value_t *)_cnt, (unsigned_value_t)1);
         _table(_1, hashedentry) = localno;
         _activeKeys[localno] = key;
-        if (localno >= _tableSize - 20) printf("proximity!!! %d -> %d\n", localno, _tableSize);
+        if (localno >= _tableSize - 20)
+          printf("proximity!!! %d -> %d\n", (int)localno, (int)_tableSize);
         return localno;  ///< only the one that inserts returns the actual index
       }
       return HashTableT::sentinel_v;

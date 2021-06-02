@@ -14,10 +14,10 @@ namespace zs {
                                    / blocklen / blocklen / blocklen,
                                mh.memspace(), mh.devid()};
     auto cudaPol = cuda_exec().device(0);
-    cudaPol({ret._tableSize}, CleanSparsity{wrapv<execspace_e::cuda>{}, ret});
+    cudaPol({ret._tableSize}, CleanSparsity{exec_cuda, ret});
 
     match([&ret, &cudaPol, dx, blocklen](auto &p) {
-      cudaPol({p.size()}, ComputeSparsity{wrapv<execspace_e::cuda>{}, dx, blocklen, ret, p.X});
+      cudaPol({p.size()}, ComputeSparsity{exec_cuda, dx, blocklen, ret, p.X});
     })(particles);
     return ret;
   }

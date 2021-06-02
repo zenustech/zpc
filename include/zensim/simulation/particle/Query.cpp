@@ -8,7 +8,7 @@ namespace zs {
                                                float dx) {
     return match([](const auto &pars) -> GeneralIndexBuckets {
       static constexpr int dim = remove_cvref_t<decltype(pars)>::dim;
-      IndexBuckets<dim, 8> indexBuckets{};
+      IndexBuckets<dim> indexBuckets{};
       return indexBuckets;
     })(particles);
   }

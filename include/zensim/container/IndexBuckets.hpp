@@ -8,9 +8,8 @@
 
 namespace zs {
 
-  template <int dim_ = 3, int lane_width_ = 32> struct IndexBuckets {
+  template <int dim_ = 3> struct IndexBuckets {
     static constexpr int dim = dim_;
-    static constexpr int lane_width = lane_width_;
     using value_type = f32;
     using index_type = i64;
     using TV = vec<value_type, dim>;
@@ -38,7 +37,7 @@ namespace zs {
     value_type _dx{1};
   };
 
-  using GeneralIndexBuckets = variant<IndexBuckets<3, 32>, IndexBuckets<3, 8>>;
+  using GeneralIndexBuckets = variant<IndexBuckets<3>>;
 
   template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsProxy {
     using value_type = typename IndexBucketsT::value_type;
@@ -66,9 +65,8 @@ namespace zs {
     value_type dx;
   };
 
-  template <execspace_e ExecSpace, int dim, int lane_width>
-  decltype(auto) proxy(IndexBuckets<dim, lane_width> &indexBuckets) {
-    return IndexBucketsProxy<ExecSpace, IndexBuckets<dim, lane_width>>{indexBuckets};
+  template <execspace_e ExecSpace, int dim> decltype(auto) proxy(IndexBuckets<dim> &indexBuckets) {
+    return IndexBucketsProxy<ExecSpace, IndexBuckets<dim>>{indexBuckets};
   }
 
 }  // namespace zs

@@ -13,7 +13,7 @@ namespace zs {
     return match([dx](const auto &pars) -> GeneralIndexBuckets {
       using particles_t = remove_cvref_t<decltype(pars)>;
       static constexpr int dim = particles_t::dim;
-      using indexbuckets_t = IndexBuckets<dim, 32>;
+      using indexbuckets_t = IndexBuckets<dim>;
       using vector_t = typename indexbuckets_t::vector_t;
       using table_t = typename indexbuckets_t::table_t;
       const auto memLoc = pars.space();

@@ -22,7 +22,7 @@ namespace zs {
     constexpr T getSignedDistance(const TV &X) const noexcept { return _normal.dot(X - _origin); }
     constexpr TV getNormal(const TV &X) const noexcept { return _normal; }
     constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
-    constexpr decltype(auto) getBoundingBox() const noexcept {
+    constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_origin, _origin);
     }
 
@@ -63,7 +63,9 @@ namespace zs {
       return diff.normalized();
     }
     constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
-    constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
+    constexpr decltype(auto) do_getBoundingBox() const noexcept {
+      return std::make_tuple(_min, _max);
+    }
 
   private:
     TV _min{}, _max{};
@@ -87,7 +89,7 @@ namespace zs {
       return outward_normal.normalized();
     }
     constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
-    constexpr decltype(auto) getBoundingBox() const noexcept {
+    constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_center - _radius, _center + _radius);
     }
 

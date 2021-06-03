@@ -158,23 +158,21 @@ namespace zs {
     constexpr int dim = 3;
     using TV = vec<float, dim>;
     using IV = vec<int, dim>;
-    using PhiGridT = typename openvdb::FloatGrid;
-    using PhiTreeT = typename PhiGridT::TreeType;
-    // using VelGridT = typename openvdb::Grid<
+    using PhiTreeT = typename openvdb::FloatGrid::TreeType;
+    // using openvdb::Vec3fGrid = typename openvdb::Grid<
     //    typename openvdb::tree::Tree4<openvdb::Vec3f, 5, 4, 3>::Type>;
-    using VelGridT = typename openvdb::Vec3fGrid;
-    using VelTreeT = typename VelGridT::TreeType;
+    using VelTreeT = typename openvdb::Vec3fGrid::TreeType;
 
     openvdb::io::File file(fn);
     file.open();
     openvdb::GridPtrVecPtr my_grids = file.getGrids();
     file.close();
-    typename PhiGridT::Ptr phigrid;
-    typename VelGridT::Ptr velgrid;
+    typename openvdb::FloatGrid::Ptr phigrid;
+    typename openvdb::Vec3fGrid::Ptr velgrid;
     for (openvdb::GridPtrVec::iterator iter = my_grids->begin(); iter != my_grids->end(); ++iter) {
-      if ((*iter)->isType<PhiGridT>()) {
-        if (openvdb::gridPtrCast<PhiGridT>(*iter)->metaValue<std::string>("name") == "surface") {
-          phigrid = openvdb::gridPtrCast<PhiGridT>(*iter);
+      if ((*iter)->isType<openvdb::FloatGrid>()) {
+        if (openvdb::gridPtrCast<openvdb::FloatGrid>(*iter)->metaValue<std::string>("name") == "surface") {
+          phigrid = openvdb::gridPtrCast<openvdb::FloatGrid>(*iter);
           for (openvdb::MetaMap::MetaIterator it = phigrid->beginMeta(); it != phigrid->endMeta();
                ++it) {
             const std::string &name = it->first;
@@ -183,9 +181,9 @@ namespace zs {
             std::cout << name << " = " << valueAsString << std::endl;
           }
         }
-      } else if ((*iter)->isType<VelGridT>()) {
-        if (openvdb::gridPtrCast<VelGridT>(*iter)->metaValue<std::string>("name") == "vel") {
-          velgrid = openvdb::gridPtrCast<VelGridT>(*iter);
+      } else if ((*iter)->isType<openvdb::Vec3fGrid>()) {
+        if (openvdb::gridPtrCast<openvdb::Vec3fGrid>(*iter)->metaValue<std::string>("name") == "vel") {
+          velgrid = openvdb::gridPtrCast<openvdb::Vec3fGrid>(*iter);
           for (openvdb::MetaMap::MetaIterator it = velgrid->beginMeta(); it != velgrid->endMeta();
                ++it) {
             const std::string &name = it->first;

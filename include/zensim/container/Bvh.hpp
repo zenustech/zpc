@@ -3,6 +3,7 @@
 #include "TileVector.hpp"
 #include "Vector.hpp"
 #include "zensim/types/Polymorphism.h"
+#include "zensim/types/SmallVector.hpp"
 
 namespace zs {
 
@@ -17,17 +18,26 @@ namespace zs {
     using index_type = i64;
     using TV = vec<float_type, dim>;
     using IV = vec<integer_type, dim>;
+    using vector_t = Vector<value_type>;
+    using indices_t = Vector<integer_type>;
     using tilevector_t = TileVector<value_type, lane_width>;
 
     /// preserved properties
-    static constexpr const char *prop_names[] = {""};
-    static constexpr char prop_size[] = {};
+    struct IntNodes {
+      // LC, RC, PAR, RCD, MARK, RANGEX, RANGEY
+      static constexpr PropertyTag properties[] = {{"indices", 1}, {"lca", 1}, {"upper", dim}};
+    };
+    struct ExtNodes {
+      // PAR, LCA, RCL, STIDX, SEGLEN
+      static constexpr PropertyTag properties[] = {{"indices", 1}, {"lower", dim}, {"upper", dim}};
+    };
 
     constexpr LBvh() = default;
 
     constexpr LBvh() : tree{} { ; }
 
     tilevector_t tree;
+    indices_t primitiveIndices;
   };
 #endif
 

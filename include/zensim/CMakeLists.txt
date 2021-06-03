@@ -66,8 +66,10 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     execution/Stacktrace.hpp
     execution/SyncPrimitive.hpp
     execution/Atomics.hpp
+    execution/Intrinsics.hpp
     # geometry
     geometry/AnalyticLevelSet.h
+    geometry/BoundingVolumeInterface.hpp
     geometry/Collider.h
     geometry/GenericLevelSet.h
     geometry/GeometrySampler.h

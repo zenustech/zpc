@@ -1,23 +1,23 @@
 #pragma once
-#include "zensim/math/Vec.h"
-#include "zensim/types/Object.h"
+#include "BoundingVolumeInterface.hpp"
 
 namespace zs {
 
-  template <typename Derived, typename T, int dim> struct LevelSetInterface {
-    using TV = vec<T, dim>;
-    constexpr T getSignedDistance(const TV &X) const noexcept {
-      return self().getSignedDistance(X);
-    }
-    constexpr TV getNormal(const TV &X) const noexcept { return self().getNormal(X); }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept {
-      return self().getMaterialVelocity(X);
-    }
-    constexpr decltype(auto) getBoundingBox() const noexcept { return self().getBoundingBox(); }
+  template <typename Derived, typename T, int dim> struct LevelSetInterface
+      : BoundingVolumeInterface<Derived, T, dim> {
+    using base_t = BoundingVolumeInterface<Derived, T, dim>;
+    using TV = typename base_t::TV;
 
-  protected:
-    constexpr auto &self() noexcept { return static_cast<Derived &>(*this); }
-    constexpr const auto &self() const noexcept { return static_cast<const Derived &>(*this); }
+    constexpr T getSignedDistance(const TV &X) const noexcept {
+      return selfPtr()->getSignedDistance(X);
+    }
+    constexpr TV getNormal(const TV &X) const noexcept { return selfPtr()->getNormal(X); }
+    constexpr TV getMaterialVelocity(const TV &X) const noexcept {
+      return selfPtr()->getMaterialVelocity(X);
+    }
+    using base_t::getBoundingBox;
+    using base_t::getBoxCenter;
+    using base_t::selfPtr;
   };
 
 }  // namespace zs

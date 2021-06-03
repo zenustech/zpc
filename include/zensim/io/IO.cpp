@@ -8,12 +8,6 @@
 
 namespace zs {
 
-  void stream_binary_file(std::string filename, std::size_t size, void *ptr) {
-    auto f = fopen(filename.c_str(), "rb");
-    std::fread((char *)ptr, sizeof(char), size, f);
-    std::fclose(f);
-  }
-
   std::string file_get_content(std::string const &path) {
     std::ifstream fin(path);
     std::string content;

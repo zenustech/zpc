@@ -117,6 +117,7 @@ namespace zs {
     using table_t = HashTableProxy<space, Table>;
     using positions_t = VectorProxy<space, X>;
     using counters_t = VectorProxy<space, CountT>;
+    using counter_interger_type = std::make_unsigned_t<typename CountT::value_type>;
 
     explicit SpatiallyCount(wrapv<space>, T dx, Table& table, X& pos, CountT& cnts,
                             int blockLen = 1, int offset = 0)
@@ -134,7 +135,10 @@ namespace zs {
       auto blockid = coord;
       for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
       blockid = blockid / blockLen;
-      atomic_add(wrapv<space>{}, &counts(table.query(blockid)), (typename CountT::value_type)1);
+      /// guarantee counts are non-negative, thus perform this explicit type conversion for cuda
+      /// atomic overload
+      atomic_add(wrapv<space>{}, (counter_interger_type*)&counts(table.query(blockid)),
+                 (counter_interger_type)1);
     }
 
     table_t table;
@@ -151,6 +155,7 @@ namespace zs {
     using table_t = HashTableProxy<space, Table>;
     using positions_t = VectorProxy<space, X>;
     using indices_t = VectorProxy<space, Indices>;
+    using counter_interger_type = std::make_unsigned_t<typename Indices::value_type>;
 
     explicit SpatiallyDistribute(wrapv<space>, T dx, Table& table, X& pos, Indices& cnts,
                                  Indices& offsets, Indices& indices, int blockLen = 1,
@@ -172,7 +177,10 @@ namespace zs {
       for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
       blockid = blockid / blockLen;
       auto cellno = table.query(blockid);
-      auto dst = atomic_add(wrapv<space>{}, &counts(cellno), (typename Indices::value_type)1);
+      /// guarantee counts are non-negative, thus perform this explicit type conversion for cuda
+      /// atomic overload
+      auto dst = atomic_add(wrapv<space>{}, (counter_interger_type*)&counts(cellno),
+                            (counter_interger_type)1);
       indices(offsets(cellno) + dst) = parid;
     }
 

@@ -331,21 +331,19 @@ namespace zs {
     constexpr int dim = 3;
     using TV = vec<float, dim>;
     using IV = vec<int, dim>;
-    using GridT = typename openvdb::FloatGrid;
-    using TreeT = typename GridT::TreeType;
-    using VelGridT = typename openvdb::FloatGrid;
-    using VelTreeT = typename VelGridT::TreeType;
+    using TreeT = typename openvdb::FloatGrid::TreeType;
+    using VelTreeT = typename openvdb::Vec3fGrid::TreeType;
 
     openvdb::io::File file(fn);
     file.open();
     openvdb::GridPtrVecPtr my_grids = file.getGrids();
     file.close();
     int count = 0;
-    typename GridT::Ptr grid;
+    typename openvdb::FloatGrid::Ptr grid;
     for (openvdb::GridPtrVec::iterator iter = my_grids->begin(); iter != my_grids->end(); ++iter) {
       openvdb::GridBase::Ptr it = *iter;
-      if ((*iter)->isType<GridT>()) {
-        grid = openvdb::gridPtrCast<GridT>(*iter);
+      if ((*iter)->isType<openvdb::FloatGrid>()) {
+        grid = openvdb::gridPtrCast<openvdb::FloatGrid>(*iter);
         count++;
         /// display meta data
         for (openvdb::MetaMap::MetaIterator it = grid->beginMeta(); it != grid->endMeta(); ++it) {
@@ -354,8 +352,8 @@ namespace zs {
           std::string valueAsString = value->str();
           std::cout << name << " = " << valueAsString << std::endl;
         }
-      } else if ((*iter)->isType<VelGridT>()) {
-        auto velgrid = openvdb::gridPtrCast<VelGridT>((*iter));
+      } else if ((*iter)->isType<openvdb::Vec3fGrid>()) {
+        auto velgrid = openvdb::gridPtrCast<openvdb::Vec3fGrid>((*iter));
         for (openvdb::MetaMap::MetaIterator it = velgrid->beginMeta(); it != velgrid->endMeta();
              ++it) {
           const std::string &name = it->first;

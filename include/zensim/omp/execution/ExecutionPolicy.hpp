@@ -17,7 +17,7 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
       for (auto &&it : range)
-#pragma omp task
+#pragma omp task firstprivate(it)
       {
         if constexpr (fts::arity == 0) {
           f();
@@ -42,7 +42,7 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
         for (auto &&it : range)
-#pragma omp task
+#pragma omp task firstprivate(it)
         {
           const auto args = shuffle(indices, std::tuple_cat(prefixIters, std::make_tuple(it)));
           (std::apply(FWD(bodies), args), ...);
@@ -52,7 +52,7 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
         for (auto &&it : range)
-#pragma omp task
+#pragma omp task firstprivate(it)
         {
           policy.template exec<I + 1>(indices, std::tuple_cat(prefixIters, std::make_tuple(it)),
                                       policies, ranges, bodies...);

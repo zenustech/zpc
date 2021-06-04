@@ -170,7 +170,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/math/matrix/Matrix.hpp # recent
     cuda/execution/ExecutionPolicy.cuh
     # container
-    cuda/container/HashTable.hpp
     cuda/container/LookupTable.cuh
     cuda/container/MatrixHash.cuh
     cuda/container/Vector.hpp # recent
@@ -186,7 +185,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     # physics
     cuda/physics/ConstitutiveModel.hpp
     #
-    cuda/geometry/SparseLevelSet.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/execution/ExecutionPolicy.hpp

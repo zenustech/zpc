@@ -151,9 +151,8 @@ namespace zs {
 
   template <execspace_e, typename HashTableT, typename = void> struct HashTableProxy;
 
-#if 0
   /// proxy to work within each backends
-  template <execspace_e space, typename HashTableT, typename = void> struct HashTableProxy {
+  template <execspace_e space, typename HashTableT> struct HashTableProxy<space, HashTableT> {
     static constexpr int dim = HashTableT::dim;
     static constexpr auto exectag = wrapv<space>{};
     using Tn = typename HashTableT::Tn;
@@ -202,6 +201,18 @@ namespace zs {
         if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
       }
     }
+    template <execspace_e S = space, enable_if_t<S == execspace_e::host> = 0> void clear() {
+      using namespace placeholders;
+      // reset counter
+      *_cnt = 0;
+      // reset table
+      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      for (value_t entry = 0; entry < _tableSize; ++entry) {
+        _table(_0, entry) = key_sentinel_v;
+        _table(_1, entry) = HashTableT::sentinel_v;
+        _table(_2, entry) = HashTableT::status_sentinel_v;
+      }
+    }
 
     table_t _table;
     const value_t _tableSize;
@@ -221,13 +232,13 @@ namespace zs {
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
       key_t return_val{};
       int done = 0;
-      unsigned int mask = active_mask(execTag); // __activemask();
-      unsigned int active = ballot_sync(execTag, mask, 1); //__ballot_sync(mask, 1);
+      unsigned int mask = active_mask(execTag);             // __activemask();
+      unsigned int active = ballot_sync(execTag, mask, 1);  //__ballot_sync(mask, 1);
       unsigned int done_active = 0;
       while (active != done_active) {
         if (!done) {
           if (atomic_cas(execTag, lock, HashTableT::status_sentinel_v, (status_t)0)) {
-            thread_fence(execTag);// __threadfence();
+            thread_fence(execTag);  // __threadfence();
             /// <deprecating volatile - JF Bastien - CppCon2019>
             /// access non-volatile using volatile semantics
             /// use cast
@@ -237,12 +248,12 @@ namespace zs {
               for (int d = 0; d < dim; ++d) (void)(dest->data()[d] = val[d]);
               // (void)(*dest = val);
             }
-            thread_fence(execTag);// __threadfence();
+            thread_fence(execTag);  // __threadfence();
             atomic_exch(execTag, lock, HashTableT::status_sentinel_v);
             done = 1;
           }
         }
-        done_active = ballot_sync(execTag, mask, done); //__ballot_sync(mask, done);
+        done_active = ballot_sync(execTag, mask, done);  //__ballot_sync(mask, done);
       }
       return return_val;
     }
@@ -255,8 +266,8 @@ namespace zs {
       bool done = false;
       while (!done) {
         if (atomic_cas(execTag, lock, HashTableT::status_sentinel_v, (status_t)0)) {
-          (void)(return_val = *const_cast<key_t*>(dest));
-          if (return_val == key_sentinel_v) 
+          (void)(return_val = *const_cast<key_t *>(dest));
+          if (return_val == key_sentinel_v)
             for (int d = 0; d < dim; ++d) (void)(dest->data()[d] = val[d]);
           atomic_exch(execTag, lock, HashTableT::status_sentinel_v);
           done = true;
@@ -264,75 +275,6 @@ namespace zs {
       }
       return return_val;
     }
-  };
-#endif
-
-  template <typename HashTableT> struct HashTableProxy<execspace_e::host, HashTableT> {
-    static constexpr int dim = HashTableT::dim;
-    using Tn = typename HashTableT::Tn;
-    using table_t = typename HashTableT::base_t;
-    using key_t = typename HashTableT::key_t;
-    using value_t = typename HashTableT::value_t;
-    using status_t = typename HashTableT::status_t;
-
-    constexpr HashTableProxy() = default;
-    ~HashTableProxy() = default;
-    explicit HashTableProxy(HashTableT &table)
-        : _table{table.self()},
-          _tableSize{table._tableSize},
-          _cnt{table._cnt.data()},
-          _activeKeys{table._activeKeys.data()} {}
-
-    void clear() {
-      using namespace placeholders;
-      // reset counter
-      *_cnt = 0;
-      // reset table
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
-      for (value_t entry = 0; entry < _tableSize; ++entry) {
-        _table(_0, entry) = key_sentinel_v;
-        _table(_1, entry) = HashTableT::sentinel_v;
-      }
-    }
-
-    value_t insert(const key_t &key) {
-      using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
-      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
-      auto storedKey = _table(_0, hashedentry);
-      for (; !(storedKey == key_sentinel_v || storedKey == key);) {
-        hashedentry = (hashedentry + 127) % _tableSize;
-        storedKey = _table(_0, hashedentry);
-      }
-      auto localno = (*_cnt)++;
-      _table(_0, hashedentry) = key;
-      _table(_1, hashedentry) = localno;
-      _activeKeys[localno] = key;
-      if (localno >= _tableSize - 20)
-        printf("proximity!!! %lld -> %lld\n", (long long int)localno, (long long int)_tableSize);
-      return localno;  ///< only the one that inserts returns the actual index
-    }
-    value_t query(const key_t &key) const {
-      using namespace placeholders;
-      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
-      while (true) {
-        if (key == (key_t)_table(_0, hashedentry)) return _table(_1, hashedentry);
-        if (_table(_1, hashedentry) == HashTableT::sentinel_v) return HashTableT::sentinel_v;
-        hashedentry += 127;  ///< search next entry
-        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
-      }
-    }
-
-  protected:
-    constexpr value_t do_hash(const key_t &key) const {
-      std::size_t ret = key[0];
-      for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
-      return static_cast<value_t>(ret);
-    }
-    table_t _table;
-    const value_t _tableSize;
-    value_t *_cnt;
-    key_t *_activeKeys;
   };
 
   template <execspace_e ExecSpace, typename Tn, int dim, typename Index>

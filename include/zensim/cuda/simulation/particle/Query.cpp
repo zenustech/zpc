@@ -1,7 +1,6 @@
 #include "Query.hpp"
 
 #include "zensim/container/HashTable.hpp"
-#include "zensim/cuda/container/HashTable.hpp"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/simulation/sparsity/SparsityOp.hpp"

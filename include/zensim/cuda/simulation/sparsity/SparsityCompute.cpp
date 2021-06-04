@@ -1,7 +1,7 @@
 #include "SparsityCompute.hpp"
 
+#include "zensim/container/HashTable.hpp"
 #include "zensim/container/Vector.hpp"
-#include "zensim/cuda/container/HashTable.hpp"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/simulation/sparsity/SparsityOp.hpp"
 

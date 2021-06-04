@@ -70,4 +70,79 @@ namespace zs {
   }
 #endif
 
+  // ref: https://graphics.stanford.edu/~seander/bithacks.html
+
+  /// count leading zeros
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __device__ int count_lz(ExecTag, T x) {
+#if defined(__CUDACC__)
+    constexpr auto nbytes = sizeof(T);
+    if constexpr (sizeof(int) == nbytes)
+      return __clz((int)x);
+    else if constexpr (sizeof(long long int) == nbytes)
+      return __clzll((long long int)x);
+#endif
+    throw std::runtime_error(fmt::format("count_lz(tag {}, {} bytes) not viable\n",
+                                         get_execution_space_tag(ExecTag{}), sizeof(T)));
+  }
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
+  constexpr int count_lz(ExecTag, T x) {
+    return (int)count_leading_zeros(x);
+  }
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
+  constexpr int count_lz(ExecTag, T x) {
+    constexpr auto nbytes = sizeof(T);
+    if (x == (T)0) return nbytes * 8;
+    if constexpr (sizeof(unsigned int) == nbytes)
+      return __builtin_clz((unsigned int)x);
+    else if constexpr (sizeof(unsigned long) == nbytes)
+      return __builtin_clzl((unsigned long)x);
+    else if constexpr (sizeof(unsigned long long) == nbytes)
+      return __builtin_clzll((unsigned long long)x);
+    throw std::runtime_error(fmt::format("count_lz(tag {}, {} bytes) not viable\n",
+                                         get_execution_space_tag(ExecTag{}), sizeof(T)));
+  }
+
+  /// reverse bits
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __device__ T reverse_bits(ExecTag, T x) {
+#if defined(__CUDACC__)
+    constexpr auto nbytes = sizeof(T);
+    if constexpr (sizeof(unsigned int) == nbytes)
+      return __brev((unsigned int)x);
+    else if constexpr (sizeof(unsigned long long int) == nbytes)
+      return __brevll((unsigned long long int)x);
+#endif
+    throw std::runtime_error(fmt::format("reverse_bits(tag {}, {} bytes) not viable\n",
+                                         get_execution_space_tag(ExecTag{}), sizeof(T)));
+  }
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
+  constexpr T reverse_bits(ExecTag, T x) {
+    return binary_reverse(x);
+  }
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
+  constexpr T reverse_bits(ExecTag, T x) {
+    constexpr auto nbytes = sizeof(T);
+    if (x == (T)0) return 0;
+    using Val = std::make_unsigned_t<T>;
+    Val tmp{}, ret{};
+    if constexpr (sizeof(unsigned short) == nbytes)
+      tmp = (Val)__builtin_bswap16((unsigned short)x);
+    else if constexpr (sizeof(unsigned int) == nbytes)
+      tmp = (Val)__builtin_bswap32((unsigned int)x);
+    else if constexpr (sizeof(unsigned long long) == nbytes)
+      tmp = (Val)__builtin_bswap64((unsigned long long)x);
+    else
+      throw std::runtime_error(fmt::format("reverse_bits(tag {}, {} bytes) not viable\n",
+                                           get_execution_space_tag(ExecTag{}), sizeof(T)));
+    // reverse within each byte
+    for (int bitoffset = 0; tmp; bitoffset += 8) {
+      unsigned char b = tmp & 0xff;
+      b = ((u64)b * 0x0202020202ULL & 0x010884422010ULL) % 1023;
+      ret |= ((Val)b << bitoffset);
+      tmp >>= 8;
+    }
+    return (T)ret;
+  }
+
 }  // namespace zs

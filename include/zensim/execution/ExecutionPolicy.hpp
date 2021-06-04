@@ -5,8 +5,8 @@
 
 #include "Concurrency.h"
 #include "zensim/TypeAlias.hpp"
-#include "zensim/tpls/magic_enum.hpp"
 #include "zensim/tpls/fmt/format.h"
+#include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 namespace zs {
@@ -79,7 +79,7 @@ namespace zs {
           if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
             std::apply(f, it);
           else
-            f(it);
+            std::invoke(f, it);
         }
       }
     }

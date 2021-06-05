@@ -12,15 +12,6 @@ namespace zs {
   template <typename T> __forceinline__ __device__ bool atomicMax(T* address, T val);
   template <typename T> __forceinline__ __device__ T atomicAddFloat(T* address, T val);
 
-  template <> __forceinline__ __device__ float atomicAddFloat<float>(float* address, float val) {
-    int* address_as_ull = (int*)address;
-    int old = *address_as_ull, assumed;
-    do {
-      assumed = old;
-      old = atomicCAS(address_as_ull, assumed, __float_as_int(val + __int_as_float(assumed)));
-    } while (assumed != old);
-    return __int_as_float(old);
-  }
   template <>
   __forceinline__ __device__ double atomicAddFloat<double>(double* address, double val) {
     unsigned long long* address_as_ull = (unsigned long long*)address;
@@ -31,64 +22,6 @@ namespace zs {
                       __double_as_longlong(val + __longlong_as_double(assumed)));
     } while (assumed != old);
     return __longlong_as_double(old);
-  }
-
-  template <> __forceinline__ __device__ bool atomicMin<float>(float* address, float val) {
-    int* address_as_i = (int*)address;
-    int old = *address_as_i, assumed;
-    if (*address <= val) return false;
-    do {
-      assumed = old;
-      old = ::atomicCAS(address_as_i, assumed,
-                        __float_as_int(::fminf(val, __int_as_float(assumed))));
-    } while (assumed != old);
-    return true;
-  }
-
-  template <> __forceinline__ __device__ bool atomicMax<float>(float* address, float val) {
-    int* address_as_i = (int*)address;
-    int old = *address_as_i, assumed;
-    if (*address >= val) return false;
-    do {
-      assumed = old;
-      old = ::atomicCAS(address_as_i, assumed,
-                        __float_as_int(::fmaxf(val, __int_as_float(assumed))));
-    } while (assumed != old);
-    return true;
-  }
-
-  template <> __forceinline__ __device__ bool atomicMin<double>(double* address, double val) {
-#ifdef _WIN32
-    uint64_t* address_as_ull = (uint64_t*)address;
-    uint64_t old = *address_as_ull, assumed;
-#else
-    unsigned long long* address_as_ull = (unsigned long long*)address;
-    unsigned long long old = *address_as_ull, assumed;
-#endif  // _WIN32
-    if (*address <= val) return false;
-    do {
-      assumed = old;
-      old = ::atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(::fmin(val, __longlong_as_double(assumed))));
-    } while (assumed != old);
-    return true;
-  }
-
-  template <> __forceinline__ __device__ bool atomicMax<double>(double* address, double val) {
-#ifdef _WIN32
-    uint64_t* address_as_ull = (uint64_t*)address;
-    uint64_t old = *address_as_ull, assumed;
-#else
-    unsigned long long* address_as_ull = (unsigned long long*)address;
-    unsigned long long old = *address_as_ull, assumed;
-#endif  // _WIN32
-    if (*address >= val) return false;
-    do {
-      assumed = old;
-      old = ::atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(::fmax(val, __longlong_as_double(assumed))));
-    } while (assumed != old);
-    return true;
   }
 
   __device__ uint64_t Packed_Add(const uint64_t* masks, const uint64_t i, const uint64_t j);

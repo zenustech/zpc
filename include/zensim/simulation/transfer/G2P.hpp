@@ -5,6 +5,8 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Structure.hpp"
 #include "zensim/geometry/Structurefree.hpp"
+#include "zensim/math/matrix/MatrixUtils.h"
+#include "zensim/physics/ConstitutiveModel.hpp"
 
 namespace zs {
 

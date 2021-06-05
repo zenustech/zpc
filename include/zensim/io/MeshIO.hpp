@@ -8,16 +8,16 @@
 
 #include "zensim/geometry/Mesh.hpp"
 #include "zensim/math/Vec.h"
-#include "zensim/tpls/Partio.h"
 #include "zensim/types/Optional.h"
 
 namespace zs {
 
   template <typename T, int dim, typename Tn>
   bool read_tri_mesh_obj(const std::string &file, Mesh<T, dim, Tn, 3> &mesh) {
-    std::ifstream is(std::string{AssetDirPath} + "TriMesh/" + file);
-    if (!is) {
-      printf("%s not found!\n", (std::string{AssetDirPath} + "TriMesh/" + file).c_str());
+    // TriMesh
+    std::ifstream is(file);
+    if (!is || file.empty()) {
+      printf("%s not found!\n", file.c_str());
       return false;
     }
 
@@ -63,9 +63,10 @@ namespace zs {
 
   template <typename T, typename Tn>
   bool read_tet_mesh_vtk(const std::string &file, Mesh<T, 3, Tn, 4> &mesh) {
-    std::ifstream in(std::string{AssetDirPath} + "TetMesh/" + file);
-    if (!in) {
-      printf("%s not found!\n", (std::string{AssetDirPath} + "TetMesh/" + file).c_str());
+    // TetMesh
+    std::ifstream in(file);
+    if (!in || file.empty()) {
+      printf("%s not found!\n", file.c_str());
       return false;
     }
 

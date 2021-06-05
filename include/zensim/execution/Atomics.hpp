@@ -60,7 +60,7 @@ namespace zs {
       if (old < val) *dest = val;
       return;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-      for (T old = *dest; old > val
+      for (T old = *dest; old < val
                           && !__atomic_compare_exchange_n(dest, &old, val, true, __ATOMIC_SEQ_CST,
                                                           __ATOMIC_SEQ_CST);)
         ;

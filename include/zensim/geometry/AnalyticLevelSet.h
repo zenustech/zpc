@@ -16,6 +16,8 @@ namespace zs {
     static constexpr int dim = d;
     using TV = vec<T, dim>;
 
+    AnalyticLevelSet() = default;
+    ~AnalyticLevelSet() = default;
     constexpr AnalyticLevelSet(TV origin, TV normal)
         : _origin{origin}, _normal{normal.normalized()} {}
 
@@ -37,6 +39,8 @@ namespace zs {
     static constexpr int dim = d;
     using TV = vec<T, dim>;
 
+    AnalyticLevelSet() = default;
+    ~AnalyticLevelSet() = default;
     constexpr AnalyticLevelSet(TV min, TV max) : _min{min}, _max{max} {}
     constexpr AnalyticLevelSet(TV center, T len)
         : _min{center - (len / 2)}, _max{center + (len / 2)} {}
@@ -78,6 +82,8 @@ namespace zs {
     static constexpr int dim = d;
     using TV = vec<T, dim>;
 
+    AnalyticLevelSet() = default;
+    ~AnalyticLevelSet() = default;
     constexpr AnalyticLevelSet(TV center, T radius) : _center{center}, _radius{radius} {}
 
     constexpr T getSignedDistance(const TV &X) const noexcept {

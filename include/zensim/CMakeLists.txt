@@ -178,7 +178,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/algorithm/SortKernels.cuh
     # simulation
     cuda/simulation/transfer/P2G.hpp
-    cuda/simulation/transfer/G2P.hpp
     cuda/simulation/sparsity/SparsityCompute.hpp
     cuda/simulation/particle/Query.hpp
     # physics

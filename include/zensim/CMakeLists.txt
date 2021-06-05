@@ -179,7 +179,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     # simulation
     cuda/simulation/transfer/P2G.hpp
     cuda/simulation/transfer/G2P.hpp
-    cuda/simulation/grid/GridOp.hpp
     cuda/simulation/sparsity/SparsityCompute.hpp
     cuda/simulation/particle/Query.hpp
     # physics

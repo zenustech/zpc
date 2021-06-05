@@ -64,23 +64,6 @@ namespace zs {
     return a + (b - a) * alpha;
   }
 
-  constexpr float int_as_float(int n) noexcept {
-    union {
-      int i{0};
-      float f;
-    } a{};
-    a.i = n;
-    return a.f;
-  }
-  constexpr int float_as_int(float f) noexcept {
-    union {
-      int i{0};
-      float f;
-    } a{};
-    a.f = f;
-    return a.i;
-  }
-
   template <typename T, enable_if_t<is_same_v<T, double>> = 0>
   constexpr auto lower_trunc(T v) noexcept {
     return v > 0 ? (i64)v : ((i64)v) - 1;

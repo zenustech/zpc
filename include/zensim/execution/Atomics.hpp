@@ -2,6 +2,7 @@
 #include <atomic>
 
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/math/bit/Bits.h"
 
 namespace zs {
 
@@ -25,6 +26,92 @@ namespace zs {
     throw std::runtime_error(
         fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
+  }
+
+  template <typename ExecTag, typename T>
+  constexpr void atomic_max(ExecTag execTag, T* const dest, const T val) {
+    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
+      if constexpr (std::is_integral_v<T>) {
+        atomicMax(dest, val);
+        return;
+      } else if constexpr (is_same_v<T, float>) {
+        if (*dest >= val) return;
+        int* const address_as_i = (int*)dest;
+        int old = *address_as_i, assumed{};
+        do {
+          assumed = old;
+          if (int_as_float(assumed) >= val) break;
+          old = atomicCAS(address_as_i, assumed, float_as_int(val));
+        } while (assumed != old);
+        return;
+      } else if constexpr (is_same_v<T, double>) {
+        if (*dest >= val) return;
+        long long* const address_as_i = (long long*)dest;
+        long long old = *address_as_i, assumed{};
+        do {
+          assumed = old;
+          if (longlong_as_double(assumed) >= val) break;
+          old = atomicCAS(address_as_i, assumed, double_as_longlong(val));
+        } while (assumed != old);
+        return;
+      }
+    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+      const T old = *dest;
+      if (old < val) *dest = val;
+      return;
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+      for (T old = *dest; old > val
+                          && !__atomic_compare_exchange_n(dest, &old, val, true, __ATOMIC_SEQ_CST,
+                                                          __ATOMIC_SEQ_CST);)
+        ;
+      return;
+    }
+    throw std::runtime_error(
+        fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    return;
+  }
+
+  template <typename ExecTag, typename T>
+  constexpr void atomic_min(ExecTag execTag, T* const dest, const T val) {
+    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
+      if constexpr (std::is_integral_v<T>) {
+        atomicMin(dest, val);
+        return;
+      } else if constexpr (is_same_v<T, float>) {
+        if (*dest <= val) return;
+        int* const address_as_i = (int*)dest;
+        int old = *address_as_i, assumed{};
+        do {
+          assumed = old;
+          if (int_as_float(assumed) <= val) break;
+          old = atomicCAS(address_as_i, assumed, float_as_int(val));
+        } while (assumed != old);
+        return;
+      } else if constexpr (is_same_v<T, double>) {
+        if (*dest <= val) return;
+        long long* const address_as_i = (long long*)dest;
+        long long old = *address_as_i, assumed{};
+        do {
+          assumed = old;
+          if (longlong_as_double(assumed) <= val) break;
+          old = atomicCAS(address_as_i, assumed, double_as_longlong(val));
+        } while (assumed != old);
+        return;
+      }
+    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+      const T old = *dest;
+      if (old > val) *dest = val;
+      return;
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+      for (T old = *dest; old > val
+                          && !__atomic_compare_exchange_n(dest, &old, val, true, __ATOMIC_SEQ_CST,
+                                                          __ATOMIC_SEQ_CST);)
+        ;
+      return;
+    }
+    throw std::runtime_error(
+        fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    return;
   }
 
   template <typename ExecTag, typename T>

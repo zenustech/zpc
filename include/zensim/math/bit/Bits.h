@@ -5,6 +5,31 @@
 #include <limits>
 
 namespace zs {
+
+  constexpr float int_as_float(int i) noexcept {
+    static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
+    union {int i{0}; float f;} u{};
+    u.i = i;
+    return u.f;
+  }
+  constexpr int float_as_int(float f) noexcept {
+    static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
+    union {int i{0}; float f;} u{};
+    u.f = f;
+    return u.i;
+  }
+  constexpr double longlong_as_double(long long l) noexcept {
+    static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
+    union {long long l{0}; double d;} u{};
+    u.l = l;
+    return u.d;
+  }
+  constexpr long long double_as_longlong(double d) noexcept {
+    static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
+    union {long long l{0}; double d;} u{};
+    u.d = d;
+    return u.l;
+  }
   /**
    */
   template <typename Integer> constexpr Integer interleaved_bit_mask(int dim) noexcept {

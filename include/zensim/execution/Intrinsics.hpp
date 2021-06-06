@@ -29,10 +29,13 @@ namespace zs {
 #endif
   }
 
-#if 0
-  template <typename ExecTag, enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
+  void thread_fence(ExecTag) noexcept {
+#pragma omp flush
+  }
+
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
   void thread_fence(ExecTag) noexcept {}
-#endif
 
   // __activemask
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>

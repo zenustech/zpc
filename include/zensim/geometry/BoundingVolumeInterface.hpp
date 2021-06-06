@@ -1,5 +1,6 @@
 #pragma once
 #include <type_traits>
+#include <algorithm>
 
 #include "zensim/math/Vec.h"
 
@@ -15,6 +16,8 @@ namespace zs {
       return selfPtr()->do_getBoundingBox();
     }
     constexpr TV getBoxCenter() const noexcept { return selfPtr()->do_getBoxCenter(); }
+    constexpr TV getBoxSideLengths() const noexcept { return selfPtr()->do_getBoxSideLengths(); }
+    constexpr TV getUniformCoord(const TV& pos) const noexcept { return selfPtr()->do_getUniformCoord(pos); }
 
   protected:
     constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
@@ -23,6 +26,18 @@ namespace zs {
     constexpr TV do_getBoxCenter() const noexcept {
       auto &&[lo, hi] = getBoundingBox();
       return (lo + hi) / 2;
+    }
+    constexpr TV do_getBoxSideLengths() const noexcept {
+      auto &&[lo, hi] = getBoundingBox();
+      return hi - lo;
+    }
+    constexpr TV do_getUniformCoord(const TV &pos) const noexcept {
+      auto &&[lo, offset] = getBoundingBox();
+      const auto lengths = offset - lo;
+      offset = pos - lo;
+      for (int d = 0; d < dim; ++d)
+        offset[d] = std::clamp(offset[d], (T)0, lengths[d]) / lengths[d];
+      return offset;
     }
 
     constexpr Derived *selfPtr() noexcept { return static_cast<Derived *>(this); }

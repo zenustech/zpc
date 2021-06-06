@@ -237,7 +237,6 @@ namespace zs {
         "Vdb file domain [%f, %f, %f] - [%f, %f, %f]; resolution {%d, %d, "
         "%d}\n",
         bmin(0), bmin(1), bmin(2), bmax(0), bmax(1), bmax(2), extents(0), extents(1), extents(2));
-    // DenseGrid<float, int, 3> phi(extents, std::numeric_limits<float>::min());
     DenseGrid<float, int, 3> phi(extents, 2 * dx);
     DenseGrid<TV, int, 3> vel(extents, TV::zeros());
 #pragma omp parallel for

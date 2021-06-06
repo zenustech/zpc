@@ -237,7 +237,8 @@ namespace zs {
       unsigned int done_active = 0;
       while (active != done_active) {
         if (!done) {
-          if (atomic_cas(execTag, lock, HashTableT::status_sentinel_v, (status_t)0)) {
+          if (atomic_cas(execTag, lock, HashTableT::status_sentinel_v, (status_t)0)
+              == HashTableT::status_sentinel_v) {
             thread_fence(execTag);  // __threadfence();
             /// <deprecating volatile - JF Bastien - CppCon2019>
             /// access non-volatile using volatile semantics
@@ -265,7 +266,8 @@ namespace zs {
       key_t return_val{};
       bool done = false;
       while (!done) {
-        if (atomic_cas(execTag, lock, HashTableT::status_sentinel_v, (status_t)0)) {
+        if (atomic_cas(execTag, lock, HashTableT::status_sentinel_v, (status_t)0)
+            == HashTableT::status_sentinel_v) {
           (void)(return_val = *const_cast<key_t *>(dest));
           if (return_val == key_sentinel_v)
             for (int d = 0; d < dim; ++d) (void)(dest->data()[d] = val[d]);

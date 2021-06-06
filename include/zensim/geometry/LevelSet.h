@@ -246,14 +246,12 @@ namespace zs {
       IV loc{};
       for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
       TV diff = (X - _min) / _dx - loc;
-      // printf("diff [%f, %f, %f]\n", diff(0), diff(1), diff(2));
       if constexpr (dim == 2) {
         for (Ti dx = 0; dx < 2; dx++)
           for (Ti dy = 0; dy < 2; dy++)
             if (self().node().inside(IV{loc(0) + dx, loc(1) + dy}))
               arena(dx, dy) = self()(wrapv<0>{}, loc(0) + dx, loc(1) + dy);
             else
-              // arena(dx, dy) = std::numeric_limits<T>::min();
               arena(dx, dy) = 2 * _dx;
       } else if constexpr (dim == 3) {
         for (Ti dx = 0; dx < 2; dx++)
@@ -262,7 +260,6 @@ namespace zs {
               if (self().node().inside(IV{loc(0) + dx, loc(1) + dy, loc(2) + dz}))
                 arena(dx, dy, dz) = self()(wrapv<0>{}, loc(0) + dx, loc(1) + dy, loc(2) + dz);
               else
-                // arena(dx, dy, dz) = std::numeric_limits<T>::min();
                 arena(dx, dy, dz) = 2 * _dx;
       } else
         ZS_UNREACHABLE;

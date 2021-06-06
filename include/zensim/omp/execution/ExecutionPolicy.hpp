@@ -22,7 +22,7 @@ namespace zs {
         if constexpr (fts::arity == 0) {
           f();
         } else {
-          if constexpr (is_tuple<remove_cvref_t<decltype(it)>>::value)
+          if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
             std::apply(f, it);
           else
             f(it);

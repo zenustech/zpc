@@ -28,7 +28,6 @@ namespace zs {
       return std::make_tuple(_origin, _origin);
     }
 
-  private:
     TV _origin{}, _normal{};
   };
 
@@ -71,7 +70,6 @@ namespace zs {
       return std::make_tuple(_min, _max);
     }
 
-  private:
     TV _min{}, _max{};
   };
 
@@ -99,7 +97,6 @@ namespace zs {
       return std::make_tuple(_center - _radius, _center + _radius);
     }
 
-  private:
     TV _center{};
     T _radius;
   };

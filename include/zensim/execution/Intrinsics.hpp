@@ -31,6 +31,8 @@ namespace zs {
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
   void thread_fence(ExecTag) noexcept {
+    /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
+    /// list ”
 #pragma omp flush
   }
 

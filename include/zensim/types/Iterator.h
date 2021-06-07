@@ -255,19 +255,19 @@ namespace zs {
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
                             std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
-    friend constexpr Derived &operator+(Derived it, D offset) {
+    friend constexpr Derived operator+(Derived it, D offset) {
       return it += offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
                             std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
-    friend constexpr Derived &operator+(D offset, Derived it) {
+    friend constexpr Derived operator+(D offset, Derived it) {
       return it += offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
                             std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
-    friend constexpr Derived &operator-(Derived it, D offset) {
+    friend constexpr Derived operator-(Derived it, D offset) {
       return it + (-offset);
     }
     template <typename D, typename Self = Derived,

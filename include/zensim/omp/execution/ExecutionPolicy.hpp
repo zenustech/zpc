@@ -285,33 +285,148 @@ namespace zs {
       using DstIterT = remove_cvref_t<OutputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
       using ValueT = typename std::iterator_traits<DstIterT>::value_type;
+      using UnsignedValueT = std::make_unsigned_t<ValueT>;
       static_assert(
           std::is_convertible_v<DiffT, typename std::iterator_traits<DstIterT>::difference_type>,
           "diff type not compatible");
       static_assert(std::is_convertible_v<typename std::iterator_traits<IterT>::value_type, ValueT>,
                     "value type not compatible");
+      static_assert(std::is_integral_v<ValueT>, "value type not integral");
 
       const auto dist = last - first;
-      DiffT nths{}, n{};
+      DiffT nths{}, nwork{};
       const int binBits = bit_length(_dop);
-      const int binCount = 1 << binBits;
-      std::vector<std::atomic_size_t> binSizes(binCount);
-      std::vector<std::size_t> binOffsets(binCount);
-      std::reference_wrapper<std::vector<ValueT>> buffers[2];  ///< double buffer strategy
-#pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) shared(dist, nths, first, last, d_first)
-      { ; }
-      for (int bit = ebit; bit >= sbit; bit -= binBits) {
-#pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) shared(dist, nths, first, last, d_first)
+      int binCount = 1 << binBits;
+      int binMask = binCount - 1;
+      std::vector<std::vector<DiffT>> binSizes{};
+      std::vector<DiffT> binGlobalSizes(binCount);
+      std::vector<DiffT> binOffsets(binCount);
+
+      /// double buffer strategy
+      std::vector<UnsignedValueT> buffers[2];
+      buffers[0].resize(dist);
+      buffers[1].resize(dist);
+      UnsignedValueT *cur{buffers[0].data()}, *next{buffers[1].data()};
+
+      /// move to local buffer first (bit hack for signed type)
+#pragma omp parallel for num_threads(_dop)
+      for (DiffT i = 0; i < dist; ++i) cur[i] = *(first + i);
+
+      /// LSB style
+      for (int st = sbit; st < ebit; st += binBits) {
+        if (st + binBits > ebit) {
+          binMask >>= (st + binBits - ebit);
+          binCount >>= (st + binBits - ebit);
+        }
+        // fmt::print("sorting [{}, {}) bits, mask {:b}, binCount {}\n", st, st + binBits, binMask,
+        // binCount);
+
+        /// init
+#pragma omp parallel num_threads(_dop) \
+    shared(nths, nwork, binSizes, binGlobalSizes, binOffsets, cur, next)
         {
+#if 0
+#  pragma omp single
+          {
+            fmt::print("start of the round: \t");
+            for (int i = 0; i < dist; ++i) fmt::print("{} ", cur[i]);
+            fmt::print("\n");
+          }
+#endif
 #pragma omp single
           {
             nths = omp_get_num_threads();
-            n = nths < dist ? nths : dist;
+            nwork = (dist + nths - 1) / nths;
+            binSizes.resize(nths);
           }
 #pragma omp barrier
-          ;
+          /// work block partition
+          DiffT tid = omp_get_thread_num();
+          DiffT l = nwork * tid;
+          DiffT r = l + nwork;
+          if (r > dist) r = dist;
+          /// init
+          binSizes[tid].resize(binCount);
+
+          /// local count
+          for (DiffT i = 0; i < binCount; ++i) binSizes[tid][i] = 0;
+          if (l < dist)
+            for (auto i = l; i < r; ++i) {
+              binSizes[tid][(cur[i] >> st) & binMask]++;
+#if 0
+              fmt::print("entry {} ({}) is counted by thread {} in bin {} (now {})\n", i, cur[i],
+                         tid, (cur[i] >> st) & binMask, binSizes[tid][(cur[i] >> st) & binMask]);
+#endif
+            }
+
+#pragma omp barrier
+
+#pragma omp single
+          {
+#if 0
+            for (int j = 0; j < nths && nwork * j < dist; j++) {
+              fmt::print("tid {} [{}, {}) sizes: ", j, nwork * j,
+                         nwork * j + nwork > dist ? dist : nwork * j + nwork);
+              for (int i = 0; i < binCount; ++i) fmt::print("{} ", binSizes[j][i]);
+              fmt::print("\n");
+            }
+#endif
+            /// reduce binSizes from all threads
+            for (int i = 0; i < binCount; ++i) {
+              binGlobalSizes[i] = 0;
+              for (int j = 0; j < nths; ++j) binGlobalSizes[i] += binSizes[j][i];
+            }
+
+            /// exclusive scan
+            binOffsets[0] = 0;
+            for (int i = 1; i < binCount; ++i)
+              binOffsets[i] = binOffsets[i - 1] + binGlobalSizes[i - 1];
+
+            /// update local offsets
+            for (int i = 0; i < binCount; i++) {
+              binSizes[0][i] += binOffsets[i];
+              for (int j = 1; j < nths; j++) binSizes[j][i] += binSizes[j - 1][i];
+            }
+#if 0
+            for (int j = 0; j < nths && nwork * j < dist; j++) {
+              fmt::print("tid {} [{}, {}) tails: ", j, nwork * j,
+                         nwork * j + nwork > dist ? dist : nwork * j + nwork);
+              for (int i = 0; i < binCount; ++i) fmt::print("{} ", binSizes[j][i]);
+              fmt::print("\n");
+            }
+#endif
+          }
+
+/// distribute
+#pragma omp barrier
+
+          if (l < dist)
+            for (auto i = r - 1; i >= l; --i) {
+#if 0
+              fmt::print("entry {} ({}) is moved to {} by thread {} in bin {}\n", i, cur[i],
+                         binSizes[tid][(cur[i] >> st) & binMask] - 1, tid,
+                         (cur[i] >> st) & binMask);
+#endif
+              next[--binSizes[tid][(cur[i] >> st) & binMask]] = cur[i];
+            }
+#pragma omp barrier
+#pragma omp single
+          { std::swap(cur, next); }
+#pragma omp barrier
+
+#if 0
+#  pragma omp single
+          {
+            fmt::print("result: \t");
+            for (int i = 0; i < dist; ++i) fmt::print("{} ", cur[i]);
+            fmt::print("\n");
+          }
+#endif
         }
       }
+
+#pragma omp parallel for num_threads(_dop)
+      for (DiffT i = 0; i < dist; ++i) *(d_first + i) = cur[i];
     }
     /// radix sort
     template <class InputIt, class OutputIt>

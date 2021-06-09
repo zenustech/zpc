@@ -418,6 +418,132 @@ namespace zs {
                       FWD(first), FWD(last), FWD(d_first), sbit, ebit);
     }
 
+    template <class KeyIter, class ValueIter, typename Tn>
+    void radix_sort_pair_impl(std::random_access_iterator_tag, KeyIter &&keysIn, ValueIter &&valsIn,
+                              KeyIter &&keysOut, ValueIter &&valsOut, Tn count, int sbit,
+                              int ebit) const {
+      using KeyT = typename std::iterator_traits<KeyIter>::value_type;
+      using ValueT = typename std::iterator_traits<ValueIter>::value_type;
+      using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
+      static_assert(std::is_integral_v<KeyT>, "key type not integral");
+
+      const auto dist = count;
+      DiffT nths{}, nwork{};
+      // const int binBits = bit_length(_dop);
+      bool skip = false;
+      constexpr int binBits = 8;  // by byte
+      int binCount = 1 << binBits;
+      int binMask = binCount - 1;
+      std::vector<std::vector<DiffT>> binSizes{};
+      std::vector<DiffT> binGlobalSizes(binCount);
+      std::vector<DiffT> binOffsets(binCount);
+
+      /// double buffer strategy
+      std::vector<KeyT> keyBuffers[2];
+      std::vector<ValueT> valBuffers[2];
+      keyBuffers[0].resize(count);
+      keyBuffers[1].resize(count);
+      valBuffers[0].resize(count);
+      valBuffers[1].resize(count);
+      KeyT *cur{keyBuffers[0].data()}, *next{keyBuffers[1].data()};
+      ValueT *curVals{valBuffers[0].data()}, *nextVals{valBuffers[1].data()};
+
+      /// move to local buffer first (bit hack for signed type)
+#pragma omp parallel for num_threads(_dop)
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<KeyT>)
+          cur[i] = *(keysIn + i) ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
+        else
+          cur[i] = *(keysIn + i);
+        curVals[i] = *(valsIn + i);
+      }
+
+      /// LSB style (outmost loop)
+      for (int st = sbit; st < ebit; st += binBits) {
+        if (st + binBits > ebit) {
+          binMask >>= (st + binBits - ebit);
+          binCount >>= (st + binBits - ebit);
+        }
+
+        /// init
+#pragma omp parallel num_threads(_dop) \
+    shared(skip, nths, nwork, binSizes, binGlobalSizes, binOffsets, cur, next, curVals, nextVals)
+        {
+#pragma omp single
+          {
+            nths = omp_get_num_threads();
+            nwork = (dist + nths - 1) / nths;
+            binSizes.resize(nths);
+            skip = false;
+          }
+#pragma omp barrier
+          /// work block partition
+          DiffT tid = omp_get_thread_num();
+          DiffT l = nwork * tid;
+          DiffT r = l + nwork;
+          if (r > dist) r = dist;
+          /// init
+          binSizes[tid].resize(binCount);
+
+          /// local count
+          for (DiffT i = 0; i < binCount; ++i) binSizes[tid][i] = 0;
+          if (l < dist)
+            for (auto i = l; i < r; ++i) binSizes[tid][(cur[i] >> st) & binMask]++;
+
+#pragma omp barrier
+
+#pragma omp single
+          {
+            /// reduce binSizes from all threads
+            for (int i = 0; i < binCount; ++i) {
+              binGlobalSizes[i] = 0;
+              for (int j = 0; j < nths; ++j) binGlobalSizes[i] += binSizes[j][i];
+              if (binGlobalSizes[i] == dist) {
+                skip = true;
+                break;
+              }
+            }
+
+            if (!skip) {
+              /// exclusive scan
+              binOffsets[0] = 0;
+              for (int i = 1; i < binCount; ++i)
+                binOffsets[i] = binOffsets[i - 1] + binGlobalSizes[i - 1];
+
+              /// update local offsets
+              for (int i = 0; i < binCount; i++) {
+                binSizes[0][i] += binOffsets[i];
+                for (int j = 1; j < nths; j++) binSizes[j][i] += binSizes[j - 1][i];
+              }
+            }
+          }
+
+          if (!skip) {
+/// distribute
+#pragma omp barrier
+            if (l < dist)
+              for (auto i = r - 1; i >= l; --i) {
+                next[binSizes[tid][(cur[i] >> st) & binMask] - 1] = cur[i];
+                nextVals[binSizes[tid][(cur[i] >> st) & binMask] - 1] = curVals[i];
+                binSizes[tid][(cur[i] >> st) & binMask]--;
+              }
+#pragma omp barrier
+#pragma omp single
+            { std::swap(cur, next); std::swap(curVals, nextVals);}
+          }
+#pragma omp barrier
+        }
+      }
+
+#pragma omp parallel for num_threads(_dop)
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<KeyT>)
+          *(keysOut + i) = cur[i] ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
+        else
+          *(keysOut + i) = cur[i];
+        *(valsOut + i) = curVals[i];
+      }
+    }
     template <class KeyIter, class ValueIter,
               typename Tn = typename std::iterator_traits<remove_cvref_t<KeyIter>>::difference_type>
     void radix_sort_pair(

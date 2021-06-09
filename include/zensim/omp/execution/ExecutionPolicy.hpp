@@ -278,6 +278,7 @@ namespace zs {
       reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
     }
+
     template <class InputIt, class OutputIt>
     void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
                          OutputIt &&d_first, int sbit, int ebit) const {
@@ -295,6 +296,7 @@ namespace zs {
       const auto dist = last - first;
       DiffT nths{}, nwork{};
       // const int binBits = bit_length(_dop);
+      bool skip = false;
       constexpr int binBits = 8;  // by byte
       int binCount = 1 << binBits;
       int binMask = binCount - 1;
@@ -326,13 +328,14 @@ namespace zs {
 
         /// init
 #pragma omp parallel num_threads(_dop) \
-    shared(nths, nwork, binSizes, binGlobalSizes, binOffsets, cur, next)
+    shared(skip, nths, nwork, binSizes, binGlobalSizes, binOffsets, cur, next)
         {
 #pragma omp single
           {
             nths = omp_get_num_threads();
             nwork = (dist + nths - 1) / nths;
             binSizes.resize(nths);
+            skip = false;
           }
 #pragma omp barrier
           /// work block partition
@@ -356,28 +359,36 @@ namespace zs {
             for (int i = 0; i < binCount; ++i) {
               binGlobalSizes[i] = 0;
               for (int j = 0; j < nths; ++j) binGlobalSizes[i] += binSizes[j][i];
+              if (binGlobalSizes[i] == dist) {
+                skip = true;
+                break;
+              }
             }
 
-            /// exclusive scan
-            binOffsets[0] = 0;
-            for (int i = 1; i < binCount; ++i)
-              binOffsets[i] = binOffsets[i - 1] + binGlobalSizes[i - 1];
+            if (!skip) {
+              /// exclusive scan
+              binOffsets[0] = 0;
+              for (int i = 1; i < binCount; ++i)
+                binOffsets[i] = binOffsets[i - 1] + binGlobalSizes[i - 1];
 
-            /// update local offsets
-            for (int i = 0; i < binCount; i++) {
-              binSizes[0][i] += binOffsets[i];
-              for (int j = 1; j < nths; j++) binSizes[j][i] += binSizes[j - 1][i];
+              /// update local offsets
+              for (int i = 0; i < binCount; i++) {
+                binSizes[0][i] += binOffsets[i];
+                for (int j = 1; j < nths; j++) binSizes[j][i] += binSizes[j - 1][i];
+              }
             }
           }
 
+          if (!skip) {
 /// distribute
 #pragma omp barrier
-          if (l < dist)
-            for (auto i = r - 1; i >= l; --i)
-              next[--binSizes[tid][(cur[i] >> st) & binMask]] = cur[i];
+            if (l < dist)
+              for (auto i = r - 1; i >= l; --i)
+                next[--binSizes[tid][(cur[i] >> st) & binMask]] = cur[i];
 #pragma omp barrier
 #pragma omp single
-          { std::swap(cur, next); }
+            { std::swap(cur, next); }
+          }
 #pragma omp barrier
         }
       }
@@ -405,6 +416,22 @@ namespace zs {
                     "Input iterator pointer different from output iterator\'s");
       radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
                       FWD(first), FWD(last), FWD(d_first), sbit, ebit);
+    }
+
+    template <class KeyIter, class ValueIter,
+              typename Tn = typename std::iterator_traits<remove_cvref_t<KeyIter>>::difference_type>
+    void radix_sort_pair(
+        KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
+        int sbit = 0,
+        int ebit
+        = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type) * 8) const {
+      static_assert(
+          is_same_v<typename std::iterator_traits<remove_cvref_t<KeyIter>>::iterator_category,
+                    typename std::iterator_traits<remove_cvref_t<ValueIter>>::iterator_category>,
+          "Key Iterator and Val Iterator should be from the same category");
+      radix_sort_pair_impl(
+          typename std::iterator_traits<remove_cvref_t<KeyIter>>::iterator_category{}, FWD(keysIn),
+          FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit);
     }
 
     OmpExecutionPolicy &threads(int numThreads) noexcept {

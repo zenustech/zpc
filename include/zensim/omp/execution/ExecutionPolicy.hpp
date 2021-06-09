@@ -284,13 +284,12 @@ namespace zs {
       using IterT = remove_cvref_t<InputIt>;
       using DstIterT = remove_cvref_t<OutputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
+      using InputValueT = typename std::iterator_traits<IterT>::value_type;
       using ValueT = typename std::iterator_traits<DstIterT>::value_type;
-      using UnsignedValueT = std::make_unsigned_t<ValueT>;
       static_assert(
           std::is_convertible_v<DiffT, typename std::iterator_traits<DstIterT>::difference_type>,
           "diff type not compatible");
-      static_assert(std::is_convertible_v<typename std::iterator_traits<IterT>::value_type, ValueT>,
-                    "value type not compatible");
+      static_assert(std::is_convertible_v<InputValueT, ValueT>, "value type not compatible");
       static_assert(std::is_integral_v<ValueT>, "value type not integral");
 
       const auto dist = last - first;
@@ -303,14 +302,19 @@ namespace zs {
       std::vector<DiffT> binOffsets(binCount);
 
       /// double buffer strategy
-      std::vector<UnsignedValueT> buffers[2];
+      std::vector<InputValueT> buffers[2];
       buffers[0].resize(dist);
       buffers[1].resize(dist);
-      UnsignedValueT *cur{buffers[0].data()}, *next{buffers[1].data()};
+      InputValueT *cur{buffers[0].data()}, *next{buffers[1].data()};
 
       /// move to local buffer first (bit hack for signed type)
 #pragma omp parallel for num_threads(_dop)
-      for (DiffT i = 0; i < dist; ++i) cur[i] = *(first + i);
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<InputValueT>)
+          cur[i] = *(first + i) ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
+        else
+          cur[i] = *(first + i);
+      }
 
       /// LSB style
       for (int st = sbit; st < ebit; st += binBits) {
@@ -426,7 +430,12 @@ namespace zs {
       }
 
 #pragma omp parallel for num_threads(_dop)
-      for (DiffT i = 0; i < dist; ++i) *(d_first + i) = cur[i];
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<InputValueT>)
+          *(d_first + i) = cur[i] ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
+        else
+          *(d_first + i) = cur[i];
+      }
     }
     /// radix sort
     template <class InputIt, class OutputIt>

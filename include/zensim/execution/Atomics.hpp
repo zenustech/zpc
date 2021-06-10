@@ -16,7 +16,22 @@ namespace zs {
       return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
+
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+      if constexpr (std::is_integral_v<T>) {
+        if constexpr (sizeof(T) == sizeof(char))
+          return _InterlockedExchangeAdd8(const_cast<char volatile*>(dest), (char)val);
+        else if constexpr (sizeof(T) == sizeof(short))
+          return _InterlockedExchangeAdd16(const_cast<short volatile*>(dest), (short)val);
+        else if constexpr (sizeof(T) == sizeof(long))
+          return _InterlockedAdd(const_cast<long volatile*>(dest), (long)val);
+        else if constexpr (sizeof(T) == sizeof(__int64))
+          return _InterlockedAdd64(const_cast<__int64 volatile*>(dest), (__int64)val);
+      }
+#  else
       return __atomic_fetch_add(dest, val, __ATOMIC_SEQ_CST);
+#  endif
+
 #else
       /// introduced in c++20
       std::atomic_ref<T> target{const_cast<T&>(*dest)};
@@ -41,7 +56,18 @@ namespace zs {
       return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+      if constexpr (sizeof(T) == sizeof(char))
+        return _InterlockedExchange8(const_cast<char volatile*>(dest), (char)val);
+      else if constexpr (sizeof(T) == sizeof(short))
+        return _InterlockedExchange16(const_cast<short volatile*>(dest), (short)val);
+      else if constexpr (sizeof(T) == sizeof(long))
+        return _InterlockedExchange(const_cast<long volatile*>(dest), (long)val);
+      else if constexpr (sizeof(T) == sizeof(__int64))
+        return _InterlockedExchange64(const_cast<__int64 volatile*>(dest), (__int64)val);
+#  else
       return __atomic_exchange_n(dest, val, __ATOMIC_SEQ_CST);
+#  endif
 #else
       std::atomic_ref<T> target{const_cast<T&>(*dest)};
       return target.exchange(val, std::memory_order_seq_cst);
@@ -60,7 +86,7 @@ namespace zs {
       else if constexpr (is_same_v<T, double> && sizeof(long long) == sizeof(T))
         return longlong_as_double(
             atomicCAS((long long*)dest, double_as_longlong(expected), double_as_longlong(desired)));
-      else 
+      else
         return atomicCAS(dest, expected, desired);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
@@ -68,6 +94,24 @@ namespace zs {
       return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
+
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+      if constexpr (sizeof(T) == sizeof(char)) {  // 8-bit
+        return reinterpret_bits<T>(_InterlockedCompareExchange8(
+            (char*)dest, reinterpret_bits<char>(desired), reinterpret_bits<char>(expected)));
+      } else if constexpr (sizeof(T) == sizeof(short)) {  // 16-bit
+        return reinterpret_bits<T>(_InterlockedCompareExchange16(
+            (short*)dest, reinterpret_bits<short>(desired), reinterpret_bits<short>(expected)));
+      } else if constexpr (sizeof(T) == sizeof(long)) {  // 32-bit
+        return reinterpret_bits<T>(_InterlockedCompareExchange(
+            (long*)dest, reinterpret_bits<long>(desired), reinterpret_bits<long>(expected)));
+      } else if constexpr (sizeof(T) == sizeof(__int64)) {
+        return reinterpret_bits<T>(
+            _InterlockedCompareExchange64((__int64*)dest, reinterpret_bits<__int64>(desired),
+                                          reinterpret_bits<__int64>(expected)));
+      }
+#  else
+
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T)) {
         const T old = expected;
         int expected_ = float_as_int(expected);
@@ -89,6 +133,8 @@ namespace zs {
           return old;
         return expected;
       }
+#  endif
+
 #else
       std::atomic_ref<T> target{const_cast<T&>(*dest)};
       return target.compare_exchange_strong(expected, desired, std::memory_order_seq_cst);
@@ -112,9 +158,10 @@ namespace zs {
         return;
       } else {
         T old = *dest;
-        for (T assumed = old; assumed < val
-                            && (old = atomic_cas(execTag, dest, assumed, val)) != assumed; assumed = old)
-        ;
+        for (T assumed = old;
+             assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+             assumed = old)
+          ;
         return;
       }
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -123,8 +170,9 @@ namespace zs {
       return;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
-      for (T assumed = old; assumed < val
-                          && (old = atomic_cas(execTag, dest, assumed, val)) != assumed; assumed = old)
+      for (T assumed = old;
+           assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+           assumed = old)
         ;
       return;
     }
@@ -141,9 +189,10 @@ namespace zs {
         return;
       } else {
         T old = *dest;
-        for (T assumed = old; assumed > val
-                            && (old = atomic_cas(execTag, dest, assumed, val)) != assumed; assumed = old)
-        ;
+        for (T assumed = old;
+             assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+             assumed = old)
+          ;
         return;
       }
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -152,8 +201,9 @@ namespace zs {
       return;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
-      for (T assumed = old; assumed > val
-                          && (old = atomic_cas(execTag, dest, assumed, val)) != assumed; assumed = old)
+      for (T assumed = old;
+           assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+           assumed = old)
         ;
       return;
     }
@@ -175,7 +225,20 @@ namespace zs {
       return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
+
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+      if constexpr (sizeof(T) == sizeof(char))
+        return _InterlockedOr8(const_cast<char volatile*>(dest), (char)val);
+      else if constexpr (sizeof(T) == sizeof(short))
+        return _InterlockedOr16(const_cast<short volatile*>(dest), (short)val);
+      else if constexpr (sizeof(T) == sizeof(long))
+        return _InterlockedOr(const_cast<long volatile*>(dest), (long)val);
+      else if constexpr (sizeof(T) == sizeof(__int64))
+        return _InterlockedOr64(const_cast<__int64 volatile*>(dest), (__int64)val);
+#  else
       return __atomic_fetch_or(dest, val, __ATOMIC_SEQ_CST);
+#  endif
+
 #else
       std::atomic_ref<T> target{const_cast<T&>(*dest)};
       return target.fetch_or(val, std::memory_order_seq_cst);
@@ -196,7 +259,18 @@ namespace zs {
       return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+      if constexpr (sizeof(T) == sizeof(char))
+        return _InterlockedAnd8(const_cast<char volatile*>(dest), (char)val);
+      else if constexpr (sizeof(T) == sizeof(short))
+        return _InterlockedAnd16(const_cast<short volatile*>(dest), (short)val);
+      else if constexpr (sizeof(T) == sizeof(long))
+        return _InterlockedAnd(const_cast<long volatile*>(dest), (long)val);
+      else if constexpr (sizeof(T) == sizeof(__int64))
+        return _InterlockedAnd64(const_cast<__int64 volatile*>(dest), (__int64)val);
+#  else
       return __atomic_fetch_and(dest, val, __ATOMIC_SEQ_CST);
+#  endif
 #else
       std::atomic_ref<T> target{const_cast<T&>(*dest)};
       return target.fetch_and(val, std::memory_order_seq_cst);
@@ -217,7 +291,18 @@ namespace zs {
       return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+      if constexpr (sizeof(T) == sizeof(char))
+        return _InterlockedXor8(const_cast<char volatile*>(dest), (char)val);
+      else if constexpr (sizeof(T) == sizeof(short))
+        return _InterlockedXor16(const_cast<short volatile*>(dest), (short)val);
+      else if constexpr (sizeof(T) == sizeof(long))
+        return _InterlockedXor(const_cast<long volatile*>(dest), (long)val);
+      else if constexpr (sizeof(T) == sizeof(__int64))
+        return _InterlockedXor64(const_cast<__int64 volatile*>(dest), (__int64)val);
+#  else
       return __atomic_fetch_xor(dest, val, __ATOMIC_SEQ_CST);
+#  endif
 #else
       std::atomic_ref<T> target{const_cast<T&>(*dest)};
       return target.fetch_xor(val, std::memory_order_seq_cst);

@@ -45,6 +45,11 @@ namespace zs {
     u.d = d;
     return u.l;
   }
+  template <typename Dst, typename Src>
+  constexpr Dst reinterpret_bits(Src &&val) {
+    static_assert(sizeof(Src) == sizeof(Dst), "Source Type and Destination Type must be of the same size");
+    return reinterpret_cast<Dst const volatile &>(val);
+  }
   /// morton code
   constexpr u32 expand_bits_32(u32 v) noexcept {  // expands lower 10-bits to 30 bits
     v = (v * 0x00010001u) & 0xFF0000FFu;

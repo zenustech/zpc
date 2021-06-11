@@ -190,7 +190,7 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/math/matrix/MatrixTransform.hpp
 )
 
-add_library(zensim INTERFACE)
+add_library(zecomp INTERFACE)
 set(ZENSIM_CORE_SOURCE_FILES)
 
 set(ZENSIM_CORE_SOURCE_FILES ${ZENSIM_CORE_SOURCE_FILES}
@@ -200,10 +200,10 @@ set(ZENSIM_CORE_SOURCE_FILES ${ZENSIM_CORE_SOURCE_FILES}
 if (ZS_ENABLE_CUDA)
     set(ZENSIM_CORE_SOURCE_FILES ${ZENSIM_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES})
 endif()
-add_library(zscore ${ZENSIM_CORE_SOURCE_FILES})
+add_library(zpc ${ZENSIM_CORE_SOURCE_FILES})
 
-target_compile_definitions(zscore PUBLIC ZS_ENABLE_OPENMP=1)
-target_compile_options(zscore 
+target_compile_definitions(zpc PUBLIC ZS_ENABLE_OPENMP=1)
+target_compile_options(zpc 
 #  PRIVATE       $<$<CXX_COMPILER_ID:MSVC>:/O2 /openmp NOMINMAX> 
 #                $<$<CXX_COMPILER_ID:GNU>:-O3 -fopenmp>
 #                $<$<CXX_COMPILER_ID:Clang>:-O3 -fopenmp>
@@ -211,21 +211,21 @@ target_compile_options(zscore
   PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 # -fsanitize=address memory thread
-set_target_properties(zscore
+set_target_properties(zpc
   PROPERTIES  LINKER_LANGUAGE CXX
               POSITION_INDEPENDENT_CODE ON
               CUDA_ARCHITECTURES OFF
               LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
-target_link_libraries(zscore
-  PUBLIC      zsproj_cxx_deps
+target_link_libraries(zpc
+  PUBLIC      zecomp_cxx_deps
 )
-target_sources(zscore PRIVATE 
+target_sources(zpc PRIVATE 
     ${ZENSIM_LIBRARY_CORE_SOURCE_FILES}
     ${ZENSIM_LIBRARY_OMP_SOURCE_FILES}
 )
 if (ENABLE_PCH)
-target_precompile_headers(zscore INTERFACE 
+target_precompile_headers(zpc INTERFACE 
     ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
     ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
@@ -234,20 +234,20 @@ endif()
 # related to cuda
 if (ZS_ENABLE_CUDA)
 
-target_compile_definitions(zscore PUBLIC ZS_ENABLE_CUDA=1)
+target_compile_definitions(zpc PUBLIC ZS_ENABLE_CUDA=1)
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
-target_link_libraries(zscore PUBLIC zsproj_cuda_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+target_link_libraries(zpc PUBLIC zecomp_cuda_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 if (ENABLE_PCH)
-target_precompile_headers(zscore INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
+target_precompile_headers(zpc INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
-target_compile_options(zscore 
+target_compile_options(zpc 
   PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
   PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
 )
-target_link_options(zscore 
+target_link_options(zpc 
   PRIVATE       $<$<LINK_LANGUAGE:CUDA>:-dlto>
 )
-set_target_properties(zscore
+set_target_properties(zpc
   PROPERTIES  CUDA_EXTENSIONS ON
               CUDA_SEPARABLE_COMPILATION ON
               LINKER_LANGUAGE CUDA
@@ -255,32 +255,32 @@ set_target_properties(zscore
               LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
               CUDA_ARCHITECTURES OFF
 )
-target_compile_definitions(zscore 
+target_compile_definitions(zpc 
   PRIVATE     CMAKE_GENERATOR_PLATFORM=x64
 )
 
-target_link_libraries(zensim INTERFACE zscore)  # zscore -> zensim
+target_link_libraries(zecomp INTERFACE zpc)  # zpc -> zecomp
 
 endif(ZS_ENABLE_CUDA)
 
 # openvdb, partio
 if (ZS_ENABLE_OPENVDB)
 
-add_library(zstool ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
+add_library(zpctool ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
 if (ENABLE_PCH)
-target_precompile_headers(zstool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
+target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif()
-target_compile_options(zstool
+target_compile_options(zpctool
 # MSVC, GNU, Clang
   PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
-set_target_properties(zstool
+set_target_properties(zpctool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON
               LINKER_LANGUAGE CXX
 )
-target_link_libraries(zstool PUBLIC zspartio zscore zsproj_cxx_deps)
-target_link_libraries(zstool PRIVATE OpenVDB::openvdb)
+target_link_libraries(zpctool PUBLIC zspartio zpc zecomp_cxx_deps)
+target_link_libraries(zpctool PRIVATE OpenVDB::openvdb)
 
-target_link_libraries(zensim INTERFACE zstool)  # zscore -> zensim
+target_link_libraries(zecomp INTERFACE zpctool)  # zpc -> zecomp
 
 endif(ZS_ENABLE_OPENVDB)

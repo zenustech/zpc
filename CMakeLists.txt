@@ -31,7 +31,7 @@ option(ZENSIM_CORE_STATIC "Build statically linked version of the core library."
 # project base targets
 # ====================
 # add_library(zsproj_deps INTERFACE)
-add_library(zsproj_cxx_deps INTERFACE)
+add_library(zecomp_cxx_deps INTERFACE)
 
 include(CMake/ClangSupport.cmake)
 include(CMake/Cache.cmake)
@@ -54,15 +54,15 @@ endif()
 add_subdirectory(include/zensim/tpls)
 enable_sanitizers(zsproj_deps)
 
-target_compile_features(zsproj_cxx_deps INTERFACE cxx_std_17)
-target_link_libraries(zsproj_cxx_deps INTERFACE zsproj_deps)
-target_compile_definitions(zsproj_cxx_deps
+target_compile_features(zecomp_cxx_deps INTERFACE cxx_std_17)
+target_link_libraries(zecomp_cxx_deps INTERFACE zsproj_deps)
+target_compile_definitions(zecomp_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )
 if (ZS_ENABLE_CUDA)
-  add_library(zsproj_cuda_deps INTERFACE)
-  target_compile_features(zsproj_cuda_deps INTERFACE cuda_std_17)
-  target_link_libraries(zsproj_cuda_deps INTERFACE zsproj_deps)
+  add_library(zecomp_cuda_deps INTERFACE)
+  target_compile_features(zecomp_cuda_deps INTERFACE cuda_std_17)
+  target_link_libraries(zecomp_cuda_deps INTERFACE zsproj_deps)
 endif()
 
 # ---- binaries ----
@@ -90,9 +90,9 @@ include(GNUInstallDirs)
 
 set(ZSPARTIO_INSTALL_TARGETS zspartio)
 
-set(INSTALL_TARGETS zensim zscore zstool zsproj_cxx_deps zsproj_deps ${ZSPARTIO_INSTALL_TARGETS})
+set(INSTALL_TARGETS zecomp zpc zpctool zecomp_cxx_deps zsproj_deps ${ZSPARTIO_INSTALL_TARGETS})
 if (ZS_ENABLE_CUDA)
-  set(INSTALL_TARGETS ${INSTALL_TARGETS} zsproj_cuda_deps)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zecomp_cuda_deps)
 endif()
 
 message("project name: ${project_name}")

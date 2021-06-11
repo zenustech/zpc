@@ -46,7 +46,7 @@ function(add_cuda_executable binary)
     )
     target_link_libraries(${binary}
         PRIVATE zensim
-                zsproj_cuda_deps
+                zecomp_cuda_deps
     )
     message("-- [${binary}]\tcuda executable build config")
   endif()
@@ -75,7 +75,7 @@ function(add_cuda_library library)
       PUBLIC        CMAKE_GENERATOR_PLATFORM=x64
     )
     target_link_libraries(${library}
-      PUBLIC        zsproj_cuda_deps
+      PUBLIC        zecomp_cuda_deps
     )
     message("-- [${library}]\tcuda executable build config")
   endif()
@@ -104,7 +104,7 @@ function(add_shared_cuda_library library)
       PUBLIC        CMAKE_GENERATOR_PLATFORM=x64
     )
     target_link_libraries(${library}
-      PUBLIC        zsproj_cuda_deps
+      PUBLIC        zecomp_cuda_deps
     )
     message("-- [${library}]\tcuda executable build config")
   endif()

@@ -45,7 +45,7 @@ function(add_cuda_executable binary)
                   CUDA_ARCHITECTURES OFF
     )
     target_link_libraries(${binary}
-        PRIVATE zensim
+        PRIVATE zecomp
                 zecomp_cuda_deps
     )
     message("-- [${binary}]\tcuda executable build config")

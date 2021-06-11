@@ -15,7 +15,7 @@ namespace zs {
       if (geomTag == Scene::model_e::Particle)
         this->target().models.emplace_back(config, particleModelOffset + localId);
     // particles
-    for (int i = 0; i < scene.particles.size(); ++i)
+    for (std::size_t i = 0; i < scene.particles.size(); ++i)
       /// range-based for loop might not be safe after moved
       this->target().particles.push_back(std::move(scene.particles[i]));
     this->target().boundaries = std::move(scene.boundaries);
@@ -43,7 +43,7 @@ namespace zs {
         if (mh.memspace() == entry.memspace() && mh.devid() == entry.devid()) return id;
       return -1;
     };
-    auto searchModel = [&models = this->target().models](int objId) {
+    auto searchModel = [&models = this->target().models](std::size_t objId) {
       int modelid{0};
       for (auto&& [model, id] : models) {
         if (id == objId) return modelid;

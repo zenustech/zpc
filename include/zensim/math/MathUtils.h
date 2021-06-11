@@ -17,17 +17,17 @@ namespace zs {
     template <typename... Args, std::size_t... Is>
     constexpr auto incl_prefix_sum_impl(std::make_signed_t<std::size_t> I,
                                         std::index_sequence<Is...>, Args &&...args) noexcept {
-      return ((Is <= I ? std::forward<Args>(args) : 0) + ...);
+      return (((std::make_signed_t<std::size_t>)Is <= I ? std::forward<Args>(args) : 0) + ...);
     }
     template <typename... Args, std::size_t... Is>
     constexpr auto excl_prefix_sum_impl(std::size_t I, std::index_sequence<Is...>,
                                         Args &&...args) noexcept {
-      return ((Is < I ? std::forward<Args>(args) : 0) + ...);
+      return (((std::make_signed_t<std::size_t>)Is < I ? std::forward<Args>(args) : 0) + ...);
     }
     template <typename... Args, std::size_t... Is>
     constexpr auto excl_suffix_mul_impl(std::make_signed_t<std::size_t> I,
                                         std::index_sequence<Is...>, Args &&...args) noexcept {
-      return ((Is > I ? std::forward<Args>(args) : 1) * ...);
+      return (((std::make_signed_t<std::size_t>)Is > I ? std::forward<Args>(args) : 1) * ...);
     }
   }  // namespace mathutil_impl
 
@@ -87,13 +87,13 @@ namespace zs {
   }
 
   constexpr uint64_t numBitsOn(uint64_t v) noexcept {
-    v = v - ((v >> 1) & uint64_t(0x5555555555555555LLU));
-    v = (v & uint64_t(0x3333333333333333LLU)) + ((v >> 2) & uint64_t(0x3333333333333333LLU));
-    return ((v + (v >> 4) & uint64_t(0xF0F0F0F0F0F0F0FLLU)) * uint64_t(0x101010101010101LLU)) >> 56;
+    v = v - ((v >> 1) & 0x5555555555555555LLU);
+    v = (v & 0x3333333333333333LLU) + ((v >> 2) & (0x3333333333333333LLU));
+    return (((v + (v >> 4)) & 0xF0F0F0F0F0F0F0FLLU) * 0x101010101010101LLU) >> 56;
   }
 
   constexpr bool isBitOn(uint64_t mask, char b) noexcept {
-    return (mask & (uint64_t(1) << (b & 63))) != 0;
+    return (mask & ((uint64_t)1 << (b & 63))) != 0;
   }
 
 }  // namespace zs

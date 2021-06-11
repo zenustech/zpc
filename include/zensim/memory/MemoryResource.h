@@ -17,7 +17,7 @@ namespace zs {
   template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;
 
   // HOST, DEVICE, DEVICE_CONST, UM, PINNED, FILE
-  enum struct memsrc_e : char { host = 0, device, device_const, um, pinned, file };
+  enum struct memsrc_e : unsigned char { host = 0, device, device_const, um, pinned, file };
 
   using host_mem_tag = wrapv<memsrc_e::host>;
   using device_mem_tag = wrapv<memsrc_e::device>;

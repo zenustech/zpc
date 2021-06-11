@@ -35,7 +35,7 @@ namespace zs {
     void exec(index_seq<Is...> indices, std::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
               const Bodies &...bodies) const {
-      using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
+      // using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
       const auto &range = zs::get<I>(ranges);
       auto ed = range.end();
       if constexpr (I + 1 == sizeof...(Ranges)) {
@@ -64,7 +64,6 @@ namespace zs {
     template <class ForwardIt, class UnaryFunction>
     void for_each_impl(std::random_access_iterator_tag, ForwardIt &&first, ForwardIt &&last,
                        UnaryFunction &&f) const {
-      using IterT = remove_cvref_t<ForwardIt>;
       (*this)(detail::iter_range(FWD(first), FWD(last)), FWD(f));
     }
     template <class ForwardIt, class UnaryFunction>
@@ -529,7 +528,10 @@ namespace zs {
               }
 #pragma omp barrier
 #pragma omp single
-            { std::swap(cur, next); std::swap(curVals, nextVals);}
+            {
+              std::swap(cur, next);
+              std::swap(curVals, nextVals);
+            }
           }
 #pragma omp barrier
         }

@@ -44,8 +44,8 @@ namespace zs {
     constexpr const auto &self() const noexcept { return static_cast<const base_t &>(*this); }
 
     HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1, std::size_t alignment = 0)
-        : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, 0)},
+        : base_t{buildInstance(mre, devid, 0)},
+          MemoryHandle{mre, devid},
           _tableSize{0},
           _cnt{mre, devid, alignment},
           _activeKeys{mre, devid, alignment},
@@ -53,8 +53,8 @@ namespace zs {
 
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
               std::size_t alignment = 0)
-        : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
+        : base_t{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
+          MemoryHandle{mre, devid},
           _tableSize{static_cast<value_t>(next_2pow(tableSize) * reserve_ratio_v)},
           _cnt{1, mre, devid, alignment},
           _activeKeys{next_2pow(tableSize) * reserve_ratio_v, mre, devid, alignment},
@@ -71,7 +71,8 @@ namespace zs {
           _activeKeys{o._activeKeys},
           _align{o._align} {
       if (ds::snode_size(o.self().template node<0>()) > 0)
-        copy({base(), (void *)self().address()}, {o.base(), (void *)o.self().address()},
+        copy(MemoryEntity{base(), (void *)self().address()},
+             MemoryEntity{o.base(), (void *)o.self().address()},
              ds::snode_size(o.self().template node<0>()));
     }
     HashTable &operator=(const HashTable &o) {
@@ -83,12 +84,15 @@ namespace zs {
     HashTable clone(const MemoryHandle &mh) const {
       HashTable ret{_tableSize / reserve_ratio_v, mh.memspace(), mh.devid(), _align};
       if (_cnt.size() > 0)
-        copy({ret._cnt.base(), ret._cnt.data()}, {_cnt.base(), _cnt.data()}, sizeof(value_t));
+        copy(MemoryEntity{ret._cnt.base(), ret._cnt.data()}, MemoryEntity{_cnt.base(), _cnt.data()},
+             sizeof(value_t));
       if (_activeKeys.size() > 0)
-        copy({ret._activeKeys.base(), ret._activeKeys.data()},
-             {_activeKeys.base(), _activeKeys.data()}, sizeof(key_t) * _activeKeys.size());
+        copy(MemoryEntity{ret._activeKeys.base(), ret._activeKeys.data()},
+             MemoryEntity{_activeKeys.base(), _activeKeys.data()},
+             sizeof(key_t) * _activeKeys.size());
       if (ds::snode_size(self().template node<0>()) > 0)
-        copy({ret.base(), (void *)ret.self().address()}, {base(), (void *)self().address()},
+        copy(MemoryEntity{ret.base(), (void *)ret.self().address()},
+             MemoryEntity{base(), (void *)self().address()},
              ds::snode_size(self().template node<0>()));
       return ret;
     }
@@ -120,7 +124,8 @@ namespace zs {
 
     inline value_t size() const {
       Vector<value_t> res{1, memsrc_e::host, -1};
-      copy({res.base(), res.data()}, {_cnt.base(), _cnt.data()}, sizeof(value_t));
+      copy(MemoryEntity{res.base(), (void *)res.data()},
+           MemoryEntity{_cnt.base(), (void *)_cnt.data()}, sizeof(value_t));
       return res[0];
     }
 

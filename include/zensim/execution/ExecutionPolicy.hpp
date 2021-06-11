@@ -11,7 +11,7 @@
 #include "zensim/types/Iterator.h"
 namespace zs {
 
-  enum struct execspace_e : char { host = 0, openmp, cuda, hip };
+  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
 
   using host_exec_tag = wrapv<execspace_e::host>;
   using omp_exec_tag = wrapv<execspace_e::openmp>;
@@ -89,7 +89,7 @@ namespace zs {
     constexpr void exec(index_seq<Is...> indices, std::tuple<Iters...> prefixIters,
                         const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
                         const Bodies &...bodies) const {
-      using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
+      // using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
       const auto &range = zs::get<I>(ranges);
       if constexpr (I + 1 == sizeof...(Ranges)) {
         for (auto &&it : range) {

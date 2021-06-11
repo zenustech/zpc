@@ -97,7 +97,7 @@ namespace zs {
   struct memory_pools : Singleton<memory_pools>, mr_t {
     /// https://stackoverflow.com/questions/46509152/why-in-x86-64-the-virtual-address-are-4-bits-shorter-than-physical-48-bits-vs
 
-    using poolid = char;
+    using poolid = unsigned char;
     static constexpr poolid nPools = 4;
     /// 9-bit per page-level: 512, 4K, 2M, 1G
     static constexpr std::size_t block_bits[nPools] = {9, 12, 21, 30};
@@ -113,8 +113,8 @@ namespace zs {
 
     memory_pools(mr_t *source) {
       for (char i = 0; i < nPools; ++i) {
-        pmr::pool_options opt{/*.max_blocks_per_chunk = */0,
-                              /*.largest_required_pool_block = */block_sizes(i)};
+        pmr::pool_options opt{/*.max_blocks_per_chunk = */ 0,
+                              /*.largest_required_pool_block = */ block_sizes(i)};
         /// thread-safe version
         _pools[i] = std::make_unique<synchronized_pool_resource>(opt, source);
       }
@@ -154,8 +154,8 @@ namespace zs {
 
     static_memory_pools(mr_t *source) {
       for (char i = 0; i < nPools; ++i) {
-        pmr::pool_options opt{/*.max_blocks_per_chunk = */0,
-                              /*.largest_required_pool_block = */block_sizes(i)};
+        pmr::pool_options opt{/*.max_blocks_per_chunk = */ 0,
+                              /*.largest_required_pool_block = */ block_sizes(i)};
         _pools[i] = std::make_unique<unsynchronized_pool_resource>(opt, source);
       }
     }
@@ -215,7 +215,7 @@ namespace zs {
     std::size_t _align;
 
   private:
-    mr_t *_mr;
+    mr_t *_mr{nullptr};
   };
 
 }  // namespace zs

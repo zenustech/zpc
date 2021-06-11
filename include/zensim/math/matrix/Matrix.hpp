@@ -94,7 +94,7 @@ namespace zs {
         i = r;
         j = c;
       }
-      if (offsets.size() <= i) return 0;
+      if ((index_type)offsets.size() <= i) return 0;
       for (index_type st = offsets[i], ed = offsets[i + 1]; st < ed; ++st)
         if (indices[st] == j) return vals[st];
       return 0;

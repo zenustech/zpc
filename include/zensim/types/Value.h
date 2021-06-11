@@ -26,7 +26,7 @@ namespace zs {
 
   template <typename T, typename = void> struct Value;
   /// this special case corresponds to any registered class
-  template <> struct Value<Object> : Inherit<Object, Value<Object>> {
+  template <> struct Value<Object> {
   protected:
     struct ObjectCopyInterface {
       virtual ~ObjectCopyInterface() = default;
@@ -118,8 +118,7 @@ namespace zs {
   };
 
   /// regular values
-  template <typename T> struct Value<T, void_t<enable_if_t<!is_object<T>::value>>>
-      : Inherit<Object, Value<T, void_t<enable_if_t<!is_object<T>::value>>>> {
+  template <typename T> struct Value<T, void_t<enable_if_t<!is_object<T>::value>>> {
     static_assert(std::is_arithmetic_v<T> || is_vec<T>::value || is_same_v<std::string, T>,
                   "value type should be arithmetic, vec or string!");
     using value_t = T;
@@ -258,7 +257,7 @@ decltype(auto) getValue(Attribute& val) {
     else
       return std::get<Value<T>>(val).get();
   }
-  struct Property : Inherit<Object, Property> {
+  struct Property {
     std::size_t index() const noexcept { return _value.index(); }
     std::string name() const noexcept {
       auto id = index();
@@ -288,7 +287,7 @@ decltype(auto) getValue(Attribute& val) {
   }
 
   /// this is an aggregator of attribute data (aka options)
-  struct Properties : Inherit<Object, Properties> {
+  struct Properties {
     ConstRefPtr<Property> find(const std::string &key) const {
       if (auto it = _properties.find(key); it != _properties.end()) return &(it->second);
       return nullptr;

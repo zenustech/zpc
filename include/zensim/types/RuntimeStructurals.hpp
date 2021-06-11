@@ -345,7 +345,7 @@ namespace zs {
       }
 
       static constexpr auto channel_mapping() noexcept {
-        constexpr std::size_t n = sizeof...(Ts);
+        constexpr int n = sizeof...(Ts);
         using Vec = vec<std::size_t, n>;
         Vec alignments{snode_alignment<attrib_type<Is>>()...};
         Vec indices{Is...};
@@ -423,7 +423,8 @@ namespace zs {
         constexpr std::size_t chn_counts[] = {select_value<chsrc(Is), channel_counts>::value...};
         {
           const std::size_t attrib_offsets[] = {attrib_size<chsrc(Is)>()...};
-          for (int i = 0; i < chmap(I); ++i) attrib_offset += attrib_offsets[i] * chn_counts[i];
+          for (int i = 0; i < (int)chmap(I); ++i)
+            attrib_offset += attrib_offsets[i] * chn_counts[i];
         }
         if constexpr (is_same_v<Decorator, dynamic_decorator>) {
           switch (allocp) {
@@ -494,7 +495,7 @@ namespace zs {
       }
 
       static constexpr auto channel_mapping() noexcept {
-        constexpr std::size_t n = sizeof...(Ts);
+        constexpr int n = sizeof...(Ts);
         using Vec = vec<std::size_t, n>;
         Vec alignments{snode_alignment<attrib_type<Is>>()...};
         Vec indices{Is...};
@@ -595,7 +596,8 @@ namespace zs {
           const std::size_t attrib_offsets[] = {attrib_size<chsrc(Is)>()...};
           const std::size_t chn_counts[]
               = {(std::size_t)(((channel_counts &)(*this)).template get<chsrc(Is)>())...};
-          for (int i = 0; i < chmap(I); ++i) attrib_offset += attrib_offsets[i] * chn_counts[i];
+          for (int i = 0; i < (int)chmap(I); ++i)
+            attrib_offset += attrib_offsets[i] * chn_counts[i];
         }
         if constexpr (is_same_v<Decorator, dynamic_decorator>) {
           switch (allocp) {
@@ -728,6 +730,9 @@ namespace zs {
           tuple<Snode>,
           instance_interface<instance<dense, type_seq<Snode>, index_seq<0>>, type_seq<Snode>,
                              index_seq<0>> {
+      instance() = default;
+      ~instance() = default;
+      explicit instance(wrapv<dense>, const tuple<Snode> &tup) : tuple<Snode>{tup} {}
       using base_t = instance_interface<instance<dense, type_seq<Snode>, index_seq<0>>,
                                         type_seq<Snode>, index_seq<0>>;
       using base_t::node;
@@ -872,7 +877,10 @@ namespace zs {
           tuple<Snodes...>,
           instance_interface<instance<general, type_seq<Snodes...>, std::index_sequence<Is...>>,
                              type_seq<Snodes...>, std::index_sequence<Is...>> {
-      tuple<std::enable_if_t<Is >= 0, void *>...> handles{(Is >= 0 ? nullptr : nullptr)...};
+      instance() = default;
+      ~instance() = default;
+      explicit instance(wrapv<general>, const tuple<Snodes...> &tup) : tuple<Snodes...>{tup} {}
+      tuple<std::enable_if_t<Is >= 0> *...> handles{(Is >= 0 ? nullptr : nullptr)...};
     };
 
     template <instance_type it, typename... Snodes> using instance_t

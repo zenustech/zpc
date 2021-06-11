@@ -24,7 +24,7 @@ namespace zs {
     using base_t = vector_instance<T, Index>;
     using value_type = remove_cvref_t<T>;
     using pointer = value_type *;
-    using const_pointer = const pointer;
+    using const_pointer = const value_type *;
     using reference = value_type &;
     using const_reference = const value_type &;
     using size_type = Index;
@@ -40,14 +40,14 @@ namespace zs {
 
     constexpr Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1,
                      std::size_t alignment = std::alignment_of_v<T>)
-        : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, 0)},
+        : base_t{buildInstance(mre, devid, 0)},
+          MemoryHandle{mre, devid},
           _size{0},
           _align{alignment} {}
     explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
                     std::size_t alignment = std::alignment_of_v<T>)
-        : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, count)},
+        : base_t{buildInstance(mre, devid, count)},
+          MemoryHandle{mre, devid},
           _size{count},
           _align{alignment} {}
 #if 0
@@ -125,7 +125,9 @@ namespace zs {
           MemoryHandle{o.base()},
           _size{o.size()},
           _align{o._align} {
-      if (o.data()) copy({base(), data()}, {o.base(), o.data()}, o.usedBytes());
+      if (o.data())
+        copy(MemoryEntity{base(), (void *)data()}, MemoryEntity{o.base(), (void *)o.data()},
+             o.usedBytes());
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;

@@ -6,7 +6,7 @@
 namespace zs {
 
   struct SmallString {
-    using size_type = char;
+    using size_type = unsigned char;
     static constexpr auto nbytes = 4 * sizeof(void *);  ///< 4 * 8 - 1 = 31 bytes (chars)
 
     constexpr SmallString() noexcept : buf{} {
@@ -14,13 +14,13 @@ namespace zs {
     }
     constexpr SmallString(const char tmp[]) : buf{} {
       size_type i = 0;
-      for (; i + 1 < nbytes && tmp[i]; ++i) buf[i] = tmp[i];
+      for (; i + 1u < nbytes && tmp[i]; ++i) buf[i] = tmp[i];
       buf[i] = '\0';
     }
     SmallString(const std::string &str) {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;
       buf[n] = '\0';
-      for (--n; n >= 0; --n) buf[n] = str[n];
+      for (--n; n - 1 >= 0; --n) buf[n] = str[n];
     }
     constexpr SmallString(const SmallString &) noexcept = default;
     constexpr SmallString &operator=(const SmallString &) noexcept = default;

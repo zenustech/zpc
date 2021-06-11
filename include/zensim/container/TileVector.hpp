@@ -30,7 +30,7 @@ namespace zs {
     using base_t = aosoa_instance<Length, T, ChnCounter, Index>;
     using value_type = remove_cvref_t<T>;
     using pointer = value_type *;
-    using const_pointer = const pointer;
+    using const_pointer = const value_type *;
     using reference = value_type &;
     using const_reference = const value_type &;
     using channel_counter_type = ChnCounter;
@@ -48,15 +48,15 @@ namespace zs {
 
     constexpr TileVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1,
                          std::size_t alignment = std::alignment_of_v<value_type>)
-        : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, 0, 0)},
+        : base_t{buildInstance(mre, devid, 0, 0)},
+          MemoryHandle{mre, devid},
           _tags(0),
           _size{0},
           _align{alignment} {}
     TileVector(channel_counter_type numChns, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1, std::size_t alignment = std::alignment_of_v<value_type>)
-        : MemoryHandle{mre, devid},
-          base_t{buildInstance(mre, devid, numChns, count)},
+        : base_t{buildInstance(mre, devid, numChns, count)},
+          MemoryHandle{mre, devid},
           _tags(numChns),
           _size{count},
           _align{alignment} {}
@@ -150,7 +150,7 @@ namespace zs {
           _size{o.size()},
           _align{o._align} {
       if (ds::snode_size(o.self().template node<0>()) > 0)
-        copy({base(), (void *)self().address()}, {o.base(), o.data()},
+        copy(MemoryEntity{base(), (void *)self().address()}, MemoryEntity{o.base(), o.data()},
              ds::snode_size(o.self().template node<0>()));
     }
     TileVector &operator=(const TileVector &o) {
@@ -163,7 +163,7 @@ namespace zs {
       // capacity() is the count of tiles
       // use size() that represents the number of elements!
       TileVector ret{_tags, size(), mh.memspace(), mh.devid(), _align};
-      copy({mh, (void *)ret.data()}, {base(), (void *)data()},
+      copy(MemoryEntity{mh, (void *)ret.data()}, MemoryEntity{base(), (void *)data()},
            ds::snode_size(self().template node<0>()));
       return ret;
     }
@@ -233,11 +233,14 @@ namespace zs {
         }
       }
       initPropertyTags(N);
-      copy({base(), _tagNames.data()}, {{memsrc_e::host, -1}, (void *)hostPropNames.data()},
+      copy(MemoryEntity{base(), _tagNames.data()},
+           MemoryEntity{{memsrc_e::host, -1}, (void *)hostPropNames.data()},
            sizeof(SmallString) * N);
-      copy({base(), _tagSizes.data()}, {{memsrc_e::host, -1}, (void *)hostPropSizes.data()},
+      copy(MemoryEntity{base(), _tagSizes.data()},
+           MemoryEntity{{memsrc_e::host, -1}, (void *)hostPropSizes.data()},
            sizeof(channel_counter_type) * N);
-      copy({base(), _tagOffsets.data()}, {{memsrc_e::host, -1}, (void *)hostPropOffsets.data()},
+      copy(MemoryEntity{base(), _tagOffsets.data()},
+           MemoryEntity{{memsrc_e::host, -1}, (void *)hostPropOffsets.data()},
            sizeof(channel_counter_type) * N);
     }
 

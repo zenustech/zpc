@@ -64,7 +64,7 @@ namespace zs {
 
   /// stack allocator
   stack_allocator::stack_allocator(mr_t *mr, std::size_t totalMemBytes, std::size_t alignBytes)
-      : _mr{mr}, _align{alignBytes} {
+      : _align{alignBytes}, _mr{mr} {
     _data = _head = (char *)(_mr->allocate(totalMemBytes, _align));
     _tail = _head + totalMemBytes;  ///< not so sure about this
   };

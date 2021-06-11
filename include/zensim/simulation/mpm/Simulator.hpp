@@ -17,11 +17,14 @@ namespace zs {
     std::size_t numPartitions() const noexcept { return partitions.size(); }
     float getMaxVel(int partI) const {
       Vector<float> ret{1, memsrc_e::host, -1};
-      copy({ret.base(), ret.data()}, {maxVelSqrNorms[partI].base(), maxVelSqrNorms[partI].data()},
+      copy(MemoryEntity{ret.base(), ret.data()},
+           MemoryEntity{maxVelSqrNorms[partI].base(),
+                        const_cast<float*>(maxVelSqrNorms[partI].data())},
            sizeof(float));
       return ret[0];
     }
-    float* maxVelPtr(int partI) const { return maxVelSqrNorms[partI].data(); }
+    float* maxVelPtr(int partI) { return maxVelSqrNorms[partI].data(); }
+    const float* maxVelPtr(int partI) const { return maxVelSqrNorms[partI].data(); }
 
     /// particle
     std::vector<GeneralParticles> particles;

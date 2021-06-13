@@ -27,3 +27,4 @@ Tests/CuLinSolver/test_cusolver
 Tests/Execution/test_exec
 Tests/Execution/test_iter
 Data/
+include/zensim/libzpc.so

@@ -45,9 +45,9 @@ namespace zs {
     u.d = d;
     return u.l;
   }
-  template <typename Dst, typename Src>
-  constexpr Dst reinterpret_bits(Src &&val) {
-    static_assert(sizeof(Src) == sizeof(Dst), "Source Type and Destination Type must be of the same size");
+  template <typename Dst, typename Src> constexpr Dst reinterpret_bits(Src &&val) {
+    static_assert(sizeof(Src) == sizeof(Dst),
+                  "Source Type and Destination Type must be of the same size");
     return reinterpret_cast<Dst const volatile &>(val);
   }
   /// morton code
@@ -93,9 +93,16 @@ namespace zs {
     return (expand_bits_32((u32)(x * 1024.f)) << 2) | (expand_bits_32((u32)(y * 1024.f)) << 1)
            | expand_bits_32((u32)(z * 1024.f));
   }
-  constexpr u64 morton_3d_64(double x, double y, double z) {
+  constexpr u64 morton_3d_64(double x, double y, double z) noexcept {
     return (expand_bits_64((u32)(x * 2097152.)) << 2) | (expand_bits_64((u32)(y * 2097152.)) << 1)
            | expand_bits_64((u32)(z * 2097152.));
+  }
+  template <typename T> constexpr auto morton_3d(T x, T y, T z) noexcept;
+  template <> constexpr auto morton_3d<float>(float x, float y, float z) noexcept {
+    return morton_3d_32(x, y, z);
+  }
+  template <> constexpr auto morton_3d<double>(double x, double y, double z) noexcept {
+    return morton_3d_64(x, y, z);
   }
   /**
    */

@@ -21,7 +21,6 @@ namespace zs {
     using TV = vec<float_type, dim>;
     using IV = vec<integer_type, dim>;
     using vector_t = Vector<value_type>;
-    using indices_t = Vector<integer_type>;
     using tilevector_t = TileVector<value_type, lane_width>;
     using Box = AABBBox<dim, float_type>;
 
@@ -37,21 +36,21 @@ namespace zs {
 
     LBvh() = default;
 
+    constexpr auto numLeaves() noexcept { return (sortedBvs.size() + 1) / 2; }
     Vector<Box> bvs;
     Box wholeBox{TV::uniform(std::numeric_limits<float>().max()),
                  TV::uniform(std::numeric_limits<float>().min())};
 
-    Vector<Box> sortedBvs;             // bounding volumes
-    Vector<index_type> escapeIndices;  // 0-th bit marks leaf/ internal node
-    Vector<index_type> levels;         // count from bottom up, 0-based
-    indices_t originalIndices;         // map to original primitives
+    Vector<Box> sortedBvs;               // bounding volumes
+    Vector<index_type> escapeIndices;    // 0-th bit marks leaf/ internal node
+    Vector<index_type> levels;           // count from bottom up, 0-based
+    Vector<index_type> originalIndices;  // map to original primitives
+    Vector<index_type> leafIndices;      // leaf indices within optimized lbvh
 
-    Vector<int> trunkBuildFlags;
     tilevector_t tree;
-
-    indices_t primitiveIndices;
   };
 
+  /// utilities
   template <execspace_e space, int lane_width, int dim, typename T>
   auto build_lbvh(const Vector<AABBBox<dim, T>> &primBvs) {
     using namespace zs;
@@ -105,12 +104,13 @@ namespace zs {
                     mcs.size());
 
     Vector<mc_t> splits{numLeaves, memdst, devid};
+    constexpr auto totalBits = sizeof(mc_t) * 8;
     execPol(range(numLeaves), [numLeaves, splits = proxy<space>(splits),
                                sortedMcs = proxy<space>(sortedMcs)](int id) mutable {
       /// divergent level count
       splits(id) = id != numLeaves - 1
-                       ? 32 - count_lz(wrapv<space>{}, sortedMcs(id) ^ sortedMcs(id + 1))
-                       : 33;
+                       ? totalBits - count_lz(wrapv<space>{}, sortedMcs(id) ^ sortedMcs(id + 1))
+                       : totalBits + 1;
     });
 
     Vector<Box> leafBvs{numLeaves, memdst, devid}, trunkBvs{numLeaves - 1, memdst, devid};
@@ -123,9 +123,9 @@ namespace zs {
     Vector<index_type> trunkRc{numLeaves - 1, memdst, devid};
     Vector<index_type> trunkLc{numLeaves - 1, memdst, devid};
 
-    /// ...
+    /// build + refit
+    Vector<index_type> trunkTopoMarks{numLeaves - 1, memdst, devid};
     {
-      Vector<index_type> trunkTopoMarks{numLeaves - 1, memdst, devid};
       Vector<index_type> trunkBuildFlags{numLeaves - 1, memdst, devid};
       execPol(range(numLeaves - 1), [marks = proxy<space>(trunkTopoMarks),
                                      flags = proxy<space>(trunkBuildFlags)](int trunkId) mutable {
@@ -218,7 +218,112 @@ namespace zs {
         }
       });
     }
+    /// sort bvh
+    Vector<index_type> leafOffsets{numLeaves, memdst, devid};
+    exclusive_scan(execPol, leafDepths.begin(), leafDepths.end(), leafOffsets.begin());
+    Vector<index_type> trunkDst{numLeaves - 1, memdst, devid};
+    execPol(range(numLeaves),
+            [leafLca = proxy<space>(leafLca), leafDepths = proxy<space>(leafDepths),
+             leafOffsets = proxy<space>(leafOffsets), trunkLc = proxy<space>(trunkLc),
+             trunkDst = proxy<space>(trunkDst)](index_type idx) mutable {
+              int node = leafLca(idx), depth = leafDepths(idx), id = leafOffsets(idx);
+              for (; --depth; node = trunkLc(node)) trunkDst(node) = id++;
+            });
+
+    auto &sortedBvs = lbvh.sortedBvs;
+    auto &escapeIndices = lbvh.escapeIndices;
+    auto &originalIndices = lbvh.originalIndices;
+    auto &levels = lbvh.levels;
+    auto &leafIndices = lbvh.leafIndices;
+
+    sortedBvs.resize(numLeaves + numLeaves - 1);
+    escapeIndices.resize(numLeaves + numLeaves - 1);
+    originalIndices.resize(numLeaves + numLeaves - 1);
+    levels.resize(numLeaves + numLeaves - 1);
+    leafIndices.resize(numLeaves);  // for refit
+    execPol(range(numLeaves - 1),
+            [sortedBvs = proxy<space>(sortedBvs), escapeIndices = proxy<space>(escapeIndices),
+             originalIndices = proxy<space>(originalIndices), levels = proxy<space>(levels),
+             leafLca = proxy<space>(leafLca), leafOffsets = proxy<space>(leafOffsets),
+             leafDepths = proxy<space>(leafDepths), trunkBvs = proxy<space>(trunkBvs),
+             trunkL = proxy<space>(trunkL), trunkR = proxy<space>(trunkR),
+             trunkDst = proxy<space>(trunkDst)](index_type idx) mutable {
+              int dst = trunkDst(idx);
+              const Box &bv = trunkBvs(idx);
+              sortedBvs(dst)._min = bv._min;
+              sortedBvs(dst)._max = bv._max;
+              const auto rb = trunkR(idx);
+              const auto escIndex = leafLca(rb + 1);
+              escapeIndices(dst) = escIndex == -1 ? leafOffsets(rb + 1) : trunkDst(escIndex);
+              originalIndices(dst) = idx << 1;
+              levels(dst) = leafDepths(trunkL(idx)) - 1;  // 0-based
+            });
+    // leaves
+    execPol(range(numLeaves),
+            [sortedBvs = proxy<space>(sortedBvs), escapeIndices = proxy<space>(escapeIndices),
+             originalIndices = proxy<space>(originalIndices), levels = proxy<space>(levels),
+             leafIndices = proxy<space>(leafIndices), leafBvs = proxy<space>(leafBvs),
+             leafOffsets = proxy<space>(leafOffsets),
+             leafDepths = proxy<space>(leafDepths)](index_type idx) mutable {
+              const auto dst = leafOffsets(idx) + leafDepths(idx) - 1;
+              const Box &bv = leafBvs(idx);
+              leafIndices(idx) = dst;
+              sortedBvs(dst)._min = bv._min;
+              sortedBvs(dst)._max = bv._max;
+              escapeIndices(dst) = dst + 1;
+              originalIndices(dst) = (idx << 1) | 1;
+              levels(dst) = 0;
+            });
+#if 0
+    fmt::print("{} leaves in total\n", numLeaves);
+
+    int count = 0;
+    bool isInternal = true;
+    int node = leafLca(0);
+    execPol(range(1), [&](int) {
+      while (true) {
+        count++;
+        if (isInternal) {
+          (void)(trunkBvs[node]);
+          if (trunkTopoMarks[node] & 1) {
+            isInternal = false;
+            node = trunkL[node];
+          } else {
+            node = trunkLc[node];
+          }
+        } else {
+          (void)(leafBvs[node]);
+          if (node == numLeaves - 1) break;
+          auto lca = leafLca[node + 1];
+          if (lca == -1)
+            node++;
+          else {
+            node = lca;
+            isInternal = true;
+          }
+        }
+      }
+    });
+    fmt::print("traversed {} nodes in total\n", count);
+    getchar();
+#endif
     return lbvh;
+  }
+
+  template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
+  void refit_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<AABBBox<dim, T>> &primBvs) {
+    using namespace zs;
+    using lbvh_t = LBvh<dim, lane_width, is_double>;
+    using float_type = typename lbvh_t::float_type;
+    using index_type = typename lbvh_t::index_type;
+    using Box = typename lbvh_t::Box;
+    using TV = vec<float_type, dim>;
+
+    const auto numLeaves = lbvh.numLeaves();
+    const auto memdst = lbvh.sortedBvs.memspace();
+    const auto devid = lbvh.sortedBvs.devid();
+    Vector<int> refitFlags{numLeaves - 1, memdst, devid};
+    auto &leafIndices = lbvh.leafIndices;
   }
 
 }  // namespace zs

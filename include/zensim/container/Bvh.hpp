@@ -10,6 +10,25 @@ namespace zs {
   template <int dim, typename T = float> using AABBBox
       = AnalyticLevelSet<analytic_geometry_e::Cuboid, T, dim>;
 
+  template <int dim, typename T>
+  constexpr bool overlaps(const AABBBox<dim, T> &a, const AABBBox<dim, T> &b) noexcept {
+    for (int d = 0; d < dim; ++d)
+      if (b._min[d] > a._max[d] || b._max[d] < a._min[d]) return false;
+    return true;
+  }
+  template <int dim, typename T>
+  constexpr bool overlaps(const vec<T, dim> &p, const AABBBox<dim, T> &b) noexcept {
+    for (int d = 0; d < dim; ++d)
+      if (b._min[d] > p[d] || b._max[d] < p[d]) return false;
+    return true;
+  }
+  template <int dim, typename T>
+  constexpr bool overlaps(const AABBBox<dim, T> &b, const vec<T, dim> &p) noexcept {
+    for (int d = 0; d < dim; ++d)
+      if (b._min[d] > p[d] || b._max[d] < p[d]) return false;
+    return true;
+  }
+
   template <int dim_ = 3, int lane_width_ = 32, bool is_double = false> struct LBvh {
     static constexpr int dim = dim_;
     static constexpr int lane_width = lane_width_;
@@ -41,13 +60,13 @@ namespace zs {
     Box wholeBox{TV::uniform(std::numeric_limits<float>().max()),
                  TV::uniform(std::numeric_limits<float>().min())};
 
+    Vector<index_type> correspondingLeafIndices;
+
     Vector<Box> sortedBvs;               // bounding volumes
     Vector<index_type> escapeIndices;    // 0-th bit marks leaf/ internal node
     Vector<index_type> levels;           // count from bottom up, 0-based
     Vector<index_type> originalIndices;  // map to original primitives
     Vector<index_type> leafIndices;      // leaf indices within optimized lbvh
-
-    tilevector_t tree;
   };
 
   /// build bvh
@@ -103,14 +122,20 @@ namespace zs {
     radix_sort_pair(execPol, mcs.begin(), indices.begin(), sortedMcs.begin(), sortedIndices.begin(),
                     mcs.size());
 
+    auto &correspondingLeafIndices = lbvh.correspondingLeafIndices;
+    correspondingLeafIndices = Vector<index_type>{numLeaves, memdst, devid};  // for refit, cd
+
     Vector<mc_t> splits{numLeaves, memdst, devid};
     constexpr auto totalBits = sizeof(mc_t) * 8;
     execPol(range(numLeaves), [numLeaves, splits = proxy<space>(splits),
-                               sortedMcs = proxy<space>(sortedMcs)](int id) mutable {
+                               correspondingLeafIndices = proxy<space>(correspondingLeafIndices),
+                               sortedIndices = proxy<space>(sortedIndices),
+                               sortedMcs = proxy<space>(sortedMcs)](index_type id) mutable {
       /// divergent level count
       splits(id) = id != numLeaves - 1
                        ? totalBits - count_lz(wrapv<space>{}, sortedMcs(id) ^ sortedMcs(id + 1))
                        : totalBits + 1;
+      correspondingLeafIndices(sortedIndices(id)) = id;
     });
 
     Vector<Box> leafBvs{numLeaves, memdst, devid}, trunkBvs{numLeaves - 1, memdst, devid};
@@ -232,15 +257,15 @@ namespace zs {
 
     auto &sortedBvs = lbvh.sortedBvs;
     auto &escapeIndices = lbvh.escapeIndices;
-    auto &originalIndices = lbvh.originalIndices;
     auto &levels = lbvh.levels;
+    auto &originalIndices = lbvh.originalIndices;
     auto &leafIndices = lbvh.leafIndices;
 
-    sortedBvs.resize(numLeaves + numLeaves - 1);
-    escapeIndices.resize(numLeaves + numLeaves - 1);
-    originalIndices.resize(numLeaves + numLeaves - 1);
-    levels.resize(numLeaves + numLeaves - 1);
-    leafIndices.resize(numLeaves);  // for refit
+    sortedBvs = Vector<Box>{numLeaves + numLeaves - 1, memdst, devid};
+    escapeIndices = Vector<index_type>{numLeaves + numLeaves - 1, memdst, devid};
+    levels = Vector<index_type>{numLeaves + numLeaves - 1, memdst, devid};
+    originalIndices = Vector<index_type>{numLeaves + numLeaves - 1, memdst, devid};
+    leafIndices = Vector<index_type>{numLeaves, memdst, devid};  // for refit
     execPol(range(numLeaves - 1),
             [numLeaves, sortedBvs = proxy<space>(sortedBvs),
              escapeIndices = proxy<space>(escapeIndices),
@@ -254,13 +279,17 @@ namespace zs {
               sortedBvs(dst)._min = bv._min;
               sortedBvs(dst)._max = bv._max;
               const auto rb = trunkR(idx);
-              escapeIndices(dst) = rb + 1 < numLeaves ? trunkDst(leafLca(rb + 1)) : -1;
+              escapeIndices(dst)
+                  = rb + 1 < numLeaves
+                        ? (leafDepths(rb + 1) > 1 ? trunkDst(leafLca(rb + 1)) : leafOffsets(rb + 1))
+                        : -1;
               originalIndices(dst) = idx << 1;
               levels(dst) = leafDepths(trunkL(idx)) - 1;  // 0-based
             });
     // leaves
     execPol(range(numLeaves),
-            [sortedBvs = proxy<space>(sortedBvs), escapeIndices = proxy<space>(escapeIndices),
+            [numLeaves, sortedBvs = proxy<space>(sortedBvs),
+             escapeIndices = proxy<space>(escapeIndices),
              originalIndices = proxy<space>(originalIndices), levels = proxy<space>(levels),
              leafIndices = proxy<space>(leafIndices), leafBvs = proxy<space>(leafBvs),
              leafOffsets = proxy<space>(leafOffsets),
@@ -270,7 +299,7 @@ namespace zs {
               leafIndices(idx) = dst;
               sortedBvs(dst)._min = bv._min;
               sortedBvs(dst)._max = bv._max;
-              escapeIndices(dst) = dst + 1;
+              escapeIndices(dst) = idx + 1 < numLeaves ? dst + 1 : -1;
               originalIndices(dst) = (idx << 1) | 1;
               levels(dst) = 0;
             });
@@ -330,9 +359,8 @@ namespace zs {
 
     auto &leafIndices = lbvh.leafIndices;
     auto &sortedBvs = lbvh.sortedBvs;
-    auto &escapeIndices = lbvh.escapeIndices;
-    auto &originalIndices = lbvh.originalIndices;
     auto &levels = lbvh.levels;
+    auto &correspondingLeafIndices = lbvh.correspondingLeafIndices;
     // init bvs, refit flags
     execPol(range(numNodes), [flags = proxy<space>(refitFlags),
                               bvs = proxy<space>(sortedBvs)](index_type idx) mutable {
@@ -341,57 +369,90 @@ namespace zs {
                      TV::uniform(std::numeric_limits<float_type>().lowest())};
     });
     // refit
-    execPol(range(numLeaves - 1),
-            [flags = proxy<space>(refitFlags), bvs = proxy<space>(sortedBvs),
-             levels = proxy<space>(levels),
-             leafIndices = proxy<space>(leafIndices)](index_type idx) mutable {
-              int node = leafIndices(idx);
-              // left-branch levels
-              index_type depth = levels(node);
-              // left-branch total levels
-              index_type lbdepth = levels(node + depth);
-              bool isLc = lbdepth > depth;
-              index_type fa = isLc ? node - 1 : node - 1 - levels(node - 1);
+    execPol(range(numLeaves), [flags = proxy<space>(refitFlags), bvs = proxy<space>(sortedBvs),
+                               correspondingLeafIndices = proxy<space>(correspondingLeafIndices),
+                               primBvs = proxy<space>(primBvs), levels = proxy<space>(levels),
+                               leafIndices = proxy<space>(leafIndices)](index_type idx) mutable {
+      int node = leafIndices(correspondingLeafIndices(idx));
+      bvs(node) = primBvs(idx);
+      // left-branch levels
+      index_type depth = levels(node);
+      // left-branch total levels
+      index_type lbdepth = levels(node + depth);
+      bool isLc = lbdepth > depth;
+      index_type fa = isLc ? node - 1 : node - 1 - levels(node - 1);
 
-              while (fa != -1 && atomic_add(wrapv<space>{}, &flags(fa), 1) == 1) {
-                const Box box = bvs(node);
-                index_type otherNode = isLc ? node + depth + 1 : node - levels(node - 1);
-                const Box otherBox = bvs(otherNode);
-                for (int d = 0; d < 3; ++d) {
-                  bvs(fa)._min[d] = box._min[d] < otherBox._min[d] ? box._min[d] : otherBox._min[d];
-                  bvs(fa)._max[d] = box._max[d] > otherBox._max[d] ? box._max[d] : otherBox._max[d];
-                }
-                // update fa
-                node = fa;
-                depth = levels(node);
-                lbdepth = levels(node + depth);
-                isLc = lbdepth > depth;
-                fa = isLc ? node - 1 : node - 1 - levels(node - 1);
-              }
-            });
+      while (fa != -1 && atomic_add(wrapv<space>{}, &flags(fa), 1) == 1) {
+        const Box box = bvs(node);
+        index_type otherNode = isLc ? node + depth + 1 : node - levels(node - 1);
+        const Box otherBox = bvs(otherNode);
+        for (int d = 0; d < 3; ++d) {
+          bvs(fa)._min[d] = box._min[d] < otherBox._min[d] ? box._min[d] : otherBox._min[d];
+          bvs(fa)._max[d] = box._max[d] > otherBox._max[d] ? box._max[d] : otherBox._max[d];
+        }
+        // update fa
+        node = fa;
+        depth = levels(node);
+        lbdepth = levels(node + depth);
+        isLc = lbdepth > depth;
+        fa = isLc ? node - 1 : node - 1 - levels(node - 1);
+      }
+    });
   }
 
   /// collision detection traversal
-  // aabb - bvh
-  template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
-  void intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<AABBBox<dim, T>> &bvs) {
+  // collider (aabb, point) - bvh
+  template <execspace_e space, typename Index, int dim, int lane_width, bool is_double,
+            typename Collider>
+  Vector<Index> intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
+                               const Vector<Collider> &colliders) {
     using namespace zs;
     using lbvh_t = LBvh<dim, lane_width, is_double>;
     using float_type = typename lbvh_t::float_type;
     using index_type = typename lbvh_t::index_type;
     using Box = typename lbvh_t::Box;
     using TV = vec<float_type, dim>;
-    ;
-  }
-  // point - bvh
-  template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
-  void intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<vec<T, dim>> &points) {
-    using namespace zs;
-    using lbvh_t = LBvh<dim, lane_width, is_double>;
-    using float_type = typename lbvh_t::float_type;
-    using index_type = typename lbvh_t::index_type;
-    using Box = typename lbvh_t::Box;
-    using TV = vec<float_type, dim>;
+
+    const auto numLeaves = lbvh.numLeaves();
+    const auto numNodes = numLeaves + numLeaves - 1;
+    const auto memdst = lbvh.sortedBvs.memspace();
+    const auto devid = lbvh.sortedBvs.devid();
+
+    Vector<Index> ret{colliders.size() * dim * dim, memdst, devid};  // this is the estimated count
+    Vector<Index> cnt{1, memdst, devid};
+
+    auto execPol = par_exec(wrapv<space>{}).sync(true);
+
+    auto &sortedBvs = lbvh.sortedBvs;
+    auto &escapeIndices = lbvh.escapeIndices;
+    auto &originalIndices = lbvh.originalIndices;
+    auto &levels = lbvh.levels;
+    // init bvs, refit flags
+    execPol(range(colliders.size()),
+            [bound = ret.size(), cnt = proxy<space>(cnt), ret = proxy<space>(ret),
+             colliders = proxy<space>(colliders), bvhBvs = proxy<space>(sortedBvs),
+             levels = proxy<space>(levels), escapeIndices = proxy<space>(escapeIndices),
+             originalIndices = proxy<space>(originalIndices)](index_type idx) mutable {
+              const auto collider = colliders(idx);
+              index_type node = 0;
+              while (node != -1) {
+                index_type depth = levels(node);
+                // internal node traversal
+                for (; depth; --depth, ++node)
+                  if (!overlaps(collider, bvhBvs(node))) break;
+                // leaf node check
+                if (depth == 0 && overlaps(collider, bvhBvs(node))) {
+                  auto no = atomic_add(wrapv<space>{}, &cnt(0), (Index)1);
+                  if (no < bound) ret(no) = originalIndices(node) >> 1;
+                }
+                node = escapeIndices(node);
+              }
+            });
+    auto n = cnt.clone({memsrc_e::host, -1});
+    if (n[0] >= ret.size())
+      throw std::runtime_error("not enough space reserved for collision indices");
+    ret.resize(n[0]);
+    return ret;
   }
 
 }  // namespace zs

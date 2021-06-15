@@ -170,7 +170,7 @@ namespace zs {
     constexpr HashTableProxy() = default;
     ~HashTableProxy() = default;
 
-    explicit HashTableProxy(HashTableT &table)
+    explicit constexpr HashTableProxy(HashTableT &table)
         : _table{table.self()},
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()},
@@ -285,7 +285,7 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename Tn, int dim, typename Index>
-  decltype(auto) proxy(HashTable<Tn, dim, Index> &table) {
+  constexpr decltype(auto) proxy(HashTable<Tn, dim, Index> &table) {
     return HashTableProxy<ExecSpace, HashTable<Tn, dim, Index>>{table};
   }
 

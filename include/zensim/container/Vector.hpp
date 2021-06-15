@@ -259,14 +259,14 @@ namespace zs {
 
     constexpr VectorProxy() = default;
     ~VectorProxy() = default;
-    explicit VectorProxy(const VectorT &vector)
+    explicit constexpr VectorProxy(const VectorT &vector)
         : vector_t{vector.self()}, _vectorSize{vector.size()} {}
 
     size_type _vectorSize;
   };
 
   template <execspace_e ExecSpace, typename T, typename Index>
-  decltype(auto) proxy(const Vector<T, Index> &vec) {  // currently ignore constness
+  constexpr decltype(auto) proxy(const Vector<T, Index> &vec) {  // currently ignore constness
     return VectorProxy<ExecSpace, Vector<T, Index>>{vec};
   }
 

@@ -242,7 +242,7 @@ target_precompile_headers(zpc INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
 target_compile_options(zpc 
   PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
-  PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --expt-extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
+  PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
 )
 target_link_options(zpc 
   PRIVATE       $<$<LINK_LANGUAGE:CUDA>:-dlto>

@@ -289,7 +289,7 @@ namespace zs {
 
     constexpr TileVectorUnnamedProxy() = default;
     ~TileVectorUnnamedProxy() = default;
-    explicit TileVectorUnnamedProxy(TileVectorT &tilevector)
+    explicit constexpr TileVectorUnnamedProxy(TileVectorT &tilevector)
         : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {}
     constexpr auto &operator()(const channel_counter_type c, const size_type i) {
       return static_cast<tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
@@ -352,7 +352,8 @@ namespace zs {
 
     constexpr TileVectorProxy() = default;
     ~TileVectorProxy() = default;
-    explicit TileVectorProxy(const std::vector<SmallString> &tagNames, TileVectorT &tilevector)
+    explicit constexpr TileVectorProxy(const std::vector<SmallString> &tagNames,
+                                       TileVectorT &tilevector)
         : tile_vector_t{tilevector.self()},
           _vectorSize{tilevector.size()},
           N{static_cast<channel_counter_type>(tagNames.size())} {
@@ -437,12 +438,12 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
-  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                       TileVector<T, Length, IndexT, ChnT> &vec) {
+  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                                 TileVector<T, Length, IndexT, ChnT> &vec) {
     return TileVectorProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
   }
   template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
-  decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT> &vec) {
+  constexpr decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT> &vec) {
     return TileVectorUnnamedProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{vec};
   }
 

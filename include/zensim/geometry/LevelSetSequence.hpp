@@ -92,7 +92,7 @@ namespace zs {
 
     constexpr LevelSetWindowProxy() = default;
     ~LevelSetWindowProxy() = default;
-    explicit LevelSetWindowProxy(LevelSetWindowT &ls)
+    explicit constexpr LevelSetWindowProxy(LevelSetWindowT &ls)
         : st{ls.st.self()}, ed{ls.ed.self()}, stepDt{ls.stepDt}, alpha{ls.alpha} {}
 
     constexpr T getSignedDistance(const TV &X) const noexcept {
@@ -116,7 +116,8 @@ namespace zs {
     T stepDt, alpha;
   };
 
-  template <execspace_e ExecSpace, typename LS> decltype(auto) proxy(LevelSetWindow<LS> &levelset) {
+  template <execspace_e ExecSpace, typename LS>
+  constexpr decltype(auto) proxy(LevelSetWindow<LS> &levelset) {
     return LevelSetWindowProxy<ExecSpace, LevelSetWindow<LS>>{levelset};
   }
 

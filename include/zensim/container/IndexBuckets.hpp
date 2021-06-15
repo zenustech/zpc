@@ -48,7 +48,7 @@ namespace zs {
 
     constexpr IndexBucketsProxy() = default;
     ~IndexBucketsProxy() = default;
-    IndexBucketsProxy(IndexBucketsT &ibs)
+    constexpr IndexBucketsProxy(IndexBucketsT &ibs)
         : table{proxy<Space>(ibs._table)},
           indices{proxy<Space>(ibs._indices)},
           offsets{proxy<Space>(ibs._offsets)},
@@ -64,7 +64,8 @@ namespace zs {
     value_type dx;
   };
 
-  template <execspace_e ExecSpace, int dim> decltype(auto) proxy(IndexBuckets<dim> &indexBuckets) {
+  template <execspace_e ExecSpace, int dim>
+  constexpr decltype(auto) proxy(IndexBuckets<dim> &indexBuckets) {
     return IndexBucketsProxy<ExecSpace, IndexBuckets<dim>>{indexBuckets};
   }
 

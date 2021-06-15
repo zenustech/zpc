@@ -93,7 +93,7 @@ namespace zs {
 
     constexpr ParticlesProxy() = default;
     ~ParticlesProxy() = default;
-    explicit ParticlesProxy(ParticlesT &particles)
+    explicit constexpr ParticlesProxy(ParticlesT &particles)
         : _M{particles.M.data()},
           _X{particles.X.data()},
           _V{particles.V.data()},
@@ -133,7 +133,7 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename V, int d>
-  decltype(auto) proxy(Particles<V, d> &particles) {
+  constexpr decltype(auto) proxy(Particles<V, d> &particles) {
     return ParticlesProxy<ExecSpace, Particles<V, d>>{particles};
   }
 
@@ -174,7 +174,7 @@ namespace zs {
 
     constexpr TiledParticlesProxy() = default;
     ~TiledParticlesProxy() = default;
-    explicit TiledParticlesProxy(TiledParticlesT &particles)
+    explicit constexpr TiledParticlesProxy(TiledParticlesT &particles)
         : _X{particles.X.data()}, _particleCount{particles.size()} {}
 
     constexpr auto &pos(size_type parid) { return _X[parid]; }
@@ -187,7 +187,7 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, auto Length, typename V, int d>
-  decltype(auto) proxy(TiledParticles<Length, V, d> &particles) {
+  constexpr decltype(auto) proxy(TiledParticles<Length, V, d> &particles) {
     return TiledParticlesProxy<ExecSpace, TiledParticles<Length, V, d>>{particles};
   }
 

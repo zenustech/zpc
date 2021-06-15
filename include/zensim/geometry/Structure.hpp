@@ -94,7 +94,7 @@ namespace zs {
 
     constexpr GridBlocksProxy() = default;
     ~GridBlocksProxy() = default;
-    explicit GridBlocksProxy(GridBlocksT &gridblocks)
+    explicit constexpr GridBlocksProxy(GridBlocksT &gridblocks)
         : _gridBlocks{gridblocks.blocks.data()},
           _blockCount{gridblocks.blocks.size()},
           _dx{gridblocks.dx} {}
@@ -108,7 +108,7 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename V, int d, int chn_bits, int domain_bits>
-  decltype(auto) proxy(GridBlocks<GridBlock<V, d, chn_bits, domain_bits>> &blocks) {
+  constexpr decltype(auto) proxy(GridBlocks<GridBlock<V, d, chn_bits, domain_bits>> &blocks) {
     return GridBlocksProxy<ExecSpace, GridBlocks<GridBlock<V, d, chn_bits, domain_bits>>>{blocks};
   }
 

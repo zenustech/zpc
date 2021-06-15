@@ -78,7 +78,7 @@ namespace zs {
 
     constexpr SparseLevelSetProxy() = default;
     ~SparseLevelSetProxy() = default;
-    SparseLevelSetProxy(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
+    constexpr SparseLevelSetProxy(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
         : _sideLength{ls._sideLength},
           _space{ls._space},
           _dx{ls._dx},
@@ -90,7 +90,7 @@ namespace zs {
           _min{ls._min},
           _max{ls._max},
           _w2v{ls._w2v} {}
-    SparseLevelSetProxy(SparseLevelSetT &ls)
+    constexpr SparseLevelSetProxy(SparseLevelSetT &ls)
         : _sideLength{ls._sideLength},
           _space{ls._space},
           _dx{ls._dx},
@@ -232,11 +232,13 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, int dim>
-  decltype(auto) proxy(const std::vector<SmallString> &tagNames, SparseLevelSet<dim> &levelset) {
+  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                                 SparseLevelSet<dim> &levelset) {
     return SparseLevelSetProxy<ExecSpace, SparseLevelSet<dim>>{tagNames, levelset};
   }
 
-  template <execspace_e ExecSpace, int dim> decltype(auto) proxy(SparseLevelSet<dim> &levelset) {
+  template <execspace_e ExecSpace, int dim>
+  constexpr decltype(auto) proxy(SparseLevelSet<dim> &levelset) {
     return SparseLevelSetProxy<ExecSpace, SparseLevelSet<dim>>{levelset};
   }
 

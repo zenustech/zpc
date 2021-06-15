@@ -89,8 +89,11 @@ namespace zs {
   };
 
   struct MemoryEntity {
-    MemoryHandle descr;
-    void *ptr;
+    MemoryHandle descr{};
+    void *ptr{nullptr};
+    MemoryEntity() = default;
+    template <typename T> constexpr MemoryEntity(MemoryHandle mh, T &&ptr)
+        : descr{mh}, ptr{(void *)ptr} {}
   };
 
   // host = 0, device, device_const, um, pinned file

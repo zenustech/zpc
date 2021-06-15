@@ -17,7 +17,7 @@ namespace zs {
     using float_type = remove_cvref_t<decltype(std::declval<value_type>().asFloat())>;
     using integer_type = remove_cvref_t<decltype(std::declval<value_type>().asSignedInteger())>;
 
-    using index_type = conditional_t<is_double, i64, i32>;
+    using index_type = conditional_t<is_double, i64, i32>;  // must be signed integer
     using TV = vec<float_type, dim>;
     using IV = vec<integer_type, dim>;
     using vector_t = Vector<value_type>;
@@ -79,7 +79,7 @@ namespace zs {
               }
             });
     lbvh.wholeBox = wholeBox.clone(MemoryHandle{memsrc_e::host, -1})[0];
-    {
+    if constexpr (false) {
       auto &wholeBox = lbvh.wholeBox;
       fmt::print("{}, {}, {} - {}, {}, {}\n", wholeBox._min[0], wholeBox._min[1], wholeBox._min[2],
                  wholeBox._max[0], wholeBox._max[1], wholeBox._max[2]);
@@ -242,7 +242,8 @@ namespace zs {
     levels.resize(numLeaves + numLeaves - 1);
     leafIndices.resize(numLeaves);  // for refit
     execPol(range(numLeaves - 1),
-            [sortedBvs = proxy<space>(sortedBvs), escapeIndices = proxy<space>(escapeIndices),
+            [numLeaves, sortedBvs = proxy<space>(sortedBvs),
+             escapeIndices = proxy<space>(escapeIndices),
              originalIndices = proxy<space>(originalIndices), levels = proxy<space>(levels),
              leafLca = proxy<space>(leafLca), leafOffsets = proxy<space>(leafOffsets),
              leafDepths = proxy<space>(leafDepths), trunkBvs = proxy<space>(trunkBvs),
@@ -253,8 +254,7 @@ namespace zs {
               sortedBvs(dst)._min = bv._min;
               sortedBvs(dst)._max = bv._max;
               const auto rb = trunkR(idx);
-              const auto escIndex = leafLca(rb + 1);
-              escapeIndices(dst) = escIndex == -1 ? leafOffsets(rb + 1) : trunkDst(escIndex);
+              escapeIndices(dst) = rb + 1 < numLeaves ? trunkDst(leafLca(rb + 1)) : -1;
               originalIndices(dst) = idx << 1;
               levels(dst) = leafDepths(trunkL(idx)) - 1;  // 0-based
             });

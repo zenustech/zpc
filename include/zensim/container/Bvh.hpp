@@ -50,7 +50,7 @@ namespace zs {
     tilevector_t tree;
   };
 
-  /// utilities
+  /// build bvh
   template <execspace_e space, int lane_width, int dim, typename T>
   auto build_lbvh(const Vector<AABBBox<dim, T>> &primBvs) {
     using namespace zs;
@@ -310,6 +310,7 @@ namespace zs {
     return lbvh;
   }
 
+  /// refit bvh
   template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
   void refit_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<AABBBox<dim, T>> &primBvs) {
     using namespace zs;
@@ -320,10 +321,56 @@ namespace zs {
     using TV = vec<float_type, dim>;
 
     const auto numLeaves = lbvh.numLeaves();
+    const auto numNodes = numLeaves + numLeaves - 1;
     const auto memdst = lbvh.sortedBvs.memspace();
     const auto devid = lbvh.sortedBvs.devid();
+
     Vector<int> refitFlags{numLeaves - 1, memdst, devid};
+
     auto &leafIndices = lbvh.leafIndices;
+    auto &sortedBvs = lbvh.sortedBvs;
+    auto &escapeIndices = lbvh.escapeIndices;
+    auto &originalIndices = lbvh.originalIndices;
+    auto &levels = lbvh.levels;
+    // init bvs, refit flags
+    execPol(range(numNodes), [flags = proxy<space>(refitFlags),
+                              bvs = proxy<space>(sortedBvs)](index_type idx) mutable {
+      flags(idx) = 0;
+      bvs(idx) = Box{TV::uniform(std::numeric_limits<float_type>().max()),
+                     TV::uniform(std::numeric_limits<float_type>().lowest())};
+    });
+    // refit
+    execPol(range(numLeaves - 1),
+            [flags = proxy<space>(refitFlags), bvs = proxy<space>(sortedBvs),
+             levels = proxy<space>(levels),
+             leafIndices = proxy<space>(leafIndices)](index_type idx) mutable {
+              int node = leafIndices(idx);
+              index_type leaf = levels(node);
+              index_type fa = levels(node + leaf);
+              bool isLc = true;
+
+              if (fa > levels(fa))
+                fa = node - 1;
+              else {
+                fa = node + leaf - levels(leaf);
+                isLc = false;
+              }
+              while (fa != -1 && atomic_add(wrapv<space>{}, flags(fa), 1) == 1) {
+                const Box box = bvs(node);
+                const Box otherBox{};
+#if 0
+            if (isLc) otherBox = bvs(..);
+            else otherBox = bvs(..);
+            for (int d = 0; d < 3; ++d) {
+              bvs(fa)._min[d] = box._min[d] < otherBox._min[d] ? box._min[d] : otherBox._min[d];
+              bvs(fa)._max[d] = box._max[d] > otherBox._max[d] ? box._max[d] : otherBox._max[d];
+            }
+#endif
+                // update fa
+              }
+            });
   }
+
+  /// collision detection traversal
 
 }  // namespace zs

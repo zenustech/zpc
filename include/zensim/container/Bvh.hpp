@@ -325,7 +325,8 @@ namespace zs {
     const auto memdst = lbvh.sortedBvs.memspace();
     const auto devid = lbvh.sortedBvs.devid();
 
-    Vector<int> refitFlags{numLeaves - 1, memdst, devid};
+    auto execPol = par_exec(wrapv<space>{}).sync(true);
+    Vector<int> refitFlags{numNodes, memdst, devid};
 
     auto &leafIndices = lbvh.leafIndices;
     auto &sortedBvs = lbvh.sortedBvs;
@@ -345,32 +346,52 @@ namespace zs {
              levels = proxy<space>(levels),
              leafIndices = proxy<space>(leafIndices)](index_type idx) mutable {
               int node = leafIndices(idx);
-              index_type leaf = levels(node);
-              index_type fa = levels(node + leaf);
-              bool isLc = true;
+              // left-branch levels
+              index_type depth = levels(node);
+              // left-branch total levels
+              index_type lbdepth = levels(node + depth);
+              bool isLc = lbdepth > depth;
+              index_type fa = isLc ? node - 1 : node - 1 - levels(node - 1);
 
-              if (fa > levels(fa))
-                fa = node - 1;
-              else {
-                fa = node + leaf - levels(leaf);
-                isLc = false;
-              }
-              while (fa != -1 && atomic_add(wrapv<space>{}, flags(fa), 1) == 1) {
+              while (fa != -1 && atomic_add(wrapv<space>{}, &flags(fa), 1) == 1) {
                 const Box box = bvs(node);
-                const Box otherBox{};
-#if 0
-            if (isLc) otherBox = bvs(..);
-            else otherBox = bvs(..);
-            for (int d = 0; d < 3; ++d) {
-              bvs(fa)._min[d] = box._min[d] < otherBox._min[d] ? box._min[d] : otherBox._min[d];
-              bvs(fa)._max[d] = box._max[d] > otherBox._max[d] ? box._max[d] : otherBox._max[d];
-            }
-#endif
+                index_type otherNode = isLc ? node + depth + 1 : node - levels(node - 1);
+                const Box otherBox = bvs(otherNode);
+                for (int d = 0; d < 3; ++d) {
+                  bvs(fa)._min[d] = box._min[d] < otherBox._min[d] ? box._min[d] : otherBox._min[d];
+                  bvs(fa)._max[d] = box._max[d] > otherBox._max[d] ? box._max[d] : otherBox._max[d];
+                }
                 // update fa
+                node = fa;
+                depth = levels(node);
+                lbdepth = levels(node + depth);
+                isLc = lbdepth > depth;
+                fa = isLc ? node - 1 : node - 1 - levels(node - 1);
               }
             });
   }
 
   /// collision detection traversal
+  // aabb - bvh
+  template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
+  void intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<AABBBox<dim, T>> &bvs) {
+    using namespace zs;
+    using lbvh_t = LBvh<dim, lane_width, is_double>;
+    using float_type = typename lbvh_t::float_type;
+    using index_type = typename lbvh_t::index_type;
+    using Box = typename lbvh_t::Box;
+    using TV = vec<float_type, dim>;
+    ;
+  }
+  // point - bvh
+  template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
+  void intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<vec<T, dim>> &points) {
+    using namespace zs;
+    using lbvh_t = LBvh<dim, lane_width, is_double>;
+    using float_type = typename lbvh_t::float_type;
+    using index_type = typename lbvh_t::index_type;
+    using Box = typename lbvh_t::Box;
+    using TV = vec<float_type, dim>;
+  }
 
 }  // namespace zs

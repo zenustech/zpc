@@ -329,19 +329,17 @@ namespace zs {
 
   namespace detail {
     template <typename IB, typename IE = IB> struct WrappedIterator {
-      mutable IB beginIterator;
-      mutable IE endIterator;
-      constexpr IB &&begin() const &&noexcept { return std::move(beginIterator); }
-      constexpr IE &&end() const &&noexcept { return std::move(endIterator); }
-      constexpr IB begin() const &noexcept { return beginIterator; }
-      constexpr IE end() const &noexcept { return endIterator; }
+      IB beginIterator;
+      IE endIterator;
+      constexpr IB begin() const noexcept { return beginIterator; }
+      constexpr IE end() const noexcept { return endIterator; }
       constexpr WrappedIterator(IB &&begin, IE &&end)
           : beginIterator(std::move(begin)), endIterator(std::move(end)) {}
       constexpr WrappedIterator(const IB &begin, const IE &end)
           : beginIterator(begin), endIterator(end) {}
     };
     template <typename IB, typename IE> constexpr auto iter_range(IB &&bg, IE &&ed) {
-      return WrappedIterator<IB, IE>(FWD(bg), FWD(ed));
+      return WrappedIterator<remove_cvref_t<IB>, remove_cvref_t<IE>>(FWD(bg), FWD(ed));
     }
   }  // namespace detail
 
@@ -352,48 +350,54 @@ namespace zs {
   template <typename Data, typename StrideT> struct IndexIterator
       : IteratorInterface<IndexIterator<Data, StrideT>> {
     using T = Data;
-    using DiffT = std::make_signed_t<Data>;
-    static_assert(std::is_integral_v<T>, "Index type must be integral");
+    using DiffT = std::make_signed_t<StrideT>;
+    static_assert(std::is_integral_v<T> && std::is_integral_v<DiffT>, "Index type must be integral");
+    static_assert(std::is_convertible_v<T, DiffT>,
+        "Stride type not compatible with the index type");
 
     constexpr IndexIterator(T base = 0, DiffT stride = 1) : base{base}, stride{stride} {}
     constexpr T dereference() const noexcept { return base; }
-    template <typename Iter> constexpr bool equal_to(Iter it) const noexcept {
+    constexpr bool equal_to(IndexIterator it) const noexcept {
       return base == it.base;
     }
-    constexpr void advance(DiffT offset) noexcept { base += stride; }
-    template <typename Iter> constexpr DiffT distance_to(Iter &&it) const noexcept {
+    constexpr void advance(DiffT offset) noexcept { 
+      base += stride * offset; 
+    }
+    constexpr DiffT distance_to(IndexIterator it) const noexcept {
       return static_cast<DiffT>(it.base) - static_cast<DiffT>(base);
     }
 
     T base;
     DiffT stride;
   };
-  template <typename Data, auto Stride>
-  struct IndexIterator<Data, integral_v<decltype(Stride), Stride>>
-      : IteratorInterface<IndexIterator<Data, integral_v<decltype(Stride), Stride>>> {
+  template <typename Data, sint_t Stride>
+  struct IndexIterator<Data, integral_v<sint_t, Stride>>
+      : IteratorInterface<IndexIterator<Data, integral_v<sint_t, Stride>>> {
     using T = std::make_signed_t<Data>;
     static_assert(std::is_integral_v<T>, "Index type must be integral");
-    static_assert(
-        std::is_integral_v<decltype(Stride)> && std::is_convertible_v<decltype(Stride), T>,
-        "Stride type must be integral and compatible with the index type");
+    static_assert(std::is_convertible_v<sint_t, T>,
+        "Stride type not compatible with the index type");
 
-    constexpr IndexIterator(T base = 0) : base{base} {}
+    constexpr IndexIterator(T base = 0, wrapv<Stride> = {}) : base{base} {}
+
     constexpr T dereference() const noexcept { return base; }
-    template <typename Iter> constexpr bool equal_to(Iter it) const noexcept {
+    constexpr bool equal_to(IndexIterator it) const noexcept {
       return base == it.base;
     }
-    constexpr void advance(T offset) noexcept { base += static_cast<T>(Stride); }
-    template <typename Iter> constexpr T distance_to(Iter &&it) const noexcept {
+    constexpr void advance(T offset) noexcept { 
+      base += static_cast<T>(Stride * offset); 
+    }
+    constexpr T distance_to(IndexIterator it) const noexcept {
       return it.base - base;
     }
 
     T base;
   };
-  template <typename BaseT> IndexIterator(BaseT) -> IndexIterator<BaseT, integral_v<int, 1>>;
   template <typename BaseT, typename DiffT, enable_if_t<!is_integral_constant<DiffT>::value> = 0>
   IndexIterator(BaseT, DiffT) -> IndexIterator<BaseT, DiffT>;
-  template <typename BaseT, auto Diff> IndexIterator(BaseT, integral_v<decltype(Diff), Diff>)
-      -> IndexIterator<BaseT, integral_v<decltype(Diff), Diff>>;
+  template <typename BaseT> IndexIterator(BaseT) -> IndexIterator<BaseT, integral_v<sint_t, (sint_t)1>>;
+  template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral_v<sint_t, Diff>)
+      -> IndexIterator<BaseT, integral_v<sint_t, Diff>>;
 
   // collapse iterator
   template <typename Ts, typename Indices> struct Collapse;
@@ -515,15 +519,17 @@ namespace zs {
   // index range
   template <typename T> constexpr auto range(T begin, T end, T increment) {
     auto actualEnd = end - ((end - begin) % increment);
-    // static_assert(detail::has_distance_to<LegacyIterator<IndexIterator<T>>>::value, "WTF1???");
-    // static_assert(detail::has_distance_to<IndexIterator<T>>::value, "WTF2???");
     using DiffT = std::make_signed_t<T>;
     return detail::iter_range(
-        make_iterator<IndexIterator<T, DiffT>>(begin, static_cast<DiffT>(increment)),
-        make_iterator<IndexIterator<T, DiffT>>(actualEnd, static_cast<DiffT>(increment)));
+        make_iterator<IndexIterator>(begin, static_cast<DiffT>(increment)),
+        make_iterator<IndexIterator>(actualEnd, static_cast<DiffT>(increment)));
   }
   template <typename T> constexpr auto range(T begin, T end) {
-    return range<T>(begin, end, begin < end ? 1 : -1);
+    if (begin < end)
+      return detail::iter_range(make_iterator<IndexIterator>(begin, wrapv<(sint_t)1>{}),
+        make_iterator<IndexIterator>(end, wrapv<(sint_t)1>{}));
+    return detail::iter_range(make_iterator<IndexIterator>(begin, wrapv<(sint_t)-1>{}),
+      make_iterator<IndexIterator>(end, wrapv<(sint_t)-1>{}));
   }
   template <typename T> constexpr auto range(T end) { return range<T>(0, end); }
 
@@ -537,9 +543,9 @@ namespace zs {
   // enumeration range
   template <typename... Args> constexpr auto enumerate(Args &&...args) {
     auto begin = make_iterator<zip_iterator>(
-        make_iterator<IndexIterator>((std::make_signed_t<std::size_t>)0), std::begin(FWD(args))...);
+        make_iterator<IndexIterator>((sint_t)0), std::begin(FWD(args))...);
     auto end = make_iterator<zip_iterator>(
-        make_iterator<IndexIterator>(std::numeric_limits<std::make_signed_t<std::size_t>>::max()),
+        make_iterator<IndexIterator>(std::numeric_limits<sint_t>::max()),
         std::end(FWD(args))...);
     return detail::iter_range(std::move(begin), std::move(end));
   }

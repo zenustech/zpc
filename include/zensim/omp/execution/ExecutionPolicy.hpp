@@ -14,18 +14,52 @@ namespace zs {
     // EventID eventid{0}; ///< event id
     template <typename Range, typename F> void operator()(Range &&range, F &&f) const {
       using fts = function_traits<F>;
+      using IterT = remove_cvref_t<decltype(std::begin(range))>;
+      if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category,
+                                          std::random_access_iterator_tag>) {
+        using DiffT = typename std::iterator_traits<IterT>::difference_type;
+        auto iter = std::begin(range);
+        const DiffT dist = std::end(range) - iter;
+        DiffT nths{};
+#pragma omp parallel num_threads(_dop) shared(f, dist) firstprivate(iter)
+        {
+#pragma omp single 
+          {
+            nths = omp_get_num_threads();
+          }
+#pragma omp barrier
+          /// use block-style partition rather than cyclic-style
+          DiffT tid = omp_get_thread_num();
+          DiffT nwork = (dist + nths - 1) / nths;
+          DiffT st = nwork * tid;
+          DiffT ed = st + nwork;
+          if (ed > dist) ed = dist;
+
+          for (iter += st; st < ed; ++st, ++iter) 
+            if constexpr (fts::arity == 0)
+              f();
+            else {
+              auto &&it = *iter;
+              if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+                std::apply(f, it);
+              else 
+                std::invoke(f, it);
+            }
+        }
+      } else {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
-      for (auto &&it : range)
+        for (auto &&it : range)
 #pragma omp task firstprivate(it)
-      {
-        if constexpr (fts::arity == 0) {
-          f();
-        } else {
-          if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
-            std::apply(f, it);
-          else
-            f(it);
+        {
+          if constexpr (fts::arity == 0) {
+            f();
+          } else {
+            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+              std::apply(f, it);
+            else
+              f(it);
+          }
         }
       }
     }

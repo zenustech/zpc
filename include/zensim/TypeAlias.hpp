@@ -22,6 +22,8 @@ namespace zs {
   using f32 = float;
   using f64 = double;
 
+  using sint_t = std::make_signed_t<std::size_t>;
+
   union dat32 {
     f32 f;
     i32 i;

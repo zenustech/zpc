@@ -53,13 +53,6 @@ namespace zs {
     ProcID did;
   };
 
-  struct stack_memory_source : Singleton<stack_memory_source>, mr_t, Object {
-  protected:
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
-    void do_deallocate(void *p, std::size_t bytes, std::size_t alignment) override;
-    bool do_is_equal(const mr_t &other) const noexcept override;
-  };
-
   class handle_resource : mr_t {
   public:
     explicit handle_resource(mr_t *upstream) noexcept;

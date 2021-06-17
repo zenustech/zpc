@@ -7,16 +7,6 @@
 
 namespace zs {
 
-  /// stack memory resource
-  void *stack_memory_source::do_allocate(std::size_t bytes, std::size_t alignment) {
-    /// maybe variadic length array is appropriate
-    return alloca(bytes);
-  }
-  void stack_memory_source::do_deallocate(void *p, std::size_t bytes, std::size_t alignment) {}
-  bool stack_memory_source::do_is_equal(const mr_t &other) const noexcept {
-    return this == dynamic_cast<stack_memory_source *>(const_cast<mr_t *>(&other));
-  }
-
   /// handle_resource
   handle_resource::handle_resource(mr_t *upstream) noexcept : _upstream{upstream} {}
   handle_resource::handle_resource(std::size_t initSize, mr_t *upstream) noexcept

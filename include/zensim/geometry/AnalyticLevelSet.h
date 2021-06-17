@@ -98,7 +98,7 @@ namespace zs {
     }
 
     TV _center{};
-    T _radius;
+    T _radius{};
   };
 
   template <typename T, int dim> using GenericAnalyticLevelSet

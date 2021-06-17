@@ -89,6 +89,8 @@ namespace zs {
     auto execPol = par_exec(wrapv<space>{}).sync(true);
 
     Vector<Box> wholeBox{1, memdst, devid};
+    wholeBox[0] = Box{TV::uniform(std::numeric_limits<float_type>().max()),
+                   TV::uniform(std::numeric_limits<float_type>().lowest())};
     execPol(range(numLeaves),
             [bvs = proxy<space>(primBvs), box = proxy<space>(wholeBox)](int id) mutable {
               const Box bv = bvs(id);
@@ -127,46 +129,46 @@ namespace zs {
 
     Vector<mc_t> splits{numLeaves, memdst, devid};
     constexpr auto totalBits = sizeof(mc_t) * 8;
-    execPol(range(numLeaves), [numLeaves, splits = proxy<space>(splits),
+    execPol(range(numLeaves), [totalBits, numLeaves, splits = proxy<space>(splits),
                                correspondingLeafIndices = proxy<space>(correspondingLeafIndices),
                                sortedIndices = proxy<space>(sortedIndices),
                                sortedMcs = proxy<space>(sortedMcs)](index_type id) mutable {
       /// divergent level count
-      splits(id) = id != numLeaves - 1
-                       ? totalBits - count_lz(wrapv<space>{}, sortedMcs(id) ^ sortedMcs(id + 1))
-                       : totalBits + 1;
+      if (id != numLeaves - 1)
+        splits(id) = totalBits - count_lz(wrapv<space>{}, sortedMcs(id) ^ sortedMcs(id + 1));
+      else 
+        splits(id) =  totalBits + 1;
       correspondingLeafIndices(sortedIndices(id)) = id;
     });
 
     Vector<Box> leafBvs{numLeaves, memdst, devid}, trunkBvs{numLeaves - 1, memdst, devid};
     Vector<index_type> leafLca{numLeaves, memdst, devid};
-    Vector<index_type> leafPar{numLeaves, memdst, devid};
+    // Vector<index_type> leafPar{numLeaves, memdst, devid};
     Vector<index_type> leafDepths{numLeaves, memdst, devid};
-    Vector<index_type> trunkPar{numLeaves - 1, memdst, devid};
+    // Vector<index_type> trunkPar{numLeaves - 1, memdst, devid};
     Vector<index_type> trunkR{numLeaves - 1, memdst, devid};
     Vector<index_type> trunkL{numLeaves - 1, memdst, devid};
     Vector<index_type> trunkRc{numLeaves - 1, memdst, devid};
     Vector<index_type> trunkLc{numLeaves - 1, memdst, devid};
 
     /// build + refit
-    Vector<index_type> trunkTopoMarks{numLeaves - 1, memdst, devid};
+    Vector<u32> trunkTopoMarks{numLeaves - 1, memdst, devid};
     {
-      Vector<index_type> trunkBuildFlags{numLeaves - 1, memdst, devid};
+      Vector<int> trunkBuildFlags{numLeaves - 1, memdst, devid};
       execPol(range(numLeaves - 1), [marks = proxy<space>(trunkTopoMarks),
-                                     flags = proxy<space>(trunkBuildFlags)](int trunkId) mutable {
+                                     flags = proxy<space>(trunkBuildFlags)](index_type trunkId) mutable {
         flags(trunkId) = 0;
         marks(trunkId) = 0;
       });
-      ;
       execPol(range(numLeaves), [numLeaves, leafBvs = proxy<space>(leafBvs),
                                  trunkBvs = proxy<space>(trunkBvs), splits = proxy<space>(splits),
-                                 leafLca = proxy<space>(leafLca), leafPar = proxy<space>(leafPar),
+                                 leafLca = proxy<space>(leafLca), // leafPar = proxy<space>(leafPar),
                                  leafDepths = proxy<space>(leafDepths),
-                                 trunkPar = proxy<space>(trunkPar), trunkR = proxy<space>(trunkR),
+                                 /* trunkPar = proxy<space>(trunkPar), */ trunkR = proxy<space>(trunkR),
                                  trunkL = proxy<space>(trunkL), trunkLc = proxy<space>(trunkLc),
                                  trunkRc = proxy<space>(trunkRc),
                                  trunkTopoMarks = proxy<space>(trunkTopoMarks),
-                                 trunkBuildFlags = proxy<space>(trunkBuildFlags)](int idx) mutable {
+                                 trunkBuildFlags = proxy<space>(trunkBuildFlags)](index_type idx) mutable {
         using BvsProxy = remove_cvref_t<decltype(leafBvs)>;
         leafLca(idx) = -1, leafDepths(idx) = 1;
         int l = idx - 1, r = idx;  ///< (l, r]
@@ -178,19 +180,19 @@ namespace zs {
           mark = false;
 
         int cur = mark ? l : r;
-        leafPar(idx) = cur;
+        // leafPar(idx) = cur;
         if (mark)
           trunkRc(cur) = idx, trunkR(cur) = idx,
-          atomic_or(wrapv<space>{}, &trunkTopoMarks(cur), (index_type)0x00000002);
-        else
+          atomic_or(wrapv<space>{}, &trunkTopoMarks(cur), 0x00000002u);
+        else 
           trunkLc(cur) = idx, trunkL(cur) = idx,
-          atomic_or(wrapv<space>{}, &trunkTopoMarks(cur), (index_type)0x00000001);
+          atomic_or(wrapv<space>{}, &trunkTopoMarks(cur), 0x00000001u);
 
-        while (atomic_add(wrapv<space>{}, &trunkBuildFlags(cur), (index_type)1) == 1) {
-          {  // refit
+        while (atomic_add(wrapv<space>{}, &trunkBuildFlags(cur), 1) == 1) {
+          if constexpr (true) {  // refit
             int lc = trunkLc(cur), rc = trunkRc(cur);
-            Box bv{TV::uniform(std::numeric_limits<float>().max()),
-                   TV::uniform(std::numeric_limits<float>().min())};
+            Box bv{TV::uniform(std::numeric_limits<float_type>().max()),
+                   TV::uniform(std::numeric_limits<float_type>().lowest())};
             BvsProxy left{}, right{};
             switch (trunkTopoMarks(cur) & 3) {
               case 0:
@@ -224,20 +226,20 @@ namespace zs {
             mark = false;
 
           if (l + 1 == 0 && r == numLeaves - 1) {
-            trunkPar(cur) = -1;
+            // trunkPar(cur) = -1;
             trunkTopoMarks(cur) &= 0xFFFFFFFB;
             break;
           }
 
           int par = mark ? l : r;
-          trunkPar(cur) = par;
-          if (mark)
+          // trunkPar(cur) = par;
+          if (mark) 
             trunkRc(par) = cur, trunkR(par) = r,
-            atomic_and(exec_omp, &trunkTopoMarks(par), (index_type)0xFFFFFFFD),
+            atomic_and(wrapv<space>{}, &trunkTopoMarks(par), 0xFFFFFFFD),
             trunkTopoMarks(cur) |= 0x00000004;
-          else
+          else 
             trunkLc(par) = cur, trunkL(par) = l + 1,
-            atomic_and(exec_omp, &trunkTopoMarks(par), (index_type)0xFFFFFFFE),
+            atomic_and(wrapv<space>{}, &trunkTopoMarks(par), 0xFFFFFFFE),
             trunkTopoMarks(cur) &= 0xFFFFFFFB;
           cur = par;
         }
@@ -374,7 +376,9 @@ namespace zs {
                                primBvs = proxy<space>(primBvs), levels = proxy<space>(levels),
                                leafIndices = proxy<space>(leafIndices)](index_type idx) mutable {
       int node = leafIndices(correspondingLeafIndices(idx));
+      // int node = leafIndices(idx);
       bvs(node) = primBvs(idx);
+      // bvs(node) = primBvs(indices(idx));
       // left-branch levels
       index_type depth = levels(node);
       // left-branch total levels

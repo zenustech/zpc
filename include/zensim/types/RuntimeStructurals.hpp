@@ -765,12 +765,13 @@ namespace zs {
       template <auto I, typename Ti, typename... Tis,
                 enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
                               sizeof...(Tis) == Snode::N> = 0>
-      constexpr auto const &operator()(wrapv<I>, Ti chno, Tis &&...coords) const noexcept {
+      constexpr const auto &operator()(wrapv<I>, Ti chno, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, chno, std::forward<Tis>(coords)...);
         return *reinterpret_cast<
             typename Snode::template attrib_type<(std::size_t)I>::type const *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
+#if 0
       template <auto I, typename Ti, typename... Tis,
                 enable_if_all<!Snode::template attrib_type<(std::size_t)I>::value,
                               sizeof...(Tis) == Snode::N> = 0>
@@ -782,6 +783,7 @@ namespace zs {
         inst.assign((void *)((uintptr_t)zs::get<0>(handles) + ele_offset));
         return inst;
       }
+#endif
       /// without sub-channel
       template <auto I, typename... Tis,
                 enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
@@ -794,12 +796,13 @@ namespace zs {
       template <auto I, typename... Tis,
                 enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
                               sizeof...(Tis) == Snode::N> = 0>
-      constexpr auto const &operator()(wrapv<I>, Tis &&...coords) const noexcept {
+      constexpr const auto &operator()(wrapv<I>, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, 0, std::forward<Tis>(coords)...);
         return *reinterpret_cast<
             typename Snode::template attrib_type<(std::size_t)I>::type const *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
+#if 0
       template <auto I, typename... Tis,
                 enable_if_all<!Snode::template attrib_type<(std::size_t)I>::value,
                               sizeof...(Tis) == Snode::N> = 0>
@@ -811,6 +814,7 @@ namespace zs {
         inst.assign((void *)((uintptr_t)zs::get<0>(handles) + ele_offset));
         return inst;
       }
+#endif
       /// without attribute number
       template <typename Ti, typename... Tis,
                 enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
@@ -823,12 +827,13 @@ namespace zs {
       template <typename Ti, typename... Tis,
                 enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
                               !is_value_wrapper<Ti>::value, sizeof...(Tis) == Snode::N> = 0>
-      constexpr auto const &operator()(Ti chno, Tis &&...coords) const noexcept {
+      constexpr const auto &operator()(Ti chno, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, chno, std::forward<Tis>(coords)...);
         return *reinterpret_cast<
             typename Snode::template attrib_type<(std::size_t)0>::type const *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
+#if 0
       template <typename Ti, typename... Tis,
                 enable_if_all<!Snode::template attrib_type<(std::size_t)0>::value,
                               !is_value_wrapper<Ti>::value, sizeof...(Tis) == Snode::N> = 0>
@@ -840,6 +845,7 @@ namespace zs {
         inst.assign((void *)((uintptr_t)zs::get<0>(handles) + ele_offset));
         return inst;
       }
+#endif
       /// without both attribute number & subchannel number
       template <typename... Tis, enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
                                                sizeof...(Tis) == Snode::N> = 0>
@@ -850,12 +856,13 @@ namespace zs {
       }
       template <typename... Tis, enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
                                                sizeof...(Tis) == Snode::N> = 0>
-      constexpr auto const &operator()(Tis &&...coords) const noexcept {
+      constexpr const auto &operator()(Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, 0, std::forward<Tis>(coords)...);
         return *reinterpret_cast<
             typename Snode::template attrib_type<(std::size_t)0>::type const *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
+#if 0
       template <typename... Tis, enable_if_all<!Snode::template attrib_type<(std::size_t)0>::value,
                                                sizeof...(Tis) == Snode::N> = 0>
       constexpr auto operator()(Tis &&...coords) const noexcept {
@@ -866,6 +873,7 @@ namespace zs {
         inst.assign((void *)((uintptr_t)zs::get<0>(handles) + ele_offset));
         return inst;
       }
+#endif
 
       tuple<void *> handles{nullptr};
     };

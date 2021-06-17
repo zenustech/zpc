@@ -20,6 +20,21 @@ namespace zs {
         using DiffT = typename std::iterator_traits<IterT>::difference_type;
         auto iter = std::begin(range);
         const DiffT dist = std::end(range) - iter;
+#if 0
+
+#pragma omp parallel for num_threads(_dop)
+        for (DiffT i = 0; i < dist; ++i) {
+          auto &&it = *(iter + i);
+          if constexpr (fts::arity == 0)
+            f();
+          else {
+            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+              std::apply(f, it);
+            else 
+              std::invoke(f, it);
+          }
+        }
+#else
         DiffT nths{};
 #pragma omp parallel num_threads(_dop) shared(f, dist) firstprivate(iter)
         {
@@ -46,6 +61,7 @@ namespace zs {
                 std::invoke(f, it);
             }
         }
+#endif
       } else {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master

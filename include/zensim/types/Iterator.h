@@ -525,11 +525,8 @@ namespace zs {
         make_iterator<IndexIterator>(actualEnd, static_cast<DiffT>(increment)));
   }
   template <typename T> constexpr auto range(T begin, T end) {
-    if (begin < end)
-      return detail::iter_range(make_iterator<IndexIterator>(begin, wrapv<(sint_t)1>{}),
-        make_iterator<IndexIterator>(end, wrapv<(sint_t)1>{}));
-    return detail::iter_range(make_iterator<IndexIterator>(begin, wrapv<(sint_t)-1>{}),
-      make_iterator<IndexIterator>(end, wrapv<(sint_t)-1>{}));
+    using DiffT = std::make_signed_t<T>;
+    return range<DiffT>(begin, end, begin < end ? 1 : -1);
   }
   template <typename T> constexpr auto range(T end) { return range<T>(0, end); }
 

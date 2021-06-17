@@ -33,7 +33,9 @@ namespace zs {
   void memset(device_const_mem_tag, void *addr, int chval, std::size_t size) {
     Cuda::instance().memset(addr, chval, size);
   }
-  void copy(device_const_mem_tag, void *dst, void *src, std::size_t size);
+  void copy(device_const_mem_tag, void *dst, void *src, std::size_t size) {
+    Cuda::instance().memcpy(dst, src, size);
+  }
 
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment) {
     void *ret{nullptr};

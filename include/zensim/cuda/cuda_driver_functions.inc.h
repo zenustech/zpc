@@ -39,18 +39,18 @@ PER_CUDA_FUNCTION(retainPrimaryCtx, cuDevicePrimaryCtxRetain, void **, void *);
 // PER_CUDA_FUNCTION(syncEvent, cuEventSynchronize, void *);
 
 // Memory management
-PER_CUDA_FUNCTION(memcpyHtoD, cuMemcpyHtoD_v2, void *, void *, std::size_t);
-PER_CUDA_FUNCTION(memcpyDtoH, cuMemcpyDtoH_v2, void *, void *, std::size_t);
-PER_CUDA_FUNCTION(memcpyDtoD, cuMemcpyDtoD_v2, void *, void *, std::size_t);
+PER_CUDA_FUNCTION(memcpyHtoD, cuMemcpyHtoD_v2, void *, void *, size_t);
+PER_CUDA_FUNCTION(memcpyDtoH, cuMemcpyDtoH_v2, void *, void *, size_t);
+PER_CUDA_FUNCTION(memcpyDtoD, cuMemcpyDtoD_v2, void *, void *, size_t);
 
-PER_CUDA_FUNCTION(memcpyHtoDAsync, cuMemcpyHtoDAsync_v2, void *, void *, std::size_t, void *);
-PER_CUDA_FUNCTION(memcpyDtoHAsync, cuMemcpyDtoHAsync_v2, void *, void *, std::size_t, void *);
-PER_CUDA_FUNCTION(memcpyDtoDAsync, cuMemcpyDtoDAsync_v2, void *, void *, std::size_t, void *);
+PER_CUDA_FUNCTION(memcpyHtoDAsync, cuMemcpyHtoDAsync_v2, void *, void *, size_t, void *);
+PER_CUDA_FUNCTION(memcpyDtoHAsync, cuMemcpyDtoHAsync_v2, void *, void *, size_t, void *);
+PER_CUDA_FUNCTION(memcpyDtoDAsync, cuMemcpyDtoDAsync_v2, void *, void *, size_t, void *);
 
-PER_CUDA_FUNCTION(malloc, cuMemAlloc_v2, void **, std::size_t);
-PER_CUDA_FUNCTION(memset, cuMemsetD8_v2, void *, uint8_t, std::size_t);
+PER_CUDA_FUNCTION(memcpy, cuMemcpy, void *, void *, size_t);
+PER_CUDA_FUNCTION(memset, cuMemsetD8_v2, void *, uint8_t, size_t);
 PER_CUDA_FUNCTION(free, cuMemFree_v2, void *);
-PER_CUDA_FUNCTION(memInfo, cuMemGetInfo_v2, std::size_t *, std::size_t *);
+PER_CUDA_FUNCTION(memInfo, cuMemGetInfo_v2, size_t *, size_t *);
 
 // Module and kernels
 PER_CUDA_FUNCTION(getModuleFunc, cuModuleGetFunction, void **, void *, const char *);

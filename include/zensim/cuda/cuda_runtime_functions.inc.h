@@ -1,9 +1,9 @@
 
-PER_CUDA_FUNCTION(memcpy, cudaMemcpy, void *, void *, std::size_t);
-PER_CUDA_FUNCTION(memcpyAsync, cudaMemcpyAsync, void *, void *, std::size_t, void *);
-PER_CUDA_FUNCTION(vmalloc, cudaMallocManaged, void **, std::size_t, uint32_t);
-PER_CUDA_FUNCTION(memAdvise, cudaMemAdvise, void *, std::size_t, uint32_t, int);
-PER_CUDA_FUNCTION(memsetAsync, cudaMemsetAsync, void *, uint8_t, std::size_t, void *);
+PER_CUDA_FUNCTION(memcpyAsync, cudaMemcpyAsync, void *, void *, size_t, void *);
+PER_CUDA_FUNCTION(vmalloc, cudaMallocManaged, void **, size_t, uint32_t);
+PER_CUDA_FUNCTION(malloc, cudaMalloc, void **, size_t);
+PER_CUDA_FUNCTION(memAdvise, cudaMemAdvise, void *, size_t, uint32_t, int);
+PER_CUDA_FUNCTION(memsetAsync, cudaMemsetAsync, void *, uint8_t, size_t, void *);
 
 // Stream management
 PER_CUDA_FUNCTION(createStream, cudaStreamCreate, void **);

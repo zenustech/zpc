@@ -208,10 +208,10 @@ target_compile_options(zpc
 #                $<$<CXX_COMPILER_ID:GNU>:-O3 -fopenmp>
 #                $<$<CXX_COMPILER_ID:Clang>:-O3 -fopenmp>
 #  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, -flto -fuse-ld=lld, -flto -fuse-linker-plugin> >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 target_link_options(zpc
-  PRIVATE       $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 -flto >>
+  PRIVATE       $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
 # -fsanitize=address memory thread
 set_target_properties(zpc
@@ -254,7 +254,7 @@ target_link_options(zpc
 set_target_properties(zpc
   PROPERTIES  CUDA_EXTENSIONS ON
               CUDA_SEPARABLE_COMPILATION ON
-              #LINKER_LANGUAGE CUDA
+              LINKER_LANGUAGE CUDA
               CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
               CUDA_ARCHITECTURES OFF

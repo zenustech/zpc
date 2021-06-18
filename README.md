@@ -20,7 +20,7 @@ git submodule init
 git submodule update
 ```
 
-If CUDA is installed and required, be sure to set *ZS_ENABLE_CUDA=On* first.
+If CUDA (>=11) is installed and required, be sure to set *ZS_ENABLE_CUDA=On* first.
 
 Configure the project using the *CMake Tools* extension in *Visual Studio Code* (recommended).
 

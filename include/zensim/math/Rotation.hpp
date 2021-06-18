@@ -12,34 +12,12 @@ namespace zs {
     using TM = vec<T, dim, dim>;
 
     constexpr auto &self() noexcept { return static_cast<TM &>(*this); }
-    static constexpr TM quaternion2matrix(const vec<T, 4> &q) noexcept {
-      /// (0, 1, 2, 3)
-      /// (x, y, z, w)
-      const T tx = T(2) * q(0);
-      const T ty = T(2) * q(1);
-      const T tz = T(2) * q(2);
-      const T twx = tx * q(3);
-      const T twy = ty * q(3);
-      const T twz = tz * q(3);
-      const T txx = tx * q(0);
-      const T txy = ty * q(0);
-      const T txz = tz * q(0);
-      const T tyy = ty * q(1);
-      const T tyz = tz * q(1);
-      const T tzz = tz * q(2);
-      TM rot{};
-      rot(0, 0) = T(1) - (tyy + tzz);
-      rot(0, 1) = txy - twz;
-      rot(0, 2) = txz + twy;
-      rot(1, 0) = txy + twz;
-      rot(1, 1) = T(1) - (txx + tzz);
-      rot(1, 2) = tyz - twx;
-      rot(2, 0) = txz - twy;
-      rot(2, 1) = tyz + twx;
-      rot(2, 2) = T(1) - (txx + tyy);
-      return rot;
+    constexpr const auto &self() const noexcept { return static_cast<const TM &>(*this); }
+
+    constexpr Rotation() noexcept {
+      for (int d = 0; d < dim; ++d)
+        (*this)(d, d) = (T)1;
     }
-    constexpr Rotation() noexcept : TM{TM::identity()} {}
     constexpr Rotation(const vec<T, 4> &q) noexcept : TM{} {
       if constexpr (dim == 2) {
         /// Construct a 2D counter clock wise rotation from the angle \a a in
@@ -84,6 +62,35 @@ namespace zs {
         }
         self() = quaternion2matrix(q);
       }
+    }
+
+    template <int d = dim, enable_if_t<d == 3> = 0>
+    static constexpr vec<T, d, d> quaternion2matrix(const vec<T, 4> &q) noexcept {
+      /// (0, 1, 2, 3)
+      /// (x, y, z, w)
+      const T tx = T(2) * q(0);
+      const T ty = T(2) * q(1);
+      const T tz = T(2) * q(2);
+      const T twx = tx * q(3);
+      const T twy = ty * q(3);
+      const T twz = tz * q(3);
+      const T txx = tx * q(0);
+      const T txy = ty * q(0);
+      const T txz = tz * q(0);
+      const T tyy = ty * q(1);
+      const T tyz = tz * q(1);
+      const T tzz = tz * q(2);
+      vec<T, d, d> rot{};
+      rot(0, 0) = T(1) - (tyy + tzz);
+      rot(0, 1) = txy - twz;
+      rot(0, 2) = txz + twy;
+      rot(1, 0) = txy + twz;
+      rot(1, 1) = T(1) - (txx + tzz);
+      rot(1, 2) = tyz - twx;
+      rot(2, 0) = txz - twy;
+      rot(2, 1) = tyz + twx;
+      rot(2, 2) = T(1) - (txx + tyy);
+      return rot;
     }
   };
 

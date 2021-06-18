@@ -80,7 +80,7 @@ namespace zs {
 
     auto numTotalChannels(const std::vector<PropertyTag> &tags) {
       tuple_element_t<1, PropertyTag> cnt = 0;
-      for (std::size_t i = 0; i < tags.size(); ++i) cnt += get<1>(tags[i]);
+      for (std::size_t i = 0; i < tags.size(); ++i) cnt += tags[i].template get<1>();
       return cnt;
     }
     struct iterator : IteratorInterface<iterator> {

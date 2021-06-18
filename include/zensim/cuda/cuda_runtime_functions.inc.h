@@ -18,5 +18,7 @@ PER_CUDA_FUNCTION(eventElapsedTime, cudaEventElapsedTime, float *, void *, void 
 PER_CUDA_FUNCTION(syncEvent, cudaEventSynchronize, void *);
 
 // kernels
-PER_CUDA_FUNCTION(launch, cudaLaunchKernel, void *, dim3, dim3, void **, uint32_t, void *);
+PER_CUDA_FUNCTION(launchCallback, cudaLaunchHostFunc, void *, void *, void *);
+PER_CUDA_FUNCTION(launch, cudaLaunchKernel, const void *, dim3, dim3, void **, size_t, void *);
+PER_CUDA_FUNCTION(cooperativeLaunch, cudaLaunchCooperativeKernel, const void *, dim3, dim3, void **, size_t, void *);
 PER_CUDA_FUNCTION(launchMD, cudaLaunchCooperativeKernelMultiDevice, void *, uint32_t, uint32_t);

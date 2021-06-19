@@ -41,7 +41,7 @@ namespace zs {
     using SDFGridType = openvdb::FloatGrid;
     using SDFTreeType = SDFGridType::TreeType;
     using SDFRootType = SDFTreeType::RootNodeType;  // level 3 RootNode
-    assert(RootType::LEVEL == 3);
+    assert(SDFRootType::LEVEL == 3);
     using SDFInt1Type = SDFRootType::ChildNodeType;  // level 2 InternalNode
     using SDFInt2Type = SDFInt1Type::ChildNodeType;  // level 1 InternalNode
     using SDFLeafType = SDFTreeType::LeafNodeType;   // level 0 LeafNode
@@ -49,7 +49,7 @@ namespace zs {
     using VelGridType = openvdb::Vec3fGrid;
     using VelTreeType = VelGridType::TreeType;
     using VelRootType = VelTreeType::RootNodeType;  // level 3 RootNode
-    assert(RootType::LEVEL == 3);
+    assert(VelRootType::LEVEL == 3);
     using VelInt1Type = VelRootType::ChildNodeType;  // level 2 InternalNode
     using VelInt2Type = VelInt1Type::ChildNodeType;  // level 1 InternalNode
     using VelLeafType = VelTreeType::LeafNodeType;   // level 0 LeafNode

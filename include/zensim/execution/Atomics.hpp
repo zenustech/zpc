@@ -3,11 +3,14 @@
 
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
+#if defined(_WIN32)
+#include <winnt.h>
+#endif
 
 namespace zs {
 
   template <typename ExecTag, typename T>
-  constexpr T atomic_add(ExecTag, T* const dest, const T val) {
+  constexpr T atomic_add(ExecTag, T* dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicAdd(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -20,13 +23,13 @@ namespace zs {
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (std::is_integral_v<T>) {
         if constexpr (sizeof(T) == sizeof(char))
-          return _InterlockedExchangeAdd8(const_cast<char volatile*>(dest), (char)val);
+          return InterlockedExchangeAdd8(const_cast<char volatile*>((char *)dest), (char)val);
         else if constexpr (sizeof(T) == sizeof(short))
-          return _InterlockedExchangeAdd16(const_cast<short volatile*>(dest), (short)val);
+          return InterlockedExchangeAdd16(const_cast<short volatile*>((short *)dest), (short)val);
         else if constexpr (sizeof(T) == sizeof(long))
-          return _InterlockedAdd(const_cast<long volatile*>(dest), (long)val);
+          return InterlockedAdd(const_cast<long volatile*>((long *)dest), (long)val);
         else if constexpr (sizeof(T) == sizeof(__int64))
-          return _InterlockedAdd64(const_cast<__int64 volatile*>(dest), (__int64)val);
+          return InterlockedAdd64(const_cast<__int64 volatile*>((__int64 *)dest), (__int64)val);
       }
 #  else
       return __atomic_fetch_add(dest, val, __ATOMIC_SEQ_CST);
@@ -47,7 +50,7 @@ namespace zs {
   /// exch, cas
   ///
   template <typename ExecTag, typename T>
-  constexpr T atomic_exch(ExecTag, T* const dest, const T val) {
+  constexpr T atomic_exch(ExecTag, T* dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>)
       return atomicExch(dest, val);
     else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -58,13 +61,13 @@ namespace zs {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
-        return _InterlockedExchange8(const_cast<char volatile*>(dest), (char)val);
+        return InterlockedExchange8(const_cast<char volatile*>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
-        return _InterlockedExchange16(const_cast<short volatile*>(dest), (short)val);
+        return InterlockedExchange16(const_cast<short volatile*>((short *)dest), (short)val);
       else if constexpr (sizeof(T) == sizeof(long))
-        return _InterlockedExchange(const_cast<long volatile*>(dest), (long)val);
+        return InterlockedExchange(const_cast<long volatile*>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
-        return _InterlockedExchange64(const_cast<__int64 volatile*>(dest), (__int64)val);
+        return InterlockedExchange64(const_cast<__int64 volatile*>((__int64 *)dest), (__int64)val);
 #  else
       return __atomic_exchange_n(dest, val, __ATOMIC_SEQ_CST);
 #  endif
@@ -79,7 +82,7 @@ namespace zs {
   }
 
   template <typename ExecTag, typename T>
-  constexpr T atomic_cas(ExecTag, T* const dest, T expected, T desired) {
+  constexpr T atomic_cas(ExecTag, T* dest, T expected, T desired) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T))
         return int_as_float(atomicCAS((int*)dest, float_as_int(expected), float_as_int(desired)));
@@ -107,7 +110,7 @@ namespace zs {
             (long*)dest, reinterpret_bits<long>(desired), reinterpret_bits<long>(expected)));
       } else if constexpr (sizeof(T) == sizeof(__int64)) {
         return reinterpret_bits<T>(
-            _InterlockedCompareExchange64((__int64*)dest, reinterpret_bits<__int64>(desired),
+            InterlockedCompareExchange64((__int64*)dest, reinterpret_bits<__int64>(desired),
                                           reinterpret_bits<__int64>(expected)));
       }
 #  else
@@ -216,7 +219,7 @@ namespace zs {
   /// bit-wise operations
   ///
   template <typename ExecTag, typename T>
-  constexpr T atomic_or(ExecTag, T* const dest, const T val) {
+  constexpr T atomic_or(ExecTag, T* dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicOr(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -228,13 +231,13 @@ namespace zs {
 
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
-        return _InterlockedOr8(const_cast<char volatile*>(dest), (char)val);
+        return InterlockedOr8(const_cast<char volatile*>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
-        return _InterlockedOr16(const_cast<short volatile*>(dest), (short)val);
+        return InterlockedOr16(const_cast<short volatile*>((short *)dest), (short)val);
       else if constexpr (sizeof(T) == sizeof(long))
-        return _InterlockedOr(const_cast<long volatile*>(dest), (long)val);
+        return InterlockedOr(const_cast<long volatile*>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
-        return _InterlockedOr64(const_cast<__int64 volatile*>(dest), (__int64)val);
+        return InterlockedOr64(const_cast<__int64 volatile*>((__int64 *)dest), (__int64)val);
 #  else
       return __atomic_fetch_or(dest, val, __ATOMIC_SEQ_CST);
 #  endif
@@ -250,7 +253,7 @@ namespace zs {
   }
 
   template <typename ExecTag, typename T>
-  constexpr T atomic_and(ExecTag, T* const dest, const T val) {
+  constexpr T atomic_and(ExecTag, T* dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicAnd(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -261,13 +264,13 @@ namespace zs {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
-        return _InterlockedAnd8(const_cast<char volatile*>(dest), (char)val);
+        return InterlockedAnd8(const_cast<char volatile*>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
-        return _InterlockedAnd16(const_cast<short volatile*>(dest), (short)val);
+        return InterlockedAnd16(const_cast<short volatile*>((short *)dest), (short)val);
       else if constexpr (sizeof(T) == sizeof(long))
-        return _InterlockedAnd(const_cast<long volatile*>(dest), (long)val);
+        return InterlockedAnd(const_cast<long volatile*>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
-        return _InterlockedAnd64(const_cast<__int64 volatile*>(dest), (__int64)val);
+        return InterlockedAnd64(const_cast<__int64 volatile*>((__int64 *)dest), (__int64)val);
 #  else
       return __atomic_fetch_and(dest, val, __ATOMIC_SEQ_CST);
 #  endif
@@ -282,7 +285,7 @@ namespace zs {
   }
 
   template <typename ExecTag, typename T>
-  constexpr T atomic_xor(ExecTag, T* const dest, const T val) {
+  constexpr T atomic_xor(ExecTag, T* dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicXor(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -293,13 +296,13 @@ namespace zs {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
-        return _InterlockedXor8(const_cast<char volatile*>(dest), (char)val);
+        return InterlockedXor8(const_cast<char volatile*>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
-        return _InterlockedXor16(const_cast<short volatile*>(dest), (short)val);
+        return InterlockedXor16(const_cast<short volatile*>((short *)dest), (short)val);
       else if constexpr (sizeof(T) == sizeof(long))
-        return _InterlockedXor(const_cast<long volatile*>(dest), (long)val);
+        return InterlockedXor(const_cast<long volatile*>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
-        return _InterlockedXor64(const_cast<__int64 volatile*>(dest), (__int64)val);
+        return InterlockedXor64(const_cast<__int64 volatile*>((__int64 *)dest), (__int64)val);
 #  else
       return __atomic_fetch_xor(dest, val, __ATOMIC_SEQ_CST);
 #  endif

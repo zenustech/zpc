@@ -2,11 +2,12 @@
 #include "zensim/container/HashTable.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Structurefree.hpp"
+#include "SparsityOp.hpp"
+#include "zensim/types/Iterator.h"
 
 namespace zs {
 
-  GeneralHashTable partition_for_particles_host_impl(GeneralParticles& particles, float dx,
-                                                     int blocklen);
+  template <execspace_e space>
   GeneralHashTable partition_for_particles(GeneralParticles& particles, float dx, int blocklen);
 
 }  // namespace zs

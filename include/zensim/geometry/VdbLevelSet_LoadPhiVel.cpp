@@ -221,7 +221,7 @@ namespace zs {
     vec<int, 3> extents = ((bmax - bmin) / dx).cast<int>() + 1;
 
     /// phi
-    auto sample = [&phigrid, &velgrid](const TV &X_input) -> std::tuple<float, openvdb::Vec3f> {
+    auto sample = [&phigrid, &velgrid, dim](const TV &X_input) -> std::tuple<float, openvdb::Vec3f> {
       TV X = TV::zeros();
       for (int d = 0; d < dim; d++) X(d) = X_input(d);
       openvdb::tools::GridSampler<PhiTreeT, openvdb::tools::BoxSampler> phi_interpolator(

@@ -5,10 +5,12 @@
 
 #include "Concurrency.h"
 #include "zensim/TypeAlias.hpp"
+#include "zensim/memory/MemoryResource.h"
 #include "zensim/tpls/fmt/format.h"
 #include "zensim/tpls/magic_enum.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
+#include "zensim/types/Polymorphism.h"
 namespace zs {
 
   enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
@@ -18,6 +20,8 @@ namespace zs {
   using cuda_exec_tag = wrapv<execspace_e::cuda>;
   using hip_exec_tag = wrapv<execspace_e::hip>;
 
+  using exec_tags = variant<host_exec_tag, omp_exec_tag, cuda_exec_tag, hip_exec_tag>;
+
   constexpr host_exec_tag exec_seq{};
   constexpr omp_exec_tag exec_omp{};
   constexpr cuda_exec_tag exec_cuda{};
@@ -26,6 +30,23 @@ namespace zs {
   constexpr const char *execution_space_tag[] = {"HOST", "OPENMP", "CUDA", "HIP"};
   constexpr const char *get_execution_space_tag(execspace_e execpol) {
     return execution_space_tag[magic_enum::enum_integer(execpol)];
+  }
+
+  constexpr exec_tags suggest_exec_space(MemoryHandle mh) {
+    switch(mh.memspace()) {
+    case memsrc_e::host:
+    case memsrc_e::pinned:
+      return exec_omp;
+    case memsrc_e::device:
+    case memsrc_e::device_const:
+    case memsrc_e::um:
+      return exec_cuda;
+    case memsrc_e::file:
+      return exec_seq;
+    }
+    throw std::runtime_error(fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n", 
+      get_memory_source_tag(mh.memspace()), (int)mh.devid()));
+    return exec_seq;
   }
 
   struct DeviceHandle {
@@ -72,9 +93,9 @@ namespace zs {
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
     template <typename Range, typename F> constexpr void operator()(Range &&range, F &&f) const {
       using fts = function_traits<F>;
-      if constexpr (fts::arity == 0) {
+      if constexpr (fts::arity == 0) 
         for (auto &&it : range) f();
-      } else {
+      else {
         for (auto &&it : range) {
           if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
             std::apply(f, it);
@@ -135,7 +156,7 @@ namespace zs {
     if constexpr (sizeof...(Policies) == 0)
       return;
     else {
-      auto &policy = zs::get<0>(policies);
+      auto &policy = policies.template get<0>();
       policy.template exec<0>(Indices{}, std::tuple<>{}, policies, ranges, bodies...);
     }
   }

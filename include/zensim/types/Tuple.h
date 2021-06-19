@@ -179,11 +179,11 @@ template <std::size_t I, typename T> struct tuple_value {
 
     template <typename BinaryOp, auto tupsize = tuple_size, enable_if_t<(tupsize > 1)> = 0>
     constexpr auto incl_prefix_scan(BinaryOp &&op) const noexcept {
-      return prefix_scan_impl<1, false>(std::forward<BinaryOp>(op), zs::make_tuple(get<0>()));
+      return prefix_scan_impl<1, false>(std::forward<BinaryOp>(op), zs::make_tuple(this->get<0>()));
     }
     template <typename BinaryOp, auto tupsize = tuple_size, enable_if_t<(tupsize == 1)> = 0>
     constexpr auto incl_prefix_scan(BinaryOp &&op) const noexcept {
-      return zs::make_tuple(get<0>());
+      return zs::make_tuple(this->get<0>());
     }
 
     template <typename BinaryOp, typename T, auto tupsize = tuple_size,

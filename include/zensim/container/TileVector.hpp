@@ -206,7 +206,7 @@ namespace zs {
     constexpr auto propertyOffsets() const {
       std::vector<channel_counter_type> offsets(_tags.size());
       for (Vector<PropertyTag>::size_type i = 0; i < _tags.size(); ++i)
-        offsets[i] = (i ? offsets[i - 1] + get<1>(_tags[i - 1]) : 0);
+        offsets[i] = (i ? offsets[i - 1] + _tags[i - 1].template get<1>() : 0);
       return offsets;
     }
     void preparePropertyNames(const std::vector<SmallString> &propNames) {
@@ -221,8 +221,8 @@ namespace zs {
       for (std::size_t dst = 0; dst < N; ++dst) {
         Vector<PropertyTag>::size_type i = 0;
         for (; i < _tags.size(); ++i) {
-          if (zs::get<0>(_tags[i]) == propNames[dst]) {
-            hostPropSizes[dst] = zs::get<1>(_tags[i]);
+          if (_tags[i].template get<0>() == propNames[dst]) {
+            hostPropSizes[dst] = _tags[i].template get<1>();
             hostPropOffsets[dst] = offsets[i];
             break;
           }

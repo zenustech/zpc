@@ -74,7 +74,7 @@ namespace zs {
             if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
               std::apply(f, it);
             else
-              f(it);
+              std::invoke(f, it);
           }
         }
       }

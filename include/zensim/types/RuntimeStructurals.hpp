@@ -895,7 +895,7 @@ namespace zs {
     std::vector<PropertyTag> ret(0);
     for (auto &&name : names)
       for (auto &&prop : props)
-        if (get<0>(prop) == name) {
+        if (prop.template get<0>() == name) {
           ret.push_back(prop);
           break;
         }

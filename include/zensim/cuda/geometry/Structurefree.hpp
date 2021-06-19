@@ -20,7 +20,7 @@ namespace zs {
       particles.particleBins
           = TileVector<f32, 32>{properties, particles.size(), particles.space(), particles.devid()};
       std::vector<SmallString> attribNames(properties.size());
-      for (auto &&[dst, src] : zip(attribNames, properties)) dst = zs::get<0>(src);
+      for (auto &&[dst, src] : zip(attribNames, properties)) dst = src.template get<0>();
       auto cuPol = cuda_exec().device(particles.devid());
       cuPol(
           {particles.size()},

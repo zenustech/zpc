@@ -11,8 +11,8 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     resource/Resource.cpp
     # simulation
     simulation/mpm/Simulator.cpp
-    simulation/particle/Query.cpp
-    # simulation/sparsity/SparsityCompute.cpp
+    # simulation/particle/Query.cpp
+    simulation/sparsity/SparsityCompute.cpp
     memory/MemOps.cpp
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
@@ -39,13 +39,14 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/math/matrix/MatrixCtor.cpp
     cuda/math/matrix/MatrixTransform.cpp
     cuda/simulation/mpm/Simulator.cpp
-    cuda/simulation/particle/Query.cpp
-    # cuda/simulation/sparsity/SparsityCompute.cpp
+    # cuda/simulation/particle/Query.cpp
+    cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp
     omp/math/matrix/MatrixTransform.cpp
+    omp/simulation/sparsity/SparsityCompute.cpp
 )
 
 ## headers
@@ -178,7 +179,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/algorithm/SortKernels.cuh
     # simulation
     cuda/simulation/transfer/P2G.hpp
-    cuda/simulation/sparsity/SparsityCompute.hpp
     cuda/simulation/particle/Query.hpp
     # physics
     cuda/physics/ConstitutiveModel.hpp
@@ -208,7 +208,7 @@ target_compile_options(zpc
 #                $<$<CXX_COMPILER_ID:GNU>:-O3 -fopenmp>
 #                $<$<CXX_COMPILER_ID:Clang>:-O3 -fopenmp>
 #  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 target_link_options(zpc
   PRIVATE       $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
@@ -276,7 +276,7 @@ target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES}
 endif()
 target_compile_options(zpctool
 # MSVC, GNU, Clang
-  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2  /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
 set_target_properties(zpctool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON

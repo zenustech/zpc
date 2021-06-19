@@ -7,6 +7,7 @@
 
 namespace zs {
 
+#if 0
   template <typename V, typename I> void CudaYaleSparseMatrix<V, I>::analyze_pattern(
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
@@ -360,7 +361,9 @@ namespace zs {
       timer.tock("[gpu] system preconditioned conjugate gradient solve");
     }
   }
+#endif
 
   template struct CudaYaleSparseMatrix<f32, i32>;
   template struct CudaYaleSparseMatrix<f64, i32>;
+
 }  // namespace zs

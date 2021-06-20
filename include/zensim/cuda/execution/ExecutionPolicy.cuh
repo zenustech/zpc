@@ -50,6 +50,41 @@ namespace zs {
                            std::tuple_element_t<0, typename func_traits::arguments_t>>)
       f(shmem, blockIdx.x, threadIdx.x);
   }
+  template <bool withIndex, typename Tn, typename F, typename Tuple, std::size_t... Is>
+  __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F&& f, Tuple args, std::index_sequence<Is...>) {
+    if constexpr (withIndex)
+      f(i, deref_if_raiter(args.template get<Is>(), i)...);
+    else
+      f(deref_if_raiter(args.template get<Is>(), i)...);
+  }
+  template <bool withIndex, typename Tn, typename F, typename Tuple, std::size_t... Is>
+  __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i, F&& f, Tuple args, std::index_sequence<Is...>) {
+    if constexpr (withIndex)
+      f(shmem, i, deref_if_raiter(args.template get<Is>(), i)...);
+    else
+      f(shmem, deref_if_raiter(args.template get<Is>(), i)...);
+  }
+  template <typename Tn, typename F, typename... IterOrVals> __global__ void range_launch(Tn n, F f, IterOrVals... iterOrVals) {
+    extern __shared__ char shmem[];
+    Tn id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id < n) {
+      using func_traits = function_traits<F>;
+      constexpr auto numArgs = std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
+      constexpr bool firstIsPointer = std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
+      constexpr bool firstIsIndex = std::is_integral_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
+
+      if constexpr (func_traits::arity == numArgs)
+        range_foreach(std::false_type{}, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
+      else if constexpr (func_traits::arity == numArgs + 1) {
+        if constexpr (firstIsIndex)
+          range_foreach(std::true_type{}, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
+        else if constexpr (firstIsPointer)
+          range_foreach(std::false_type{}, shmem, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
+      }
+      else if constexpr (func_traits::arity == numArgs + 2 && firstIsPointer)
+        range_foreach(std::true_type{}, shmem, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
+    }
+  }
   namespace cg = cooperative_groups;
   template <typename Tn, typename F> __global__ void block_tile_lane_launch(Tn tileSize, F f) {
     extern __shared__ char shmem[];
@@ -105,16 +140,13 @@ namespace zs {
               - (std::is_pointer_v<std::tuple_element_t<0, typename FTraits::arguments_t>> ? 1 : 0);
       return res;
     }
-    template <typename Tn, typename F>
-    void operator()(std::initializer_list<Tn> range, F &&f) const {
-      (*this)(std::vector<Tn>{range}, f);
-    }
     template <typename Range, typename F,
               enable_if_t<((std::declval<Range &>.end() - std::declval<Range &>.begin()) > 0)> = 0>
     void operator()(Range &&range, F &&f) const {
       (*this)({range.end() - range.begin()}, FWD(f));
     }
-    template <typename Tn, typename F> void operator()(const std::vector<Tn> &range, F &&f) const {
+    template <typename Tn, typename F> void operator()(std::initializer_list<Tn> dims, F &&f) const {
+      const std::vector<Tn> range{dims};
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -132,6 +164,24 @@ namespace zs {
       else if (range.size() == 3)
         context.launchSpare(streamid, {range[0], range[1] * range[2], shmemBytes},
                             block_tile_lane_launch, range[2], f);
+      if (this->shouldSync()) context.syncStreamSpare(streamid);
+      context.recordEventSpare(streamid);
+    }
+    template <typename Range, typename F> void operator()(Range &&range, F &&f) const {
+      auto &context = Cuda::context(procid);
+      context.setContext();
+      if (this->shouldWait())
+        context.spareStreamWaitForEvent(
+            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+
+      // need to work on __device__ func as well
+      auto iter = std::begin(range);
+      using IterT = remove_cvref_t<decltype(iter)>;
+      using DiffT = typename std::iterator_traits<IterT>::difference_type;
+      const DiffT dist = std::end(range) - iter;
+
+      context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f, iter);
+
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }

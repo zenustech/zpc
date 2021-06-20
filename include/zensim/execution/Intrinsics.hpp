@@ -15,12 +15,12 @@
 namespace zs {
 
 #if !ZS_ENABLE_CUDA || !defined(__CUDACC__)
-#  define __device__ inline
+#  define __device__ 
 #endif
 
   // __threadfence
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __device__ void thread_fence(ExecTag) {
+  inline __device__ void thread_fence(ExecTag) {
 #if defined(__CUDACC__)
     __threadfence();
 #else
@@ -30,18 +30,18 @@ namespace zs {
   }
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  void thread_fence(ExecTag) noexcept {
+  inline void thread_fence(ExecTag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
 #pragma omp flush
   }
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  void thread_fence(ExecTag) noexcept {}
+  inline void thread_fence(ExecTag) noexcept {}
 
   // __activemask
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __device__ unsigned active_mask(ExecTag) {
+  inline __device__ unsigned active_mask(ExecTag) {
 #if defined(__CUDACC__)
     return __activemask();
 #else
@@ -59,7 +59,7 @@ namespace zs {
 
   // __ballot_sync
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __device__ unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
+  inline __device__ unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
 #if defined(__CUDACC__)
     return __ballot_sync(mask, predicate);
 #else
@@ -79,7 +79,7 @@ namespace zs {
 
   /// count leading zeros
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __device__ int count_lz(ExecTag, T x) {
+  inline __device__ int count_lz(ExecTag, T x) {
 #if defined(__CUDACC__)
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
@@ -110,7 +110,7 @@ namespace zs {
 
   /// reverse bits
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __device__ T reverse_bits(ExecTag, T x) {
+  inline __device__ T reverse_bits(ExecTag, T x) {
 #if defined(__CUDACC__)
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)

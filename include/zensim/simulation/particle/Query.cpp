@@ -7,7 +7,7 @@ namespace zs {
   GeneralIndexBuckets build_neighbor_list_impl(host_exec_tag, const GeneralParticles &particles,
                                                float dx) {
     return match([](const auto &pars) -> GeneralIndexBuckets {
-      static constexpr int dim = remove_cvref_t<decltype(pars)>::dim;
+      constexpr int dim = remove_cvref_t<decltype(pars)>::dim;
       IndexBuckets<dim> indexBuckets{};
       return indexBuckets;
     })(particles);

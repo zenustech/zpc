@@ -11,7 +11,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     resource/Resource.cpp
     # simulation
     simulation/mpm/Simulator.cpp
-    # simulation/particle/Query.cpp
+    simulation/particle/Query.cpp
     simulation/sparsity/SparsityCompute.cpp
     memory/MemOps.cpp
 )
@@ -39,7 +39,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/math/matrix/MatrixCtor.cpp
     cuda/math/matrix/MatrixTransform.cpp
     cuda/simulation/mpm/Simulator.cpp
-    # cuda/simulation/particle/Query.cpp
+    cuda/simulation/particle/Query.cpp
     cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
 )

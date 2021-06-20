@@ -547,13 +547,13 @@ namespace zs {
     return detail::iter_range(std::move(begin), std::move(end));
   }
 
-  template <typename Value>
-  decltype(auto) deref_if_raiter(Value&& v, ...) noexcept {
-    return FWD(v);
-  }
-  template <typename Iter, typename I, enable_if_t<std::is_convertible_v<typename std::iterator_traits<Iter>::iterator_category, std::random_access_iterator_tag>> = 0>
-  decltype(auto) deref_if_raiter(Iter&& iter, typename std::iterator_traits<Iter>::difference_type i) noexcept {
+  template <typename Iter, enable_if_t<std::is_convertible_v<typename std::iterator_traits<remove_cvref_t<Iter>>::iterator_category, std::random_access_iterator_tag>> = 0>
+  constexpr decltype(auto) deref_if_raiter(Iter&& iter, typename std::iterator_traits<remove_cvref_t<Iter>>::difference_type i) {
     return *(iter + i);
+  }
+  template <typename Value>
+  constexpr decltype(auto) deref_if_raiter(Value&& v, ...) noexcept {
+    return FWD(v);
   }
 
 }  // namespace zs

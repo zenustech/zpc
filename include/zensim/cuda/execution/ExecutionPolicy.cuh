@@ -69,7 +69,7 @@ namespace zs {
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
       using func_traits = function_traits<F>;
-      constexpr auto numArgs = std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
+      constexpr auto numArgs = sizeof...(IterOrVals);
       constexpr bool firstIsPointer = std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
       constexpr bool firstIsIndex = std::is_integral_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
 

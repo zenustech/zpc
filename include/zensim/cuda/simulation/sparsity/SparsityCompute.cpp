@@ -3,6 +3,6 @@
 
 namespace zs {
 
-  // template GeneralHashTable partition_for_particles<execspace_e::cuda>(GeneralParticles&, float, int);
+  template GeneralHashTable partition_for_particles<execspace_e::cuda>(GeneralParticles&, float, int);
 
 }  // namespace zs

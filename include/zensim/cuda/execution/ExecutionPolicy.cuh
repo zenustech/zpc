@@ -70,18 +70,16 @@ namespace zs {
     if (id < n) {
       using func_traits = function_traits<F>;
       constexpr auto numArgs = sizeof...(IterOrVals);
-      constexpr bool firstIsPointer = std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
-      constexpr bool firstIsIndex = std::is_integral_v<std::tuple_element_t<0, typename func_traits::arguments_t>>;
 
       if constexpr (func_traits::arity == numArgs)
         range_foreach(std::false_type{}, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
       else if constexpr (func_traits::arity == numArgs + 1) {
-        if constexpr (firstIsIndex)
+        if constexpr (std::is_integral_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
           range_foreach(std::true_type{}, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
-        else if constexpr (firstIsPointer)
+        else if constexpr (std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
           range_foreach(std::false_type{}, shmem, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
       }
-      else if constexpr (func_traits::arity == numArgs + 2 && firstIsPointer)
+      else if constexpr (func_traits::arity == numArgs + 2 && std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
         range_foreach(std::true_type{}, shmem, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
     }
   }

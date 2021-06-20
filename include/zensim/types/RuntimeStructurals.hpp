@@ -319,7 +319,7 @@ namespace zs {
       using Domain::offset;
 
       using attribs = tuple<snode_attrib_wrapper<Ts>...>;
-      template <std::size_t I> using attrib_type = extract_snode_type<tuple_element_t<I, attribs>>;
+      template <std::size_t I> using attrib_type = extract_snode_type<zs::tuple_element_t<I, attribs>>;
       using channel_counts = vseq_t<Ns...>;
 
       constexpr auto &self() noexcept { return (attribs &)(*this); }
@@ -397,7 +397,7 @@ namespace zs {
           case alloc_on_demand:
             return sizeof(void *) * channel_count();
           default:
-            ZS_UNREACHABLE
+            ; // static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -412,7 +412,7 @@ namespace zs {
           case alloc_on_demand:
             return sizeof(void *) * (layoutp == aos ? channel_count() : 1);
           default:
-            ZS_UNREACHABLE
+            ; // static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -434,7 +434,7 @@ namespace zs {
               return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno)
                      * sizeof(void *);  // ?
             default:
-              ZS_UNREACHABLE
+              ; // static_assert(false, "should not be here!");
           }
         } else {
           if constexpr (allocp == alloc_ahead)
@@ -442,7 +442,7 @@ namespace zs {
           else if constexpr (allocp == alloc_on_demand)
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);  // ?
           else
-            ZS_UNREACHABLE
+            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -469,7 +469,7 @@ namespace zs {
       using Domain::offset;
 
       using attribs = tuple<snode_attrib_wrapper<Ts>...>;
-      template <std::size_t I> using attrib_type = extract_snode_type<tuple_element_t<I, attribs>>;
+      template <std::size_t I> using attrib_type = extract_snode_type<zs::tuple_element_t<I, attribs>>;
       using channel_counts = tuple<Tn...>;
 
       constexpr auto &self() noexcept { return (attribs &)(*this); }
@@ -552,7 +552,7 @@ namespace zs {
             case alloc_on_demand:
               return sizeof(void *) * channel_count();
             default:
-              ZS_UNREACHABLE
+              ; // static_assert(false, "should not be here!");
           }
         } else {
           if constexpr (allocp == alloc_ahead)
@@ -560,7 +560,7 @@ namespace zs {
           else if constexpr (allocp == alloc_on_demand)
             return sizeof(void *) * channel_count();
           else
-            ZS_UNREACHABLE
+            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -576,7 +576,7 @@ namespace zs {
             case alloc_on_demand:
               return sizeof(void *) * (layoutp == aos ? channel_count() : 1);
             default:
-              ZS_UNREACHABLE
+              ; // static_assert(false, "should not be here!");
           }
         } else {
           if constexpr (allocp == alloc_ahead)
@@ -584,7 +584,7 @@ namespace zs {
           else if constexpr (allocp == alloc_on_demand)
             return sizeof(void *) * (layoutp == aos ? channel_count() : 1);
           else
-            ZS_UNREACHABLE
+            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -607,7 +607,7 @@ namespace zs {
               return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno)
                      * sizeof(void *);  // ?
             default:
-              ZS_UNREACHABLE
+              ; // static_assert(false, "should not be here!");
           }
         } else {
           if constexpr (allocp == alloc_ahead)
@@ -615,7 +615,7 @@ namespace zs {
           else if constexpr (allocp == alloc_on_demand)
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);  // ?
           else
-            ZS_UNREACHABLE
+            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -736,18 +736,25 @@ namespace zs {
       using base_t = instance_interface<instance<dense, type_seq<Snode>, index_seq<0>>,
                                         type_seq<Snode>, index_seq<0>>;
       using base_t::node;
+      template <std::size_t I>
+      using attrib_t = typename Snode::template attrib_type<I>::type;
+      template <std::size_t I>
+      static constexpr auto attrib_v() noexcept {
+        return Snode::template attrib_type<I>::value;
+      }
+
       template <auto I = 0> constexpr std::uintptr_t address() const noexcept {
         return (uintptr_t)zs::get<I>(handles);
       }
       template <auto I, typename Ti, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr std::uintptr_t address(wrapv<I>, Ti chno, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, chno, std::forward<Tis>(coords)...);
         return (uintptr_t)zs::get<0>(handles) + ele_offset;
       }
       template <auto I, typename Ti, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr std::uintptr_t address_offset(wrapv<I>, Ti chno, Tis &&...coords) const noexcept {
         return node().element_offset(wrapv<I>{}, chno, std::forward<Tis>(coords)...);
@@ -755,24 +762,24 @@ namespace zs {
 
       /// full index query
       template <auto I, typename Ti, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr auto &operator()(wrapv<I>, Ti chno, Tis &&...coords) noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, chno, std::forward<Tis>(coords)...);
-        return *reinterpret_cast<typename Snode::template attrib_type<(std::size_t)I>::type *>(
+        return *reinterpret_cast<attrib_t<I> *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
       template <auto I, typename Ti, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr const auto &operator()(wrapv<I>, Ti chno, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, chno, std::forward<Tis>(coords)...);
         return *reinterpret_cast<
-            typename Snode::template attrib_type<(std::size_t)I>::type const *>(
+            attrib_t<I> const *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
       template <auto I, typename Ti, typename... Tis,
-                enable_if_all<!Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<!attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr auto operator()(wrapv<I>, Ti chno, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, chno, std::forward<Tis>(coords)...);
@@ -784,24 +791,21 @@ namespace zs {
       }
       /// without sub-channel
       template <auto I, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr auto &operator()(wrapv<I>, Tis &&...coords) noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, 0, std::forward<Tis>(coords)...);
-        return *reinterpret_cast<typename Snode::template attrib_type<(std::size_t)I>::type *>(
-            (uintptr_t)zs::get<0>(handles) + ele_offset);
+        return *reinterpret_cast<attrib_t<I> *>((uintptr_t)zs::get<0>(handles) + ele_offset);
       }
       template <auto I, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr const auto &operator()(wrapv<I>, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, 0, std::forward<Tis>(coords)...);
-        return *reinterpret_cast<
-            typename Snode::template attrib_type<(std::size_t)I>::type const *>(
-            (uintptr_t)zs::get<0>(handles) + ele_offset);
+        return *reinterpret_cast<attrib_t<I> const *>((uintptr_t)zs::get<0>(handles) + ele_offset);
       }
       template <auto I, typename... Tis,
-                enable_if_all<!Snode::template attrib_type<(std::size_t)I>::value,
+                enable_if_all<!attrib_v<I>(),
                               sizeof...(Tis) == Snode::N> = 0>
       constexpr auto operator()(wrapv<I>, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<I>{}, 0, std::forward<Tis>(coords)...);
@@ -813,24 +817,24 @@ namespace zs {
       }
       /// without attribute number
       template <typename Ti, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
+                enable_if_all<attrib_v<0>(),
                               !is_value_wrapper<Ti>::value, sizeof...(Tis) == Snode::N> = 0>
       constexpr auto &operator()(Ti chno, Tis &&...coords) noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, chno, std::forward<Tis>(coords)...);
-        return *reinterpret_cast<typename Snode::template attrib_type<(std::size_t)0>::type *>(
+        return *reinterpret_cast<attrib_t<0> *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
       template <typename Ti, typename... Tis,
-                enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
+                enable_if_all<attrib_v<0>(),
                               !is_value_wrapper<Ti>::value, sizeof...(Tis) == Snode::N> = 0>
       constexpr const auto &operator()(Ti chno, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, chno, std::forward<Tis>(coords)...);
         return *reinterpret_cast<
-            typename Snode::template attrib_type<(std::size_t)0>::type const *>(
+            attrib_t<0> const *>(
             (uintptr_t)zs::get<0>(handles) + ele_offset);
       }
       template <typename Ti, typename... Tis,
-                enable_if_all<!Snode::template attrib_type<(std::size_t)0>::value,
+                enable_if_all<!attrib_v<0>(),
                               !is_value_wrapper<Ti>::value, sizeof...(Tis) == Snode::N> = 0>
       constexpr auto operator()(Ti chno, Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, chno, std::forward<Tis>(coords)...);
@@ -841,22 +845,19 @@ namespace zs {
         return inst;
       }
       /// without both attribute number & subchannel number
-      template <typename... Tis, enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
+      template <typename... Tis, enable_if_all<attrib_v<0>(),
                                                sizeof...(Tis) == Snode::N> = 0>
       constexpr auto &operator()(Tis &&...coords) noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, 0, std::forward<Tis>(coords)...);
-        return *reinterpret_cast<typename Snode::template attrib_type<(std::size_t)0>::type *>(
-            (uintptr_t)zs::get<0>(handles) + ele_offset);
+        return *reinterpret_cast<attrib_t<0> *>((uintptr_t)zs::get<0>(handles) + ele_offset);
       }
-      template <typename... Tis, enable_if_all<Snode::template attrib_type<(std::size_t)0>::value,
+      template <typename... Tis, enable_if_all<attrib_v<0>(),
                                                sizeof...(Tis) == Snode::N> = 0>
       constexpr const auto &operator()(Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, 0, std::forward<Tis>(coords)...);
-        return *reinterpret_cast<
-            typename Snode::template attrib_type<(std::size_t)0>::type const *>(
-            (uintptr_t)zs::get<0>(handles) + ele_offset);
+        return *reinterpret_cast<attrib_t<0> const *>((uintptr_t)zs::get<0>(handles) + ele_offset);
       }
-      template <typename... Tis, enable_if_all<!Snode::template attrib_type<(std::size_t)0>::value,
+      template <typename... Tis, enable_if_all<!attrib_v<0>(),
                                                sizeof...(Tis) == Snode::N> = 0>
       constexpr auto operator()(Tis &&...coords) const noexcept {
         auto ele_offset = node().element_offset(wrapv<0>{}, 0, std::forward<Tis>(coords)...);

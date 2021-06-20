@@ -4,22 +4,24 @@ namespace zs {
 
   template <execspace_e space>
   GeneralHashTable partition_for_particles(GeneralParticles& particles, float dx, int blocklen) {
-    auto mh = match([](auto &p) { return p.handle(); })(particles);
-    HashTable<i32, 3, int> ret{match([](auto &particles) { return particles.size(); })(particles)
-                                   / blocklen / blocklen / blocklen,
-                               mh.memspace(), mh.devid()};
+    return match([&](auto &p) -> GeneralHashTable { 
+      MemoryHandle mh = p.handle(); 
+      std::size_t keyCnt = p.size();
+      constexpr int dim = remove_cvref_t<decltype(p)>::dim;
+      for (auto d = dim; d--;) keyCnt /= blocklen;
 
-    // exec_tags execTag = suggest_exec_space(mh);
-    auto execTag = wrapv<space>{};
-    auto execPol = par_exec(execTag);
-    if constexpr (space == execspace_e::cuda || space == execspace_e::hip)
-      execPol.device(mh.devid());
+      HashTable<i32, dim, int> ret{keyCnt, mh.memspace(), mh.devid()};
 
-    execPol(range(ret._tableSize), CleanSparsity{execTag, ret});
-    match([&ret, &execTag, &execPol, dx, blocklen](auto &p) {
+      // exec_tags execTag = suggest_exec_space(mh);
+      auto execTag = wrapv<space>{};
+      auto execPol = par_exec(execTag);
+      if constexpr (space == execspace_e::cuda || space == execspace_e::hip)
+        execPol.device(mh.devid());
+
+      execPol(range(ret._tableSize), CleanSparsity{execTag, ret});
       execPol(range(p.size()), ComputeSparsity{execTag, dx, blocklen, ret, p.X});
+      return ret;
     })(particles);
-    return ret;
   }
 
 }

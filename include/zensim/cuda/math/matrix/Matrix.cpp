@@ -7,7 +7,6 @@
 
 namespace zs {
 
-#if 0
   template <typename V, typename I> void CudaYaleSparseMatrix<V, I>::analyze_pattern(
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
@@ -300,8 +299,9 @@ namespace zs {
       /// Minv * r -> z
       cudaPol({z.size()}, [dim = r.size() / mass.size(), zz = proxy<execspace_e::cuda>(z),
                            rr = proxy<execspace_e::cuda>(r),
-                           m = proxy<execspace_e::cuda>(const_cast<Vector<V> &>(
-                               mass))] __device__(int i) mutable { zz(i) = rr(i) / m(i / dim); });
+                           m = proxy<execspace_e::cuda>(mass)] __device__(int i) mutable { 
+        zz(i) = rr(i) / m(i / dim); 
+      });
       /// r * z -> rz
       blas.call(cublasDdot, this->rows(), r.data(), 1, z.data(), 1, &r1);
 
@@ -343,8 +343,9 @@ namespace zs {
         /// Minv * r -> z
         cudaPol({z.size()}, [dim = r.size() / mass.size(), zz = proxy<execspace_e::cuda>(z),
                              rr = proxy<execspace_e::cuda>(r),
-                             m = proxy<execspace_e::cuda>(const_cast<Vector<V> &>(
-                                 mass))] __device__(int i) mutable { zz(i) = rr(i) / m(i / dim); });
+                             m = proxy<execspace_e::cuda>(mass)] __device__(int i) mutable { 
+          zz(i) = rr(i) / m(i / dim); 
+        });
 
         r0 = r1;
         blas.call(cublasDdot, this->rows(), r.data(), 1, z.data(), 1, &r1);
@@ -361,7 +362,6 @@ namespace zs {
       timer.tock("[gpu] system preconditioned conjugate gradient solve");
     }
   }
-#endif
 
   template struct CudaYaleSparseMatrix<f32, i32>;
   template struct CudaYaleSparseMatrix<f64, i32>;

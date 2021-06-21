@@ -11,6 +11,10 @@
 
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
+#if defined(_WIN32)
+#include <intrin.h>
+#include <stdlib.h>
+#endif
 
 namespace zs {
 
@@ -98,12 +102,21 @@ namespace zs {
   constexpr int count_lz(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return nbytes * 8;
+#if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    if constexpr (sizeof(unsigned short) == nbytes)
+      return __lzcnt16((unsigned short)x);
+    else if constexpr (sizeof(unsigned int) == nbytes)
+      return __lzcnt((unsigned int)x);
+    else if constexpr (sizeof(unsigned __int64) == nbytes)
+      return __lzcnt64((unsigned __int64)x);
+#elif defined(__clang__) || defined(__GNUC__)
     if constexpr (sizeof(unsigned int) == nbytes)
       return __builtin_clz((unsigned int)x);
     else if constexpr (sizeof(unsigned long) == nbytes)
       return __builtin_clzl((unsigned long)x);
     else if constexpr (sizeof(unsigned long long) == nbytes)
       return __builtin_clzll((unsigned long long)x);
+#endif
     throw std::runtime_error(fmt::format("count_lz(tag {}, {} bytes) not viable\n",
                                          get_execution_space_tag(ExecTag{}), sizeof(T)));
   }
@@ -130,13 +143,22 @@ namespace zs {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return 0;
     using Val = std::make_unsigned_t<T>;
-    Val tmp{}, ret{};
+    Val tmp{}, ret{0};
+#if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    if constexpr (sizeof(unsigned short) == nbytes)
+      tmp = (Val)_byteswap_ushort((unsigned short)x);
+    else if constexpr (sizeof(unsigned long) == nbytes)
+      tmp = (Val)_byteswap_ulong((unsigned long)x);
+    else if constexpr (sizeof(unsigned __int64) == nbytes)
+      tmp = (Val)_byteswap_uint64((unsigned __int64)x);
+#elif defined(__clang__) || defined(__GNUC__)
     if constexpr (sizeof(unsigned short) == nbytes)
       tmp = (Val)__builtin_bswap16((unsigned short)x);
     else if constexpr (sizeof(unsigned int) == nbytes)
       tmp = (Val)__builtin_bswap32((unsigned int)x);
     else if constexpr (sizeof(unsigned long long) == nbytes)
       tmp = (Val)__builtin_bswap64((unsigned long long)x);
+#endif
     else
       throw std::runtime_error(fmt::format("reverse_bits(tag {}, {} bytes) not viable\n",
                                            get_execution_space_tag(ExecTag{}), sizeof(T)));
@@ -149,5 +171,9 @@ namespace zs {
     }
     return (T)ret;
   }
+
+#if !ZS_ENABLE_CUDA || !defined(__CUDACC__)
+#  undef __device__ 
+#endif
 
 }  // namespace zs

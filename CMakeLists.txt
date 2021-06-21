@@ -20,7 +20,8 @@ list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_
 option(CMAKE_EXPORT_COMPILE_COMMANDS "" 1)
 
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
-option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
+option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
+set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp-related build")
 set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build")
 set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
 
@@ -93,6 +94,9 @@ set(ZSPARTIO_INSTALL_TARGETS zspartio)
 set(INSTALL_TARGETS zecomp zpc zpctool zecomp_cxx_deps zsproj_deps ${ZSPARTIO_INSTALL_TARGETS})
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zecomp_cuda_deps)
+endif()
+if (ZS_ENABLE_OPENVDB)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zsopenvdb)
 endif()
 
 message("project name: ${project_name}")

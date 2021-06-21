@@ -1,7 +1,5 @@
 #pragma once
 
-#include <omp.h>
-
 #include <atomic>
 #include <condition_variable>
 #include <future>

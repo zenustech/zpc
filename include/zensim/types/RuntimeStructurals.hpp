@@ -441,8 +441,6 @@ namespace zs {
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + attrib_size<I>() * chno);
           else if constexpr (allocp == alloc_on_demand)
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);  // ?
-          else
-            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -559,8 +557,6 @@ namespace zs {
             return element_size();
           else if constexpr (allocp == alloc_on_demand)
             return sizeof(void *) * channel_count();
-          else
-            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -583,8 +579,6 @@ namespace zs {
             return (layoutp == aos ? element_storage_size() : attrib_size<I>());
           else if constexpr (allocp == alloc_on_demand)
             return sizeof(void *) * (layoutp == aos ? channel_count() : 1);
-          else
-            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }
@@ -614,8 +608,6 @@ namespace zs {
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + attrib_size<I>() * chno);
           else if constexpr (allocp == alloc_on_demand)
             return (layoutp == aos ? 1 : extent()) * (attrib_offset + chno) * sizeof(void *);  // ?
-          else
-            static_assert(false, "should not be here!");
         }
         return static_cast<std::size_t>(0);
       }

@@ -190,7 +190,15 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/math/matrix/MatrixTransform.hpp
 )
 
+#set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
+#set(CMAKE_VISIBILITY_INLINES_HIDDEN NO)
+#include(GenerateExportHeader)
+#generate_export_header(zecomp EXPORT_FILE_NAME ZecompExport.h)
+#message("building shared?(${BUILD_SHARED_LIBS}) library")
+
 add_library(zecomp INTERFACE)
+
+# gather sources for zpc
 set(ZENSIM_CORE_SOURCE_FILES)
 
 set(ZENSIM_CORE_SOURCE_FILES ${ZENSIM_CORE_SOURCE_FILES}
@@ -203,21 +211,17 @@ endif()
 add_library(zpc ${ZENSIM_CORE_SOURCE_FILES})
 
 target_compile_definitions(zpc PUBLIC ZS_ENABLE_OPENMP=1)
-target_compile_options(zpc 
-#  PRIVATE       $<$<CXX_COMPILER_ID:MSVC>:/O2 /openmp NOMINMAX> 
-#                $<$<CXX_COMPILER_ID:GNU>:-O3 -fopenmp>
-#                $<$<CXX_COMPILER_ID:Clang>:-O3 -fopenmp>
-#  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: -O3 -fopenmp># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+target_compile_options(zpc # MSVC, GNU, Clang, Intel
+  PRIVATE       $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 target_link_options(zpc
-  PRIVATE       $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>,/O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+  PRIVATE       $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
-# -fsanitize=address memory thread
 set_target_properties(zpc
   PROPERTIES  LINKER_LANGUAGE CXX
               POSITION_INDEPENDENT_CODE ON
               CUDA_ARCHITECTURES OFF
+              # CXX_VISIBILITY_PRESET default
               LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(zpc
@@ -258,14 +262,15 @@ set_target_properties(zpc
               CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
               CUDA_ARCHITECTURES OFF
+              #CUDA_VISIBILITY_PRESET default
 )
 target_compile_definitions(zpc 
   PRIVATE     CMAKE_GENERATOR_PLATFORM=x64
 )
 
-target_link_libraries(zecomp INTERFACE zpc)  # zpc -> zecomp
-
 endif(ZS_ENABLE_CUDA)
+
+target_link_libraries(zecomp INTERFACE zpc)  # zpc -> zecomp
 
 # openvdb, partio
 if (ZS_ENABLE_OPENVDB)
@@ -275,7 +280,6 @@ if (ENABLE_PCH)
 target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif()
 target_compile_options(zpctool
-# MSVC, GNU, Clang
   PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2  /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
 set_target_properties(zpctool

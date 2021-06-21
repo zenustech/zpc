@@ -78,7 +78,7 @@ target_include_directories(zsproj_deps INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
 )
-add_subdirectory(include)
+add_subdirectory(include/zensim)
 
 # ---- Install ----
 # =================

@@ -48,9 +48,14 @@ namespace zs {
 #if defined(ZS_PLATFORM_LINUX)
       runtimeLoader.reset(new DynamicLoader("libcudart.so"));
 #elif defined(ZS_PLATFORM_WINDOWS)
-      runtimeLoader.reset(new DynamicLoader("nvcudart.dll"));
+      int version{0};
+      getDriverVersion(&version);
+      auto suf = std::to_string(version / 100);
+      auto cudaDllName = std::string("cudart64_") + suf + ".dll";
+      fmt::print("loading cuda dll: {}\n", cudaDllName);
+      runtimeLoader.reset(new DynamicLoader(cudaDllName.c_str())); //nvcudart.dll"));
 #else
-      static_assert(false, "CUDA driver supports only Windows and Linux.");
+      static_assert(false, "CUDA library supports only Windows and Linux.");
 #endif
       runtimeLoader->load_function("cudaGetErrorName", get_cuda_error_name);
       runtimeLoader->load_function("cudaGetErrorString", get_cuda_error_string);

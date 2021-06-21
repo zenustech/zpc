@@ -227,6 +227,11 @@ target_compile_options(zpc # MSVC, GNU, Clang, Intel
 target_link_options(zpc
   PRIVATE        $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
+if (ZS_ENABLE_OPENMP)
+target_compile_options(zpc # MSVC, GNU, Clang, Intel
+  PUBLIC         $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+)
+endif()
 set_target_properties(zpc
   PROPERTIES  # LINKER_LANGUAGE CXX
               POSITION_INDEPENDENT_CODE ON

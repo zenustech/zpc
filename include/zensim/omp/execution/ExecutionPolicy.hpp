@@ -139,7 +139,7 @@ namespace zs {
       std::vector<ValueT> localRes{};
       DiffT nths{};
 #pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) \
-    shared(dist, nths, first, last, d_first, localRes) private(binary_op)
+    shared(dist, nths, first, last, d_first, localRes, binary_op)
       {
 #pragma omp single
         {
@@ -210,7 +210,7 @@ namespace zs {
       std::vector<ValueT> localRes{};
       DiffT nths{};
 #pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) \
-    shared(dist, nths, first, last, d_first, localRes) private(binary_op)
+    shared(dist, nths, first, last, d_first, localRes, binary_op)
       {
 #pragma omp single
         {

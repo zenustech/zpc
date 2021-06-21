@@ -56,7 +56,7 @@ namespace zs {
     if (advice == "ACCESSED_BY")
       option = CU_MEM_ADVISE_SET_ACCESSED_BY;
     else if (advice == "PREFERRED_LOCATION")
-      option = CU_MEM_ADVISE_SET_ACCESSED_BY;
+      option = CU_MEM_ADVISE_SET_PREFERRED_LOCATION;
     else if (advice == "READ_MOSTLY")
       option = CU_MEM_ADVISE_SET_READ_MOSTLY;
     else

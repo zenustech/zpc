@@ -28,7 +28,7 @@ Configure the project using the *CMake Tools* extension in *Visual Studio Code* 
 
 > Use the codebase in another cmake c++ project.
 
-Directly include the codebase as a submodule. Or install this repo then use *find_package(Zensim)*.
+Directly include the codebase as a submodule. Or install this repo then use *find_package(Zecomp)*.
 
 > Develop upon the codebase.
 

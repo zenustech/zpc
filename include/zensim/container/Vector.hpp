@@ -262,6 +262,13 @@ namespace zs {
     explicit constexpr VectorProxy(const VectorT &vector)
         : vector_t{vector.self()}, _vectorSize{vector.size()} {}
 
+    constexpr decltype(auto) operator[](size_type i) {
+      return static_cast<vector_t &>(*this)(i);
+    }
+    constexpr decltype(auto) operator[](size_type i) const {
+      return static_cast<const vector_t &>(*this)(i);
+    }
+
     size_type _vectorSize;
   };
 

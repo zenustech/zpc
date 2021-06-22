@@ -62,7 +62,7 @@ namespace zs {
     ~LutTableImpl() {}
     template <typename Device> void reset(Device &dev, void *stream) {
       resetTable(dev, stream);
-      Cuda::driver().memsetAsync(_cnt, 0, sizeof(value_t), stream);
+      cudaMemsetAsync(_cnt, 0, sizeof(value_t), stream);
     }
     template <typename Device> void resetTable(Device &dev, void *stream) {
       dev.launch(stream, {((int)(*_cnt) + 127) / 128, 128}, reset_lookup_table<LutTableImpl>,

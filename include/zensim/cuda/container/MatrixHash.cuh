@@ -47,10 +47,10 @@ namespace zs {
 
     void reset(void* stream) {
       resetTable(stream);
-      Cuda::driver().memsetAsync(_cnts, 0, sizeof(Tn) * _rowCnt, stream);
+      cudaMemsetAsync(_cnts, 0, sizeof(Tn) * _rowCnt, stream);
     }
     void resetTable(void* stream) {
-      Cuda::driver().memsetAsync(this->getHandles().template get<0>(), 0xff, this->node().size(),
+      cudaMemsetAsync(this->getHandles().template get<0>(), 0xff, this->node().size(),
                                  stream);
     }
 

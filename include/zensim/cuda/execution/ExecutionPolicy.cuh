@@ -131,6 +131,7 @@ namespace zs {
       shmemBytes = bytes;
       return *this;
     }
+#if 0
     template <typename FTraits> static constexpr unsigned computeArity() noexcept {
       unsigned res{0};
       if constexpr (FTraits::arity != 0)
@@ -138,18 +139,14 @@ namespace zs {
               - (std::is_pointer_v<std::tuple_element_t<0, typename FTraits::arguments_t>> ? 1 : 0);
       return res;
     }
-    template <typename Range, typename F,
-              enable_if_t<((std::declval<Range &>.end() - std::declval<Range &>.begin()) > 0)> = 0>
-    void operator()(Range &&range, F &&f) const {
-      (*this)({range.end() - range.begin()}, FWD(f));
-    }
+#endif
     template <typename Tn, typename F> void operator()(std::initializer_list<Tn> dims, F &&f) const {
       const std::vector<Tn> range{dims};
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
       // need to work on __device__ func as well
       // if constexpr (arity == 1)
       if (range.size() == 1)
@@ -170,7 +167,7 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
 
       // need to work on __device__ func as well
       auto iter = std::begin(range);
@@ -207,7 +204,7 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
@@ -240,7 +237,7 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
@@ -274,7 +271,7 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
@@ -314,7 +311,7 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
       if (count) {
         std::size_t temp_storage_bytes = 0;
         cub::DeviceRadixSort::SortPairs(nullptr, temp_storage_bytes, keysIn.operator->(),
@@ -338,7 +335,7 @@ namespace zs {
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(
-            streamid, Cuda::ref_cuda_context(incomingProc).eventSpare(incomingStreamid));
+            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceRadixSort::SortKeys(nullptr, temp_storage_bytes, first.operator->(),

@@ -43,7 +43,7 @@ namespace zs {
     CudaLibHandle(CudaExecutionPolicy& cupol) {
       details::check_culib_error(cusparseCreate(&handle));
       details::check_culib_error(
-          cusparseSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(cupol.getProcid())
+          cusparseSetStream(handle, (cudaStream_t)Cuda::context(cupol.getProcid())
                                         .streamSpare(cupol.getStreamid())));
     }
     ~CudaLibHandle() { details::check_culib_error(cusparseDestroy(handle)); }
@@ -53,7 +53,7 @@ namespace zs {
     CudaLibHandle(CudaExecutionPolicy& cupol) {
       details::check_culib_error(cublasCreate(&handle));
       details::check_culib_error(
-          cublasSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(cupol.getProcid())
+          cublasSetStream(handle, (cudaStream_t)Cuda::context(cupol.getProcid())
                                       .streamSpare(cupol.getStreamid())));
     }
     ~CudaLibHandle() { details::check_culib_error(cublasDestroy(handle)); }
@@ -63,7 +63,7 @@ namespace zs {
     CudaLibHandle(CudaExecutionPolicy& cupol) {
       details::check_culib_error(cusolverSpCreate(&handle));
       details::check_culib_error(
-          cusolverSpSetStream(handle, (cudaStream_t)Cuda::ref_cuda_context(cupol.getProcid())
+          cusolverSpSetStream(handle, (cudaStream_t)Cuda::context(cupol.getProcid())
                                           .streamSpare(cupol.getStreamid())));
     }
     ~CudaLibHandle() { details::check_culib_error(cusolverSpDestroy(handle)); }

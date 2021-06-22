@@ -11,7 +11,7 @@ namespace zs {
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
     std::size_t sizeInternal, sizeChol;
     timer.tick();
     if (this->isRowMajor())
@@ -48,7 +48,7 @@ namespace zs {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     int singularity{-2};
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
     if constexpr (is_same_v<V, double>) {
       timer.tick();
       pol.call(cusolverSpDcsrcholFactor, this->rows(), this->nnz(), this->descr, this->vals.data(),
@@ -72,7 +72,7 @@ namespace zs {
       const zs::Vector<V> &rhs) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
     if constexpr (is_same_v<V, double>) {
       timer.tick();
       pol.call(cusolverSpDcsrcholSolve, this->rows(), rhs.data(), x.data(), cholInfo,
@@ -94,7 +94,7 @@ namespace zs {
     if (x.size() == 0 || rhs.size() == 0 || x.size() != rhs.size()) return;
 
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
 
     if constexpr (is_same_v<V, double>) {
       timer.tick();
@@ -223,7 +223,7 @@ namespace zs {
     if (x.size() == 0 || rhs.size() == 0 || x.size() != rhs.size()) return;
 
     CudaTimer timer{
-        Cuda::ref_cuda_context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
 
     if constexpr (is_same_v<V, double>) {
       timer.tick();

@@ -7,63 +7,63 @@ namespace zs {
 
   void *allocate(device_mem_tag, std::size_t size, std::size_t alignment) {
     void *ret{nullptr};
-    Cuda::instance().malloc(&ret, size);
+    cudaMalloc(&ret, size);
     return ret;
   }
 
   void deallocate(device_mem_tag, void *ptr, std::size_t size, std::size_t alignment) {
-    Cuda::instance().free(ptr);
+    cudaFree(ptr);
   }
 
   void memset(device_mem_tag, void *addr, int chval, std::size_t size) {
-    Cuda::instance().memset(addr, chval, size);
+    cudaMemset(addr, chval, size);
   }
   void copy(device_mem_tag, void *dst, void *src, std::size_t size) {
-    Cuda::instance().memcpy(dst, src, size);
+    cudaMemcpy(dst, src, size, cudaMemcpyDefault);
   }
 
   void *allocate(device_const_mem_tag, std::size_t size, std::size_t alignment) {
     void *ret{nullptr};
-    Cuda::instance().malloc(&ret, size);
+    cudaMalloc(&ret, size);
     return ret;
   }
   void deallocate(device_const_mem_tag, void *ptr, std::size_t size, std::size_t alignment) {
-    Cuda::instance().free(ptr);
+    cudaFree(ptr);
   }
   void memset(device_const_mem_tag, void *addr, int chval, std::size_t size) {
-    Cuda::instance().memset(addr, chval, size);
+    cudaMemset(addr, chval, size);
   }
   void copy(device_const_mem_tag, void *dst, void *src, std::size_t size) {
-    Cuda::instance().memcpy(dst, src, size);
+    cudaMemcpy(dst, src, size, cudaMemcpyDefault);
   }
 
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment) {
     void *ret{nullptr};
-    Cuda::instance().vmalloc(&ret, size, CU_MEM_ATTACH_GLOBAL);
+    cudaMallocManaged(&ret, size, cudaMemAttachGlobal);
     return ret;
   }
   void deallocate(um_mem_tag, void *ptr, std::size_t size, std::size_t alignment) {
-    Cuda::instance().free(ptr);
+    cudaFree(ptr);
   }
   void memset(um_mem_tag, void *addr, int chval, std::size_t size) {
-    Cuda::instance().memset(addr, chval, size);
+    cudaMemset(addr, chval, size);
   }
   void copy(um_mem_tag, void *dst, void *src, std::size_t size) {
-    Cuda::instance().memcpy(dst, src, size);
+    cudaMemcpy(dst, src, size, cudaMemcpyDefault);
   }
   void advise(um_mem_tag, std::string advice, void *addr, std::size_t bytes, ProcID did) {
-    uint32_t option;
+    cudaMemoryAdvise option{};
     if (advice == "ACCESSED_BY")
-      option = CU_MEM_ADVISE_SET_ACCESSED_BY;
+      option = cudaMemAdviseSetAccessedBy;
     else if (advice == "PREFERRED_LOCATION")
-      option = CU_MEM_ADVISE_SET_PREFERRED_LOCATION;
+      option = cudaMemAdviseSetPreferredLocation;
     else if (advice == "READ_MOSTLY")
-      option = CU_MEM_ADVISE_SET_READ_MOSTLY;
+      option = cudaMemAdviseSetReadMostly;
     else
       throw std::runtime_error(
           fmt::format("advise(tag um_mem_tag, advice {}, addr {}, bytes {}, devid {})\n", advice,
                       reinterpret_cast<std::uintptr_t>(addr), bytes, (int)did));
-    Cuda::driver().memAdvise(addr, bytes, option, (int)did);
+    cudaMemAdvise(addr, bytes, option, (int)did);
   }
 
 }  // namespace zs

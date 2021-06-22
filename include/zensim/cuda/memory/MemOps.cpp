@@ -63,7 +63,8 @@ namespace zs {
       throw std::runtime_error(
           fmt::format("advise(tag um_mem_tag, advice {}, addr {}, bytes {}, devid {})\n", advice,
                       reinterpret_cast<std::uintptr_t>(addr), bytes, (int)did));
-    cudaMemAdvise(addr, bytes, option, (int)did);
+    if (Cuda::context(did).supportConcurrentUmAccess)
+      cudaMemAdvise(addr, bytes, option, (int)did);
   }
 
 }  // namespace zs

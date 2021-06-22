@@ -859,6 +859,26 @@ namespace zs {
         inst.assign((void *)((uintptr_t)zs::get<0>(handles) + ele_offset));
         return inst;
       }
+      /// linear index
+      template <typename Ti, bool isval = attrib_v<0>(), enable_if_t<isval> = 0>
+      constexpr auto &operator[](Ti &&coord) noexcept {
+        auto ele_offset = node().element_offset(wrapv<0>{}, 0, FWD(coord));
+        return *reinterpret_cast<attrib_t<0> *>((uintptr_t)zs::get<0>(handles) + ele_offset);
+      }
+      template <typename Ti, bool isval = attrib_v<0>(), enable_if_t<isval> = 0>
+      constexpr const auto &operator[](Ti &&coord) const noexcept {
+        auto ele_offset = node().element_offset(wrapv<0>{}, 0, FWD(coord));
+        return *reinterpret_cast<attrib_t<0> const *>((uintptr_t)zs::get<0>(handles) + ele_offset);
+      }
+      template <typename Ti, bool isnode = !attrib_v<0>(), enable_if_t<isnode> = 0>
+      constexpr auto operator[](Ti &&coord) const noexcept {
+        auto ele_offset = node().element_offset(wrapv<0>{}, 0, FWD(coord));
+        auto ch = node().child(wrapv<0>{});
+        auto inst = instance<dense, type_seq<std::decay_t<decltype(ch)>>, std::index_sequence<0>>{
+            wrapv<dense>{}, zs::make_tuple(ch)};
+        inst.assign((void *)((uintptr_t)zs::get<0>(handles) + ele_offset));
+        return inst;
+      }
 
       tuple<void *> handles{nullptr};
     };

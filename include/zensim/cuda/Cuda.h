@@ -152,15 +152,9 @@ namespace zs {
       void *context;                ///< CUcontext
       std::vector<void *> streams;  ///< CUstream
       std::vector<void *> events;   ///< CUevents
+      bool supportConcurrentUmAccess;
       std::unique_ptr<MonotonicAllocator> deviceMem;
       std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
-      std::unique_ptr<handle_resource> launchMem;
-      std::unordered_map<uintptr_t, int> kernelUMap;  ///< function unordered_map
-      struct KernelLaunchParams {
-        int funcAttribs[10];
-        std::vector<uintptr_t> offsets; /**< offset in bytes within launchMem */
-      };
-      std::vector<KernelLaunchParams> kernelLaunchConfigs;
     };  //< [end] struct CudaContext
 
 #define PER_CUDA_FUNCTION(name, symbol_name, ...) CudaDriverApi<__VA_ARGS__> name;

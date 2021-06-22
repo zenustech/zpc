@@ -156,6 +156,8 @@ namespace zs {
       getDeviceAttribute(&supportUm, CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, dev);
       getDeviceAttribute(&supportConcurrentUmAccess, CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS , dev);
 
+      context.supportConcurrentUmAccess = supportConcurrentUmAccess;
+
       fmt::print(
           "\t[InitInfo -- Dev Property] GPU device {} ({}-th group on "
           "board)\n\t\tshared memory per block: {} bytes,\n\t\tregisters per SM: "
@@ -198,7 +200,6 @@ namespace zs {
       for (auto event : context.events) destroyEvent(event);
       context.deviceMem.reset(nullptr);
       context.unifiedMem.reset(nullptr);
-      context.launchMem.reset(nullptr);
 
       // destroyContext(context.getContext());
       cudaDeviceReset();

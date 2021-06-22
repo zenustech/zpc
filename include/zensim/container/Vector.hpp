@@ -22,6 +22,7 @@ namespace zs {
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
     static_assert(std::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
     using base_t = vector_instance<T, Index>;
+    using const_base_t = const vector_instance<T, Index>;
     using value_type = remove_cvref_t<T>;
     using pointer = value_type *;
     using const_pointer = const value_type *;
@@ -250,31 +251,49 @@ namespace zs {
     size_type _align{0};
   };
 
-  template <execspace_e, typename VectorT, typename = void> struct VectorProxy;
+  template <execspace_e, typename VectorT, typename = void> struct VectorProxy {
+    using vector_t = typename VectorT::pointer;
+    using size_type = typename VectorT::size_type;
 
-  template <execspace_e Space, typename VectorT> struct VectorProxy<Space, VectorT>
-      : VectorT::base_t {
-    using vector_t = typename VectorT::base_t;
+    constexpr VectorProxy() = default;
+    ~VectorProxy() = default;
+    explicit constexpr VectorProxy(VectorT &vector)
+        : _vector{vector.data()}, _vectorSize{vector.size()} {}
+
+    constexpr decltype(auto) operator[](size_type i) { return _vector[i]; }
+    constexpr decltype(auto) operator[](size_type i) const { return _vector[i]; }
+    constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
+    constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
+
+    size_type _vectorSize;
+    vector_t _vector;
+  };
+
+  template <execspace_e Space, typename VectorT> struct VectorProxy<Space, const VectorT> {
+    using vector_t = typename VectorT::const_pointer;
     using size_type = typename VectorT::size_type;
 
     constexpr VectorProxy() = default;
     ~VectorProxy() = default;
     explicit constexpr VectorProxy(const VectorT &vector)
-        : vector_t{vector.self()}, _vectorSize{vector.size()} {}
+        : _vector{vector.data()}, _vectorSize{vector.size()} {}
 
-    constexpr decltype(auto) operator[](size_type i) {
-      return static_cast<vector_t &>(*this)(i);
-    }
-    constexpr decltype(auto) operator[](size_type i) const {
-      return static_cast<const vector_t &>(*this)(i);
-    }
+    constexpr decltype(auto) operator[](size_type i) { return _vector[i]; }
+    constexpr decltype(auto) operator[](size_type i) const { return _vector[i]; }
+    constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
+    constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
 
     size_type _vectorSize;
+    vector_t _vector;
   };
 
   template <execspace_e ExecSpace, typename T, typename Index>
-  constexpr decltype(auto) proxy(const Vector<T, Index> &vec) {  // currently ignore constness
+  constexpr decltype(auto) proxy(Vector<T, Index> &vec) {  // currently ignore constness
     return VectorProxy<ExecSpace, Vector<T, Index>>{vec};
+  }
+  template <execspace_e ExecSpace, typename T, typename Index>
+  constexpr decltype(auto) proxy(const Vector<T, Index> &vec) {  // currently ignore constness
+    return VectorProxy<ExecSpace, const Vector<T, Index>>{vec};
   }
 
 }  // namespace zs

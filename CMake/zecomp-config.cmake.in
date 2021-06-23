@@ -9,7 +9,27 @@ foreach(_comp ${Zensim_FIND_COMPONENTS})
   endif()
 endforeach()
 #]=]
-include("${CMAKE_CURRENT_LIST_DIR}/ZensimTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/zecomp-targets.cmake")
+
+# Compatibility variables
+
+set(Zecomp_MAJOR_VERSION 0)
+set(Zecomp_MINOR_VERSION 0)
+set(Zecomp_SUBMINOR_VERSION 0)
+
+set(Zecomp_VERSION_STRING "0.0.0")
+set(Zecomp_VERSION_MACRO ${Zecomp_MAJOR_VERSION}0${Zecomp_MINOR_VERSION}0${Zecomp_SUBMINOR_VERSION})
+
+get_target_property(Zecomp_INCLUDE_DIRS zecomp::zecomp INTERFACE_INCLUDE_DIRECTORIES)
+set(Zecomp_LIBRARIES "")
+
+if(NOT TARGET Zecomp::zecomp)
+
+  add_library(Zecomp::zecomp INTERFACE IMPORTED)
+  set_property(TARGET Zecomp::zecomp APPEND PROPERTY INTERFACE_LINK_LIBRARIES zecomp::zecomp)
+  set_property(TARGET Zecomp::zecomp APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${Zecomp_INCLUDE_DIRS})
+
+endif()
 
 #include(CMakeFindDependencyMacro)
 
@@ -24,8 +44,8 @@ if(UNIX)
 #  find_dependency(Threads::Threads)
 endif()
 
-list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/OpenVDB/)
-find_package(OpenVDB REQUIRED)
+#list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/OpenVDB/)
+#find_package(OpenVDB REQUIRED)
 #find_dependency(OpenVDB::openvdb)
 
 check_required_components(zpc zpctool zecomp)

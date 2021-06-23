@@ -135,8 +135,8 @@ install(TARGETS ${INSTALL_TARGETS}
           COMPONENT ${project_name}_Development
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/ 
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${project_name})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # config, version
 include(CMakePackageConfigHelpers)

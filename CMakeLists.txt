@@ -19,6 +19,10 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 
+if (NOT APPLE)
+  set(CMAKE_INSTALL_RPATH $ORIGIN)  # location of the binary requiring the dep
+endif()
+
 # options
 # ========
 option(CMAKE_EXPORT_COMPILE_COMMANDS "" 1)
@@ -90,17 +94,14 @@ add_subdirectory(include/zensim)
 if (ZENSIM_INSTALL)
 include(GNUInstallDirs)
 
-#set(ZENSIM_CMAKE_MODULES CMake/FindZensim.cmake)
-#install(FILES ${ZENSIM_CMAKE_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name})
+set(ZS_INSTALL_DEP_TARGETS zspartio)
+if (ZS_ENABLE_OPENVDB)
+  set(ZS_INSTALL_DEP_TARGETS ${ZS_INSTALL_DEP_TARGETS} zsopenvdb)
+endif()
 
-set(ZSPARTIO_INSTALL_TARGETS zspartio)
-
-set(INSTALL_TARGETS zecomp zpc zpctool zecomp_cxx_deps zsproj_deps ${ZSPARTIO_INSTALL_TARGETS})
+set(INSTALL_TARGETS zecomp zpc zpctool zecomp_cxx_deps zsproj_deps ${ZS_INSTALL_DEP_TARGETS})
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zecomp_cuda_deps)
-endif()
-if (ZS_ENABLE_OPENVDB)
-  set(INSTALL_TARGETS ${INSTALL_TARGETS} zsopenvdb)
 endif()
 
 message("project name: ${project_name}")
@@ -110,9 +111,6 @@ message("runtime dst: ${CMAKE_INSTALL_BINDIR}/${project_name}")
 message("archive dst: ${CMAKE_INSTALL_LIBDIR}/${project_name}")
 message("include dst: ${CMAKE_INSTALL_INCLUDEDIR}")
 
-if (NOT APPLE)
-  set(CMAKE_INSTALL_RPATH $ORIGIN)
-endif()
 
 # libs, includes
 install(TARGETS ${INSTALL_TARGETS}
@@ -127,40 +125,38 @@ install(TARGETS ${INSTALL_TARGETS}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/ 
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim)
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/tpls/ 
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim/tpls)
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${project_name})
 
 # config, version
 include(CMakePackageConfigHelpers)
-set(ZENSIM_CONFIG_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}ConfigVersion.cmake")
-set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}Config.cmake")
+set(ZENSIM_CONFIG_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config-version.cmake")
+set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config.cmake")
 write_basic_package_version_file(
   ${ZENSIM_CONFIG_VERSION_FILE}
   VERSION ${project_version}
   COMPATIBILITY AnyNewerVersion
 )
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/ZensimConfig.cmake.in
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/${project_name}-config.cmake.in
   ${ZENSIM_CONFIG_FILE}
   #INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
   INSTALL_DESTINATION share/${project_name}/cmake}
 )
 install(
   FILES ${ZENSIM_CONFIG_FILE} ${ZENSIM_CONFIG_VERSION_FILE} 
-  DESTINATION share/${project_name}/cmake
   # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
+  DESTINATION share/${project_name}/cmake
 )
 # target files export
 install(EXPORT ${project_name}-targets
-  FILE ${project_name}Targets.cmake
+  FILE ${project_name}-targets.cmake
   NAMESPACE ${project_name}:: 
-  DESTINATION share/${project_name}/cmake
   # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
+  DESTINATION share/${project_name}/cmake
 )
 
 # target file for build tree
 export(EXPORT ${project_name}-targets
-  FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/${project_name}Targets.cmake
+  FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/${project_name}-targets.cmake
   NAMESPACE ${project_name}:: 
 )
 endif()

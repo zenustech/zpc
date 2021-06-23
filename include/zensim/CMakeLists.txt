@@ -200,9 +200,9 @@ add_library(zecomp INTERFACE)
 # zpc #
 #######
 if (ZS_BUILD_SHARED_LIBS)
-add_library(zpc SHARED)
+  add_library(zpc SHARED)
 else ()
-add_library(zpc STATIC)
+  add_library(zpc STATIC)
 endif ()
 
 target_sources(zpc 
@@ -214,7 +214,7 @@ target_sources(zpc
 #    ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
-target_precompile_headers(zpc INTERFACE 
+  target_precompile_headers(zpc INTERFACE 
     ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
     ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
@@ -247,7 +247,7 @@ target_sources(zpc
 #  INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
-target_precompile_headers(zpc INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
+  target_precompile_headers(zpc INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
 
 target_compile_definitions(zpc PUBLIC ZS_ENABLE_CUDA=1)
@@ -279,12 +279,23 @@ endif(ZS_ENABLE_CUDA)
 target_link_libraries(zecomp INTERFACE zpc)  # zpc -> zecomp
 
 # openvdb, partio
-if (ZS_ENABLE_OPENVDB)
+###########
+# zpctool #
+###########
+if (ZS_BUILD_SHARED_LIBS)
+  add_library(zpctool SHARED)
+else ()
+  add_library(zpctool STATIC)
+endif ()
 
-add_library(zpctool ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES})
+target_sources(zpctool
+  PRIVATE ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES}
+)
 if (ENABLE_PCH)
-target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
+  target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif(ENABLE_PCH)
+
+target_link_libraries(zpctool PUBLIC zspartio zpc zecomp_cxx_deps)
 target_compile_options(zpctool
   PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2  /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
@@ -292,9 +303,11 @@ set_target_properties(zpctool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON
               LINKER_LANGUAGE CXX
 )
-target_link_libraries(zpctool PUBLIC zspartio zpc zecomp_cxx_deps)
-target_link_libraries(zpctool PRIVATE zsopenvdb)
 
-target_link_libraries(zecomp INTERFACE zpctool)  # zpctool -> zecomp
+if (ZS_ENABLE_OPENVDB)
+
+  target_link_libraries(zpctool PRIVATE zsopenvdb)
 
 endif(ZS_ENABLE_OPENVDB)
+
+target_link_libraries(zecomp INTERFACE zpctool)  # zpctool -> zecomp

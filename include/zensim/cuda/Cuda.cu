@@ -5,7 +5,6 @@
 #include "CudaConstants.inc"
 #include "zensim/tpls/fmt/core.h"
 
-
 #define MEM_POOL_CTRL 3
 
 namespace zs {
@@ -26,16 +25,22 @@ namespace zs {
 #endif
 
   // record
-  void Cuda::CudaContext::recordEventCompute() { 
-    cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute()); 
+  void Cuda::CudaContext::recordEventCompute() {
+    cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute());
   }
   void Cuda::CudaContext::recordEventSpare(unsigned id) {
     cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id));
   }
   // sync
-  void Cuda::CudaContext::syncStream(unsigned sid) const { cudaStreamSynchronize((cudaStream_t)stream(sid)); }
-  void Cuda::CudaContext::syncCompute() const { cudaStreamSynchronize((cudaStream_t)streamCompute()); }
-  void Cuda::CudaContext::syncStreamSpare(unsigned sid) const { cudaStreamSynchronize((cudaStream_t)streamSpare(sid)); }
+  void Cuda::CudaContext::syncStream(unsigned sid) const {
+    cudaStreamSynchronize((cudaStream_t)stream(sid));
+  }
+  void Cuda::CudaContext::syncCompute() const {
+    cudaStreamSynchronize((cudaStream_t)streamCompute());
+  }
+  void Cuda::CudaContext::syncStreamSpare(unsigned sid) const {
+    cudaStreamSynchronize((cudaStream_t)streamSpare(sid));
+  }
   // stream-event sync
   void Cuda::CudaContext::computeStreamWaitForEvent(void *event) {
     cudaStreamWaitEvent((cudaStream_t)streamCompute(), (cudaEvent_t)event, 0);
@@ -49,23 +54,28 @@ namespace zs {
     if (error != cudaSuccess)
       fmt::print("Last Error on [Dev {}]: {}\n", devid, cudaGetErrorString(error));
   }
-  void Cuda::CudaContext::launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz, unsigned int bx, unsigned int by, unsigned int bz, void **args, std::size_t shmem, void *stream) const {
+  void Cuda::CudaContext::launchKernel(const void *f, unsigned int gx, unsigned int gy,
+                                       unsigned int gz, unsigned int bx, unsigned int by,
+                                       unsigned int bz, void **args, std::size_t shmem,
+                                       void *stream) const {
     cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem, (cudaStream_t)stream);
   }
-  void Cuda::CudaContext::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz, unsigned int bx, unsigned int by, unsigned int bz, void **args, std::size_t shmem, void *stream) const {
-    cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem, (cudaStream_t)stream);
+  void Cuda::CudaContext::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
+                                                  unsigned int gz, unsigned int bx, unsigned int by,
+                                                  unsigned int bz, void **args, std::size_t shmem,
+                                                  void *stream) const {
+    cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
+                                (cudaStream_t)stream);
   }
   void Cuda::CudaContext::launchCallback(void *stream, void *f, void *data) const {
     cudaLaunchHostFunc((cudaStream_t)stream, (cudaHostFn_t)f, data);
   }
-  void Cuda::CudaContext::setContext() const {
-    cudaSetDevice(devid);
-  }
+  void Cuda::CudaContext::setContext() const { cudaSetDevice(devid); }
 
   Cuda::Cuda() {
     fmt::print("[Init -- Begin] Cuda\n");
 
-    { // cuda driver api
+    {  // cuda driver api (for JIT)
 #if defined(ZS_PLATFORM_LINUX)
       driverLoader = std::make_unique<DynamicLoader>("libcuda.so.1");
 #elif defined(ZS_PLATFORM_WINDOWS)
@@ -85,29 +95,30 @@ namespace zs {
     }
 
     init(0);
+
 #if 0
     { // cuda runtime api
-#if defined(ZS_PLATFORM_LINUX)
+#  if defined(ZS_PLATFORM_LINUX)
       runtimeLoader.reset(new DynamicLoader("libcudart.so"));
-#elif defined(ZS_PLATFORM_WINDOWS)
+#  elif defined(ZS_PLATFORM_WINDOWS)
       int version{0};
       getDriverVersion(&version);
       auto suf = std::to_string(version / 100);
       auto cudaDllName = std::string("cudart64_") + suf + ".dll";
       fmt::print("loading cuda runtime dll: {}\n", cudaDllName);
       runtimeLoader.reset(new DynamicLoader(cudaDllName.c_str())); //nvcudart.dll"));
-#else
+#  else
       static_assert(false, "CUDA library supports only Windows and Linux.");
-#endif
+#  endif
       runtimeLoader->load_function("cudaGetErrorName", get_cuda_error_name);
       runtimeLoader->load_function("cudaGetErrorString", get_cuda_error_string);
 
-#define PER_CUDA_FUNCTION(name, symbol_name, ...)       \
-  name.set(runtimeLoader->load_function(#symbol_name)); \
-  name.set_lock(&lock);                                 \
-  name.set_names(#name, #symbol_name);
-#include "cuda_runtime_functions.inc.h"
-#undef PER_CUDA_FUNCTION
+#  define PER_CUDA_FUNCTION(name, symbol_name, ...)       \
+    name.set(runtimeLoader->load_function(#symbol_name)); \
+    name.set_lock(&lock);                                 \
+    name.set_names(#name, #symbol_name);
+#  include "cuda_runtime_functions.inc.h"
+#  undef PER_CUDA_FUNCTION
     }
 #endif
 
@@ -132,15 +143,18 @@ namespace zs {
 
         // getContext(&c);
         retainPrimaryCtx(&c, dev);
-        // createContext(&c, 4, dev); // CU_CTX_SCHED_BLOCKING_SYNC (0x04) | CU_CTX_SCHED_SPIN (0x01)
+        // createContext(&c, 4, dev); // CU_CTX_SCHED_BLOCKING_SYNC (0x04) | CU_CTX_SCHED_SPIN
+        // (0x01)
         context = CudaContext{i, dev, c};
         // setContext(context.getContext());
       }
 
       context.streams.resize((int)StreamIndex::Total);
-      for (auto &stream : context.streams) cudaStreamCreateWithFlags((cudaStream_t *)&stream, cudaStreamNonBlocking);
+      for (auto &stream : context.streams)
+        cudaStreamCreateWithFlags((cudaStream_t *)&stream, cudaStreamNonBlocking);
       context.events.resize((int)EventIndex::Total);
-      for (auto &event : context.events) cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync);
+      for (auto &event : context.events)
+        cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync);
 
       /// device properties
       int major, minor, multiGpuBoardGroupID, multiProcessorCount, sharedMemPerBlock, regsPerBlock;
@@ -154,7 +168,8 @@ namespace zs {
       getDeviceAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, dev);
       getDeviceAttribute(&supportUnifiedAddressing, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, dev);
       getDeviceAttribute(&supportUm, CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, dev);
-      getDeviceAttribute(&supportConcurrentUmAccess, CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS , dev);
+      getDeviceAttribute(&supportConcurrentUmAccess, CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS,
+                         dev);
 
       context.supportConcurrentUmAccess = supportConcurrentUmAccess;
 
@@ -162,14 +177,15 @@ namespace zs {
           "\t[InitInfo -- Dev Property] GPU device {} ({}-th group on "
           "board)\n\t\tshared memory per block: {} bytes,\n\t\tregisters per SM: "
           "{},\n\t\tMulti-Processor count: {},\n\t\tSM compute capabilities: "
-          "{}.{}.\n\t\tTexture alignment: {} bytes\n\t\tUVM support: allocation({}), unified addressing({}), concurrent access({})\n",
+          "{}.{}.\n\t\tTexture alignment: {} bytes\n\t\tUVM support: allocation({}), unified "
+          "addressing({}), concurrent access({})\n",
           i, multiGpuBoardGroupID, sharedMemPerBlock, regsPerBlock, multiProcessorCount, major,
           minor, textureAlignment, supportUm, supportUnifiedAddressing, supportConcurrentUmAccess);
     }
 
     /// enable peer access if feasible
     for (int i = 0; i < numTotalDevice; i++) {
-      //setContext(contexts[i].getContext());
+      // setContext(contexts[i].getContext());
       cudaSetDevice(i);
       for (int j = 0; j < numTotalDevice; j++) {
         if (i != j) {
@@ -182,11 +198,11 @@ namespace zs {
       }
     }
     // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
-    /* GPUs with SM architecture 6.x or higher (Pascal class or newer) provide additional 
-    Unified Memory features such as on-demand page migration and GPU memory oversubscription 
-    that are outlined throughout this document. Note that currently these features are only 
-    supported on Linux operating systems. Applications running on Windows (whether in TCC 
-    or WDDM mode) will use the basic Unified Memory model as on pre-6.x architectures even 
+    /* GPUs with SM architecture 6.x or higher (Pascal class or newer) provide additional
+    Unified Memory features such as on-demand page migration and GPU memory oversubscription
+    that are outlined throughout this document. Note that currently these features are only
+    supported on Linux operating systems. Applications running on Windows (whether in TCC
+    or WDDM mode) will use the basic Unified Memory model as on pre-6.x architectures even
     when they are running on hardware with compute capability 6.x or higher. */
 
     fmt::print("\n[Init -- End] == Finished \'Cuda\' initialization\n\n");
@@ -196,8 +212,8 @@ namespace zs {
     for (int i = 0; i < numTotalDevice; i++) {
       auto &context = contexts[i];
       context.setContext();
-      for (auto stream : context.streams) destroyStream(stream);
-      for (auto event : context.events) destroyEvent(event);
+      for (auto stream : context.streams) cudaStreamDestroy((cudaStream_t)stream);
+      for (auto event : context.events) cudaEventDestroy((cudaEvent_t)event);
       context.deviceMem.reset(nullptr);
       context.unifiedMem.reset(nullptr);
 
@@ -210,7 +226,7 @@ namespace zs {
   void Cuda::CudaContext::initDeviceMemory() {
     /// memory
     std::size_t free_byte, total_byte;
-    driver().memInfo(&free_byte, &total_byte);
+    cudaMemGetInfo(&free_byte, &total_byte);
     deviceMem = std::make_unique<MonotonicAllocator>(free_byte >> MEM_POOL_CTRL,
                                                      driver().textureAlignment);
     fmt::print(
@@ -224,7 +240,7 @@ namespace zs {
     return;
 #endif
     std::size_t free_byte, total_byte;
-    driver().memInfo(&free_byte, &total_byte);
+    cudaMemGetInfo(&free_byte, &total_byte);
     unifiedMem = std::make_unique<MonotonicVirtualAllocator>(getDevId(), total_byte * 4,
                                                              driver().textureAlignment);
     fmt::print(

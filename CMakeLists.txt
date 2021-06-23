@@ -170,4 +170,8 @@ export(EXPORT ${project_name}-targets
   FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/${project_name}-targets.cmake
   NAMESPACE ${project_name}:: 
 )
+
+add_custom_target(uninstall
+  COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/CMake/Uninstall.cmake
+)
 endif()

@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.18)    # support relative path, cuda_std_17, ar
 
 message("===============================================================")
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose Release or Debug" FORCE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose Release or Debug")
 endif()
 
 # project meta
+# ============
 include("project_info.in")
 project(${project_name} 
     VERSION     ${project_version}
@@ -19,13 +20,24 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 
+include(GNUInstallDirs)
+# global rpath setup (before target creations)
+# ============================================
+# https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling#common-questions
+# https://cmake.org/pipermail/cmake/2008-January/019290.html
 if (NOT APPLE)
-  set(CMAKE_INSTALL_RPATH $ORIGIN)  # location of the binary requiring the dep
+  set(CMAKE_INSTALL_RPATH $ORIGIN/../${CMAKE_INSTALL_LIBDIR})  # location of the binary requiring the dep
 endif()
 
-# options
-# ========
-option(CMAKE_EXPORT_COMPILE_COMMANDS "" 1)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}" isInstallRpathSystemDir)
+if("${isInstallRpathSystemDir}" STREQUAL "-1")
+  set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+endif("${isInstallRpathSystemDir}" STREQUAL "-1")
+
+# build options
+# =============
+option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
 
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
@@ -92,7 +104,6 @@ add_subdirectory(include/zensim)
 # ---- Install ----
 # =================
 if (ZENSIM_INSTALL)
-include(GNUInstallDirs)
 
 set(ZS_INSTALL_DEP_TARGETS zspartio)
 if (ZS_ENABLE_OPENVDB)
@@ -110,7 +121,7 @@ message("targets to install: ${INSTALL_TARGETS}")
 message("runtime dst: ${CMAKE_INSTALL_BINDIR}/${project_name}")
 message("archive dst: ${CMAKE_INSTALL_LIBDIR}/${project_name}")
 message("include dst: ${CMAKE_INSTALL_INCLUDEDIR}")
-
+message("install_rpath: $ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
 
 # libs, includes
 install(TARGETS ${INSTALL_TARGETS}

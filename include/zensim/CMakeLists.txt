@@ -38,7 +38,6 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/math/matrix/Matrix.cpp
     cuda/math/matrix/MatrixCtor.cpp
     cuda/math/matrix/MatrixTransform.cpp
-    cuda/simulation/mpm/Simulator.cpp
     cuda/simulation/particle/Query.cpp
     cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp

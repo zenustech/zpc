@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "zensim/tpls/gcem.hpp"
+#include "zensim/tpls/gcem/gcem.hpp"
 
 namespace zs {
 

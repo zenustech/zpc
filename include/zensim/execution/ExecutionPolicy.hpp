@@ -6,7 +6,7 @@
 #include "zensim/TypeAlias.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/tpls/fmt/format.h"
-#include "zensim/tpls/magic_enum.hpp"
+#include "zensim/tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Polymorphism.h"

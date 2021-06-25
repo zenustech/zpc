@@ -4,7 +4,7 @@ Givens rotation
 #pragma once
 #include <type_traits>
 
-#include "zensim/tpls/gcem.hpp"
+#include "zensim/tpls/gcem/gcem.hpp"
 
 namespace zs {
 

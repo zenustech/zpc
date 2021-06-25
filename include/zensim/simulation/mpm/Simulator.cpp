@@ -2,7 +2,7 @@
 
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Collider.h"
-#include "zensim/tpls/magic_enum.hpp"
+#include "zensim/tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
 

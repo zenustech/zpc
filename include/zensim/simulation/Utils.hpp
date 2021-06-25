@@ -1,6 +1,6 @@
 #pragma once
 #include "zensim/math/Vec.h"
-#include "zensim/tpls/magic_enum.hpp"
+#include "zensim/tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/Iterator.h"
 
 namespace zs {

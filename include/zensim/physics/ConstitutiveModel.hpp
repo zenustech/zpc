@@ -3,7 +3,7 @@
 
 #include "zensim/math/Vec.h"
 #include "zensim/tpls/fmt/core.h"
-#include "zensim/tpls/gcem.hpp"
+#include "zensim/tpls/gcem/gcem.hpp"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {

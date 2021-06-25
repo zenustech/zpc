@@ -1,7 +1,7 @@
 #pragma once
 #include "zensim/TypeAlias.hpp"
 #include "zensim/container/Vector.hpp"
-#include "zensim/tpls/gcem_incl/pow.hpp"
+#include "zensim/tpls/gcem/gcem_incl/pow.hpp"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {

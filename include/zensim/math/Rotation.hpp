@@ -1,6 +1,6 @@
 #pragma once
 #include "Vec.h"
-#include "zensim/tpls/gcem.hpp"
+#include "zensim/tpls/gcem/gcem.hpp"
 
 namespace zs {
 

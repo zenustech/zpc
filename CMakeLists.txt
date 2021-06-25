@@ -74,7 +74,7 @@ if (ENABLE_PCH)
   # consider breaking this out per project as necessary 
   target_precompile_headers(zsproj_deps INTERFACE <vector> <string> <map> <utility> <cstdio>)
 endif()
-# add_library(zsproj_deps INTERFACE)
+add_library(zsproj_deps INTERFACE)
 add_library(zecomp_cxx_deps INTERFACE)
 
 target_compile_features(zecomp_cxx_deps INTERFACE cxx_std_17)
@@ -102,8 +102,8 @@ endif()
 # ---- Library ----
 # =================
 target_include_directories(zsproj_deps INTERFACE
-  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/>"
-  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>"
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 add_subdirectory(include/zensim)
 

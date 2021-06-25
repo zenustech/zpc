@@ -58,8 +58,9 @@ namespace zs {
       return false;
     }
 
-    template <typename LST>
-    constexpr Collider(LST&& ls, collider_e t = collider_e::Sticky) : levelset{FWD(ls)}, type{t} {}
+    constexpr Collider(LS &&ls, collider_e t = collider_e::Sticky)
+        : levelset{std::move(ls)}, type{t} {}
+    constexpr Collider(const LS &ls, collider_e t = collider_e::Sticky) : levelset{ls}, type{t} {}
 
     // levelset
     LS levelset;
@@ -88,8 +89,10 @@ namespace zs {
     static constexpr int dim = LS::dim;
     using TV = vec<T, dim>;
 
-    template <typename LST>
-    constexpr LevelSetBoundary(LST&& ls, collider_e t = collider_e::Sticky) : levelset{FWD(ls)}, type{t} {}
+    constexpr LevelSetBoundary(LS &&ls, collider_e t = collider_e::Sticky)
+        : levelset{std::move(ls)}, type{t} {}
+    constexpr LevelSetBoundary(const LS &ls, collider_e t = collider_e::Sticky)
+        : levelset{ls}, type{t} {}
 
     constexpr void setCollisionType(collider_e ct) noexcept { type = ct; }
     constexpr void setTranslation(TV b_in, TV dbdt_in) noexcept {

@@ -1,20 +1,70 @@
 #pragma once
+#include <cstddef>
 #include <memory>
-#include <memory_resource>
+// #include <memory_resource>
 #include <stdexcept>
 
-#include "zensim/tpls/magic_enum.hpp"
+#include "zensim/tpls/fmt/format.h"
 #include "zensim/types/Function.h"
-#include "zensim/types/Object.h"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {
 
-  namespace pmr = std::pmr;
-  using mr_t = pmr::memory_resource;
-  using unsynchronized_pool_resource = pmr::unsynchronized_pool_resource;
-  using synchronized_pool_resource = pmr::synchronized_pool_resource;
-  template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;
+  // namespace pmr = std::pmr;
+
+  /// since we cannot use memory_resource header in libstdc++
+  /// we directly use its implementation
+  class memory_resource {
+    static constexpr size_t _S_max_align = alignof(max_align_t);
+
+  public:
+    memory_resource() = default;
+    memory_resource(const memory_resource&) = default;
+    virtual ~memory_resource();  // key function
+
+    memory_resource& operator=(const memory_resource&) = default;
+
+    [[nodiscard]] void* allocate(size_t __bytes, size_t __alignment = _S_max_align)
+        __attribute__((__returns_nonnull__, __alloc_size__(2), __alloc_align__(3))) {
+      return do_allocate(__bytes, __alignment);
+    }
+
+    void deallocate(void* __p, size_t __bytes, size_t __alignment = _S_max_align)
+        __attribute__((__nonnull__)) {
+      return do_deallocate(__p, __bytes, __alignment);
+    }
+
+    bool is_equal(const memory_resource& __other) const noexcept { return do_is_equal(__other); }
+
+  private:
+    virtual void* do_allocate(size_t __bytes, size_t __alignment) = 0;
+
+    virtual void do_deallocate(void* __p, size_t __bytes, size_t __alignment) = 0;
+
+    virtual bool do_is_equal(const memory_resource& __other) const noexcept = 0;
+  };
+
+  inline bool operator==(const memory_resource& __a, const memory_resource& __b) noexcept {
+    return &__a == &__b || __a.is_equal(__b);
+  }
+
+#if __cpp_impl_three_way_comparison < 201907L
+  inline bool operator!=(const memory_resource& __a, const memory_resource& __b) noexcept {
+    return !(__a == __b);
+  }
+#endif
+  namespace pmr {
+    // Global memory resources
+    memory_resource* new_delete_resource() noexcept;
+    memory_resource* null_memory_resource() noexcept;
+    memory_resource* set_default_resource(memory_resource* __r) noexcept;
+    memory_resource* get_default_resource() noexcept __attribute__((__returns_nonnull__));
+  }  // namespace pmr
+
+  using mr_t = memory_resource;
+  // using unsynchronized_pool_resource = pmr::unsynchronized_pool_resource;
+  // using synchronized_pool_resource = pmr::synchronized_pool_resource;
+  // template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;
 
   // HOST, DEVICE, DEVICE_CONST, UM, PINNED, FILE
   enum struct memsrc_e : unsigned char { host = 0, device, device_const, um, pinned, file };
@@ -62,10 +112,10 @@ namespace zs {
     return ret;
   }
 
-  constexpr const char *memory_source_tag[]
+  constexpr const char* memory_source_tag[]
       = {"HOST", "DEVICE", "DEVICE_CONST", "UM", "PINNED", "FILE"};
-  constexpr const char *get_memory_source_tag(memsrc_e loc) {
-    return memory_source_tag[magic_enum::enum_integer(loc)];
+  constexpr const char* get_memory_source_tag(memsrc_e loc) {
+    return memory_source_tag[static_cast<unsigned char>(loc)];
   }
 
   struct MemoryHandle {
@@ -75,13 +125,13 @@ namespace zs {
       return static_cast<MemoryHandle>(*this);
     }
 
-    void swap(MemoryHandle &o) noexcept {
+    void swap(MemoryHandle& o) noexcept {
       std::swap(_devid, o._devid);
       std::swap(_memsrc, o._memsrc);
     }
 
     constexpr bool onHost() const noexcept { return _memsrc == memsrc_e::host; }
-    constexpr const char *memSpaceName() const { return get_memory_source_tag(memspace()); }
+    constexpr const char* memSpaceName() const { return get_memory_source_tag(memspace()); }
     constexpr mem_tags getTag() const { return to_memory_source_tag(_memsrc); }
 
     memsrc_e _memsrc{memsrc_e::host};  // memory source
@@ -90,22 +140,22 @@ namespace zs {
 
   struct MemoryEntity {
     MemoryHandle descr{};
-    void *ptr{nullptr};
+    void* ptr{nullptr};
     MemoryEntity() = default;
-    template <typename T> constexpr MemoryEntity(MemoryHandle mh, T &&ptr)
-        : descr{mh}, ptr{(void *)ptr} {}
+    template <typename T> constexpr MemoryEntity(MemoryHandle mh, T&& ptr)
+        : descr{mh}, ptr{(void*)ptr} {}
   };
 
   // host = 0, device, device_const, um, pinned file
   constexpr mem_tags memop_tag(const MemoryHandle a, const MemoryHandle b) {
-    auto spaceA = magic_enum::enum_integer(a._memsrc);
-    auto spaceB = magic_enum::enum_integer(b._memsrc);
+    auto spaceA = static_cast<unsigned char>(a._memsrc);
+    auto spaceB = static_cast<unsigned char>(b._memsrc);
     if (spaceA > spaceB) std::swap(spaceA, spaceB);
     if (a._memsrc == b._memsrc) return to_memory_source_tag(a._memsrc);
     /// avoid um issue
-    else if (spaceB < magic_enum::enum_integer(memsrc_e::um))
+    else if (spaceB < static_cast<unsigned char>(memsrc_e::um))
       return to_memory_source_tag(memsrc_e::device);
-    else if (spaceB == magic_enum::enum_integer(memsrc_e::um))
+    else if (spaceB == static_cast<unsigned char>(memsrc_e::um))
       return to_memory_source_tag(memsrc_e::um);
     else
       throw std::runtime_error(fmt::format("memop_tag for ({}, {}) is undefined!",

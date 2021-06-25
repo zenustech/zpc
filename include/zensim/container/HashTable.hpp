@@ -21,8 +21,7 @@ namespace zs {
       = ds::instance_t<ds::dense, hash_table_snode<Key, Index, Status>>;
 
   template <typename Tn_, int dim_, typename Index> struct HashTable
-      : Object,
-        hash_table_instance<vec<std::make_signed_t<Tn_>, dim_>, Index, int>,
+      : hash_table_instance<vec<std::make_signed_t<Tn_>, dim_>, Index, int>,
         MemoryHandle {
     static constexpr int dim = dim_;
     using Tn = std::make_signed_t<Tn_>;

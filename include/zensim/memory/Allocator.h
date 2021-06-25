@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <cstdlib>
 #include <memory>
 #include <type_traits>
 
@@ -10,7 +8,6 @@
 #include "zensim/Singleton.h"
 #include "zensim/math/bit/Bits.h"
 #include "zensim/memory/MemOps.hpp"
-#include "zensim/types/Object.h"
 
 namespace zs {
 
@@ -86,6 +83,7 @@ namespace zs {
   // whether T is a complete type: X is a complete type Except for value_type, all
   // the member types of std::allocator_traits<X> are complete types.
 
+#if 0
   /// for automatic dynamic memory management
   struct memory_pools : Singleton<memory_pools>, mr_t {
     /// https://stackoverflow.com/questions/46509152/why-in-x86-64-the-virtual-address-are-4-bits-shorter-than-physical-48-bits-vs
@@ -170,6 +168,8 @@ namespace zs {
   private:
     std::array<std::unique_ptr<mr_t>, nPools> _pools;
   };
+#endif
+
   struct general_allocator {
     general_allocator() noexcept : _mr{pmr::get_default_resource()} {};
     general_allocator(const general_allocator &other) : _mr{other.resource()} {}

@@ -14,7 +14,7 @@ namespace zs {
 
   struct Listener;
   ZS_type_name(Listener);
-  struct Listener : Inherit<Object, Listener> {
+  struct Listener : Object {
     Listener() = default;
     /// allow move
     Listener(Listener &&o) noexcept = default;
@@ -40,7 +40,7 @@ namespace zs {
     std::unique_ptr<ListenerCallback> _listener;
   };
 
-  template <typename... Args> struct Event : Inherit<Object, Event<Args...>> {
+  template <typename... Args> struct Event : Object {
     using Callback = std::function<void(const Args &...)>;
     using CallbackID = std::size_t;
 
@@ -66,7 +66,7 @@ namespace zs {
     constexpr Event(const Event &o) = delete;
     constexpr Event &operator=(const Event &o) = delete;
 
-    struct Listener : Inherit<Object, Listener> {
+    struct Listener : Object {
     private:
       std::weak_ptr<EventMeta> _meta;
       CallbackID _id;

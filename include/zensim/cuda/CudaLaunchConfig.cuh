@@ -29,8 +29,7 @@ namespace zs {
     cudaStream_t sid{cudaStreamDefault};
   };
 
-  struct LaunchInput {  ///< could contain more information on operation (error
-                        ///< checking/ time recording/ etc...)
+  struct LaunchInput {
     LaunchInput() = delete;
     LaunchInput(std::string kernel, int taskNum, std::size_t sharedMemBytes = 0)
         : kernelName(kernel), numThreads(taskNum), sharedMemBytes(sharedMemBytes) {}

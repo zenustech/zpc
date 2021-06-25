@@ -1,8 +1,12 @@
 #include "Resource.h"
 
+#include "zensim/execution/Concurrency.h"
 #include "zensim/memory/MemoryResource.h"
 
 namespace zs {
+
+  static std::shared_mutex _rw{};
+  static concurrent_map<void *, Resource::AllocationRecord> _records;
 
   void record_allocation(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
                          std::size_t alignment) {

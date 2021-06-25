@@ -15,8 +15,8 @@ namespace zs {
   template <typename T, typename Index = std::size_t> using vector_instance
       = ds::instance_t<ds::dense, vector_snode<wrapt<T>, Index>>;
 
-  template <typename T, typename Index = std::size_t>
-  struct Vector : Object, vector_instance<T, Index>, MemoryHandle {
+  template <typename T, typename Index = std::size_t> struct Vector : vector_instance<T, Index>,
+                                                                      MemoryHandle {
     /// according to rule of 5(6)/0
     /// is_trivial<T> has to be true
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");

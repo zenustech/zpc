@@ -52,8 +52,6 @@ option(ZENSIM_CORE_STATIC "Build statically linked version of the core library."
 
 # project base targets
 # ====================
-# add_library(zsproj_deps INTERFACE)
-add_library(zecomp_cxx_deps INTERFACE)
 
 include(CMake/Utility.cmake)
 include(CMake/ClangSupport.cmake)
@@ -64,21 +62,27 @@ include(CMake/CompilerWarnings.cmake)
 # set_project_warnings(zsproj_deps)
 include(CMake/Doxygen.cmake)
 enable_doxygen()
+
+# ---- dependencies ---- 
+# ======================
+# add_subdirectory(deps)
+add_subdirectory(include/zensim/tpls) # zsproj_deps
+enable_sanitizers(zsproj_deps)
 if (ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which
   # is a good idea if any #define's change
   # consider breaking this out per project as necessary 
   target_precompile_headers(zsproj_deps INTERFACE <vector> <string> <map> <utility> <cstdio>)
 endif()
-
-# ---- dependencies ---- 
-# ======================
-# add_subdirectory(deps)
-add_subdirectory(include/zensim/tpls)
-enable_sanitizers(zsproj_deps)
+# add_library(zsproj_deps INTERFACE)
+add_library(zecomp_cxx_deps INTERFACE)
 
 target_compile_features(zecomp_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zecomp_cxx_deps INTERFACE zsproj_deps)
+
+get_target_property(chk4 zecomp_cxx_deps INTERFACE_INCLUDE_DIRECTORIES)
+message("interface cxx inc dir: ${chk4}")
+
 target_compile_definitions(zecomp_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )
@@ -98,8 +102,8 @@ endif()
 # ---- Library ----
 # =================
 target_include_directories(zsproj_deps INTERFACE
-  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>
+  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/>"
+  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/>"
 )
 add_subdirectory(include/zensim)
 
@@ -139,7 +143,7 @@ install(TARGETS ${INSTALL_TARGETS}
   # PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim # this relates to maxos framework
 )
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim
   PATTERN "*.h|*.hpp|*.tpp|*.cuh"
   PATTERN "tpls/*"
   # FILES_MATCHING PATTERN "*.h|*.hpp|*.tpp|*.cuh"

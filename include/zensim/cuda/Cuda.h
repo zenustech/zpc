@@ -11,12 +11,11 @@
 #  define __CUDACC__
 #endif
 
-#include <driver_types.h>
+// #include <driver_types.h>
 
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -25,7 +24,6 @@
 #include "Allocators.cuh"
 #include "CudaFunction.cuh"
 #include "CudaLaunchConfig.cuh"
-#include "HostUtils.hpp"
 #include "zensim/Reflection.h"
 #include "zensim/types/Tuple.h"
 
@@ -177,8 +175,6 @@ namespace zs {
     std::vector<CudaContext> contexts;  ///< generally one per device
     int textureAlignment;
     std::unique_ptr<DynamicLoader> driverLoader, runtimeLoader;
-
-    std::mutex lock;
 
     int _iDevID;  ///< need changing
   };

@@ -28,9 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <typeindex>
 #include <typeinfo>
 
-#include "Inherit.h"
 #include "Property.h"
-#include "zensim/Logger.hpp"
 #include "zensim/Reflection.h"
 #include "zensim/execution/Concurrency.h"
 #include "zensim/meta/Sequence.h"
@@ -209,7 +207,7 @@ namespace zs {
       std::call_once(InstanceBuilder::registerFlag, [className = std::move(name)]() {
         // only register once (when empty)
         if (_classMap.find(className) == nullptr) {
-          ZS_TRACE("registering class [{}]\n", className);
+          // ZS_TRACE("registering class [{}]\n", className);
           _classMap.emplace(std::move(className), std::move(std::make_unique<InstanceBuilder>()));
         } else
           throw std::runtime_error(fmt::format(
@@ -218,7 +216,7 @@ namespace zs {
     }
     static ObjOwner create(std::string className, std::string objName) {
       if (const auto creator = _classMap.find(className); creator) {
-        ZS_TRACE("creating class instance [{}]: [{}]\n", className, objName);
+        // ZS_TRACE("creating class instance [{}]: [{}]\n", className, objName);
         return (*creator)->new_object(objName);
       }
       throw std::runtime_error(
@@ -227,7 +225,7 @@ namespace zs {
     template <typename... Ts> static ObjOwner create(std::string className, std::string objName,
                                                      std::tuple<Ts &&...> &&args) {
       if (const auto creator = _classMap.find(className); creator != nullptr) {
-        ZS_TRACE("creating class instance [{}]: [{}]\n", className, objName);
+        // ZS_TRACE("creating class instance [{}]: [{}]\n", className, objName);
         auto handle = (*creator)->new_object(objName);
         *handle = std::move(std::make_from_tuple(args));
         return handle;
@@ -250,27 +248,7 @@ namespace zs {
       = ::zs::Instancer::create(#CLASS_NAME, std::string{#OBJECT_NAME} + "." + #MEMBER_NAME, \
                                 std::forward_as_tuple(__VA_ARGS__));
 
-#if 0
-struct Value : Inherit<Object, Value> {
-  using;
-  mutable T value;
-};
-#endif
-
   struct GraphNode;
   ZS_type_name(GraphNode);
-
-  struct GraphNode : Inherit<Object, GraphNode> {
-    /// in degrees
-    /// out degrees
-  };
-
-  struct TreeNode;
-  ZS_type_name(TreeNode);
-
-  struct TreeNode : Inherit<Object, TreeNode> {
-    /// parent
-    /// out degrees
-  };
 
 }  // namespace zs

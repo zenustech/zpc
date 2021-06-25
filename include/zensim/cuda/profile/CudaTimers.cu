@@ -6,18 +6,24 @@
 namespace zs {
 
   CudaTimer::CudaTimer(stream_t sid) : streamId{sid} {
-    Cuda::driver().createEvent(&last, CU_EVENT_DEFAULT);
-    Cuda::driver().createEvent(&cur, CU_EVENT_DEFAULT);
+    cudaEventCreateWithFlags((cudaEvent_t *)&last, cudaEventBlockingSync);
+    cudaEventCreateWithFlags((cudaEvent_t *)&cur, cudaEventBlockingSync);
+  }
+  CudaTimer::~CudaTimer() {
+    cudaEventDestroy((cudaEvent_t)last);
+    cudaEventDestroy((cudaEvent_t)cur);
   }
   float CudaTimer::elapsed() {
     float duration;
-    Cuda::driver().syncEvent(cur);
-    Cuda::driver().eventElapsedTime(&duration, last, cur);
+    cudaEventSynchronize((cudaEvent_t)cur);
+    cudaEventElapsedTime(&duration, (cudaEvent_t)last, (cudaEvent_t)cur);
     return duration;
   }
-  void CudaTimer::tock(std::string tag) {
+  void CudaTimer::tick() { cudaEventRecord((cudaEvent_t)last, (cudaStream_t)streamId); }
+  void CudaTimer::tock() { cudaEventRecord((cudaEvent_t)cur, (cudaStream_t)streamId); }
+  void CudaTimer::tock(std::string_view tag) {
     tock();
-    fmt::print(fg(fmt::color::cyan), "{}: {} ms\n", tag.c_str(), elapsed());
+    fmt::print(fg(fmt::color::cyan), "{}: {} ms\n", tag, elapsed());
   }
 
 }  // namespace zs

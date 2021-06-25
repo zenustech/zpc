@@ -4,10 +4,7 @@
 #include <cusparse_v2.h>
 
 #include "ExecutionPolicy.cuh"
-#include "zensim/Logger.hpp"
 #include "zensim/Reflection.h"
-#include "zensim/execution/Concurrency.h"
-#include "zensim/types/Event.hpp"
 #include "zensim/types/Function.h"
 
 namespace zs {
@@ -42,9 +39,8 @@ namespace zs {
     cusparseHandle_t handle{nullptr};
     CudaLibHandle(CudaExecutionPolicy& cupol) {
       details::check_culib_error(cusparseCreate(&handle));
-      details::check_culib_error(
-          cusparseSetStream(handle, (cudaStream_t)Cuda::context(cupol.getProcid())
-                                        .streamSpare(cupol.getStreamid())));
+      details::check_culib_error(cusparseSetStream(
+          handle, (cudaStream_t)Cuda::context(cupol.getProcid()).streamSpare(cupol.getStreamid())));
     }
     ~CudaLibHandle() { details::check_culib_error(cusparseDestroy(handle)); }
   };
@@ -52,9 +48,8 @@ namespace zs {
     cublasHandle_t handle{nullptr};
     CudaLibHandle(CudaExecutionPolicy& cupol) {
       details::check_culib_error(cublasCreate(&handle));
-      details::check_culib_error(
-          cublasSetStream(handle, (cudaStream_t)Cuda::context(cupol.getProcid())
-                                      .streamSpare(cupol.getStreamid())));
+      details::check_culib_error(cublasSetStream(
+          handle, (cudaStream_t)Cuda::context(cupol.getProcid()).streamSpare(cupol.getStreamid())));
     }
     ~CudaLibHandle() { details::check_culib_error(cublasDestroy(handle)); }
   };
@@ -62,9 +57,8 @@ namespace zs {
     cusolverSpHandle_t handle{nullptr};
     CudaLibHandle(CudaExecutionPolicy& cupol) {
       details::check_culib_error(cusolverSpCreate(&handle));
-      details::check_culib_error(
-          cusolverSpSetStream(handle, (cudaStream_t)Cuda::context(cupol.getProcid())
-                                          .streamSpare(cupol.getStreamid())));
+      details::check_culib_error(cusolverSpSetStream(
+          handle, (cudaStream_t)Cuda::context(cupol.getProcid()).streamSpare(cupol.getStreamid())));
     }
     ~CudaLibHandle() { details::check_culib_error(cusolverSpDestroy(handle)); }
   };
@@ -96,12 +90,16 @@ namespace zs {
     call(Fn&& fn, Args&&... args) const {
       CudaLibComponentExecutionPolicy<flagbit>::call(FWD(fn), FWD(args)...);
     }
+    template <CudaLibraryComponentFlagBit flagbit> decltype(auto) getHandle() const {
+      return static_cast<const CudaLibComponentExecutionPolicy<flagbit>&>(*this).handle;
+    }
+    decltype(auto) getStream() const {
+      return Cuda::context(this->get().getProcid()).streamSpare(this->get().getStreamid());
+    }
 
     CudaLibExecutionPolicy(CudaExecutionPolicy& cupol)
         : std::reference_wrapper<CudaExecutionPolicy>{cupol},
           CudaLibComponentExecutionPolicy<flagbits>{cupol}... {}
-    template <typename F> void addListener(F&& callback) { _listeners.push(std::move(callback)); }
-    threadsafe_queue<Listener> _listeners{};
   };
 
 }  // namespace zs

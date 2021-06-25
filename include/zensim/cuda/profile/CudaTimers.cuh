@@ -1,8 +1,6 @@
 #pragma once
 
-#include <string>
-
-#include "zensim/cuda/Cuda.h"
+#include <string_view>
 
 namespace zs {
 
@@ -10,14 +8,11 @@ namespace zs {
     using event_t = void *;
     using stream_t = void *;
     explicit CudaTimer(stream_t sid);
-    ~CudaTimer() {
-      Cuda::driver().destroyEvent(last);
-      Cuda::driver().destroyEvent(cur);
-    }
-    void tick() { Cuda::driver().recordEvent(last, streamId); }
-    void tock() { Cuda::driver().recordEvent(cur, streamId); }
+    ~CudaTimer();
+    void tick();
+    void tock();
     float elapsed();
-    void tock(std::string tag);
+    void tock(std::string_view tag);
 
   private:
     stream_t streamId;

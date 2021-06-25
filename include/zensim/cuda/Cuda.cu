@@ -3,7 +3,7 @@
 #include "../Platform.hpp"
 #include "Cuda.h"
 #include "CudaConstants.inc"
-#include "zensim/tpls/fmt/core.h"
+#include "zensim/tpls/fmt/format.h"
 
 #define MEM_POOL_CTRL 3
 
@@ -88,7 +88,6 @@ namespace zs {
 
 #define PER_CUDA_FUNCTION(name, symbol_name, ...)      \
   name.set(driverLoader->load_function(#symbol_name)); \
-  name.set_lock(&lock);                                \
   name.set_names(#name, #symbol_name);
 #include "cuda_driver_functions.inc.h"
 #undef PER_CUDA_FUNCTION
@@ -115,7 +114,6 @@ namespace zs {
 
 #  define PER_CUDA_FUNCTION(name, symbol_name, ...)       \
     name.set(runtimeLoader->load_function(#symbol_name)); \
-    name.set_lock(&lock);                                 \
     name.set_names(#name, #symbol_name);
 #  include "cuda_runtime_functions.inc.h"
 #  undef PER_CUDA_FUNCTION

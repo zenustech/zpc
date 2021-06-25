@@ -2,10 +2,9 @@
 #include <cstdint>
 #include <memory>
 
-// #include "zensim/meta/ControlFlow.h"
-
 namespace zs {
 
+  using u8 = std::uint8_t;
   using uint = unsigned int;
   // signed
   using i16 = std::conditional_t<sizeof(short) == 2, short, int16_t>;
@@ -66,9 +65,10 @@ namespace zs {
 
   // kokkos::ObservingRawPtr<T>, OptionalRef<T>
   // vsg::ref_ptr<T>
-  template <typename T> using RefPtr = std::decay_t<T> *;             ///< non-owning reference
-  template <typename T> using ConstRefPtr = const std::decay_t<T> *;  ///< non-owning reference
-  template <typename T> using Holder = std::unique_ptr<T>;            ///< non-owning reference
+  template <typename T> using RefPtr = std::decay_t<T> *;  ///< non-owning reference
+  template <typename T> using ConstRefPtr
+      = const std::remove_cv_t<std::remove_reference_t<T>> *;  ///< non-owning reference
+  template <typename T> using Holder = std::unique_ptr<T>;
 
   using NodeID = i32;
   using ProcID = char;

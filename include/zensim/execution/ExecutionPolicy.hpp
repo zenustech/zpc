@@ -3,7 +3,6 @@
 #include <cassert>
 #include <numeric>
 
-#include "Concurrency.h"
 #include "zensim/TypeAlias.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/tpls/fmt/format.h"

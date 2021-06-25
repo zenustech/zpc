@@ -2,7 +2,6 @@
 
 #include <omp.h>
 
-#include "zensim/execution/Concurrency.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
 #include "zensim/types/Function.h"
@@ -22,7 +21,7 @@ namespace zs {
         const DiffT dist = std::end(range) - iter;
 #if 0
 
-#pragma omp parallel for num_threads(_dop)
+#  pragma omp parallel for num_threads(_dop)
         for (DiffT i = 0; i < dist; ++i) {
           auto &&it = *(iter + i);
           if constexpr (fts::arity == 0)
@@ -36,13 +35,11 @@ namespace zs {
         }
 #else
         DiffT nths{};
-#pragma omp parallel num_threads(_dop) shared(f, dist) firstprivate(iter)
+#  pragma omp parallel num_threads(_dop) shared(f, dist) firstprivate(iter)
         {
-#pragma omp single 
-          {
-            nths = omp_get_num_threads();
-          }
-#pragma omp barrier
+#  pragma omp single
+          { nths = omp_get_num_threads(); }
+#  pragma omp barrier
           /// use block-style partition rather than cyclic-style
           DiffT tid = omp_get_thread_num();
           DiffT nwork = (dist + nths - 1) / nths;
@@ -50,14 +47,14 @@ namespace zs {
           DiffT ed = st + nwork;
           if (ed > dist) ed = dist;
 
-          for (iter += st; st < ed; ++st, ++iter) 
+          for (iter += st; st < ed; ++st, ++iter)
             if constexpr (fts::arity == 0)
               f();
             else {
               auto &&it = *iter;
               if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
                 std::apply(f, it);
-              else 
+              else
                 std::invoke(f, it);
             }
         }
@@ -623,11 +620,12 @@ namespace zs {
     int _dop{1};
   };
 
+  uint get_hardware_concurrency() noexcept;
   inline OmpExecutionPolicy omp_exec() noexcept {
-    return OmpExecutionPolicy{}.threads(std::thread::hardware_concurrency());
+    return OmpExecutionPolicy{}.threads(get_hardware_concurrency());
   }
   inline OmpExecutionPolicy par_exec(omp_exec_tag) noexcept {
-    return OmpExecutionPolicy{}.threads(std::thread::hardware_concurrency());
+    return OmpExecutionPolicy{}.threads(get_hardware_concurrency());
   }
 
 }  // namespace zs

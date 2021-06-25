@@ -1,17 +1,24 @@
 #include "Matrix.hpp"
 
-#include "zensim/Logger.hpp"
+#include <cublas_v2.h>
+#include <cusolverSp.h>
+#include <cusparse_v2.h>
+
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/cuda/profile/CudaTimers.cuh"
 #include "zensim/tpls/fmt/color.h"
 
 namespace zs {
 
+  template <typename V, typename I> CudaYaleSparseMatrix<V, I>::~CudaYaleSparseMatrix() noexcept {
+    cusparseDestroyMatDescr(descr);
+    cusolverSpDestroyCsrcholInfo(cholInfo);
+  }
+
   template <typename V, typename I> void CudaYaleSparseMatrix<V, I>::analyze_pattern(
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
-    CudaTimer timer{
-        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+    CudaTimer timer{Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
     std::size_t sizeInternal, sizeChol;
     timer.tick();
     if (this->isRowMajor())
@@ -47,8 +54,7 @@ namespace zs {
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     int singularity{-2};
-    CudaTimer timer{
-        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+    CudaTimer timer{Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
     if constexpr (is_same_v<V, double>) {
       timer.tick();
       pol.call(cusolverSpDcsrcholFactor, this->rows(), this->nnz(), this->descr, this->vals.data(),
@@ -71,8 +77,7 @@ namespace zs {
       zs::Vector<V> &x, const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol,
       const zs::Vector<V> &rhs) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
-    CudaTimer timer{
-        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+    CudaTimer timer{Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
     if constexpr (is_same_v<V, double>) {
       timer.tick();
       pol.call(cusolverSpDcsrcholSolve, this->rows(), rhs.data(), x.data(), cholInfo,
@@ -93,8 +98,7 @@ namespace zs {
 
     if (x.size() == 0 || rhs.size() == 0 || x.size() != rhs.size()) return;
 
-    CudaTimer timer{
-        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+    CudaTimer timer{Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
 
     if constexpr (is_same_v<V, double>) {
       timer.tick();
@@ -222,8 +226,7 @@ namespace zs {
 
     if (x.size() == 0 || rhs.size() == 0 || x.size() != rhs.size()) return;
 
-    CudaTimer timer{
-        Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
+    CudaTimer timer{Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
 
     if constexpr (is_same_v<V, double>) {
       timer.tick();
@@ -299,8 +302,8 @@ namespace zs {
       /// Minv * r -> z
       cudaPol({z.size()}, [dim = r.size() / mass.size(), zz = proxy<execspace_e::cuda>(z),
                            rr = proxy<execspace_e::cuda>(r),
-                           m = proxy<execspace_e::cuda>(mass)] __device__(int i) mutable { 
-        zz(i) = rr(i) / m(i / dim); 
+                           m = proxy<execspace_e::cuda>(mass)] __device__(int i) mutable {
+        zz(i) = rr(i) / m(i / dim);
       });
       /// r * z -> rz
       blas.call(cublasDdot, this->rows(), r.data(), 1, z.data(), 1, &r1);
@@ -343,8 +346,8 @@ namespace zs {
         /// Minv * r -> z
         cudaPol({z.size()}, [dim = r.size() / mass.size(), zz = proxy<execspace_e::cuda>(z),
                              rr = proxy<execspace_e::cuda>(r),
-                             m = proxy<execspace_e::cuda>(mass)] __device__(int i) mutable { 
-          zz(i) = rr(i) / m(i / dim); 
+                             m = proxy<execspace_e::cuda>(mass)] __device__(int i) mutable {
+          zz(i) = rr(i) / m(i / dim);
         });
 
         r0 = r1;

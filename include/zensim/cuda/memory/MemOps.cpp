@@ -1,7 +1,6 @@
 #include "MemOps.hpp"
 
 #include "zensim/cuda/Cuda.h"
-#include "zensim/cuda/CudaConstants.inc"
 
 namespace zs {
 

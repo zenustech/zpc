@@ -5,12 +5,10 @@
 
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
-#include "zensim/execution/Concurrency.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemOps.hpp"
 #include "zensim/memory/MemoryResource.h"
-#include "zensim/types/Object.h"
 
 namespace zs {
 
@@ -74,8 +72,6 @@ namespace zs {
     void deallocate(void *ptr);
 
   private:
-    mutable std::shared_mutex _rw{};
-    concurrent_map<void *, AllocationRecord> _records;
     mutable std::atomic_ullong _counter{0};
   };
 

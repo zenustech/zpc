@@ -5,10 +5,11 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     math/matrix/MatrixCtor.cpp
     math/matrix/Matrix.cpp
     memory/Allocator.cpp
+    resource/Resource.cpp
     profile/CppTimers.cpp
     execution/Stacktrace.cpp
     execution/ExecutionPolicy.cpp
-    resource/Resource.cpp
+    execution/ConcurrencyPrimitive.cpp
     # simulation
     simulation/mpm/Simulator.cpp
     simulation/particle/Query.cpp
@@ -36,8 +37,6 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 	  cuda/DeviceUtils.cu
 	  cuda/profile/CudaTimers.cu
     cuda/math/matrix/Matrix.cpp
-    cuda/math/matrix/MatrixCtor.cpp
-    cuda/math/matrix/MatrixTransform.cpp
     cuda/simulation/particle/Query.cpp
     cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
@@ -46,6 +45,7 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp
     omp/math/matrix/MatrixTransform.cpp
     omp/simulation/sparsity/SparsityCompute.cpp
+    omp/execution/ExecutionPolicy.cpp
 )
 
 ## headers
@@ -121,6 +121,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     types/Value.h
     types/BuilderBase.hpp
     types/SmallVector.hpp
+    types/SourceLocation.hpp
     DynamicLoader.h
     Logger.hpp
     Platform.hpp
@@ -194,6 +195,7 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
 #message("building shared?(${BUILD_SHARED_LIBS}) library")
 
 add_library(zecomp INTERFACE)
+set(ZECOMP_INTERFACE_FILES)
 
 #######
 # zpc #
@@ -206,11 +208,8 @@ endif ()
 
 target_sources(zpc 
   PRIVATE 
-    ${ZENSIM_LIBRARY_CORE_SOURCE_FILES}
-    ${ZENSIM_LIBRARY_OMP_SOURCE_FILES}
-#  INTERFACE
-#    ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
-#    ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
+    ${ZENSIM_LIBRARY_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_OMP_SOURCE_FILES}
+    ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
   target_precompile_headers(zpc INTERFACE 
@@ -237,12 +236,14 @@ set_target_properties(zpc
               # CXX_VISIBILITY_PRESET default
               LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+set(ZECOMP_INTERFACE_FILES ${ZECOMP_INTERFACE_FILES} ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
+# set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_CORE_INCLUDE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}")
 
 # related to cuda
 if (ZS_ENABLE_CUDA)
 
 target_sources(zpc 
-  PRIVATE   ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES}
+  PRIVATE   ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} 
 #  INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
@@ -269,6 +270,8 @@ set_target_properties(zpc
               CUDA_ARCHITECTURES OFF
               #CUDA_VISIBILITY_PRESET default
 )
+set(ZECOMP_INTERFACE_FILES ${ZECOMP_INTERFACE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
+# set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}")
 target_compile_definitions(zpc
   INTERFACE     CMAKE_GENERATOR_PLATFORM=x64
 )
@@ -288,7 +291,9 @@ else ()
 endif ()
 
 target_sources(zpctool
-  PRIVATE ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES}
+  PRIVATE 
+    ${ZENSIM_LIBRARY_TOOL_SOURCE_FILES} ${ZENSIM_LIBRARY_IO_SOURCE_FILES}
+    ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
   target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
@@ -300,8 +305,9 @@ target_compile_options(zpctool
 )
 set_target_properties(zpctool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON
-              LINKER_LANGUAGE CXX
 )
+set(ZECOMP_INTERFACE_FILES ${ZECOMP_INTERFACE_FILES} ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
+# set_property(TARGET zpctool APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}")
 
 if (ZS_ENABLE_OPENVDB)
 
@@ -310,3 +316,9 @@ if (ZS_ENABLE_OPENVDB)
 endif(ZS_ENABLE_OPENVDB)
 
 target_link_libraries(zecomp INTERFACE zpctool)  # zpctool -> zecomp
+
+# for header installation
+list_transform_prepend(ZECOMP_INTERFACE_FILES include/zensim/)
+# message("${ZECOMP_INTERFACE_FILES}")
+# PUBLIC_HEADER not working as expected.
+# set_target_properties(zecomp PROPERTIES PUBLIC_HEADER "${ZECOMP_INTERFACE_FILES}")

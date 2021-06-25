@@ -17,7 +17,8 @@ if (MSVC)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR} /usr/local/lib/cmake/OpenVDB/)
+# list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 
 include(GNUInstallDirs)
@@ -54,6 +55,7 @@ option(ZENSIM_CORE_STATIC "Build statically linked version of the core library."
 # add_library(zsproj_deps INTERFACE)
 add_library(zecomp_cxx_deps INTERFACE)
 
+include(CMake/Utility.cmake)
 include(CMake/ClangSupport.cmake)
 include(CMake/Cache.cmake)
 include(CMake/StaticAnalyzers.cmake)
@@ -134,9 +136,14 @@ install(TARGETS ${INSTALL_TARGETS}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
           COMPONENT ${project_name}_Development
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  # PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim # this relates to maxos framework
 )
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  PATTERN "*.h|*.hpp|*.tpp|*.cuh"
+  PATTERN "tpls/*"
+  # FILES_MATCHING PATTERN "*.h|*.hpp|*.tpp|*.cuh"
+)
 
 # config, version
 include(CMakePackageConfigHelpers)
@@ -152,8 +159,7 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/${project_name}-
   #INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
   INSTALL_DESTINATION share/${project_name}/cmake}
 )
-install(
-  FILES ${ZENSIM_CONFIG_FILE} ${ZENSIM_CONFIG_VERSION_FILE} 
+install(FILES ${ZENSIM_CONFIG_FILE} ${ZENSIM_CONFIG_VERSION_FILE} 
   # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
   DESTINATION share/${project_name}/cmake
 )

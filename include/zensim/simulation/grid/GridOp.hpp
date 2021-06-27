@@ -144,8 +144,8 @@ namespace zs {
     template <typename Boundary, enable_if_t<is_levelset_boundary<Boundary>::value> = 0>
     ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Boundary &boundary, TableT &table,
                                        GridBlocksT &gridblocks)
-        : collider{Collider{proxy<space>(boundary.levelset), boundary.type, boundary.s,
-                            boundary.dsdt, boundary.R, boundary.omega, boundary.b, boundary.dbdt}},
+        : collider{Collider{proxy<space>(boundary.levelset), boundary.type/*, boundary.s,
+                            boundary.dsdt, boundary.R, boundary.omega, boundary.b, boundary.dbdt*/}},
           partition{proxy<space>(table)},
           gridblocks{proxy<space>(gridblocks)} {}
 

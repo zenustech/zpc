@@ -4,7 +4,7 @@
 
 #include "LevelSetInterface.h"
 #include "VdbLevelSet.h"
-#include "zensim/execution/Concurrency.h"
+// #include "zensim/execution/Concurrency.h"
 #include "zensim/math/Vec.h"
 #include "zensim/memory/Allocator.h"
 #include "zensim/types/RuntimeStructurals.hpp"

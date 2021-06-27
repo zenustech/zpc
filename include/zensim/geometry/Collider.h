@@ -58,6 +58,7 @@ namespace zs {
       return false;
     }
 
+    Collider() = default;
     constexpr Collider(LS &&ls, collider_e t = collider_e::Sticky)
         : levelset{std::move(ls)}, type{t} {}
     constexpr Collider(const LS &ls, collider_e t = collider_e::Sticky) : levelset{ls}, type{t} {}
@@ -89,6 +90,7 @@ namespace zs {
     static constexpr int dim = LS::dim;
     using TV = vec<T, dim>;
 
+    LevelSetBoundary() = default;
     constexpr LevelSetBoundary(LS &&ls, collider_e t = collider_e::Sticky)
         : levelset{std::move(ls)}, type{t} {}
     constexpr LevelSetBoundary(const LS &ls, collider_e t = collider_e::Sticky)

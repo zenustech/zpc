@@ -148,6 +148,21 @@ message("include dst: ${CMAKE_INSTALL_INCLUDEDIR}")
 message("install_rpath: $ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
 
 # libs, includes
+include(CMakePackageConfigHelpers)
+set(ZENSIM_CONFIG_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config-version.cmake")
+set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config.cmake")
+write_basic_package_version_file(
+  ${ZENSIM_CONFIG_VERSION_FILE}
+  VERSION ${project_version}
+  COMPATIBILITY AnyNewerVersion
+)
+set(cmakeModulesDir cmake)
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/${project_name}-config.cmake.in ${ZENSIM_CONFIG_FILE}
+  INSTALL_DESTINATION share/${project_name}/cmake
+  PATH_VARS cmakeModulesDir
+  NO_SET_AND_CHECK_MACRO
+  #INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
+)
 install(TARGETS ${INSTALL_TARGETS}
   EXPORT ${project_name}-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/${project_name}
@@ -168,23 +183,9 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/
 )
 
 # config, version
-include(CMakePackageConfigHelpers)
-set(ZENSIM_CONFIG_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config-version.cmake")
-set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config.cmake")
-write_basic_package_version_file(
-  ${ZENSIM_CONFIG_VERSION_FILE}
-  VERSION ${project_version}
-  COMPATIBILITY AnyNewerVersion
-)
-set(cmakeModulesDir cmake)
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/${project_name}-config.cmake.in ${ZENSIM_CONFIG_FILE}
-  PATH_VARS cmakeModulesDir
-  #INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
-  INSTALL_DESTINATION share/${project_name}/cmake
-)
 install(FILES ${ZENSIM_CONFIG_FILE} ${ZENSIM_CONFIG_VERSION_FILE} 
-  # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
   DESTINATION share/${project_name}/cmake
+  # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
 )
 # target file for build tree
 export(EXPORT ${project_name}-targets

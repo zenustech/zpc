@@ -1,7 +1,6 @@
 #pragma once
 #include <cstddef>
 #include <memory>
-// #include <memory_resource>
 #include <stdexcept>
 
 #include "zensim/tpls/fmt/format.h"
@@ -20,7 +19,7 @@ namespace zs {
   public:
     memory_resource() = default;
     memory_resource(const memory_resource&) = default;
-    virtual ~memory_resource();  // key function
+    virtual ~memory_resource() = default;  // key function
 
     memory_resource& operator=(const memory_resource&) = default;
 
@@ -53,13 +52,6 @@ namespace zs {
     return !(__a == __b);
   }
 #endif
-  namespace pmr {
-    // Global memory resources
-    memory_resource* new_delete_resource() noexcept;
-    memory_resource* null_memory_resource() noexcept;
-    memory_resource* set_default_resource(memory_resource* __r) noexcept;
-    memory_resource* get_default_resource() noexcept __attribute__((__returns_nonnull__));
-  }  // namespace pmr
 
   using mr_t = memory_resource;
   // using unsynchronized_pool_resource = pmr::unsynchronized_pool_resource;

@@ -171,7 +171,7 @@ namespace zs {
 #endif
 
   struct general_allocator {
-    general_allocator() noexcept : _mr{pmr::get_default_resource()} {};
+    general_allocator() noexcept : _mr{&raw_allocator<host_mem_tag>::instance()} {};
     general_allocator(const general_allocator &other) : _mr{other.resource()} {}
     general_allocator(mr_t *r) noexcept : _mr{r} {}
 
@@ -189,7 +189,7 @@ namespace zs {
   };
 
   struct heap_allocator : general_allocator {
-    heap_allocator() : general_allocator{pmr::new_delete_resource()} {}
+    heap_allocator() : general_allocator{&raw_allocator<host_mem_tag>::instance()} {}
   };
 
   struct stack_allocator {

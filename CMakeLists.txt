@@ -17,8 +17,8 @@ if (MSVC)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR} /usr/local/lib/cmake/OpenVDB/)
-# list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
+list(APPEND CMAKE_MODULE_PATH /usr/local/lib/cmake/OpenVDB/)  # openvdb's default linux install location 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 
 include(GNUInstallDirs)
@@ -35,6 +35,12 @@ list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "$ORIGIN/../${CMAKE_INSTALL_L
 if("${isInstallRpathSystemDir}" STREQUAL "-1")
   set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
 endif("${isInstallRpathSystemDir}" STREQUAL "-1")
+#[=[
+file(RELATIVE_PATH relDir
+  ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}
+  ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_INSTALL_RPATH $ORIGIN $ORIGIN/${relDir})
+]=]
 
 # build options
 # =============
@@ -65,7 +71,7 @@ enable_doxygen()
 
 # ---- dependencies ---- 
 # ======================
-# add_subdirectory(deps)
+add_library(zsproj_deps INTERFACE)
 add_subdirectory(include/zensim/tpls) # zsproj_deps
 enable_sanitizers(zsproj_deps)
 if (ENABLE_PCH)
@@ -74,37 +80,49 @@ if (ENABLE_PCH)
   # consider breaking this out per project as necessary 
   target_precompile_headers(zsproj_deps INTERFACE <vector> <string> <map> <utility> <cstdio>)
 endif()
-add_library(zsproj_deps INTERFACE)
-add_library(zecomp_cxx_deps INTERFACE)
 
-target_compile_features(zecomp_cxx_deps INTERFACE cxx_std_17)
-target_link_libraries(zecomp_cxx_deps INTERFACE zsproj_deps)
+# ---- build setup ----- 
+# ======================
 
-get_target_property(chk4 zecomp_cxx_deps INTERFACE_INCLUDE_DIRECTORIES)
-message("interface cxx inc dir: ${chk4}")
-
-target_compile_definitions(zecomp_cxx_deps
-    INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
-)
 if (ZS_ENABLE_CUDA)
-  add_library(zecomp_cuda_deps INTERFACE)
-  target_compile_features(zecomp_cuda_deps INTERFACE cuda_std_17)
-  target_link_libraries(zecomp_cuda_deps INTERFACE zsproj_deps)
-endif()
+  include(CheckLanguage)
+  check_language(CUDA)
+  if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    message("-- cuda-compiler " ${CMAKE_CUDA_COMPILER})
+  else(CMAKE_CUDA_COMPILER)
+    message(STATUS "No CUDA support")
+    set(ZS_ENABLE_CUDA 0 FORCE)
+  endif(CMAKE_CUDA_COMPILER)
+  set(CUDA_FOUND ${CMAKE_CUDA_COMPILER})
+endif(ZS_ENABLE_CUDA)
 
-# ---- binaries ----
-# ==================
-# include(setup_cpp.cmake)
-if (ZS_ENABLE_CUDA)
-    include(setup_cuda.cmake)
+if (MSVC)
+  target_compile_definitions(zsproj_deps INTERFACE NOMINMAX)
 endif()
-
-# ---- Library ----
-# =================
 target_include_directories(zsproj_deps INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+add_library(zecomp_cxx_deps INTERFACE)
+target_compile_features(zecomp_cxx_deps INTERFACE cxx_std_17)
+target_link_libraries(zecomp_cxx_deps INTERFACE zsproj_deps)
+target_compile_definitions(zecomp_cxx_deps
+    INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
+)
+
+if (ZS_ENABLE_CUDA)
+  add_library(zecomp_cuda_deps INTERFACE)
+  target_compile_features(zecomp_cuda_deps INTERFACE cuda_std_17)
+  target_link_libraries(zecomp_cuda_deps INTERFACE zsproj_deps)
+endif(ZS_ENABLE_CUDA)
+
+# ---- binaries ----
+# ==================
+
+# ---- Library ----
+# =================
 add_subdirectory(include/zensim)
 
 # ---- Install ----
@@ -114,12 +132,12 @@ if (ZENSIM_INSTALL)
 set(ZS_INSTALL_DEP_TARGETS zspartio)
 if (ZS_ENABLE_OPENVDB)
   set(ZS_INSTALL_DEP_TARGETS ${ZS_INSTALL_DEP_TARGETS} zsopenvdb)
-endif()
+endif(ZS_ENABLE_OPENVDB)
 
 set(INSTALL_TARGETS zecomp zpc zpctool zecomp_cxx_deps zsproj_deps ${ZS_INSTALL_DEP_TARGETS})
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zecomp_cuda_deps)
-endif()
+endif(ZS_ENABLE_CUDA)
 
 message("project name: ${project_name}")
 message("package version: ${project_version}")
@@ -158,30 +176,30 @@ write_basic_package_version_file(
   VERSION ${project_version}
   COMPATIBILITY AnyNewerVersion
 )
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/${project_name}-config.cmake.in
-  ${ZENSIM_CONFIG_FILE}
+set(cmakeModulesDir cmake)
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/CMake/${project_name}-config.cmake.in ${ZENSIM_CONFIG_FILE}
+  PATH_VARS cmakeModulesDir
   #INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${project_name}
-  INSTALL_DESTINATION share/${project_name}/cmake}
+  INSTALL_DESTINATION share/${project_name}/cmake
 )
 install(FILES ${ZENSIM_CONFIG_FILE} ${ZENSIM_CONFIG_VERSION_FILE} 
   # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
   DESTINATION share/${project_name}/cmake
 )
-# target files export
-install(EXPORT ${project_name}-targets
-  FILE ${project_name}-targets.cmake
-  NAMESPACE ${project_name}:: 
-  # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
-  DESTINATION share/${project_name}/cmake
-)
-
 # target file for build tree
 export(EXPORT ${project_name}-targets
   FILE ${CMAKE_CURRENT_BINARY_DIR}/cmake/${project_name}-targets.cmake
   NAMESPACE ${project_name}:: 
 )
 
+# target files export
+install(EXPORT ${project_name}-targets
+  DESTINATION share/${project_name}/cmake
+  NAMESPACE ${project_name}:: 
+  # DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${project_name}/cmake
+)
+
 add_custom_target(uninstall
   COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/CMake/Uninstall.cmake
 )
-endif()
+endif(ZENSIM_INSTALL)

@@ -53,6 +53,7 @@ set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build")
 set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
 
 option(ZENSIM_INSTALL "Install targets" On)
+option(ZS_ENABLE_PACKAGE "Build package" On)
 option(ZENSIM_CORE_SHARED "Build dynamically linked version of the core library." ON)
 option(ZENSIM_CORE_STATIC "Build statically linked version of the core library." ON)
 
@@ -204,3 +205,41 @@ add_custom_target(uninstall
   COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/CMake/Uninstall.cmake
 )
 endif(ZENSIM_INSTALL)
+
+# ---- Pacakge ----
+# =================
+if(ZS_ENABLE_PACKAGE)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+
+# https://www.scivision.dev/cmake-cpack-basic/
+set(_fmt TGZ)
+if(WIN32)
+  set(_fmt ZIP)
+endif()
+set(CPACK_GENERATOR ${_fmt})
+set(CPACK_SOURCE_GENERATOR ${_fmt})
+set(CPACK_PACKAGE_VENDOR "Your Company")
+set(CPACK_PACKAGE_CONTACT "Your Name")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+set(CPACK_OUTPUT_FILE_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/package")
+set(CPACK_PACKAGE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+string(TOLOWER ${CMAKE_SYSTEM_NAME} _sys)
+string(TOLOWER ${project_name} _project_lower)
+set(CPACK_PACKAGE_FILE_NAME "${_project_lower}-${_sys}")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${_project_lower}-${PROJECT_VERSION}")
+
+# not .gitignore as its regex syntax is distinct
+if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/.cpack_ignore)
+  file(READ ${CMAKE_CURRENT_LIST_DIR}/.cpack_ignore _cpack_ignore)
+  string(REGEX REPLACE "\n" ";" _cpack_ignore ${_cpack_ignore})
+  set(CPACK_SOURCE_IGNORE_FILES "${_cpack_ignore}")
+endif()
+
+install(FILES ${CPACK_RESOURCE_FILE_README} ${CPACK_RESOURCE_FILE_LICENSE}
+  DESTINATION share/docs/${project_name})
+
+include(CPack)
+
+endif()
+endif(ZS_ENABLE_PACKAGE)

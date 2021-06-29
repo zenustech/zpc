@@ -70,6 +70,7 @@ namespace zs {
         : blocks{numBlocks, mre, devid, alignment}, dx{dx} {}
 
     void resize(size_type newSize) { blocks.resize(newSize); }
+    void capacity() const noexcept { blocks.capacity(); }
     Vector<block_t> blocks;
     V dx;
   };

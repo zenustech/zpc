@@ -50,13 +50,16 @@ namespace zs {
           _activeKeys{mre, devid, alignment},
           _align{alignment} {}
 
+    constexpr value_t evaluateTableSize(std::size_t entryCnt) const {
+      return next_2pow(entryCnt) * reserve_ratio_v;
+    }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
               std::size_t alignment = 0)
-        : base_t{buildInstance(mre, devid, next_2pow(tableSize) * reserve_ratio_v)},
+        : base_t{buildInstance(mre, devid, evaluateTableSize(tableSize))},
           MemoryHandle{mre, devid},
-          _tableSize{static_cast<value_t>(next_2pow(tableSize) * reserve_ratio_v)},
+          _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
           _cnt{1, mre, devid, alignment},
-          _activeKeys{next_2pow(tableSize) * reserve_ratio_v, mre, devid, alignment},
+          _activeKeys{evaluateTableSize(tableSize), mre, devid, alignment},
           _align{alignment} {}
     ~HashTable() {
       if (self().address() && self().node().extent() > 0) self().dealloc();

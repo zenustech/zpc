@@ -9,6 +9,7 @@
 namespace zs {
 
   /// bitwise identical reinterpretation
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
   constexpr float int_as_float(int i) noexcept {
     static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
     union {
@@ -18,6 +19,7 @@ namespace zs {
     u.i = i;
     return u.f;
   }
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
   constexpr int float_as_int(float f) noexcept {
     static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
     union {
@@ -27,6 +29,7 @@ namespace zs {
     u.f = f;
     return u.i;
   }
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
   constexpr double longlong_as_double(long long l) noexcept {
     static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
     union {
@@ -36,6 +39,7 @@ namespace zs {
     u.l = l;
     return u.d;
   }
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
   constexpr long long double_as_longlong(double d) noexcept {
     static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
     union {

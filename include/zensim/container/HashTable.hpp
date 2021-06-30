@@ -50,7 +50,7 @@ namespace zs {
           _activeKeys{mre, devid, alignment},
           _align{alignment} {}
 
-    constexpr value_t evaluateTableSize(std::size_t entryCnt) const {
+    constexpr std::size_t evaluateTableSize(std::size_t entryCnt) const {
       return next_2pow(entryCnt) * reserve_ratio_v;
     }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
@@ -188,7 +188,7 @@ namespace zs {
         storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
       }
       if (storedKey == key_sentinel_v) {
-        auto localno = atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+        auto localno = (value_t)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
         _table(_1, hashedentry) = localno;
         _activeKeys[localno] = key;
         if (localno >= _tableSize - 20)

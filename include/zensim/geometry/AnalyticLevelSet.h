@@ -104,4 +104,50 @@ namespace zs {
   template <typename T, int dim> using GenericAnalyticLevelSet
       = variant<AnalyticLevelSet<analytic_geometry_e::Cuboid, T, dim>>;
 
+  /// Bounding Volume
+  /// AABBBox
+  template <int dim, typename T = float> using AABBBox
+      = AnalyticLevelSet<analytic_geometry_e::Cuboid, T, dim>;
+
+  template <int dim, typename T>
+  constexpr bool overlaps(const AABBBox<dim, T> &a, const AABBBox<dim, T> &b) noexcept {
+    for (int d = 0; d < dim; ++d)
+      if (b._min[d] > a._max[d] || b._max[d] < a._min[d]) return false;
+    return true;
+  }
+  template <int dim, typename T>
+  constexpr bool overlaps(const vec<T, dim> &p, const AABBBox<dim, T> &b) noexcept {
+    for (int d = 0; d < dim; ++d)
+      if (b._min[d] > p[d] || b._max[d] < p[d]) return false;
+    return true;
+  }
+  template <int dim, typename T>
+  constexpr bool overlaps(const AABBBox<dim, T> &b, const vec<T, dim> &p) noexcept {
+    for (int d = 0; d < dim; ++d)
+      if (b._min[d] > p[d] || b._max[d] < p[d]) return false;
+    return true;
+  }
+  /// Sphere
+  template <int dim, typename T = float> using BoundingSphere
+      = AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>;
+
+  template <int dim, typename T> constexpr bool overlaps(const BoundingSphere<dim, T> &a,
+                                                         const BoundingSphere<dim, T> &b) noexcept {
+    auto radius = a._radius + b._radius;
+    auto disSqr = (a._center - b._center).l2NormSqr();
+    return disSqr <= radius * radius;
+  }
+  template <int dim, typename T>
+  constexpr bool overlaps(const vec<T, dim> &p, const BoundingSphere<dim, T> &b) noexcept {
+    auto radius = b._radius;
+    auto disSqr = (p - b._center).l2NormSqr();
+    return disSqr <= radius * radius;
+  }
+  template <int dim, typename T>
+  constexpr bool overlaps(const BoundingSphere<dim, T> &b, const vec<T, dim> &p) noexcept {
+    auto radius = b._radius;
+    auto disSqr = (p - b._center).l2NormSqr();
+    return disSqr <= radius * radius;
+  }
+
 }  // namespace zs

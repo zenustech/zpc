@@ -50,37 +50,51 @@ namespace zs {
                            std::tuple_element_t<0, typename func_traits::arguments_t>>)
       f(shmem, blockIdx.x, threadIdx.x);
   }
-  template <bool withIndex, typename Tn, typename F, typename Tuple, std::size_t... Is>
-  __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F&& f, Tuple args, std::index_sequence<Is...>) {
-    if constexpr (withIndex)
-      f(i, deref_if_raiter(args.template get<Is>(), i)...);
-    else
-      f(deref_if_raiter(args.template get<Is>(), i)...);
-  }
-  template <bool withIndex, typename Tn, typename F, typename Tuple, std::size_t... Is>
-  __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i, F&& f, Tuple args, std::index_sequence<Is...>) {
-    if constexpr (withIndex)
-      f(shmem, i, deref_if_raiter(args.template get<Is>(), i)...);
-    else
-      f(shmem, deref_if_raiter(args.template get<Is>(), i)...);
-  }
-  template <typename Tn, typename F, typename... IterOrVals> __global__ void range_launch(Tn n, F f, IterOrVals... iterOrVals) {
+  namespace detail {
+    template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
+    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F &&f,
+                                                  ZipIter iter, index_seq<Is...>) {
+      if constexpr (withIndex)
+        f(i, std::get<Is>(*(iter + i))...);
+      else
+        f(std::get<Is>(*(iter + i))...);
+    }
+    template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
+    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i,
+                                                  F &&f, ZipIter iter, index_seq<Is...>) {
+      if constexpr (withIndex)
+        f(shmem, i, std::get<Is>(*(iter + i))...);
+      else
+        f(shmem, std::get<Is>(*(iter + i))...);
+    }
+  }  // namespace detail
+  template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
+      std::is_convertible_v<
+          typename std::iterator_traits<ZipIter>::iterator_category,
+          std::
+              random_access_iterator_tag> && is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value>
+  range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ char shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
       using func_traits = function_traits<F>;
-      constexpr auto numArgs = sizeof...(IterOrVals);
+      constexpr auto numArgs
+          = std::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
+      constexpr auto indices = std::make_index_sequence<numArgs>{};
 
       if constexpr (func_traits::arity == numArgs)
-        range_foreach(std::false_type{}, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
+        detail::range_foreach(std::false_type{}, id, f, iter, indices);
       else if constexpr (func_traits::arity == numArgs + 1) {
-        if constexpr (std::is_integral_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
-          range_foreach(std::true_type{}, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
-        else if constexpr (std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
-          range_foreach(std::false_type{}, shmem, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
-      }
-      else if constexpr (func_traits::arity == numArgs + 2 && std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
-        range_foreach(std::true_type{}, shmem, id, f, zs::forward_as_tuple(iterOrVals...), std::index_sequence_for<IterOrVals...>{});
+        if constexpr (std::is_integral_v<
+                          std::tuple_element_t<0, typename func_traits::arguments_t>>)
+          detail::range_foreach(std::true_type{}, id, f, iter, indices);
+        else if constexpr (std::is_pointer_v<
+                               std::tuple_element_t<0, typename func_traits::arguments_t>>)
+          detail::range_foreach(std::false_type{}, shmem, id, f, iter, indices);
+      } else if constexpr (func_traits::arity == numArgs + 2
+                           && std::is_pointer_v<
+                               std::tuple_element_t<0, typename func_traits::arguments_t>>)
+        detail::range_foreach(std::true_type{}, shmem, id, f, iter, indices);
     }
   }
   namespace cg = cooperative_groups;
@@ -140,13 +154,14 @@ namespace zs {
       return res;
     }
 #endif
-    template <typename Tn, typename F> void operator()(std::initializer_list<Tn> dims, F &&f) const {
+    template <typename Tn, typename F>
+    void operator()(std::initializer_list<Tn> dims, F &&f) const {
       const std::vector<Tn> range{dims};
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
-        context.spareStreamWaitForEvent(
-            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
       // need to work on __device__ func as well
       // if constexpr (arity == 1)
       if (range.size() == 1)
@@ -166,16 +181,22 @@ namespace zs {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
-        context.spareStreamWaitForEvent(
-            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
 
       // need to work on __device__ func as well
       auto iter = std::begin(range);
       using IterT = remove_cvref_t<decltype(iter)>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
       const DiffT dist = std::end(range) - iter;
+      using RefT = typename std::iterator_traits<IterT>::reference;
 
-      context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f, iter);
+      if constexpr (is_std_tuple<RefT>::value)
+        context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f,
+                            iter);
+      else  // wrap the non-zip range in a zip range
+        context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f,
+                            std::begin(zip(FWD(range))));
 
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -203,8 +224,8 @@ namespace zs {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
-        context.spareStreamWaitForEvent(
-            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
@@ -236,8 +257,8 @@ namespace zs {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
-        context.spareStreamWaitForEvent(
-            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
@@ -270,8 +291,8 @@ namespace zs {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
-        context.spareStreamWaitForEvent(
-            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
@@ -310,8 +331,8 @@ namespace zs {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
-        context.spareStreamWaitForEvent(
-            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
       if (count) {
         std::size_t temp_storage_bytes = 0;
         cub::DeviceRadixSort::SortPairs(nullptr, temp_storage_bytes, keysIn.operator->(),
@@ -334,8 +355,8 @@ namespace zs {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
-        context.spareStreamWaitForEvent(
-            streamid, Cuda::context(incomingProc).eventSpare(incomingStreamid));
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
       const auto dist = last - first;
       std::size_t temp_storage_bytes = 0;
       cub::DeviceRadixSort::SortKeys(nullptr, temp_storage_bytes, first.operator->(),

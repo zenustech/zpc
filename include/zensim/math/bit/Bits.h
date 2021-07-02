@@ -9,8 +9,8 @@
 namespace zs {
 
   /// bitwise identical reinterpretation
-  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
-  constexpr float int_as_float(int i) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr float int_as_float(
+      int i) noexcept {
     static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
     union {
       int i{0};
@@ -19,8 +19,8 @@ namespace zs {
     u.i = i;
     return u.f;
   }
-  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
-  constexpr int float_as_int(float f) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr int float_as_int(
+      float f) noexcept {
     static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
     union {
       int i{0};
@@ -29,8 +29,8 @@ namespace zs {
     u.f = f;
     return u.i;
   }
-  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
-  constexpr double longlong_as_double(long long l) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr double longlong_as_double(
+      long long l) noexcept {
     static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
     union {
       long long l{0};
@@ -39,8 +39,8 @@ namespace zs {
     u.l = l;
     return u.d;
   }
-  [[deprecated("use reinterpret_bits<T>(...) instead.")]]
-  constexpr long long double_as_longlong(double d) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr long long double_as_longlong(
+      double d) noexcept {
     static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
     union {
       long long l{0};
@@ -108,6 +108,16 @@ namespace zs {
   template <> constexpr auto morton_3d<double>(double x, double y, double z) noexcept {
     return morton_3d_64(x, y, z);
   }
+  template <int dim, typename Vec, enable_if_t<(dim == 3)> = 0>
+  constexpr auto morton_code(const Vec &coord) noexcept {
+    return morton_3d(coord[0], coord[1], coord[2]);
+  }
+#if 0
+  typename<typename T, int dim, enable_if_t<dim == 2> = 0> constexpr auto morton_code(
+      const vec<T, dim> &coord) noexcept {
+    return morton_2d<T>(coord[0], coord[1]);
+  }
+#endif
   /**
    */
   template <typename Integer> constexpr Integer interleaved_bit_mask(int dim) noexcept {

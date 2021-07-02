@@ -79,4 +79,12 @@ namespace zs {
 /// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+#  undef ZS_LAMBDA
+#  define ZS_LAMBDA __device__
+#else
+#  undef ZS_LAMBDA
+#  define ZS_LAMBDA
+#endif
+
 }  // namespace zs

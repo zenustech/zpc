@@ -61,7 +61,7 @@ option(ZS_ENABLE_PACKAGE "Build package" Off)
 # ====================
 
 include(CMake/Utility.cmake)
-include(CMake/ClangSupport.cmake)
+# include(CMake/ClangSupport.cmake)
 include(CMake/Cache.cmake)
 include(CMake/StaticAnalyzers.cmake)
 include(CMake/Sanitizers.cmake)

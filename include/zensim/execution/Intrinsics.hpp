@@ -12,14 +12,14 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
 #if defined(_WIN32)
-#include <intrin.h>
-#include <stdlib.h>
+#  include <intrin.h>
+#  include <stdlib.h>
 #endif
 
 namespace zs {
 
 #if !ZS_ENABLE_CUDA || !defined(__CUDACC__)
-#  define __device__ 
+#  define __device__
 #endif
 
   // __threadfence
@@ -90,9 +90,12 @@ namespace zs {
       return __clz((int)x);
     else if constexpr (sizeof(long long int) == nbytes)
       return __clzll((long long int)x);
+    else {
+      static_assert(sizeof(long long int) != nbytes || sizeof(int) != nbytes,
+                    "count_lz(tag [?], [?] bytes) not viable\n");
+    }
 #endif
-    throw std::runtime_error(fmt::format("count_lz(tag {}, {} bytes) not viable\n",
-                                         get_execution_space_tag(ExecTag{}), sizeof(T)));
+    return -1;
   }
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
   constexpr int count_lz(ExecTag, T x) {
@@ -130,9 +133,11 @@ namespace zs {
       return __brev((unsigned int)x);
     else if constexpr (sizeof(unsigned long long int) == nbytes)
       return __brevll((unsigned long long int)x);
+    else
+      static_assert(sizeof(unsigned long long int) != nbytes || sizeof(unsigned int) != nbytes,
+                    "reverse_bits(tag [?], [?] bytes) not viable\n");
 #endif
-    throw std::runtime_error(fmt::format("reverse_bits(tag {}, {} bytes) not viable\n",
-                                         get_execution_space_tag(ExecTag{}), sizeof(T)));
+    return x;
   }
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
   constexpr T reverse_bits(ExecTag, T x) {
@@ -173,7 +178,7 @@ namespace zs {
   }
 
 #if !ZS_ENABLE_CUDA || !defined(__CUDACC__)
-#  undef __device__ 
+#  undef __device__
 #endif
 
 }  // namespace zs

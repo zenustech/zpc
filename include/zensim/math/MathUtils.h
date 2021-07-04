@@ -82,7 +82,7 @@ namespace zs {
     const uint32_t ieeeOne = 0x3F800000u;       // 1.0 in IEEE binary32
     m &= ieeeMantissa;                          // Keep only mantissa bits (fractional part)
     m |= ieeeOne;                               // Add fractional part to 1.0
-    float f = int_as_float(m);                  // Range [1:2]
+    float f = reinterpret_bits<float>(m);       // Range [1:2]
     return f - 1.0;                             // Range [0:1]
   }
 

@@ -265,8 +265,8 @@ namespace zs {
     constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
 
-    size_type _vectorSize;
     vector_t _vector;
+    size_type _vectorSize;
   };
 
   template <execspace_e Space, typename VectorT> struct VectorProxy<Space, const VectorT> {
@@ -283,8 +283,8 @@ namespace zs {
     constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
 
-    size_type _vectorSize;
     vector_t _vector;
+    size_type _vectorSize;
   };
 
   template <execspace_e ExecSpace, typename T, typename Index>

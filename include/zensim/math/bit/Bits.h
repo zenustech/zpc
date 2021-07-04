@@ -9,7 +9,8 @@
 namespace zs {
 
   /// bitwise identical reinterpretation
-  constexpr float int_as_float(int i) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr float int_as_float(
+      int i) noexcept {
     static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
     union {
       int i{0};
@@ -18,7 +19,8 @@ namespace zs {
     u.i = i;
     return u.f;
   }
-  constexpr int float_as_int(float f) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr int float_as_int(
+      float f) noexcept {
     static_assert(sizeof(int) == sizeof(float), "int bits != float bits");
     union {
       int i{0};
@@ -27,7 +29,8 @@ namespace zs {
     u.f = f;
     return u.i;
   }
-  constexpr double longlong_as_double(long long l) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr double longlong_as_double(
+      long long l) noexcept {
     static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
     union {
       long long l{0};
@@ -36,7 +39,8 @@ namespace zs {
     u.l = l;
     return u.d;
   }
-  constexpr long long double_as_longlong(double d) noexcept {
+  [[deprecated("use reinterpret_bits<T>(...) instead.")]] constexpr long long double_as_longlong(
+      double d) noexcept {
     static_assert(sizeof(long long) == sizeof(double), "long long bits != double bits");
     union {
       long long l{0};
@@ -45,10 +49,20 @@ namespace zs {
     u.d = d;
     return u.l;
   }
-  template <typename Dst, typename Src> constexpr Dst reinterpret_bits(Src &&val) {
+  template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) {
+    using Src = remove_cvref_t<SrcT>;
+    using Dst = remove_cvref_t<DstT>;
     static_assert(sizeof(Src) == sizeof(Dst),
                   "Source Type and Destination Type must be of the same size");
+#if 0
+    union {
+      Src in;
+      Dst out;
+    } tmp{FWD(val)};
+    return tmp.out;
+#else
     return reinterpret_cast<Dst const volatile &>(val);
+#endif
   }
   /// morton code
   constexpr u32 expand_bits_32(u32 v) noexcept {  // expands lower 10-bits to 30 bits
@@ -104,6 +118,16 @@ namespace zs {
   template <> constexpr auto morton_3d<double>(double x, double y, double z) noexcept {
     return morton_3d_64(x, y, z);
   }
+  template <int dim, typename Vec, enable_if_t<(dim == 3)> = 0>
+  constexpr auto morton_code(const Vec &coord) noexcept {
+    return morton_3d(coord[0], coord[1], coord[2]);
+  }
+#if 0
+  typename<typename T, int dim, enable_if_t<dim == 2> = 0> constexpr auto morton_code(
+      const vec<T, dim> &coord) noexcept {
+    return morton_2d<T>(coord[0], coord[1]);
+  }
+#endif
   /**
    */
   template <typename Integer> constexpr Integer interleaved_bit_mask(int dim) noexcept {

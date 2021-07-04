@@ -46,16 +46,16 @@ set(CMAKE_INSTALL_RPATH $ORIGIN $ORIGIN/${relDir})
 # =============
 option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
 
-option(ENABLE_PCH "Enable Precompiled Headers" OFF)
+option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
-set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp-related build")
+set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp-related build") # mandatory enabled
 set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build")
 set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
 
-option(ZENSIM_INSTALL "Install targets" On)
-option(ZS_ENABLE_PACKAGE "Build package" On)
-option(ZENSIM_CORE_SHARED "Build dynamically linked version of the core library." ON)
-option(ZENSIM_CORE_STATIC "Build statically linked version of the core library." ON)
+option(ZS_ENABLE_INSTALL "Install targets" Off)
+option(ZS_ENABLE_PACKAGE "Build package" Off)
+#option(ZENSIM_CORE_SHARED "Build dynamically linked version of the core library." ON)
+#option(ZENSIM_CORE_STATIC "Build statically linked version of the core library." ON)
 
 # project base targets
 # ====================
@@ -128,7 +128,7 @@ add_subdirectory(include/zensim)
 
 # ---- Install ----
 # =================
-if (ZENSIM_INSTALL)
+if (ZS_ENABLE_INSTALL)
 
 set(ZS_INSTALL_DEP_TARGETS zspartio)
 if (ZS_ENABLE_OPENVDB)
@@ -204,7 +204,7 @@ install(EXPORT ${project_name}-targets
 add_custom_target(uninstall
   COMMAND ${CMAKE_COMMAND} -P ${PROJECT_SOURCE_DIR}/CMake/Uninstall.cmake
 )
-endif(ZENSIM_INSTALL)
+endif(ZS_ENABLE_INSTALL)
 
 # ---- Pacakge ----
 # =================

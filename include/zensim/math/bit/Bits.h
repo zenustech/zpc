@@ -49,10 +49,20 @@ namespace zs {
     u.d = d;
     return u.l;
   }
-  template <typename Dst, typename Src> constexpr Dst reinterpret_bits(Src &&val) {
+  template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) {
+    using Src = remove_cvref_t<SrcT>;
+    using Dst = remove_cvref_t<DstT>;
     static_assert(sizeof(Src) == sizeof(Dst),
                   "Source Type and Destination Type must be of the same size");
+#if 0
+    union {
+      Src in;
+      Dst out;
+    } tmp{FWD(val)};
+    return tmp.out;
+#else
     return reinterpret_cast<Dst const volatile &>(val);
+#endif
   }
   /// morton code
   constexpr u32 expand_bits_32(u32 v) noexcept {  // expands lower 10-bits to 30 bits

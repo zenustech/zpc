@@ -3,7 +3,6 @@
 #include "BvhImpl.tpp"
 #include "TileVector.hpp"
 #include "Vector.hpp"
-#include "zensim/execution/Atomics.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
 
 namespace zs {
@@ -57,7 +56,7 @@ namespace zs {
     const auto numLeaves = primBvs.size();
     const memsrc_e memdst{primBvs.memspace()};
     const ProcID devid{primBvs.devid()};
-    const auto execTag = wrapv<space>{};
+    constexpr auto execTag = wrapv<space>{};
 
     auto execPol = par_exec(execTag).sync(true);
     if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
@@ -68,9 +67,15 @@ namespace zs {
       tmp[0] = Box{TV::uniform(std::numeric_limits<float_type>().max()),
                    TV::uniform(std::numeric_limits<float_type>().lowest())};
       Vector<Box> wholeBox = tmp.clone({memdst, devid});
-
       execPol(primBvs, ComputeBoundingVolume{execTag, wholeBox});
-      lbvh.wholeBox = wholeBox.clone(MemoryHandle{memsrc_e::host, -1})[0];
+      lbvh.wholeBox = wholeBox.clone({memsrc_e::host, -1})[0];
+    }
+    if constexpr (false) {
+      auto &wholeBox = lbvh.wholeBox;
+      fmt::print("{} leaves, {}, {}, {} - {}, {}, {}\n", numLeaves, wholeBox._min[0],
+                 wholeBox._min[1], wholeBox._min[2], wholeBox._max[0], wholeBox._max[1],
+                 wholeBox._max[2]);
+      getchar();
     }
 
     // morton codes
@@ -109,100 +114,101 @@ namespace zs {
               BuildRefitLBvh{execTag, numLeaves, primBvs, leafBvs, trunkBvs, splits, sortedIndices,
                              leafLca, leafDepths, trunkL, trunkR, trunkLc, trunkRc, trunkTopoMarks,
                              trunkBuildFlags});
+      ///
+      auto &sortedBvs = lbvh.sortedBvs;
+      auto &auxIndices = lbvh.auxIndices;
+      auto &levels = lbvh.levels;
+      auto &depths = lbvh.depths;
+      auto &leafIndices = lbvh.leafIndices;
+
+      const auto numNodes = numLeaves + numLeaves - 1;
+      sortedBvs = Vector<Box>{numNodes, memdst, devid};
+      auxIndices = Vector<index_type>{numNodes, memdst, devid};
+      levels = Vector<index_type>{numNodes, memdst, devid};
+      depths = Vector<index_type>{numNodes, memdst, devid};
+
+      leafIndices = Vector<index_type>{numLeaves, memdst, devid};  // for refit
+
+      /// sort bvh
+      Vector<index_type> leafOffsets{numLeaves, memdst, devid};
+      exclusive_scan(execPol, leafDepths.begin(), leafDepths.end(), leafOffsets.begin());
+      Vector<index_type> trunkDst{numLeaves - 1, memdst, devid};
+
+      execPol(enumerate(leafLca, leafDepths, leafOffsets),
+              ComputeTrunkOrder{execTag, trunkLc, trunkDst, depths});
+
+      execPol(zip(trunkBvs, trunkL, trunkR),
+              ReorderTrunk{execTag, numLeaves, trunkDst, depths, leafLca, leafDepths, leafOffsets,
+                           sortedBvs, auxIndices, levels});
+      execPol(enumerate(leafBvs, leafOffsets, leafDepths),
+              ReorderLeafs{execTag, numLeaves, sortedIndices, auxIndices, levels, depths, sortedBvs,
+                           leafIndices});
+
+      return lbvh;
     }
-    ///
-    auto &sortedBvs = lbvh.sortedBvs;
-    auto &auxIndices = lbvh.auxIndices;
-    auto &levels = lbvh.levels;
-    auto &depths = lbvh.depths;
-    auto &leafIndices = lbvh.leafIndices;
 
-    const auto numNodes = numLeaves + numLeaves - 1;
-    sortedBvs = Vector<Box>{numNodes, memdst, devid};
-    auxIndices = Vector<index_type>{numNodes, memdst, devid};
-    levels = Vector<index_type>{numNodes, memdst, devid};
-    depths = Vector<index_type>{numNodes, memdst, devid};
+    /// refit bvh
+    template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
+    void refit_lbvh(LBvh<dim, lane_width, is_double> & lbvh,
+                    const Vector<AABBBox<dim, T>> &primBvs) {
+      using namespace zs;
+      using lbvh_t = LBvh<dim, lane_width, is_double>;
+      using float_type = typename lbvh_t::float_type;
+      using Box = typename lbvh_t::Box;
+      using TV = vec<float_type, dim>;
 
-    leafIndices = Vector<index_type>{numLeaves, memdst, devid};  // for refit
+      const auto numNodes = lbvh.numNodes();
+      const auto memdst = lbvh.sortedBvs.memspace();
+      const auto devid = lbvh.sortedBvs.devid();
+      constexpr auto execTag = wrapv<space>{};
 
-    /// sort bvh
-    Vector<index_type> leafOffsets{numLeaves, memdst, devid};
-    exclusive_scan(execPol, leafDepths.begin(), leafDepths.end(), leafOffsets.begin());
-    Vector<index_type> trunkDst{numLeaves - 1, memdst, devid};
+      auto execPol = par_exec(execTag).sync(true);
+      if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
+      Vector<int> refitFlags{numNodes, memdst, devid};
+      auto &leafIndices = lbvh.leafIndices;
+      auto &sortedBvs = lbvh.sortedBvs;
+      auto &depths = lbvh.depths;
+      auto &auxIndices = lbvh.auxIndices;
+      // init bvs, refit flags
+      execPol(zip(refitFlags, sortedBvs), ResetRefitStates<space, dim, typename Box::T>{execTag});
+      // refit
+      execPol(leafIndices, RefitLBvh{execTag, primBvs, auxIndices, depths, refitFlags, sortedBvs});
+    }
 
-    execPol(enumerate(leafLca, leafDepths, leafOffsets),
-            ComputeTrunkOrder{execTag, trunkLc, trunkDst, depths});
+    /// collision detection traversal
+    // collider (aabb, point) - bvh
+    template <execspace_e space, typename Index, int dim, int lane_width, bool is_double,
+              typename Collider>
+    Vector<Index> intersect_lbvh(LBvh<dim, lane_width, is_double> & lbvh,
+                                 const Vector<Collider> &colliders) {
+      using namespace zs;
+      using lbvh_t = LBvh<dim, lane_width, is_double>;
+      using float_type = typename lbvh_t::float_type;
+      using TV = vec<float_type, dim>;
 
-    execPol(zip(trunkBvs, trunkL, trunkR),
-            ReorderTrunk{execTag, numLeaves, trunkDst, depths, leafLca, leafDepths, leafOffsets,
-                         sortedBvs, auxIndices, levels});
-    execPol(enumerate(leafBvs, leafOffsets, leafDepths),
-            ReorderLeafs{execTag, numLeaves, sortedIndices, auxIndices, levels, depths, sortedBvs,
-                         leafIndices});
+      const auto memdst = lbvh.sortedBvs.memspace();
+      const auto devid = lbvh.sortedBvs.devid();
 
-    return lbvh;
-  }
+      Vector<Index> ret{colliders.size() * dim * dim, memdst,
+                        devid};  // this is the estimated count
+      Vector<tuple<Index, Index>> records{colliders.size() * dim * dim, memdst,
+                                          devid};  // this is the estimated count
+      Vector<Index> cnt{1, memdst, devid};
 
-  /// refit bvh
-  template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
-  void refit_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<AABBBox<dim, T>> &primBvs) {
-    using namespace zs;
-    using lbvh_t = LBvh<dim, lane_width, is_double>;
-    using float_type = typename lbvh_t::float_type;
-    using Box = typename lbvh_t::Box;
-    using TV = vec<float_type, dim>;
+      auto execPol = par_exec(wrapv<space>{}).sync(true);
+      if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
 
-    const auto numNodes = lbvh.numNodes();
-    const auto memdst = lbvh.sortedBvs.memspace();
-    const auto devid = lbvh.sortedBvs.devid();
-    constexpr auto execTag = wrapv<space>{};
+      auto &sortedBvs = lbvh.sortedBvs;
+      auto &auxIndices = lbvh.auxIndices;
+      auto &levels = lbvh.levels;
+      // init bvs, refit flags
+      execPol(enumerate(colliders), IntersectLBvh{wrapv<space>{}, records.size(), sortedBvs,
+                                                  auxIndices, levels, cnt, records});
+      auto n = cnt.clone({memsrc_e::host, -1});
+      if (n[0] >= ret.size())
+        throw std::runtime_error("not enough space reserved for collision indices");
+      ret.resize(n[0]);
+      return ret;
+    }
 
-    auto execPol = par_exec(execTag).sync(true);
-    if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
-    Vector<int> refitFlags{numNodes, memdst, devid};
-    auto &leafIndices = lbvh.leafIndices;
-    auto &sortedBvs = lbvh.sortedBvs;
-    auto &depths = lbvh.depths;
-    auto &auxIndices = lbvh.auxIndices;
-    // init bvs, refit flags
-    execPol(zip(refitFlags, sortedBvs), ResetRefitStates<space, dim, typename Box::T>{execTag});
-    // refit
-    execPol(leafIndices, RefitLBvh{execTag, primBvs, auxIndices, depths, refitFlags, sortedBvs});
-  }
-
-  /// collision detection traversal
-  // collider (aabb, point) - bvh
-  template <execspace_e space, typename Index, int dim, int lane_width, bool is_double,
-            typename Collider>
-  Vector<Index> intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
-                               const Vector<Collider> &colliders) {
-    using namespace zs;
-    using lbvh_t = LBvh<dim, lane_width, is_double>;
-    using float_type = typename lbvh_t::float_type;
-    using TV = vec<float_type, dim>;
-
-    const auto memdst = lbvh.sortedBvs.memspace();
-    const auto devid = lbvh.sortedBvs.devid();
-
-    Vector<Index> ret{colliders.size() * dim * dim, memdst, devid};  // this is the estimated count
-    Vector<tuple<Index, Index>> records{colliders.size() * dim * dim, memdst,
-                                        devid};  // this is the estimated count
-    Vector<Index> cnt{1, memdst, devid};
-
-    auto execPol = par_exec(wrapv<space>{}).sync(true);
-    if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
-
-    auto &sortedBvs = lbvh.sortedBvs;
-    auto &auxIndices = lbvh.auxIndices;
-    auto &levels = lbvh.levels;
-    // init bvs, refit flags
-    execPol(enumerate(colliders), IntersectLBvh{wrapv<space>{}, records.size(), sortedBvs,
-                                                auxIndices, levels, cnt, records});
-    auto n = cnt.clone({memsrc_e::host, -1});
-    if (n[0] >= ret.size())
-      throw std::runtime_error("not enough space reserved for collision indices");
-    ret.resize(n[0]);
-    return ret;
-  }
-
-}  // namespace zs
+  }  // namespace zs

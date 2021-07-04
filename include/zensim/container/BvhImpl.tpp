@@ -1,4 +1,5 @@
 #include "zensim/container/Vector.hpp"
+#include "zensim/execution/Atomics.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
 

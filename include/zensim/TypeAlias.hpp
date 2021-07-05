@@ -91,4 +91,9 @@ namespace zs {
 #  define ZS_LAMBDA
 #endif
 
+  constexpr void do_nothing(...) noexcept {}
+  struct do_nothing_op {
+    constexpr void operator()(...) noexcept {}
+  };
+
 }  // namespace zs

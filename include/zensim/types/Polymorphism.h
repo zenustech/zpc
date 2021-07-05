@@ -41,7 +41,7 @@ namespace zs {
     Visitor visitor;
 
     VariantTaskExecutor() = default;
-    template <typename F = Visitor> constexpr VariantTaskExecutor(F &&f) : visitor{FWD(f)} {}
+    template <typename F> constexpr VariantTaskExecutor(F &&f) : visitor{FWD(f)} {}
 
     template <typename Fn, typename... Args> struct CheckCallable {
     private:
@@ -64,19 +64,17 @@ namespace zs {
                             index_seq<Ns...> dims, index_seq<i, js...> indices,
                             index_seq<I, Js...>) {
       if constexpr (No == 0) {
-        printf("reached %d, %d, %d\n", (int)I, (int)Js...);
         if constexpr (CheckCallable<
                           Visitor,
                           std::variant_alternative_t<I,
                                                      remove_cvref_t<std::tuple_element_t<i, Args>>>,
                           std::variant_alternative_t<
                               Js, remove_cvref_t<std::tuple_element_t<js, Args>>>...>::value) {
-          printf("invocable!\n");
           if ((varIndices[i] == I) && ((varIndices[js] == Js) && ...)) {
-            printf("this is it! %d, %d, %d\n", (int)I, (int)Js...);
             tagMatch = true;
-            std::invoke(visitor, std::get<I>(std::get<i>(args)),
-                        std::get<Js>(std::get<js>(args))...);
+            visitor(std::get<I>(std::get<i>(args)), std::get<Js>(std::get<js>(args))...);
+            // std::invoke(visitor, std::get<I>(std::get<i>(args)),
+            //            std::get<Js>(std::get<js>(args))...);
             return;
           }
         }

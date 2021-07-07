@@ -80,11 +80,20 @@ namespace zs {
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-#  undef ZS_LAMBDA
+#  if defined(ZS_LAMBDA)
+#    undef ZS_LAMBDA
+#  endif
 #  define ZS_LAMBDA __device__
 #else
-#  undef ZS_LAMBDA
+#  if defined(ZS_LAMBDA)
+#    undef ZS_LAMBDA
+#  endif
 #  define ZS_LAMBDA
 #endif
+
+  constexpr void do_nothing(...) noexcept {}
+  struct do_nothing_op {
+    constexpr void operator()(...) noexcept {}
+  };
 
 }  // namespace zs

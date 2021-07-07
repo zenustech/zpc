@@ -1,4 +1,5 @@
 #pragma once
+#include <tuple>
 #include <type_traits>
 #include <variant>
 
@@ -35,5 +36,76 @@ namespace zs {
 
   template <typename> struct is_variant : std::false_type {};
   template <typename... Ts> struct is_variant<variant<Ts...>> : std::true_type {};
+
+  template <typename Visitor> struct VariantTaskExecutor {
+    Visitor visitor;
+
+    VariantTaskExecutor() = default;
+    template <typename F> constexpr VariantTaskExecutor(F &&f) : visitor{FWD(f)} {}
+
+    template <typename Fn, typename... Args> struct CheckCallable {
+    private:
+      template <typename F, typename... Ts> static constexpr std::false_type test(...) {
+        return std::false_type{};
+      }
+      template <typename F, typename... Ts> static constexpr std::true_type test(
+          void_t<decltype(std::declval<Fn>()(std::declval<Args>()...))> *) {
+        return std::true_type{};
+      }
+
+    public:
+      static constexpr bool value = test<Fn, Args...>(nullptr);
+    };
+
+    template <std::size_t No, typename Args, std::size_t... Ns, std::size_t i, std::size_t... js,
+              std::size_t I, std::size_t... Js>
+    constexpr void traverse(bool &tagMatch, Args &args,
+                            const std::array<std::size_t, sizeof...(Ns)> &varIndices,
+                            index_seq<Ns...> dims, index_seq<i, js...> indices,
+                            index_seq<I, Js...>) {
+      if constexpr (No == 0) {
+        if constexpr (CheckCallable<
+                          Visitor,
+                          std::variant_alternative_t<I,
+                                                     remove_cvref_t<std::tuple_element_t<i, Args>>>,
+                          std::variant_alternative_t<
+                              Js, remove_cvref_t<std::tuple_element_t<js, Args>>>...>::value) {
+          if ((varIndices[i] == I) && ((varIndices[js] == Js) && ...)) {
+            tagMatch = true;
+            visitor(std::get<I>(std::get<i>(args)), std::get<Js>(std::get<js>(args))...);
+            // std::invoke(visitor, std::get<I>(std::get<i>(args)),
+            //            std::get<Js>(std::get<js>(args))...);
+            return;
+          }
+        }
+      } else {
+        traverse<No - 1>(tagMatch, args, varIndices, dims, indices,
+                         index_seq<select_indexed_value<No - 1, Ns...>::value - 1, I, Js...>{});
+        if (tagMatch) return;
+      }
+      if constexpr (I > 0) {  // next loop
+        traverse<No>(tagMatch, args, varIndices, dims, indices, index_seq<I - 1, Js...>{});
+        if (tagMatch) return;
+      }
+    }
+
+    template <typename... Args,
+              std::enable_if_t<(is_variant<remove_cvref_t<Args>>::value && ...), char> = 0>
+    constexpr void operator()(Args &&...args) {
+      using variant_sizes = std::index_sequence<std::variant_size_v<remove_cvref_t<Args>>...>;
+      constexpr auto narg = sizeof...(Args);
+      constexpr auto lastVariantSize
+          = std::variant_size_v<select_indexed_type<narg - 1, remove_cvref_t<Args>...>>;
+      auto packedArgs = std::forward_as_tuple(FWD(args)...);
+      using tuple_t = remove_cvref_t<decltype(packedArgs)>;
+      std::array<std::size_t, narg> varIndices{(args.index())...};
+      bool tagMatch{false};
+
+      traverse<narg - 1>(tagMatch, packedArgs, varIndices, variant_sizes{},
+                         std::index_sequence_for<Args...>{},
+                         std::index_sequence<lastVariantSize - 1>{});
+    }
+  };
+  template <typename Visitor> VariantTaskExecutor(Visitor) -> VariantTaskExecutor<Visitor>;
 
 }  // namespace zs

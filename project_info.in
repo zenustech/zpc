@@ -1,3 +1,6 @@
 set(project_name zecomp)
-set(project_version 0.0.0)
-set(project_description "Zecomp: highly efficient parallel compute framework")
+set(project_version_major 0)
+set(project_version_minor 0)
+set(project_version_patch 0)
+set(project_version ${project_version_major}.${project_version_minor}.${project_version_patch})
+set(project_description "Zepar: Parallel Compute Library for Zenus Simulation")

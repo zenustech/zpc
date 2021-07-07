@@ -212,22 +212,42 @@ if(ZS_ENABLE_PACKAGE)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
 # https://www.scivision.dev/cmake-cpack-basic/
-set(_fmt TGZ)
 if(WIN32)
-  set(_fmt ZIP)
+  set(_fmt TGZ ZIP)
+elseif(APPLE)
+  set(_fmt TGZ)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(_fmt TGZ)
 endif()
 set(CPACK_GENERATOR ${_fmt})
 set(CPACK_SOURCE_GENERATOR ${_fmt})
+#
+# package info
+#
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+set(CPACK_PACKAGE_NAME ${project_name})
 set(CPACK_PACKAGE_VENDOR "Zenus Co. Ltd.")
-set(CPACK_PACKAGE_CONTACT "wangxl@zensim.cn/ wxlwxl1993@zju.edu.cn")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${project_description})
+set(CPACK_PACKAGE_VERSION_MAJOR ${project_version_major})
+set(CPACK_PACKAGE_VERSION_MINOR ${project_version_minor})
+set(CPACK_PACKAGE_VERSION_PATCH ${project_version_patch})
+set(CPACK_VERBATIM_VARIABLES TRUE)
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
+set(CPACK_PACKAGE_CONTACT "wangxl@zensim.cn/wxlwxl1993@zju.edu.cn")
+
+#
+# resource
+#
+#CPACK_RESOURCE_FILE_WELCOME
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+
 set(CPACK_OUTPUT_FILE_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/package")
 set(CPACK_PACKAGE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 string(TOLOWER ${CMAKE_SYSTEM_NAME} _sys)
 string(TOLOWER ${project_name} _project_lower)
 set(CPACK_PACKAGE_FILE_NAME "${_project_lower}-${_sys}")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${_project_lower}-${PROJECT_VERSION}")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${_project_lower}-${project_version}")
 
 # not .gitignore as its regex syntax is distinct
 if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/.cpack_ignore)
@@ -240,6 +260,22 @@ install(FILES ${CPACK_RESOURCE_FILE_README} ${CPACK_RESOURCE_FILE_LICENSE}
   DESTINATION share/docs/${project_name})
 
 include(CPack)
+#[=[
+include(CPackIFW)
+
+cpack_add_component(core GROUP GroupCore)
+cpack_add_component(zpctool GROUP GroupTool)
+#cpack_add_component(zpctool GROUP simulation)
+#cpack_add_component( GROUP examples)
+cpack_add_component_group(GroupCore) # for just 
+cpack_add_component_group(GroupTool)
+cpack_add_component_group(GroupSimulation)
+
+cpack_ifw_configure_component(
+  DISPLAY_NAME  en  Core
+  DEPENDS com.examplecompany.product.Core.core
+)
+#]=]
 
 endif()
 endif(ZS_ENABLE_PACKAGE)

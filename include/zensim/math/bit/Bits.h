@@ -50,8 +50,8 @@ namespace zs {
     return u.l;
   }
   template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) {
-    using Src = remove_cvref_t<SrcT>;
-    using Dst = remove_cvref_t<DstT>;
+    using Src = std::remove_cv_t<std::remove_reference_t<SrcT>>;
+    using Dst = std::remove_cv_t<std::remove_reference_t<DstT>>;
     static_assert(sizeof(Src) == sizeof(Dst),
                   "Source Type and Destination Type must be of the same size");
 #if 0
@@ -118,7 +118,7 @@ namespace zs {
   template <> constexpr auto morton_3d<double>(double x, double y, double z) noexcept {
     return morton_3d_64(x, y, z);
   }
-  template <int dim, typename Vec, enable_if_t<(dim == 3)> = 0>
+  template <int dim, typename Vec, std::enable_if_t<(dim == 3), char> = 0>
   constexpr auto morton_code(const Vec &coord) noexcept {
     return morton_3d(coord[0], coord[1], coord[2]);
   }

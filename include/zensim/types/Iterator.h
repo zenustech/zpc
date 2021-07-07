@@ -227,7 +227,8 @@ namespace zs {
       }
     }
     /// decrement (bidirectional iterator)
-    template <typename T = Derived, enable_if_t<detail::has_decrement<T>::value> = 0>
+    template <typename T = Derived,
+              enable_if_t<detail::has_decrement<T>::value || detail::has_advance<T>::value> = 0>
     constexpr Derived &operator--() {
       if constexpr (detail::has_decrement<Derived>::value) {
         self().decrement();
@@ -238,7 +239,8 @@ namespace zs {
       }
       return self();
     }
-    template <typename T = Derived, enable_if_t<detail::has_decrement<T>::value> = 0>
+    template <typename T = Derived,
+              enable_if_t<detail::has_decrement<T>::value || detail::has_advance<T>::value> = 0>
     constexpr Derived operator--(int) {
       auto copy = self();
       --*this;
@@ -351,18 +353,15 @@ namespace zs {
       : IteratorInterface<IndexIterator<Data, StrideT>> {
     using T = Data;
     using DiffT = std::make_signed_t<StrideT>;
-    static_assert(std::is_integral_v<T> && std::is_integral_v<DiffT>, "Index type must be integral");
+    static_assert(std::is_integral_v<T> && std::is_integral_v<DiffT>,
+                  "Index type must be integral");
     static_assert(std::is_convertible_v<T, DiffT>,
-        "Stride type not compatible with the index type");
+                  "Stride type not compatible with the index type");
 
     constexpr IndexIterator(T base = 0, DiffT stride = 1) : base{base}, stride{stride} {}
     constexpr T dereference() const noexcept { return base; }
-    constexpr bool equal_to(IndexIterator it) const noexcept {
-      return base == it.base;
-    }
-    constexpr void advance(DiffT offset) noexcept { 
-      base += stride * offset; 
-    }
+    constexpr bool equal_to(IndexIterator it) const noexcept { return base == it.base; }
+    constexpr void advance(DiffT offset) noexcept { base += stride * offset; }
     constexpr DiffT distance_to(IndexIterator it) const noexcept {
       return static_cast<DiffT>(it.base) - static_cast<DiffT>(base);
     }
@@ -370,32 +369,26 @@ namespace zs {
     T base;
     DiffT stride;
   };
-  template <typename Data, sint_t Stride>
-  struct IndexIterator<Data, integral_v<sint_t, Stride>>
+  template <typename Data, sint_t Stride> struct IndexIterator<Data, integral_v<sint_t, Stride>>
       : IteratorInterface<IndexIterator<Data, integral_v<sint_t, Stride>>> {
     using T = std::make_signed_t<Data>;
     static_assert(std::is_integral_v<T>, "Index type must be integral");
     static_assert(std::is_convertible_v<sint_t, T>,
-        "Stride type not compatible with the index type");
+                  "Stride type not compatible with the index type");
 
     constexpr IndexIterator(T base = 0, wrapv<Stride> = {}) : base{base} {}
 
     constexpr T dereference() const noexcept { return base; }
-    constexpr bool equal_to(IndexIterator it) const noexcept {
-      return base == it.base;
-    }
-    constexpr void advance(T offset) noexcept { 
-      base += static_cast<T>(Stride * offset); 
-    }
-    constexpr T distance_to(IndexIterator it) const noexcept {
-      return it.base - base;
-    }
+    constexpr bool equal_to(IndexIterator it) const noexcept { return base == it.base; }
+    constexpr void advance(T offset) noexcept { base += static_cast<T>(Stride * offset); }
+    constexpr T distance_to(IndexIterator it) const noexcept { return it.base - base; }
 
     T base;
   };
   template <typename BaseT, typename DiffT, enable_if_t<!is_integral_constant<DiffT>::value> = 0>
   IndexIterator(BaseT, DiffT) -> IndexIterator<BaseT, DiffT>;
-  template <typename BaseT> IndexIterator(BaseT) -> IndexIterator<BaseT, integral_v<sint_t, (sint_t)1>>;
+  template <typename BaseT> IndexIterator(BaseT)
+      -> IndexIterator<BaseT, integral_v<sint_t, (sint_t)1>>;
   template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral_v<sint_t, Diff>)
       -> IndexIterator<BaseT, integral_v<sint_t, Diff>>;
 
@@ -465,14 +458,15 @@ namespace zs {
   }
 
   template <typename... Iters, std::size_t... Is>
-  struct zip_iterator<std::tuple<Iters...>, index_seq<Is...>>
-      : IteratorInterface<zip_iterator<std::tuple<Iters...>, index_seq<Is...>>> {
+  struct zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>
+      : IteratorInterface<zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>> {
     static constexpr bool all_random_access_iter = all_convertible_to_raiter<Iters...>();
     using difference_type = conditional_t<
         all_convertible_to_raiter<Iters...>(),
         std::common_type_t<typename std::iterator_traits<Iters>::difference_type...>, void>;
 
-    constexpr zip_iterator(Iters &&...its) : iters{std::make_tuple<Iters...>(FWD(its)...)} {}
+    zip_iterator() = default;
+    constexpr zip_iterator(Iters &&...its) : iters{zs::make_tuple<Iters...>(FWD(its)...)} {}
 
     // constexpr auto dereference() { return std::forward_as_tuple((*std::get<Is>(iters))...); }
     template <typename DerefT, enable_if_t<std::is_reference_v<DerefT>> = 0>
@@ -483,35 +477,34 @@ namespace zs {
     constexpr decltype(auto) getRef(DerefT &&deref) {
       return FWD(deref);
     }
-    constexpr auto dereference() { return std::make_tuple(getRef(*std::get<Is>(iters))...); }
+    constexpr auto dereference() { return std::make_tuple(getRef(*zs::get<Is>(iters))...); }
 
     constexpr bool equal_to(const zip_iterator &it) const {
-      return ((std::get<Is>(iters) == std::get<Is>(it.iters)) || ...);
+      return ((zs::get<Is>(iters) == zs::get<Is>(it.iters)) || ...);
     }
     template <bool Cond = !all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr void increment() {
-      ((void)(++std::get<Is>(iters)), ...);
+      ((++zs::get<Is>(iters)), ...);
     }
     template <bool Cond = all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr void advance(difference_type offset) {
-      ((void)(std::get<Is>(iters) += offset), ...);
+      ((zs::get<Is>(iters) += offset), ...);
     }
     template <bool Cond = all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr difference_type distance_to(const zip_iterator &it) const {
       difference_type dist = std::numeric_limits<difference_type>::max();
-      ((void)(dist = dist < (std::get<Is>(it.iters) - std::get<Is>(iters))
-                         ? dist
-                         : (std::get<Is>(it.iters) - std::get<Is>(iters))),
+      ((dist = dist < (zs::get<Is>(it.iters) - zs::get<Is>(iters))
+                   ? dist
+                   : (zs::get<Is>(it.iters) - zs::get<Is>(iters))),
        ...);
       return dist;
     }
 
-  protected:
-    std::tuple<Iters...> iters;
+    zs::tuple<Iters...> iters;
   };
 
   template <typename... Iters> zip_iterator(Iters...)
-      -> zip_iterator<std::tuple<Iters...>, std::index_sequence_for<Iters...>>;
+      -> zip_iterator<zs::tuple<Iters...>, std::index_sequence_for<Iters...>>;
 
   ///
   /// ranges
@@ -539,20 +532,22 @@ namespace zs {
 
   // enumeration range
   template <typename... Args> constexpr auto enumerate(Args &&...args) {
-    auto begin = make_iterator<zip_iterator>(
-        make_iterator<IndexIterator>((sint_t)0), std::begin(FWD(args))...);
+    auto begin = make_iterator<zip_iterator>(make_iterator<IndexIterator>((sint_t)0),
+                                             std::begin(FWD(args))...);
     auto end = make_iterator<zip_iterator>(
-        make_iterator<IndexIterator>(std::numeric_limits<sint_t>::max()),
-        std::end(FWD(args))...);
+        make_iterator<IndexIterator>(std::numeric_limits<sint_t>::max()), std::end(FWD(args))...);
     return detail::iter_range(std::move(begin), std::move(end));
   }
 
-  template <typename Iter, enable_if_t<std::is_convertible_v<typename std::iterator_traits<remove_cvref_t<Iter>>::iterator_category, std::random_access_iterator_tag>> = 0>
-  constexpr decltype(auto) deref_if_raiter(Iter&& iter, typename std::iterator_traits<remove_cvref_t<Iter>>::difference_type i) {
+  template <typename Iter,
+            enable_if_t<std::is_convertible_v<
+                typename std::iterator_traits<remove_cvref_t<Iter>>::iterator_category,
+                std::random_access_iterator_tag>> = 0>
+  constexpr decltype(auto) deref_if_raiter(
+      Iter &&iter, typename std::iterator_traits<remove_cvref_t<Iter>>::difference_type i) {
     return *(iter + i);
   }
-  template <typename Value>
-  constexpr decltype(auto) deref_if_raiter(Value&& v, ...) noexcept {
+  template <typename Value> constexpr decltype(auto) deref_if_raiter(Value &&v, ...) noexcept {
     return FWD(v);
   }
 

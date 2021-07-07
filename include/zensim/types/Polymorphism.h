@@ -97,7 +97,6 @@ namespace zs {
       constexpr auto lastVariantSize
           = std::variant_size_v<select_indexed_type<narg - 1, remove_cvref_t<Args>...>>;
       auto packedArgs = std::forward_as_tuple(FWD(args)...);
-      using tuple_t = remove_cvref_t<decltype(packedArgs)>;
       std::array<std::size_t, narg> varIndices{(args.index())...};
       bool tagMatch{false};
 

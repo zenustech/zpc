@@ -32,6 +32,10 @@ namespace zs {
       auto coord = wholeBox.getUniformCoord(c);  // this is a vec<T, dim>
       code = morton_code<BV::dim>(coord);
       index = id;
+#if 0
+      if (id < 7 || code == 0)
+        printf("%d: %e, %e, %e -> %llx\n", (int)id, coord[0], coord[1], coord[2], (long long)code);
+#endif
     }
 
     BV wholeBox{};
@@ -50,6 +54,7 @@ namespace zs {
         split = totalBits - count_lz(wrapv<space>{}, mcs(id) ^ mcs(id + 1));
       else
         split = totalBits + 1;
+      // if (id < 7) printf("%d, split %lld\n", id, split);
     }
 
     mc_t mcs;
@@ -64,7 +69,7 @@ namespace zs {
     ResetBuildStates() = default;
     constexpr ResetBuildStates(wrapv<space>) noexcept {}
 
-    constexpr void operator()(std::size_t trunkId, u32& mark, int& flag) {
+    constexpr void operator()(u32& mark, int& flag) {
       mark = 0;
       flag = 0;
     }
@@ -151,6 +156,8 @@ namespace zs {
 
         l = trunkL(cur) - 1, r = trunkR(cur);
         leafLca(l + 1) = cur, leafDepths(l + 1)++;
+        thread_fence(wrapv<space>{});  // this is needed
+
         if (l >= 0)
           mark = splits(l) < splits(r);  ///< true when right child, false otherwise
         else
@@ -189,20 +196,24 @@ namespace zs {
     using cid_t = VectorProxy<space, const vector_t>;
     using id_t = VectorProxy<space, vector_t>;
 
-    ComputeTrunkOrder(wrapv<space>, const vector_t& trunklc, vector_t& trunkdst, vector_t& depths)
+    ComputeTrunkOrder(wrapv<space>, const vector_t& trunklc, vector_t& trunkdst, vector_t& levels,
+                      vector_t& parents)
         : trunkLc{proxy<space>(trunklc)},
           trunkDst{proxy<space>(trunkdst)},
-          depths{proxy<space>(depths)} {}
+          levels{proxy<space>(levels)},
+          parents{proxy<space>(parents)} {}
 
-    constexpr void operator()(Index idx, Index node, Index level, Index offset) {
-      for (Index depth = 0; --level; node = trunkLc(node)) {
+    constexpr void operator()(Index node, Index level, Index offset) {
+      parents(offset) = -1;
+      for (; --level; node = trunkLc(node)) {
+        levels(offset) = level;
+        parents(offset + 1) = offset;  // setup left child's parent
         trunkDst(node) = offset++;
-        depths(node) = depth++;
       }
     }
 
     cid_t trunkLc;
-    id_t trunkDst, depths;
+    id_t trunkDst, levels, parents;
   };
 
   ///
@@ -215,34 +226,37 @@ namespace zs {
     using id_t = VectorProxy<space, vector_t>;
 
     ReorderTrunk(wrapv<space>, std::size_t numLeaves, const vector_t& trunkDst,
-                 const vector_t& depths, const vector_t& leafLca, const vector_t& leafDepths,
-                 const vector_t& leafOffsets, Vector<BV>& sortedBvs, vector_t& escapeIndices,
-                 vector_t& levels)
+                 const vector_t& leafLca, const vector_t& leafOffsets, Vector<BV>& sortedBvs,
+                 vector_t& escapeIndices, vector_t& parents)
         : trunkDst{proxy<space>(trunkDst)},
-          depths{proxy<space>(depths)},
           leafLca{proxy<space>(leafLca)},
-          leafDepths{proxy<space>(leafDepths)},
           leafOffsets{proxy<space>(leafOffsets)},
           sortedBvs{proxy<space>(sortedBvs)},
           escapeIndices{proxy<space>(escapeIndices)},
-          levels{proxy<space>(levels)},
+          parents{proxy<space>(parents)},
           numLeaves{numLeaves} {}
 
     constexpr void operator()(Index dst, const BV& bv, Index l, Index r) {
-      const auto depth = depths(dst);
       sortedBvs(dst) = bv;
       const auto rb = r + 1;
       if (rb < numLeaves) {
-        auto lca = leafLca(rb);
-        escapeIndices(dst) = (lca != -1 ? trunkDst(lca) : leafOffsets(rb));
+        auto lca = leafLca(rb);  // rb must be in left-branch
+        auto brother = (lca != -1 ? trunkDst(lca) : leafOffsets(rb));
+        escapeIndices(dst) = brother;
+        if (dst > 0 && parents(dst) == dst - 1)  // most likely
+          parents(brother) = dst - 1;            // setup right-branch brother's parent
       } else
         escapeIndices(dst) = -1;
-      levels(dst) = leafDepths(l) - depth - 1;
+#if 0
+      if (dst < 20)
+        printf("trunk %d lb on leaf %d (- %d), esc %d\n", (int)dst, (int)l, (int)r,
+               (int)escapeIndices(dst));
+#endif
     }
 
-    cid_t trunkDst, depths, leafLca, leafDepths, leafOffsets;
+    cid_t trunkDst, leafLca, leafOffsets;
     bv_t sortedBvs;
-    id_t escapeIndices, levels;
+    id_t escapeIndices, parents;
     Index numLeaves;
   };
 
@@ -255,14 +269,13 @@ namespace zs {
     using id_t = VectorProxy<space, vector_t>;
 
     ReorderLeafs(wrapv<space>, std::size_t numLeaves, const vector_t& sortedIndices,
-                 vector_t& primitiveIndices, vector_t& levels, vector_t& depths,
-                 Vector<BV>& sortedBvs, vector_t& leafIndices)
+                 vector_t& primitiveIndices, vector_t& parents, Vector<BV>& sortedBvs,
+                 vector_t& leafIndices)
         : sortedIndices{proxy<space>(sortedIndices)},
-          primitiveIndices{primitiveIndices},
-          levels{proxy<space>(levels)},
-          depths{proxy<space>(depths)},
-          leafIndices{proxy<space>(leafIndices)},
+          primitiveIndices{proxy<space>(primitiveIndices)},
+          parents{proxy<space>(parents)},
           sortedBvs{proxy<space>(sortedBvs)},
+          leafIndices{proxy<space>(leafIndices)},
           numLeaves{numLeaves} {}
 
     constexpr void operator()(Index idx, const BV& bv, Index leafOffset, Index leafDepth) {
@@ -270,14 +283,17 @@ namespace zs {
       leafIndices(idx) = dst;
       sortedBvs(dst) = bv;
       primitiveIndices(dst) = sortedIndices(idx);
-      levels(dst) = 0;
-      depths(dst) = leafDepth - 1;
+      if (leafDepth > 1) parents(dst + 1) = dst - 1;  // setup right-branch brother's parent
+#if 0
+      if (dst < 20)
+        printf("%d-th leaf %d, prim index %d\n", (int)idx, (int)dst, (int)sortedIndices(idx));
+#endif
     }
 
     cid_t sortedIndices;
-    id_t primitiveIndices, levels, depths;
-    id_t leafIndices;
+    id_t primitiveIndices, parents;
     bv_t sortedBvs;
+    id_t leafIndices;
     Index numLeaves;
   };
 
@@ -305,38 +321,38 @@ namespace zs {
 
     RefitLBvh() = default;
     RefitLBvh(wrapv<space>, const Vector<BV>& primBvs, const Vector<Index>& primitiveIndices,
-              const Vector<Index>& depths, Vector<int>& refitFlags, Vector<BV>& bvs)
+              const Vector<Index>& parents, Vector<int>& refitFlags, Vector<BV>& bvs)
         : primBvs{proxy<space>(primBvs)},
           primitiveIndices{proxy<space>(primitiveIndices)},
-          depths{proxy<space>(depths)},
+          parents{proxy<space>(parents)},
           flags{proxy<space>(refitFlags)},
           bvs{proxy<space>(bvs)} {}
 
     constexpr void operator()(Index node) {
       bvs(node) = primBvs(primitiveIndices(node));
-      Index depth = depths(node);
-      bool isLc = depth != 0;
-      Index fa = isLc ? node - 1 : node - 1 - depths(node - 1);
+      Index fa = parents(node);
 
-      while (fa != -1)
-        if (atomic_add(wrapv<space>{}, &flags(fa), 1) == 1) {
-          BV& bv = bvs(fa);
-          const BV box = bvs(node);
-          const BV otherBox = bvs(isLc ? node + depth + 1 : node - depth);
-          for (int d = 0; d < dim; ++d) {
-            bv._min[d] = box._min[d] < otherBox._min[d] ? box._min[d] : otherBox._min[d];
-            bv._max[d] = box._max[d] > otherBox._max[d] ? box._max[d] : otherBox._max[d];
-          }
-          // update fa
-          node = fa;
-          depth = depths(node);
-          isLc = depth != 0 || node == 0;
-          fa = isLc ? node - 1 : node - 1 - depths(node - 1);
+      // bool check = node <= 20;
+
+      while (fa != -1) {
+        BV& bv = bvs(fa);
+        const BV box = bvs(node);
+        // if (check) printf("fa[%d] <- node: %d\n", (int)fa, (int)node);
+        for (int d = 0; d < dim; ++d) {
+          atomic_min(wrapv<space>{}, &bv._min[d], box._min[d]);
+          atomic_max(wrapv<space>{}, &bv._max[d], box._max[d]);
         }
+
+        if (atomic_add(wrapv<space>{}, &flags(fa), 1) == 1) {
+          node = fa;
+          fa = parents(node);
+        } else
+          break;
+      }
     }
 
     cbv_t primBvs;
-    cid_t primitiveIndices, depths;
+    cid_t primitiveIndices, parents;
     VectorProxy<space, Vector<int>> flags;
     bv_t bvs;
   };

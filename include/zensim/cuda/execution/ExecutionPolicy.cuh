@@ -53,19 +53,22 @@ namespace zs {
   namespace detail {
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F &&f,
-                                                  ZipIter iter, index_seq<Is...>) {
+                                                  ZipIter &&iter, index_seq<Is...>) {
+      (zs::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
-        f(i, std::get<Is>(*(iter + i))...);
-      else
-        f(std::get<Is>(*(iter + i))...);
+        f(i, *zs::get<Is>(iter.iters)...);
+      else {
+        f(*zs::get<Is>(iter.iters)...);
+      }
     }
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i,
-                                                  F &&f, ZipIter iter, index_seq<Is...>) {
+                                                  F &&f, ZipIter &&iter, index_seq<Is...>) {
+      (zs::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
-        f(shmem, i, std::get<Is>(*(iter + i))...);
+        f(shmem, i, *zs::get<Is>(iter.iters)...);
       else
-        f(shmem, std::get<Is>(*(iter + i))...);
+        f(shmem, *zs::get<Is>(iter.iters)...);
     }
   }  // namespace detail
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
@@ -78,13 +81,26 @@ namespace zs {
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
       using func_traits = function_traits<F>;
-      constexpr auto numArgs
-          = std::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
+      constexpr auto numArgs = std::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
       constexpr auto indices = std::make_index_sequence<numArgs>{};
 
-      if constexpr (func_traits::arity == numArgs)
+      if constexpr (func_traits::arity == numArgs) {
         detail::range_foreach(std::false_type{}, id, f, iter, indices);
-      else if constexpr (func_traits::arity == numArgs + 1) {
+#if 0
+        if constexpr (numArgs == 3
+                      && is_same_v<remove_cvref_t<decltype(std::get<0>(*(iter + id)))>, long>)
+          if (id < 3) {
+            printf("#%d truely here! %d, %d\n", (int)id, (int)std::get<0>(*(iter + id)),
+                   (int)std::get<1>(*(iter + id)));
+            std::advance(zs::get<0>(iter.iters), id);
+            std::advance(zs::get<1>(iter.iters), id);
+            printf("#%d check direct! (ra: %d) %d, %d\n", (int)id, (int)iter.all_random_access_iter,
+                   (int)*zs::get<0>(iter.iters), (int)*zs::get<1>(iter.iters));
+            printf("#%d again! (ra: %d) %d, %d\n", (int)id, (int)iter.all_random_access_iter,
+                   (int)std::get<0>(iter[id]), (int)std::get<1>(iter[id]));
+          }
+#endif
+      } else if constexpr (func_traits::arity == numArgs + 1) {
         if constexpr (std::is_integral_v<
                           std::tuple_element_t<0, typename func_traits::arguments_t>>)
           detail::range_foreach(std::true_type{}, id, f, iter, indices);
@@ -177,7 +193,7 @@ namespace zs {
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
-    template <typename Range, typename F> void operator()(Range &&range, F &&f) const {
+    template <typename Range, typename F> auto operator()(Range &&range, F &&f) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -191,12 +207,17 @@ namespace zs {
       const DiffT dist = std::end(range) - iter;
       using RefT = typename std::iterator_traits<IterT>::reference;
 
-      if constexpr (is_std_tuple<RefT>::value)
+      if constexpr (is_std_tuple<RefT>::value) {
+        // fmt::print("\tzip iterator type: {}\n", demangle(iter));
+        // fmt::print("\tzip iterator storage type: {}\n", demangle(iter.iters));
+        // puts("already a zip range");
         context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f,
                             iter);
-      else  // wrap the non-zip range in a zip range
+      } else {  // wrap the non-zip range in a zip range
+        // puts("not actually a zip range, wrapping it");
         context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f,
                             std::begin(zip(FWD(range))));
+      }
 
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);

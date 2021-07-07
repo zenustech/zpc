@@ -40,8 +40,8 @@ namespace zs {
       return target.fetch_add(val, std::memory_order_seq_cst);
 #endif
     }
-    throw std::runtime_error(
-        fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    // throw std::runtime_error(
+    //    fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
@@ -83,12 +83,13 @@ namespace zs {
   constexpr T atomic_cas(ExecTag, T *dest, T expected, T desired) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T))
-        return reinterpret_bits<float>(atomicCAS((int *)dest, reinterpret_bits<int>(expected),
-                                                 reinterpret_bits<int>(desired)));
-      else if constexpr (is_same_v<T, double> && sizeof(long long) == sizeof(T))
-        return reinterpret_bits<double>(atomicCAS((unsigned long long *)dest,
-                                                  reinterpret_bits<unsigned long long>(expected),
-                                                  reinterpret_bits<unsigned long long>(desired)));
+        return reinterpret_bits<float>(atomicCAS((unsigned int *)dest,
+                                                 reinterpret_bits<unsigned int>(expected),
+                                                 reinterpret_bits<unsigned int>(desired)));
+      else if constexpr (is_same_v<T, double> && sizeof(unsigned long long int) == sizeof(T))
+        return reinterpret_bits<double>(atomicCAS(
+            (unsigned long long int *)dest, reinterpret_bits<unsigned long long int>(expected),
+            reinterpret_bits<unsigned long long int>(desired)));
       else
         return atomicCAS(dest, expected, desired);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -144,8 +145,8 @@ namespace zs {
       return target.compare_exchange_strong(expected, desired, std::memory_order_seq_cst);
 #endif
     }
-    throw std::runtime_error(
-        fmt::format("atomic_cas(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    // throw std::runtime_error(
+    //    fmt::format("atomic_cas(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
@@ -180,8 +181,8 @@ namespace zs {
         ;
       return;
     }
-    throw std::runtime_error(
-        fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    // throw std::runtime_error(
+    //    fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return;
   }
 
@@ -211,8 +212,8 @@ namespace zs {
         ;
       return;
     }
-    throw std::runtime_error(
-        fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    // throw std::runtime_error(
+    //    fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return;
   }
 
@@ -247,8 +248,8 @@ namespace zs {
       return target.fetch_or(val, std::memory_order_seq_cst);
 #endif
     }
-    throw std::runtime_error(
-        fmt::format("atomic_or(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    // throw std::runtime_error(
+    //    fmt::format("atomic_or(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
@@ -278,8 +279,8 @@ namespace zs {
       return target.fetch_and(val, std::memory_order_seq_cst);
 #endif
     }
-    throw std::runtime_error(
-        fmt::format("atomic_and(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    // throw std::runtime_error(
+    //    fmt::format("atomic_and(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
@@ -309,8 +310,8 @@ namespace zs {
       return target.fetch_xor(val, std::memory_order_seq_cst);
 #endif
     }
-    throw std::runtime_error(
-        fmt::format("atomic_xor(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+    // throw std::runtime_error(
+    //    fmt::format("atomic_xor(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 

@@ -3,9 +3,13 @@
 #include "zensim/container/HashTable.hpp"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/simulation/particle/Query.tpp"
 #include "zensim/simulation/sparsity/SparsityOp.hpp"
 
 namespace zs {
+
+  template GeneralIndexBuckets index_buckets_for_particles<execspace_e::cuda>(
+      const GeneralParticles &particles, float);
 
   GeneralIndexBuckets build_neighbor_list_impl(cuda_exec_tag, const GeneralParticles &particles,
                                                float dx) {

@@ -44,6 +44,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp
     omp/math/matrix/MatrixTransform.cpp
+    omp/simulation/particle/Query.cpp
     omp/simulation/sparsity/SparsityCompute.cpp
     omp/execution/ExecutionPolicy.cpp
 )

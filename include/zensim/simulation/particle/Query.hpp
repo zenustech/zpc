@@ -10,7 +10,6 @@ namespace zs {
 
   GeneralIndexBuckets build_neighbor_list_impl(host_exec_tag, const GeneralParticles &particles,
                                                float dx);
-
   template <typename ExecTag>
   auto build_neighbor_list(ExecTag tag, const GeneralParticles &particles, float dx)
       -> remove_cvref_t<decltype(build_neighbor_list_impl(tag, particles, dx),
@@ -24,7 +23,10 @@ namespace zs {
                                          get_execution_space_tag(ExecTag{})));
     return {};
   }
+  [[deprecated]] GeneralIndexBuckets build_neighbor_list(const GeneralParticles &particles,
+                                                         float dx);
 
-  GeneralIndexBuckets build_neighbor_list(const GeneralParticles &particles, float dx);
+  template <execspace_e space>
+  GeneralIndexBuckets index_buckets_for_particles(const GeneralParticles &particles, float dx);
 
 }  // namespace zs

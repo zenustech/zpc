@@ -208,6 +208,7 @@ namespace zs {
       for (; --level; node = trunkLc(node)) {
         levels(offset) = level;
         parents(offset + 1) = offset;  // setup left child's parent
+        // if (offset < 20) printf("node %d level %d\n", (int)offset, (int)levels(offset));
         trunkDst(node) = offset++;
       }
     }
@@ -245,13 +246,14 @@ namespace zs {
         escapeIndices(dst) = brother;
         if (dst > 0 && parents(dst) == dst - 1)  // most likely
           parents(brother) = dst - 1;            // setup right-branch brother's parent
+#if 0
+        if (dst < 20 || escapeIndices(dst) >= numLeaves * 2 - 1)
+          printf("numnodes %d | trunk %d lb on leaf %d (- %d), esc %d, lca[%c] %d, bro %d\n",
+                 (int)numLeaves * 2 - 1, (int)dst, (int)l, (int)r, (int)escapeIndices(dst),
+                 lca != -1 ? 'T' : 'L', (int)lca, (int)brother);
+#endif
       } else
         escapeIndices(dst) = -1;
-#if 0
-      if (dst < 20)
-        printf("trunk %d lb on leaf %d (- %d), esc %d\n", (int)dst, (int)l, (int)r,
-               (int)escapeIndices(dst));
-#endif
     }
 
     cid_t trunkDst, leafLca, leafOffsets;
@@ -269,11 +271,12 @@ namespace zs {
     using id_t = VectorProxy<space, vector_t>;
 
     ReorderLeafs(wrapv<space>, std::size_t numLeaves, const vector_t& sortedIndices,
-                 vector_t& primitiveIndices, vector_t& parents, Vector<BV>& sortedBvs,
-                 vector_t& leafIndices)
+                 vector_t& primitiveIndices, vector_t& parents, vector_t& levels,
+                 Vector<BV>& sortedBvs, vector_t& leafIndices)
         : sortedIndices{proxy<space>(sortedIndices)},
           primitiveIndices{proxy<space>(primitiveIndices)},
           parents{proxy<space>(parents)},
+          levels{proxy<space>(levels)},
           sortedBvs{proxy<space>(sortedBvs)},
           leafIndices{proxy<space>(leafIndices)},
           numLeaves{numLeaves} {}
@@ -283,6 +286,7 @@ namespace zs {
       leafIndices(idx) = dst;
       sortedBvs(dst) = bv;
       primitiveIndices(dst) = sortedIndices(idx);
+      levels(dst) = 0;
       if (leafDepth > 1) parents(dst + 1) = dst - 1;  // setup right-branch brother's parent
 #if 0
       if (dst < 20)
@@ -291,7 +295,7 @@ namespace zs {
     }
 
     cid_t sortedIndices;
-    id_t primitiveIndices, parents;
+    id_t primitiveIndices, parents, levels;
     bv_t sortedBvs;
     id_t leafIndices;
     Index numLeaves;
@@ -332,22 +336,16 @@ namespace zs {
       bvs(node) = primBvs(primitiveIndices(node));
       Index fa = parents(node);
 
-      // bool check = node <= 20;
-
       while (fa != -1) {
-        BV& bv = bvs(fa);
+        BV &bv = bvs(fa);
         const BV box = bvs(node);
-        // if (check) printf("fa[%d] <- node: %d\n", (int)fa, (int)node);
         for (int d = 0; d < dim; ++d) {
           atomic_min(wrapv<space>{}, &bv._min[d], box._min[d]);
           atomic_max(wrapv<space>{}, &bv._max[d], box._max[d]);
         }
-
-        if (atomic_add(wrapv<space>{}, &flags(fa), 1) == 1) {
-          node = fa;
-          fa = parents(node);
-        } else
-          break;
+        if (atomic_add(wrapv<space>{}, &flags(fa), 1) != 1) break;
+        node = fa;
+        fa = parents(node);
       }
     }
 
@@ -357,7 +355,7 @@ namespace zs {
     bv_t bvs;
   };
 
-  template <execspace_e space, typename Collider, typename BV, typename Index>
+  template <execspace_e space, typename Collider, typename BV, typename Index, typename ResultIndex>
   struct IntersectLBvh {
     using T = typename BV::T;
     static constexpr int dim = BV::dim;
@@ -366,19 +364,20 @@ namespace zs {
     using cid_t = VectorProxy<space, const Vector<Index>>;
 
     IntersectLBvh() = default;
-    IntersectLBvh(wrapv<space>, const Index bound, const Vector<BV>& bvhBvs,
-                  const Vector<Index>& auxIndices, const Vector<Index>& levels, Vector<Index>& cnt,
-                  Vector<tuple<Index, Index>>& records)
+    IntersectLBvh(wrapv<space>, const Vector<BV>& bvhBvs, const Vector<Index>& auxIndices,
+                  const Vector<Index>& levels, Vector<ResultIndex>& cnt,
+                  Vector<tuple<ResultIndex, ResultIndex>>& records)
         : bvhBvs{proxy<space>(bvhBvs)},
           auxIndices{proxy<space>(auxIndices)},
           levels{proxy<space>(levels)},
           cnt{proxy<space>(cnt)},
           records{proxy<space>(records)},
-          bound{bound} {}
+          numNodes{bvhBvs.size()},
+          bound{records.size()} {}
 
-    constexpr void operator()(Index cid, const Collider& collider) {
+    constexpr void operator()(ResultIndex cid, const Collider& collider) {
       Index node = 0;
-      while (node != -1) {
+      while (node != -1 && node != numNodes) {
         Index level = levels(node);
         // internal node traversal
         for (; level && overlaps(collider, bvhBvs(node)); --level, ++node)
@@ -386,11 +385,12 @@ namespace zs {
         // leaf node check
         if (level == 0) {
           if (overlaps(collider, bvhBvs(node))) {
-            auto no = atomic_add(wrapv<space>{}, &cnt(0), (Index)1);
-            /// safe check
-            if (no < bound) records(no) = make_tuple(cid, auxIndices(node));
+            auto no = atomic_add(wrapv<space>{}, &cnt(0), (ResultIndex)1);
+            /// bound check
+            if (no < bound)
+              records(no) = make_tuple((ResultIndex)cid, (ResultIndex)auxIndices(node));
           }
-          ++node;
+          node++;
         } else
           node = auxIndices(node);
       }
@@ -398,9 +398,9 @@ namespace zs {
 
     cbv_t bvhBvs;
     cid_t auxIndices, levels;
-    VectorProxy<space, Vector<Index>> cnt;
-    VectorProxy<space, Vector<tuple<Index, Index>>> records;
-    Index bound;
+    VectorProxy<space, Vector<ResultIndex>> cnt;
+    VectorProxy<space, Vector<tuple<ResultIndex, ResultIndex>>> records;
+    Index numNodes, bound;
   };
 
 }  // namespace zs

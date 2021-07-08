@@ -149,7 +149,7 @@ namespace zs {
             ReorderTrunk{execTag, numLeaves, trunkDst, leafLca, leafOffsets, sortedBvs, auxIndices,
                          parents});
     execPol(enumerate(leafBvs, leafOffsets, leafDepths),
-            ReorderLeafs{execTag, numLeaves, sortedIndices, auxIndices, parents, sortedBvs,
+            ReorderLeafs{execTag, numLeaves, sortedIndices, auxIndices, parents, levels, sortedBvs,
                          leafIndices});
     // puts("done reorder");
 
@@ -185,15 +185,20 @@ namespace zs {
     // refit
     execPol(leafIndices, RefitLBvh{execTag, primBvs, auxIndices, parents, refitFlags, sortedBvs});
     // puts("done refit");
-    // getchar();
+    if constexpr (false) {
+      auto wholeBox = sortedBvs[0];
+      fmt::print("fin {} leaves, {}, {}, {} - {}, {}, {}\n", lbvh.numLeaves(), wholeBox._min[0],
+                 wholeBox._min[1], wholeBox._min[2], wholeBox._max[0], wholeBox._max[1],
+                 wholeBox._max[2]);
+    }
   }
 
   /// collision detection traversal
   // collider (aabb, point) - bvh
   template <execspace_e space, typename Index, int dim, int lane_width, bool is_double,
             typename Collider>
-  Vector<Index> intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
-                               const Vector<Collider> &colliders) {
+  Vector<tuple<Index, Index>> intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
+                                             const Vector<Collider> &colliders) {
     using namespace zs;
     using lbvh_t = LBvh<dim, lane_width, is_double>;
     using float_type = typename lbvh_t::float_type;
@@ -202,10 +207,12 @@ namespace zs {
     const auto memdst = lbvh.sortedBvs.memspace();
     const auto devid = lbvh.sortedBvs.devid();
 
-    Vector<Index> ret{colliders.size() * dim * dim, memdst, devid};  // this is the estimated count
-    Vector<tuple<Index, Index>> records{colliders.size() * dim * dim, memdst,
+    std::size_t evaluatedSize = colliders.size() * dim * dim * 10;
+    Vector<tuple<Index, Index>> records{evaluatedSize, memdst,
                                         devid};  // this is the estimated count
-    Vector<Index> cnt{1, memdst, devid};
+    Vector<Index> tmp{1, memsrc_e::host, -1};
+    tmp[0] = 0;
+    Vector<Index> cnt = tmp.clone({memdst, devid});
 
     auto execPol = par_exec(wrapv<space>{}).sync(true);
     if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
@@ -214,13 +221,17 @@ namespace zs {
     auto &auxIndices = lbvh.auxIndices;
     auto &levels = lbvh.levels;
     // init bvs, refit flags
-    execPol(enumerate(colliders), IntersectLBvh{wrapv<space>{}, records.size(), sortedBvs,
-                                                auxIndices, levels, cnt, records});
+    execPol(
+        enumerate(colliders),
+        IntersectLBvh<space, Collider, typename lbvh_t::Box, typename lbvh_t::index_type, Index>{
+            wrapv<space>{}, sortedBvs, auxIndices, levels, cnt, records});
     auto n = cnt.clone({memsrc_e::host, -1});
-    if (n[0] >= ret.size())
-      throw std::runtime_error("not enough space reserved for collision indices");
-    ret.resize(n[0]);
-    return ret;
+    if (n[0] >= records.size())
+      throw std::runtime_error(fmt::format(
+          "not enough space reserved for collision indices, requires {} at least, currently {}\n",
+          n[0], evaluatedSize));
+    records.resize(n[0]);
+    return records;
   }
 
 }  // namespace zs

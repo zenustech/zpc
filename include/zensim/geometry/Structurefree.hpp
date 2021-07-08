@@ -25,7 +25,8 @@ namespace zs {
     using TMAffine = vec<T, (d + 1) * (d + 1)>;
     using size_type = typename Vector<TV>::size_type;
     static constexpr int dim = d;
-    constexpr MemoryHandle handle() const noexcept { return static_cast<MemoryHandle>(X); }
+
+    constexpr MemoryHandle handle() const noexcept { return X.memoryHandle(); }
     constexpr memsrc_e space() const noexcept { return X.memspace(); }
     constexpr ProcID devid() const noexcept { return X.devid(); }
     constexpr auto size() const noexcept { return X.size(); }
@@ -73,7 +74,7 @@ namespace zs {
     /// aux channels
     // SoAVector<dat32> aux32;
     // SoAVector<dat64> aux64;
-    TileVector<f32, 32> particleBins;  // (mass, pos, vel, J, F, C, logJp)
+    TileVector<f32, 32> particleBins;  // should be optional (mass, pos, vel, J, F, C, logJp)
   };
 
 #if 0
@@ -83,15 +84,14 @@ namespace zs {
   using GeneralParticles = variant<Particles<f32, 3>>;
 #endif
 
-  template <execspace_e, typename ParticlesT, typename = void> struct ParticlesProxy;
-  template <execspace_e space, typename ParticlesT> struct ParticlesProxy<space, ParticlesT> {
+  template <execspace_e space, typename ParticlesT, typename = void> struct ParticlesProxy {
     using T = typename ParticlesT::T;
     using TV = typename ParticlesT::TV;
     using TM = typename ParticlesT::TM;
     static constexpr int dim = ParticlesT::dim;
-    using size_type = std::size_t;
+    using size_type = typename ParticlesT::size_type;
 
-    constexpr ParticlesProxy() = default;
+    ParticlesProxy() = default;
     ~ParticlesProxy() = default;
     explicit constexpr ParticlesProxy(ParticlesT &particles)
         : _M{particles.M.data()},
@@ -132,9 +132,55 @@ namespace zs {
     size_type _particleCount;
   };
 
+  template <execspace_e space, typename ParticlesT> struct ParticlesProxy<space, const ParticlesT> {
+    using T = typename ParticlesT::T;
+    using TV = typename ParticlesT::TV;
+    using TM = typename ParticlesT::TM;
+    static constexpr int dim = ParticlesT::dim;
+    using size_type = typename ParticlesT::size_type;
+
+    ParticlesProxy() = default;
+    ~ParticlesProxy() = default;
+    explicit constexpr ParticlesProxy(const ParticlesT &particles)
+        : _M{particles.M.data()},
+          _X{particles.X.data()},
+          _V{particles.V.data()},
+          _J{particles.J.data()},
+          _F{particles.F.data()},
+          _C{particles.C.data()},
+          _logJp{particles.logJp.data()},
+          _particleCount{particles.size()} {}
+
+    constexpr auto mass(size_type parid) const { return _M[parid]; }
+    constexpr const auto &pos(size_type parid) const { return _X[parid]; }
+    constexpr const auto &vel(size_type parid) const { return _V[parid]; }
+    /// deformation for water
+    constexpr const auto &J(size_type parid) const { return _J[parid]; }
+    /// deformation for solid
+    constexpr const auto &F(size_type parid) const { return _F[parid]; }
+    /// for apic transfer only
+    constexpr const auto &C(size_type parid) const { return _C[parid]; }
+    /// plasticity
+    constexpr const auto &logJp(size_type parid) const { return _logJp[parid]; }
+
+    constexpr auto size() const noexcept { return _particleCount; }
+
+  protected:
+    T *_M;
+    TV *_X, *_V;
+    T *_J;
+    TM *_F, *_C;
+    T *_logJp;
+    size_type _particleCount;
+  };
+
   template <execspace_e ExecSpace, typename V, int d>
   constexpr decltype(auto) proxy(Particles<V, d> &particles) {
     return ParticlesProxy<ExecSpace, Particles<V, d>>{particles};
+  }
+  template <execspace_e ExecSpace, typename V, int d>
+  constexpr decltype(auto) proxy(const Particles<V, d> &particles) {
+    return ParticlesProxy<ExecSpace, const Particles<V, d>>{particles};
   }
 
   ///

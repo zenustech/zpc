@@ -45,6 +45,7 @@ namespace zs {
     using IV = typename IndexBucketsT::IV;
     using table_t = typename IndexBucketsT::table_t;
     using vector_t = typename IndexBucketsT::vector_t;
+    static constexpr int dim = IndexBucketsT::dim;
 
     constexpr IndexBucketsProxy() = default;
     ~IndexBucketsProxy() = default;
@@ -53,15 +54,21 @@ namespace zs {
           indices{proxy<Space>(ibs._indices)},
           offsets{proxy<Space>(ibs._offsets)},
           counts{proxy<Space>(ibs._counts)},
-          dx{ibs._dx} {}
+          dxinv{value_type(1.0) / ibs._dx} {}
 
     constexpr auto coord(const index_type bucketno) const noexcept {
       return table._activeKeys[bucketno];
     }
+    template <typename T> constexpr auto bucketCoord(const vec<T, dim> &pos) const {
+      return world_to_index<typename table_t::Tn>(pos, dxinv, 0);
+    }
+    template <typename T> constexpr auto bucketNo(const vec<T, dim> &pos) const {
+      return table.query(world_to_index<typename table_t::Tn>(pos, dxinv, 0));
+    }
 
-    HashTableProxy<Space, table_t> table;
+    HashTableProxy<Space, table_t> table;  // activekeys, table
     VectorProxy<Space, vector_t> indices, offsets, counts;
-    value_type dx;
+    value_type dxinv;
   };
 
   template <execspace_e ExecSpace, int dim>

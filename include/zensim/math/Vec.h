@@ -607,8 +607,7 @@ using vec =
   constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const std::tuple<Ts...> &tup, index_seq<Is...>) {
     return vec<T, (sizeof...(Ts))>{std::get<Is>(tup)...};
   }
-  template <typename T, typename... Ts>
-  constexpr auto make_vec(const std::tuple<Ts...> &tup) {
+  template <typename T, typename... Ts> constexpr auto make_vec(const std::tuple<Ts...> &tup) {
     return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
   }
   /// make vec from zs tuple
@@ -616,8 +615,7 @@ using vec =
   constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const tuple<Ts...> &tup, index_seq<Is...>) {
     return vec<T, (sizeof...(Ts))>{get<Is>(tup)...};
   }
-  template <typename T, typename... Ts>
-  constexpr auto make_vec(const tuple<Ts...> &tup) {
+  template <typename T, typename... Ts> constexpr auto make_vec(const tuple<Ts...> &tup) {
     return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
   }
 
@@ -675,6 +673,13 @@ using vec =
   }
   template <typename RetT, typename... Args> constexpr auto make_array(Args &&...args) {
     return std::array<RetT, sizeof...(Args)>{FWD(args)...};
+  }
+
+  template <typename Index, typename T, int dim>
+  constexpr vec<Index, dim> world_to_index(const vec<T, dim> &pos, float dxinv, Index offset = 0) {
+    vec<Index, dim> coord{};
+    for (int d = 0; d < dim; ++d) coord[d] = lower_trunc(pos[d] * dxinv + 0.5f) + offset;
+    return coord;
   }
 
 }  // namespace zs

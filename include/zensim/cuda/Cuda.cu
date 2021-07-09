@@ -48,6 +48,14 @@ namespace zs {
   void Cuda::CudaContext::spareStreamWaitForEvent(unsigned sid, void *event) {
     cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0);
   }
+  void *Cuda::CudaContext::streamMemAlloc(std::size_t size, void *stream) {
+    void *ptr;
+    cudaMallocAsync(&ptr, size, (cudaStream_t)stream);
+    return ptr;
+  }
+  void Cuda::CudaContext::streamMemFree(void *ptr, void *stream) {
+    cudaFreeAsync(ptr, (cudaStream_t)stream);
+  }
 
   void Cuda::CudaContext::checkError() const {
     cudaError_t error = cudaGetLastError();
@@ -93,7 +101,7 @@ namespace zs {
 #undef PER_CUDA_FUNCTION
     }
 
-    init(0);
+    init(0);  // cuInit(0);
 
 #if 0
     { // cuda runtime api

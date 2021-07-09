@@ -249,13 +249,14 @@ namespace zs {
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
-      std::size_t temp_storage_bytes = 0;
-      cub::DeviceScan::InclusiveScan(nullptr, temp_storage_bytes, first.operator->(),
-                                     d_first.operator->(), binary_op, dist,
-                                     (cudaStream_t)context.streamSpare(streamid));
-      void *d_tmp = context.borrow(temp_storage_bytes);
-      cub::DeviceScan::InclusiveScan(d_tmp, temp_storage_bytes, first, d_first, binary_op, dist,
-                                     (cudaStream_t)context.streamSpare(streamid));
+      std::size_t temp_bytes = 0;
+      auto stream = (cudaStream_t)context.streamSpare(streamid);
+      cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
+                                     binary_op, dist, stream);
+
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, dist, stream);
+      context.streamMemFree(d_tmp, stream);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -282,12 +283,14 @@ namespace zs {
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
-      std::size_t temp_storage_bytes = 0;
-      cub::DeviceScan::ExclusiveScan(nullptr, temp_storage_bytes, first, d_first, binary_op, init,
-                                     dist, (cudaStream_t)context.streamSpare(streamid));
-      void *d_tmp = context.borrow(temp_storage_bytes);
-      cub::DeviceScan::ExclusiveScan(d_tmp, temp_storage_bytes, first, d_first, binary_op, init,
-                                     dist, (cudaStream_t)context.streamSpare(streamid));
+      auto stream = (cudaStream_t)context.streamSpare(streamid);
+      std::size_t temp_bytes = 0;
+      cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
+                                     stream);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      cub::DeviceScan::ExclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, init, dist,
+                                     stream);
+      context.streamMemFree(d_tmp, stream);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -316,12 +319,12 @@ namespace zs {
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
-      std::size_t temp_storage_bytes = 0;
-      cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, first, d_first, dist, binary_op, init,
-                                (cudaStream_t)context.streamSpare(streamid));
-      void *d_tmp = context.borrow(temp_storage_bytes);
-      cub::DeviceReduce::Reduce(d_tmp, temp_storage_bytes, first, d_first, dist, binary_op, init,
-                                (cudaStream_t)context.streamSpare(streamid));
+      std::size_t temp_bytes = 0;
+      auto stream = (cudaStream_t)context.streamSpare(streamid);
+      cub::DeviceReduce::Reduce(nullptr, temp_bytes, first, d_first, dist, binary_op, init, stream);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      cub::DeviceReduce::Reduce(d_tmp, temp_bytes, first, d_first, dist, binary_op, init, stream);
+      context.streamMemFree(d_tmp, stream);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -355,16 +358,16 @@ namespace zs {
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       if (count) {
-        std::size_t temp_storage_bytes = 0;
-        cub::DeviceRadixSort::SortPairs(nullptr, temp_storage_bytes, keysIn.operator->(),
+        std::size_t temp_bytes = 0;
+        auto stream = (cudaStream_t)context.streamSpare(streamid);
+        cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
-                                        valsOut.operator->(), count, sbit, ebit,
-                                        (cudaStream_t)context.streamSpare(streamid));
-        void *d_tmp = context.borrow(temp_storage_bytes);
-        cub::DeviceRadixSort::SortPairs(d_tmp, temp_storage_bytes, keysIn.operator->(),
+                                        valsOut.operator->(), count, sbit, ebit, stream);
+        void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+        cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
-                                        valsOut.operator->(), count, sbit, ebit,
-                                        (cudaStream_t)context.streamSpare(streamid));
+                                        valsOut.operator->(), count, sbit, ebit, stream);
+        context.streamMemFree(d_tmp, stream);
       }
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -379,14 +382,13 @@ namespace zs {
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       const auto dist = last - first;
-      std::size_t temp_storage_bytes = 0;
-      cub::DeviceRadixSort::SortKeys(nullptr, temp_storage_bytes, first.operator->(),
-                                     d_first.operator->(), dist, sbit, ebit,
-                                     (cudaStream_t)context.streamSpare(streamid));
-      void *d_tmp = context.borrow(temp_storage_bytes);
-      cub::DeviceRadixSort::SortKeys(d_tmp, temp_storage_bytes, first.operator->(),
-                                     d_first.operator->(), dist, sbit, ebit,
-                                     (cudaStream_t)context.streamSpare(streamid));
+      std::size_t temp_bytes = 0;
+      auto stream = (cudaStream_t)context.streamSpare(streamid);
+      cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
+                                     dist, sbit, ebit, stream);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
+                                     dist, sbit, ebit, stream);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }

@@ -64,7 +64,7 @@ namespace zs {
       auto streamSpare(unsigned sid = 0) const {
         return streams[static_cast<unsigned int>(StreamIndex::Spare) + sid];
       }
-      
+
       // event
       auto eventCompute() const { return events[static_cast<unsigned int>(EventIndex::Compute)]; }
       auto eventSpare(unsigned eid = 0) const {
@@ -82,14 +82,19 @@ namespace zs {
       // stream-event sync
       void computeStreamWaitForEvent(void *event);
       void spareStreamWaitForEvent(unsigned sid, void *event);
+      // stream ordered memory allocator
+      void *streamMemAlloc(std::size_t size, void *stream);
+      void streamMemFree(void *ptr, void *stream);
 
       /// kernel launch
       // kernel execution
       void checkError() const;
-      void launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz, 
-        unsigned int bx, unsigned int by, unsigned int bz, void **args, std::size_t shmem, void *stream) const;
-      void launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz, 
-        unsigned int bx, unsigned int by, unsigned int bz, void **args, std::size_t shmem, void *stream) const;
+      void launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
+                        unsigned int bx, unsigned int by, unsigned int bz, void **args,
+                        std::size_t shmem, void *stream) const;
+      void launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
+                                   unsigned int bx, unsigned int by, unsigned int bz, void **args,
+                                   std::size_t shmem, void *stream) const;
       void launchCallback(void *stream, void *f, void *data) const;
 
       template <typename... Arguments> void launchCompute(LaunchConfig &&lc,
@@ -98,8 +103,8 @@ namespace zs {
         if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
           void *kernelArgs[] = {(void *)&args...};
           // driver().launch((void *)f, lc.dg, lc.db, kernelArgs, lc.shmem, streamCompute());
-          launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs, lc.shmem,
-            streamCompute());
+          launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs,
+                       lc.shmem, streamCompute());
           checkError();
         }
       }
@@ -109,15 +114,15 @@ namespace zs {
                                                         void (*f)(remove_vref_t<Arguments>...),
                                                         const Arguments &...args) {
         if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
-          void *kernelArgs[] = {(void*)&args...};
+          void *kernelArgs[] = {(void *)&args...};
 #if 0
           // driver api
           driver().launchCuKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, lc.shmem,
                                        streamSpare(sid), kernelArgs, nullptr);
 #else
           // f<<<lc.dg, lc.db, lc.shmem, (cudaStream_t)streamSpare(sid)>>>(args...);
-          launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs, lc.shmem, 
-            streamSpare(sid));
+          launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs,
+                       lc.shmem, streamSpare(sid));
 #endif
           checkError();
         }
@@ -129,7 +134,8 @@ namespace zs {
         if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
           // f<<<lc.dg, lc.db, lc.shmem, (cudaStream_t)stream>>>(args...);
           void *kernelArgs[] = {(void *)&args...};
-          launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs, lc.shmem, stream);
+          launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs,
+                       lc.shmem, stream);
           checkError();
         }
       }
@@ -160,14 +166,14 @@ namespace zs {
 #undef PER_CUDA_FUNCTION
 
 #if 0
-#define PER_CUDA_FUNCTION(name, symbol_name, ...) CudaRuntimeApi<__VA_ARGS__> name;
-#include "cuda_runtime_functions.inc.h"
-#undef PER_CUDA_FUNCTION
+#  define PER_CUDA_FUNCTION(name, symbol_name, ...) CudaRuntimeApi<__VA_ARGS__> name;
+#  include "cuda_runtime_functions.inc.h"
+#  undef PER_CUDA_FUNCTION
 #endif
     void (*get_cu_error_name)(uint32_t, const char **);
     void (*get_cu_error_string)(uint32_t, const char **);
-    //const char *(*get_cuda_error_name)(uint32_t);
-    //const char *(*get_cuda_error_string)(uint32_t);
+    // const char *(*get_cuda_error_name)(uint32_t);
+    // const char *(*get_cuda_error_string)(uint32_t);
 
   private:
     int numTotalDevice;

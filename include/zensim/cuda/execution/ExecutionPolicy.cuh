@@ -389,6 +389,7 @@ namespace zs {
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
+      context.streamMemFree(d_tmp, stream);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }

@@ -54,13 +54,13 @@ namespace zs {
           indices{proxy<Space>(ibs._indices)},
           offsets{proxy<Space>(ibs._offsets)},
           counts{proxy<Space>(ibs._counts)},
-          dxinv{value_type(1.0) / ibs._dx} {}
+          dx{ibs._dx} {}
 
     constexpr auto coord(const index_type bucketno) const noexcept {
       return table._activeKeys[bucketno];
     }
     template <typename T> constexpr auto bucketCoord(const vec<T, dim> &pos) const {
-      return world_to_index<typename table_t::Tn>(pos, dxinv, 0);
+      return world_to_index<typename table_t::Tn>(pos, 1.0 / dx, 0);
     }
     constexpr auto bucketNo(const vec<typename table_t::Tn, dim> &coord) const {
       return table.query(coord);
@@ -68,7 +68,7 @@ namespace zs {
 
     HashTableProxy<Space, table_t> table;  // activekeys, table
     VectorProxy<Space, vector_t> indices, offsets, counts;
-    value_type dxinv;
+    value_type dx;
   };
 
   template <execspace_e ExecSpace, int dim>

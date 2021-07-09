@@ -40,7 +40,7 @@ namespace zs {
 
   /// build bvh
   template <execspace_e space, int lane_width, int dim, typename T>
-  auto build_lbvh(const Vector<AABBBox<dim, T>> &primBvs) {
+  inline auto build_lbvh(const Vector<AABBBox<dim, T>> &primBvs) {
     using namespace zs;
     static constexpr bool is_double = is_same_v<T, double>;
     using mc_t = conditional_t<is_double, u64, u32>;
@@ -158,7 +158,8 @@ namespace zs {
 
   /// refit bvh
   template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
-  void refit_lbvh(LBvh<dim, lane_width, is_double> &lbvh, const Vector<AABBBox<dim, T>> &primBvs) {
+  inline void refit_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
+                         const Vector<AABBBox<dim, T>> &primBvs) {
     using namespace zs;
     using lbvh_t = LBvh<dim, lane_width, is_double>;
     using float_type = typename lbvh_t::float_type;
@@ -197,8 +198,8 @@ namespace zs {
   // collider (aabb, point) - bvh
   template <execspace_e space, typename Index, int dim, int lane_width, bool is_double,
             typename Collider>
-  Vector<tuple<Index, Index>> intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
-                                             const Vector<Collider> &colliders) {
+  inline Vector<tuple<Index, Index>> intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
+                                                    const Vector<Collider> &colliders) {
     using namespace zs;
     using lbvh_t = LBvh<dim, lane_width, is_double>;
     using float_type = typename lbvh_t::float_type;

@@ -598,9 +598,10 @@ using vec =
   };
 
   /// make vec
-  template <typename... Args> constexpr auto make_vec(Args &&...args) {
-    using Tn = std::common_type_t<std::decay_t<Args>...>;
-    return vec<Tn, sizeof...(Args)>{std::forward<Args>(args)...};
+  template <typename... Args, enable_if_all<(!is_std_tuple<remove_cvref_t<Args>>::value, ...)> = 0>
+  constexpr auto make_vec(Args &&...args) {
+    using Tn = std::common_type_t<remove_cvref_t<Args>...>;
+    return vec<Tn, sizeof...(Args)>{FWD(args)...};
   }
   /// make vec from std tuple
   template <typename T, typename... Ts, std::size_t... Is>
@@ -676,7 +677,7 @@ using vec =
   }
 
   template <typename Index, typename T, int dim>
-  constexpr vec<Index, dim> world_to_index(const vec<T, dim> &pos, float dxinv, Index offset = 0) {
+  constexpr auto world_to_index(const vec<T, dim> &pos, float dxinv, Index offset = 0) {
     vec<Index, dim> coord{};
     for (int d = 0; d < dim; ++d) coord[d] = lower_trunc(pos[d] * dxinv + 0.5f) + offset;
     return coord;

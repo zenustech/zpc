@@ -62,8 +62,8 @@ namespace zs {
     template <typename T> constexpr auto bucketCoord(const vec<T, dim> &pos) const {
       return world_to_index<typename table_t::Tn>(pos, dxinv, 0);
     }
-    template <typename T> constexpr auto bucketNo(const vec<T, dim> &pos) const {
-      return table.query(world_to_index<typename table_t::Tn>(pos, dxinv, 0));
+    constexpr auto bucketNo(const vec<typename table_t::Tn, dim> &coord) const {
+      return table.query(coord);
     }
 
     HashTableProxy<Space, table_t> table;  // activekeys, table

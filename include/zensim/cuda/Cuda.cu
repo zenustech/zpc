@@ -9,6 +9,16 @@
 
 namespace zs {
 
+  __device__ __constant__ char g_cuda_constant_cache[8192];  // 1024 words
+
+  void Cuda::initConstantCache(void *ptr, std::size_t size) {
+    cudaMemcpyToSymbol(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice);
+  }
+  void Cuda::initConstantCache(void *ptr, std::size_t size, void *stream) {
+    cudaMemcpyToSymbolAsync(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice,
+                            (cudaStream_t)stream);
+  }
+
   std::string get_cu_error_message(uint32_t err) {
     const char *err_name_ptr;
     const char *err_string_ptr;

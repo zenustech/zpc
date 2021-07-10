@@ -27,8 +27,8 @@ namespace zs {
     f32 f;
     i32 i;
     u32 u;
-    template <typename T> T &cast() noexcept;
-    template <typename T> T cast() const noexcept;
+    template <typename T> constexpr T &cast() noexcept;
+    template <typename T> constexpr T cast() const noexcept;
     constexpr f32 &asFloat() noexcept { return f; }
     constexpr i32 &asSignedInteger() noexcept { return i; }
     constexpr u32 &asUnsignedInteger() noexcept { return u; }
@@ -47,8 +47,8 @@ namespace zs {
     f64 d;
     i64 l;
     u64 ul;
-    template <typename T> T &cast() noexcept;
-    template <typename T> T cast() const noexcept;
+    template <typename T> constexpr T &cast() noexcept;
+    template <typename T> constexpr T cast() const noexcept;
     constexpr f64 &asFloat() noexcept { return d; }
     constexpr i64 &asSignedInteger() noexcept { return l; }
     constexpr u64 &asUnsignedInteger() noexcept { return ul; }

@@ -15,7 +15,7 @@ namespace zs {
                                              const char* __func = __builtin_FUNCTION(),
                                              int __line = __builtin_LINE(),
                                              int __col = 0) noexcept {
-      source_location __loc;
+      source_location __loc{};
       __loc._M_file = __file;
       __loc._M_func = __func;
       __loc._M_line = __line;

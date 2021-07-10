@@ -12,7 +12,6 @@
 #endif
 
 // #include <driver_types.h>
-
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
@@ -25,6 +24,7 @@
 #include "CudaFunction.cuh"
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"
+#include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
 
 namespace zs {
@@ -41,6 +41,8 @@ namespace zs {
     static auto &driver() { return instance(); }
     static auto &context(int devid) { return driver().contexts[devid]; }
     static auto alignment() { return driver().textureAlignment; }
+    static void initConstantCache(void *ptr, std::size_t size);
+    static void initConstantCache(void *ptr, std::size_t size, void *stream);
 
     struct CudaContext {
       auto &driver() const noexcept { return Cuda::driver(); }

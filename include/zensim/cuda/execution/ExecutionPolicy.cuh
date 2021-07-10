@@ -17,6 +17,7 @@
 
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Function.h"
+#include "zensim/types/SourceLocation.hpp"
 
 /// extracted from compiler error message...
 template <class Tag, class... CapturedVarTypePack> struct __nv_dl_wrapper_t;
@@ -166,7 +167,8 @@ namespace zs {
     }
 #endif
     template <typename Tn, typename F>
-    void operator()(std::initializer_list<Tn> dims, F &&f) const {
+    void operator()(std::initializer_list<Tn> dims, F &&f,
+                    const source_location &loc = source_location::current()) const {
       const std::vector<Tn> range{dims};
       auto &context = Cuda::context(procid);
       context.setContext();
@@ -175,21 +177,27 @@ namespace zs {
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       // need to work on __device__ func as well
       // if constexpr (arity == 1)
-      if (range.size() == 1)
-        context.launchSpare(streamid,
-                            {(range[0] + blockSize - 1) / blockSize, blockSize, shmemBytes},
-                            thread_launch, range[0], f);
+      if (range.size() == 1) {
+        cuda_safe_launch(loc, context, streamid,
+                         {(range[0] + blockSize - 1) / blockSize, blockSize, shmemBytes},
+                         thread_launch, range[0], f);
+      }
       // else if constexpr (arity == 2)
-      else if (range.size() == 2)
-        context.launchSpare(streamid, {range[0], range[1], shmemBytes}, block_thread_launch, f);
+      else if (range.size() == 2) {
+        cuda_safe_launch(loc, context, streamid, {range[0], range[1], shmemBytes},
+                         block_thread_launch, f);
+      }
       // else if constexpr (arity == 3)
-      else if (range.size() == 3)
-        context.launchSpare(streamid, {range[0], range[1] * range[2], shmemBytes},
-                            block_tile_lane_launch, range[2], f);
+      else if (range.size() == 3) {
+        cuda_safe_launch(loc, context, streamid, {range[0], range[1] * range[2], shmemBytes},
+                         block_tile_lane_launch, range[2], f);
+      }
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
-    template <typename Range, typename F> auto operator()(Range &&range, F &&f) const {
+    template <typename Range, typename F>
+    auto operator()(Range &&range, F &&f,
+                    const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -204,11 +212,13 @@ namespace zs {
       using RefT = typename std::iterator_traits<IterT>::reference;
 
       if constexpr (is_std_tuple<RefT>::value) {
-        context.launchSpare(streamid, {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes},
-                            range_launch, dist, f, iter);
+        cuda_safe_launch(loc, context, streamid,
+                         {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes}, range_launch,
+                         dist, f, iter);
       } else {  // wrap the non-zip range in a zip range
-        context.launchSpare(streamid, {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes},
-                            range_launch, dist, f, std::begin(zip(FWD(range))));
+        cuda_safe_launch(loc, context, streamid,
+                         {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes}, range_launch,
+                         dist, f, std::begin(zip(FWD(range))));
       }
 
       if (this->shouldSync()) context.syncStreamSpare(streamid);

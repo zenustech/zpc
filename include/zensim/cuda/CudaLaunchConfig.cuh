@@ -29,35 +29,4 @@ namespace zs {
     cudaStream_t sid{cudaStreamDefault};
   };
 
-  struct LaunchInput {
-    LaunchInput() = delete;
-    LaunchInput(std::string kernel, int taskNum, std::size_t sharedMemBytes = 0)
-        : kernelName(kernel), numThreads(taskNum), sharedMemBytes(sharedMemBytes) {}
-    const std::string &name() { return kernelName; }
-    const int &threads() { return numThreads; }
-    const std::size_t &memBytes() { return sharedMemBytes; }
-
-  private:
-    const std::string kernelName;
-    const int numThreads;
-    const std::size_t sharedMemBytes;
-  };
-
-  /// kernel launching configuration
-  struct ExecutionSetup {
-    ExecutionSetup() {}
-    ExecutionSetup(int gs, int bs, std::size_t memsize, bool s)
-        : gridSize(gs), blockSize(bs), sharedMemBytes(memsize), sync(s) {}
-    int getGridSize() const { return gridSize; }
-    int getBlockSize() const { return blockSize; }
-    std::size_t getSharedMemBytes() const { return sharedMemBytes; }
-    bool needSync() const { return sync; }
-
-  private:
-    int gridSize{0};
-    int blockSize{0};
-    std::size_t sharedMemBytes{0};
-    bool sync{false};
-  };
-
 }  // namespace zs

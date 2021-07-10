@@ -24,6 +24,7 @@
 #include "CudaFunction.cuh"
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"
+#include "zensim/tpls/fmt/color.h"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
 
@@ -44,6 +45,19 @@ namespace zs {
     static void initConstantCache(void *ptr, std::size_t size);
     static void initConstantCache(void *ptr, std::size_t size, void *stream);
 
+    /// error handling
+    static u32 getLastCudaError();
+    static std::string_view getCudaErrorString(u32 errorCode);
+    /// kernel launch
+    static void launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
+                             unsigned int bx, unsigned int by, unsigned int bz, void **args,
+                             std::size_t shmem, void *stream);
+    static void launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
+                                        unsigned int gz, unsigned int bx, unsigned int by,
+                                        unsigned int bz, void **args, std::size_t shmem,
+                                        void *stream);
+    static void launchCallback(void *stream, void *f, void *data);
+
     struct CudaContext {
       auto &driver() const noexcept { return Cuda::driver(); }
       CudaContext(int devId = 0, int device = 0, void *contextIn = nullptr)
@@ -51,6 +65,7 @@ namespace zs {
       auto getDevId() const noexcept { return devid; }
       auto getDevice() const noexcept { return dev; }
       auto getContext() const noexcept { return context; }
+      void checkError() const;
 
       /// only use after Cuda system initialization
       void setContext() const;
@@ -89,16 +104,6 @@ namespace zs {
       void streamMemFree(void *ptr, void *stream);
 
       /// kernel launch
-      // kernel execution
-      void checkError() const;
-      void launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
-                        unsigned int bx, unsigned int by, unsigned int bz, void **args,
-                        std::size_t shmem, void *stream) const;
-      void launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
-                                   unsigned int bx, unsigned int by, unsigned int bz, void **args,
-                                   std::size_t shmem, void *stream) const;
-      void launchCallback(void *stream, void *f, void *data) const;
-
       template <typename... Arguments> void launchCompute(LaunchConfig &&lc,
                                                           void (*f)(remove_vref_t<Arguments>...),
                                                           const Arguments &...args) {
@@ -143,14 +148,14 @@ namespace zs {
       }
 
       /// allocator initialization on use
-      void initDeviceMemory();
-      void initUnifiedMemory();
+      [[deprecated]] void initDeviceMemory();
+      [[deprecated]] void initUnifiedMemory();
 
-      auto borrow(std::size_t bytes) -> void *;
-      void resetMem();
+      [[deprecated]] auto borrow(std::size_t bytes) -> void *;
+      [[deprecated]] void resetMem();
 
-      auto borrowVirtual(std::size_t bytes) -> void *;
-      void resetVirtualMem();
+      [[deprecated]] auto borrowVirtual(std::size_t bytes) -> void *;
+      [[deprecated]] void resetVirtualMem();
 
     public:
       int devid;
@@ -159,8 +164,8 @@ namespace zs {
       std::vector<void *> streams;  ///< CUstream
       std::vector<void *> events;   ///< CUevents
       bool supportConcurrentUmAccess;
-      std::unique_ptr<MonotonicAllocator> deviceMem;
-      std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
+      [[deprecated]] std::unique_ptr<MonotonicAllocator> deviceMem;
+      [[deprecated]] std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
     };  //< [end] struct CudaContext
 
 #define PER_CUDA_FUNCTION(name, symbol_name, ...) CudaDriverApi<__VA_ARGS__> name;
@@ -186,5 +191,78 @@ namespace zs {
 
     int _iDevID;  ///< need changing
   };
+
+  template <typename... Args> struct cuda_safe_launch {
+    void checkLastError(const Cuda::CudaContext &ctx, std::string_view streamInfo,
+                        const source_location &loc) noexcept {
+      auto error = Cuda::getLastCudaError();
+      if (error != 0) {
+        const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());
+        const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+        const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+        const auto length
+            = std::max({fileInfo.size(), locInfo.size(), funcInfo.size(), (std::size_t)80});
+        const auto bar = fmt::format("{}", '=', length);
+        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
+                   "Last Cuda Error on Device {}, Stream {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n",
+                   ctx.getDevId(), streamInfo, Cuda::getCudaErrorString(error), "error location",
+                   fileInfo, locInfo, funcInfo, "fin");
+      }
+    }
+    explicit cuda_safe_launch(const source_location &loc, const Cuda::CudaContext &ctx,
+                              LaunchConfig &&lc, void (*f)(remove_cvref_t<Args>...),
+                              const Args &...args) {
+      if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
+        void *kernelArgs[] = {(void *)&args...};
+        Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z,
+                           kernelArgs, lc.shmem, ctx.streamCompute());
+        checkLastError(ctx, "Compute", loc);
+      }
+    }
+    explicit cuda_safe_launch(const Cuda::CudaContext &ctx, LaunchConfig &&lc,
+                              void (*f)(remove_cvref_t<Args>...), const Args &...args,
+                              const source_location &loc = source_location::current()) {
+      if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
+        void *kernelArgs[] = {(void *)&args...};
+        Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z,
+                           kernelArgs, lc.shmem, ctx.streamCompute());
+        checkLastError(ctx, "Compute", loc);
+      }
+    }
+
+    explicit cuda_safe_launch(const source_location &loc, const Cuda::CudaContext &ctx,
+                              StreamID sid, LaunchConfig &&lc, void (*f)(remove_cvref_t<Args>...),
+                              const Args &...args) {
+      if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
+        void *kernelArgs[] = {(void *)&args...};
+        Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z,
+                           kernelArgs, lc.shmem, ctx.streamSpare(sid));
+        checkLastError(ctx, fmt::format("Spare [{}]", sid), loc);
+      }
+    }
+    explicit cuda_safe_launch(const Cuda::CudaContext &ctx, StreamID sid, LaunchConfig &&lc,
+                              void (*f)(remove_cvref_t<Args>...), const Args &...args,
+                              const source_location &loc = source_location::current()) {
+      if (lc.dg.x && lc.dg.y && lc.dg.z && lc.db.x && lc.db.y && lc.db.z) {
+        void *kernelArgs[] = {(void *)&args...};
+        Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z,
+                           kernelArgs, lc.shmem, ctx.streamSpare(sid));
+        checkLastError(ctx, fmt::format("Spare [{}]", sid), loc);
+      }
+    }
+  };
+  template <typename... Args>
+  cuda_safe_launch(const source_location &, const Cuda::CudaContext &, StreamID, LaunchConfig &&,
+                   void (*f)(remove_cvref_t<Args>...), const Args &...)
+      -> cuda_safe_launch<Args...>;
+  template <typename... Args> cuda_safe_launch(const Cuda::CudaContext &, StreamID, LaunchConfig &&,
+                                               void (*f)(remove_cvref_t<Args>...), const Args &...)
+      -> cuda_safe_launch<Args...>;
+  template <typename... Args> cuda_safe_launch(const source_location &, const Cuda::CudaContext &,
+                                               LaunchConfig &&, void (*f)(remove_cvref_t<Args>...),
+                                               const Args &...) -> cuda_safe_launch<Args...>;
+  template <typename... Args> cuda_safe_launch(const Cuda::CudaContext &, LaunchConfig &&,
+                                               void (*f)(remove_cvref_t<Args>...), const Args &...)
+      -> cuda_safe_launch<Args...>;
 
 }  // namespace zs

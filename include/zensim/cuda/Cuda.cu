@@ -34,6 +34,36 @@ namespace zs {
   }
 #endif
 
+  /// error handling
+  u32 Cuda::getLastCudaError() { return (u32)cudaGetLastError(); }
+
+  std::string_view Cuda::getCudaErrorString(u32 errorCode) {
+    return cudaGetErrorString((cudaError_t)errorCode);
+  }
+
+  /// kernel launch
+  void Cuda::launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
+                          unsigned int bx, unsigned int by, unsigned int bz, void **args,
+                          std::size_t shmem, void *stream) {
+    cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem, (cudaStream_t)stream);
+  }
+  void Cuda::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
+                                     unsigned int gz, unsigned int bx, unsigned int by,
+                                     unsigned int bz, void **args, std::size_t shmem,
+                                     void *stream) {
+    cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
+                                (cudaStream_t)stream);
+  }
+  void Cuda::launchCallback(void *stream, void *f, void *data) {
+    cudaLaunchHostFunc((cudaStream_t)stream, (cudaHostFn_t)f, data);
+  }
+
+  void Cuda::CudaContext::checkError() const {
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess)
+      fmt::print("Last Error on [Dev {}]: {}\n", devid, cudaGetErrorString(error));
+  }
+
   // record
   void Cuda::CudaContext::recordEventCompute() {
     cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute());
@@ -67,27 +97,6 @@ namespace zs {
     cudaFreeAsync(ptr, (cudaStream_t)stream);
   }
 
-  void Cuda::CudaContext::checkError() const {
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess)
-      fmt::print("Last Error on [Dev {}]: {}\n", devid, cudaGetErrorString(error));
-  }
-  void Cuda::CudaContext::launchKernel(const void *f, unsigned int gx, unsigned int gy,
-                                       unsigned int gz, unsigned int bx, unsigned int by,
-                                       unsigned int bz, void **args, std::size_t shmem,
-                                       void *stream) const {
-    cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem, (cudaStream_t)stream);
-  }
-  void Cuda::CudaContext::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
-                                                  unsigned int gz, unsigned int bx, unsigned int by,
-                                                  unsigned int bz, void **args, std::size_t shmem,
-                                                  void *stream) const {
-    cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
-                                (cudaStream_t)stream);
-  }
-  void Cuda::CudaContext::launchCallback(void *stream, void *f, void *data) const {
-    cudaLaunchHostFunc((cudaStream_t)stream, (cudaHostFn_t)f, data);
-  }
   void Cuda::CudaContext::setContext() const { cudaSetDevice(devid); }
 
   Cuda::Cuda() {

@@ -86,20 +86,6 @@ namespace zs {
 
       if constexpr (func_traits::arity == numArgs) {
         detail::range_foreach(std::false_type{}, id, f, iter, indices);
-#if 0
-        if constexpr (numArgs == 3
-                      && is_same_v<remove_cvref_t<decltype(std::get<0>(*(iter + id)))>, long>)
-          if (id < 3) {
-            printf("#%d truely here! %d, %d\n", (int)id, (int)std::get<0>(*(iter + id)),
-                   (int)std::get<1>(*(iter + id)));
-            std::advance(zs::get<0>(iter.iters), id);
-            std::advance(zs::get<1>(iter.iters), id);
-            printf("#%d check direct! (ra: %d) %d, %d\n", (int)id, (int)iter.all_random_access_iter,
-                   (int)*zs::get<0>(iter.iters), (int)*zs::get<1>(iter.iters));
-            printf("#%d again! (ra: %d) %d, %d\n", (int)id, (int)iter.all_random_access_iter,
-                   (int)std::get<0>(iter[id]), (int)std::get<1>(iter[id]));
-          }
-#endif
       } else if constexpr (func_traits::arity == numArgs + 1) {
         if constexpr (std::is_integral_v<
                           std::tuple_element_t<0, typename func_traits::arguments_t>>)
@@ -161,6 +147,10 @@ namespace zs {
       shmemBytes = bytes;
       return *this;
     }
+    CudaExecutionPolicy &block(std::size_t tpb) {
+      blockSize = tpb;
+      return *this;
+    }
 #if 0
     template <typename FTraits> static constexpr unsigned computeArity() noexcept {
       unsigned res{0};
@@ -181,8 +171,9 @@ namespace zs {
       // need to work on __device__ func as well
       // if constexpr (arity == 1)
       if (range.size() == 1)
-        context.launchSpare(streamid, {(range[0] + 127) / 128, 128, shmemBytes}, thread_launch,
-                            range[0], f);
+        context.launchSpare(streamid,
+                            {(range[0] + blockSize - 1) / blockSize, blockSize, shmemBytes},
+                            thread_launch, range[0], f);
       // else if constexpr (arity == 2)
       else if (range.size() == 2)
         context.launchSpare(streamid, {range[0], range[1], shmemBytes}, block_thread_launch, f);
@@ -208,15 +199,11 @@ namespace zs {
       using RefT = typename std::iterator_traits<IterT>::reference;
 
       if constexpr (is_std_tuple<RefT>::value) {
-        // fmt::print("\tzip iterator type: {}\n", demangle(iter));
-        // fmt::print("\tzip iterator storage type: {}\n", demangle(iter.iters));
-        // puts("already a zip range");
-        context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f,
-                            iter);
+        context.launchSpare(streamid, {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes},
+                            range_launch, dist, f, iter);
       } else {  // wrap the non-zip range in a zip range
-        // puts("not actually a zip range, wrapping it");
-        context.launchSpare(streamid, {(dist + 127) / 128, 128, shmemBytes}, range_launch, dist, f,
-                            std::begin(zip(FWD(range))));
+        context.launchSpare(streamid, {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes},
+                            range_launch, dist, f, std::begin(zip(FWD(range))));
       }
 
       if (this->shouldSync()) context.syncStreamSpare(streamid);
@@ -418,11 +405,12 @@ namespace zs {
     // template <auto flagbit> friend struct CudaLibHandle<flagbit>;
 
     // std::size_t blockGranularity{128};
-    ProcID incomingProc{0};
     StreamID incomingStreamid{0};
     StreamID streamid{0};
-    ProcID procid{0};           ///< 0-th gpu
     std::size_t shmemBytes{0};  ///< amount of shared memory passed
+    int blockSize{128};
+    ProcID incomingProc{0};
+    ProcID procid{0};  ///< 0-th gpu
   };
 
   constexpr CudaExecutionPolicy cuda_exec() noexcept { return CudaExecutionPolicy{}; }

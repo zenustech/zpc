@@ -4,6 +4,7 @@
 #include "Cuda.h"
 #include "CudaConstants.inc"
 #include "zensim/tpls/fmt/format.h"
+#include "zensim/types/SourceLocation.hpp"
 
 #define MEM_POOL_CTRL 3
 
@@ -40,6 +41,22 @@ namespace zs {
   std::string_view Cuda::getCudaErrorString(u32 errorCode) {
     return cudaGetErrorString((cudaError_t)errorCode);
   }
+  void Cuda::checkError(u32 errorCode, ProcID did, const source_location &loc) {
+    if (errorCode != 0) {
+      if (did >= 0) {
+        auto &context = Cuda::context(did);
+        if (context.errorStatus) return;  // there already exists a preceding cuda error
+        context.errorStatus = true;
+      }
+      const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+      fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
+                 "\nCuda Error on Device {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+                 did >= 0 ? std::to_string(did) : "unknown", Cuda::getCudaErrorString(errorCode),
+                 " cuda api error location ", fileInfo, locInfo, funcInfo, "=");
+    }
+  }
 
   /// kernel launch
   void Cuda::launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
@@ -64,40 +81,49 @@ namespace zs {
       fmt::print("Last Error on [Dev {}]: {}\n", devid, cudaGetErrorString(error));
   }
 
-  // record
-  void Cuda::CudaContext::recordEventCompute() {
-    cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute());
-  }
-  void Cuda::CudaContext::recordEventSpare(unsigned id) {
-    cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id));
-  }
-  // sync
-  void Cuda::CudaContext::syncStream(unsigned sid) const {
-    cudaStreamSynchronize((cudaStream_t)stream(sid));
-  }
-  void Cuda::CudaContext::syncCompute() const {
-    cudaStreamSynchronize((cudaStream_t)streamCompute());
-  }
-  void Cuda::CudaContext::syncStreamSpare(unsigned sid) const {
-    cudaStreamSynchronize((cudaStream_t)streamSpare(sid));
-  }
-  // stream-event sync
-  void Cuda::CudaContext::computeStreamWaitForEvent(void *event) {
-    cudaStreamWaitEvent((cudaStream_t)streamCompute(), (cudaEvent_t)event, 0);
-  }
-  void Cuda::CudaContext::spareStreamWaitForEvent(unsigned sid, void *event) {
-    cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0);
-  }
-  void *Cuda::CudaContext::streamMemAlloc(std::size_t size, void *stream) {
-    void *ptr;
-    cudaMallocAsync(&ptr, size, (cudaStream_t)stream);
-    return ptr;
-  }
-  void Cuda::CudaContext::streamMemFree(void *ptr, void *stream) {
-    cudaFreeAsync(ptr, (cudaStream_t)stream);
+  void Cuda::CudaContext::checkError(u32 errorCode, const source_location &loc) const {
+    /// only shows the first error message
+    Cuda::checkError(errorCode, getDevId(), loc);
   }
 
-  void Cuda::CudaContext::setContext() const { cudaSetDevice(devid); }
+  // record
+  void Cuda::CudaContext::recordEventCompute(const source_location &loc) {
+    checkError(cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute()), loc);
+  }
+  void Cuda::CudaContext::recordEventSpare(unsigned id, const source_location &loc) {
+    checkError(cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id)), loc);
+  }
+  // sync
+  void Cuda::CudaContext::syncStream(unsigned sid, const source_location &loc) const {
+    checkError(cudaStreamSynchronize((cudaStream_t)stream(sid)), loc);
+  }
+  void Cuda::CudaContext::syncCompute(const source_location &loc) const {
+    checkError(cudaStreamSynchronize((cudaStream_t)streamCompute()), loc);
+  }
+  void Cuda::CudaContext::syncStreamSpare(unsigned sid, const source_location &loc) const {
+    checkError(cudaStreamSynchronize((cudaStream_t)streamSpare(sid)), loc);
+  }
+  // stream-event sync
+  void Cuda::CudaContext::computeStreamWaitForEvent(void *event, const source_location &loc) {
+    checkError(cudaStreamWaitEvent((cudaStream_t)streamCompute(), (cudaEvent_t)event, 0), loc);
+  }
+  void Cuda::CudaContext::spareStreamWaitForEvent(unsigned sid, void *event,
+                                                  const source_location &loc) {
+    checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0), loc);
+  }
+  void *Cuda::CudaContext::streamMemAlloc(std::size_t size, void *stream,
+                                          const source_location &loc) {
+    void *ptr;
+    checkError(cudaMallocAsync(&ptr, size, (cudaStream_t)stream), loc);
+    return ptr;
+  }
+  void Cuda::CudaContext::streamMemFree(void *ptr, void *stream, const source_location &loc) {
+    checkError(cudaFreeAsync(ptr, (cudaStream_t)stream), loc);
+  }
+
+  void Cuda::CudaContext::setContext(const source_location &loc) const {
+    checkError(cudaSetDevice(devid), loc);
+  }
 
   Cuda::Cuda() {
     fmt::print("[Init -- Begin] Cuda\n");
@@ -149,6 +175,7 @@ namespace zs {
 
     numTotalDevice = 0;
     getDeviceCount(&numTotalDevice);
+    contexts.resize(numTotalDevice);
     if (numTotalDevice == 0)
       fmt::print(
           "\t[InitInfo -- DevNum] There are no available device(s) that "
@@ -156,13 +183,12 @@ namespace zs {
     else
       fmt::print("\t[InitInfo -- DevNum] Detected {} CUDA Capable device(s)\n", numTotalDevice);
 
-    contexts.resize(numTotalDevice);
     for (int i = 0; i < numTotalDevice; i++) {
       auto &context = contexts[i];
       int dev{};
       {
         void *c{nullptr};
-        cudaSetDevice(i);
+        checkError(cudaSetDevice(i), i);
         getDevice(&dev, i);
         // fmt::print("device ordinal {} is {}\n", i, dev);
 
@@ -176,10 +202,10 @@ namespace zs {
 
       context.streams.resize((int)StreamIndex::Total);
       for (auto &stream : context.streams)
-        cudaStreamCreateWithFlags((cudaStream_t *)&stream, cudaStreamNonBlocking);
+        checkError(cudaStreamCreateWithFlags((cudaStream_t *)&stream, cudaStreamNonBlocking), i);
       context.events.resize((int)EventIndex::Total);
       for (auto &event : context.events)
-        cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync);
+        checkError(cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync), i);
 
       /// device properties
       int major, minor, multiGpuBoardGroupID, multiProcessorCount, sharedMemPerBlock, regsPerBlock;
@@ -211,7 +237,7 @@ namespace zs {
     /// enable peer access if feasible
     for (int i = 0; i < numTotalDevice; i++) {
       // setContext(contexts[i].getContext());
-      cudaSetDevice(i);
+      checkError(cudaSetDevice(i), i);
       for (int j = 0; j < numTotalDevice; j++) {
         if (i != j) {
           int iCanAccessPeer = 0;
@@ -237,13 +263,13 @@ namespace zs {
     for (int i = 0; i < numTotalDevice; i++) {
       auto &context = contexts[i];
       context.setContext();
-      for (auto stream : context.streams) cudaStreamDestroy((cudaStream_t)stream);
-      for (auto event : context.events) cudaEventDestroy((cudaEvent_t)event);
+      for (auto stream : context.streams) checkError(cudaStreamDestroy((cudaStream_t)stream), i);
+      for (auto event : context.events) checkError(cudaEventDestroy((cudaEvent_t)event), i);
       context.deviceMem.reset(nullptr);
       context.unifiedMem.reset(nullptr);
 
       // destroyContext(context.getContext());
-      cudaDeviceReset();
+      checkError(cudaDeviceReset(), i);
     }
     fmt::print("  Finished \'Cuda\' termination\n");
   }
@@ -251,7 +277,7 @@ namespace zs {
   void Cuda::CudaContext::initDeviceMemory() {
     /// memory
     std::size_t free_byte, total_byte;
-    cudaMemGetInfo(&free_byte, &total_byte);
+    checkError(cudaMemGetInfo(&free_byte, &total_byte));
     deviceMem = std::make_unique<MonotonicAllocator>(free_byte >> MEM_POOL_CTRL,
                                                      driver().textureAlignment);
     fmt::print(
@@ -265,7 +291,7 @@ namespace zs {
     return;
 #endif
     std::size_t free_byte, total_byte;
-    cudaMemGetInfo(&free_byte, &total_byte);
+    checkError(cudaMemGetInfo(&free_byte, &total_byte));
     unifiedMem = std::make_unique<MonotonicVirtualAllocator>(getDevId(), total_byte * 4,
                                                              driver().textureAlignment);
     fmt::print(

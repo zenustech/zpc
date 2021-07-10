@@ -48,6 +48,8 @@ namespace zs {
     /// error handling
     static u32 getLastCudaError();
     static std::string_view getCudaErrorString(u32 errorCode);
+    static void checkError(u32 errorCode, ProcID did = -1,
+                           const source_location &loc = source_location::current());
     /// kernel launch
     static void launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
                              unsigned int bx, unsigned int by, unsigned int bz, void **args,
@@ -61,14 +63,15 @@ namespace zs {
     struct CudaContext {
       auto &driver() const noexcept { return Cuda::driver(); }
       CudaContext(int devId = 0, int device = 0, void *contextIn = nullptr)
-          : devid{devId}, dev{device}, context{contextIn} {}
+          : devid{devId}, dev{device}, context{contextIn}, errorStatus{false} {}
       auto getDevId() const noexcept { return devid; }
       auto getDevice() const noexcept { return dev; }
       auto getContext() const noexcept { return context; }
       void checkError() const;
+      void checkError(u32 errorCode, const source_location &loc = source_location::current()) const;
 
       /// only use after Cuda system initialization
-      void setContext() const;
+      void setContext(const source_location &loc = source_location::current()) const;
       /// stream & event
       // stream
       template <StreamIndex sid> auto stream() const {
@@ -89,19 +92,25 @@ namespace zs {
       }
 
       // record
-      void recordEventCompute();
-      void recordEventSpare(unsigned id = 0);
+      void recordEventCompute(const source_location &loc = source_location::current());
+      void recordEventSpare(unsigned id = 0,
+                            const source_location &loc = source_location::current());
       // sync
-      void syncStream(unsigned sid) const;
-      void syncCompute() const;
+      void syncStream(unsigned sid, const source_location &loc = source_location::current()) const;
+      void syncCompute(const source_location &loc = source_location::current()) const;
       template <StreamIndex sid> void syncStream() const { syncStream(stream<sid>()); }
-      void syncStreamSpare(unsigned sid = 0) const;
+      void syncStreamSpare(unsigned sid = 0,
+                           const source_location &loc = source_location::current()) const;
       // stream-event sync
-      void computeStreamWaitForEvent(void *event);
-      void spareStreamWaitForEvent(unsigned sid, void *event);
+      void computeStreamWaitForEvent(void *event,
+                                     const source_location &loc = source_location::current());
+      void spareStreamWaitForEvent(unsigned sid, void *event,
+                                   const source_location &loc = source_location::current());
       // stream ordered memory allocator
-      void *streamMemAlloc(std::size_t size, void *stream);
-      void streamMemFree(void *ptr, void *stream);
+      void *streamMemAlloc(std::size_t size, void *stream,
+                           const source_location &loc = source_location::current());
+      void streamMemFree(void *ptr, void *stream,
+                         const source_location &loc = source_location::current());
 
       /// kernel launch
       template <typename... Arguments> void launchCompute(LaunchConfig &&lc,
@@ -164,6 +173,7 @@ namespace zs {
       std::vector<void *> streams;  ///< CUstream
       std::vector<void *> events;   ///< CUevents
       bool supportConcurrentUmAccess;
+      mutable bool errorStatus;
       [[deprecated]] std::unique_ptr<MonotonicAllocator> deviceMem;
       [[deprecated]] std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
     };  //< [end] struct CudaContext
@@ -200,13 +210,13 @@ namespace zs {
         const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());
         const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
         const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
-        const auto length
-            = std::max({fileInfo.size(), locInfo.size(), funcInfo.size(), (std::size_t)80});
-        const auto bar = fmt::format("{}", '=', length);
-        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
-                   "Last Cuda Error on Device {}, Stream {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n",
-                   ctx.getDevId(), streamInfo, Cuda::getCudaErrorString(error), "error location",
-                   fileInfo, locInfo, funcInfo, "fin");
+        if (ctx.errorStatus) return;  // there already exists a preceding cuda error
+        ctx.errorStatus = true;
+        fmt::print(
+            fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
+            "\nLast Cuda Error on Device {}, Stream {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+            ctx.getDevId(), streamInfo, Cuda::getCudaErrorString(error), " error location ",
+            fileInfo, locInfo, funcInfo, "=");
       }
     }
     explicit cuda_safe_launch(const source_location &loc, const Cuda::CudaContext &ctx,

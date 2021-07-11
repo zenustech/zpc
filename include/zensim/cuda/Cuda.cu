@@ -12,10 +12,10 @@ namespace zs {
 
   __device__ __constant__ char g_cuda_constant_cache[8192];  // 1024 words
 
-  void Cuda::initConstantCache(void *ptr, std::size_t size) {
+  void Cuda::init_constant_cache(void *ptr, std::size_t size) {
     cudaMemcpyToSymbol(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice);
   }
-  void Cuda::initConstantCache(void *ptr, std::size_t size, void *stream) {
+  void Cuda::init_constant_cache(void *ptr, std::size_t size, void *stream) {
     cudaMemcpyToSymbolAsync(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice,
                             (cudaStream_t)stream);
   }
@@ -208,9 +208,8 @@ namespace zs {
         checkError(cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync), i);
 
       /// device properties
-      int major, minor, multiGpuBoardGroupID, multiProcessorCount, sharedMemPerBlock, regsPerBlock;
+      int major, minor, multiGpuBoardGroupID, multiProcessorCount, regsPerBlock;
       int supportUnifiedAddressing, supportUm, supportConcurrentUmAccess;
-      getDeviceAttribute(&sharedMemPerBlock, CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK, dev);
       getDeviceAttribute(&regsPerBlock, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, dev);
       getDeviceAttribute(&multiProcessorCount, CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev);
       getDeviceAttribute(&multiGpuBoardGroupID, CU_DEVICE_ATTRIBUTE_MULTI_GPU_BOARD_GROUP_ID, dev);
@@ -221,6 +220,18 @@ namespace zs {
       getDeviceAttribute(&supportUm, CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, dev);
       getDeviceAttribute(&supportConcurrentUmAccess, CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS,
                          dev);
+      getDeviceAttribute(&context.regsPerMultiprocessor,
+                         CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR, dev);
+      getDeviceAttribute(&context.sharedMemPerMultiprocessor,
+                         CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR, dev);
+      getDeviceAttribute(&context.maxBlocksPerMultiprocessor,
+                         CU_DEVICE_ATTRIBUTE_MAX_BLOCKS_PER_MULTIPROCESSOR, dev);
+      getDeviceAttribute(&context.sharedMemPerBlock,
+                         CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK, dev);
+      getDeviceAttribute(&context.maxThreadsPerBlock, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
+                         dev);
+      getDeviceAttribute(&context.maxThreadsPerMultiprocessor,
+                         CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, dev);
 
       context.supportConcurrentUmAccess = supportConcurrentUmAccess;
 
@@ -230,8 +241,9 @@ namespace zs {
           "{},\n\t\tMulti-Processor count: {},\n\t\tSM compute capabilities: "
           "{}.{}.\n\t\tTexture alignment: {} bytes\n\t\tUVM support: allocation({}), unified "
           "addressing({}), concurrent access({})\n",
-          i, multiGpuBoardGroupID, sharedMemPerBlock, regsPerBlock, multiProcessorCount, major,
-          minor, textureAlignment, supportUm, supportUnifiedAddressing, supportConcurrentUmAccess);
+          i, multiGpuBoardGroupID, context.sharedMemPerBlock, regsPerBlock, multiProcessorCount,
+          major, minor, textureAlignment, supportUm, supportUnifiedAddressing,
+          supportConcurrentUmAccess);
     }
 
     /// enable peer access if feasible
@@ -320,6 +332,92 @@ namespace zs {
   void Cuda::CudaContext::resetVirtualMem() {
     if (!unifiedMem) initUnifiedMemory();
     unifiedMem->reset();
+  }
+
+  /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
+  int Cuda::deduce_block_size(const Cuda::CudaContext &ctx, void *kernelFunc,
+                              std::function<std::size_t(int)> block_size_to_dynamic_shmem,
+                              std::string_view kernelName) {
+    if (auto it = ctx.funcLaunchConfigs.find(kernelFunc); it != ctx.funcLaunchConfigs.end())
+      return it->second.optBlockSize;
+    cudaFuncAttributes funcAttribs;
+    ctx.checkError(cudaFuncGetAttributes(&funcAttribs, kernelFunc));
+    int optBlockSize{0};
+
+    auto cuda_max_active_blocks_per_sm = [&](int block_size, int dynamic_shmem) {
+      // Limits due do registers/SM
+      int const regs_per_sm = ctx.regsPerMultiprocessor;
+      int const regs_per_thread = funcAttribs.numRegs;
+      int const max_blocks_regs = regs_per_sm / (regs_per_thread * block_size);
+
+      // Limits due to shared memory/SM
+      size_t const shmem_per_sm = ctx.sharedMemPerMultiprocessor;
+      size_t const shmem_per_block = ctx.sharedMemPerBlock;
+      size_t const static_shmem = funcAttribs.sharedSizeBytes;
+      size_t const dynamic_shmem_per_block = funcAttribs.maxDynamicSharedSizeBytes;
+      size_t const total_shmem = static_shmem + dynamic_shmem;
+
+      int const max_blocks_shmem
+          = total_shmem > shmem_per_block || dynamic_shmem > dynamic_shmem_per_block
+                ? 0
+                : (total_shmem > 0 ? (int)shmem_per_sm / total_shmem : max_blocks_regs);
+
+      // Limits due to blocks/SM
+      int const max_blocks_per_sm = ctx.maxBlocksPerMultiprocessor;
+
+      // Overall occupancy in blocks
+      return std::min({max_blocks_regs, max_blocks_shmem, max_blocks_per_sm});
+    };
+    auto deduce_opt_block_size = [&]() {
+      // Limits
+      int const max_threads_per_sm = ctx.maxThreadsPerMultiprocessor;
+      // unsure if I need to do that or if this is already accounted for in the functor attributes
+      int const min_blocks_per_sm = 1;
+      int const max_threads_per_block
+          = std::min((int)ctx.maxThreadsPerBlock, funcAttribs.maxThreadsPerBlock);
+
+      // Recorded maximum
+      int opt_block_size = 0;
+      int opt_threads_per_sm = 0;
+
+      /// iterate all optional blocksize setup
+      for (int block_size = max_threads_per_block; block_size > 0; block_size -= 32) {
+        size_t const dynamic_shmem = block_size_to_dynamic_shmem(block_size);
+
+        int blocks_per_sm = cuda_max_active_blocks_per_sm(block_size, dynamic_shmem);
+
+        int threads_per_sm = blocks_per_sm * block_size;
+
+        if (threads_per_sm > max_threads_per_sm) {
+          blocks_per_sm = max_threads_per_sm / block_size;
+          threads_per_sm = blocks_per_sm * block_size;
+        }
+
+        // update if higher occupancy (more threads per streaming multiprocessor)
+        if (blocks_per_sm >= min_blocks_per_sm) {
+          if (threads_per_sm >= opt_threads_per_sm) {
+            opt_block_size = block_size;
+            opt_threads_per_sm = threads_per_sm;
+          }
+        }
+
+        // fmt::print("current blocks_sm: {}, threads_sm: {}, size: {}\n", blocks_per_sm,
+        //           threads_per_sm, block_size);
+        // if (blocks_per_sm != 0) break; // this enabled when querying for maximum block size
+      }
+      return opt_block_size;
+    };
+
+    optBlockSize = deduce_opt_block_size();
+    fmt::print(
+        "[cuda kernel: {}]\nnumRegs: {}, maxThreadsPerBlock: {}, sharedSizeBytes: {}, "
+        "maxDynamicSharedSizeBytes: {}. "
+        "deduced optBlockSize: {}\n",
+        kernelName.empty() ? std::to_string((std::uintptr_t)kernelFunc) : kernelName,
+        funcAttribs.numRegs, funcAttribs.maxThreadsPerBlock, funcAttribs.sharedSizeBytes,
+        funcAttribs.maxDynamicSharedSizeBytes, optBlockSize);
+    ctx.funcLaunchConfigs.emplace(kernelFunc, typename Cuda::CudaContext::Config{optBlockSize});
+    return optBlockSize;
   }
 
 }  // namespace zs

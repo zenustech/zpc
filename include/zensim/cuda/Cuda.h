@@ -42,8 +42,8 @@ namespace zs {
     static auto &driver() { return instance(); }
     static auto &context(int devid) { return driver().contexts[devid]; }
     static auto alignment() { return driver().textureAlignment; }
-    static void initConstantCache(void *ptr, std::size_t size);
-    static void initConstantCache(void *ptr, std::size_t size, void *stream);
+    static void init_constant_cache(void *ptr, std::size_t size);
+    static void init_constant_cache(void *ptr, std::size_t size, void *stream);
 
     /// error handling
     static u32 getLastCudaError();
@@ -166,13 +166,22 @@ namespace zs {
       [[deprecated]] auto borrowVirtual(std::size_t bytes) -> void *;
       [[deprecated]] void resetVirtualMem();
 
+      struct Config {
+        int optBlockSize{0};
+      };
+
     public:
       int devid;
       int dev;                      ///< CUdevice (4 bytes)
       void *context;                ///< CUcontext
       std::vector<void *> streams;  ///< CUstream
       std::vector<void *> events;   ///< CUevents
+      int maxThreadsPerBlock, maxThreadsPerMultiprocessor, regsPerMultiprocessor,
+          sharedMemPerMultiprocessor, sharedMemPerBlock, maxBlocksPerMultiprocessor;
       bool supportConcurrentUmAccess;
+
+      mutable std::unordered_map<void *, Config> funcLaunchConfigs;
+
       mutable bool errorStatus;
       [[deprecated]] std::unique_ptr<MonotonicAllocator> deviceMem;
       [[deprecated]] std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
@@ -191,6 +200,11 @@ namespace zs {
     void (*get_cu_error_string)(uint32_t, const char **);
     // const char *(*get_cuda_error_name)(uint32_t);
     // const char *(*get_cuda_error_string)(uint32_t);
+
+    /// other utilities
+    /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
+    static int deduce_block_size(const CudaContext &ctx, void *f, std::function<std::size_t(int)>,
+                                 std::string_view = "");
 
   private:
     int numTotalDevice;

@@ -20,6 +20,43 @@ namespace zs {
   /// underlying_type
   /// common_type
 
+  ///
+  /// type decorato
+  ///
+  template <class T> struct remove_cvref {
+    using type = std::remove_cv_t<std::remove_reference_t<T>>;
+  };
+  template <class T> using remove_cvref_t = typename remove_cvref<T>::type;
+
+  /// vref
+  template <class T> struct remove_vref {
+    using type = std::remove_volatile_t<std::remove_reference_t<T>>;
+  };
+  template <class T> using remove_vref_t = typename remove_vref<T>::type;
+
+  /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
+  /// decay+unref
+  template <class T> struct unwrap_refwrapper { using type = T; };
+  template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> { using type = T &; };
+  template <class T> using special_decay_t =
+      typename unwrap_refwrapper<typename std::decay_t<T>>::type;
+
+  ///
+  /// fundamental type-value wrapper
+  ///
+  template <typename T> struct wrapt { using type = T; };
+  /// wrap at most 1 layer
+  template <typename T> struct wrapt<wrapt<T>> { using type = T; };
+  template <auto N> using wrapv = std::integral_constant<decltype(N), N>;
+
+  template <typename Tn, Tn N> using integral_v = std::integral_constant<Tn, N>;
+  template <typename> struct is_integral_constant : std::false_type {};
+  template <typename T, T v> struct is_integral_constant<integral_v<T, v>> : std::true_type {};
+  template <std::size_t N> using index_v = std::integral_constant<std::size_t, N>;
+
+  ///
+  /// detection
+  ///
   namespace detail {
     template <class Default, class AlwaysVoid, template <class...> class Op, class... Args>
     struct detector {
@@ -39,8 +76,8 @@ namespace zs {
     nonesuch() = delete;
     template <typename T> nonesuch(std::initializer_list<T>) = delete;
     ~nonesuch() = delete;
-    nonesuch(const nonesuch&) = delete;
-    void operator=(nonesuch const&) = delete;
+    nonesuch(const nonesuch &) = delete;
+    void operator=(nonesuch const &) = delete;
   };
 
   template <template <class...> class Op, class... Args> using is_detected =

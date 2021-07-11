@@ -5,6 +5,7 @@
 
 #include "zensim/TypeAlias.hpp"
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/profile/CppTimers.hpp"
 #include "zensim/tpls/fmt/format.h"
 #include "zensim/tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/Function.h"
@@ -75,6 +76,10 @@ namespace zs {
       _sync = sync_;
       return *selfPtr();
     }
+    Derived &profile(bool profile_) noexcept {
+      _profile = profile_;
+      return *selfPtr();
+    }
 
     // constexpr DeviceHandle device() const noexcept { return handle; }
 
@@ -86,7 +91,7 @@ namespace zs {
     constexpr Derived *selfPtr() noexcept { return static_cast<Derived *>(this); }
     constexpr const Derived *selfPtr() const noexcept { return static_cast<const Derived *>(this); }
 
-    bool _sync{true}, _wait{false};
+    bool _sync{true}, _wait{false}, _profile{false};
     // DeviceHandle handle{0, -1};
   };
 

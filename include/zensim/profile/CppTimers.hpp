@@ -2,6 +2,7 @@
 
 #include <ctime>
 #include <string>
+#include "TimerBase.hpp"
 
 namespace zs {
 

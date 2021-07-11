@@ -5,35 +5,10 @@
 
 #include "../TypeAlias.hpp"
 #include "Functional.h"
+#include "Meta.h"
 #include "zensim/Reflection.h"
 
 namespace zs {
-
-  /** type decorations */
-
-  /// cvref
-  template <class T> struct remove_cvref {
-    using type = std::remove_cv_t<std::remove_reference_t<T>>;
-  };
-  template <class T> using remove_cvref_t = typename remove_cvref<T>::type;
-
-  /// vref
-  template <class T> struct remove_vref {
-    using type = std::remove_volatile_t<std::remove_reference_t<T>>;
-  };
-  template <class T> using remove_vref_t = typename remove_vref<T>::type;
-
-  /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
-  /// decay+unref
-  template <class T> struct unwrap_refwrapper { using type = T; };
-  template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> { using type = T &; };
-  template <class T> using special_decay_t =
-      typename unwrap_refwrapper<typename std::decay_t<T>>::type;
-
-  template <typename T> struct wrapt { using type = T; };
-  /// wrap at most 1 layer
-  template <typename T> struct wrapt<wrapt<T>> { using type = T; };
-  template <auto N> using wrapv = std::integral_constant<decltype(N), N>;
 
   /// indexable type list to avoid recursion
   namespace type_impl {
@@ -74,11 +49,6 @@ namespace zs {
   /******************************************************************/
   /** definition: monoid_op, type_seq, value_seq, gen_seq, gather */
   /******************************************************************/
-
-  template <typename Tn, Tn N> using integral_v = std::integral_constant<Tn, N>;
-  template <typename> struct is_integral_constant : std::false_type {};
-  template <typename T, T v> struct is_integral_constant<integral_v<T, v>> : std::true_type {};
-  template <std::size_t N> using index_v = std::integral_constant<std::size_t, N>;
   /// static uniform non-types
   template <typename Tn, Tn... Ns> using integral_seq = std::integer_sequence<Tn, Ns...>;
   template <auto... Ns> using index_seq = std::index_sequence<Ns...>;
@@ -118,12 +88,6 @@ namespace zs {
   template <std::size_t... Is, typename... Ts>
   struct tseqop_impl<std::index_sequence<Is...>, type_seq<Ts...>> {
     using indices = std::index_sequence_for<Ts...>;
-#if 0
-  template <template <typename> auto Pred>
-  static constexpr auto all() noexcept {
-    return (Pred<Ts> && ...);
-  }
-#endif
     /// convert
     template <template <typename> typename Unary> using to_vseq = vseq_t<Unary<Ts>::value...>;
     template <template <std::size_t, typename> typename Unary> using convert
@@ -326,17 +290,8 @@ namespace zs {
   };
   template <typename Seq> using seq_tail_t = typename seq_tail<Seq>::type;
 
-#define ZS_HAS_MEMBER(MEMBER)                                               \
-  template <typename T> struct has_MEMBER {                                 \
-  private:                                                                  \
-    template <typename U> static std::false_type test(...);                 \
-    template <typename U> static std::true_type test(decltype(&U::MEMBER)); \
-                                                                            \
-  public:                                                                   \
-    static constexpr bool value = decltype(test<T>(0))();                   \
-  };
-
   /** placeholder */
+
   namespace placeholders {
     using placeholder_type = unsigned;
     constexpr auto _0 = std::integral_constant<placeholder_type, 0>{};

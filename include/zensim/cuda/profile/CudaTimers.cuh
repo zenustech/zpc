@@ -2,6 +2,8 @@
 
 #include <string_view>
 
+#include "zensim/profile/TimerBase.hpp"
+
 namespace zs {
 
   struct CudaTimer {

@@ -32,19 +32,20 @@ namespace zs {
   }
 
   constexpr exec_tags suggest_exec_space(MemoryHandle mh) {
-    switch(mh.memspace()) {
-    case memsrc_e::host:
-    case memsrc_e::pinned:
-      return exec_omp;
-    case memsrc_e::device:
-    case memsrc_e::device_const:
-    case memsrc_e::um:
-      return exec_cuda;
-    case memsrc_e::file:
-      return exec_seq;
+    switch (mh.memspace()) {
+      case memsrc_e::host:
+      case memsrc_e::pinned:
+        return exec_omp;
+      case memsrc_e::device:
+      case memsrc_e::device_const:
+      case memsrc_e::um:
+        return exec_cuda;
+      case memsrc_e::file:
+        return exec_seq;
     }
-    throw std::runtime_error(fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n", 
-      get_memory_source_tag(mh.memspace()), (int)mh.devid()));
+    throw std::runtime_error(
+        fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n",
+                    get_memory_source_tag(mh.memspace()), (int)mh.devid()));
     return exec_seq;
   }
 
@@ -92,7 +93,7 @@ namespace zs {
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
     template <typename Range, typename F> constexpr void operator()(Range &&range, F &&f) const {
       using fts = function_traits<F>;
-      if constexpr (fts::arity == 0) 
+      if constexpr (fts::arity == 0)
         for (auto &&it : range) f();
       else {
         for (auto &&it : range) {
@@ -121,6 +122,185 @@ namespace zs {
         for (auto &&it : range)
           policy.template exec<I + 1>(indices, std::tuple_cat(prefixIters, std::make_tuple(it)),
                                       policies, ranges, bodies...);
+      }
+    }
+
+    /// serial version of several parallel primitives
+    template <class ForwardIt, class UnaryFunction>
+    constexpr void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f) const {
+      (*this)(detail::iter_range(FWD(first), FWD(last)), FWD(f));
+    }
+
+    template <class InputIt, class OutputIt,
+              class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+    constexpr void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
+                                  BinaryOperation &&binary_op = {}) const {
+      auto prev = *(d_first++) = *(first++);
+      while (first != last) *(d_first++) = prev = binary_op(prev, *(first++));
+    }
+    template <class InputIt, class OutputIt,
+              class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
+              class BinaryOperation = std::plus<T>>
+    constexpr void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
+                                  T init = monoid_op<BinaryOperation>::e,
+                                  BinaryOperation &&binary_op = {}) const {
+      *(d_first++) = init;
+      do {
+        *(d_first++) = init = binary_op(init, *first);
+      } while (++first != last);
+    }
+    template <class InputIt, class OutputIt,
+              class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
+              class BinaryOp = std::plus<T>>
+    constexpr void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
+                          T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {}) const {
+      for (; first != last;) init = binary_op(init, *(first++));
+      *d_first = init;
+    }
+    template <class InputIt, class OutputIt> constexpr void radix_sort(
+        InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
+        int ebit
+        = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8) const {
+      using IterT = remove_cvref_t<InputIt>;
+      using DstIterT = remove_cvref_t<OutputIt>;
+      using DiffT = typename std::iterator_traits<IterT>::difference_type;
+      using InputValueT = typename std::iterator_traits<IterT>::value_type;
+      using ValueT = typename std::iterator_traits<DstIterT>::value_type;
+
+      const auto dist = last - first;
+      bool skip = false;
+      constexpr int binBits = 8;  // by byte
+      int binCount = 1 << binBits;
+      int binMask = binCount - 1;
+
+      std::vector<DiffT> binGlobalSizes(binCount);
+      std::vector<DiffT> binOffsets(binCount);
+
+      std::vector<InputValueT> buffers[2];
+      buffers[0].resize(dist);
+      buffers[1].resize(dist);
+      InputValueT *cur{buffers[0].data()}, *next{buffers[1].data()};
+
+      /// sign-related handling
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<InputValueT>)
+          cur[i] = *(first + i) ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
+        else
+          cur[i] = *(first + i);
+      }
+
+      for (int st = sbit; st < ebit; st += binBits) {
+        if (st + binBits > ebit) {
+          binMask >>= (st + binBits - ebit);
+          binCount >>= (st + binBits - ebit);
+        }
+
+        for (DiffT i = 0; i < binCount; ++i) binGlobalSizes[i] = 0;
+        for (DiffT i = 0; i < dist; ++i) binGlobalSizes[(cur[i] >> st) & binMask]++;
+
+        binOffsets[0] = 0;
+        skip = binGlobalSizes[0] == dist;
+        for (int i = 1; i < binCount; ++i) {
+          if (binGlobalSizes[i] == dist) {
+            skip = true;
+            break;
+          }
+          binOffsets[i] = binOffsets[i - 1] + binGlobalSizes[i - 1];
+        }
+        if (!skip) {
+          for (int i = 0; i < binCount; i++) binGlobalSizes[i] += binOffsets[i];
+
+          for (DiffT i = dist - 1; i >= 0; --i)
+            next[--binGlobalSizes[(cur[i] >> st) & binMask]] = cur[i];
+          std::swap(cur, next);
+        }
+      }
+
+      /// sign-related handling
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<InputValueT>)
+          *(d_first + i) = cur[i] ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
+        else
+          *(d_first + i) = cur[i];
+      }
+    }
+    template <class KeyIter, class ValueIter,
+              typename Tn = typename std::iterator_traits<remove_cvref_t<KeyIter>>::difference_type>
+    void radix_sort_pair(
+        KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
+        int sbit = 0,
+        int ebit
+        = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type) * 8) const {
+      using KeyT = typename std::iterator_traits<KeyIter>::value_type;
+      using ValueT = typename std::iterator_traits<ValueIter>::value_type;
+      using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
+
+      const auto dist = count;
+      bool skip = false;
+      constexpr int binBits = 8;  // by byte
+      int binCount = 1 << binBits;
+      int binMask = binCount - 1;
+
+      std::vector<DiffT> binGlobalSizes(binCount);
+      std::vector<DiffT> binOffsets(binCount);
+
+      std::vector<KeyT> keyBuffers[2];
+      std::vector<ValueT> valBuffers[2];
+      keyBuffers[0].resize(count);
+      keyBuffers[1].resize(count);
+      valBuffers[0].resize(count);
+      valBuffers[1].resize(count);
+      KeyT *cur{keyBuffers[0].data()}, *next{keyBuffers[1].data()};
+      ValueT *curVals{valBuffers[0].data()}, *nextVals{valBuffers[1].data()};
+
+      /// sign-related handling
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<KeyT>)
+          cur[i] = *(keysIn + i) ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
+        else
+          cur[i] = *(keysIn + i);
+        curVals[i] = *(valsIn + i);
+      }
+
+      for (int st = sbit; st < ebit; st += binBits) {
+        if (st + binBits > ebit) {
+          binMask >>= (st + binBits - ebit);
+          binCount >>= (st + binBits - ebit);
+        }
+
+        for (DiffT i = 0; i < binCount; ++i) binGlobalSizes[i] = 0;
+        for (DiffT i = 0; i < dist; ++i) binGlobalSizes[(cur[i] >> st) & binMask]++;
+
+        binOffsets[0] = 0;
+        skip = binGlobalSizes[0] == dist;
+        for (int i = 1; i < binCount; ++i) {
+          if (binGlobalSizes[i] == dist) {
+            skip = true;
+            break;
+          }
+          binOffsets[i] = binOffsets[i - 1] + binGlobalSizes[i - 1];
+        }
+        if (!skip) {
+          for (int i = 0; i < binCount; i++) binGlobalSizes[i] += binOffsets[i];
+
+          for (DiffT i = dist - 1; i >= 0; --i) {
+            // next[--binGlobalSizes[(cur[i] >> st) & binMask]] = cur[i];
+            const auto loc = --binGlobalSizes[(cur[i] >> st) & binMask];
+            next[loc] = cur[i];
+            nextVals[loc] = curVals[i];
+          }
+          std::swap(cur, next);
+          std::swap(curVals, nextVals);
+        }
+      }
+
+      /// sign-related handling
+      for (DiffT i = 0; i < dist; ++i) {
+        if constexpr (std::is_signed_v<KeyT>)
+          *(keysOut + i) = cur[i] ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
+        else
+          *(keysOut + i) = cur[i];
+        *(valsOut + i) = curVals[i];
       }
     }
 

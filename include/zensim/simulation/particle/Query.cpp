@@ -5,9 +5,8 @@
 
 namespace zs {
 
-  /// disabled for now, re-enabled after host (serial) impl of 'parallel primitive'
-  // template GeneralIndexBuckets index_buckets_for_particles<execspace_e::host>(
-  //    const GeneralParticles &particles, float);
+  template GeneralIndexBuckets index_buckets_for_particles<execspace_e::host>(
+      const GeneralParticles &particles, float);
 
   GeneralIndexBuckets build_neighbor_list_impl(host_exec_tag, const GeneralParticles &particles,
                                                float dx) {

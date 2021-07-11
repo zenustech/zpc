@@ -569,9 +569,9 @@ namespace zs {
 #pragma omp barrier
             if (l < dist)
               for (auto i = r - 1; i >= l; --i) {
-                next[binSizes[tid][(cur[i] >> st) & binMask] - 1] = cur[i];
-                nextVals[binSizes[tid][(cur[i] >> st) & binMask] - 1] = curVals[i];
-                binSizes[tid][(cur[i] >> st) & binMask]--;
+                const auto loc = --binSizes[tid][(cur[i] >> st) & binMask];
+                next[loc] = cur[i];
+                nextVals[loc] = curVals[i];
               }
 #pragma omp barrier
 #pragma omp single

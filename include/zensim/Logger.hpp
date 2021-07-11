@@ -3,8 +3,8 @@
 
 #include "zensim/Singleton.h"
 #include "zensim/tpls/fmt/core.h"
-#include "zensim/tpls/spdlog/spdlog.h"
 #include "zensim/tpls/spdlog/sinks/basic_file_sink.h"
+#include "zensim/tpls/spdlog/spdlog.h"
 
 namespace zs {
 
@@ -39,9 +39,5 @@ namespace zs {
   if (condition) {                 \
     ZS_WARN(__VA_ARGS__);          \
   }
-
-  struct Logger : Singleton<Logger> {
-    ;
-  };
 
 }  // namespace zs

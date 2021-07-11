@@ -178,9 +178,12 @@ namespace zs {
       // need to work on __device__ func as well
       // if constexpr (arity == 1)
       if (range.size() == 1) {
-        cuda_safe_launch(loc, context, streamid,
-                         {(range[0] + blockSize - 1) / blockSize, blockSize, shmemBytes},
-                         thread_launch, range[0], f);
+        LaunchConfig lc{};
+        if (blockSize == 0)
+          lc = LaunchConfig{std::true_type{}, range[0], shmemBytes};
+        else
+          lc = LaunchConfig{(range[0] + blockSize - 1) / blockSize, blockSize, shmemBytes};
+        cuda_safe_launch(loc, context, streamid, std::move(lc), thread_launch, range[0], f);
       }
       // else if constexpr (arity == 2)
       else if (range.size() == 2) {
@@ -211,14 +214,16 @@ namespace zs {
       const DiffT dist = std::end(range) - iter;
       using RefT = typename std::iterator_traits<IterT>::reference;
 
+      LaunchConfig lc{};
+      if (blockSize == 0)
+        lc = LaunchConfig{std::true_type{}, dist, shmemBytes};
+      else
+        lc = LaunchConfig{(dist + blockSize - 1) / blockSize, blockSize, shmemBytes};
       if constexpr (is_std_tuple<RefT>::value) {
-        cuda_safe_launch(loc, context, streamid,
-                         {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes}, range_launch,
-                         dist, f, iter);
+        cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
       } else {  // wrap the non-zip range in a zip range
-        cuda_safe_launch(loc, context, streamid,
-                         {(dist + blockSize - 1) / blockSize, blockSize, shmemBytes}, range_launch,
-                         dist, f, std::begin(zip(FWD(range))));
+        cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
+                         std::begin(zip(FWD(range))));
       }
 
       if (this->shouldSync()) context.syncStreamSpare(streamid);
@@ -423,7 +428,7 @@ namespace zs {
     StreamID incomingStreamid{0};
     StreamID streamid{0};
     std::size_t shmemBytes{0};  ///< amount of shared memory passed
-    int blockSize{128};
+    int blockSize{0};           ///< 0 to enable auto configure
     ProcID incomingProc{0};
     ProcID procid{0};  ///< 0-th gpu
   };

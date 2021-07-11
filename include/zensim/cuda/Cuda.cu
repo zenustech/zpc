@@ -59,20 +59,20 @@ namespace zs {
   }
 
   /// kernel launch
-  void Cuda::launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
-                          unsigned int bx, unsigned int by, unsigned int bz, void **args,
-                          std::size_t shmem, void *stream) {
-    cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem, (cudaStream_t)stream);
+  u32 Cuda::launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
+                         unsigned int bx, unsigned int by, unsigned int bz, void **args,
+                         std::size_t shmem, void *stream) {
+    return cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
+                            (cudaStream_t)stream);
   }
-  void Cuda::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
-                                     unsigned int gz, unsigned int bx, unsigned int by,
-                                     unsigned int bz, void **args, std::size_t shmem,
-                                     void *stream) {
-    cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
-                                (cudaStream_t)stream);
+  u32 Cuda::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
+                                    unsigned int gz, unsigned int bx, unsigned int by,
+                                    unsigned int bz, void **args, std::size_t shmem, void *stream) {
+    return cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
+                                       (cudaStream_t)stream);
   }
-  void Cuda::launchCallback(void *stream, void *f, void *data) {
-    cudaLaunchHostFunc((cudaStream_t)stream, (cudaHostFn_t)f, data);
+  u32 Cuda::launchCallback(void *stream, void *f, void *data) {
+    return cudaLaunchHostFunc((cudaStream_t)stream, (cudaHostFn_t)f, data);
   }
 
   void Cuda::CudaContext::checkError() const {
@@ -410,12 +410,14 @@ namespace zs {
 
     optBlockSize = deduce_opt_block_size();
     fmt::print(
-        "[cuda kernel: {}]\nnumRegs: {}, maxThreadsPerBlock: {}, sharedSizeBytes: {}, "
-        "maxDynamicSharedSizeBytes: {}. "
-        "deduced optBlockSize: {}\n",
-        kernelName.empty() ? std::to_string((std::uintptr_t)kernelFunc) : kernelName,
+        fg(fmt::color::lime_green) | fmt::emphasis::bold,
+        "{:=^60}\nnumRegs: {}\t\tmaxThreadsPerBlock: {}\nsharedSizeBytes: {}\t"
+        "maxDynamicSharedSizeBytes: {}.\n",
+        fmt::format(" cuda kernel [{}] optBlockSize [{}] ",
+                    kernelName.empty() ? std::to_string((std::uintptr_t)kernelFunc) : kernelName,
+                    optBlockSize),
         funcAttribs.numRegs, funcAttribs.maxThreadsPerBlock, funcAttribs.sharedSizeBytes,
-        funcAttribs.maxDynamicSharedSizeBytes, optBlockSize);
+        funcAttribs.maxDynamicSharedSizeBytes);
     ctx.funcLaunchConfigs.emplace(kernelFunc, typename Cuda::CudaContext::Config{optBlockSize});
     return optBlockSize;
   }

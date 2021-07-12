@@ -27,9 +27,6 @@ namespace zs {
   inline __device__ void thread_fence(ExecTag) {
 #if defined(__CUDACC__)
     __threadfence();
-#else
-    throw std::runtime_error(
-        fmt::format("thread_fence(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
 #endif
   }
 
@@ -48,10 +45,8 @@ namespace zs {
   inline __device__ unsigned active_mask(ExecTag) {
 #if defined(__CUDACC__)
     return __activemask();
-#else
-    throw std::runtime_error(
-        fmt::format("active_mask(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
 #endif
+    return 0u;
   }
 
 #if 0
@@ -66,10 +61,8 @@ namespace zs {
   inline __device__ unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
 #if defined(__CUDACC__)
     return __ballot_sync(mask, predicate);
-#else
-    throw std::runtime_error(
-        fmt::format("ballot_sync(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
 #endif
+    return 0;
   }
 
 #if 0
@@ -92,7 +85,7 @@ namespace zs {
       return __clzll((long long int)x);
     else {
       static_assert(sizeof(long long int) != nbytes || sizeof(int) != nbytes,
-                    "count_lz(tag [?], [?] bytes) not viable\n");
+                    "count_lz(tag CUDA, [?] bytes) not viable\n");
     }
 #endif
     return -1;

@@ -1,5 +1,6 @@
 #pragma once
 #include <omp.h>
+
 #include <algorithm>
 #include <fstream>
 
@@ -289,5 +290,17 @@ namespace zs {
 
   protected:
   };
+
+  template <typename LS> decltype(auto) sample_from_levelset(const LS &ls, float dx, float ppc) {
+    using T = typename LS::T;
+    static constexpr int dim = LS::dim;
+    auto [minCorner, maxCorner] = ls.getBoundingBox();
+
+    PoissonDisk<T, dim> pd{};
+    pd.minCorner = minCorner;
+    pd.maxCorner = maxCorner;
+    pd.setDistanceByPpc(dx, ppc);
+    return pd.sample([&ls](const vec<T, dim> &x) { return ls.getSignedDistance(x) < 0; });
+  }
 
 }  // namespace zs

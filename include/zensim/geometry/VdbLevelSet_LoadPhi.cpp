@@ -38,23 +38,6 @@ namespace zs {
     return OpenVDBStruct{grid};
   }
 
-  AdaptiveFloatGrid convertFloatGridToAdaptiveGrid(const OpenVDBStruct &grid,
-                                                   const MemoryHandle mh) {
-    using GridType = openvdb::FloatGrid;
-    using TreeType = GridType::TreeType;
-    using RootType = TreeType::RootNodeType;  // level 3 RootNode
-    assert(RootType::LEVEL == 3);
-    using Int1Type = RootType::ChildNodeType;  // level 2 InternalNode
-    using Int2Type = Int1Type::ChildNodeType;  // level 1 InternalNode
-    using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
-    using SDFPtr = typename GridType::Ptr;
-    const SDFPtr &gridPtr = grid.as<SDFPtr>();
-    AdaptiveFloatGrid ret{mh};
-    ret.dx = gridPtr->transform().voxelSize()[0];
-
-    return ret;
-  }
-
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;

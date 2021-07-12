@@ -3,7 +3,6 @@
 #include <string>
 
 #include "zensim/container/DenseGrid.hpp"
-#include "zensim/geometry/AdaptiveLevelSet.hpp"
 #include "zensim/geometry/SparseLevelSet.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Tuple.h"
@@ -27,9 +26,6 @@ namespace zs {
 
   OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn);
   OpenVDBStruct loadVec3fGridFromVdbFile(const std::string &fn);
-
-  AdaptiveFloatGrid convertFloatGridToAdaptiveGrid(const OpenVDBStruct &grid,
-                                                   const MemoryHandle mh);
 
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid);
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,

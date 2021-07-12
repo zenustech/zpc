@@ -18,9 +18,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
     io/IO.cpp
-    io/stb_image.cpp
     # simulation
-    simulation/init/Boundary.cpp
     simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
@@ -34,7 +32,6 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/Cuda.cu
 	  cuda/Allocators.cu
-	  cuda/DeviceUtils.cu
 	  cuda/profile/CudaTimers.cu
     cuda/math/matrix/Matrix.cpp
     cuda/simulation/particle/Query.cpp
@@ -72,14 +69,12 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/BoundingVolumeInterface.hpp
     geometry/Collider.h
     geometry/GenericLevelSet.h
-    geometry/GeometrySampler.h
     geometry/LevelSet.h
     geometry/LevelSetInterface.h
     geometry/LevelSetSequence.hpp
     geometry/Mesh.hpp
     geometry/PoissonDisk.hpp
     geometry/SparseLevelSet.hpp
-    geometry/AdaptiveLevelSet.hpp
     # math
     math/bit/Bits.h
     math/matrix/MatrixUtils.h
@@ -145,11 +140,7 @@ set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
     io/IO.h
     io/MeshIO.hpp
     io/ParticleIO.hpp
-    io/stb_image_write.h
-    io/stb_image.h
-    io/Utility.hpp
     # simulation
-    simulation/init/Boundary.hpp
     simulation/init/Scene.hpp
 )
 set(ZENSIM_LIBRARY_TOOL_INCLUDE_FILES

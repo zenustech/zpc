@@ -6,7 +6,7 @@
 
 namespace zs {
 
-  template <typename V = f32, typename I = i32, int d = 3> struct Mesh {
+  template <typename V = f32, typename I = i32, int d = 3> struct MeshObject {
     using ElemT = I[d + 1];
     using TV = V[d];
     using TM = V[d][d];
@@ -19,8 +19,9 @@ namespace zs {
   };
 
   using GeneralMesh
-      = variant<Mesh<f32, i32, 2>, Mesh<f32, i64, 2>, Mesh<f32, i32, 3>, Mesh<f32, i64, 3>,
-                Mesh<f64, i32, 2>, Mesh<f64, i64, 2>, Mesh<f64, i32, 3>, Mesh<f64, i64, 3>>;
+      = variant<MeshObject<f32, i32, 2>, MeshObject<f32, i64, 2>, MeshObject<f32, i32, 3>,
+                MeshObject<f32, i64, 3>, MeshObject<f64, i32, 2>, MeshObject<f64, i64, 2>,
+                MeshObject<f64, i32, 3>, MeshObject<f64, i64, 3>>;
 
   /// sizeof(float) = 4
   /// bin_size = 64

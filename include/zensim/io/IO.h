@@ -1,5 +1,4 @@
 #pragma once
-#include "Utility.hpp"
 #include "zensim/Singleton.h"
 #include "zensim/execution/Concurrency.h"
 
@@ -46,5 +45,8 @@ namespace zs {
     threadsafe_queue<std::function<void()>> jobs;
     std::thread th;
   };
+
+  std::string file_get_content(std::string const &path);
+  void *load_raw_file(char const *filename, size_t size);
 
 }  // namespace zs

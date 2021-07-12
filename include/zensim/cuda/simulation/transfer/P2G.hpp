@@ -1,5 +1,4 @@
 #pragma once
-#include "zensim/cuda/DeviceUtils.cuh"
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/cuda/physics/ConstitutiveModel.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"

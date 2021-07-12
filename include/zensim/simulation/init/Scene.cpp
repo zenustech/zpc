@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #include "zensim/geometry/AnalyticLevelSet.h"
-#include "zensim/geometry/GeometrySampler.h"
+#include "zensim/geometry/PoissonDisk.hpp"
 #include "zensim/geometry/VdbSampler.h"
 #include "zensim/io/ParticleIO.hpp"
 #include "zensim/math/Vec.h"
@@ -50,7 +50,7 @@ namespace zs {
     using ALS = AnalyticLevelSet<analytic_geometry_e::Cuboid, float, 3>;
     ParticleModel positions{};
     if (mi.size() == 3 && ma.size() == 3)
-      positions = sampleFromLevelSet(
+      positions = sample_from_levelset(
           ALS{vec<float, 3>{mi[0], mi[1], mi[2]}, vec<float, 3>{ma[0], ma[1], ma[2]}}, dx, ppc);
     else
       fmt::print(fg(fmt::color::red), "cuboid build config dimension error ({}, {})\n", mi.size(),
@@ -73,7 +73,7 @@ namespace zs {
     using ALS = AnalyticLevelSet<analytic_geometry_e::Sphere, float, 3>;
     ParticleModel positions{};
     if (c.size() == 3)
-      positions = sampleFromLevelSet(ALS{vec<float, 3>{c[0], c[1], c[2]}, r}, dx, ppc);
+      positions = sample_from_levelset(ALS{vec<float, 3>{c[0], c[1], c[2]}, r}, dx, ppc);
     else
       fmt::print(fg(fmt::color::red), "sphere build config dimension error center{}\n", c.size());
     fmt::print(fg(fmt::color::green),

@@ -11,14 +11,4 @@ namespace zs {
   template <bool B, class T, class F> using conditional_t =
       typename conditional_impl<B>::template type<T, F>;
 
-  template <bool B> struct do_if;
-  template <> struct do_if<true> {
-    template <typename F, typename... Args> auto operator()(F &&f, Args &&...args) {
-      return std::forward<F>(f)(std::forward<Args>(args)...);
-    }
-  };
-  template <> struct do_if<false> {
-    template <typename F, typename... Args> auto operator()(F &&f, Args &&...args) {}
-  };
-
 }  // namespace zs

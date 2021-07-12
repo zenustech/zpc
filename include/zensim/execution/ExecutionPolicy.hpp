@@ -71,6 +71,7 @@ namespace zs {
     bool launch(const ParallelTask &kernel) const noexcept { return selfPtr()->do_launch(kernel); }
     bool shouldSync() const noexcept { return selfPtr()->do_shouldSync(); }
     bool shouldWait() const noexcept { return selfPtr()->do_shouldWait(); }
+    bool shouldProfile() const noexcept { return selfPtr()->do_shouldProfile(); }
 
     Derived &sync(bool sync_) noexcept {
       _sync = sync_;
@@ -87,6 +88,7 @@ namespace zs {
     constexpr bool do_launch(const ParallelTask &) const noexcept { return false; }
     constexpr bool do_shouldSync() const noexcept { return _sync; }
     constexpr bool do_shouldWait() const noexcept { return _wait; }
+    constexpr bool do_shouldProfile() const noexcept { return _profile; }
 
     constexpr Derived *selfPtr() noexcept { return static_cast<Derived *>(this); }
     constexpr const Derived *selfPtr() const noexcept { return static_cast<const Derived *>(this); }

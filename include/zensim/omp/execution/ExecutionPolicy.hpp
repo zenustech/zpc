@@ -6,14 +6,20 @@
 #include "zensim/math/bit/Bits.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
+#include "zensim/types/SourceLocation.hpp"
+
 namespace zs {
 
   /// use pragma syntax instead of attribute syntax
   struct OmpExecutionPolicy : ExecutionPolicyInterface<OmpExecutionPolicy> {
     // EventID eventid{0}; ///< event id
-    template <typename Range, typename F> void operator()(Range &&range, F &&f) const {
+    template <typename Range, typename F>
+    void operator()(Range &&range, F &&f,
+                    const source_location &loc = source_location::current()) const {
       using fts = function_traits<F>;
       using IterT = remove_cvref_t<decltype(std::begin(range))>;
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
       if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category,
                                           std::random_access_iterator_tag>) {
         using DiffT = typename std::iterator_traits<IterT>::difference_type;
@@ -35,7 +41,7 @@ namespace zs {
         }
 #else
         DiffT nths{};
-#  pragma omp parallel num_threads(_dop) shared(f, dist) firstprivate(iter)
+#  pragma omp parallel if (_dop < dist) num_threads(_dop) shared(f, dist) firstprivate(iter)
         {
 #  pragma omp single
           { nths = omp_get_num_threads(); }
@@ -75,6 +81,9 @@ namespace zs {
           }
         }
       }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
     }
 
     template <std::size_t I, std::size_t... Is, typename... Iters, typename... Policies,
@@ -110,19 +119,22 @@ namespace zs {
     /// for_each
     template <class ForwardIt, class UnaryFunction>
     void for_each_impl(std::random_access_iterator_tag, ForwardIt &&first, ForwardIt &&last,
-                       UnaryFunction &&f) const {
-      (*this)(detail::iter_range(FWD(first), FWD(last)), FWD(f));
+                       UnaryFunction &&f,
+                       const source_location &loc = source_location::current()) const {
+      (*this)(detail::iter_range(FWD(first), FWD(last)), FWD(f), loc);
     }
     template <class ForwardIt, class UnaryFunction>
-    void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f) const {
+    void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
+                  const source_location &loc = source_location::current()) const {
       for_each_impl(typename std::iterator_traits<remove_cvref_t<ForwardIt>>::iterator_category{},
-                    FWD(first), FWD(last), FWD(f));
+                    FWD(first), FWD(last), FWD(f), loc);
     }
 
     /// inclusive scan
     template <class InputIt, class OutputIt, class BinaryOperation>
     void inclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                             OutputIt &&d_first, BinaryOperation &&binary_op) const {
+                             OutputIt &&d_first, BinaryOperation &&binary_op,
+                             const source_location &loc) const {
       using IterT = remove_cvref_t<InputIt>;
       using DstIterT = remove_cvref_t<OutputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
@@ -132,10 +144,12 @@ namespace zs {
           "diff type not compatible");
       static_assert(std::is_convertible_v<typename std::iterator_traits<IterT>::value_type, ValueT>,
                     "value type not compatible");
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
       const auto dist = last - first;
       std::vector<ValueT> localRes{};
       DiffT nths{};
-#pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) \
+#pragma omp parallel if (_dop < dist) num_threads(_dop) \
     shared(dist, nths, first, last, d_first, localRes, binary_op)
       {
 #pragma omp single
@@ -176,24 +190,29 @@ namespace zs {
             *(d_first + offset) = binary_op(*(d_first + offset), tmp);
         }
       }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        BinaryOperation &&binary_op = {}) const {
+                        BinaryOperation &&binary_op = {},
+                        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       inclusive_scan_impl(
           typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), FWD(binary_op));
+          FWD(last), FWD(d_first), FWD(binary_op), loc);
     }
 
     /// exclusive scan
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
     void exclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                             OutputIt &&d_first, T init, BinaryOperation &&binary_op) const {
+                             OutputIt &&d_first, T init, BinaryOperation &&binary_op,
+                             const source_location &loc) const {
       using IterT = remove_cvref_t<InputIt>;
       using DstIterT = remove_cvref_t<OutputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
@@ -203,10 +222,12 @@ namespace zs {
           "diff type not compatible");
       static_assert(std::is_convertible_v<typename std::iterator_traits<IterT>::value_type, ValueT>,
                     "value type not compatible");
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
       const auto dist = last - first;
       std::vector<ValueT> localRes{};
       DiffT nths{};
-#pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) \
+#pragma omp parallel if (_dop < dist) num_threads(_dop) \
     shared(dist, nths, first, last, d_first, localRes, binary_op)
       {
 #pragma omp single
@@ -247,25 +268,29 @@ namespace zs {
             *(d_first + offset) = binary_op(*(d_first + offset), tmp);
         }
       }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
     }
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        T init = monoid_op<BinaryOperation>::e,
-                        BinaryOperation &&binary_op = {}) const {
+                        T init = monoid_op<BinaryOperation>::e, BinaryOperation &&binary_op = {},
+                        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       exclusive_scan_impl(
           typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), init, FWD(binary_op));
+          FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// reduce
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
     void reduce_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                     OutputIt &&d_first, T init, BinaryOperation &&binary_op) const {
+                     OutputIt &&d_first, T init, BinaryOperation &&binary_op,
+                     const source_location &loc) const {
       using IterT = remove_cvref_t<InputIt>;
       using DstIterT = remove_cvref_t<OutputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
@@ -275,10 +300,12 @@ namespace zs {
           "diff type not compatible");
       static_assert(std::is_convertible_v<typename std::iterator_traits<IterT>::value_type, ValueT>,
                     "value type not compatible");
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
       const auto dist = last - first;
       std::vector<ValueT> localRes{};
       DiffT nths{}, n{};
-#pragma omp parallel num_threads(_dop) if (_dop * 8 < dist) shared(dist, nths, first, last, d_first)
+#pragma omp parallel if (_dop < dist) num_threads(_dop) shared(dist, nths, first, last, d_first)
       {
 #pragma omp single
         {
@@ -311,23 +338,27 @@ namespace zs {
 
         if (tid == 0) *d_first = res;
       }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
     }
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {}) const {
+                T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {},
+                const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
-                  FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
+                  FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
 
     template <class InputIt, class OutputIt>
     void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                         OutputIt &&d_first, int sbit, int ebit) const {
+                         OutputIt &&d_first, int sbit, int ebit, const source_location &loc) const {
       using IterT = remove_cvref_t<InputIt>;
       using DstIterT = remove_cvref_t<OutputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
@@ -339,6 +370,8 @@ namespace zs {
       static_assert(std::is_convertible_v<InputValueT, ValueT>, "value type not compatible");
       static_assert(std::is_integral_v<ValueT>, "value type not integral");
 
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
       const auto dist = last - first;
       DiffT nths{}, nwork{};
       // const int binBits = bit_length(_dop);
@@ -357,7 +390,7 @@ namespace zs {
       InputValueT *cur{buffers[0].data()}, *next{buffers[1].data()};
 
       /// move to local buffer first (bit hack for signed type)
-#pragma omp parallel for num_threads(_dop)
+#pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
         if constexpr (std::is_signed_v<InputValueT>)
           cur[i] = *(first + i) ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
@@ -373,7 +406,7 @@ namespace zs {
         }
 
         /// init
-#pragma omp parallel num_threads(_dop) \
+#pragma omp parallel if (_dop < dist) num_threads(_dop) \
     shared(skip, nths, nwork, binSizes, binGlobalSizes, binOffsets, cur, next)
         {
 #pragma omp single
@@ -439,20 +472,22 @@ namespace zs {
         }
       }
 
-#pragma omp parallel for num_threads(_dop)
+#pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
         if constexpr (std::is_signed_v<InputValueT>)
           *(d_first + i) = cur[i] ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
         else
           *(d_first + i) = cur[i];
       }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
     }
     /// radix sort
-    template <class InputIt, class OutputIt>
-    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-                    int ebit
-                    = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type)
-                      * 8) const {
+    template <class InputIt, class OutputIt> void radix_sort(
+        InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
+        int ebit = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8,
+        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
@@ -461,18 +496,20 @@ namespace zs {
                               typename std::iterator_traits<remove_cvref_t<OutputIt>>::pointer>,
                     "Input iterator pointer different from output iterator\'s");
       radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
-                      FWD(first), FWD(last), FWD(d_first), sbit, ebit);
+                      FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
     }
 
     template <class KeyIter, class ValueIter, typename Tn>
     void radix_sort_pair_impl(std::random_access_iterator_tag, KeyIter &&keysIn, ValueIter &&valsIn,
-                              KeyIter &&keysOut, ValueIter &&valsOut, Tn count, int sbit,
-                              int ebit) const {
+                              KeyIter &&keysOut, ValueIter &&valsOut, Tn count, int sbit, int ebit,
+                              const source_location &loc) const {
       using KeyT = typename std::iterator_traits<KeyIter>::value_type;
       using ValueT = typename std::iterator_traits<ValueIter>::value_type;
       using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
       static_assert(std::is_integral_v<KeyT>, "key type not integral");
 
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
       const auto dist = count;
       DiffT nths{}, nwork{};
       // const int binBits = bit_length(_dop);
@@ -495,7 +532,7 @@ namespace zs {
       ValueT *curVals{valBuffers[0].data()}, *nextVals{valBuffers[1].data()};
 
       /// move to local buffer first (bit hack for signed type)
-#pragma omp parallel for num_threads(_dop)
+#pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
         if constexpr (std::is_signed_v<KeyT>)
           cur[i] = *(keysIn + i) ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
@@ -512,7 +549,7 @@ namespace zs {
         }
 
         /// init
-#pragma omp parallel num_threads(_dop) \
+#pragma omp parallel if (_dop < dist) num_threads(_dop) \
     shared(skip, nths, nwork, binSizes, binGlobalSizes, binOffsets, cur, next, curVals, nextVals)
         {
 #pragma omp single
@@ -584,7 +621,7 @@ namespace zs {
         }
       }
 
-#pragma omp parallel for num_threads(_dop)
+#pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
         if constexpr (std::is_signed_v<KeyT>)
           *(keysOut + i) = cur[i] ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
@@ -592,21 +629,24 @@ namespace zs {
           *(keysOut + i) = cur[i];
         *(valsOut + i) = curVals[i];
       }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
     }
     template <class KeyIter, class ValueIter,
               typename Tn = typename std::iterator_traits<remove_cvref_t<KeyIter>>::difference_type>
     void radix_sort_pair(
         KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
         int sbit = 0,
-        int ebit
-        = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type) * 8) const {
+        int ebit = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type) * 8,
+        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<KeyIter>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<ValueIter>>::iterator_category>,
           "Key Iterator and Val Iterator should be from the same category");
       radix_sort_pair_impl(
           typename std::iterator_traits<remove_cvref_t<KeyIter>>::iterator_category{}, FWD(keysIn),
-          FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit);
+          FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit, loc);
     }
 
     OmpExecutionPolicy &threads(int numThreads) noexcept {

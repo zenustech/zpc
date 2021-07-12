@@ -182,10 +182,10 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
 #set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
 #set(CMAKE_VISIBILITY_INLINES_HIDDEN NO)
 #include(GenerateExportHeader)
-#generate_export_header(zecomp EXPORT_FILE_NAME ZecompExport.h)
+#generate_export_header(zensim EXPORT_FILE_NAME ZecompExport.h)
 #message("building shared?(${BUILD_SHARED_LIBS}) library")
 
-add_library(zecomp INTERFACE)
+add_library(zensim INTERFACE)
 set(ZECOMP_INTERFACE_FILES)
 
 #######
@@ -209,7 +209,7 @@ if (ENABLE_PCH)
 )
 endif()
 target_compile_definitions(zpc PUBLIC ZS_ENABLE_OPENMP=1) #${ZS_ENABLE_OPENMP}
-target_link_libraries(zpc PUBLIC zecomp_cxx_deps)
+target_link_libraries(zpc PUBLIC zpc_cxx_deps)
 target_compile_options(zpc # MSVC, GNU, Clang, Intel
   PRIVATE        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
@@ -242,7 +242,7 @@ endif()
 
 target_compile_definitions(zpc PUBLIC ZS_ENABLE_CUDA=1)
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
-target_link_libraries(zpc PUBLIC zecomp_cuda_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+target_link_libraries(zpc PUBLIC zpc_cuda_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 target_compile_options(zpc 
   PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
   PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
@@ -267,7 +267,7 @@ target_compile_definitions(zpc
 
 endif(ZS_ENABLE_CUDA)
 
-target_link_libraries(zecomp INTERFACE zpc)  # zpc -> zecomp
+target_link_libraries(zensim INTERFACE zpc)  # zpc -> zensim
 
 # openvdb, partio
 ###########
@@ -288,7 +288,7 @@ if (ENABLE_PCH)
   target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
-target_link_libraries(zpctool PUBLIC zspartio zpc zecomp_cxx_deps)
+target_link_libraries(zpctool PUBLIC zspartio zpc zpc_cxx_deps)
 target_compile_options(zpctool
   PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2  /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
@@ -309,10 +309,10 @@ if (ZS_ENABLE_OPENVDB)
 
 endif(ZS_ENABLE_OPENVDB)
 
-target_link_libraries(zecomp INTERFACE zpctool)  # zpctool -> zecomp
+target_link_libraries(zensim INTERFACE zpctool)  # zpctool -> zensim
 
 # for header installation
 list_transform_prepend(ZECOMP_INTERFACE_FILES include/zensim/)
 # message("${ZECOMP_INTERFACE_FILES}")
 # PUBLIC_HEADER not working as expected.
-# set_target_properties(zecomp PROPERTIES PUBLIC_HEADER "${ZECOMP_INTERFACE_FILES}")
+# set_target_properties(zensim PROPERTIES PUBLIC_HEADER "${ZECOMP_INTERFACE_FILES}")

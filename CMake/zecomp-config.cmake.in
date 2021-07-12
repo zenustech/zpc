@@ -33,7 +33,7 @@ endif()
 find_dependency(ZLIB)
 
 #
-# zecomp
+# zensim
 #
 @PACKAGE_INIT@
 list(APPEND CMAKE_MODULE_PATH "@PACKAGE_cmakeModulesDir@")

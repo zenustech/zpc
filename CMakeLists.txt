@@ -106,17 +106,17 @@ target_include_directories(zsproj_deps INTERFACE
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-add_library(zecomp_cxx_deps INTERFACE)
-target_compile_features(zecomp_cxx_deps INTERFACE cxx_std_17)
-target_link_libraries(zecomp_cxx_deps INTERFACE zsproj_deps)
-target_compile_definitions(zecomp_cxx_deps
+add_library(zpc_cxx_deps INTERFACE)
+target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
+target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
+target_compile_definitions(zpc_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )
 
 if (ZS_ENABLE_CUDA)
-  add_library(zecomp_cuda_deps INTERFACE)
-  target_compile_features(zecomp_cuda_deps INTERFACE cuda_std_17)
-  target_link_libraries(zecomp_cuda_deps INTERFACE zsproj_deps)
+  add_library(zpc_cuda_deps INTERFACE)
+  target_compile_features(zpc_cuda_deps INTERFACE cuda_std_17)
+  target_link_libraries(zpc_cuda_deps INTERFACE zsproj_deps)
 endif(ZS_ENABLE_CUDA)
 
 # ---- binaries ----
@@ -135,9 +135,9 @@ if (ZS_ENABLE_OPENVDB)
   set(ZS_INSTALL_DEP_TARGETS ${ZS_INSTALL_DEP_TARGETS} zsopenvdb)
 endif(ZS_ENABLE_OPENVDB)
 
-set(INSTALL_TARGETS zecomp zpc zpctool zecomp_cxx_deps zsproj_deps ${ZS_INSTALL_DEP_TARGETS})
+set(INSTALL_TARGETS zensim zpc zpctool zpc_cxx_deps zsproj_deps ${ZS_INSTALL_DEP_TARGETS})
 if (ZS_ENABLE_CUDA)
-  set(INSTALL_TARGETS ${INSTALL_TARGETS} zecomp_cuda_deps)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
 
 message("project name: ${project_name}")

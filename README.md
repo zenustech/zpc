@@ -1,5 +1,5 @@
-# Zensim Parallel Compute
-*Zensim Parallel Compute* is the codebase **zecomp** (**Ze**nsim Parallel **Comp**ute) maintained by **Zensim Co. Ltd**, which delivers great parallel computing efficiency within a shared-memory heterogeneous architecture through a unified programming interface regardless of the actual running backend.
+# Zenus Simulation
+*Zenus Simulation* is the codebase **zensim** maintained by **Zenus Tech**, which delivers great parallel computing efficiency for physics-based simulations within a shared-memory heterogeneous architecture through a unified programming interface on multiple compute backends.
 
 ## **Document**
 See [git wiki](https://github.com/zensim-dev/zpc/wiki) page for more details.
@@ -13,7 +13,7 @@ Currently, *supported OS* is Ubuntu 20.04+, and *tested compilers* includes >gcc
 
 ### **Build**
 
-Before building this framework, please first manually configure these external dependencies, i.e. [**openvdb**](https://github.com/AcademySoftwareFoundation/openvdb). Then pull all dependencies by
+Before building this framework, please first manually configure these external dependencies, i.e. [**openvdb**](https://github.com/AcademySoftwareFoundation/openvdb) if ZS_ENABLE_OPENVDB is set to TRUE. Then pull all dependencies by
 
 ```
 git submodule init
@@ -29,6 +29,7 @@ Configure the project using the *CMake Tools* extension in *Visual Studio Code* 
 > Use the codebase in another cmake c++ project.
 
 Directly include the codebase as a submodule. Or install this repo then use *find_package(Zecomp)*.
+If the installed package is no longer needed, build the *uninstall* target just like the *install* target.
 
 > Develop upon the codebase.
 
@@ -38,7 +39,7 @@ Create a sub-folder in *Projects* with a cmake file at its root.
 This framework draws inspirations from [Taichi](https://github.com/taichi-dev/taichi), [MGMPM](https://github.com/penn-graphics-research/claymore), kokkos, vsg, raja.
 
 ### **Dependencies**
-The following libraries are adopted in our project development:
+The following libraries are adopted and made fully localized in our project development:
 - [fmt](https://fmt.dev/latest/index.html)
 - spdlog
 - magic_enum

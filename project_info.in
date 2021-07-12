@@ -1,6 +1,6 @@
-set(project_name zecomp)
+set(project_name zensim)
 set(project_version_major 0)
 set(project_version_minor 0)
 set(project_version_patch 0)
 set(project_version ${project_version_major}.${project_version_minor}.${project_version_patch})
-set(project_description "Zepar: Parallel Compute Library for Zenus Simulation")
+set(project_description "Zensim: Parallel Zenus Simulation")

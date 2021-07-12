@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,6 +25,7 @@
 #include "CudaFunction.cuh"
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"
+#include "zensim/profile/CppTimers.hpp"
 #include "zensim/tpls/fmt/color.h"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
@@ -112,6 +114,31 @@ namespace zs {
       void streamMemFree(void *ptr, void *stream,
                          const source_location &loc = source_location::current());
 
+      struct StreamExecutionTimer {
+        StreamExecutionTimer(CudaContext *ctx, void *stream, const source_location &loc)
+            : ctx{ctx}, stream{stream} {
+          msg = fmt::format("[Cuda Exec [Device {}, Stream {}] | File {}, Ln {}, Col {}]",
+                            ctx->getDevId(), stream, loc.file_name(), loc.line(), loc.column());
+          timer.tick();
+        }
+        ~StreamExecutionTimer() { timer.tock(msg); }
+
+        CudaContext *ctx;
+        void *stream;
+        CppTimer timer;
+        std::string msg;
+      };
+      static void recycle_timer(void *streamExecTimer) {
+        auto timer = (StreamExecutionTimer *)streamExecTimer;
+        timer->ctx->timers.erase(timer);
+        delete timer;
+      }
+
+      [[nodiscard]] StreamExecutionTimer *tick(void *stream, const source_location &loc
+                                                             = source_location::current());
+      void tock(StreamExecutionTimer *timer,
+                const source_location &loc = source_location::current());
+
       /// kernel launch
       template <typename... Arguments> [[deprecated("use cuda_safe_launch")]] void launchCompute(
           LaunchConfig &&lc, void (*f)(remove_vref_t<Arguments>...), const Arguments &...args) {
@@ -176,6 +203,7 @@ namespace zs {
       void *context;                ///< CUcontext
       std::vector<void *> streams;  ///< CUstream
       std::vector<void *> events;   ///< CUevents
+      std::set<StreamExecutionTimer *> timers;
       int maxThreadsPerBlock, maxThreadsPerMultiprocessor, regsPerMultiprocessor,
           sharedMemPerMultiprocessor, sharedMemPerBlock, maxBlocksPerMultiprocessor;
       bool supportConcurrentUmAccess;
@@ -217,8 +245,8 @@ namespace zs {
   };
 
   template <typename... Args> struct cuda_safe_launch {
-    void checkLastError(u32 error, const Cuda::CudaContext &ctx, std::string_view streamInfo,
-                        const source_location &loc) noexcept {
+    void checkKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,
+                                std::string_view streamInfo, const source_location &loc) noexcept {
       if (error != 0) {
         const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());
         const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
@@ -245,7 +273,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         auto error = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                         lc.db.z, kernelArgs, lc.shmem, ctx.streamCompute());
-        checkLastError(error, ctx, "Compute", loc);
+        checkKernelLaunchError(error, ctx, "Compute", loc);
       }
     }
     explicit cuda_safe_launch(const Cuda::CudaContext &ctx, LaunchConfig &&lc,
@@ -256,7 +284,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         auto error = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                         lc.db.z, kernelArgs, lc.shmem, ctx.streamCompute());
-        checkLastError(error, ctx, "Compute", loc);
+        checkKernelLaunchError(error, ctx, "Compute", loc);
       }
     }
 
@@ -268,7 +296,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         auto error = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                         lc.db.z, kernelArgs, lc.shmem, ctx.streamSpare(sid));
-        checkLastError(error, ctx, fmt::format("Spare [{}]", sid), loc);
+        checkKernelLaunchError(error, ctx, fmt::format("Spare [{}]", sid), loc);
       }
     }
     explicit cuda_safe_launch(const Cuda::CudaContext &ctx, StreamID sid, LaunchConfig &&lc,
@@ -279,7 +307,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         auto error = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                         lc.db.z, kernelArgs, lc.shmem, ctx.streamSpare(sid));
-        checkLastError(error, ctx, fmt::format("Spare [{}]", sid), loc);
+        checkKernelLaunchError(error, ctx, fmt::format("Spare [{}]", sid), loc);
       }
     }
   };  // namespace zs

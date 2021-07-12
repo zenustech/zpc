@@ -120,6 +120,14 @@ namespace zs {
   void Cuda::CudaContext::streamMemFree(void *ptr, void *stream, const source_location &loc) {
     checkError(cudaFreeAsync(ptr, (cudaStream_t)stream), loc);
   }
+  Cuda::CudaContext::StreamExecutionTimer *Cuda::CudaContext::tick(void *stream,
+                                                                   const source_location &loc) {
+    return new StreamExecutionTimer(this, stream, loc);
+  }
+  void Cuda::CudaContext::tock(Cuda::CudaContext::StreamExecutionTimer *timer,
+                               const source_location &loc) {
+    checkError(launchCallback(timer->stream, (void *)recycle_timer, (void *)timer), loc);
+  }
 
   void Cuda::CudaContext::setContext(const source_location &loc) const {
     checkError(cudaSetDevice(devid), loc);
@@ -275,6 +283,7 @@ namespace zs {
     for (int i = 0; i < numTotalDevice; i++) {
       auto &context = contexts[i];
       context.setContext();
+      checkError(cudaDeviceSynchronize(), i);
       for (auto stream : context.streams) checkError(cudaStreamDestroy((cudaStream_t)stream), i);
       for (auto event : context.events) checkError(cudaEventDestroy((cudaEvent_t)event), i);
       context.deviceMem.reset(nullptr);

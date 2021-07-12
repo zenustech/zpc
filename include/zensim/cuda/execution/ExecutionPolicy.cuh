@@ -166,6 +166,7 @@ namespace zs {
       return res;
     }
 #endif
+
     template <typename Tn, typename F>
     void operator()(std::initializer_list<Tn> dims, F &&f,
                     const source_location &loc = source_location::current()) const {
@@ -175,6 +176,8 @@ namespace zs {
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
       // need to work on __device__ func as well
       // if constexpr (arity == 1)
       if (range.size() == 1) {
@@ -195,6 +198,7 @@ namespace zs {
         cuda_safe_launch(loc, context, streamid, {range[0], range[1] * range[2], shmemBytes},
                          block_tile_lane_launch, range[2], f);
       }
+      if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -219,6 +223,10 @@ namespace zs {
         lc = LaunchConfig{std::true_type{}, dist, shmemBytes};
       else
         lc = LaunchConfig{(dist + blockSize - 1) / blockSize, blockSize, shmemBytes};
+
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
+
       if constexpr (is_std_tuple<RefT>::value) {
         cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
       } else {  // wrap the non-zip range in a zip range
@@ -226,6 +234,7 @@ namespace zs {
                          std::begin(zip(FWD(range))));
       }
 
+      if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -233,22 +242,27 @@ namespace zs {
     /// for_each
     template <class ForwardIt, class UnaryFunction>
     void for_each_impl(std::random_access_iterator_tag, ForwardIt &&first, ForwardIt &&last,
-                       UnaryFunction &&f) const {
+                       UnaryFunction &&f, const source_location &loc) const {
       using IterT = remove_cvref_t<ForwardIt>;
       const auto dist = last - first;
-      (*this)({dist}, [first, f](typename std::iterator_traits<IterT>::difference_type tid) {
-        f(*(first + tid));
-      });
+      (*this)(
+          {dist},
+          [first, f](typename std::iterator_traits<IterT>::difference_type tid) {
+            f(*(first + tid));
+          },
+          loc);
     }
     template <class ForwardIt, class UnaryFunction>
-    void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f) const {
+    void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
+                  const source_location &loc = source_location::current()) const {
       for_each_impl(typename std::iterator_traits<remove_cvref_t<ForwardIt>>::iterator_category{},
-                    FWD(first), FWD(last), FWD(f));
+                    FWD(first), FWD(last), FWD(f), loc);
     }
     /// inclusive scan
     template <class InputIt, class OutputIt, class BinaryOperation>
     void inclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                             OutputIt &&d_first, BinaryOperation &&binary_op) const {
+                             OutputIt &&d_first, BinaryOperation &&binary_op,
+                             const source_location &loc) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -258,31 +272,36 @@ namespace zs {
       const auto dist = last - first;
       std::size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(stream, loc);
       cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      binary_op, dist, stream);
 
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, dist, stream);
       context.streamMemFree(d_tmp, stream);
+      if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        BinaryOperation &&binary_op = {}) const {
+                        BinaryOperation &&binary_op = {},
+                        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       inclusive_scan_impl(
           typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), FWD(binary_op));
+          FWD(last), FWD(d_first), FWD(binary_op), loc);
     }
     /// exclusive scan
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
     void exclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                             OutputIt &&d_first, T init, BinaryOperation &&binary_op) const {
+                             OutputIt &&d_first, T init, BinaryOperation &&binary_op,
+                             const source_location &loc) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -291,6 +310,8 @@ namespace zs {
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(stream, loc);
       std::size_t temp_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
@@ -298,6 +319,7 @@ namespace zs {
       cub::DeviceScan::ExclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
       context.streamMemFree(d_tmp, stream);
+      if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -305,20 +327,21 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        T init = monoid_op<BinaryOperation>::e,
-                        BinaryOperation &&binary_op = {}) const {
+                        T init = monoid_op<BinaryOperation>::e, BinaryOperation &&binary_op = {},
+                        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       exclusive_scan_impl(
           typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), init, FWD(binary_op));
+          FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// reduce
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
     void reduce_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                     OutputIt &&d_first, T init, BinaryOperation &&binary_op) const {
+                     OutputIt &&d_first, T init, BinaryOperation &&binary_op,
+                     const source_location &loc) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -328,10 +351,13 @@ namespace zs {
       const auto dist = last - first;
       std::size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(stream, loc);
       cub::DeviceReduce::Reduce(nullptr, temp_bytes, first, d_first, dist, binary_op, init, stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceReduce::Reduce(d_tmp, temp_bytes, first, d_first, dist, binary_op, init, stream);
       context.streamMemFree(d_tmp, stream);
+      if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
@@ -339,13 +365,14 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {}) const {
+                T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {},
+                const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
-                  FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
+                  FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// histogram sort
     /// radix sort pair
@@ -358,7 +385,8 @@ namespace zs {
                     Tn count = 0, int sbit = 0,
                     int ebit
                     = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type)
-                      * 8) const {
+                      * 8,
+                    const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -367,6 +395,8 @@ namespace zs {
       if (count) {
         std::size_t temp_bytes = 0;
         auto stream = (cudaStream_t)context.streamSpare(streamid);
+        Cuda::CudaContext::StreamExecutionTimer *timer{};
+        if (this->shouldProfile()) timer = context.tick(stream, loc);
         cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
@@ -375,6 +405,7 @@ namespace zs {
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
         context.streamMemFree(d_tmp, stream);
+        if (this->shouldProfile()) context.tock(timer, loc);
       }
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -382,7 +413,7 @@ namespace zs {
     /// radix sort
     template <class InputIt, class OutputIt>
     void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                         OutputIt &&d_first, int sbit, int ebit) const {
+                         OutputIt &&d_first, int sbit, int ebit, const source_location &loc) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -391,20 +422,22 @@ namespace zs {
       const auto dist = last - first;
       std::size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(stream, loc);
       cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
       context.streamMemFree(d_tmp, stream);
+      if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
     }
-    template <class InputIt, class OutputIt>
-    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-                    int ebit
-                    = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type)
-                      * 8) const {
+    template <class InputIt, class OutputIt> void radix_sort(
+        InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
+        int ebit = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8,
+        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
                     typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
@@ -413,11 +446,13 @@ namespace zs {
                               typename std::iterator_traits<remove_cvref_t<OutputIt>>::pointer>,
                     "Input iterator pointer different from output iterator\'s");
       radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
-                      FWD(first), FWD(last), FWD(d_first), sbit, ebit);
+                      FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
     }
 
     constexpr ProcID getProcid() const noexcept { return procid; }
     constexpr StreamID getStreamid() const noexcept { return streamid; }
+    constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
+    constexpr StreamID getIncomingStreamid() const noexcept { return incomingStreamid; }
 
   protected:
     // bool do_launch(const ParallelTask &) const noexcept;

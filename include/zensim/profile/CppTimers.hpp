@@ -1,23 +1,20 @@
 #pragma once
 
-#include <ctime>
-#include <string>
+#include <string_view>
+
 #include "TimerBase.hpp"
 
 namespace zs {
 
   /// wall time clock for now
   struct CppTimer {
-    using TimeStamp = struct timespec;
-
     void tick();
     void tock();
     float elapsed() const noexcept;
     void tock(std::string_view tag);
 
   private:
-    // clockid_t clock;
-    TimeStamp last, cur;
+    double last, cur;
   };
 
 }  // namespace zs

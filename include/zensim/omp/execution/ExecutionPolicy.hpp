@@ -39,7 +39,7 @@ namespace zs {
               std::invoke(f, it);
           }
         }
-#else
+#elif 0
         DiffT nths{};
 #  pragma omp parallel if (_dop < dist) num_threads(_dop) shared(f, dist) firstprivate(iter)
         {
@@ -47,6 +47,7 @@ namespace zs {
           { nths = omp_get_num_threads(); }
 #  pragma omp barrier
           /// use block-style partition rather than cyclic-style
+          /// the former usually leads to a better cache utilization on cpu
           DiffT tid = omp_get_thread_num();
           DiffT nwork = (dist + nths - 1) / nths;
           DiffT st = nwork * tid;
@@ -63,6 +64,19 @@ namespace zs {
               else
                 std::invoke(f, it);
             }
+        }
+#else
+#  pragma omp parallel for if (_dop < dist) num_threads(_dop)
+        for (DiffT i = 0; i < dist; ++i) {
+          if constexpr (fts::arity == 0)
+            f();
+          else {
+            auto &&it = *(iter + i);
+            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+              std::apply(f, it);
+            else
+              std::invoke(f, it);
+          }
         }
 #endif
       } else {
@@ -662,10 +676,10 @@ namespace zs {
 
   uint get_hardware_concurrency() noexcept;
   inline OmpExecutionPolicy omp_exec() noexcept {
-    return OmpExecutionPolicy{}.threads(get_hardware_concurrency());
+    return OmpExecutionPolicy{}.threads(get_hardware_concurrency() - 1);
   }
   inline OmpExecutionPolicy par_exec(omp_exec_tag) noexcept {
-    return OmpExecutionPolicy{}.threads(get_hardware_concurrency());
+    return OmpExecutionPolicy{}.threads(get_hardware_concurrency() - 1);
   }
 
 }  // namespace zs

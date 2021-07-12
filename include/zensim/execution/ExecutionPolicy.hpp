@@ -169,10 +169,8 @@ namespace zs {
         int ebit
         = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8) const {
       using IterT = remove_cvref_t<InputIt>;
-      using DstIterT = remove_cvref_t<OutputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
       using InputValueT = typename std::iterator_traits<IterT>::value_type;
-      using ValueT = typename std::iterator_traits<DstIterT>::value_type;
 
       const auto dist = last - first;
       bool skip = false;

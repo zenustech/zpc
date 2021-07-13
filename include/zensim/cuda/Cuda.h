@@ -22,7 +22,6 @@
 
 #include "../DynamicLoader.h"
 #include "Allocators.cuh"
-#include "CudaFunction.cuh"
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"
 #include "zensim/profile/CppTimers.hpp"
@@ -31,6 +30,9 @@
 #include "zensim/types/Tuple.h"
 
 namespace zs {
+
+  std::string get_cu_error_message(uint32_t err);
+  std::string get_cuda_error_message(uint32_t err);
 
   class Cuda : public Singleton<Cuda> {
   public:
@@ -215,15 +217,6 @@ namespace zs {
       [[deprecated]] std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
     };  //< [end] struct CudaContext
 
-#define PER_CUDA_FUNCTION(name, symbol_name, ...) CudaDriverApi<__VA_ARGS__> name;
-#include "cuda_driver_functions.inc.h"
-#undef PER_CUDA_FUNCTION
-
-#if 0
-#  define PER_CUDA_FUNCTION(name, symbol_name, ...) CudaRuntimeApi<__VA_ARGS__> name;
-#  include "cuda_runtime_functions.inc.h"
-#  undef PER_CUDA_FUNCTION
-#endif
     void (*get_cu_error_name)(uint32_t, const char **);
     void (*get_cu_error_string)(uint32_t, const char **);
     // const char *(*get_cuda_error_name)(uint32_t);
@@ -239,10 +232,44 @@ namespace zs {
 
     std::vector<CudaContext> contexts;  ///< generally one per device
     int textureAlignment;
-    std::unique_ptr<DynamicLoader> driverLoader, runtimeLoader;
-
-    int _iDevID;  ///< need changing
+    std::unique_ptr<DynamicLoader> driverLoader;
   };
+
+  namespace cudri {
+    // works like lock_guard, because its constructor is not trivial
+    // hopefully its trivial destructor will make compiler destructs the object soon after
+#define PER_CUDA_FUNCTION(name, symbol_name, ...)                                             \
+  template <typename... Args> struct name {                                                   \
+    using func_type = u32(__VA_ARGS__);                                                       \
+                                                                                              \
+  private:                                                                                    \
+    static inline func_type *func = nullptr;                                                  \
+    static inline const char *const call_name = #name;                                        \
+    static inline const char *const symbol_name = #symbol_name;                               \
+                                                                                              \
+  public:                                                                                     \
+    static void set(void *fptr) noexcept { func = (func_type *)fptr; }                        \
+    name(Args... args, const zs::source_location &loc = zs::source_location::current()) {     \
+      auto err = func(args...);                                                               \
+      if (err != 0) {                                                                         \
+        const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());                 \
+        const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());        \
+        const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());             \
+        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,     \
+                   "\nCuda Error: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",                      \
+                   get_cu_error_message(err), " cuda api error location ", fileInfo, locInfo, \
+                   funcInfo, "=");                                                            \
+      }                                                                                       \
+    }                                                                                         \
+  };
+#include "cuda_driver_functions.inc.h"
+#undef PER_CUDA_FUNCTION
+
+#define PER_CUDA_FUNCTION(name, symbol_name, ...) \
+  template <typename... Ts> name(Ts...) -> name<__VA_ARGS__>;
+#include "cuda_driver_functions.inc.h"
+#undef PER_CUDA_FUNCTION
+  }  // namespace cudri
 
   template <typename... Args> struct cuda_safe_launch {
     void checkKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,

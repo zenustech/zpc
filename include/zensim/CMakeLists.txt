@@ -151,7 +151,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/Cuda.h
     cuda/DeviceUtils.cuh
     cuda/HostUtils.hpp
-    cuda/CudaFunction.cuh
     cuda/CudaLaunchConfig.cuh
     cuda/Allocators.cuh
     cuda/profile/CudaTimers.cuh

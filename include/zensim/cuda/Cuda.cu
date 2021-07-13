@@ -28,13 +28,6 @@ namespace zs {
     return fmt::format("CUDA Driver Error {}: {}", err_name_ptr, err_string_ptr);
   }
 
-#if 0
-  std::string get_cuda_error_message(uint32_t err) {
-    return fmt::format("CUDA Runtime Error {}: {}", Cuda::instance().get_cuda_error_name(err),
-                       Cuda::instance().get_cuda_error_string(err));
-  }
-#endif
-
   /// error handling
   u32 Cuda::getLastCudaError() { return (u32)cudaGetLastError(); }
 
@@ -147,42 +140,16 @@ namespace zs {
       driverLoader->load_function("cuGetErrorName", get_cu_error_name);
       driverLoader->load_function("cuGetErrorString", get_cu_error_string);
 
-#define PER_CUDA_FUNCTION(name, symbol_name, ...)      \
-  name.set(driverLoader->load_function(#symbol_name)); \
-  name.set_names(#name, #symbol_name);
+#define PER_CUDA_FUNCTION(name, symbol_name, ...) \
+  cudri::name<__VA_ARGS__>::set(driverLoader->load_function(#symbol_name));
 #include "cuda_driver_functions.inc.h"
 #undef PER_CUDA_FUNCTION
     }
 
-    init(0);  // cuInit(0);
-
-#if 0
-    { // cuda runtime api
-#  if defined(ZS_PLATFORM_LINUX)
-      runtimeLoader.reset(new DynamicLoader("libcudart.so"));
-#  elif defined(ZS_PLATFORM_WINDOWS)
-      int version{0};
-      getDriverVersion(&version);
-      auto suf = std::to_string(version / 100);
-      auto cudaDllName = std::string("cudart64_") + suf + ".dll";
-      fmt::print("loading cuda runtime dll: {}\n", cudaDllName);
-      runtimeLoader.reset(new DynamicLoader(cudaDllName.c_str())); //nvcudart.dll"));
-#  else
-      static_assert(false, "CUDA library supports only Windows and Linux.");
-#  endif
-      runtimeLoader->load_function("cudaGetErrorName", get_cuda_error_name);
-      runtimeLoader->load_function("cudaGetErrorString", get_cuda_error_string);
-
-#  define PER_CUDA_FUNCTION(name, symbol_name, ...)       \
-    name.set(runtimeLoader->load_function(#symbol_name)); \
-    name.set_names(#name, #symbol_name);
-#  include "cuda_runtime_functions.inc.h"
-#  undef PER_CUDA_FUNCTION
-    }
-#endif
+    cudri::init(0);  // cuInit(0);
 
     numTotalDevice = 0;
-    getDeviceCount(&numTotalDevice);
+    cudri::getDeviceCount{&numTotalDevice};
     contexts.resize(numTotalDevice);
     if (numTotalDevice == 0)
       fmt::print(
@@ -197,11 +164,11 @@ namespace zs {
       {
         void *c{nullptr};
         checkError(cudaSetDevice(i), i);
-        getDevice(&dev, i);
+        cudri::getDevice(&dev, i);
         // fmt::print("device ordinal {} is {}\n", i, dev);
 
         // getContext(&c);
-        retainPrimaryCtx(&c, dev);
+        cudri::retainDevicePrimaryCtx(&c, dev);
         // createContext(&c, 4, dev); // CU_CTX_SCHED_BLOCKING_SYNC (0x04) | CU_CTX_SCHED_SPIN
         // (0x01)
         context = CudaContext{i, dev, c};
@@ -216,6 +183,7 @@ namespace zs {
         checkError(cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync), i);
 
       /// device properties
+      using namespace cudri;
       int major, minor, multiGpuBoardGroupID, multiProcessorCount, regsPerBlock;
       int supportUnifiedAddressing, supportUm, supportConcurrentUmAccess;
       getDeviceAttribute(&regsPerBlock, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, dev);
@@ -261,8 +229,8 @@ namespace zs {
       for (int j = 0; j < numTotalDevice; j++) {
         if (i != j) {
           int iCanAccessPeer = 0;
-          canAccessPeer(&iCanAccessPeer, contexts[i].getDevice(), contexts[j].getDevice());
-          if (iCanAccessPeer) enablePeerAccess(contexts[j].getContext(), 0);
+          cudri::canAccessPeer(&iCanAccessPeer, contexts[i].getDevice(), contexts[j].getDevice());
+          if (iCanAccessPeer) cudri::enablePeerAccess(contexts[j].getContext(), 0);
           fmt::print("\t[InitInfo -- Peer Access] Peer access status {} -> {}: {}\n", i, j,
                      iCanAccessPeer ? "Inactive" : "Active");
         }

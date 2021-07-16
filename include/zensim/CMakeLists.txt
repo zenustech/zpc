@@ -160,8 +160,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/math/matrix/Matrix.hpp # recent
     cuda/execution/ExecutionPolicy.cuh
     # container
-    cuda/container/LookupTable.cuh
-    cuda/container/MatrixHash.cuh
     cuda/geometry/Structurefree.hpp # recent
     cuda/algorithm/MappingKernels.cuh
     cuda/algorithm/SortKernels.cuh

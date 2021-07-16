@@ -24,6 +24,7 @@ PER_CUDA_FUNCTION(createContext, cuCtxCreate, void **, unsigned int, int)
 PER_CUDA_FUNCTION(destroyContext, cuCtxDestroy, void *)
 PER_CUDA_FUNCTION(setContext, cuCtxSetCurrent, void *)
 PER_CUDA_FUNCTION(getContext, cuCtxGetCurrent, void **)
+PER_CUDA_FUNCTION(getContextDevice, cuCtxGetDevice, int *)
 PER_CUDA_FUNCTION(pushContext, cuCtxPushCurrent, void *)
 PER_CUDA_FUNCTION(popContext, cuCtxPopCurrent, void **)
 PER_CUDA_FUNCTION(syncContext, cuCtxSynchronize)
@@ -65,21 +66,30 @@ PER_CUDA_FUNCTION(memcpyHtoDAsync, cuMemcpyHtoDAsync, void *, void *, size_t, vo
 PER_CUDA_FUNCTION(memcpyDtoHAsync, cuMemcpyDtoHAsync, void *, void *, size_t, void *)
 PER_CUDA_FUNCTION(memcpyDtoDAsync, cuMemcpyDtoDAsync, void *, void *, size_t, void *)
 
-PER_CUDA_FUNCTION(vmalloc, cuMemAllocManaged, void **, size_t, uint32_t)
+PER_CUDA_FUNCTION(vmalloc, cuMemAllocManaged, void **, size_t, unsigned int)
 PER_CUDA_FUNCTION(malloc, cuMemAlloc, void **, size_t)
-PER_CUDA_FUNCTION(memAdvise, cuMemAdvise, void *, size_t, uint32_t, int)
+PER_CUDA_FUNCTION(mallocAsync, cuMemAllocAsync, void **, size_t, void*)
+PER_CUDA_FUNCTION(memAdvise, cuMemAdvise, void *, size_t, unsigned int, int)
 PER_CUDA_FUNCTION(memcpy, cuMemcpy, void *, void *, size_t)
 PER_CUDA_FUNCTION(memset, cuMemsetD8, void *, uint8_t, size_t)
 PER_CUDA_FUNCTION(free, cuMemFree, void *)
+PER_CUDA_FUNCTION(freeAsync, cuMemFreeAsync, void *, void*)
 PER_CUDA_FUNCTION(getMemInfo, cuMemGetInfo, size_t *, size_t *)
 
 // Module and kernels
+PER_CUDA_FUNCTION(getFuncAttrib, cuFuncGetAttribute, int *, unsigned int, void *)
 PER_CUDA_FUNCTION(getModuleFunc, cuModuleGetFunction, void **, void *, const char *)
-PER_CUDA_FUNCTION(getFuncAttrib, cuFuncGetAttribute, int *, uint32_t, void *)
-PER_CUDA_FUNCTION(loadModuleDataEx, cuModuleLoadDataEx, void **, const char *, uint32_t, uint32_t *,
+PER_CUDA_FUNCTION(loadModuleData, cuModuleLoadData, void **, const void *)
+PER_CUDA_FUNCTION(linkCreate, cuLinkCreate, unsigned int, unsigned int *, void **, void **)
+PER_CUDA_FUNCTION(linkAddData, cuLinkAddData, void *, unsigned int, void *, size_t, const char *,
+                  unsigned int, unsigned int *, void **)
+// state, void**cubinOut, size_t* sizeOut
+PER_CUDA_FUNCTION(linkComplete, cuLinkComplete, void *, void **, size_t *)
+PER_CUDA_FUNCTION(loadModuleDataEx, cuModuleLoadDataEx, void **, const void *, unsigned int, void *,
                   void **)
 PER_CUDA_FUNCTION(launchCuKernel, cuLaunchKernel, void *, unsigned int, unsigned int, unsigned int,
                   unsigned int, unsigned int, unsigned int, unsigned int, void *, void **, void **)
 PER_CUDA_FUNCTION(launchCuCooperativeKernel, cuLaunchCooperativeKernel, void *, unsigned int,
                   unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
                   unsigned int, void *, void **)
+PER_CUDA_FUNCTION(launchHostFunc, cuLaunchHostFunc, void*, void*, void*)

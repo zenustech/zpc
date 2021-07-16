@@ -31,7 +31,7 @@
 
 namespace zs {
 
-  std::string get_cu_error_message(uint32_t err);
+  std::string get_cu_error_message(u32 err);
   std::string get_cuda_error_message(uint32_t err);
 
   class Cuda : public Singleton<Cuda> {
@@ -217,8 +217,6 @@ namespace zs {
       [[deprecated]] std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
     };  //< [end] struct CudaContext
 
-    void (*get_cu_error_name)(uint32_t, const char **);
-    void (*get_cu_error_string)(uint32_t, const char **);
     // const char *(*get_cuda_error_name)(uint32_t);
     // const char *(*get_cuda_error_string)(uint32_t);
 
@@ -232,35 +230,40 @@ namespace zs {
 
     std::vector<CudaContext> contexts;  ///< generally one per device
     int textureAlignment;
-    std::unique_ptr<DynamicLoader> driverLoader;
   };
 
   namespace cudri {
-    // works like lock_guard, because its constructor is not trivial
+    void load_cuda_driver_apis();
+    static void (*get_cu_error_name)(uint32_t, const char **);
+    static void (*get_cu_error_string)(uint32_t, const char **);
+
+    // works like std::lock_guard, because its constructor is not trivial
     // hopefully its trivial destructor will make compiler destructs the object soon after
-#define PER_CUDA_FUNCTION(name, symbol_name, ...)                                             \
-  template <typename... Args> struct name {                                                   \
-    using func_type = u32(__VA_ARGS__);                                                       \
-                                                                                              \
-  private:                                                                                    \
-    static inline func_type *func = nullptr;                                                  \
-    static inline const char *const call_name = #name;                                        \
-    static inline const char *const symbol_name = #symbol_name;                               \
-                                                                                              \
-  public:                                                                                     \
-    static void set(void *fptr) noexcept { func = (func_type *)fptr; }                        \
-    name(Args... args, const zs::source_location &loc = zs::source_location::current()) {     \
-      auto err = func(args...);                                                               \
-      if (err != 0) {                                                                         \
-        const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());                 \
-        const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());        \
-        const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());             \
-        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,     \
-                   "\nCuda Error: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",                      \
-                   get_cu_error_message(err), " cuda api error location ", fileInfo, locInfo, \
-                   funcInfo, "=");                                                            \
-      }                                                                                       \
-    }                                                                                         \
+#define PER_CUDA_FUNCTION(name, symbol_name, ...)                                         \
+  template <typename... Args> struct name {                                               \
+    using func_t = u32(__VA_ARGS__);                                                      \
+    static inline func_t *func = nullptr;                                                 \
+                                                                                          \
+  private:                                                                                \
+    static inline const char *const call_name = #name;                                    \
+    static inline const char *const symbol_name = #symbol_name;                           \
+    u32 error;                                                                            \
+                                                                                          \
+  public:                                                                                 \
+    name(Args... args, const zs::source_location &loc = zs::source_location::current()) { \
+      if (func == nullptr) [[unlikely]]                                                   \
+        (void)Cuda::instance();                                                           \
+      error = func(args...);                                                              \
+      if (error != 0) {                                                                   \
+        const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());             \
+        const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());    \
+        const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());         \
+        fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold, \
+                   "\n{}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n", get_cu_error_message(error), \
+                   " cuda api error location ", fileInfo, locInfo, funcInfo, "=");        \
+      }                                                                                   \
+    }                                                                                     \
+    explicit operator u32() const noexcept { return error; }                              \
   };
 #include "cuda_driver_functions.inc.h"
 #undef PER_CUDA_FUNCTION

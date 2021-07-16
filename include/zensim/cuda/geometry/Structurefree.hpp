@@ -7,15 +7,17 @@
 
 namespace zs {
 
+#if 0
   template <typename T, int d> bool convertParticles(Particles<T, d> &particles) {
     if (particles.space() == memsrc_e::device || particles.space() == memsrc_e::um
         || particles.space() == memsrc_e::device_const) {
       constexpr auto dim = d;
-      std::vector<PropertyTag> properties{{"mass", 1}, {"pos", dim}, {"vel", dim}};
-      if (particles.hasC()) properties.push_back({"C", dim * dim});
-      if (particles.hasF()) properties.push_back({"F", dim * dim});
-      if (particles.hasJ()) properties.push_back({"J", 1});
-      if (particles.haslogJp()) properties.push_back({"logjp", 1});
+      std::vector<PropertyTag> properties{PropertyTag{"mass", 1}, PropertyTag{"pos", dim},
+                                          PropertyTag{"vel", dim}};
+      if (particles.hasC()) properties.push_back(PropertyTag{"C", dim * dim});
+      if (particles.hasF()) properties.push_back(PropertyTag{"F", dim * dim});
+      if (particles.hasJ()) properties.push_back(PropertyTag{"J", 1});
+      if (particles.haslogJp()) properties.push_back(PropertyTag{"logjp", 1});
 
       particles.particleBins
           = TileVector<f32, 32>{properties, particles.size(), particles.space(), particles.devid()};
@@ -28,7 +30,7 @@ namespace zs {
            ptiles = proxy<execspace_e::cuda>(
                attribNames,
                particles.particleBins)] __device__(typename Particles<T, d>::size_type i) mutable {
-#if 1
+#  if 1
             if (i == 0) {
               printf("num total channels %d\n", (int)ptiles.numChannels());
               printf("mass channel %d offset: %d (%d)\n", (int)ptiles.propIndex("mass"),
@@ -46,7 +48,7 @@ namespace zs {
               printf("logJp channel %d offset: %d (%d)\n", (int)ptiles.propIndex("logjp"),
                      (int)ptiles._tagOffsets[ptiles.propIndex("logjp")], ptiles.hasProp("logjp"));
             }
-#endif
+#  endif
             ptiles.template tuple<dim>("pos",
                                        i);  // = vec<float, 3>{0.f, 1.f, 2.f};  // parray.pos(i);
             ptiles.val("mass", i) = parray.mass(i);
@@ -60,5 +62,6 @@ namespace zs {
     }
     return false;
   }
+#endif
 
 }  // namespace zs

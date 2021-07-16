@@ -1,8 +1,9 @@
+#include <cuda.h>
+
 #include <utility>
 
 #include "../Platform.hpp"
 #include "Cuda.h"
-#include "CudaConstants.inc"
 #include "zensim/tpls/fmt/format.h"
 #include "zensim/types/SourceLocation.hpp"
 
@@ -14,17 +15,18 @@ namespace zs {
 
   void Cuda::init_constant_cache(void *ptr, std::size_t size) {
     cudaMemcpyToSymbol(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice);
+    // cudri::memcpyHtoD((void *)g_cuda_constant_cache, ptr, size);
   }
   void Cuda::init_constant_cache(void *ptr, std::size_t size, void *stream) {
     cudaMemcpyToSymbolAsync(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice,
                             (cudaStream_t)stream);
   }
 
-  std::string get_cu_error_message(uint32_t err) {
+  std::string get_cu_error_message(u32 err) {
     const char *err_name_ptr;
     const char *err_string_ptr;
-    Cuda::instance().get_cu_error_name(err, &err_name_ptr);
-    Cuda::instance().get_cu_error_string(err, &err_string_ptr);
+    cudri::get_cu_error_name(err, &err_name_ptr);
+    cudri::get_cu_error_string(err, &err_string_ptr);
     return fmt::format("CUDA Driver Error {}: {}", err_name_ptr, err_string_ptr);
   }
 
@@ -32,6 +34,7 @@ namespace zs {
   u32 Cuda::getLastCudaError() { return (u32)cudaGetLastError(); }
 
   std::string_view Cuda::getCudaErrorString(u32 errorCode) {
+    // return cudaGetErrorString((cudaError_t)errorCode);
     return cudaGetErrorString((cudaError_t)errorCode);
   }
   void Cuda::checkError(u32 errorCode, ProcID did, const source_location &loc) {
@@ -46,7 +49,7 @@ namespace zs {
       const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
       fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
                  "\nCuda Error on Device {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
-                 did >= 0 ? std::to_string(did) : "unknown", Cuda::getCudaErrorString(errorCode),
+                 did >= 0 ? std::to_string(did) : "unknown", get_cu_error_message(errorCode),
                  " cuda api error location ", fileInfo, locInfo, funcInfo, "=");
     }
   }
@@ -57,15 +60,23 @@ namespace zs {
                          std::size_t shmem, void *stream) {
     return cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
                             (cudaStream_t)stream);
+    // cudri::launchCuKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, (unsigned int)shmem,
+    //                      stream, args, (void **)nullptr);
+    // return 0;
   }
   u32 Cuda::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
                                     unsigned int gz, unsigned int bx, unsigned int by,
                                     unsigned int bz, void **args, std::size_t shmem, void *stream) {
+    // cudri::launchCuCooperativeKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, shmem,
+    // stream,
+    //                                 args);
+    // return 0;
     return cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
                                        (cudaStream_t)stream);
   }
   u32 Cuda::launchCallback(void *stream, void *f, void *data) {
-    return cudaLaunchHostFunc((cudaStream_t)stream, (cudaHostFn_t)f, data);
+    // return cudaLaunchHostFunc((cudaStream_t)stream, (cudaHostFn_t)f, data);
+    return (u32)cudri::launchHostFunc(stream, f, data);
   }
 
   void Cuda::CudaContext::checkError() const {
@@ -81,37 +92,46 @@ namespace zs {
 
   // record
   void Cuda::CudaContext::recordEventCompute(const source_location &loc) {
-    checkError(cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute()), loc);
+    // checkError(cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute()), loc);
+    cudri::recordEvent(eventCompute(), streamCompute());
   }
   void Cuda::CudaContext::recordEventSpare(unsigned id, const source_location &loc) {
-    checkError(cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id)), loc);
+    // checkError(cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id)), loc);
+    cudri::recordEvent(eventSpare(id), streamSpare(id));
   }
   // sync
   void Cuda::CudaContext::syncStream(unsigned sid, const source_location &loc) const {
-    checkError(cudaStreamSynchronize((cudaStream_t)stream(sid)), loc);
+    // checkError(cudaStreamSynchronize((cudaStream_t)stream(sid)), loc);
+    cudri::syncStream(stream(sid));
   }
   void Cuda::CudaContext::syncCompute(const source_location &loc) const {
-    checkError(cudaStreamSynchronize((cudaStream_t)streamCompute()), loc);
+    // checkError(cudaStreamSynchronize((cudaStream_t)streamCompute()), loc);
+    cudri::syncStream(streamCompute());
   }
   void Cuda::CudaContext::syncStreamSpare(unsigned sid, const source_location &loc) const {
-    checkError(cudaStreamSynchronize((cudaStream_t)streamSpare(sid)), loc);
+    // checkError(cudaStreamSynchronize((cudaStream_t)streamSpare(sid)), loc);
+    cudri::syncStream(streamSpare(sid));
   }
   // stream-event sync
   void Cuda::CudaContext::computeStreamWaitForEvent(void *event, const source_location &loc) {
-    checkError(cudaStreamWaitEvent((cudaStream_t)streamCompute(), (cudaEvent_t)event, 0), loc);
+    cudri::streamWaitEvent(streamCompute(), event, 0);
   }
   void Cuda::CudaContext::spareStreamWaitForEvent(unsigned sid, void *event,
                                                   const source_location &loc) {
-    checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0), loc);
+    // checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0),
+    // loc);
+    cudri::streamWaitEvent(streamSpare(sid), event, 0);
   }
   void *Cuda::CudaContext::streamMemAlloc(std::size_t size, void *stream,
                                           const source_location &loc) {
     void *ptr;
-    checkError(cudaMallocAsync(&ptr, size, (cudaStream_t)stream), loc);
+    // checkError(cudaMallocAsync(&ptr, size, (cudaStream_t)stream), loc);
+    cudri::mallocAsync(&ptr, size, stream);
     return ptr;
   }
   void Cuda::CudaContext::streamMemFree(void *ptr, void *stream, const source_location &loc) {
-    checkError(cudaFreeAsync(ptr, (cudaStream_t)stream), loc);
+    // checkError(cudaFreeAsync(ptr, (cudaStream_t)stream), loc);
+    cudri::freeAsync(ptr, stream);
   }
   Cuda::CudaContext::StreamExecutionTimer *Cuda::CudaContext::tick(void *stream,
                                                                    const source_location &loc) {
@@ -119,34 +139,48 @@ namespace zs {
   }
   void Cuda::CudaContext::tock(Cuda::CudaContext::StreamExecutionTimer *timer,
                                const source_location &loc) {
-    checkError(launchCallback(timer->stream, (void *)recycle_timer, (void *)timer), loc);
+    // checkError(launchCallback(timer->stream, (void *)recycle_timer, (void *)timer), loc);
+    cudri::launchHostFunc(timer->stream, (void *)recycle_timer, (void *)timer);
   }
 
   void Cuda::CudaContext::setContext(const source_location &loc) const {
-    checkError(cudaSetDevice(devid), loc);
+    // checkError(cudaSetDevice(devid), loc);
+    cudri::setContext{getContext()};
   }
+
+  namespace cudri {
+
+    void load_cuda_driver_apis() {
+      auto initializer = []() -> bool {
+        cuInit(0);
+        // int trialVer = CUDA_VERSION - CUDA_VERSION % 1000;
+        int trialVer = 11030;
+        while (trialVer > 0
+               && cuGetProcAddress("cuGetErrorName", (void **)&get_cu_error_name, trialVer,
+                                   CU_GET_PROC_ADDRESS_DEFAULT)
+                      == CUDA_ERROR_NOT_FOUND)
+          trialVer -= 1000;
+        const int ver = trialVer;
+        fmt::print("final decided driver version: {}\n", ver);
+        getchar();
+        cuGetProcAddress("cuGetErrorString", (void **)&get_cu_error_string, ver,
+                         CU_GET_PROC_ADDRESS_DEFAULT);
+
+#define PER_CUDA_FUNCTION(name, symbol_name, ...)                        \
+  cuGetProcAddress(#symbol_name, (void **)&name<__VA_ARGS__>::func, ver, \
+                   CU_GET_PROC_ADDRESS_DEFAULT);
+#include "cuda_driver_functions.inc.h"
+#undef PER_CUDA_FUNCTION
+        return true;
+      };
+      static bool initialized = initializer();
+    }
+    // template struct name<__VA_ARGS__>;
+  }  // namespace cudri
 
   Cuda::Cuda() {
     fmt::print("[Init -- Begin] Cuda\n");
-
-    {  // cuda driver api (for JIT)
-#if defined(ZS_PLATFORM_LINUX)
-      driverLoader = std::make_unique<DynamicLoader>("libcuda.so.1");
-#elif defined(ZS_PLATFORM_WINDOWS)
-      driverLoader = std::make_unique<DynamicLoader>("nvcuda.dll");
-#else
-      static_assert(false, "CUDA driver supports only Windows and Linux.");
-#endif
-      driverLoader->load_function("cuGetErrorName", get_cu_error_name);
-      driverLoader->load_function("cuGetErrorString", get_cu_error_string);
-
-#define PER_CUDA_FUNCTION(name, symbol_name, ...) \
-  cudri::name<__VA_ARGS__>::set(driverLoader->load_function(#symbol_name));
-#include "cuda_driver_functions.inc.h"
-#undef PER_CUDA_FUNCTION
-    }
-
-    cudri::init(0);  // cuInit(0);
+    cudri::load_cuda_driver_apis();
 
     numTotalDevice = 0;
     cudri::getDeviceCount{&numTotalDevice};
@@ -163,69 +197,77 @@ namespace zs {
       int dev{};
       {
         void *c{nullptr};
-        checkError(cudaSetDevice(i), i);
+        // checkError(cudaSetDevice(i), i);
         cudri::getDevice(&dev, i);
         // fmt::print("device ordinal {} is {}\n", i, dev);
 
         // getContext(&c);
-        cudri::retainDevicePrimaryCtx(&c, dev);
-        // createContext(&c, 4, dev); // CU_CTX_SCHED_BLOCKING_SYNC (0x04) | CU_CTX_SCHED_SPIN
-        // (0x01)
+        // cudri::retainDevicePrimaryCtx(&c, dev);
+        cudri::createContext(&c, 0,
+                             dev);  // CU_CTX_SCHED_BLOCKING_SYNC(0x04) | CU_CTX_SCHED_SPIN(0x01)
         context = CudaContext{i, dev, c};
-        // setContext(context.getContext());
       }
 
       context.streams.resize((int)StreamIndex::Total);
       for (auto &stream : context.streams)
-        checkError(cudaStreamCreateWithFlags((cudaStream_t *)&stream, cudaStreamNonBlocking), i);
+        // checkError(cudaStreamCreateWithFlags((cudaStream_t *)&stream, cudaStreamNonBlocking),
+        // i);
+        cudri::createStream(&stream, 0x01);
       context.events.resize((int)EventIndex::Total);
       for (auto &event : context.events)
-        checkError(cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync), i);
+        // checkError(cudaEventCreateWithFlags((cudaEvent_t *)&event, cudaEventBlockingSync), i);
+        cudri::createEvent(&event, 0x01);
 
-      /// device properties
-      using namespace cudri;
-      int major, minor, multiGpuBoardGroupID, multiProcessorCount, regsPerBlock;
-      int supportUnifiedAddressing, supportUm, supportConcurrentUmAccess;
-      getDeviceAttribute(&regsPerBlock, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, dev);
-      getDeviceAttribute(&multiProcessorCount, CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT, dev);
-      getDeviceAttribute(&multiGpuBoardGroupID, CU_DEVICE_ATTRIBUTE_MULTI_GPU_BOARD_GROUP_ID, dev);
-      getDeviceAttribute(&textureAlignment, CU_DEVICE_ATTRIBUTE_TEXTURE_ALIGNMENT, dev);
-      getDeviceAttribute(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, dev);
-      getDeviceAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, dev);
-      getDeviceAttribute(&supportUnifiedAddressing, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, dev);
-      getDeviceAttribute(&supportUm, CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, dev);
-      getDeviceAttribute(&supportConcurrentUmAccess, CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS,
-                         dev);
-      getDeviceAttribute(&context.regsPerMultiprocessor,
-                         CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR, dev);
-      getDeviceAttribute(&context.sharedMemPerMultiprocessor,
-                         CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR, dev);
-      getDeviceAttribute(&context.maxBlocksPerMultiprocessor,
-                         CU_DEVICE_ATTRIBUTE_MAX_BLOCKS_PER_MULTIPROCESSOR, dev);
-      getDeviceAttribute(&context.sharedMemPerBlock,
-                         CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK, dev);
-      getDeviceAttribute(&context.maxThreadsPerBlock, CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
-                         dev);
-      getDeviceAttribute(&context.maxThreadsPerMultiprocessor,
-                         CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, dev);
+      {  ///< device properties
+        using namespace cudri;
+        int major, minor, multiGpuBoardGroupID, multiProcessorCount, regsPerBlock;
+        int supportUnifiedAddressing, supportUm, supportConcurrentUmAccess;
+        getDeviceAttribute(&regsPerBlock, (unsigned)CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK,
+                           dev);
+        getDeviceAttribute(&multiProcessorCount, (unsigned)CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
+                           dev);
+        getDeviceAttribute(&multiGpuBoardGroupID,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_MULTI_GPU_BOARD_GROUP_ID, dev);
+        getDeviceAttribute(&textureAlignment, (unsigned)CU_DEVICE_ATTRIBUTE_TEXTURE_ALIGNMENT, dev);
+        getDeviceAttribute(&minor, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, dev);
+        getDeviceAttribute(&major, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, dev);
+        getDeviceAttribute(&supportUnifiedAddressing,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, dev);
+        getDeviceAttribute(&supportUm, (unsigned)CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, dev);
+        getDeviceAttribute(&supportConcurrentUmAccess,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS, dev);
+        getDeviceAttribute(&context.regsPerMultiprocessor,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR, dev);
+        getDeviceAttribute(&context.sharedMemPerMultiprocessor,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_MULTIPROCESSOR, dev);
+        getDeviceAttribute(&context.maxBlocksPerMultiprocessor,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_MAX_BLOCKS_PER_MULTIPROCESSOR, dev);
+        getDeviceAttribute(&context.sharedMemPerBlock,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK, dev);
+        getDeviceAttribute(&context.maxThreadsPerBlock,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK, dev);
+        getDeviceAttribute(&context.maxThreadsPerMultiprocessor,
+                           (unsigned)CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, dev);
 
-      context.supportConcurrentUmAccess = supportConcurrentUmAccess;
+        context.supportConcurrentUmAccess = supportConcurrentUmAccess;
 
-      fmt::print(
-          "\t[InitInfo -- Dev Property] GPU device {} ({}-th group on "
-          "board)\n\t\tshared memory per block: {} bytes,\n\t\tregisters per SM: "
-          "{},\n\t\tMulti-Processor count: {},\n\t\tSM compute capabilities: "
-          "{}.{}.\n\t\tTexture alignment: {} bytes\n\t\tUVM support: allocation({}), unified "
-          "addressing({}), concurrent access({})\n",
-          i, multiGpuBoardGroupID, context.sharedMemPerBlock, regsPerBlock, multiProcessorCount,
-          major, minor, textureAlignment, supportUm, supportUnifiedAddressing,
-          supportConcurrentUmAccess);
+        fmt::print(
+            "\t[InitInfo -- Dev Property] GPU device {} ({}-th group on "
+            "board)\n\t\tshared memory per block: {} bytes,\n\t\tregisters per SM: "
+            "{},\n\t\tMulti-Processor count: {},\n\t\tSM compute capabilities: "
+            "{}.{}.\n\t\tTexture alignment: {} bytes\n\t\tUVM support: allocation({}), unified "
+            "addressing({}), concurrent access({})\n",
+            i, multiGpuBoardGroupID, context.sharedMemPerBlock, regsPerBlock, multiProcessorCount,
+            major, minor, textureAlignment, supportUm, supportUnifiedAddressing,
+            supportConcurrentUmAccess);
+      }
     }
 
     /// enable peer access if feasible
     for (int i = 0; i < numTotalDevice; i++) {
       // setContext(contexts[i].getContext());
-      checkError(cudaSetDevice(i), i);
+      // checkError(cudaSetDevice(i), i);
+      cudri::setContext(contexts[i].getContext());
       for (int j = 0; j < numTotalDevice; j++) {
         if (i != j) {
           int iCanAccessPeer = 0;
@@ -251,14 +293,17 @@ namespace zs {
     for (int i = 0; i < numTotalDevice; i++) {
       auto &context = contexts[i];
       context.setContext();
-      checkError(cudaDeviceSynchronize(), i);
-      for (auto stream : context.streams) checkError(cudaStreamDestroy((cudaStream_t)stream), i);
-      for (auto event : context.events) checkError(cudaEventDestroy((cudaEvent_t)event), i);
+      // checkError(cudaDeviceSynchronize(), i);
+      for (auto stream : context.streams)
+        cudri::destroyStream{stream};  // checkError(cudaStreamDestroy((cudaStream_t)stream), i);
+      for (auto event : context.events)
+        cudri::destroyEvent{event};  // checkError(cudaEventDestroy((cudaEvent_t)event), i);
       context.deviceMem.reset(nullptr);
       context.unifiedMem.reset(nullptr);
 
       // destroyContext(context.getContext());
-      checkError(cudaDeviceReset(), i);
+      // checkError(cudaDeviceReset(), i);
+      cudri::destroyContext(context.getContext());
     }
     fmt::print("  Finished \'Cuda\' termination\n");
   }

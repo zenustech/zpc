@@ -4,6 +4,7 @@
 
 #include "../Platform.hpp"
 #include "Cuda.h"
+#include "zensim/tpls/fmt/color.h"
 #include "zensim/tpls/fmt/format.h"
 #include "zensim/types/SourceLocation.hpp"
 
@@ -60,17 +61,15 @@ namespace zs {
                          std::size_t shmem, void *stream) {
     return cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
                             (cudaStream_t)stream);
-    // cudri::launchCuKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, (unsigned int)shmem,
+    // return cudri::launchCuKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, (unsigned
+    // int)shmem,
     //                      stream, args, (void **)nullptr);
-    // return 0;
   }
   u32 Cuda::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
                                     unsigned int gz, unsigned int bx, unsigned int by,
                                     unsigned int bz, void **args, std::size_t shmem, void *stream) {
-    // cudri::launchCuCooperativeKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, shmem,
-    // stream,
-    //                                 args);
-    // return 0;
+    // return cudri::launchCuCooperativeKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, shmem,
+    // stream, args);
     return cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
                                        (cudaStream_t)stream);
   }
@@ -161,8 +160,8 @@ namespace zs {
                       == CUDA_ERROR_NOT_FOUND)
           trialVer -= 1000;
         const int ver = trialVer;
-        fmt::print("final decided driver version: {}\n", ver);
-        getchar();
+        fmt::print(fg(fmt::color::green_yellow) | fmt::emphasis::underline,
+                   "loading cuda driver api version: {}\n", ver);
         cuGetProcAddress("cuGetErrorString", (void **)&get_cu_error_string, ver,
                          CU_GET_PROC_ADDRESS_DEFAULT);
 

@@ -32,13 +32,13 @@ namespace zs {
   }
 
   /// error handling
-  u32 Cuda::getLastCudaError() { return (u32)cudaGetLastError(); }
+  u32 Cuda::get_last_cuda_rt_error() { return (u32)cudaGetLastError(); }
 
-  std::string_view Cuda::getCudaErrorString(u32 errorCode) {
+  std::string_view Cuda::get_cuda_rt_error_string(u32 errorCode) {
     // return cudaGetErrorString((cudaError_t)errorCode);
     return cudaGetErrorString((cudaError_t)errorCode);
   }
-  void Cuda::checkError(u32 errorCode, ProcID did, const source_location &loc) {
+  void Cuda::check_cuda_rt_error(u32 errorCode, ProcID did, const source_location &loc) {
     if (errorCode != 0) {
       if (did >= 0) {
         auto &context = Cuda::context(did);
@@ -50,7 +50,7 @@ namespace zs {
       const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
       fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
                  "\nCuda Error on Device {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
-                 did >= 0 ? std::to_string(did) : "unknown", get_cu_error_message(errorCode),
+                 did >= 0 ? std::to_string(did) : "unknown", get_cuda_rt_error_string(errorCode),
                  " cuda api error location ", fileInfo, locInfo, funcInfo, "=");
     }
   }
@@ -78,15 +78,9 @@ namespace zs {
     return (u32)cudri::launchHostFunc(stream, f, data);
   }
 
-  void Cuda::CudaContext::checkError() const {
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess)
-      fmt::print("Last Error on [Dev {}]: {}\n", devid, cudaGetErrorString(error));
-  }
-
   void Cuda::CudaContext::checkError(u32 errorCode, const source_location &loc) const {
     /// only shows the first error message
-    Cuda::checkError(errorCode, getDevId(), loc);
+    Cuda::check_cuda_rt_error(errorCode, getDevId(), loc);
   }
 
   // record
@@ -124,12 +118,10 @@ namespace zs {
   void *Cuda::CudaContext::streamMemAlloc(std::size_t size, void *stream,
                                           const source_location &loc) {
     void *ptr;
-    // checkError(cudaMallocAsync(&ptr, size, (cudaStream_t)stream), loc);
     cudri::mallocAsync(&ptr, size, stream);
     return ptr;
   }
   void Cuda::CudaContext::streamMemFree(void *ptr, void *stream, const source_location &loc) {
-    // checkError(cudaFreeAsync(ptr, (cudaStream_t)stream), loc);
     cudri::freeAsync(ptr, stream);
   }
   Cuda::CudaContext::StreamExecutionTimer *Cuda::CudaContext::tick(void *stream,
@@ -138,12 +130,10 @@ namespace zs {
   }
   void Cuda::CudaContext::tock(Cuda::CudaContext::StreamExecutionTimer *timer,
                                const source_location &loc) {
-    // checkError(launchCallback(timer->stream, (void *)recycle_timer, (void *)timer), loc);
     cudri::launchHostFunc(timer->stream, (void *)recycle_timer, (void *)timer);
   }
 
   void Cuda::CudaContext::setContext(const source_location &loc) const {
-    // checkError(cudaSetDevice(devid), loc);
     cudri::setContext{getContext()};
   }
 
@@ -264,7 +254,6 @@ namespace zs {
 
     /// enable peer access if feasible
     for (int i = 0; i < numTotalDevice; i++) {
-      // setContext(contexts[i].getContext());
       // checkError(cudaSetDevice(i), i);
       cudri::setContext(contexts[i].getContext());
       for (int j = 0; j < numTotalDevice; j++) {
@@ -293,6 +282,7 @@ namespace zs {
       auto &context = contexts[i];
       context.setContext();
       // checkError(cudaDeviceSynchronize(), i);
+      cudri::syncContext();
       for (auto stream : context.streams)
         cudri::destroyStream{stream};  // checkError(cudaStreamDestroy((cudaStream_t)stream), i);
       for (auto event : context.events)
@@ -361,21 +351,28 @@ namespace zs {
                               std::string_view kernelName) {
     if (auto it = ctx.funcLaunchConfigs.find(kernelFunc); it != ctx.funcLaunchConfigs.end())
       return it->second.optBlockSize;
-    cudaFuncAttributes funcAttribs;
-    ctx.checkError(cudaFuncGetAttributes(&funcAttribs, kernelFunc));
+
+    int numRegs, sharedSizeBytes, maxDynamicSharedSizeBytes, maxThreadsPerBlock;
+    cudri::getFuncAttrib(&numRegs, (unsigned)CU_FUNC_ATTRIBUTE_NUM_REGS, kernelFunc);
+    cudri::getFuncAttrib(&sharedSizeBytes, (unsigned)CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES,
+                         kernelFunc);
+    cudri::getFuncAttrib(&maxDynamicSharedSizeBytes,
+                         (unsigned)CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, kernelFunc);
+    cudri::getFuncAttrib(&maxThreadsPerBlock, (unsigned)CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
+                         kernelFunc);
     int optBlockSize{0};
 
     auto cuda_max_active_blocks_per_sm = [&](int block_size, int dynamic_shmem) {
       // Limits due do registers/SM
       int const regs_per_sm = ctx.regsPerMultiprocessor;
-      int const regs_per_thread = funcAttribs.numRegs;
+      int const regs_per_thread = numRegs;
       int const max_blocks_regs = regs_per_sm / (regs_per_thread * block_size);
 
       // Limits due to shared memory/SM
       size_t const shmem_per_sm = ctx.sharedMemPerMultiprocessor;
       size_t const shmem_per_block = ctx.sharedMemPerBlock;
-      size_t const static_shmem = funcAttribs.sharedSizeBytes;
-      size_t const dynamic_shmem_per_block = funcAttribs.maxDynamicSharedSizeBytes;
+      size_t const static_shmem = sharedSizeBytes;
+      size_t const dynamic_shmem_per_block = maxDynamicSharedSizeBytes;
       size_t const total_shmem = static_shmem + dynamic_shmem;
 
       int const max_blocks_shmem
@@ -394,8 +391,7 @@ namespace zs {
       int const max_threads_per_sm = ctx.maxThreadsPerMultiprocessor;
       // unsure if I need to do that or if this is already accounted for in the functor attributes
       int const min_blocks_per_sm = 1;
-      int const max_threads_per_block
-          = std::min((int)ctx.maxThreadsPerBlock, funcAttribs.maxThreadsPerBlock);
+      int const max_threads_per_block = std::min((int)ctx.maxThreadsPerBlock, maxThreadsPerBlock);
 
       // Recorded maximum
       int opt_block_size = 0;
@@ -437,8 +433,7 @@ namespace zs {
         fmt::format(" cuda kernel [{}] optBlockSize [{}] ",
                     kernelName.empty() ? std::to_string((std::uintptr_t)kernelFunc) : kernelName,
                     optBlockSize),
-        funcAttribs.numRegs, funcAttribs.maxThreadsPerBlock, funcAttribs.sharedSizeBytes,
-        funcAttribs.maxDynamicSharedSizeBytes);
+        numRegs, maxThreadsPerBlock, sharedSizeBytes, maxDynamicSharedSizeBytes);
     ctx.funcLaunchConfigs.emplace(kernelFunc, typename Cuda::CudaContext::Config{optBlockSize});
     return optBlockSize;
   }

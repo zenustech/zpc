@@ -50,10 +50,10 @@ namespace zs {
     static void init_constant_cache(void *ptr, std::size_t size, void *stream);
 
     /// error handling
-    static u32 getLastCudaError();
-    static std::string_view getCudaErrorString(u32 errorCode);
-    static void checkError(u32 errorCode, ProcID did = -1,
-                           const source_location &loc = source_location::current());
+    static u32 get_last_cuda_rt_error();
+    static std::string_view get_cuda_rt_error_string(u32 errorCode);
+    static void check_cuda_rt_error(u32 errorCode, ProcID did = -1,
+                                    const source_location &loc = source_location::current());
     /// kernel launch
     static u32 launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
                             unsigned int bx, unsigned int by, unsigned int bz, void **args,
@@ -71,7 +71,6 @@ namespace zs {
       auto getDevId() const noexcept { return devid; }
       auto getDevice() const noexcept { return dev; }
       auto getContext() const noexcept { return context; }
-      void checkError() const;
       void checkError(u32 errorCode, const source_location &loc = source_location::current()) const;
 
       /// only use after Cuda system initialization
@@ -149,7 +148,6 @@ namespace zs {
           // driver().launch((void *)f, lc.dg, lc.db, kernelArgs, lc.shmem, streamCompute());
           launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs,
                        lc.shmem, streamCompute());
-          checkError();
         }
       }
 
@@ -168,7 +166,6 @@ namespace zs {
           launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs,
                        lc.shmem, streamSpare(sid));
 #endif
-          checkError();
         }
       }
 
@@ -181,7 +178,6 @@ namespace zs {
           void *kernelArgs[] = {(void *)&args...};
           launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y, lc.db.z, kernelArgs,
                        lc.shmem, stream);
-          checkError();
         }
       }
 
@@ -285,7 +281,7 @@ namespace zs {
         ctx.errorStatus = true;
         fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
                    "\nCuda Error on Device {}, Stream {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
-                   ctx.getDevId(), streamInfo, Cuda::getCudaErrorString(error),
+                   ctx.getDevId(), streamInfo, Cuda::get_cuda_rt_error_string(error),
                    " kernel error location ", fileInfo, locInfo, funcInfo, "=");
       }
     }

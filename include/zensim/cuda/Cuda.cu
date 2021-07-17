@@ -351,28 +351,21 @@ namespace zs {
                               std::string_view kernelName) {
     if (auto it = ctx.funcLaunchConfigs.find(kernelFunc); it != ctx.funcLaunchConfigs.end())
       return it->second.optBlockSize;
-
-    int numRegs, sharedSizeBytes, maxDynamicSharedSizeBytes, maxThreadsPerBlock;
-    cudri::getFuncAttrib(&numRegs, (unsigned)CU_FUNC_ATTRIBUTE_NUM_REGS, kernelFunc);
-    cudri::getFuncAttrib(&sharedSizeBytes, (unsigned)CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES,
-                         kernelFunc);
-    cudri::getFuncAttrib(&maxDynamicSharedSizeBytes,
-                         (unsigned)CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES, kernelFunc);
-    cudri::getFuncAttrib(&maxThreadsPerBlock, (unsigned)CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK,
-                         kernelFunc);
+    cudaFuncAttributes funcAttribs;
+    ctx.checkError(cudaFuncGetAttributes(&funcAttribs, kernelFunc));
     int optBlockSize{0};
 
     auto cuda_max_active_blocks_per_sm = [&](int block_size, int dynamic_shmem) {
       // Limits due do registers/SM
       int const regs_per_sm = ctx.regsPerMultiprocessor;
-      int const regs_per_thread = numRegs;
+      int const regs_per_thread = funcAttribs.numRegs;
       int const max_blocks_regs = regs_per_sm / (regs_per_thread * block_size);
 
       // Limits due to shared memory/SM
       size_t const shmem_per_sm = ctx.sharedMemPerMultiprocessor;
       size_t const shmem_per_block = ctx.sharedMemPerBlock;
-      size_t const static_shmem = sharedSizeBytes;
-      size_t const dynamic_shmem_per_block = maxDynamicSharedSizeBytes;
+      size_t const static_shmem = funcAttribs.sharedSizeBytes;
+      size_t const dynamic_shmem_per_block = funcAttribs.maxDynamicSharedSizeBytes;
       size_t const total_shmem = static_shmem + dynamic_shmem;
 
       int const max_blocks_shmem
@@ -391,7 +384,8 @@ namespace zs {
       int const max_threads_per_sm = ctx.maxThreadsPerMultiprocessor;
       // unsure if I need to do that or if this is already accounted for in the functor attributes
       int const min_blocks_per_sm = 1;
-      int const max_threads_per_block = std::min((int)ctx.maxThreadsPerBlock, maxThreadsPerBlock);
+      int const max_threads_per_block
+          = std::min((int)ctx.maxThreadsPerBlock, funcAttribs.maxThreadsPerBlock);
 
       // Recorded maximum
       int opt_block_size = 0;
@@ -433,7 +427,8 @@ namespace zs {
         fmt::format(" cuda kernel [{}] optBlockSize [{}] ",
                     kernelName.empty() ? std::to_string((std::uintptr_t)kernelFunc) : kernelName,
                     optBlockSize),
-        numRegs, maxThreadsPerBlock, sharedSizeBytes, maxDynamicSharedSizeBytes);
+        funcAttribs.numRegs, funcAttribs.maxThreadsPerBlock, funcAttribs.sharedSizeBytes,
+        funcAttribs.maxDynamicSharedSizeBytes);
     ctx.funcLaunchConfigs.emplace(kernelFunc, typename Cuda::CudaContext::Config{optBlockSize});
     return optBlockSize;
   }

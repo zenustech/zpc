@@ -175,6 +175,9 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/math/matrix/MatrixCtor.hpp
     omp/math/matrix/MatrixTransform.hpp
 )
+set(ZENSIM_LIBRARY_CUDA_WRANGLER_FILES
+    cuda/simulation/wrangler/VolumeWrangler.cpp
+)
 
 #set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
 #set(CMAKE_VISIBILITY_INLINES_HIDDEN NO)
@@ -285,7 +288,7 @@ if (ENABLE_PCH)
   target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
-target_link_libraries(zpctool PUBLIC zspartio zpc zpc_cxx_deps)
+target_link_libraries(zpctool PUBLIC zspartio zsloguru zpc zpc_cxx_deps)
 target_compile_options(zpctool
   PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2  /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
@@ -308,8 +311,43 @@ endif(ZS_ENABLE_OPENVDB)
 
 target_link_libraries(zensim INTERFACE zpctool)  # zpctool -> zensim
 
+
+##################
+# zs_cu_wrangler #
+##################
+
+if (ZS_ENABLE_CUDA)
+
+if (ZS_BUILD_SHARED_LIBS)
+  add_library(zs_cu_wrangler SHARED)
+else ()
+  add_library(zs_cu_wrangler STATIC)
+endif ()
+
+target_sources(zs_cu_wrangler
+  PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_FILES}
+)
+target_compile_options(zs_cu_wrangler 
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+)
+set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_FILES} PROPERTIES  LANGUAGE CUDA)
+
+target_link_libraries(zs_cu_wrangler PRIVATE zpc)
+set_target_properties(zs_cu_wrangler
+  PROPERTIES  # LINKER_LANGUAGE CUDA
+              CUDA_EXTENSIONS ON
+              CUDA_SEPARABLE_COMPILATION ON
+              CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
+              CUDA_ARCHITECTURES OFF
+              #CUDA_VISIBILITY_PRESET default
+)
+
+target_link_libraries(zensim INTERFACE zs_cu_wrangler)  # zs_cu_wrangler -> zensim
+
+endif (ZS_ENABLE_CUDA)
+
 # for header installation
-list_transform_prepend(ZECOMP_INTERFACE_FILES include/zensim/)
+# list_transform_prepend(ZECOMP_INTERFACE_FILES include/zensim/)
 # message("${ZECOMP_INTERFACE_FILES}")
 # PUBLIC_HEADER not working as expected.
 # set_target_properties(zensim PROPERTIES PUBLIC_HEADER "${ZECOMP_INTERFACE_FILES}")

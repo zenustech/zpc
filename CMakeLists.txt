@@ -66,14 +66,12 @@ include(CMake/Cache.cmake)
 include(CMake/StaticAnalyzers.cmake)
 include(CMake/Sanitizers.cmake)
 include(CMake/CompilerWarnings.cmake)
-# set_project_warnings(zsproj_deps)
 include(CMake/Doxygen.cmake)
 enable_doxygen()
 
 # ---- dependencies ---- 
 # ======================
-add_library(zsproj_deps INTERFACE)
-add_subdirectory(include/zensim/tpls) # zsproj_deps
+add_subdirectory(include/zensim/tpls) # build zsproj_deps target
 enable_sanitizers(zsproj_deps)
 if (ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which

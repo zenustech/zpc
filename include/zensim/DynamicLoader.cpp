@@ -34,9 +34,9 @@ namespace zs {
 #else
     auto func = dlsym(dll, func_name.data());
     const char *dlsym_error = dlerror();
-    ZS_ERROR_IF(dlsym_error, "Cannot load function: {}", dlsym_error);
+    ZS_ERROR_IF(dlsym_error, fmt::format("Cannot load function: {}", dlsym_error));
 #endif
-    ZS_ERROR_IF(!func, "Function {} not found", func_name);
+    ZS_ERROR_IF(!func, fmt::format("Function {} not found", func_name));
     return func;
   }
 

@@ -1,0 +1,25 @@
+#include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/geometry/Structure.hpp"
+
+#if 0
+__device__ void check_grid_channels(float *v);
+
+namespace zs {
+
+  template <typename GridBlocksT>
+  __global__ void inspect_grid(GridBlocksProxy<execspace_e::cuda, GridBlocksT> gridblocks) {
+    using gridblocks_t = GridBlocksProxy<execspace_e::cuda, GridBlocksT>;
+    using gridblock_t = typename gridblocks_t::block_t;
+    typename gridblock_t::size_type blockid = blockIdx.x;
+    typename gridblock_t::size_type cellid = threadIdx.x;
+
+    auto &block = gridblocks[blockid];
+    using VT = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
+    VT mass = block(0, cellid).asFloat();
+    check_grid_channels(&mass);
+  }
+
+}  // namespace zs
+// GridBlocks<GridBlock<dat32, 3, 2, 2>>
+extern "C" __global__ void inspect_grid();
+#endif

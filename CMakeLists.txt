@@ -103,6 +103,10 @@ target_include_directories(zsproj_deps INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+target_compile_definitions(zsproj_deps INTERFACE 
+  $<BUILD_INTERFACE:ZS_INCLUDE_DIR="${PROJECT_SOURCE_DIR}/include">
+  $<INSTALL_INTERFACE:ZS_INCLUDE_DIR="${CMAKE_INSTALL_INCLUDEDIR}">
+)
 
 add_library(zpc_cxx_deps INTERFACE)
 target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)

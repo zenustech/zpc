@@ -46,13 +46,12 @@ namespace zs::cudri {
     getDeviceAttribute(&major, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, 0);
     getDeviceAttribute(&minor, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, 0);
 
-    auto opt0 = fmt::format("--gpu-architecture=sm_{}{}", major, minor);
-    auto opt1 = std::string("-dc");
-    // const char *opts[] = {opt0.c_str(), opt1.c_str()};
-    std::vector<const char *> opts(2 + additionalOptions.size());
-    opts[0] = opt0.c_str();
-    opts[1] = opt1.c_str();
-    std::size_t loc = 2;
+    std::vector<std::string> fixedOpts{
+        fmt::format("--include-path={}", ZS_INCLUDE_DIR), "--device-as-default-execution-space",
+        fmt::format("--gpu-architecture=sm_{}{}", major, minor), "-dc"};
+    std::vector<const char *> opts(fixedOpts.size() + additionalOptions.size());
+    std::size_t loc = 0;
+    for (auto &&opt : fixedOpts) opts[loc++] = opt.data();
     for (auto &&opt : additionalOptions) opts[loc++] = opt.data();
 
     const char *userScript = code.data();
@@ -67,12 +66,13 @@ namespace zs::cudri {
     str.resize(strSize + 1);
     nvrtcGetProgramLog(prog, str.data());
     str[strSize] = '\0';
-    if (str.size() >= 2) fmt::print("\n compilation log ---\n{}\n end log ---\n", str);
+    if (str.size() >= 3) fmt::print("\n compilation log ---\n{}\n end log ---\n", str);
 
     nvrtcGetPTXSize(prog, &strSize);
     str.resize(strSize + 1);
     nvrtcGetPTX(prog, str.data());
     str[strSize] = '\0';
+    return str;
   }
 
   void precompile_wranglers(std::string_view progname, std::string_view source) {

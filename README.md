@@ -20,39 +20,34 @@ git submodule init
 git submodule update
 ```
 
-If CUDA (>=11) is installed and required, be sure to set *ZS_ENABLE_CUDA=On* first.
+If CUDA (>=11.3) is installed and required, be sure to set *ZS_ENABLE_CUDA=On* first.
 
-Configure the project using the *CMake Tools* extension in *Visual Studio Code* (recommended).
+Configure the project using the *CMake Tools* extension in *Visual Studio Code* (recommended), or follow the build instructions in [git wiki](https://github.com/zensim-dev/zpc/wiki).
 
-## **Code Usage**
+## **Integration**
 
-> Use the codebase in another cmake c++ project.
-
-Directly include the codebase as a submodule. Or install this repo then use *find_package(Zecomp)*.
-If the installed package is no longer needed, build the *uninstall* target just like the *install* target.
-
-> Develop upon the codebase.
-
-Create a sub-folder in *Projects* with a cmake file at its root.
+Directly include the codebase as a submodule. Or install this repo then use *find_package(zensim)*.
+If the installed package is no longer needed, build the *uninstall* target as with the *install* target.
 
 ## **Credits**
-This framework draws inspirations from [Taichi](https://github.com/taichi-dev/taichi), [MGMPM](https://github.com/penn-graphics-research/claymore), kokkos, vsg, raja.
+This framework draws inspirations from [Taichi](https://github.com/taichi-dev/taichi), [kokkos](https://github.com/kokkos/kokkos), [raja](https://github.com/LLNL/RAJA), [MGMPM](https://github.com/penn-graphics-research/claymore), [GPU LBVH](https://github.com/littlemine/BVH-based-Collision-Detection-Scheme).
 
 ### **Dependencies**
 The following libraries are adopted and made fully localized in our project development:
 - [fmt](https://fmt.dev/latest/index.html)
-- spdlog
-- magic_enum
-- gcem
-- catch2
-- rapidjson
-- cxxopts
+- [loguru](https://github.com/emilk/loguru). Choose it because <chrono> is not exposed in its header.
+- [magic_enum](https://github.com/Neargye/magic_enum)
+- [gcem](https://github.com/kthohr/gcem). Choose it because their constexpr implementations can be directly used in cuda device functions and kernels.
+- [catch2](https://github.com/catchorg/Catch2)
 
 For spatial data IO and generation, we use these libraries in addition:
 
 - [partio](http://partio.us/)
 - [openvdb](https://github.com/AcademySoftwareFoundation/openvdb) 
 
-We import these following libraries as well:
+We import these (less-frequently used) libraries as well:
 
 - [function_ref](https://github.com/TartanLlama/function_ref)
+- [rapidjson](https://github.com/Tencent/rapidjson)
+- [cxxopts](https://github.com/jarro2783/cxxopts)
+- [jitify](https://github.com/NVIDIA/jitify)

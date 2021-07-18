@@ -1,7 +1,10 @@
 #include "Wrangler.hpp"
 
+#include <nvrtc.h>
+
 #include <filesystem>
 
+#include "zensim/cuda/Cuda.h"
 #include "zensim/tpls/jitify/jitify2.hpp"
 #include "zensim/types/Tuple.h"
 
@@ -36,6 +39,40 @@ namespace zs::cudri {
       }
     }
     return res;
+  }
+  std::string compile_cuda_source_to_ptx(std::string_view code, std::string_view name,
+                                         std::vector<std::string_view> additionalOptions) {
+    int major, minor;
+    getDeviceAttribute(&major, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, 0);
+    getDeviceAttribute(&minor, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, 0);
+
+    auto opt0 = fmt::format("--gpu-architecture=sm_{}{}", major, minor);
+    auto opt1 = std::string("-dc");
+    // const char *opts[] = {opt0.c_str(), opt1.c_str()};
+    std::vector<const char *> opts(2 + additionalOptions.size());
+    opts[0] = opt0.c_str();
+    opts[1] = opt1.c_str();
+    std::size_t loc = 2;
+    for (auto &&opt : additionalOptions) opts[loc++] = opt.data();
+
+    const char *userScript = code.data();
+
+    nvrtcProgram prog;
+    nvrtcCreateProgram(&prog, userScript, name.data(), 0, NULL, NULL);
+    nvrtcResult res = nvrtcCompileProgram(prog, opts.size(), opts.data());
+
+    size_t strSize{0};
+    std::string str{};
+    nvrtcGetProgramLogSize(prog, &strSize);
+    str.resize(strSize + 1);
+    nvrtcGetProgramLog(prog, str.data());
+    str[strSize] = '\0';
+    if (str.size() >= 2) fmt::print("\n compilation log ---\n{}\n end log ---\n", str);
+
+    nvrtcGetPTXSize(prog, &strSize);
+    str.resize(strSize + 1);
+    nvrtcGetPTX(prog, str.data());
+    str[strSize] = '\0';
   }
 
   void precompile_wranglers(std::string_view progname, std::string_view source) {

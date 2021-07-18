@@ -37,6 +37,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/simulation/particle/Query.cpp
     cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
+    cuda/simulation/wrangler/Wrangler.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp
@@ -168,14 +169,18 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/simulation/particle/Query.hpp
     # physics
     cuda/physics/ConstitutiveModel.hpp
-    #
+    # wrangler
+    cuda/simulation/wrangler/Wrangler.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/execution/ExecutionPolicy.hpp
     omp/math/matrix/MatrixCtor.hpp
     omp/math/matrix/MatrixTransform.hpp
 )
-set(ZENSIM_LIBRARY_CUDA_WRANGLER_FILES
+# wrangler
+set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
+)
+set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
     cuda/simulation/wrangler/VolumeWrangler.cpp
 )
 
@@ -318,29 +323,29 @@ target_link_libraries(zensim INTERFACE zpctool)  # zpctool -> zensim
 
 if (ZS_ENABLE_CUDA)
 
-if (ZS_BUILD_SHARED_LIBS)
-  add_library(zs_cu_wrangler SHARED)
-else ()
-  add_library(zs_cu_wrangler STATIC)
-endif ()
+add_library(zs_cu_wrangler OBJECT)
 
 target_sources(zs_cu_wrangler
-  PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_FILES}
+  PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES}
 )
 target_compile_options(zs_cu_wrangler 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true --ptx>
 )
-set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_FILES} PROPERTIES  LANGUAGE CUDA)
+set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES  LANGUAGE CUDA)
 
-target_link_libraries(zs_cu_wrangler PRIVATE zpc)
+target_link_libraries(zs_cu_wrangler PUBLIC zpc)
+set(ZS_PTX_SOURCE_DIR cuda/simulation/wrangler)
+set(ZS_PTX_INCLUDE_DIR ${CMAKE_BINARY_DIR}/zpc/include/zensim/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})
 set_target_properties(zs_cu_wrangler
   PROPERTIES  # LINKER_LANGUAGE CUDA
               CUDA_EXTENSIONS ON
               CUDA_SEPARABLE_COMPILATION ON
               CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               CUDA_ARCHITECTURES OFF
+              CUDA_PTX_COMPILATION ON # https://stackoverflow.com/questions/55993745/how-should-i-get-cmake-to-also-create-ptx-files-for-my-kernels
               #CUDA_VISIBILITY_PRESET default
 )
+target_compile_definitions(zpc PUBLIC ZS_PTX_INCLUDE_DIR="${ZS_PTX_INCLUDE_DIR}")
 
 target_link_libraries(zensim INTERFACE zs_cu_wrangler)  # zs_cu_wrangler -> zensim
 

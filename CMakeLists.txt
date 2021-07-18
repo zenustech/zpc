@@ -169,6 +169,9 @@ install(TARGETS ${INSTALL_TARGETS}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
           COMPONENT ${project_name}_Runtime
           NAMELINK_COMPONENT ${project_name}_Development
+  #OBJECTS DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
+  #        COMPONENT ${project_name}_Runtime
+  #        NAMELINK_COMPONENT ${project_name}_Development
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/${project_name}
           COMPONENT ${project_name}_Development
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}

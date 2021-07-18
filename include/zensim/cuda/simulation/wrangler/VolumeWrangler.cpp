@@ -1,5 +1,14 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Structure.hpp"
+#include "zensim/types/Tuple.h"
+
+__device__ int sqr(int n) { return n * n; }
+
+extern "C" __global__ void zpc_prebuilt_kernel() {
+  auto id = zs::make_tuple(blockIdx.x, threadIdx.x);
+  printf("what the heck, indeed called successfully at (%d, %d), result: %d!\n",
+         (int)id.template get<0>(), (int)id.template get<1>(), sqr(threadIdx.x));
+}
 
 #if 0
 __device__ void check_grid_channels(float *v);

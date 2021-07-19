@@ -35,9 +35,9 @@ This framework draws inspirations from [Taichi](https://github.com/taichi-dev/ta
 ### **Dependencies**
 The following libraries are adopted and made fully localized in our project development:
 - [fmt](https://fmt.dev/latest/index.html)
-- [loguru](https://github.com/emilk/loguru). Choose it because <chrono> is not exposed in its header.
+- [loguru](https://github.com/emilk/loguru). (pro: "chrono" is not exposed in its header)
 - [magic_enum](https://github.com/Neargye/magic_enum)
-- [gcem](https://github.com/kthohr/gcem). Choose it because their constexpr implementations can be directly used in cuda device functions and kernels.
+- [gcem](https://github.com/kthohr/gcem). (pro: their constexpr implementations can be directly used in cuda device functions and kernels)
 - [catch2](https://github.com/catchorg/Catch2)
 
 For spatial data IO and generation, we use these libraries in addition:

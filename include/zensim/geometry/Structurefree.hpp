@@ -39,6 +39,23 @@ namespace zs {
       memcpy(ret.data(), Xtmp.data(), sizeof(TV) * X.size());
       return ret;
     }
+    std::vector<T> retrieveStressMagnitude() const {
+      std::vector<T> ret(X.size());
+      if (F.size()) {
+        Vector<TM> Ftmp{X.size()};
+        copy({MemoryHandle{memsrc_e::host, -1}, (void *)Ftmp.data()}, {F.base(), (void *)F.data()},
+             F.size() * sizeof(TM));
+        for (size_type i = 0; i < Ftmp.size(); ++i) {
+          const auto &v = Ftmp[i];
+          ret[i] = v(0) * (v(4) * v(8) - v(5) * v(7)) - v(1) * (v(3) * v(8) - v(5) * v(6))
+                   + v(2) * (v(3) * v(7) - v(4) * v(6));
+        }
+      } else if (J.size()) {
+        copy({MemoryHandle{memsrc_e::host, -1}, (void *)ret.data()}, {J.base(), (void *)J.data()},
+             J.size() * sizeof(T));
+      }
+      return ret;
+    }
 #define CHECK_ATTRIBUTE(ATTRIB) \
   constexpr bool has##ATTRIB() const noexcept { return ATTRIB.size() > 0; }
 

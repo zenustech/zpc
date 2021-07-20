@@ -38,7 +38,7 @@ namespace zs {
 
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment) {
     void *ret{nullptr};
-    cudri::vmalloc(&ret, size, 0x1);  //(unsigned int)CU_MEM_ATTACH_GLOBAL);
+    cudri::umalloc(&ret, size, 0x1);  //(unsigned int)CU_MEM_ATTACH_GLOBAL);
     return ret;
   }
   void deallocate(um_mem_tag, void *ptr, std::size_t size, std::size_t alignment) {

@@ -53,11 +53,7 @@ PER_CUDA_FUNCTION(recordEvent, cuEventRecord, void *, void *)
 PER_CUDA_FUNCTION(eventElapsedTime, cuEventElapsedTime, float *, void *, void *)
 PER_CUDA_FUNCTION(syncEvent, cuEventSynchronize, void *)
 
-// Unified Addressing
-
-// Virtual Memory Management
-
-// Memory Management
+// memory operation
 PER_CUDA_FUNCTION(memcpyHtoD, cuMemcpyHtoD, void *, void *, size_t)
 PER_CUDA_FUNCTION(memcpyDtoH, cuMemcpyDtoH, void *, void *, size_t)
 PER_CUDA_FUNCTION(memcpyDtoD, cuMemcpyDtoD, void *, void *, size_t)
@@ -66,14 +62,35 @@ PER_CUDA_FUNCTION(memcpyHtoDAsync, cuMemcpyHtoDAsync, void *, void *, size_t, vo
 PER_CUDA_FUNCTION(memcpyDtoHAsync, cuMemcpyDtoHAsync, void *, void *, size_t, void *)
 PER_CUDA_FUNCTION(memcpyDtoDAsync, cuMemcpyDtoDAsync, void *, void *, size_t, void *)
 
-PER_CUDA_FUNCTION(vmalloc, cuMemAllocManaged, void **, size_t, unsigned int)
-PER_CUDA_FUNCTION(malloc, cuMemAlloc, void **, size_t)
-PER_CUDA_FUNCTION(mallocAsync, cuMemAllocAsync, void **, size_t, void*)
+PER_CUDA_FUNCTION(mallocAsync, cuMemAllocAsync, void **, size_t, void *)
 PER_CUDA_FUNCTION(memAdvise, cuMemAdvise, void *, size_t, unsigned int, int)
 PER_CUDA_FUNCTION(memcpy, cuMemcpy, void *, void *, size_t)
 PER_CUDA_FUNCTION(memset, cuMemsetD8, void *, uint8_t, size_t)
+
+// Virtual Memory
+// physical memory handle
+PER_CUDA_FUNCTION(vcreate, cuMemCreate, void *, size_t, const void *, unsigned long long)
+// reserve a virtual address range
+PER_CUDA_FUNCTION(vmalloc, cuMemAddressReserve, void **, size_t, size_t, void *, unsigned long long)
+PER_CUDA_FUNCTION(vfree, cuMemAddressFree, void *, size_t)
+PER_CUDA_FUNCTION(vrelease, cuMemRelease, unsigned long long)
+PER_CUDA_FUNCTION(retainMemAllocHandle, cuMemRetainAllocationHandle, unsigned long long *, void *)
+PER_CUDA_FUNCTION(getAllocationProperties, cuMemGetAllocationPropertiesFromHandle, void *,
+                  unsigned long long)
+PER_CUDA_FUNCTION(getAllocationGranularity, cuMemGetAllocationGranularity, size_t *, const void *,
+                  unsigned int)
+PER_CUDA_FUNCTION(getMemAccess, cuMemGetAccess, unsigned long long *, const void *, void *)
+// set memory access rights for each device to the allocation
+PER_CUDA_FUNCTION(setMemAccess, cuMemSetAccess, void *, size_t, const void *, size_t)
+// maps physical memory handle to a virtual address range
+PER_CUDA_FUNCTION(mmap, cuMemMap, void *, size_t, size_t, unsigned long long, unsigned long long)
+PER_CUDA_FUNCTION(munmap, cuMemUnmap, void *, size_t)
+PER_CUDA_FUNCTION(mmapAsync, cuMemMapArrayAsync, void *, unsigned int, void *)
+// Conventional Memory
+PER_CUDA_FUNCTION(umalloc, cuMemAllocManaged, void **, size_t, unsigned int)
+PER_CUDA_FUNCTION(malloc, cuMemAlloc, void **, size_t)
 PER_CUDA_FUNCTION(free, cuMemFree, void *)
-PER_CUDA_FUNCTION(freeAsync, cuMemFreeAsync, void *, void*)
+PER_CUDA_FUNCTION(freeAsync, cuMemFreeAsync, void *, void *)
 PER_CUDA_FUNCTION(getMemInfo, cuMemGetInfo, size_t *, size_t *)
 
 // Module and kernels
@@ -92,4 +109,4 @@ PER_CUDA_FUNCTION(launchCuKernel, cuLaunchKernel, void *, unsigned int, unsigned
 PER_CUDA_FUNCTION(launchCuCooperativeKernel, cuLaunchCooperativeKernel, void *, unsigned int,
                   unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
                   unsigned int, void *, void **)
-PER_CUDA_FUNCTION(launchHostFunc, cuLaunchHostFunc, void*, void*, void*)
+PER_CUDA_FUNCTION(launchHostFunc, cuLaunchHostFunc, void *, void *, void *)

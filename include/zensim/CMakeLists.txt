@@ -188,11 +188,10 @@ set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
 #set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
 #set(CMAKE_VISIBILITY_INLINES_HIDDEN NO)
 #include(GenerateExportHeader)
-#generate_export_header(zensim EXPORT_FILE_NAME ZecompExport.h)
+#generate_export_header(zensim EXPORT_FILE_NAME ZensimExport.hpp)
 #message("building shared?(${BUILD_SHARED_LIBS}) library")
 
 add_library(zensim INTERFACE)
-set(ZECOMP_INTERFACE_FILES)
 
 #######
 # zpc #
@@ -232,7 +231,6 @@ set_target_properties(zpc
               POSITION_INDEPENDENT_CODE ON
               # CXX_VISIBILITY_PRESET default
 )
-set(ZECOMP_INTERFACE_FILES ${ZECOMP_INTERFACE_FILES} ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
 # set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_CORE_INCLUDE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}")
 
 # related to cuda
@@ -265,7 +263,6 @@ set_target_properties(zpc
               CUDA_ARCHITECTURES OFF
               #CUDA_VISIBILITY_PRESET default
 )
-set(ZECOMP_INTERFACE_FILES ${ZECOMP_INTERFACE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 # set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}")
 target_compile_definitions(zpc
   INTERFACE     CMAKE_GENERATOR_PLATFORM=x64
@@ -301,7 +298,6 @@ target_compile_options(zpctool
 set_target_properties(zpctool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON
 )
-set(ZECOMP_INTERFACE_FILES ${ZECOMP_INTERFACE_FILES} ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 # set_property(TARGET zpctool APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}")
 
 if (ZS_ENABLE_OPENVDB)
@@ -353,7 +349,7 @@ target_link_libraries(zensim INTERFACE zs_cu_wrangler)  # zs_cu_wrangler -> zens
 endif (ZS_ENABLE_CUDA)
 
 # for header installation
-# list_transform_prepend(ZECOMP_INTERFACE_FILES include/zensim/)
-# message("${ZECOMP_INTERFACE_FILES}")
+# list_transform_prepend(ZENSIM_INTERFACE_FILES include/zensim/)
+# message("${ZENSIM_INTERFACE_FILES}")
 # PUBLIC_HEADER not working as expected.
-# set_target_properties(zensim PROPERTIES PUBLIC_HEADER "${ZECOMP_INTERFACE_FILES}")
+# set_target_properties(zensim PROPERTIES PUBLIC_HEADER "${ZENSIM_INTERFACE_FILES}")

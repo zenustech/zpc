@@ -7,13 +7,13 @@
 
 namespace zs {
 
-#if 0
   enum layout_e : int { aos = 0, soa, aosoa };
   static constexpr auto aos_v = wrapv<layout_e::aos>{};
   static constexpr auto soa_v = wrapv<layout_e::soa>{};
   static constexpr auto aosoa_v = wrapv<layout_e::aosoa>{};
 
   struct AccessorAoSoA {
+    AccessorAoSoA() = default;
     /// aos
     constexpr AccessorAoSoA(wrapv<layout_e::aos>, void* ptr, unsigned short bytes,
                             unsigned short chnCnt) noexcept
@@ -44,13 +44,13 @@ namespace zs {
           unitBytes{bytes} {}
 
     /// access
-    constexpr std::intptr_t operator(unsigned short chnNo, std::size_t i) const {
+    constexpr std::intptr_t operator()(unsigned short chnNo, std::size_t i) const {
       return (std::intptr_t)(
           (char*)base
           + ((i / tileStride) * tileStride * chnCnt + chnNo * tileStride + i % tileStride)
                 * unitBytes);
     }
-    constexpr std::intptr_t operator(std::size_t i) const {
+    constexpr std::intptr_t operator()(std::size_t i) const {
       return (std::intptr_t)(
           (char*)base + ((i / tileStride) * tileStride * chnCnt + i % tileStride) * unitBytes);
     }
@@ -59,7 +59,6 @@ namespace zs {
     std::size_t tileStride;
     unsigned short chnCnt, unitBytes;
   };
-#endif
 
 }  // namespace zs
 

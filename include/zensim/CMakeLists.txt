@@ -183,6 +183,7 @@ set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
 )
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
     cuda/simulation/wrangler/VolumeWrangler.cpp
+    cuda/simulation/wrangler/ParticleWrangler.cpp
 )
 
 #set(CMAKE_CXX_VISIBILITY_PRESET     hidden)
@@ -332,7 +333,7 @@ set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENS
 
 target_link_libraries(zs_cu_wrangler PUBLIC zpc)
 set(ZS_PTX_SOURCE_DIR cuda/simulation/wrangler)
-set(ZS_PTX_INCLUDE_DIR ${CMAKE_BINARY_DIR}/zpc/include/zensim/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})
+set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})
 set_target_properties(zs_cu_wrangler
   PROPERTIES  # LINKER_LANGUAGE CUDA
               CUDA_EXTENSIONS ON

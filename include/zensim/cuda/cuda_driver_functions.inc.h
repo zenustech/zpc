@@ -97,7 +97,9 @@ PER_CUDA_FUNCTION(getMemInfo, cuMemGetInfo, size_t *, size_t *)
 PER_CUDA_FUNCTION(getFuncAttrib, cuFuncGetAttribute, int *, unsigned int, void *)
 PER_CUDA_FUNCTION(getModuleFunc, cuModuleGetFunction, void **, void *, const char *)
 PER_CUDA_FUNCTION(loadModuleData, cuModuleLoadData, void **, const void *)
+PER_CUDA_FUNCTION(unloadModuleData, cuModuleUnload, void *)
 PER_CUDA_FUNCTION(linkCreate, cuLinkCreate, unsigned int, unsigned int *, void **, void **)
+PER_CUDA_FUNCTION(linkDestroy, cuLinkDestroy, void *)
 PER_CUDA_FUNCTION(linkAddData, cuLinkAddData, void *, unsigned int, void *, size_t, const char *,
                   unsigned int, unsigned int *, void **)
 // state, void**cubinOut, size_t* sizeOut

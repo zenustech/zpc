@@ -90,7 +90,7 @@ namespace zs {
     /// aosoa
     // S: length of a tile
     // stride: sizeof(T) * S * numChannels. the total bytes of a tile
-    return *(base + (i / S) * stride + ch * sizeof(T) * S + (i % S));
+    return *(base + (i / S) * stride + ch * S + (i % S));
   }
   template <typename Dst = T> constexpr Dst get(int ch, size_t i) const {
     switch (layout) {
@@ -102,7 +102,7 @@ namespace zs {
     /// aosoa
     // S: length of a tile
     // stride: sizeof(T) * S * numChannels. the total bytes of a tile
-    return *(base + (i / S) * stride + ch * sizeof(T) * S + (i % S));
+    return *(base + (i / S) * stride + ch * S + (i % S));
   }
 
   T *base;

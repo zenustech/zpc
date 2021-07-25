@@ -291,7 +291,4 @@ namespace zs {
     return HashTableProxy<ExecSpace, HashTable<Tn, dim, Index>>{table};
   }
 
-  template <typename ExecPol, typename Tn, int dim, typename Index>
-  void refit(ExecPol &&pol, HashTable<Tn, dim, Index> &table);
-
 }  // namespace zs

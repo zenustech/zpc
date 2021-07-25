@@ -15,11 +15,13 @@ namespace zs {
     using integer_type = remove_cvref_t<decltype(std::declval<value_type>().asSignedInteger())>;
     // must be signed integer, since we are using -1 as sentinel value
     using index_type = conditional_t<is_double, i64, i32>;
+    using Box = AABBBox<dim, float_type>;
     using TV = vec<float_type, dim>;
     using IV = vec<integer_type, dim>;
     using vector_t = Vector<value_type>;
+    using indices_t = Vector<index_type>;
+    using bvs_t = Vector<Box>;
     using tilevector_t = TileVector<value_type, lane_width>;
-    using Box = AABBBox<dim, float_type>;
 
     LBvh() = default;
 
@@ -29,14 +31,50 @@ namespace zs {
     Box wholeBox{TV::uniform(std::numeric_limits<float>().max()),
                  TV::uniform(std::numeric_limits<float>().min())};
 
-    Vector<Box> sortedBvs;  // bounding volumes
+    bvs_t sortedBvs;  // bounding volumes
     // escape index for internal nodes, primitive index for leaf nodes
-    Vector<index_type> auxIndices;
-    Vector<index_type> levels;   // count from bottom up (0-based) in left branch
-    Vector<index_type> parents;  // parent
+    indices_t auxIndices;
+    indices_t levels;   // count from bottom up (0-based) in left branch
+    indices_t parents;  // parent
 
-    Vector<index_type> leafIndices;  // leaf indices within optimized lbvh
+    indices_t leafIndices;  // leaf indices within optimized lbvh
   };
+
+  template <execspace_e, typename LBvhT, typename = void> struct LBvhProxy;
+
+  /// proxy to work within each backends
+  template <execspace_e space, typename LBvhT> struct LBvhProxy<space, const LBvhT> {
+    static constexpr int dim = LBvhT::dim;
+    static constexpr auto exectag = wrapv<space>{};
+    using Tn = typename LBvhT::float_type;
+    using index_t = typename LBvhT::integer_type;
+    using bv_t = typename LBvhT::Box;
+    using bvs_t = typename LBvhT::bvs_t;
+    using indices_t = typename LBvhT::indices_t;
+
+    constexpr LBvhProxy() = default;
+    ~LBvhProxy() = default;
+
+    explicit constexpr LBvhProxy(const LBvhT &lbvh)
+        : _sortedBvs{proxy<space>(lbvh.sortedBvs)},
+          _auxIndices{proxy<space>(lbvh.auxIndices)},
+          _levels{proxy<space>(lbvh.levels)},
+          _parents{proxy<space>(lbvh.parents)},
+          _leafIndices{proxy<space>(lbvh.leafIndices)},
+          _numNodes{static_cast<index_t>(lbvh.numNodes())} {}
+
+    constexpr auto numNodes() const noexcept { return _numNodes; }
+    constexpr auto numLeaves() const noexcept { return (numNodes() + 1) / 2; }
+
+    VectorProxy<space, const bvs_t> _sortedBvs;
+    VectorProxy<space, const indices_t> _auxIndices, _levels, _parents, _leafIndices;
+    index_t _numNodes;
+  };
+
+  template <execspace_e space, int dim, int lane_width, bool is_double>
+  constexpr decltype(auto) proxy(const LBvh<dim, lane_width, is_double> &lbvh) {
+    return LBvhProxy<space, const LBvh<dim, lane_width, is_double>>{lbvh};
+  }
 
   /// build bvh
   template <execspace_e space, int lane_width, int dim, typename T>

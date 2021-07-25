@@ -1,15 +1,20 @@
 #pragma once
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/types/SourceLocation.hpp"
 #if ZS_ENABLE_CUDA
 #  include "zensim/cuda/memory/MemOps.hpp"
 #endif
 
 namespace zs {
 
-  void *allocate(host_mem_tag, std::size_t size, std::size_t alignment);
-  void deallocate(host_mem_tag, void *ptr, std::size_t size, std::size_t alignment);
-  void memset(host_mem_tag, void *addr, int chval, std::size_t size);
-  void copy(host_mem_tag, void *dst, void *src, std::size_t size);
+  void *allocate(host_mem_tag, std::size_t size, std::size_t alignment,
+                 const source_location &loc = source_location::current());
+  void deallocate(host_mem_tag, void *ptr, std::size_t size, std::size_t alignment,
+                  const source_location &loc = source_location::current());
+  void memset(host_mem_tag, void *addr, int chval, std::size_t size,
+              const source_location &loc = source_location::current());
+  void copy(host_mem_tag, void *dst, void *src, std::size_t size,
+            const source_location &loc = source_location::current());
 
 #if 0
   /// dispatch mem op calls

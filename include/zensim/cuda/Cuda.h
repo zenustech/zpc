@@ -251,7 +251,7 @@ namespace zs {
         (void)Cuda::instance();                                                           \
       error = func(args...);                                                              \
       if (error != 0) {                                                                   \
-        const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());             \
+        const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());         \
         const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());    \
         const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());         \
         fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold, \
@@ -274,7 +274,7 @@ namespace zs {
     void checkKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,
                                 std::string_view streamInfo, const source_location &loc) noexcept {
       if (error != 0) {
-        const auto fileInfo = fmt::format("# File: \"{}\"", loc.file_name());
+        const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
         const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
         const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
         if (ctx.errorStatus) return;  // there already exists a preceding cuda error

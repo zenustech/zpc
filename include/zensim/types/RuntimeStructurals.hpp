@@ -692,11 +692,11 @@ namespace zs {
         }
         return alignment;
       }
-      constexpr void alloc(GeneralAllocator &allocator) {
+      constexpr void alloc(ZSPmrAllocator<> &allocator) {
         auto nodesizes = snode_sizes();
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes))), ...);
       }
-      constexpr void alloc(GeneralAllocator &&allocator) {
+      constexpr void alloc(ZSPmrAllocator<> &&allocator) {
         auto nodesizes = snode_sizes();
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes))), ...);
       }

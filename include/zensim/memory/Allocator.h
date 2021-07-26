@@ -14,6 +14,13 @@ namespace zs {
   extern void record_allocation(mem_tags, void *, std::string_view, std::size_t, std::size_t);
   extern void erase_allocation(void *);
   template <typename MemTag> struct raw_allocator : mr_t, Singleton<raw_allocator<MemTag>> {
+    using value_type = std::byte;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       if (bytes) {
         auto ret = zs::allocate(MemTag{}, bytes, alignment);

@@ -164,28 +164,28 @@ namespace zs {
         std::vector<T> defaultMass(positions.size(), match([](auto &config) {
                                      return config.rho * config.volume;
                                    })(config));
-        memcpy(tmp.M.head(), defaultMass.data(), sizeof(T) * positions.size());
+        memcpy(tmp.M.data(), defaultMass.data(), sizeof(T) * positions.size());
 
-        memcpy(tmp.X.head(), positions.data(), sizeof(TV) * positions.size());
+        memcpy(tmp.X.data(), positions.data(), sizeof(TV) * positions.size());
 
         std::vector<std::array<T, 3>> defaultVel(positions.size(), {0, 0, 0});
-        memcpy(tmp.V.head(), defaultVel.data(), sizeof(TV) * positions.size());
+        memcpy(tmp.V.data(), defaultVel.data(), sizeof(TV) * positions.size());
 
         if (hasF) {
           std::vector<std::array<T, 3 * 3>> defaultF(positions.size(), {1, 0, 0, 0, 1, 0, 0, 0, 1});
-          memcpy(tmp.F.head(), defaultF.data(), sizeof(TM) * positions.size());
+          memcpy(tmp.F.data(), defaultF.data(), sizeof(TM) * positions.size());
         } else {
           std::vector<T> defaultJ(positions.size(), 1.f);
-          memcpy(tmp.J.head(), defaultJ.data(), sizeof(T) * positions.size());
+          memcpy(tmp.J.data(), defaultJ.data(), sizeof(T) * positions.size());
         }
         std::vector<std::array<T, 3 * 3>> defaultC(positions.size(), {0, 0, 0, 0, 0, 0, 0, 0, 0});
-        memcpy(tmp.C.head(), defaultC.data(), sizeof(TM) * positions.size());
+        memcpy(tmp.C.data(), defaultC.data(), sizeof(TM) * positions.size());
         if (hasPlasticity) {
           std::vector<T> defaultLogJp0(
               positions.size(),
               match([](auto &config) -> decltype(config.logJp0) { return config.logJp0; },
                     [](...) { return 0.f; })(config));
-          memcpy(tmp.logJp0.head(), defaultLogJp0.data(), sizeof(T) * positions.size());
+          memcpy(tmp.logJp0.data(), defaultLogJp0.data(), sizeof(T) * positions.size());
         }
       }
       // constitutive model

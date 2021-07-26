@@ -21,9 +21,9 @@ namespace zs {
       copy(mem_device, dst.ptr, src.ptr, size);
   }
 
-  GeneralAllocator get_memory_source(memsrc_e mre, ProcID devid, std::string_view advice) {
+  ZSPmrAllocator<> get_memory_source(memsrc_e mre, ProcID devid, std::string_view advice) {
     const mem_tags tag = to_memory_source_tag(mre);
-    GeneralAllocator ret{};
+    ZSPmrAllocator<> ret{};
     if (advice.empty()) {
       if (mre == memsrc_e::um) {
         if (devid < -1)

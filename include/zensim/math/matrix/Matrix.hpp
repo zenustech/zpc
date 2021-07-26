@@ -82,9 +82,9 @@ namespace zs {
                                index_type nrows = 1, index_type ncols = 1,
                                std::size_t alignment = alignof(std::max_align_t))
         : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order},
-          offsets{mre, pid, alignment},
-          indices{mre, pid, alignment},
-          vals{mre, pid, alignment} {}
+          offsets{mre, pid},
+          indices{mre, pid},
+          vals{mre, pid} {}
 
     constexpr auto nnz() const noexcept { return vals.size(); }
     constexpr value_type do_coeff(index_type r, index_type c) const {

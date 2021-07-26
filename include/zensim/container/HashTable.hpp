@@ -46,8 +46,8 @@ namespace zs {
         : base_t{buildInstance(mre, devid, 0)},
           MemoryHandle{mre, devid},
           _tableSize{0},
-          _cnt{mre, devid, alignment},
-          _activeKeys{mre, devid, alignment},
+          _cnt{mre, devid},
+          _activeKeys{mre, devid},
           _align{alignment} {}
 
     constexpr std::size_t evaluateTableSize(std::size_t entryCnt) const {
@@ -58,8 +58,8 @@ namespace zs {
         : base_t{buildInstance(mre, devid, evaluateTableSize(tableSize))},
           MemoryHandle{mre, devid},
           _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
-          _cnt{1, mre, devid, alignment},
-          _activeKeys{evaluateTableSize(tableSize), mre, devid, alignment},
+          _cnt{1, mre, devid},
+          _activeKeys{evaluateTableSize(tableSize), mre, devid},
           _align{alignment} {}
     ~HashTable() {
       if (self().address() && self().node().extent() > 0) self().dealloc();

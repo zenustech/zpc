@@ -22,11 +22,13 @@ namespace zs {
     using propagate_on_container_swap = std::true_type;
 
     ZSPmrAllocator() = default;
-    ZSPmrAllocator(mr_t *mr) : res{mr} {}
+    ZSPmrAllocator(mr_t *mr) : res{mr} { /*res.reset(mr);*/
+    }
     ZSPmrAllocator(const SharedHolder<mr_t> &mr) noexcept : res{mr} {}
 
     friend void swap(ZSPmrAllocator &a, ZSPmrAllocator &b) { std::swap(a.res, b.res); }
 
+    constexpr mr_t *resource() noexcept { return res.get(); }
     [[nodiscard]] void *allocate(std::size_t bytes,
                                  std::size_t alignment = alignof(std::max_align_t)) {
       return res->allocate(bytes, alignment);
@@ -38,22 +40,29 @@ namespace zs {
     bool is_equal(const ZSPmrAllocator &other) const noexcept {
       return res.get() == other.res.get();
     }
+
+    /// ctor helper funcs
+    template <template <typename Tag> class AllocatorT, typename... Args, std::size_t... Is>
+    void construct(mem_tags tag, std::tuple<Args &&...> args, index_seq<Is...>) {
+      match([&](auto t) {
+        res = std::make_shared<AllocatorT<decltype(t)>>(std::get<Is>(args)...);
+      })(tag);
+    }
     template <template <typename Tag> class AllocatorT, typename MemTag, typename... Args>
-    void construct(MemTag, Args &&...args) {
-      res = std::make_unique<AllocatorT<MemTag>>(FWD(args)...);
+    void construct(MemTag tag, Args &&...args) {
+      if constexpr (is_same_v<MemTag, mem_tags>)
+        construct<AllocatorT>(tag, std::forward_as_tuple(FWD(args)...),
+                              std::index_sequence_for<Args...>{});
+      else
+        res = std::make_shared<AllocatorT<MemTag>>(FWD(args)...);
     }
     // specifically for cuda uvm advise
     template <template <typename Tag> class AllocatorT>
     void construct(mem_tags tag, std::string_view advice, ProcID did) {
       match([this, advice, did](auto &tag) {
-        res = std::make_unique<AllocatorT<RM_CVREF_T(tag)>>(advice, did);
+        res = std::make_shared<AllocatorT<RM_CVREF_T(tag)>>(advice, did);
       })(tag);
     }
-#if 0
-    void construct(mr_t *m) { res.reset(m); }  // not safe
-    void construct(Holder<mr_t> &&m) { res = std::move(m); }
-    template <typename T> void construct(const Holder<mr_t> &m) { res = std::make_unique<T>(*m); }
-#endif
 
     SharedHolder<mr_t> res{};
   };

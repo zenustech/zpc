@@ -47,7 +47,6 @@ namespace zs {
                                              std::alignment_of_v<value_type>)},
           _size{count},
           _capacity{count} {}
-#if 0
     /// allocator-aware
     Vector(mr_t *mr, size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : MemoryHandle{mre, devid},
@@ -64,7 +63,7 @@ namespace zs {
                                              std::alignment_of_v<value_type>)},
           _size{count},
           _capacity{count} {}
-    Vector(allocator_type &allocator, size_type count, memsrc_e mre = memsrc_e::host,
+    Vector(const allocator_type &allocator, size_type count, memsrc_e mre = memsrc_e::host,
            ProcID devid = -1)
         : MemoryHandle{mre, devid},
           _allocator{allocator},
@@ -72,7 +71,6 @@ namespace zs {
                                              std::alignment_of_v<value_type>)},
           _size{count},
           _capacity{count} {}
-#endif
 
     ~Vector() {
       if (_base && _capacity > 0)
@@ -223,7 +221,7 @@ namespace zs {
         if (newSize > oldCapacity) {
           /// virtual memory way
           /// conventional way
-          Vector tmp{/*_allocator, */ geometric_size_growth(newSize), memspace(), devid()};
+          Vector tmp{_allocator, geometric_size_growth(newSize), memspace(), devid()};
           if (size()) copy({base(), (void *)tmp.data()}, {base(), (void *)data()}, usedBytes());
           tmp._size = newSize;
           swap(tmp);

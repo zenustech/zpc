@@ -15,7 +15,7 @@ namespace zs {
   template <execspace_e space, transfer_scheme_e scheme, typename Model, typename ParticlesT,
             typename TableT, typename GridBlocksT>
   P2GTransfer(wrapv<space>, wrapv<scheme>, float, Model, ParticlesT, TableT, GridBlocksT)
-      -> P2GTransfer<scheme, Model, ParticlesProxy<space, ParticlesT>,
-                     HashTableProxy<space, TableT>, GridBlocksProxy<space, GridBlocksT>>;
+      -> P2GTransfer<scheme, Model, ParticlesView<space, ParticlesT>,
+                     HashTableView<space, TableT>, GridBlocksView<space, GridBlocksT>>;
 
 }  // namespace zs

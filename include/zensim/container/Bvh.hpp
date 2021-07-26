@@ -40,10 +40,10 @@ namespace zs {
     indices_t leafIndices;  // leaf indices within optimized lbvh
   };
 
-  template <execspace_e, typename LBvhT, typename = void> struct LBvhProxy;
+  template <execspace_e, typename LBvhT, typename = void> struct LBvhView;
 
   /// proxy to work within each backends
-  template <execspace_e space, typename LBvhT> struct LBvhProxy<space, const LBvhT> {
+  template <execspace_e space, typename LBvhT> struct LBvhView<space, const LBvhT> {
     static constexpr int dim = LBvhT::dim;
     static constexpr auto exectag = wrapv<space>{};
     using Tn = typename LBvhT::float_type;
@@ -52,10 +52,10 @@ namespace zs {
     using bvs_t = typename LBvhT::bvs_t;
     using indices_t = typename LBvhT::indices_t;
 
-    constexpr LBvhProxy() = default;
-    ~LBvhProxy() = default;
+    constexpr LBvhView() = default;
+    ~LBvhView() = default;
 
-    explicit constexpr LBvhProxy(const LBvhT &lbvh)
+    explicit constexpr LBvhView(const LBvhT &lbvh)
         : _sortedBvs{proxy<space>(lbvh.sortedBvs)},
           _auxIndices{proxy<space>(lbvh.auxIndices)},
           _levels{proxy<space>(lbvh.levels)},
@@ -66,14 +66,14 @@ namespace zs {
     constexpr auto numNodes() const noexcept { return _numNodes; }
     constexpr auto numLeaves() const noexcept { return (numNodes() + 1) / 2; }
 
-    VectorProxy<space, const bvs_t> _sortedBvs;
-    VectorProxy<space, const indices_t> _auxIndices, _levels, _parents, _leafIndices;
+    VectorView<space, const bvs_t> _sortedBvs;
+    VectorView<space, const indices_t> _auxIndices, _levels, _parents, _leafIndices;
     index_t _numNodes;
   };
 
   template <execspace_e space, int dim, int lane_width, bool is_double>
   constexpr decltype(auto) proxy(const LBvh<dim, lane_width, is_double> &lbvh) {
-    return LBvhProxy<space, const LBvh<dim, lane_width, is_double>>{lbvh};
+    return LBvhView<space, const LBvh<dim, lane_width, is_double>>{lbvh};
   }
 
   /// build bvh

@@ -272,13 +272,13 @@ namespace zs {
     size_type _size{0}, _capacity{0};
   };
 
-  template <execspace_e, typename VectorT, typename = void> struct VectorProxy {
+  template <execspace_e, typename VectorT, typename = void> struct VectorView {
     using vector_t = typename VectorT::pointer;
     using size_type = typename VectorT::size_type;
 
-    constexpr VectorProxy() = default;
-    ~VectorProxy() = default;
-    explicit constexpr VectorProxy(VectorT &vector)
+    constexpr VectorView() = default;
+    ~VectorView() = default;
+    explicit constexpr VectorView(VectorT &vector)
         : _vector{vector.data()}, _vectorSize{vector.size()} {}
 
     constexpr decltype(auto) operator[](size_type i) { return _vector[i]; }
@@ -290,13 +290,13 @@ namespace zs {
     size_type _vectorSize;
   };
 
-  template <execspace_e Space, typename VectorT> struct VectorProxy<Space, const VectorT> {
+  template <execspace_e Space, typename VectorT> struct VectorView<Space, const VectorT> {
     using vector_t = typename VectorT::const_pointer;
     using size_type = typename VectorT::size_type;
 
-    constexpr VectorProxy() = default;
-    ~VectorProxy() = default;
-    explicit constexpr VectorProxy(const VectorT &vector)
+    constexpr VectorView() = default;
+    ~VectorView() = default;
+    explicit constexpr VectorView(const VectorT &vector)
         : _vector{vector.data()}, _vectorSize{vector.size()} {}
 
     constexpr decltype(auto) operator[](size_type i) { return _vector[i]; }
@@ -310,11 +310,11 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, typename Index>
   constexpr decltype(auto) proxy(Vector<T, Index> &vec) {  // currently ignore constness
-    return VectorProxy<ExecSpace, Vector<T, Index>>{vec};
+    return VectorView<ExecSpace, Vector<T, Index>>{vec};
   }
   template <execspace_e ExecSpace, typename T, typename Index>
   constexpr decltype(auto) proxy(const Vector<T, Index> &vec) {  // currently ignore constness
-    return VectorProxy<ExecSpace, const Vector<T, Index>>{vec};
+    return VectorView<ExecSpace, const Vector<T, Index>>{vec};
   }
 
 }  // namespace zs

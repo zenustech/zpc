@@ -14,32 +14,32 @@ namespace zs {
   struct SpatiallyDistribute;
 
   template <execspace_e space, typename Table> CleanSparsity(wrapv<space>, Table)
-      -> CleanSparsity<HashTableProxy<space, Table>>;
+      -> CleanSparsity<HashTableView<space, Table>>;
 
   template <execspace_e space, typename T, typename Table, typename X, typename... Args>
   ComputeSparsity(wrapv<space>, T, int, Table, const X&, Args...)
-      -> ComputeSparsity<T, HashTableProxy<space, Table>, VectorProxy<space, const X>>;
+      -> ComputeSparsity<T, HashTableView<space, Table>, VectorView<space, const X>>;
 
   template <execspace_e space, typename Table>
   EnlargeSparsity(wrapv<space>, Table, vec<int, Table::dim>, vec<int, Table::dim>)
-      -> EnlargeSparsity<HashTableProxy<space, Table>>;
+      -> EnlargeSparsity<HashTableView<space, Table>>;
 
   template <execspace_e space, typename T, typename Table, typename X, typename Count,
             typename... Args>
   SpatiallyCount(wrapv<space>, T, Table, const X&, Count, Args...)
-      -> SpatiallyCount<T, HashTableProxy<space, Table>, VectorProxy<space, const X>,
-                        VectorProxy<space, Count>>;
+      -> SpatiallyCount<T, HashTableView<space, Table>, VectorView<space, const X>,
+                        VectorView<space, Count>>;
 
   template <execspace_e space, typename T, typename Table, typename X, typename Indices,
             typename... Args>
   SpatiallyDistribute(wrapv<space>, T, Table, const X&, Indices counts, Indices offsets,
                       Indices indices, Args...)
-      -> SpatiallyDistribute<T, HashTableProxy<space, Table>, VectorProxy<space, const X>,
-                             VectorProxy<space, Indices>>;
+      -> SpatiallyDistribute<T, HashTableView<space, Table>, VectorView<space, const X>,
+                             VectorView<space, Indices>>;
 
   /// implementations
-  template <execspace_e space, typename Table> struct CleanSparsity<HashTableProxy<space, Table>> {
-    using table_t = HashTableProxy<space, Table>;
+  template <execspace_e space, typename Table> struct CleanSparsity<HashTableView<space, Table>> {
+    using table_t = HashTableView<space, Table>;
 
     explicit CleanSparsity(wrapv<space>, Table& table) : table{proxy<space>(table)} {}
 
@@ -55,9 +55,9 @@ namespace zs {
   };
 
   template <execspace_e space, typename T, typename Table, typename X>
-  struct ComputeSparsity<T, HashTableProxy<space, Table>, VectorProxy<space, const X>> {
-    using table_t = HashTableProxy<space, Table>;
-    using positions_t = VectorProxy<space, const X>;
+  struct ComputeSparsity<T, HashTableView<space, Table>, VectorView<space, const X>> {
+    using table_t = HashTableView<space, Table>;
+    using positions_t = VectorView<space, const X>;
 
     explicit ComputeSparsity(wrapv<space>, T dx, int blockLen, Table& table, const X& pos,
                              int offset = -2)
@@ -85,9 +85,9 @@ namespace zs {
   };
 
   template <execspace_e space, typename Table>
-  struct EnlargeSparsity<HashTableProxy<space, Table>> {
+  struct EnlargeSparsity<HashTableView<space, Table>> {
     static constexpr int dim = Table::dim;
-    using table_t = HashTableProxy<space, Table>;
+    using table_t = HashTableView<space, Table>;
 
     explicit EnlargeSparsity(wrapv<space>, Table& table, vec<int, dim> lo, vec<int, dim> hi)
         : table{proxy<space>(table)}, lo{lo}, hi{hi} {}
@@ -112,11 +112,11 @@ namespace zs {
   };
 
   template <execspace_e space, typename T, typename Table, typename X, typename CountT>
-  struct SpatiallyCount<T, HashTableProxy<space, Table>, VectorProxy<space, const X>,
-                        VectorProxy<space, CountT>> {
-    using table_t = HashTableProxy<space, Table>;
-    using positions_t = VectorProxy<space, const X>;
-    using counters_t = VectorProxy<space, CountT>;
+  struct SpatiallyCount<T, HashTableView<space, Table>, VectorView<space, const X>,
+                        VectorView<space, CountT>> {
+    using table_t = HashTableView<space, Table>;
+    using positions_t = VectorView<space, const X>;
+    using counters_t = VectorView<space, CountT>;
     using counter_interger_type = std::make_unsigned_t<typename CountT::value_type>;
 
     explicit SpatiallyCount(wrapv<space>, T dx, Table& table, const X& pos, CountT& cnts,
@@ -150,11 +150,11 @@ namespace zs {
   };
 
   template <execspace_e space, typename T, typename Table, typename X, typename Indices>
-  struct SpatiallyDistribute<T, HashTableProxy<space, Table>, VectorProxy<space, const X>,
-                             VectorProxy<space, Indices>> {
-    using table_t = HashTableProxy<space, Table>;
-    using positions_t = VectorProxy<space, const X>;
-    using indices_t = VectorProxy<space, Indices>;
+  struct SpatiallyDistribute<T, HashTableView<space, Table>, VectorView<space, const X>,
+                             VectorView<space, Indices>> {
+    using table_t = HashTableView<space, Table>;
+    using positions_t = VectorView<space, const X>;
+    using indices_t = VectorView<space, Indices>;
     using counter_interger_type = std::make_unsigned_t<typename Indices::value_type>;
 
     explicit SpatiallyDistribute(wrapv<space>, T dx, Table& table, const X& pos, Indices& cnts,

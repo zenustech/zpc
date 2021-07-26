@@ -79,20 +79,20 @@ namespace zs {
     T stepDt, alpha;
   };
 
-  template <execspace_e, typename LevelSetWindowT, typename = void> struct LevelSetWindowProxy;
+  template <execspace_e, typename LevelSetWindowT, typename = void> struct LevelSetWindowView;
 
   template <execspace_e Space, typename LevelSetWindowT>
-  struct LevelSetWindowProxy<Space, LevelSetWindowT>
-      : LevelSetInterface<LevelSetWindowProxy<Space, LevelSetWindowT>, typename LevelSetWindowT::T,
+  struct LevelSetWindowView<Space, LevelSetWindowT>
+      : LevelSetInterface<LevelSetWindowView<Space, LevelSetWindowT>, typename LevelSetWindowT::T,
                           LevelSetWindowT::dim> {
     using ls_t = typename LevelSetWindowT::ls_t;
     static constexpr int dim = LevelSetWindowT::dim;
     using T = typename LevelSetWindowT::T;
     using TV = typename LevelSetWindowT::TV;
 
-    constexpr LevelSetWindowProxy() = default;
-    ~LevelSetWindowProxy() = default;
-    explicit constexpr LevelSetWindowProxy(LevelSetWindowT &ls)
+    constexpr LevelSetWindowView() = default;
+    ~LevelSetWindowView() = default;
+    explicit constexpr LevelSetWindowView(LevelSetWindowT &ls)
         : st{ls.st.self()}, ed{ls.ed.self()}, stepDt{ls.stepDt}, alpha{ls.alpha} {}
 
     constexpr T getSignedDistance(const TV &X) const noexcept {
@@ -112,13 +112,13 @@ namespace zs {
     }
     constexpr decltype(auto) getBoundingBox() const noexcept { return st.getBoundingBox(); }
 
-    SparseLevelSetProxy<Space, ls_t> st, ed;
+    SparseLevelSetView<Space, ls_t> st, ed;
     T stepDt, alpha;
   };
 
   template <execspace_e ExecSpace, typename LS>
   constexpr decltype(auto) proxy(LevelSetWindow<LS> &levelset) {
-    return LevelSetWindowProxy<ExecSpace, LevelSetWindow<LS>>{levelset};
+    return LevelSetWindowView<ExecSpace, LevelSetWindow<LS>>{levelset};
   }
 
 }  // namespace zs

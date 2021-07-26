@@ -101,16 +101,16 @@ namespace zs {
   using GeneralParticles = variant<Particles<f32, 3>>;
 #endif
 
-  template <execspace_e space, typename ParticlesT, typename = void> struct ParticlesProxy {
+  template <execspace_e space, typename ParticlesT, typename = void> struct ParticlesView {
     using T = typename ParticlesT::T;
     using TV = typename ParticlesT::TV;
     using TM = typename ParticlesT::TM;
     static constexpr int dim = ParticlesT::dim;
     using size_type = typename ParticlesT::size_type;
 
-    ParticlesProxy() = default;
-    ~ParticlesProxy() = default;
-    explicit constexpr ParticlesProxy(ParticlesT &particles)
+    ParticlesView() = default;
+    ~ParticlesView() = default;
+    explicit constexpr ParticlesView(ParticlesT &particles)
         : _M{particles.M.data()},
           _X{particles.X.data()},
           _V{particles.V.data()},
@@ -149,16 +149,16 @@ namespace zs {
     size_type _particleCount;
   };
 
-  template <execspace_e space, typename ParticlesT> struct ParticlesProxy<space, const ParticlesT> {
+  template <execspace_e space, typename ParticlesT> struct ParticlesView<space, const ParticlesT> {
     using T = typename ParticlesT::T;
     using TV = typename ParticlesT::TV;
     using TM = typename ParticlesT::TM;
     static constexpr int dim = ParticlesT::dim;
     using size_type = typename ParticlesT::size_type;
 
-    ParticlesProxy() = default;
-    ~ParticlesProxy() = default;
-    explicit constexpr ParticlesProxy(const ParticlesT &particles)
+    ParticlesView() = default;
+    ~ParticlesView() = default;
+    explicit constexpr ParticlesView(const ParticlesT &particles)
         : _M{particles.M.data()},
           _X{particles.X.data()},
           _V{particles.V.data()},
@@ -193,11 +193,11 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename V, int d>
   constexpr decltype(auto) proxy(Particles<V, d> &particles) {
-    return ParticlesProxy<ExecSpace, Particles<V, d>>{particles};
+    return ParticlesView<ExecSpace, Particles<V, d>>{particles};
   }
   template <execspace_e ExecSpace, typename V, int d>
   constexpr decltype(auto) proxy(const Particles<V, d> &particles) {
-    return ParticlesProxy<ExecSpace, const Particles<V, d>>{particles};
+    return ParticlesView<ExecSpace, const Particles<V, d>>{particles};
   }
 
   ///
@@ -225,9 +225,9 @@ namespace zs {
     Tiles<TV> X;
   };
 
-  template <execspace_e, typename ParticlesT, typename = void> struct TiledParticlesProxy;
+  template <execspace_e, typename ParticlesT, typename = void> struct TiledParticlesView;
   template <execspace_e space, typename TiledParticlesT>
-  struct TiledParticlesProxy<space, TiledParticlesT> {
+  struct TiledParticlesView<space, TiledParticlesT> {
     using T = typename TiledParticlesT::T;
     using TV = typename TiledParticlesT::TV;
     using TM = typename TiledParticlesT::TM;
@@ -235,9 +235,9 @@ namespace zs {
     using size_type = typename TiledParticlesT::size_type;
     template <typename TT> using tiles_t = typename TiledParticlesT::template tiles_t<TT>;
 
-    constexpr TiledParticlesProxy() = default;
-    ~TiledParticlesProxy() = default;
-    explicit constexpr TiledParticlesProxy(TiledParticlesT &particles)
+    constexpr TiledParticlesView() = default;
+    ~TiledParticlesView() = default;
+    explicit constexpr TiledParticlesView(TiledParticlesT &particles)
         : _X{particles.X.data()}, _particleCount{particles.size()} {}
 
     constexpr auto &pos(size_type parid) { return _X[parid]; }
@@ -251,7 +251,7 @@ namespace zs {
 
   template <execspace_e ExecSpace, auto Length, typename V, int d>
   constexpr decltype(auto) proxy(TiledParticles<Length, V, d> &particles) {
-    return TiledParticlesProxy<ExecSpace, TiledParticles<Length, V, d>>{particles};
+    return TiledParticlesView<ExecSpace, TiledParticles<Length, V, d>>{particles};
   }
 
   /// sizeof(float) = 4

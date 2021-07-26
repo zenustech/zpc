@@ -17,18 +17,18 @@ namespace zs {
   template <execspace_e space, transfer_scheme_e scheme, typename Model, typename GridBlocksT,
             typename TableT, typename ParticlesT>
   G2PTransfer(wrapv<space>, wrapv<scheme>, float, Model, GridBlocksT, TableT, ParticlesT)
-      -> G2PTransfer<scheme, Model, GridBlocksProxy<space, GridBlocksT>,
-                     HashTableProxy<space, TableT>, ParticlesProxy<space, ParticlesT>>;
+      -> G2PTransfer<scheme, Model, GridBlocksView<space, GridBlocksT>,
+                     HashTableView<space, TableT>, ParticlesView<space, ParticlesT>>;
 
   template <execspace_e space, transfer_scheme_e scheme, typename ModelT, typename GridBlocksT,
             typename TableT, typename ParticlesT>
-  struct G2PTransfer<scheme, ModelT, GridBlocksProxy<space, GridBlocksT>,
-                     HashTableProxy<space, TableT>, ParticlesProxy<space, ParticlesT>> {
+  struct G2PTransfer<scheme, ModelT, GridBlocksView<space, GridBlocksT>,
+                     HashTableView<space, TableT>, ParticlesView<space, ParticlesT>> {
     using model_t = ModelT;  ///< constitutive model
-    using gridblocks_t = GridBlocksProxy<space, GridBlocksT>;
+    using gridblocks_t = GridBlocksView<space, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
-    using partition_t = HashTableProxy<space, TableT>;
-    using particles_t = ParticlesProxy<space, ParticlesT>;
+    using partition_t = HashTableView<space, TableT>;
+    using particles_t = ParticlesView<space, ParticlesT>;
     static_assert(particles_t::dim == partition_t::dim && particles_t::dim == gridblocks_t::dim,
                   "[particle-partition-grid] dimension mismatch");
 

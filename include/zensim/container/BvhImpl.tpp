@@ -8,7 +8,7 @@ namespace zs {
   ///
   template <execspace_e space, int dim, typename T> struct ComputeBoundingVolume {
     using BV = AABBBox<dim, T>;
-    using bv_t = VectorProxy<space, Vector<BV>>;
+    using bv_t = VectorView<space, Vector<BV>>;
     ComputeBoundingVolume() = default;
     constexpr ComputeBoundingVolume(wrapv<space>, Vector<BV>& v) noexcept : box{proxy<space>(v)} {}
     constexpr void operator()(const BV& bv) {
@@ -43,7 +43,7 @@ namespace zs {
 
   ///
   template <execspace_e space, typename CodeT> struct ComputeSplitMetric {
-    using mc_t = VectorProxy<space, const Vector<CodeT>>;
+    using mc_t = VectorView<space, const Vector<CodeT>>;
     ComputeSplitMetric() = default;
     constexpr ComputeSplitMetric(wrapv<space>, std::size_t numLeaves, const Vector<CodeT>& mcs,
                                  u8 totalBits) noexcept
@@ -64,8 +64,8 @@ namespace zs {
 
   ///
   template <execspace_e space> struct ResetBuildStates {
-    using flag_t = VectorProxy<space, Vector<int>>;
-    using mark_t = VectorProxy<space, Vector<u32>>;
+    using flag_t = VectorView<space, Vector<int>>;
+    using mark_t = VectorView<space, Vector<u32>>;
     ResetBuildStates() = default;
     constexpr ResetBuildStates(wrapv<space>) noexcept {}
 
@@ -80,12 +80,12 @@ namespace zs {
   template <execspace_e space, int dim, typename T, typename MC, typename Index>
   struct BuildRefitLBvh {
     using BV = AABBBox<dim, T>;
-    using bv_t = VectorProxy<space, Vector<BV>>;
-    using cbv_t = VectorProxy<space, const Vector<BV>>;
-    using mc_t = VectorProxy<space, const Vector<MC>>;
-    using id_t = VectorProxy<space, Vector<Index>>;
-    using mark_t = VectorProxy<space, Vector<u32>>;
-    using flag_t = VectorProxy<space, Vector<int>>;
+    using bv_t = VectorView<space, Vector<BV>>;
+    using cbv_t = VectorView<space, const Vector<BV>>;
+    using mc_t = VectorView<space, const Vector<MC>>;
+    using id_t = VectorView<space, Vector<Index>>;
+    using mark_t = VectorView<space, Vector<u32>>;
+    using flag_t = VectorView<space, Vector<int>>;
     BuildRefitLBvh() = default;
     constexpr BuildRefitLBvh(wrapv<space>, std::size_t numLeaves, const Vector<BV>& primBvs,
                              Vector<BV>& leafBvs, Vector<BV>& trunkBvs, const Vector<MC>& splits,
@@ -193,8 +193,8 @@ namespace zs {
   ///
   template <execspace_e space, typename Index> struct ComputeTrunkOrder {
     using vector_t = Vector<Index>;
-    using cid_t = VectorProxy<space, const vector_t>;
-    using id_t = VectorProxy<space, vector_t>;
+    using cid_t = VectorView<space, const vector_t>;
+    using id_t = VectorView<space, vector_t>;
 
     ComputeTrunkOrder(wrapv<space>, const vector_t& trunklc, vector_t& trunkdst, vector_t& levels,
                       vector_t& parents)
@@ -222,9 +222,9 @@ namespace zs {
     using vector_t = Vector<Index>;
     using T = typename BV::T;
     static constexpr int dim = BV::dim;
-    using bv_t = VectorProxy<space, Vector<BV>>;
-    using cid_t = VectorProxy<space, const vector_t>;
-    using id_t = VectorProxy<space, vector_t>;
+    using bv_t = VectorView<space, Vector<BV>>;
+    using cid_t = VectorView<space, const vector_t>;
+    using id_t = VectorView<space, vector_t>;
 
     ReorderTrunk(wrapv<space>, std::size_t numLeaves, const vector_t& trunkDst,
                  const vector_t& leafLca, const vector_t& leafOffsets, Vector<BV>& sortedBvs,
@@ -265,10 +265,10 @@ namespace zs {
   template <execspace_e space, int dim, typename T, typename Index> struct ReorderLeafs {
     using vector_t = Vector<Index>;
     using BV = AABBBox<dim, T>;
-    using cbv_t = VectorProxy<space, const Vector<BV>>;
-    using bv_t = VectorProxy<space, Vector<BV>>;
-    using cid_t = VectorProxy<space, const vector_t>;
-    using id_t = VectorProxy<space, vector_t>;
+    using cbv_t = VectorView<space, const Vector<BV>>;
+    using bv_t = VectorView<space, Vector<BV>>;
+    using cid_t = VectorView<space, const vector_t>;
+    using id_t = VectorView<space, vector_t>;
 
     ReorderLeafs(wrapv<space>, std::size_t numLeaves, const vector_t& sortedIndices,
                  vector_t& primitiveIndices, vector_t& parents, vector_t& levels,
@@ -319,9 +319,9 @@ namespace zs {
 
   template <execspace_e space, int dim, typename T, typename Index> struct RefitLBvh {
     using BV = AABBBox<dim, T>;
-    using cbv_t = VectorProxy<space, const Vector<BV>>;
-    using bv_t = VectorProxy<space, Vector<BV>>;
-    using cid_t = VectorProxy<space, const Vector<Index>>;
+    using cbv_t = VectorView<space, const Vector<BV>>;
+    using bv_t = VectorView<space, Vector<BV>>;
+    using cid_t = VectorView<space, const Vector<Index>>;
 
     RefitLBvh() = default;
     RefitLBvh(wrapv<space>, const Vector<BV>& primBvs, const Vector<Index>& primitiveIndices,
@@ -351,7 +351,7 @@ namespace zs {
 
     cbv_t primBvs;
     cid_t primitiveIndices, parents;
-    VectorProxy<space, Vector<int>> flags;
+    VectorView<space, Vector<int>> flags;
     bv_t bvs;
   };
 
@@ -359,9 +359,9 @@ namespace zs {
   struct IntersectLBvh {
     using T = typename BV::T;
     static constexpr int dim = BV::dim;
-    using cbv_t = VectorProxy<space, const Vector<BV>>;
-    using bv_t = VectorProxy<space, Vector<BV>>;
-    using cid_t = VectorProxy<space, const Vector<Index>>;
+    using cbv_t = VectorView<space, const Vector<BV>>;
+    using bv_t = VectorView<space, Vector<BV>>;
+    using cid_t = VectorView<space, const Vector<Index>>;
 
     IntersectLBvh() = default;
     IntersectLBvh(wrapv<space>, const Vector<BV>& bvhBvs, const Vector<Index>& auxIndices,
@@ -398,8 +398,8 @@ namespace zs {
 
     cbv_t bvhBvs;
     cid_t auxIndices, levels;
-    VectorProxy<space, Vector<ResultIndex>> cnt;
-    VectorProxy<space, Vector<tuple<ResultIndex, ResultIndex>>> records;
+    VectorView<space, Vector<ResultIndex>> cnt;
+    VectorView<space, Vector<tuple<ResultIndex, ResultIndex>>> records;
     Index numNodes, bound;
   };
 

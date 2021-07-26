@@ -46,11 +46,11 @@ namespace zs {
     Affine _w2v{};
   };
 
-  template <execspace_e, typename SparseLevelSetT, typename = void> struct SparseLevelSetProxy;
+  template <execspace_e, typename SparseLevelSetT, typename = void> struct SparseLevelSetView;
 
   template <execspace_e Space, typename SparseLevelSetT>
-  struct SparseLevelSetProxy<Space, SparseLevelSetT>
-      : LevelSetInterface<SparseLevelSetProxy<Space, SparseLevelSetT>,
+  struct SparseLevelSetView<Space, SparseLevelSetT>
+      : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>,
                           typename SparseLevelSetT::value_type, SparseLevelSetT::dim> {
     using table_t = typename SparseLevelSetT::table_t;
     using tiles_t = typename SparseLevelSetT::tiles_t;
@@ -76,9 +76,9 @@ namespace zs {
       return bid * _space + res;
     }
 
-    constexpr SparseLevelSetProxy() = default;
-    ~SparseLevelSetProxy() = default;
-    constexpr SparseLevelSetProxy(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
+    constexpr SparseLevelSetView() = default;
+    ~SparseLevelSetView() = default;
+    constexpr SparseLevelSetView(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
         : _sideLength{ls._sideLength},
           _space{ls._space},
           _dx{ls._dx},
@@ -90,7 +90,7 @@ namespace zs {
           _min{ls._min},
           _max{ls._max},
           _w2v{ls._w2v} {}
-    constexpr SparseLevelSetProxy(SparseLevelSetT &ls)
+    constexpr SparseLevelSetView(SparseLevelSetT &ls)
         : _sideLength{ls._sideLength},
           _space{ls._space},
           _dx{ls._dx},
@@ -223,10 +223,10 @@ namespace zs {
     T _dx;
     T _backgroundValue;
     TV _backgroundVecValue;
-    HashTableProxy<Space, table_t> table;
+    HashTableView<Space, table_t> table;
     bool _unnamed{false};
-    TileVectorProxy<Space, tiles_t> tiles;
-    TileVectorUnnamedProxy<Space, tiles_t> unnamedTiles;
+    TileVectorView<Space, tiles_t> tiles;
+    TileVectorUnnamedView<Space, tiles_t> unnamedTiles;
     TV _min, _max;
     Affine _w2v;
   };
@@ -234,12 +234,12 @@ namespace zs {
   template <execspace_e ExecSpace, int dim>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  SparseLevelSet<dim> &levelset) {
-    return SparseLevelSetProxy<ExecSpace, SparseLevelSet<dim>>{tagNames, levelset};
+    return SparseLevelSetView<ExecSpace, SparseLevelSet<dim>>{tagNames, levelset};
   }
 
   template <execspace_e ExecSpace, int dim>
   constexpr decltype(auto) proxy(SparseLevelSet<dim> &levelset) {
-    return SparseLevelSetProxy<ExecSpace, SparseLevelSet<dim>>{levelset};
+    return SparseLevelSetView<ExecSpace, SparseLevelSet<dim>>{levelset};
   }
 
 }  // namespace zs

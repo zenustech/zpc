@@ -15,29 +15,29 @@ namespace zs {
   struct ApplyBoundaryConditionOnGridBlocks;
 
   template <execspace_e space, typename GridBlocksT> CleanGridBlocks(wrapv<space>, GridBlocksT)
-      -> CleanGridBlocks<GridBlocksProxy<space, GridBlocksT>>;
+      -> CleanGridBlocks<GridBlocksView<space, GridBlocksT>>;
   template <execspace_e space, typename TableT, typename GridBlocksT>
   PrintGridBlocks(wrapv<space>, TableT, GridBlocksT)
-      -> PrintGridBlocks<HashTableProxy<space, TableT>, GridBlocksProxy<space, GridBlocksT>>;
+      -> PrintGridBlocks<HashTableView<space, TableT>, GridBlocksView<space, GridBlocksT>>;
   template <execspace_e space, transfer_scheme_e scheme, typename GridBlocksT>
   ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridBlocksT, float dt, float gravity,
                            float *maxVel)
-      -> ComputeGridBlockVelocity<scheme, GridBlocksProxy<space, GridBlocksT>>;
+      -> ComputeGridBlockVelocity<scheme, GridBlocksView<space, GridBlocksT>>;
   template <execspace_e space, typename LevelsetT, typename TableT, typename GridBlocksT>
   ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT, GridBlocksT)
-      -> ApplyBoundaryConditionOnGridBlocks<Collider<LevelsetT>, HashTableProxy<space, TableT>,
-                                            GridBlocksProxy<space, GridBlocksT>>;
+      -> ApplyBoundaryConditionOnGridBlocks<Collider<LevelsetT>, HashTableView<space, TableT>,
+                                            GridBlocksView<space, GridBlocksT>>;
   template <execspace_e space, typename TableT, typename GridBlocksT>
   ApplyBoundaryConditionOnGridBlocks(wrapv<space>, LevelSetBoundary<SparseLevelSet<3>>, TableT,
                                      GridBlocksT)
-      -> ApplyBoundaryConditionOnGridBlocks<Collider<SparseLevelSetProxy<space, SparseLevelSet<3>>>,
-                                            HashTableProxy<space, TableT>,
-                                            GridBlocksProxy<space, GridBlocksT>>;
+      -> ApplyBoundaryConditionOnGridBlocks<Collider<SparseLevelSetView<space, SparseLevelSet<3>>>,
+                                            HashTableView<space, TableT>,
+                                            GridBlocksView<space, GridBlocksT>>;
 
   template <execspace_e space, typename GridBlocksT>
-  struct CleanGridBlocks<GridBlocksProxy<space, GridBlocksT>> {
+  struct CleanGridBlocks<GridBlocksView<space, GridBlocksT>> {
     static constexpr auto exectag = wrapv<space>{};
-    using gridblocks_t = GridBlocksProxy<space, GridBlocksT>;
+    using gridblocks_t = GridBlocksView<space, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
 
     explicit CleanGridBlocks(wrapv<space>, GridBlocksT &gridblocks)
@@ -56,9 +56,9 @@ namespace zs {
   };
 
   template <execspace_e space, typename TableT, typename GridBlocksT>
-  struct PrintGridBlocks<HashTableProxy<space, TableT>, GridBlocksProxy<space, GridBlocksT>> {
-    using partition_t = HashTableProxy<space, TableT>;
-    using gridblocks_t = GridBlocksProxy<space, GridBlocksT>;
+  struct PrintGridBlocks<HashTableView<space, TableT>, GridBlocksView<space, GridBlocksT>> {
+    using partition_t = HashTableView<space, TableT>;
+    using gridblocks_t = GridBlocksView<space, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
 
     explicit PrintGridBlocks(wrapv<space>, TableT &table, GridBlocksT &gridblocks)
@@ -85,9 +85,9 @@ namespace zs {
   };
 
   template <execspace_e space, transfer_scheme_e scheme, typename GridBlocksT>
-  struct ComputeGridBlockVelocity<scheme, GridBlocksProxy<space, GridBlocksT>> {
+  struct ComputeGridBlockVelocity<scheme, GridBlocksView<space, GridBlocksT>> {
     static constexpr auto exectag = wrapv<space>{};
-    using gridblocks_t = GridBlocksProxy<space, GridBlocksT>;
+    using gridblocks_t = GridBlocksView<space, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
 
     constexpr ComputeGridBlockVelocity() = default;
@@ -127,11 +127,11 @@ namespace zs {
   };
 
   template <execspace_e space, typename ColliderT, typename TableT, typename GridBlocksT>
-  struct ApplyBoundaryConditionOnGridBlocks<ColliderT, HashTableProxy<space, TableT>,
-                                            GridBlocksProxy<space, GridBlocksT>> {
+  struct ApplyBoundaryConditionOnGridBlocks<ColliderT, HashTableView<space, TableT>,
+                                            GridBlocksView<space, GridBlocksT>> {
     using collider_t = ColliderT;
-    using partition_t = HashTableProxy<space, TableT>;
-    using gridblocks_t = GridBlocksProxy<space, GridBlocksT>;
+    using partition_t = HashTableView<space, TableT>;
+    using gridblocks_t = GridBlocksView<space, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
 
     template <typename Boundary = ColliderT,

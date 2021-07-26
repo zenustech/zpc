@@ -276,20 +276,20 @@ namespace zs {
     size_type _align{0};
   };
 
-  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorProxy;
-  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorUnnamedProxy;
+  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorView;
+  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorUnnamedView;
 
   template <execspace_e Space, typename TileVectorT>
-  struct TileVectorUnnamedProxy<Space, TileVectorT> : TileVectorT::base_t {
+  struct TileVectorUnnamedView<Space, TileVectorT> : TileVectorT::base_t {
     using value_type = typename TileVectorT::value_type;
     using tile_vector_t = typename TileVectorT::base_t;
     using size_type = typename TileVectorT::size_type;
     using channel_counter_type = typename TileVectorT::channel_counter_type;
     static constexpr auto lane_width = TileVectorT::lane_width;
 
-    constexpr TileVectorUnnamedProxy() = default;
-    ~TileVectorUnnamedProxy() = default;
-    explicit constexpr TileVectorUnnamedProxy(TileVectorT &tilevector)
+    constexpr TileVectorUnnamedView() = default;
+    ~TileVectorUnnamedView() = default;
+    explicit constexpr TileVectorUnnamedView(TileVectorT &tilevector)
         : tile_vector_t{tilevector.self()}, _vectorSize{tilevector.size()} {}
     constexpr auto &operator()(const channel_counter_type c, const size_type i) {
       return static_cast<tile_vector_t &>(*this)(i / lane_width)(c, i % lane_width);
@@ -342,7 +342,7 @@ namespace zs {
     size_type _vectorSize{0};
   };
 
-  template <execspace_e Space, typename TileVectorT> struct TileVectorProxy<Space, TileVectorT>
+  template <execspace_e Space, typename TileVectorT> struct TileVectorView<Space, TileVectorT>
       : TileVectorT::base_t {
     using value_type = typename TileVectorT::value_type;
     using tile_vector_t = typename TileVectorT::base_t;
@@ -350,9 +350,9 @@ namespace zs {
     using channel_counter_type = typename TileVectorT::channel_counter_type;
     static constexpr auto lane_width = TileVectorT::lane_width;
 
-    constexpr TileVectorProxy() = default;
-    ~TileVectorProxy() = default;
-    explicit constexpr TileVectorProxy(const std::vector<SmallString> &tagNames,
+    constexpr TileVectorView() = default;
+    ~TileVectorView() = default;
+    explicit constexpr TileVectorView(const std::vector<SmallString> &tagNames,
                                        TileVectorT &tilevector)
         : tile_vector_t{tilevector.self()},
           _vectorSize{tilevector.size()},
@@ -440,11 +440,11 @@ namespace zs {
   template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  TileVector<T, Length, IndexT, ChnT> &vec) {
-    return TileVectorProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
+    return TileVectorView<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
   }
   template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT> &vec) {
-    return TileVectorUnnamedProxy<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{vec};
+    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{vec};
   }
 
 }  // namespace zs

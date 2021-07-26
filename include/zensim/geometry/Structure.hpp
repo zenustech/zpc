@@ -86,17 +86,17 @@ namespace zs {
   using GeneralGridBlocks = variant<GridBlocks<GridBlock<dat32, 3, 2, 2>>>;
 #endif
 
-  template <execspace_e, typename GridBlocksT, typename = void> struct GridBlocksProxy;
-  template <execspace_e space, typename GridBlocksT> struct GridBlocksProxy<space, GridBlocksT> {
+  template <execspace_e, typename GridBlocksT, typename = void> struct GridBlocksView;
+  template <execspace_e space, typename GridBlocksT> struct GridBlocksView<space, GridBlocksT> {
     using value_type = typename GridBlocksT::value_type;
     using block_t = typename GridBlocksT::block_t;
     static constexpr int dim = block_t::dim;
     using IV = typename block_t::IV;
     using size_type = typename GridBlocksT::size_type;
 
-    constexpr GridBlocksProxy() = default;
-    ~GridBlocksProxy() = default;
-    explicit constexpr GridBlocksProxy(GridBlocksT &gridblocks)
+    constexpr GridBlocksView() = default;
+    ~GridBlocksView() = default;
+    explicit constexpr GridBlocksView(GridBlocksT &gridblocks)
         : _gridBlocks{gridblocks.blocks.data()},
           _blockCount{gridblocks.blocks.size()},
           _dx{gridblocks.dx} {}
@@ -111,7 +111,7 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename V, int d, int chn_bits, int domain_bits>
   constexpr decltype(auto) proxy(GridBlocks<GridBlock<V, d, chn_bits, domain_bits>> &blocks) {
-    return GridBlocksProxy<ExecSpace, GridBlocks<GridBlock<V, d, chn_bits, domain_bits>>>{blocks};
+    return GridBlocksView<ExecSpace, GridBlocks<GridBlock<V, d, chn_bits, domain_bits>>>{blocks};
   }
 
   ///

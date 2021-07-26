@@ -38,7 +38,7 @@ namespace zs {
 
   using GeneralIndexBuckets = variant<IndexBuckets<3>>;
 
-  template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsProxy {
+  template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsView {
     using value_type = typename IndexBucketsT::value_type;
     using index_type = typename IndexBucketsT::index_type;
     using TV = typename IndexBucketsT::TV;
@@ -47,9 +47,9 @@ namespace zs {
     using vector_t = typename IndexBucketsT::vector_t;
     static constexpr int dim = IndexBucketsT::dim;
 
-    constexpr IndexBucketsProxy() = default;
-    ~IndexBucketsProxy() = default;
-    constexpr IndexBucketsProxy(IndexBucketsT &ibs)
+    constexpr IndexBucketsView() = default;
+    ~IndexBucketsView() = default;
+    constexpr IndexBucketsView(IndexBucketsT &ibs)
         : table{proxy<Space>(ibs._table)},
           indices{proxy<Space>(ibs._indices)},
           offsets{proxy<Space>(ibs._offsets)},
@@ -66,14 +66,14 @@ namespace zs {
       return table.query(coord);
     }
 
-    HashTableProxy<Space, table_t> table;  // activekeys, table
-    VectorProxy<Space, vector_t> indices, offsets, counts;
+    HashTableView<Space, table_t> table;  // activekeys, table
+    VectorView<Space, vector_t> indices, offsets, counts;
     value_type dx;
   };
 
   template <execspace_e ExecSpace, int dim>
   constexpr decltype(auto) proxy(IndexBuckets<dim> &indexBuckets) {
-    return IndexBucketsProxy<ExecSpace, IndexBuckets<dim>>{indexBuckets};
+    return IndexBucketsView<ExecSpace, IndexBuckets<dim>>{indexBuckets};
   }
 
 }  // namespace zs

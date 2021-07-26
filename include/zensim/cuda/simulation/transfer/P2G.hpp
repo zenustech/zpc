@@ -11,12 +11,12 @@ namespace zs {
 
   template <transfer_scheme_e scheme, typename ModelT, typename ParticlesT, typename TableT,
             typename GridBlocksT>
-  struct P2GTransfer<scheme, ModelT, ParticlesProxy<execspace_e::cuda, ParticlesT>,
-      HashTableProxy<execspace_e::cuda, TableT>, GridBlocksProxy<execspace_e::cuda, GridBlocksT>> {
+  struct P2GTransfer<scheme, ModelT, ParticlesView<execspace_e::cuda, ParticlesT>,
+      HashTableView<execspace_e::cuda, TableT>, GridBlocksView<execspace_e::cuda, GridBlocksT>> {
     using model_t = ModelT;  ///< constitutive model
-    using particles_t = ParticlesProxy<execspace_e::cuda, ParticlesT>;
-    using partition_t = HashTableProxy<execspace_e::cuda, TableT>;
-    using gridblocks_t = GridBlocksProxy<execspace_e::cuda, GridBlocksT>;
+    using particles_t = ParticlesView<execspace_e::cuda, ParticlesT>;
+    using partition_t = HashTableView<execspace_e::cuda, TableT>;
+    using gridblocks_t = GridBlocksView<execspace_e::cuda, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
     static_assert(particles_t::dim == partition_t::dim && particles_t::dim == gridblocks_t::dim,
                   "[particle-partition-grid] dimension mismatch");

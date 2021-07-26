@@ -6,11 +6,11 @@ namespace zs {
   template <typename ParticlesT> struct SetParticleAttribute;
 
   template <execspace_e space, typename ParticlesT> SetParticleAttribute(wrapv<space>, ParticlesT)
-      -> SetParticleAttribute<ParticlesProxy<space, ParticlesT>>;
+      -> SetParticleAttribute<ParticlesView<space, ParticlesT>>;
 
   template <execspace_e space, typename ParticlesT>
-  struct SetParticleAttribute<ParticlesProxy<space, ParticlesT>> {
-    using particles_t = ParticlesProxy<space, ParticlesT>;
+  struct SetParticleAttribute<ParticlesView<space, ParticlesT>> {
+    using particles_t = ParticlesView<space, ParticlesT>;
 
     explicit SetParticleAttribute(wrapv<space>, ParticlesT& particles)
         : particles{proxy<space>(particles)} {}
@@ -29,10 +29,10 @@ namespace zs {
 
   template <execspace_e space, typename ParticlesT, typename... Args>
   AppendParticles(wrapv<space>, ParticlesT, ParticlesT, Args... args)
-      -> AppendParticles<ParticlesProxy<space, ParticlesT>>;
+      -> AppendParticles<ParticlesView<space, ParticlesT>>;
   template <execspace_e space, typename ParticlesT>
-  struct AppendParticles<ParticlesProxy<space, ParticlesT>> {
-    using particles_t = ParticlesProxy<space, ParticlesT>;
+  struct AppendParticles<ParticlesView<space, ParticlesT>> {
+    using particles_t = ParticlesView<space, ParticlesT>;
 
     template <
         typename... Args,

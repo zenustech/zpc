@@ -156,10 +156,10 @@ namespace zs {
   using GeneralHashTable = variant<HashTable<i32, 3, int>>;
 #endif
 
-  template <execspace_e, typename HashTableT, typename = void> struct HashTableProxy;
+  template <execspace_e, typename HashTableT, typename = void> struct HashTableView;
 
   /// proxy to work within each backends
-  template <execspace_e space, typename HashTableT> struct HashTableProxy<space, HashTableT> {
+  template <execspace_e space, typename HashTableT> struct HashTableView<space, HashTableT> {
     static constexpr int dim = HashTableT::dim;
     static constexpr auto exectag = wrapv<space>{};
     using Tn = typename HashTableT::Tn;
@@ -169,10 +169,10 @@ namespace zs {
     using unsigned_value_t = std::make_unsigned_t<value_t>;
     using status_t = typename HashTableT::status_t;
 
-    constexpr HashTableProxy() = default;
-    ~HashTableProxy() = default;
+    constexpr HashTableView() = default;
+    ~HashTableView() = default;
 
-    explicit constexpr HashTableProxy(HashTableT &table)
+    explicit constexpr HashTableView(HashTableT &table)
         : _table{table.self()},
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()},
@@ -288,7 +288,7 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename Tn, int dim, typename Index>
   constexpr decltype(auto) proxy(HashTable<Tn, dim, Index> &table) {
-    return HashTableProxy<ExecSpace, HashTable<Tn, dim, Index>>{table};
+    return HashTableView<ExecSpace, HashTable<Tn, dim, Index>>{table};
   }
 
 }  // namespace zs

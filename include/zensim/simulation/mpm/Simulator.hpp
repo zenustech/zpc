@@ -46,10 +46,10 @@ namespace zs {
     SimOptions simOptions;
   };
 
-  template <execspace_e, typename Simulator, typename = void> struct MPMSimulatorProxy;
+  template <execspace_e, typename Simulator, typename = void> struct MPMSimulatorView;
 
   template <execspace_e ExecSpace> constexpr decltype(auto) proxy(MPMSimulator& simulator) {
-    return MPMSimulatorProxy<ExecSpace, MPMSimulator>{simulator};
+    return MPMSimulatorView<ExecSpace, MPMSimulator>{simulator};
   }
 
   struct BuilderForMPMSimulator : BuilderFor<MPMSimulator> {

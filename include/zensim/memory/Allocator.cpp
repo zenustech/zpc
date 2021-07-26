@@ -12,7 +12,7 @@ namespace zs {
   handle_resource::handle_resource(std::size_t initSize, mr_t *upstream) noexcept
       : _bufSize{initSize}, _upstream{upstream} {}
   handle_resource::handle_resource() noexcept
-      : handle_resource{&raw_allocator<host_mem_tag>::instance()} {}
+      : handle_resource{&raw_memory_resource<host_mem_tag>::instance()} {}
   handle_resource::~handle_resource() {
     _upstream->deallocate(_handle, _bufSize, _align);
     fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::dark_sea_green),

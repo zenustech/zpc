@@ -13,7 +13,7 @@ namespace zs {
 
   extern void record_allocation(mem_tags, void *, std::string_view, std::size_t, std::size_t);
   extern void erase_allocation(void *);
-  template <typename MemTag> struct raw_allocator : mr_t, Singleton<raw_allocator<MemTag>> {
+  template <typename MemTag> struct raw_memory_resource : mr_t, Singleton<raw_memory_resource<MemTag>> {
     using value_type = std::byte;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -36,11 +36,11 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
 
-  template <typename MemTag> struct advisor_allocator : mr_t {
-    advisor_allocator(std::string_view option = "PREFERRED_LOCATION", ProcID did = 0,
-                      mr_t *up = &raw_allocator<MemTag>::instance())
+  template <typename MemTag> struct advisor_memory_resource : mr_t {
+    advisor_memory_resource(std::string_view option = "PREFERRED_LOCATION", ProcID did = 0,
+                      mr_t *up = &raw_memory_resource<MemTag>::instance())
         : upstream{up}, option{option}, did{did} {}
-    ~advisor_allocator() = default;
+    ~advisor_memory_resource() = default;
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       void *ret = upstream->allocate(bytes, alignment);
       advise(MemTag{}, option, ret, bytes, did);
@@ -178,7 +178,7 @@ namespace zs {
 #endif
 
   struct general_allocator {
-    general_allocator() noexcept : _mr{&raw_allocator<host_mem_tag>::instance()} {};
+    general_allocator() noexcept : _mr{&raw_memory_resource<host_mem_tag>::instance()} {};
     general_allocator(const general_allocator &other) : _mr{other.resource()} {}
     general_allocator(mr_t *r) noexcept : _mr{r} {}
 
@@ -196,7 +196,7 @@ namespace zs {
   };
 
   struct heap_allocator : general_allocator {
-    heap_allocator() : general_allocator{&raw_allocator<host_mem_tag>::instance()} {}
+    heap_allocator() : general_allocator{&raw_memory_resource<host_mem_tag>::instance()} {}
   };
 
   struct stack_allocator {

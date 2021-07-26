@@ -28,18 +28,18 @@ namespace zs {
       if (mre == memsrc_e::um) {
         if (devid < -1)
           match([&ret, devid](auto &tag) {
-            ret.construct<advisor_allocator>(tag, "READ_MOSTLY", devid);
+            ret.construct<advisor_memory_resource>(tag, "READ_MOSTLY", devid);
           })(tag);
         else
           match([&ret, devid](auto &tag) {
-            ret.construct<advisor_allocator>(tag, "PREFERRED_LOCATION", devid);
+            ret.construct<advisor_memory_resource>(tag, "PREFERRED_LOCATION", devid);
           })(tag);
       } else
-        match([&ret](auto &tag) { ret.construct<raw_allocator>(tag); })(tag);
-      // ret.construct<raw_allocator>(tag);
+        match([&ret](auto &tag) { ret.construct<raw_memory_resource>(tag); })(tag);
+      // ret.construct<raw_memory_resource>(tag);
     } else
       match([&ret, &advice, devid](auto &tag) {
-        ret.construct<advisor_allocator>(tag, advice, devid);
+        ret.construct<advisor_memory_resource>(tag, advice, devid);
       })(tag);
     return ret;
   }

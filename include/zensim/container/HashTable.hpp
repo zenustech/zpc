@@ -21,6 +21,10 @@ namespace zs {
       = ds::instance_t<ds::dense, hash_table_snode<Key, Index, Status>>;
 
   template <typename Tn_, int dim_, typename Index> struct HashTable : MemoryHandle {
+    static_assert(is_same_v<Tn_, remove_cvref_t<Tn_>>, "Key is not cvref-unqualified type!");
+    static_assert(std::is_default_constructible_v<Tn_>, "Key is not default-constructible!");
+    static_assert(std::is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
+
     static constexpr int dim = dim_;
     using Tn = std::make_signed_t<Tn_>;
     using key_t = vec<Tn, dim>;
@@ -30,7 +34,7 @@ namespace zs {
 
     using value_type = key_t;
     using allocator_type = ZSPmrAllocator<>;
-    using size_type = value_t;
+    using size_type = std::make_unsigned_t<value_t>;
     using difference_type = std::make_signed_t<size_type>;
     using reference = value_type &;
     using const_reference = const value_type &;

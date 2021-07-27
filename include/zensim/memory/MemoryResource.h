@@ -121,6 +121,7 @@ namespace zs {
       std::swap(_devid, o._devid);
       std::swap(_memsrc, o._memsrc);
     }
+    friend void swap(MemoryHandle &a, MemoryHandle &b) { a.swap(b); }
 
     constexpr bool onHost() const noexcept { return _memsrc == memsrc_e::host; }
     constexpr const char* memSpaceName() const { return get_memory_source_tag(memspace()); }

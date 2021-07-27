@@ -161,7 +161,7 @@ namespace zs {
                                              std::alignment_of_v<value_type>)},
           _size{o.size()},
           _capacity{o._capacity} {
-      if (o.data())
+      if (o.data() && o.size() > 0)
         copy(MemoryEntity{base(), (void *)data()}, MemoryEntity{o.base(), (void *)o.data()},
              o.usedBytes());
     }
@@ -171,15 +171,13 @@ namespace zs {
       swap(tmp);
       return *this;
     }
-    Vector clone(const MemoryHandle &mh) const {
-      Vector ret{capacity(), mh.memspace(), mh.devid()};
-      copy({mh, (void *)ret.data()}, {base(), (void *)this->data()}, usedBytes());
-      return ret;
-    }
     Vector clone(const MemoryHandle &mh, const allocator_type &allocator) const {
       Vector ret{allocator, capacity(), mh.memspace(), mh.devid()};
       copy({mh, (void *)ret.data()}, {base(), (void *)this->data()}, usedBytes());
       return ret;
+    }
+    Vector clone(const MemoryHandle &mh) const {
+      return clone(mh, get_memory_source(mh.memspace(), mh.devid()));
     }
     /// assignment or destruction after std::move
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
@@ -201,7 +199,7 @@ namespace zs {
       return *this;
     }
     void swap(Vector &o) noexcept {
-      base().swap(o.base());
+      std::swap(base(), o.base());
       std::swap(_allocator, o._allocator);
       std::swap(_base, o._base);
       std::swap(_size, o._size);

@@ -28,7 +28,7 @@ namespace zs {
     using status_t = int;
     using base_t = hash_table_instance<key_t, value_t, status_t>;
 
-    using value_type = tuple<key_t, value_t>;
+    using value_type = key_t;
     using allocator_type = ZSPmrAllocator<>;
     using size_type = value_t;
     using difference_type = std::make_signed_t<size_type>;
@@ -85,8 +85,8 @@ namespace zs {
           _activeKeys{evaluateTableSize(tableSize), mre, devid} {
       _inst = buildInstance(mre, devid, _tableSize);
     }
-    HashTable(const SharedHolder<mr_t> &mr, std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
-              std::size_t alignment = 0)
+    HashTable(const SharedHolder<mr_t> &mr, std::size_t tableSize, memsrc_e mre = memsrc_e::host,
+              ProcID devid = -1, std::size_t alignment = 0)
         : MemoryHandle{mre, devid},
           _allocator{mr},
           _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
@@ -94,8 +94,8 @@ namespace zs {
           _activeKeys{evaluateTableSize(tableSize), mre, devid} {
       _inst = buildInstance(mre, devid, _tableSize);
     }
-    HashTable(const allocator_type &allocator, std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
-              std::size_t alignment = 0)
+    HashTable(const allocator_type &allocator, std::size_t tableSize, memsrc_e mre = memsrc_e::host,
+              ProcID devid = -1, std::size_t alignment = 0)
         : MemoryHandle{mre, devid},
           _allocator{allocator},
           _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
@@ -110,7 +110,7 @@ namespace zs {
 
     HashTable(const HashTable &o)
         : MemoryHandle{o.base()},
-          _allocator{o._allocator}, 
+          _allocator{o._allocator},
           _tableSize{o._tableSize},
           _cnt{o._cnt},
           _activeKeys{o._activeKeys} {
@@ -176,6 +176,50 @@ namespace zs {
       copy(MemoryEntity{res.base(), (void *)res.data()},
            MemoryEntity{_cnt.base(), (void *)_cnt.data()}, sizeof(value_t));
       return res[0];
+    }
+
+    struct iterator_impl : IteratorInterface<iterator_impl> {
+      template <typename Ti> constexpr iterator_impl(key_t *base, Ti &&idx)
+          : _base{base}, _idx{static_cast<size_type>(idx)} {}
+
+      constexpr reference dereference() { return _base[_idx]; }
+      constexpr bool equal_to(iterator_impl it) const noexcept { return it._idx == _idx; }
+      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
+      constexpr difference_type distance_to(iterator_impl it) const noexcept {
+        return it._idx - _idx;
+      }
+
+    protected:
+      value_type *_base{nullptr};
+      size_type _idx{0};
+    };
+    struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
+      template <typename Ti> constexpr const_iterator_impl(const key_t *base, Ti &&idx)
+          : _base{base}, _idx{static_cast<size_type>(idx)} {}
+
+      constexpr const_reference dereference() { return _base[_idx]; }
+      constexpr bool equal_to(const_iterator_impl it) const noexcept { return it._idx == _idx; }
+      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
+      constexpr difference_type distance_to(const_iterator_impl it) const noexcept {
+        return it._idx - _idx;
+      }
+
+    protected:
+      value_type const *_base{nullptr};
+      size_type _idx{0};
+    };
+    using iterator = LegacyIterator<iterator_impl>;
+    using const_iterator = LegacyIterator<const_iterator_impl>;
+
+    constexpr auto begin() noexcept { return make_iterator<iterator_impl>(_activeKeys.data(), 0); }
+    constexpr auto end() noexcept {
+      return make_iterator<iterator_impl>(_activeKeys.data(), size());
+    }
+    constexpr auto begin() const noexcept {
+      return make_iterator<const_iterator_impl>(_activeKeys.data(), 0);
+    }
+    constexpr auto end() const noexcept {
+      return make_iterator<const_iterator_impl>(_activeKeys.data(), size());
     }
 
     base_t _inst;

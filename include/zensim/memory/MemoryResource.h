@@ -110,9 +110,15 @@ namespace zs {
     return memory_source_tag[static_cast<unsigned char>(loc)];
   }
 
+  struct MemoryTraits {
+    enum : unsigned char { rw = 0, read, write } _access{rw};  // access mode (read, write, both)
+    enum : unsigned char { exp = 0, imp } _move{exp};  // data move strategies: explicit, implicit
+  };
+
   struct MemoryHandle {
     constexpr ProcID devid() const noexcept { return _devid; }
     constexpr memsrc_e memspace() const noexcept { return _memsrc; }
+    constexpr MemoryTraits traits() const noexcept { return _traits; }
     constexpr MemoryHandle memoryHandle() const noexcept {
       return static_cast<MemoryHandle>(*this);
     }
@@ -120,15 +126,19 @@ namespace zs {
     void swap(MemoryHandle& o) noexcept {
       std::swap(_devid, o._devid);
       std::swap(_memsrc, o._memsrc);
+      std::swap(_traits, o._traits);
     }
-    friend void swap(MemoryHandle &a, MemoryHandle &b) { a.swap(b); }
+    friend void swap(MemoryHandle& a, MemoryHandle& b) { a.swap(b); }
 
     constexpr bool onHost() const noexcept { return _memsrc == memsrc_e::host; }
     constexpr const char* memSpaceName() const { return get_memory_source_tag(memspace()); }
     constexpr mem_tags getTag() const { return to_memory_source_tag(_memsrc); }
 
+    /// memory location
     memsrc_e _memsrc{memsrc_e::host};  // memory source
     ProcID _devid{-1};                 // cpu id
+    /// behavior traits
+    MemoryTraits _traits{};
   };
 
   struct MemoryEntity {

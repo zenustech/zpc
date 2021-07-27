@@ -58,25 +58,18 @@ namespace zs {
   // using synchronized_pool_resource = pmr::synchronized_pool_resource;
   // template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;
 
-  // HOST, DEVICE, DEVICE_CONST, UM, PINNED, FILE
-  enum struct memsrc_e : unsigned char { host = 0, device, device_const, um, pinned, file };
+  // HOST, DEVICE, UM
+  enum struct memsrc_e : unsigned char { host = 0, device, um };
 
   using host_mem_tag = wrapv<memsrc_e::host>;
   using device_mem_tag = wrapv<memsrc_e::device>;
-  using device_const_mem_tag = wrapv<memsrc_e::device_const>;
   using um_mem_tag = wrapv<memsrc_e::um>;
-  using pinned_mem_tag = wrapv<memsrc_e::pinned>;
-  using file_mem_tag = wrapv<memsrc_e::file>;
 
-  using mem_tags = variant<host_mem_tag, device_mem_tag, device_const_mem_tag, um_mem_tag,
-                           pinned_mem_tag, file_mem_tag>;
+  using mem_tags = variant<host_mem_tag, device_mem_tag, um_mem_tag>;
 
   constexpr host_mem_tag mem_host{};
   constexpr device_mem_tag mem_device{};
-  constexpr device_const_mem_tag mem_device_const{};
   constexpr um_mem_tag mem_um{};
-  constexpr pinned_mem_tag mem_pinned{};
-  constexpr file_mem_tag mem_file{};
 
   constexpr mem_tags to_memory_source_tag(memsrc_e loc) {
     mem_tags ret{};
@@ -87,32 +80,24 @@ namespace zs {
       case memsrc_e::device:
         ret = mem_device;
         break;
-      case memsrc_e::device_const:
-        ret = mem_device_const;
-        break;
       case memsrc_e::um:
         ret = mem_um;
-        break;
-      case memsrc_e::pinned:
-        ret = mem_pinned;
-        break;
-      case memsrc_e::file:
-        ret = mem_file;
         break;
       default:;
     }
     return ret;
   }
 
-  constexpr const char* memory_source_tag[]
-      = {"HOST", "DEVICE", "DEVICE_CONST", "UM", "PINNED", "FILE"};
+  constexpr const char* memory_source_tag[] = {"HOST", "DEVICE", "UM"};
   constexpr const char* get_memory_source_tag(memsrc_e loc) {
     return memory_source_tag[static_cast<unsigned char>(loc)];
   }
 
   struct MemoryTraits {
-    enum : unsigned char { rw = 0, read, write } _access{rw};  // access mode (read, write, both)
-    enum : unsigned char { exp = 0, imp } _move{exp};  // data move strategies: explicit, implicit
+    /// access mode: read, write or both
+    enum : unsigned char { rw = 0, read, write } _access{rw};
+    /// data management strategy when accessed by a remote backend: explicit, implicit
+    enum : unsigned char { exp = 0, imp } _move{exp};
   };
 
   struct MemoryHandle {
@@ -149,7 +134,8 @@ namespace zs {
         : descr{mh}, ptr{(void*)ptr} {}
   };
 
-  // host = 0, device, device_const, um, pinned file
+  /// this should be refactored
+  // host = 0, device, um
   constexpr mem_tags memop_tag(const MemoryHandle a, const MemoryHandle b) {
     auto spaceA = static_cast<unsigned char>(a._memsrc);
     auto spaceB = static_cast<unsigned char>(b._memsrc);

@@ -35,14 +35,14 @@ namespace zs {
   constexpr exec_tags suggest_exec_space(MemoryHandle mh) {
     switch (mh.memspace()) {
       case memsrc_e::host:
-      case memsrc_e::pinned:
+#ifdef _OPENMP
         return exec_omp;
+#else
+        return exec_seq;
+#endif
       case memsrc_e::device:
-      case memsrc_e::device_const:
       case memsrc_e::um:
         return exec_cuda;
-      case memsrc_e::file:
-        return exec_seq;
     }
     throw std::runtime_error(
         fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n",

@@ -23,25 +23,6 @@ namespace zs {
     cudri::memcpy(dst, src, size, loc);
   }
 
-  void *allocate(device_const_mem_tag, std::size_t size, std::size_t alignment,
-                 const source_location &loc) {
-    void *ret{nullptr};
-    cudri::malloc(&ret, size, loc);
-    return ret;
-  }
-  void deallocate(device_const_mem_tag, void *ptr, std::size_t size, std::size_t alignment,
-                  const source_location &loc) {
-    cudri::free{ptr, loc};
-  }
-  void memset(device_const_mem_tag, void *addr, int chval, std::size_t size,
-              const source_location &loc) {
-    cudri::memset(addr, chval, size, loc);
-  }
-  void copy(device_const_mem_tag, void *dst, void *src, std::size_t size,
-            const source_location &loc) {
-    cudri::memcpy(dst, src, size, loc);  //, cudaMemcpyDefault);
-  }
-
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment, const source_location &loc) {
     void *ret{nullptr};
     cudri::umalloc(&ret, size, 0x1, loc);  //(unsigned int)CU_MEM_ATTACH_GLOBAL);

@@ -9,8 +9,7 @@ namespace zs {
 
 #if 0
   template <typename T, int d> bool convertParticles(Particles<T, d> &particles) {
-    if (particles.space() == memsrc_e::device || particles.space() == memsrc_e::um
-        || particles.space() == memsrc_e::device_const) {
+    if (particles.space() == memsrc_e::device || particles.space() == memsrc_e::um) {
       constexpr auto dim = d;
       std::vector<PropertyTag> properties{PropertyTag{"mass", 1}, PropertyTag{"pos", dim},
                                           PropertyTag{"vel", dim}};

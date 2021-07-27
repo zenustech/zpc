@@ -13,15 +13,6 @@ namespace zs {
   void copy(device_mem_tag, void *dst, void *src, std::size_t size,
             const source_location &loc = source_location::current());
 
-  void *allocate(device_const_mem_tag, std::size_t size, std::size_t alignment,
-                 const source_location &loc = source_location::current());
-  void deallocate(device_const_mem_tag, void *ptr, std::size_t size, std::size_t alignment,
-                  const source_location &loc = source_location::current());
-  void memset(device_const_mem_tag, void *addr, int chval, std::size_t size,
-              const source_location &loc = source_location::current());
-  void copy(device_const_mem_tag, void *dst, void *src, std::size_t size,
-            const source_location &loc = source_location::current());
-
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment,
                  const source_location &loc = source_location::current());
   void deallocate(um_mem_tag, void *ptr, std::size_t size, std::size_t alignment,

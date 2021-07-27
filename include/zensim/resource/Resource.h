@@ -21,6 +21,8 @@ namespace zs {
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
 
+    static void free_mem_resource(mr_t *) noexcept {}
+
     ZSPmrAllocator() = default;
     ZSPmrAllocator(mr_t *mr) : res{mr} { /*res.reset(mr);*/
     }
@@ -41,27 +43,36 @@ namespace zs {
       return res.get() == other.res.get();
     }
 
-    /// ctor helper funcs
-    template <template <typename Tag> class AllocatorT, typename... Args, std::size_t... Is>
-    void construct(mem_tags tag, std::tuple<Args &&...> args, index_seq<Is...>) {
+    /// non-owning upstream should specify deleter
+    template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
+    void setNonOwningUpstream(mem_tags tag, std::tuple<Args &&...> args, index_seq<Is...>) {
       match([&](auto t) {
-        res = std::make_shared<AllocatorT<decltype(t)>>(std::get<Is>(args)...);
+        res = std::shared_ptr<ResourceT<decltype(t)>>(
+            new ResourceT<decltype(t)>(std::get<Is>(args)...), free_mem_resource);
       })(tag);
     }
-    template <template <typename Tag> class AllocatorT, typename MemTag, typename... Args>
-    void construct(MemTag tag, Args &&...args) {
+    template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
+    void setNonOwningUpstream(MemTag tag, Args &&...args) {
       if constexpr (is_same_v<MemTag, mem_tags>)
-        construct<AllocatorT>(tag, std::forward_as_tuple(FWD(args)...),
-                              std::index_sequence_for<Args...>{});
+        setNonOwningUpstream<ResourceT>(tag, std::forward_as_tuple(FWD(args)...),
+                                        std::index_sequence_for<Args...>{});
       else
-        res = std::make_shared<AllocatorT<MemTag>>(FWD(args)...);
+        res = std::shared_ptr<ResourceT<MemTag>>(new ResourceT<MemTag>(FWD(args)...),
+                                                 free_mem_resource);
     }
-    // specifically for cuda uvm advise
-    template <template <typename Tag> class AllocatorT>
-    void construct(mem_tags tag, std::string_view advice, ProcID did) {
-      match([this, advice, did](auto &tag) {
-        res = std::make_shared<AllocatorT<RM_CVREF_T(tag)>>(advice, did);
-      })(tag);
+    /// owning upstream should specify deleter
+    template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
+    void setOwningUpstream(mem_tags tag, std::tuple<Args &&...> args, index_seq<Is...>) {
+      match([&](auto t) { res = std::make_shared<ResourceT<decltype(t)>>(std::get<Is>(args)...); })(
+          tag);
+    }
+    template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
+    void setOwningUpstream(MemTag tag, Args &&...args) {
+      if constexpr (is_same_v<MemTag, mem_tags>)
+        setOwningUpstream<ResourceT>(tag, std::forward_as_tuple(FWD(args)...),
+                                     std::index_sequence_for<Args...>{});
+      else
+        res = std::make_shared<ResourceT<MemTag>>(FWD(args)...);
     }
 
     SharedHolder<mr_t> res{};

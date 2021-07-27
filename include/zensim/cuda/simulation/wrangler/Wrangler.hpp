@@ -70,6 +70,4 @@ namespace zs::cudri {
                                          std::vector<std::string_view> additionalOptions = {});
   void precompile_wranglers(std::string_view progname, std::string_view source);
 
-  void test_jitify(std::string_view progname = "", std::string_view source = "");
-
 }  // namespace zs::cudri

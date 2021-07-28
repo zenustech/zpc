@@ -92,11 +92,11 @@ namespace zs {
 
     constexpr auto prim(index_t i) const {
       if (i < _bound) return _prims[i];
-      return ~(index_t)0;
+      return ~(typename prim_vector_t::value_type)0;
     }
     constexpr auto node(index_t i) const {
       if (i < _bound) return _nodes[i];
-      return ~(index_t)0;
+      return ~(typename node_vector_t::value_type)0;
     }
 
     const index_t _bound;

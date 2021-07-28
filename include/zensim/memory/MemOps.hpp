@@ -26,6 +26,7 @@ namespace zs {
 #endif
 
   /// default memory operation implementations (fallback)
+  template <typename MemTag> bool prepare_context(MemTag, ProcID devid) { return true; }
   template <typename MemTag> void *allocate(MemTag, std::size_t size, std::size_t alignment) {
     throw std::runtime_error(
         fmt::format("allocate(tag {}, size {}, alignment {}) not implemented\n",

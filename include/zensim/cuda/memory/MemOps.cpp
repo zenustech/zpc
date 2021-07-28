@@ -4,6 +4,20 @@
 
 namespace zs {
 
+  bool prepare_context(device_mem_tag, ProcID did) {
+    int devid;
+    cudri::getContextDevice{&devid};
+    if (devid != did) {
+      if (did < Cuda::device_count() && did >= 0)
+        Cuda::context(did).setContext();
+      else
+        throw std::runtime_error(
+            fmt::format("current binding device [{}] does not match the expected [{}] and failed "
+                        "to switch context.",
+                        devid, (int)did));
+    }
+    return true;
+  }
   void *allocate(device_mem_tag, std::size_t size, std::size_t alignment,
                  const source_location &loc) {
     void *ret{nullptr};
@@ -23,6 +37,20 @@ namespace zs {
     cudri::memcpy(dst, src, size, loc);
   }
 
+  bool prepare_context(um_mem_tag, ProcID did) {
+    int devid;
+    cudri::getContextDevice{&devid};
+    if (devid != did) {
+      if (did < Cuda::device_count() && did >= 0)
+        Cuda::context(did).setContext();
+      else
+        throw std::runtime_error(
+            fmt::format("current binding device [{}] does not match the expected [{}] and failed "
+                        "to switch context.",
+                        devid, (int)did));
+    }
+    return true;
+  }
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment, const source_location &loc) {
     void *ret{nullptr};
     cudri::umalloc(&ret, size, 0x1, loc);  //(unsigned int)CU_MEM_ATTACH_GLOBAL);

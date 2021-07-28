@@ -35,7 +35,10 @@ namespace zs {
             ret.setOwningUpstream<advisor_memory_resource>(tag, "PREFERRED_LOCATION", devid);
           })(tag);
       } else
-        match([&ret](auto &tag) { ret.setNonOwningUpstream<raw_memory_resource>(tag); })(tag);
+        // match([&ret](auto &tag) { ret.setNonOwningUpstream<raw_memory_resource>(tag); })(tag);
+        match([&ret, devid](auto &tag) {
+          ret.setOwningUpstream<default_memory_resource>(tag, devid);
+        })(tag);
       // ret.setNonOwningUpstream<raw_memory_resource>(tag);
     } else
       match([&ret, &advice, devid](auto &tag) {

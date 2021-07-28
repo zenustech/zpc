@@ -43,9 +43,10 @@ namespace zs {
     enum class StreamIndex { Compute = 0, H2DCopy, D2HCopy, D2DCopy, Spare, Total = 32 };
     enum class EventIndex { Compute = 0, H2DCopy, D2HCopy, D2DCopy, Spare, Total = 32 };
 
-    static auto &driver() { return instance(); }
+    static auto &driver() noexcept { return instance(); }
     static auto &context(int devid) { return driver().contexts[devid]; }
-    static auto alignment() { return driver().textureAlignment; }
+    static auto alignment() noexcept { return driver().textureAlignment; }
+    static auto device_count() noexcept { return driver().numTotalDevice; }
     static void init_constant_cache(void *ptr, std::size_t size);
     static void init_constant_cache(void *ptr, std::size_t size, void *stream);
 

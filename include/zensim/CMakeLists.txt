@@ -56,6 +56,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/HashTable.hpp
     container/Vector.hpp
     container/Bvh.hpp
+    container/Bvtt.hpp
     container/IndexBuckets.hpp
     geometry/Structure.hpp
     geometry/Structurefree.hpp

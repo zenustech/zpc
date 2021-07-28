@@ -9,7 +9,7 @@
 
 namespace zs {
 
-  template <typename ExecTag, typename T> constexpr T atomic_add(ExecTag, T *dest, const T val) {
+  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_add(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicAdd(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -40,15 +40,13 @@ namespace zs {
       return target.fetch_add(val, std::memory_order_seq_cst);
 #endif
     }
-    // throw std::runtime_error(
-    //    fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
   ///
   /// exch, cas
   ///
-  template <typename ExecTag, typename T> constexpr T atomic_exch(ExecTag, T *dest, const T val) {
+  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_exch(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>)
       return atomicExch(dest, val);
     else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -74,13 +72,11 @@ namespace zs {
       return target.exchange(val, std::memory_order_seq_cst);
 #endif
     }
-    throw std::runtime_error(
-        fmt::format("atomic_exch(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
   template <typename ExecTag, typename T>
-  constexpr T atomic_cas(ExecTag, T *dest, T expected, T desired) {
+  ZS_FUNCTION T atomic_cas(ExecTag, T *dest, T expected, T desired) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T))
         return reinterpret_bits<float>(atomicCAS((unsigned int *)dest,
@@ -145,8 +141,6 @@ namespace zs {
       return target.compare_exchange_strong(expected, desired, std::memory_order_seq_cst);
 #endif
     }
-    // throw std::runtime_error(
-    //    fmt::format("atomic_cas(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
@@ -156,7 +150,7 @@ namespace zs {
   // https://github.com/NVIDIA-developer-blog/code-samples/blob/master/posts/cuda-aware-mpi-example/src/Device.cu
   // https://herbsutter.com/2012/08/31/reader-qa-how-to-write-a-cas-loop-using-stdatomics/
   template <typename ExecTag, typename T>
-  constexpr void atomic_max(ExecTag execTag, T *const dest, const T val) {
+  ZS_FUNCTION void atomic_max(ExecTag execTag, T *const dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       if constexpr (std::is_integral_v<T>) {
         atomicMax(dest, val);
@@ -187,7 +181,7 @@ namespace zs {
   }
 
   template <typename ExecTag, typename T>
-  constexpr void atomic_min(ExecTag execTag, T *const dest, const T val) {
+  ZS_FUNCTION void atomic_min(ExecTag execTag, T *const dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       if constexpr (std::is_integral_v<T>) {
         atomicMin(dest, val);
@@ -212,15 +206,13 @@ namespace zs {
         ;
       return;
     }
-    // throw std::runtime_error(
-    //    fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return;
   }
 
   ///
   /// bit-wise operations
   ///
-  template <typename ExecTag, typename T> constexpr T atomic_or(ExecTag, T *dest, const T val) {
+  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_or(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicOr(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -248,12 +240,10 @@ namespace zs {
       return target.fetch_or(val, std::memory_order_seq_cst);
 #endif
     }
-    // throw std::runtime_error(
-    //    fmt::format("atomic_or(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
-  template <typename ExecTag, typename T> constexpr T atomic_and(ExecTag, T *dest, const T val) {
+  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_and(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicAnd(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -284,7 +274,7 @@ namespace zs {
     return (T)0;
   }
 
-  template <typename ExecTag, typename T> constexpr T atomic_xor(ExecTag, T *dest, const T val) {
+  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_xor(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicXor(dest, val);
     } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
@@ -310,8 +300,6 @@ namespace zs {
       return target.fetch_xor(val, std::memory_order_seq_cst);
 #endif
     }
-    // throw std::runtime_error(
-    //    fmt::format("atomic_xor(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 

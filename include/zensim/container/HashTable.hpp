@@ -274,7 +274,7 @@ namespace zs {
           _cnt{table._cnt.data()},
           _activeKeys{table._activeKeys.data()} {}
 
-    constexpr value_t insert(const key_t &key) {
+    ZS_FUNCTION value_t insert(const key_t &key) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
@@ -329,7 +329,7 @@ namespace zs {
       return static_cast<value_t>(ret);
     }
     template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0>
-    constexpr key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest, const key_t &val) {
+    ZS_FUNCTION key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest, const key_t &val) {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
@@ -362,7 +362,7 @@ namespace zs {
       return return_val;
     }
     template <execspace_e S = space, enable_if_t<S != execspace_e::cuda> = 0>
-    constexpr key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest, const key_t &val) {
+    ZS_FUNCTION key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest, const key_t &val) {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);

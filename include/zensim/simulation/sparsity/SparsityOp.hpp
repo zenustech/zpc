@@ -84,8 +84,7 @@ namespace zs {
     int offset;
   };
 
-  template <execspace_e space, typename Table>
-  struct EnlargeSparsity<HashTableView<space, Table>> {
+  template <execspace_e space, typename Table> struct EnlargeSparsity<HashTableView<space, Table>> {
     static constexpr int dim = Table::dim;
     using table_t = HashTableView<space, Table>;
 
@@ -128,7 +127,7 @@ namespace zs {
           blockLen{blockLen},
           offset{offset} {}
 
-    constexpr void operator()(typename positions_t::size_type parid) noexcept {
+    ZS_FUNCTION void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
       for (int d = 0; d < table_t::dim; ++d)
         coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
@@ -169,7 +168,7 @@ namespace zs {
           blockLen{blockLen},
           offset{offset} {}
 
-    constexpr void operator()(typename positions_t::size_type parid) noexcept {
+    ZS_FUNCTION void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
       for (int d = 0; d < table_t::dim; ++d)
         coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;

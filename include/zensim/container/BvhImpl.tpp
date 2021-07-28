@@ -11,7 +11,7 @@ namespace zs {
     using bv_t = VectorView<space, Vector<BV>>;
     ComputeBoundingVolume() = default;
     constexpr ComputeBoundingVolume(wrapv<space>, Vector<BV>& v) noexcept : box{proxy<space>(v)} {}
-    constexpr void operator()(const BV& bv) {
+    ZS_FUNCTION void operator()(const BV& bv) {
       for (int d = 0; d < dim; ++d) {
         atomic_min(wrapv<space>{}, &box(0)._min[d], bv._min[d]);
         atomic_max(wrapv<space>{}, &box(0)._max[d], bv._max[d]);
@@ -108,7 +108,7 @@ namespace zs {
           flags{proxy<space>(flags)},
           numLeaves{numLeaves} {}
 
-    constexpr void operator()(Index idx) {
+    ZS_FUNCTION void operator()(Index idx) {
       using TV = vec<T, dim>;
       leafBvs(idx) = primBvs(indices(idx));
 
@@ -235,7 +235,7 @@ namespace zs {
           sortedBvs{proxy<space>(sortedBvs)},
           escapeIndices{proxy<space>(escapeIndices)},
           parents{proxy<space>(parents)},
-          numLeaves{numLeaves} {}
+          numLeaves{static_cast<Index>(numLeaves)} {}
 
     constexpr void operator()(Index dst, const BV& bv, Index l, Index r) {
       sortedBvs(dst) = bv;
@@ -279,7 +279,7 @@ namespace zs {
           levels{proxy<space>(levels)},
           sortedBvs{proxy<space>(sortedBvs)},
           leafIndices{proxy<space>(leafIndices)},
-          numLeaves{numLeaves} {}
+          numLeaves{static_cast<Index>(numLeaves)} {}
 
     constexpr void operator()(Index idx, const BV& bv, Index leafOffset, Index leafDepth) {
       const auto dst = leafOffset + leafDepth - 1;
@@ -332,12 +332,12 @@ namespace zs {
           flags{proxy<space>(refitFlags)},
           bvs{proxy<space>(bvs)} {}
 
-    constexpr void operator()(Index node) {
+    ZS_FUNCTION void operator()(Index node) {
       bvs(node) = primBvs(primitiveIndices(node));
       Index fa = parents(node);
 
       while (fa != -1) {
-        BV &bv = bvs(fa);
+        BV& bv = bvs(fa);
         const BV box = bvs(node);
         for (int d = 0; d < dim; ++d) {
           atomic_min(wrapv<space>{}, &bv._min[d], box._min[d]);
@@ -375,7 +375,7 @@ namespace zs {
           numNodes{bvhBvs.size()},
           bound{records.size()} {}
 
-    constexpr void operator()(ResultIndex cid, const Collider& collider) {
+    ZS_FUNCTION void operator()(ResultIndex cid, const Collider& collider) {
       Index node = 0;
       while (node != -1 && node != numNodes) {
         Index level = levels(node);

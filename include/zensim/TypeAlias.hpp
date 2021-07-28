@@ -93,6 +93,18 @@ namespace zs {
 #  define ZS_LAMBDA
 #endif
 
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+#  if defined(ZS_FUNCTION)
+#    undef ZS_FUNCTION
+#  endif
+#  define ZS_FUNCTION __forceinline__ __device__
+#else
+#  if defined(ZS_FUNCTION)
+#    undef ZS_FUNCTION
+#  endif
+#  define ZS_FUNCTION inline
+#endif
+
   constexpr void do_nothing(...) noexcept {}
   struct do_nothing_op {
     constexpr void operator()(...) noexcept {}

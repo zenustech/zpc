@@ -18,31 +18,27 @@
 
 namespace zs {
 
-#if !ZS_ENABLE_CUDA || !defined(__CUDACC__)
-#  define __device__
-#endif
-
   // __threadfence
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  inline __device__ void thread_fence(ExecTag) {
+  ZS_FUNCTION void thread_fence(ExecTag) {
 #if defined(__CUDACC__)
     __threadfence();
 #endif
   }
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  inline void thread_fence(ExecTag) noexcept {
+  ZS_FUNCTION void thread_fence(ExecTag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
 #pragma omp flush
   }
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  inline void thread_fence(ExecTag) noexcept {}
+  ZS_FUNCTION void thread_fence(ExecTag) noexcept {}
 
   // __activemask
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  inline __device__ unsigned active_mask(ExecTag) {
+  ZS_FUNCTION unsigned active_mask(ExecTag) {
 #if defined(__CUDACC__)
     return __activemask();
 #endif
@@ -58,7 +54,7 @@ namespace zs {
 
   // __ballot_sync
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  inline __device__ unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
+  ZS_FUNCTION unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
 #if defined(__CUDACC__)
     return __ballot_sync(mask, predicate);
 #endif
@@ -67,7 +63,7 @@ namespace zs {
 
 #if 0
   template <typename ExecTag, enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  unsigned ballot_sync(ExecTag, unsigned mask, int predicate) noexcept {
+  unsigned ZS_FUNCTION ballot_sync(ExecTag, unsigned mask, int predicate) noexcept {
     return ~0u;
   }
 #endif
@@ -76,7 +72,7 @@ namespace zs {
 
   /// count leading zeros
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  inline __device__ int count_lz(ExecTag, T x) {
+  ZS_FUNCTION int count_lz(ExecTag, T x) {
 #if defined(__CUDACC__)
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
@@ -91,11 +87,11 @@ namespace zs {
     return -1;
   }
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  constexpr int count_lz(ExecTag, T x) {
+  ZS_FUNCTION int count_lz(ExecTag, T x) {
     return (int)count_leading_zeros(x);
   }
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  constexpr int count_lz(ExecTag, T x) {
+  ZS_FUNCTION int count_lz(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return nbytes * 8;
 #if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -119,7 +115,7 @@ namespace zs {
 
   /// reverse bits
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  inline __device__ T reverse_bits(ExecTag, T x) {
+  ZS_FUNCTION T reverse_bits(ExecTag, T x) {
 #if defined(__CUDACC__)
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)
@@ -133,11 +129,11 @@ namespace zs {
     return x;
   }
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  constexpr T reverse_bits(ExecTag, T x) {
+  ZS_FUNCTION T reverse_bits(ExecTag, T x) {
     return binary_reverse(x);
   }
   template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  constexpr T reverse_bits(ExecTag, T x) {
+  ZS_FUNCTION T reverse_bits(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return 0;
     using Val = std::make_unsigned_t<T>;
@@ -169,9 +165,5 @@ namespace zs {
     }
     return (T)ret;
   }
-
-#if !ZS_ENABLE_CUDA || !defined(__CUDACC__)
-#  undef __device__
-#endif
 
 }  // namespace zs

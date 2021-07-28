@@ -4,7 +4,7 @@
 
 namespace zs {
 
-  template <typename Id1, typename Id2 = Id1> struct BvttFront {
+  template <typename Id1 = std::size_t, typename Id2 = Id1> struct BvttFront {
     using allocator_type = ZSPmrAllocator<>;
     BvttFront(std::size_t numPrims, std::size_t estimatedCount, memsrc_e mre = memsrc_e::host,
               ProcID devid = -1)

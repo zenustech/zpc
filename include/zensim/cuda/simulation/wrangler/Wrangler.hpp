@@ -16,32 +16,41 @@ namespace zs {
     AccessorAoSoA() = default;
     /// aos
     constexpr AccessorAoSoA(wrapv<layout_e::aos>, void* ptr, unsigned short bytes,
-                            unsigned short chnCnt) noexcept
-        : base{ptr}, tileStride{1}, chnCnt{chnCnt}, unitBytes{bytes} {}
+                            unsigned short chnCnt, unsigned short aux) noexcept
+        : base{ptr}, tileStride{1}, chnCnt{chnCnt}, unitBytes{bytes}, aux{aux} {}
     constexpr AccessorAoSoA(wrapv<layout_e::aos>, void* ptr, unsigned short bytes,
-                            unsigned short chnCnt, unsigned short chnNo) noexcept
-        : base{(char*)ptr + chnNo * bytes}, tileStride{1}, chnCnt{chnCnt}, unitBytes{bytes} {}
+                            unsigned short chnCnt, unsigned short chnNo,
+                            unsigned short aux) noexcept
+        : base{(char*)ptr + chnNo * bytes},
+          tileStride{1},
+          chnCnt{chnCnt},
+          unitBytes{bytes},
+          aux{aux} {}
     /// soa
     constexpr AccessorAoSoA(wrapv<layout_e::soa>, void* ptr, unsigned short bytes,
-                            std::size_t elementCnt) noexcept
-        : base{ptr}, tileStride{elementCnt}, chnCnt{1}, unitBytes{bytes} {}
+                            std::size_t elementCnt, unsigned short aux) noexcept
+        : base{ptr}, tileStride{elementCnt}, chnCnt{1}, unitBytes{bytes}, aux{aux} {}
     constexpr AccessorAoSoA(wrapv<layout_e::soa>, void* ptr, unsigned short bytes,
-                            std::size_t elementCnt, unsigned short chnNo) noexcept
+                            std::size_t elementCnt, unsigned short chnNo,
+                            unsigned short aux) noexcept
         : base{(char*)ptr + (chnNo * elementCnt) * bytes},
           tileStride{elementCnt},
           chnCnt{1},
-          unitBytes{bytes} {}
+          unitBytes{bytes},
+          aux{aux} {}
     /// aosoa
     constexpr AccessorAoSoA(wrapv<layout_e::aosoa>, void* ptr, unsigned short bytes,
-                            std::size_t tileStride, unsigned short chnCnt) noexcept
-        : base{ptr}, tileStride{tileStride}, chnCnt{1}, unitBytes{bytes} {}
-    constexpr AccessorAoSoA(wrapv<layout_e::aosoa>, void* ptr, unsigned short bytes,
                             std::size_t tileStride, unsigned short chnCnt,
-                            unsigned short chnNo) noexcept
+                            unsigned short aux) noexcept
+        : base{ptr}, tileStride{tileStride}, chnCnt{1}, unitBytes{bytes}, aux{aux} {}
+    constexpr AccessorAoSoA(wrapv<layout_e::aosoa>, void* ptr, unsigned short bytes,
+                            std::size_t tileStride, unsigned short chnCnt, unsigned short chnNo,
+                            unsigned short aux) noexcept
         : base{(char*)ptr + (chnNo * tileStride) * bytes},
           tileStride{tileStride},
           chnCnt{1},
-          unitBytes{bytes} {}
+          unitBytes{bytes},
+          aux{aux} {}
 
     /// access
     constexpr std::intptr_t operator()(unsigned short chnNo, std::size_t i) const {
@@ -57,7 +66,7 @@ namespace zs {
 
     void* base;
     std::size_t tileStride;
-    unsigned short chnCnt, unitBytes;
+    unsigned short chnCnt, unitBytes, aux;
   };
 
 }  // namespace zs

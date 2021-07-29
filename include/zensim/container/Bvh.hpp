@@ -94,7 +94,7 @@ namespace zs {
     const auto numLeaves = primBvs.size();
     const memsrc_e memdst{primBvs.memspace()};
     const ProcID devid{primBvs.devid()};
-    const auto execTag = wrapv<space>{};
+    constexpr auto execTag = wrapv<space>{};
 
     auto execPol = par_exec(execTag).sync(true);
     if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);

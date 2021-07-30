@@ -14,12 +14,12 @@ namespace zs {
     using index_t = unsigned long long;
     using counter_t = Vector<index_t>;
 
-    BvttFront(std::size_t numPrims, std::size_t estimatedCount, memsrc_e mre = memsrc_e::host,
+    BvttFront(std::size_t numNodes, std::size_t estimatedCount, memsrc_e mre = memsrc_e::host,
               ProcID devid = -1)
-        : _numPrims{numPrims},
+        : _numNodes{numNodes},
           _primIds{estimatedCount, mre, devid},
           _nodeIds{estimatedCount, mre, devid},
-          _offsets{numPrims + 1, mre, devid},
+          _offsets{numNodes + 1, mre, devid},
           _cnt{1, mre, devid} {
       counter_t res{1, memsrc_e::host, -1};
       res[0] = static_cast<index_t>(0);
@@ -41,7 +41,7 @@ namespace zs {
           nodeIds{allocator, estimatedCount, mre, devid},
           cnt{allocator, 1, mre, devid} {}
 #endif
-    std::size_t _numPrims;
+    std::size_t _numNodes;
     prim_vector_t _primIds;
     node_vector_t _nodeIds;
     counter_t _offsets;
@@ -133,7 +133,7 @@ namespace zs {
     execPol(range(numFrontNodes),
             [execTag, counts = proxy<space>(counts),
              front = proxy<space>(const_cast<const bvtt_t &>(front))] ZS_LAMBDA(index_t i) mutable {
-              atomic_add(execTag, &counts[front.prim(i)], (index_t)1);
+              atomic_add(execTag, &counts[front.node(i)], (index_t)1);
             });
     // scan
     exclusive_scan(execPol, std::begin(counts), std::end(counts), std::begin(offsets));
@@ -146,10 +146,10 @@ namespace zs {
             [counts = proxy<space>(counts), primIds = proxy<space>(primIds),
              nodeIds = proxy<space>(nodeIds), offsets = proxy<space>(offsets),
              front = proxy<space>(const_cast<const bvtt_t &>(front))] ZS_LAMBDA(index_t i) mutable {
-              auto primid = front.prim(i);
-              auto loc = offsets[primid] + atomic_add(execTag, &counts[primid], (index_t)1);
-              primIds[loc] = primid;
-              nodeIds[loc] = front.node(i);
+              auto nodeid = front.node(i);
+              auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
+              primIds[loc] = front.prim(i);
+              nodeIds[loc] = nodeid;
             });
 
     front._primIds = std::move(primIds);

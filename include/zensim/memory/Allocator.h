@@ -58,7 +58,7 @@ namespace zs {
   };
 
   template <typename MemTag> struct advisor_memory_resource : mr_t {
-    advisor_memory_resource(std::string_view option = "PREFERRED_LOCATION", ProcID did = 0,
+    advisor_memory_resource(ProcID did = 0, std::string_view option = "PREFERRED_LOCATION",
                             mr_t *up = &raw_memory_resource<MemTag>::instance())
         : upstream{up}, option{option}, did{did} {}
     ~advisor_memory_resource() = default;

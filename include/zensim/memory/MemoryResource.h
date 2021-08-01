@@ -93,6 +93,16 @@ namespace zs {
     return memory_source_tag[static_cast<unsigned char>(loc)];
   }
 
+  constexpr memsrc_e get_memory_tag_enum(const mem_tags& tag) {
+    if (std::holds_alternative<host_mem_tag>(tag))
+      return memsrc_e::host;
+    else if (std::holds_alternative<device_mem_tag>(tag))
+      return memsrc_e::device;
+    else if (std::holds_alternative<um_mem_tag>(tag))
+      return memsrc_e::um;
+    return memsrc_e::host;
+  }
+
   struct MemoryTraits {
     /// access mode: read, write or both
     enum : unsigned char { rw = 0, read, write } _access{rw};
@@ -100,47 +110,63 @@ namespace zs {
     enum : unsigned char { exp = 0, imp } _move{exp};
   };
 
-  struct MemoryHandle {
+  struct MemoryLocation {
     constexpr ProcID devid() const noexcept { return _devid; }
     constexpr memsrc_e memspace() const noexcept { return _memsrc; }
-    constexpr MemoryTraits traits() const noexcept { return _traits; }
-    constexpr MemoryHandle memoryHandle() const noexcept {
-      return static_cast<MemoryHandle>(*this);
-    }
-
-    void swap(MemoryHandle& o) noexcept {
-      std::swap(_devid, o._devid);
-      std::swap(_memsrc, o._memsrc);
-      std::swap(_traits, o._traits);
-    }
-    friend void swap(MemoryHandle& a, MemoryHandle& b) { a.swap(b); }
 
     constexpr bool onHost() const noexcept { return _memsrc == memsrc_e::host; }
     constexpr const char* memSpaceName() const { return get_memory_source_tag(memspace()); }
     constexpr mem_tags getTag() const { return to_memory_source_tag(_memsrc); }
 
-    /// memory location
+    void swap(MemoryLocation& o) noexcept {
+      std::swap(_devid, o._devid);
+      std::swap(_memsrc, o._memsrc);
+    }
+    friend void swap(MemoryLocation& a, MemoryLocation& b) { a.swap(b); }
+
+    friend constexpr bool operator==(const MemoryLocation& a, const MemoryLocation& b) {
+      return a._memsrc == b._memsrc && a._devid == b._devid;
+    }
+
     memsrc_e _memsrc{memsrc_e::host};  // memory source
     ProcID _devid{-1};                 // cpu id
+  };
+
+  struct MemoryProperty : MemoryLocation {
+    MemoryProperty() = default;
+    constexpr MemoryProperty(memsrc_e mre, ProcID devid) : MemoryLocation{mre, devid} {}
+
+    constexpr MemoryTraits traits() const noexcept { return _traits; }
+    constexpr MemoryProperty memoryProperty() const noexcept {
+      return static_cast<MemoryProperty>(*this);
+    }
+
+    void swap(MemoryProperty& o) noexcept {
+      std::swap(_traits, o._traits);
+      std::swap(static_cast<MemoryLocation&>(*this), static_cast<MemoryLocation&>(o));
+    }
+    friend void swap(MemoryProperty& a, MemoryProperty& b) { a.swap(b); }
+
     /// behavior traits
     MemoryTraits _traits{};
   };
+  using MemoryHandle = MemoryProperty;
 
   struct MemoryEntity {
-    MemoryHandle descr{};
+    MemoryLocation location{};
     void* ptr{nullptr};
     MemoryEntity() = default;
-    template <typename T> constexpr MemoryEntity(MemoryHandle mh, T&& ptr)
-        : descr{mh}, ptr{(void*)ptr} {}
+    template <typename T> constexpr MemoryEntity(MemoryProperty prop, T&& ptr)
+        : location{prop}, ptr{(void*)ptr} {}
   };
 
   /// this should be refactored
   // host = 0, device, um
   constexpr mem_tags memop_tag(const MemoryHandle a, const MemoryHandle b) {
-    auto spaceA = static_cast<unsigned char>(a._memsrc);
-    auto spaceB = static_cast<unsigned char>(b._memsrc);
+    auto spaceA = static_cast<unsigned char>(a.memspace());
+    auto spaceB = static_cast<unsigned char>(b.memspace());
     if (spaceA > spaceB) std::swap(spaceA, spaceB);
-    if (a._memsrc == b._memsrc) return to_memory_source_tag(a._memsrc);
+    if (a.memspace() == b.memspace()) return to_memory_source_tag(a.memspace());
     /// avoid um issue
     else if (spaceB < static_cast<unsigned char>(memsrc_e::um))
       return to_memory_source_tag(memsrc_e::device);
@@ -148,8 +174,8 @@ namespace zs {
       return to_memory_source_tag(memsrc_e::um);
     else
       throw std::runtime_error(fmt::format("memop_tag for ({}, {}) is undefined!",
-                                           get_memory_source_tag(a._memsrc),
-                                           get_memory_source_tag(b._memsrc)));
+                                           get_memory_source_tag(a.memspace()),
+                                           get_memory_source_tag(b.memspace())));
   }
 
 }  // namespace zs

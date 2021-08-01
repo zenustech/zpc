@@ -24,11 +24,17 @@ namespace zs {
     static void free_mem_resource(mr_t *) noexcept {}
 
     ZSPmrAllocator() = default;
-    ZSPmrAllocator(mr_t *mr) : res{mr} { /*res.reset(mr);*/
+    ZSPmrAllocator(mr_t *mr, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : res{mr}, location{mre, devid} { /*res.reset(mr);*/
     }
-    ZSPmrAllocator(const SharedHolder<mr_t> &mr) noexcept : res{mr} {}
+    ZSPmrAllocator(const SharedHolder<mr_t> &mr, memsrc_e mre = memsrc_e::host,
+                   ProcID devid = -1) noexcept
+        : res{mr}, location{mre, devid} {}
 
-    friend void swap(ZSPmrAllocator &a, ZSPmrAllocator &b) { std::swap(a.res, b.res); }
+    friend void swap(ZSPmrAllocator &a, ZSPmrAllocator &b) {
+      std::swap(a.res, b.res);
+      std::swap(a.location, b.location);
+    }
 
     constexpr mr_t *resource() noexcept { return res.get(); }
     [[nodiscard]] void *allocate(std::size_t bytes,
@@ -38,44 +44,55 @@ namespace zs {
     void deallocate(void *p, std::size_t bytes, std::size_t alignment = alignof(std::max_align_t)) {
       res->deallocate(p, bytes, alignment);
     }
-    bool is_equal(const mr_t &other) const noexcept { return res.get() == &other; }
     bool is_equal(const ZSPmrAllocator &other) const noexcept {
-      return res.get() == other.res.get();
+      return res.get() == other.res.get() && location == other.location;
     }
+
+    ZSPmrAllocator select_on_container_copy_construction() const { return *this; }
 
     /// non-owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
-    void setNonOwningUpstream(mem_tags tag, std::tuple<Args &&...> args, index_seq<Is...>) {
+    void setNonOwningUpstream(mem_tags tag, ProcID devid, std::tuple<Args &&...> args,
+                              index_seq<Is...>) {
       match([&](auto t) {
         res = std::shared_ptr<ResourceT<decltype(t)>>(
             new ResourceT<decltype(t)>(std::get<Is>(args)...), free_mem_resource);
+        location = MemoryLocation{get_memory_tag_enum(tag), devid};
       })(tag);
     }
     template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
-    void setNonOwningUpstream(MemTag tag, Args &&...args) {
+    void setNonOwningUpstream(MemTag tag, ProcID devid, Args &&...args) {
       if constexpr (is_same_v<MemTag, mem_tags>)
-        setNonOwningUpstream<ResourceT>(tag, std::forward_as_tuple(FWD(args)...),
+        setNonOwningUpstream<ResourceT>(tag, devid, std::forward_as_tuple(FWD(args)...),
                                         std::index_sequence_for<Args...>{});
-      else
+      else {
         res = std::shared_ptr<ResourceT<MemTag>>(new ResourceT<MemTag>(FWD(args)...),
                                                  free_mem_resource);
+        location = MemoryLocation{get_memory_tag_enum(tag), devid};
+      }
     }
     /// owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
-    void setOwningUpstream(mem_tags tag, std::tuple<Args &&...> args, index_seq<Is...>) {
-      match([&](auto t) { res = std::make_shared<ResourceT<decltype(t)>>(std::get<Is>(args)...); })(
-          tag);
+    void setOwningUpstream(mem_tags tag, ProcID devid, std::tuple<Args &&...> args,
+                           index_seq<Is...>) {
+      match([&](auto t) {
+        res = std::make_shared<ResourceT<decltype(t)>>(devid, std::get<Is>(args)...);
+        location = MemoryLocation{get_memory_tag_enum(tag), devid};
+      })(tag);
     }
     template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
-    void setOwningUpstream(MemTag tag, Args &&...args) {
+    void setOwningUpstream(MemTag tag, ProcID devid, Args &&...args) {
       if constexpr (is_same_v<MemTag, mem_tags>)
-        setOwningUpstream<ResourceT>(tag, std::forward_as_tuple(FWD(args)...),
+        setOwningUpstream<ResourceT>(tag, devid, std::forward_as_tuple(FWD(args)...),
                                      std::index_sequence_for<Args...>{});
-      else
-        res = std::make_shared<ResourceT<MemTag>>(FWD(args)...);
+      else {
+        res = std::make_shared<ResourceT<MemTag>>(devid, FWD(args)...);
+        location = MemoryLocation{get_memory_tag_enum(tag), devid};
+      }
     }
 
     SharedHolder<mr_t> res{};
+    MemoryLocation location{memsrc_e::host, -1};
   };
 
   /// global free function

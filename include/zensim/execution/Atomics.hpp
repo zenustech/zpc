@@ -9,6 +9,8 @@
 
 namespace zs {
 
+  /// reference: raja/include/RAJA/policy/atomic_builtin.hpp: BuiltinAtomicCAS
+
   template <typename ExecTag, typename T> ZS_FUNCTION T atomic_add(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicAdd(dest, val);

@@ -15,7 +15,7 @@ namespace zs {
   void erase_allocation(void *ptr) { get_resource_manager().erase(ptr); }
 
   void copy(MemoryEntity dst, MemoryEntity src, std::size_t size) {
-    if (dst.descr.onHost() && src.descr.onHost())
+    if (dst.location.onHost() && src.location.onHost())
       copy(mem_host, dst.ptr, src.ptr, size);
     else
       copy(mem_device, dst.ptr, src.ptr, size);
@@ -28,11 +28,11 @@ namespace zs {
       if (mre == memsrc_e::um) {
         if (devid < -1)
           match([&ret, devid](auto &tag) {
-            ret.setOwningUpstream<advisor_memory_resource>(tag, "READ_MOSTLY", devid);
+            ret.setOwningUpstream<advisor_memory_resource>(tag, devid, "READ_MOSTLY");
           })(tag);
         else
           match([&ret, devid](auto &tag) {
-            ret.setOwningUpstream<advisor_memory_resource>(tag, "PREFERRED_LOCATION", devid);
+            ret.setOwningUpstream<advisor_memory_resource>(tag, devid, "PREFERRED_LOCATION");
           })(tag);
       } else
         // match([&ret](auto &tag) { ret.setNonOwningUpstream<raw_memory_resource>(tag); })(tag);
@@ -42,7 +42,7 @@ namespace zs {
       // ret.setNonOwningUpstream<raw_memory_resource>(tag);
     } else
       match([&ret, &advice, devid](auto &tag) {
-        ret.setOwningUpstream<advisor_memory_resource>(tag, advice, devid);
+        ret.setOwningUpstream<advisor_memory_resource>(tag, devid, advice);
       })(tag);
     return ret;
   }

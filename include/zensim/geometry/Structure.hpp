@@ -67,7 +67,7 @@ namespace zs {
     using size_type = typename Vector<block_t>::size_type;
 
     constexpr GridBlocks(float dx = 1.f, std::size_t numBlocks = 0, memsrc_e mre = memsrc_e::host,
-                         ProcID devid = -1, std::size_t alignment = 0)
+                         ProcID devid = -1)
         : blocks{numBlocks, mre, devid}, dx{dx} {}
 
     void resize(size_type newSize) { blocks.resize(newSize); }

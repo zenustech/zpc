@@ -96,11 +96,9 @@ namespace zs {
       if (self().address() && self().node().extent() > 0) self().dealloc(_allocator);
     }
     void initPropertyTags(const channel_counter_type N) {
-      _tagNames = Vector<SmallString>{_allocator, static_cast<std::size_t>(N), memspace(), devid()};
-      _tagSizes = Vector<channel_counter_type>{_allocator, static_cast<std::size_t>(N), memspace(),
-                                               devid()};
-      _tagOffsets = Vector<channel_counter_type>{_allocator, static_cast<std::size_t>(N),
-                                                 memspace(), devid()};
+      _tagNames = Vector<SmallString>{_allocator, static_cast<std::size_t>(N)};
+      _tagSizes = Vector<channel_counter_type>{_allocator, static_cast<std::size_t>(N)};
+      _tagOffsets = Vector<channel_counter_type>{_allocator, static_cast<std::size_t>(N)};
     }
 
     static auto numTotalChannels(const std::vector<PropertyTag> &tags) {
@@ -179,8 +177,8 @@ namespace zs {
         : MemoryHandle{o.base()}, _allocator{o._allocator}, _tags{o._tags}, _size{o.size()} {
       _inst = buildInstance(this->memspace(), this->devid(), o.numChannels(), this->size());
       if (ds::snode_size(o.self().template node<0>()) > 0)
-        copy(MemoryEntity{base(), (void *)self().address()}, MemoryEntity{o.base(), o.data()},
-             ds::snode_size(o.self().template node<0>()));
+        copy(MemoryEntity{base(), (void *)self().address()},
+             MemoryEntity{o.base(), (void *)o.data()}, ds::snode_size(o.self().template node<0>()));
     }
     TileVector &operator=(const TileVector &o) {
       if (this == &o) return *this;
@@ -241,9 +239,9 @@ namespace zs {
     void preparePropertyNames(const std::vector<SmallString> &propNames) {
       const auto N = propNames.size();
       if (N <= 0) return;
-      Vector<SmallString> hostPropNames{_allocator, N, memsrc_e::host, -1};
-      Vector<channel_counter_type> hostPropSizes{_allocator, N, memsrc_e::host, -1};
-      Vector<channel_counter_type> hostPropOffsets{_allocator, N, memsrc_e::host, -1};
+      Vector<SmallString> hostPropNames{N, memsrc_e::host, -1};
+      Vector<channel_counter_type> hostPropSizes{N, memsrc_e::host, -1};
+      Vector<channel_counter_type> hostPropOffsets{N, memsrc_e::host, -1};
 
       for (std::size_t i = 0, ed = propNames.size(); i != ed; ++i) hostPropNames[i] = propNames[i];
       const auto offsets = propertyOffsets();
@@ -262,14 +260,14 @@ namespace zs {
         }
       }
       initPropertyTags(N);
-      copy(MemoryEntity{base(), _tagNames.data()},
-           MemoryEntity{{memsrc_e::host, -1}, (void *)hostPropNames.data()},
+      copy(MemoryEntity{base(), (void *)_tagNames.data()},
+           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)hostPropNames.data()},
            sizeof(SmallString) * N);
-      copy(MemoryEntity{base(), _tagSizes.data()},
-           MemoryEntity{{memsrc_e::host, -1}, (void *)hostPropSizes.data()},
+      copy(MemoryEntity{base(), (void *)_tagSizes.data()},
+           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)hostPropSizes.data()},
            sizeof(channel_counter_type) * N);
-      copy(MemoryEntity{base(), _tagOffsets.data()},
-           MemoryEntity{{memsrc_e::host, -1}, (void *)hostPropOffsets.data()},
+      copy(MemoryEntity{base(), (void *)_tagOffsets.data()},
+           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)hostPropOffsets.data()},
            sizeof(channel_counter_type) * N);
     }
 

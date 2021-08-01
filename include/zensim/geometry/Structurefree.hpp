@@ -26,15 +26,16 @@ namespace zs {
     using size_type = typename Vector<TV>::size_type;
     static constexpr int dim = d;
 
-    constexpr MemoryHandle handle() const noexcept { return X.memoryProperty(); }
+    constexpr MemoryLocation memoryLocation() const noexcept { return X.memoryLocation(); }
+    constexpr decltype(auto) getAllocator() const noexcept { return X.allocator(); }
     constexpr memsrc_e space() const noexcept { return X.memspace(); }
     constexpr ProcID devid() const noexcept { return X.devid(); }
     constexpr auto size() const noexcept { return X.size(); }
 
     std::vector<std::array<ValueT, dim>> retrievePositions() const {
       Vector<TV> Xtmp{X.size(), memsrc_e::host, -1};
-      copy({{memsrc_e::host, -1}, (void *)Xtmp.data()}, {X.base(), (void *)X.data()},
-           X.size() * sizeof(TV));
+      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Xtmp.data()},
+           MemoryEntity{X.memoryLocation(), (void *)X.data()}, X.size() * sizeof(TV));
       std::vector<std::array<ValueT, dim>> ret(X.size());
       memcpy(ret.data(), Xtmp.data(), sizeof(TV) * X.size());
       return ret;
@@ -43,16 +44,16 @@ namespace zs {
       std::vector<T> ret(X.size());
       if (F.size()) {
         Vector<TM> Ftmp{X.size()};
-        copy({{memsrc_e::host, -1}, (void *)Ftmp.data()}, {F.base(), (void *)F.data()},
-             F.size() * sizeof(TM));
+        copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Ftmp.data()},
+             MemoryEntity{F.memoryLocation(), (void *)F.data()}, F.size() * sizeof(TM));
         for (size_type i = 0; i < Ftmp.size(); ++i) {
           const auto &v = Ftmp[i];
           ret[i] = v(0) * (v(4) * v(8) - v(5) * v(7)) - v(1) * (v(3) * v(8) - v(5) * v(6))
                    + v(2) * (v(3) * v(7) - v(4) * v(6));
         }
       } else if (J.size()) {
-        copy({{memsrc_e::host, -1}, (void *)ret.data()}, {J.base(), (void *)J.data()},
-             J.size() * sizeof(T));
+        copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)ret.data()},
+             MemoryEntity{J.memoryLocation(), (void *)J.data()}, J.size() * sizeof(T));
       }
       return ret;
     }

@@ -33,7 +33,7 @@ namespace zs {
       counts = vector_t{(std::size_t)numCells, memLoc, did};
       match([&counts](auto &&memTag) {
         memset(memTag, counts.data(), 0, sizeof(typename vector_t::value_type) * counts.size());
-      })(counts.getTag());
+      })(counts.memoryLocation().getTag());
 
       auto tmp = counts;  // zero-ed array
       execPol(range(pars.size()), SpatiallyCount{execTag, dx, table, pars.X, counts, 1, 0});

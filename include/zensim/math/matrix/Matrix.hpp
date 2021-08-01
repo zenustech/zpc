@@ -81,7 +81,7 @@ namespace zs {
                                matrix_order_e order = matrix_order_e::rowMajor,
                                index_type nrows = 1, index_type ncols = 1,
                                std::size_t alignment = alignof(std::max_align_t))
-        : MatrixBase<ValueType, IndexType>{{mre, pid}, nrows, ncols, order},
+        : MatrixBase<ValueType, IndexType>{MemoryProperty{mre, pid}, nrows, ncols, order},
           offsets{mre, pid},
           indices{mre, pid},
           vals{mre, pid} {}

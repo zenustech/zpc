@@ -23,14 +23,14 @@ namespace zs {
           _cnt{1, mre, devid} {
       counter_t res{1, memsrc_e::host, -1};
       res[0] = static_cast<index_t>(0);
-      copy(MemoryEntity{_cnt.base(), (void *)_cnt.data()},
-           MemoryEntity{res.base(), (void *)res.data()}, sizeof(index_t));
+      copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
+           MemoryEntity{res.memoryLocation(), (void *)res.data()}, sizeof(index_t));
     }
 
     inline auto size() const {
       counter_t res{1, memsrc_e::host, -1};
-      copy(MemoryEntity{res.base(), (void *)res.data()},
-           MemoryEntity{_cnt.base(), (void *)_cnt.data()}, sizeof(index_t));
+      copy(MemoryEntity{res.memoryLocation(), (void *)res.data()},
+           MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(index_t));
       return res[0];
     }
 #if 0

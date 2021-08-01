@@ -9,7 +9,7 @@
 
 namespace zs {
 
-  template <typename T, typename Index = std::size_t> struct Vector : MemoryHandle {
+  template <typename T, typename Index = std::size_t> struct Vector {
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
     static_assert(std::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
@@ -29,44 +29,23 @@ namespace zs {
             && std::allocator_traits<allocator_type>::propagate_on_container_swap::value,
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
-    constexpr MemoryHandle &base() noexcept { return static_cast<MemoryHandle &>(*this); }
-    constexpr const MemoryHandle &base() const noexcept {
-      return static_cast<const MemoryHandle &>(*this);
-    }
+    constexpr decltype(auto) memoryLocation() noexcept { return _allocator.location; }
+    constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
+    constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
+    constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
+    constexpr decltype(auto) allocator() const noexcept { return _allocator; }
 
     constexpr Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : MemoryHandle{mre, devid},
-          _allocator{get_memory_source(mre, devid)},
-          _base{nullptr},
-          _size{0},
-          _capacity{0} {}
+        : _allocator{get_memory_source(mre, devid)}, _base{nullptr}, _size{0}, _capacity{0} {}
     explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : MemoryHandle{mre, devid},
-          _allocator{get_memory_source(mre, devid)},
+        : _allocator{get_memory_source(mre, devid)},
           _base{(pointer)_allocator.allocate(count * sizeof(value_type),
                                              std::alignment_of_v<value_type>)},
           _size{count},
           _capacity{count} {}
     /// allocator-aware
-    Vector(mr_t *mr, size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : MemoryHandle{mre, devid},
-          _allocator{mr},
-          _base{(pointer)_allocator.allocate(count * sizeof(value_type),
-                                             std::alignment_of_v<value_type>)},
-          _size{count},
-          _capacity{count} {}
-    Vector(const SharedHolder<mr_t> &mr, size_type count, memsrc_e mre = memsrc_e::host,
-           ProcID devid = -1)
-        : MemoryHandle{mre, devid},
-          _allocator{mr},
-          _base{(pointer)_allocator.allocate(count * sizeof(value_type),
-                                             std::alignment_of_v<value_type>)},
-          _size{count},
-          _capacity{count} {}
-    Vector(const allocator_type &allocator, size_type count, memsrc_e mre = memsrc_e::host,
-           ProcID devid = -1)
-        : MemoryHandle{mre, devid},
-          _allocator{allocator},
+    Vector(const allocator_type &allocator, size_type count)
+        : _allocator{allocator},
           _base{(pointer)_allocator.allocate(count * sizeof(value_type),
                                              std::alignment_of_v<value_type>)},
           _size{count},
@@ -118,11 +97,6 @@ namespace zs {
       return make_iterator<const_iterator_impl>(_base, size());
     }
 
-    void debug() const {
-      fmt::print("procid: {}, memspace: {}, size: {}, capacity: {}\n", static_cast<int>(devid()),
-                 static_cast<int>(memspace()), size(), capacity());
-    }
-
     /// capacity
     constexpr size_type size() const noexcept { return _size; }
     constexpr size_type capacity() const noexcept { return _capacity; }
@@ -155,15 +129,14 @@ namespace zs {
     }
     /// ctor, assignment operator
     Vector(const Vector &o)
-        : MemoryHandle{o.base()},
-          _allocator{o._allocator},
+        : _allocator{o._allocator},
           _base{(pointer)_allocator.allocate(sizeof(value_type) * o._capacity,
                                              std::alignment_of_v<value_type>)},
           _size{o.size()},
           _capacity{o._capacity} {
       if (o.data() && o.size() > 0)
-        copy(MemoryEntity{base(), (void *)data()}, MemoryEntity{o.base(), (void *)o.data()},
-             o.usedBytes());
+        copy(MemoryEntity{memoryLocation(), (void *)data()},
+             MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
@@ -171,13 +144,14 @@ namespace zs {
       swap(tmp);
       return *this;
     }
-    Vector clone(const MemoryHandle &mh, const allocator_type &allocator) const {
-      Vector ret{allocator, capacity(), mh.memspace(), mh.devid()};
-      copy({mh, (void *)ret.data()}, {base(), (void *)this->data()}, usedBytes());
+    Vector clone(const allocator_type &allocator) const {
+      Vector ret{allocator, capacity()};
+      copy(MemoryEntity{allocator.location, (void *)ret.data()},
+           MemoryEntity{memoryLocation(), (void *)this->data()}, usedBytes());
       return ret;
     }
-    Vector clone(const MemoryHandle &mh) const {
-      return clone(mh, get_memory_source(mh.memspace(), mh.devid()));
+    Vector clone(const MemoryLocation &mloc) const {
+      return clone(get_memory_source(mloc.memspace(), mloc.devid()));
     }
     /// assignment or destruction after std::move
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
@@ -185,7 +159,6 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
-      base() = std::exchange(o.base(), defaultVector.base());
       _allocator = std::exchange(o._allocator, defaultVector._allocator);
       _base = std::exchange(o._base, defaultVector._base);
       _size = std::exchange(o._size, defaultVector.size());
@@ -199,7 +172,6 @@ namespace zs {
       return *this;
     }
     void swap(Vector &o) noexcept {
-      std::swap(base(), o.base());
       std::swap(_allocator, o._allocator);
       std::swap(_base, o._base);
       std::swap(_size, o._size);
@@ -219,8 +191,10 @@ namespace zs {
         if (newSize > oldCapacity) {
           /// virtual memory way
           /// conventional way
-          Vector tmp{_allocator, geometric_size_growth(newSize), memspace(), devid()};
-          if (size()) copy({base(), (void *)tmp.data()}, {base(), (void *)data()}, usedBytes());
+          Vector tmp{_allocator, geometric_size_growth(newSize)};
+          if (size())
+            copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+                 MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
           tmp._size = newSize;
           swap(tmp);
           return;
@@ -237,23 +211,17 @@ namespace zs {
       (*this)[_size++] = std::move(val);
     }
 
-    template <typename InputIter,
-              enable_if_t<
-                  is_same_v<typename std::iterator_traits<InputIter>::value_type, value_type>> = 0>
-    iterator append(InputIter st, InputIter ed) {
-      difference_type count = std::distance(st, ed);  //< def standard iterator
-      if (count <= 0) return end();
+    void append(const Vector &other) {
+      difference_type count = other.size();  //< def standard iterator
+      if (count <= 0) return;
       size_type unusedCapacity = capacity() - size();
-      // this is not optimal
-      if (count > unusedCapacity) {
+      if (count > unusedCapacity)
         resize(size() + count);
-      } else {
+      else
         _size += count;
-      }
-      copy({base(), (void *)&(*end())}, {base(), (void *)&(*st)}, sizeof(T) * count);
-      return end();
+      copy({memoryLocation(), (void *)(_base + size())},
+           {other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
     }
-    iterator append(const Vector &other) { return append(other.begin(), other.end()); }
 
   protected:
     constexpr std::size_t usedBytes() const noexcept { return sizeof(T) * size(); }

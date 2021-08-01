@@ -133,11 +133,11 @@ namespace zs {
     HashTable clone(const MemoryHandle &mh, const allocator_type &allocator) const {
       HashTable ret{allocator, _tableSize / reserve_ratio_v, mh.memspace(), mh.devid()};
       if (_cnt.size() > 0)
-        copy(MemoryEntity{ret._cnt.base(), ret._cnt.data()}, MemoryEntity{_cnt.base(), _cnt.data()},
-             sizeof(value_t));
+        copy(MemoryEntity{ret._cnt.memoryLocation(), (void *)ret._cnt.data()},
+             MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
       if (_activeKeys.size() > 0)
-        copy(MemoryEntity{ret._activeKeys.base(), ret._activeKeys.data()},
-             MemoryEntity{_activeKeys.base(), _activeKeys.data()},
+        copy(MemoryEntity{ret._activeKeys.memoryLocation(), (void *)ret._activeKeys.data()},
+             MemoryEntity{_activeKeys.memoryLocation(), (void *)_activeKeys.data()},
              sizeof(key_t) * _activeKeys.size());
       if (ds::snode_size(self().template node<0>()) > 0)
         copy(MemoryEntity{ret.base(), (void *)ret.self().address()},
@@ -177,8 +177,8 @@ namespace zs {
 
     inline value_t size() const {
       Vector<value_t> res{1, memsrc_e::host, -1};
-      copy(MemoryEntity{res.base(), (void *)res.data()},
-           MemoryEntity{_cnt.base(), (void *)_cnt.data()}, sizeof(value_t));
+      copy(MemoryEntity{res.memoryLocation(), (void *)res.data()},
+           MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
       return res[0];
     }
 

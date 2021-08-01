@@ -134,7 +134,8 @@ namespace zs {
 
   struct MemoryProperty : MemoryLocation {
     MemoryProperty() = default;
-    constexpr MemoryProperty(memsrc_e mre, ProcID devid) : MemoryLocation{mre, devid} {}
+    constexpr explicit MemoryProperty(memsrc_e mre, ProcID devid) : MemoryLocation{mre, devid} {}
+    constexpr explicit MemoryProperty(MemoryLocation loc) : MemoryLocation{loc} {}
 
     constexpr MemoryTraits traits() const noexcept { return _traits; }
     constexpr MemoryProperty memoryProperty() const noexcept {
@@ -156,8 +157,9 @@ namespace zs {
     MemoryLocation location{};
     void* ptr{nullptr};
     MemoryEntity() = default;
-    template <typename T> constexpr MemoryEntity(MemoryProperty prop, T&& ptr)
-        : location{prop}, ptr{(void*)ptr} {}
+    constexpr explicit MemoryEntity(MemoryLocation location, void* ptr)
+        : location{location}, ptr{ptr} {}
+    constexpr explicit MemoryEntity(MemoryProperty prop, void* ptr) : location{prop}, ptr{ptr} {}
   };
 
   /// this should be refactored

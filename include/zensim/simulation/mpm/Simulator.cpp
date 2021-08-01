@@ -36,11 +36,11 @@ namespace zs {
   }
 
   BuilderForMPMSimulator::operator MPMSimulator() noexcept {
-    std::vector<MemoryHandle> memDsts(0);
+    std::vector<MemoryProperty> memDsts(0);
     std::vector<std::vector<std::tuple<std::size_t, std::size_t>>> groups(0);
-    auto searchHandle = [&memDsts](MemoryHandle mh) -> int {
+    auto searchHandle = [&memDsts](MemoryLocation mloc) -> int {
       for (auto&& [id, entry] : zs::zip(zs::range(memDsts.size()), memDsts))
-        if (mh.memspace() == entry.memspace() && mh.devid() == entry.devid()) return id;
+        if (mloc.memspace() == entry.memspace() && mloc.devid() == entry.devid()) return id;
       return -1;
     };
     auto searchModel = [&models = this->target().models](std::size_t objId) {
@@ -55,9 +55,9 @@ namespace zs {
     std::size_t id = 0;
     for (auto&& particles : this->target().particles) {
       match([&](auto& ps) {
-        auto did = searchHandle(ps.handle());
+        auto did = searchHandle(ps.memoryLocation());
         if (did == -1) {
-          memDsts.push_back(ps.handle());
+          memDsts.push_back(MemoryProperty{ps.memoryLocation()});
           numParticles.push_back(ps.size());
           groups.emplace_back(std::move(std::vector<std::tuple<std::size_t, std::size_t>>{
               std::make_tuple(searchModel(id), id)}));

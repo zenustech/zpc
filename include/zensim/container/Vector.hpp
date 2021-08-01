@@ -58,7 +58,7 @@ namespace zs {
     }
 
     struct iterator_impl : IteratorInterface<iterator_impl> {
-      template <typename Ti> constexpr iterator_impl(value_type *base, Ti &&idx)
+      template <typename Ti> constexpr iterator_impl(pointer base, Ti &&idx)
           : _base{base}, _idx{static_cast<size_type>(idx)} {}
 
       constexpr reference dereference() { return _base[_idx]; }
@@ -69,11 +69,11 @@ namespace zs {
       }
 
     protected:
-      value_type *_base{nullptr};
+      pointer _base{nullptr};
       size_type _idx{0};
     };
     struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
-      template <typename Ti> constexpr const_iterator_impl(const value_type *base, Ti &&idx)
+      template <typename Ti> constexpr const_iterator_impl(const_pointer base, Ti &&idx)
           : _base{base}, _idx{static_cast<size_type>(idx)} {}
 
       constexpr const_reference dereference() { return _base[_idx]; }
@@ -84,7 +84,7 @@ namespace zs {
       }
 
     protected:
-      value_type const *_base{nullptr};
+      const_pointer _base{nullptr};
       size_type _idx{0};
     };
     using iterator = LegacyIterator<iterator_impl>;
@@ -252,8 +252,8 @@ namespace zs {
     constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
 
-    vector_t _vector;
-    size_type _vectorSize;
+    vector_t _vector{nullptr};
+    size_type _vectorSize{0};
   };
 
   template <execspace_e Space, typename VectorT> struct VectorView<Space, const VectorT> {
@@ -270,8 +270,8 @@ namespace zs {
     constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
 
-    vector_t _vector;
-    size_type _vectorSize;
+    vector_t _vector{nullptr};
+    size_type _vectorSize{0};
   };
 
   template <execspace_e ExecSpace, typename T, typename Index>

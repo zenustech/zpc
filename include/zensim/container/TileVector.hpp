@@ -59,28 +59,18 @@ namespace zs {
     constexpr const base_t &self() const noexcept { return _inst; }
 
     constexpr TileVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _allocator{get_memory_source(mre, devid)}, _tags(0), _size{0} {
-      _inst = buildInstance(0, 0);
-    }
-#if 0
-    TileVector(channel_counter_type numChns, size_type count = 0, memsrc_e mre = memsrc_e::host,
-               ProcID devid = -1)
-        : _allocator{get_memory_source(mre, devid)},
-          _tags(numChns),
-          _size{count} {
-      _inst = buildInstance(numChns, count);
-    }
-#endif
-    TileVector(const std::vector<PropertyTag> &channelTags, size_type count = 0,
-               memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _allocator{get_memory_source(mre, devid)}, _tags{channelTags}, _size{count} {
-      _inst = buildInstance(numTotalChannels(channelTags), count);
-    }
+        : _allocator{get_memory_source(mre, devid)}, _tags(0), _size{0}, _inst{} {}
     TileVector(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
                size_type count = 0)
         : _allocator{allocator}, _tags{channelTags}, _size{count} {
       _inst = buildInstance(numTotalChannels(channelTags), count);
     }
+    TileVector(const std::vector<PropertyTag> &channelTags, size_type count = 0,
+               memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : TileVector{get_memory_source(mre, devid), channelTags, count} {}
+    TileVector(channel_counter_type numChns, size_type count = 0, memsrc_e mre = memsrc_e::host,
+               ProcID devid = -1)
+        : TileVector{get_memory_source(mre, devid), {{"unnamed", numChns}}, count} {}
 
     ~TileVector() {
       if (self().address() && self().node().extent() > 0) self().dealloc(_allocator);

@@ -58,12 +58,26 @@ namespace zs {
     constexpr base_t &self() noexcept { return _inst; }
     constexpr const base_t &self() const noexcept { return _inst; }
 
-    constexpr TileVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _allocator{get_memory_source(mre, devid)}, _tags(0), _size{0}, _inst{} {}
     TileVector(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
                size_type count = 0)
         : _allocator{allocator}, _tags{channelTags}, _size{count} {
-      _inst = buildInstance(numTotalChannels(channelTags), count);
+      const auto N = numTotalChannels(channelTags);
+      {
+        auto tagNames = Vector<SmallString>{static_cast<std::size_t>(N)};
+        auto tagSizes = Vector<channel_counter_type>{static_cast<std::size_t>(N)};
+        auto tagOffsets = Vector<channel_counter_type>{static_cast<std::size_t>(N)};
+        channel_counter_type curOffset = 0;
+        for (auto &&[name, size, offset, src] : zip(tagNames, tagSizes, tagOffsets, channelTags)) {
+          name = zs::get<SmallString>(src);
+          size = zs::get<1>(src);
+          offset = curOffset;
+          curOffset += size;
+        }
+        _tagNames = tagNames.clone(_allocator);
+        _tagSizes = tagSizes.clone(_allocator);
+        _tagOffsets = tagOffsets.clone(_allocator);
+      }
+      _inst = buildInstance(N, count);
     }
     TileVector(const std::vector<PropertyTag> &channelTags, size_type count = 0,
                memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -71,14 +85,11 @@ namespace zs {
     TileVector(channel_counter_type numChns, size_type count = 0, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1)
         : TileVector{get_memory_source(mre, devid), {{"unnamed", numChns}}, count} {}
+    TileVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : TileVector{get_memory_source(mre, devid), {}, 0} {}
 
     ~TileVector() {
       if (self().address() && self().node().extent() > 0) self().dealloc(_allocator);
-    }
-    void initPropertyTags(const channel_counter_type N) {
-      _tagNames = Vector<SmallString>{_allocator, static_cast<std::size_t>(N)};
-      _tagSizes = Vector<channel_counter_type>{_allocator, static_cast<std::size_t>(N)};
-      _tagOffsets = Vector<channel_counter_type>{_allocator, static_cast<std::size_t>(N)};
     }
 
     static auto numTotalChannels(const std::vector<PropertyTag> &tags) {
@@ -167,7 +178,13 @@ namespace zs {
       return self()(idx / lane_width)(chn, idx % lane_width);
     }
     /// ctor, assignment operator
-    TileVector(const TileVector &o) : _allocator{o._allocator}, _tags{o._tags}, _size{o.size()} {
+    TileVector(const TileVector &o)
+        : _allocator{o._allocator},
+          _tags{o._tags},
+          _tagNames{o._tagNames},
+          _tagSizes{o._tagSizes},
+          _tagOffsets{o._tagOffsets},
+          _size{o.size()} {
       _inst = buildInstance(o.numChannels(), this->size());
       if (ds::snode_size(o.self().template node<0>()) > 0)
         copy(MemoryEntity{memoryLocation(), (void *)self().address()},
@@ -201,6 +218,9 @@ namespace zs {
       self() = std::exchange(o.self(), defaultVector.self());
       _allocator = std::move(o._allocator);
       _tags = std::move(o._tags);
+      _tagNames = std::move(o._tagNames);
+      _tagSizes = std::move(o._tagSizes);
+      _tagOffsets = std::move(o._tagOffsets);
       _size = std::exchange(o._size, defaultVector.size());
     }
     /// make move-assignment safe for self-assignment
@@ -214,6 +234,9 @@ namespace zs {
       std::swap(self(), o.self());
       std::swap(_allocator, o._allocator);
       std::swap(_tags, o._tags);
+      std::swap(_tagNames, o._tagNames);
+      std::swap(_tagSizes, o._tagSizes);
+      std::swap(_tagOffsets, o._tagOffsets);
       std::swap(_size, o._size);
     }
     friend void swap(TileVector &a, TileVector &b) { a.swap(b); }
@@ -224,47 +247,17 @@ namespace zs {
       return self().node().child(wrapv<0>{}).channel_count();
     }
     constexpr channel_counter_type numProperties() const noexcept { return _tags.size(); }
-    constexpr auto propertyOffsets() const {
-      std::vector<channel_counter_type> offsets(_tags.size());
-      for (Vector<PropertyTag>::size_type i = 0; i != _tags.size(); ++i)
-        offsets[i] = (i ? offsets[i - 1] + _tags[i - 1].template get<1>() : 0);
-      return offsets;
-    }
-    void preparePropertyNames(const std::vector<SmallString> &propNames) {
-      const auto N = propNames.size();
-      if (N <= 0) return;
-      Vector<SmallString> hostPropNames{N, memsrc_e::host, -1};
-      Vector<channel_counter_type> hostPropSizes{N, memsrc_e::host, -1};
-      Vector<channel_counter_type> hostPropOffsets{N, memsrc_e::host, -1};
 
-      for (std::size_t i = 0, ed = propNames.size(); i != ed; ++i) hostPropNames[i] = propNames[i];
-      const auto offsets = propertyOffsets();
-      for (std::size_t dst = 0; dst < N; ++dst) {
-        Vector<PropertyTag>::size_type i = 0;
-        for (; i < _tags.size(); ++i) {
-          if (_tags[i].template get<0>() == propNames[dst]) {
-            hostPropSizes[dst] = _tags[i].template get<1>();
-            hostPropOffsets[dst] = offsets[i];
-            break;
-          }
-        }
-        if (i == _tags.size()) {
-          hostPropSizes[dst] = 0;
-          hostPropOffsets[dst] = -1;
+    bool hasProperty(const SmallString &str) const {
+      bool found = false;
+      for (auto &&tag : _tags) {
+        if (str == zs::get<SmallString>(tag)) {
+          found = true;
+          break;
         }
       }
-      initPropertyTags(N);
-      copy(MemoryEntity{memoryLocation(), (void *)_tagNames.data()},
-           MemoryEntity{hostPropNames.memoryLocation(), (void *)hostPropNames.data()},
-           sizeof(SmallString) * N);
-      copy(MemoryEntity{memoryLocation(), (void *)_tagSizes.data()},
-           MemoryEntity{hostPropSizes.memoryLocation(), (void *)hostPropSizes.data()},
-           sizeof(channel_counter_type) * N);
-      copy(MemoryEntity{memoryLocation(), (void *)_tagOffsets.data()},
-           MemoryEntity{hostPropOffsets.memoryLocation(), (void *)hostPropOffsets.data()},
-           sizeof(channel_counter_type) * N);
+      return found;
     }
-
     constexpr const SmallString *tagNameHandle() const noexcept { return _tagNames.data(); }
     constexpr const channel_counter_type *tagSizeHandle() const noexcept {
       return _tagSizes.data();
@@ -447,7 +440,6 @@ namespace zs {
     explicit constexpr TileVectorView(const std::vector<SmallString> &tagNames,
                                       TileVectorT &tilevector)
         : base_t{tilevector}, N{static_cast<channel_counter_type>(tagNames.size())} {
-      tilevector.preparePropertyNames(tagNames);
       _tagNames = tilevector.tagNameHandle();
       _tagOffsets = tilevector.tagOffsetHandle();
       _tagSizes = tilevector.tagSizeHandle();
@@ -507,7 +499,6 @@ namespace zs {
     explicit constexpr TileVectorView(const std::vector<SmallString> &tagNames,
                                       TileVectorT &tilevector)
         : base_t{tilevector}, N{static_cast<channel_counter_type>(tagNames.size())} {
-      tilevector.preparePropertyNames(tagNames);
       _tagNames = tilevector.tagNameHandle();
       _tagOffsets = tilevector.tagOffsetHandle();
       _tagSizes = tilevector.tagSizeHandle();
@@ -549,11 +540,19 @@ namespace zs {
   template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  const TileVector<T, Length, IndexT, ChnT> &vec) {
+    for (auto &&tag : tagNames)
+      if (!vec.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("tilevector attribute [\"{}\"] not exists", (std::string)tag));
     return TileVectorView<ExecSpace, const TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
   }
   template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  TileVector<T, Length, IndexT, ChnT> &vec) {
+    for (auto &&tag : tagNames)
+      if (!vec.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("tilevector attribute [\"{}\"] not exists\n", (std::string)tag));
     return TileVectorView<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
   }
 

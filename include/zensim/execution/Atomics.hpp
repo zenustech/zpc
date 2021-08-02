@@ -45,6 +45,26 @@ namespace zs {
     return (T)0;
   }
 
+  // https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/
+  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_inc(ExecTag, T *dest) {
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+    if constexpr (
+        is_same_v<ExecTag,
+                  cuda_exec_tag> && std::is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
+      unsigned int active = __activemask();
+      int leader = __ffs(active) - 1;
+      int change = __popc(active);
+      // https://stackoverflow.com/questions/44337309/whats-the-most-efficient-way-to-calculate-the-warp-id-lane-id-in-a-1-d-grid
+      unsigned int rank = __popc(active & ((1 << (threadIdx.x & 31)) - 1));
+      T warp_res;
+      if (rank == 0) warp_res = atomicAdd(dest, (T)change);
+      warp_res = __shfl_sync(active, warp_res, (T)leader);
+      return warp_res + rank;
+    }
+#endif
+    return atomic_add(ExecTag{}, dest, (T)1);
+  }
+
   ///
   /// exch, cas
   ///

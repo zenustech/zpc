@@ -260,7 +260,7 @@ namespace zs {
         storedKey = atomicKeyCAS(&_table(_2, hashedentry), &_table(_0, hashedentry), key);
       }
       if (storedKey == key_sentinel_v) {
-        auto localno = (value_t)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+        auto localno = (value_t)atomic_inc(exectag, (unsigned_value_t *)_cnt);
         _table(_1, hashedentry) = localno;
         _activeKeys[localno] = key;
         if (localno >= _tableSize - 20)

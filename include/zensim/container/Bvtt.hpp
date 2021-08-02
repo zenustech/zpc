@@ -65,7 +65,7 @@ namespace zs {
           _numFrontNodes{std::min(bvfront._primIds.size(), bvfront._nodeIds.size())} {}
 
     ZS_FUNCTION void push_back(prim_id_t prim, node_id_t node) {
-      const auto no = atomic_add(wrapv<space>{}, _cnt, (index_t)1);
+      const auto no = atomic_inc(wrapv<space>{}, _cnt);
       if (no < _numFrontNodes) {
         _prims[no] = prim;
         _nodes[no] = node;
@@ -133,7 +133,8 @@ namespace zs {
     execPol(range(numFrontNodes),
             [execTag, counts = proxy<space>(counts),
              front = proxy<space>(const_cast<const bvtt_t &>(front))] ZS_LAMBDA(index_t i) mutable {
-              atomic_add(execTag, &counts[front.node(i)], (index_t)1);
+              // atomic_add(execTag, &counts[front.node(i)], (index_t)1);
+              atomic_inc(execTag, &counts[front.node(i)]);
             });
     // scan
     exclusive_scan(execPol, std::begin(counts), std::end(counts), std::begin(offsets));
@@ -147,7 +148,8 @@ namespace zs {
              nodeIds = proxy<space>(nodeIds), offsets = proxy<space>(offsets),
              front = proxy<space>(const_cast<const bvtt_t &>(front))] ZS_LAMBDA(index_t i) mutable {
               auto nodeid = front.node(i);
-              auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
+              // auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
+              auto loc = offsets[nodeid] + atomic_inc(execTag, &counts[nodeid]);
               primIds[loc] = front.prim(i);
               nodeIds[loc] = nodeid;
             });

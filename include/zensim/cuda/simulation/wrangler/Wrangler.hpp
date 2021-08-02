@@ -7,7 +7,7 @@
 
 namespace zs {
 
-  enum layout_e : int { aos = 0, soa, aosoa };
+  enum struct layout_e : int { aos = 0, soa, aosoa };
   static constexpr auto aos_v = wrapv<layout_e::aos>{};
   static constexpr auto soa_v = wrapv<layout_e::soa>{};
   static constexpr auto aosoa_v = wrapv<layout_e::aosoa>{};

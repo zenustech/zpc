@@ -21,7 +21,7 @@ namespace zs {
     using vector_t = Vector<value_type>;
     using indices_t = Vector<index_type>;
     using bvs_t = Vector<Box>;
-    using tilevector_t = TileVector<value_type, lane_width>;
+    using tilevector_t = TileVector<float_type, lane_width>;
 
     LBvh() = default;
 
@@ -32,6 +32,7 @@ namespace zs {
                  TV::uniform(std::numeric_limits<float>().min())};
 
     bvs_t sortedBvs;  // bounding volumes
+    tilevector_t tiledBvs;
     // escape index for internal nodes, primitive index for leaf nodes
     indices_t auxIndices;
     indices_t levels;   // count from bottom up (0-based) in left branch

@@ -159,7 +159,7 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
-      _allocator = std::exchange(o._allocator, defaultVector._allocator);
+      _allocator = std::move(o._allocator);
       _base = std::exchange(o._base, defaultVector._base);
       _size = std::exchange(o._size, defaultVector.size());
       _capacity = std::exchange(o._capacity, defaultVector._capacity);

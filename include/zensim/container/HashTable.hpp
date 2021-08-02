@@ -130,7 +130,7 @@ namespace zs {
     HashTable(HashTable &&o) noexcept {
       const HashTable defaultTable{};
       self() = std::exchange(o.self(), defaultTable.self());
-      _allocator = std::exchange(o._allocator, defaultTable._allocator);
+      _allocator = std::move(o._allocator);
       _tableSize = std::exchange(o._tableSize, defaultTable._tableSize);
       /// critical! use user-defined move assignment constructor!
       _cnt = std::move(o._cnt);

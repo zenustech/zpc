@@ -24,6 +24,10 @@ namespace zs {
     static void free_mem_resource(mr_t *) noexcept {}
 
     ZSPmrAllocator() = default;
+    ZSPmrAllocator(ZSPmrAllocator &&) = default;
+    ZSPmrAllocator &operator=(ZSPmrAllocator &&) = default;
+    ZSPmrAllocator(const ZSPmrAllocator &) = default;
+    ZSPmrAllocator &operator=(const ZSPmrAllocator &) = default;
     ZSPmrAllocator(mr_t *mr, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : res{mr}, location{mre, devid} { /*res.reset(mr);*/
     }

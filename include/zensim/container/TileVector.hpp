@@ -209,7 +209,7 @@ namespace zs {
     TileVector(TileVector &&o) noexcept {
       const TileVector defaultVector{};
       self() = std::exchange(o.self(), defaultVector.self());
-      _allocator = std::exchange(o._allocator, defaultVector._allocator);
+      _allocator = std::move(o._allocator);
       _tags = std::move(o._tags);
       _size = std::exchange(o._size, defaultVector.size());
     }

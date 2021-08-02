@@ -14,7 +14,7 @@ extern "C" __global__ void zpc_particle_wrangle_kernel(std::size_t npars,
   auto pid = blockIdx.x * blockDim.x + threadIdx.x;
   if (pid >= npars) return;
 
-  zs::f32 globals[30];
+  zs::f32 globals[64];
   /// assign channels
   for (int i = 0; i < nchns; ++i) globals[i] = *(zs::f32 *)accessors[i](pid);
 
@@ -37,7 +37,7 @@ extern "C" __global__ void zpc_particle_neighbor_wrangle_kernel(
 
   using T = zs::f32;
   static_assert(zs::is_same_v<T, float>, "wtf");
-  T globals[48];
+  T globals[64];
 
   /// assign target particle channels
   for (int i = 0; i < nchns; ++i)

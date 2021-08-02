@@ -136,7 +136,8 @@ namespace zs {
       blockid = blockid / blockLen;
       /// guarantee counts are non-negative, thus perform this explicit type conversion for cuda
       /// atomic overload
-      atomic_inc(wrapv<space>{}, (counter_interger_type*)&counts(table.query(blockid)));
+      atomic_add(wrapv<space>{}, (counter_interger_type*)&counts(table.query(blockid)),
+                 (counter_interger_type)1);
     }
 
     table_t table;
@@ -177,7 +178,8 @@ namespace zs {
       auto cellno = table.query(blockid);
       /// guarantee counts are non-negative, thus perform this explicit type conversion for cuda
       /// atomic overload
-      auto dst = atomic_inc(wrapv<space>{}, (counter_interger_type*)&counts(cellno));
+      auto dst = atomic_add(wrapv<space>{}, (counter_interger_type*)&counts(cellno),
+                            (counter_interger_type)1);
       indices(offsets(cellno) + dst) = parid;
     }
 

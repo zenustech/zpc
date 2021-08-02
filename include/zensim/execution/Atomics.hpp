@@ -58,7 +58,7 @@ namespace zs {
       unsigned int rank = __popc(active & ((1 << (threadIdx.x & 31)) - 1));
       T warp_res;
       if (rank == 0) warp_res = atomicAdd(dest, (T)change);
-      warp_res = __shfl_sync(active, warp_res, (T)leader);
+      warp_res = __shfl_sync(active, warp_res, leader);
       return warp_res + rank;
     }
 #endif

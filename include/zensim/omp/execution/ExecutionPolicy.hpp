@@ -1,5 +1,14 @@
 #pragma once
 
+#if !ZS_ENABLE_OPENMP
+#  error "ZS_ENABLE_OPENMP was not enabled, but Omp::ExecutionPolicy.hpp was included anyway."
+#endif
+
+#if ZS_ENABLE_OPENMP && !defined(_OPENMP)
+#  error "ZS_ENABLE_OPENMP defined but the compiler is not defining the _OPENMP macro as expected"
+#  define _OPENMP
+#endif
+
 #include <omp.h>
 
 #include "zensim/execution/ExecutionPolicy.hpp"

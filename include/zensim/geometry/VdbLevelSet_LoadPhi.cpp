@@ -387,7 +387,9 @@ namespace zs {
         "%d}\n",
         bmin(0), bmin(1), bmin(2), bmax(0), bmax(1), bmax(2), extents(0), extents(1), extents(2));
     DenseGrid<float, int, 3> phi(extents, 2 * dx);
-#pragma omp parallel for
+#if defined(_OPENMP)
+#  pragma omp parallel for
+#endif
     for (int x = 0; x < extents(0); ++x)
       for (int y = 0; y < extents(1); ++y)
         for (int z = 0; z < extents(2); ++z) {

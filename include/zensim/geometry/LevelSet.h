@@ -180,13 +180,17 @@ namespace zs {
 
       const auto dom = self().node().get_extents();
       if constexpr (dim == 2) {
-#pragma omp parallel for
+#if defined(_OPENMP)
+#  pragma omp parallel for
+#endif
         for (int x = 0; x < dom(0); ++x)
           for (int y = 0; y < dom(1); ++y) {
             self()(wrapv<0>{}, x, y) = g({x, y});
           }
       } else if constexpr (dim == 3) {
-#pragma omp parallel for
+#if defined(_OPENMP)
+#  pragma omp parallel for
+#endif
         for (int x = 0; x < dom(0); ++x)
           for (int y = 0; y < dom(1); ++y)
             for (int z = 0; z < dom(2); ++z) {
@@ -212,7 +216,9 @@ namespace zs {
 
       const auto dom = self().node().get_extents();
       if constexpr (dim == 2) {
-#pragma omp parallel for
+#if defined(_OPENMP)
+#  pragma omp parallel for
+#endif
         for (int x = 0; x < dom(0); ++x)
           for (int y = 0; y < dom(1); ++y) {
             self()(wrapv<0>{}, x, y) = g({x, y});
@@ -220,7 +226,9 @@ namespace zs {
             for (int d = 0; d < 2; ++d) self()(wrapv<1>{}, d, x, y) = vel(d);
           }
       } else if constexpr (dim == 3) {
-#pragma omp parallel for
+#if defined(_OPENMP)
+#  pragma omp parallel for
+#endif
         for (int x = 0; x < dom(0); ++x)
           for (int y = 0; y < dom(1); ++y)
             for (int z = 0; z < dom(2); ++z) {

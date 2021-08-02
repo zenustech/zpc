@@ -171,7 +171,8 @@ namespace zs {
     typename openvdb::Vec3fGrid::Ptr velgrid;
     for (openvdb::GridPtrVec::iterator iter = my_grids->begin(); iter != my_grids->end(); ++iter) {
       if ((*iter)->isType<openvdb::FloatGrid>()) {
-        if (openvdb::gridPtrCast<openvdb::FloatGrid>(*iter)->metaValue<std::string>("name") == "surface") {
+        if (openvdb::gridPtrCast<openvdb::FloatGrid>(*iter)->metaValue<std::string>("name")
+            == "surface") {
           phigrid = openvdb::gridPtrCast<openvdb::FloatGrid>(*iter);
           for (openvdb::MetaMap::MetaIterator it = phigrid->beginMeta(); it != phigrid->endMeta();
                ++it) {
@@ -182,7 +183,8 @@ namespace zs {
           }
         }
       } else if ((*iter)->isType<openvdb::Vec3fGrid>()) {
-        if (openvdb::gridPtrCast<openvdb::Vec3fGrid>(*iter)->metaValue<std::string>("name") == "vel") {
+        if (openvdb::gridPtrCast<openvdb::Vec3fGrid>(*iter)->metaValue<std::string>("name")
+            == "vel") {
           velgrid = openvdb::gridPtrCast<openvdb::Vec3fGrid>(*iter);
           for (openvdb::MetaMap::MetaIterator it = velgrid->beginMeta(); it != velgrid->endMeta();
                ++it) {
@@ -221,7 +223,8 @@ namespace zs {
     vec<int, 3> extents = ((bmax - bmin) / dx).cast<int>() + 1;
 
     /// phi
-    auto sample = [&phigrid, &velgrid, dim](const TV &X_input) -> std::tuple<float, openvdb::Vec3f> {
+    auto sample
+        = [&phigrid, &velgrid, dim](const TV &X_input) -> std::tuple<float, openvdb::Vec3f> {
       TV X = TV::zeros();
       for (int d = 0; d < dim; d++) X(d) = X_input(d);
       openvdb::tools::GridSampler<PhiTreeT, openvdb::tools::BoxSampler> phi_interpolator(
@@ -239,7 +242,9 @@ namespace zs {
         bmin(0), bmin(1), bmin(2), bmax(0), bmax(1), bmax(2), extents(0), extents(1), extents(2));
     DenseGrid<float, int, 3> phi(extents, 2 * dx);
     DenseGrid<TV, int, 3> vel(extents, TV::zeros());
-#pragma omp parallel for
+#if defined(_OPENMP)
+#  pragma omp parallel for
+#endif
     for (int x = 0; x < extents(0); ++x)
       for (int y = 0; y < extents(1); ++y)
         for (int z = 0; z < extents(2); ++z) {

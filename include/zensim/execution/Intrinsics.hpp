@@ -30,7 +30,9 @@ namespace zs {
   ZS_FUNCTION void thread_fence(ExecTag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
-#pragma omp flush
+#if defined(_OPENMP)
+#  pragma omp flush
+#endif
   }
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
@@ -45,13 +47,6 @@ namespace zs {
     return 0u;
   }
 
-#if 0
-  template <typename ExecTag, enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  unsigned active_mask(ExecTag) noexcept {
-    return ~0u;
-  }
-#endif
-
   // __ballot_sync
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
   ZS_FUNCTION unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
@@ -60,13 +55,6 @@ namespace zs {
 #endif
     return 0;
   }
-
-#if 0
-  template <typename ExecTag, enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  unsigned ZS_FUNCTION ballot_sync(ExecTag, unsigned mask, int predicate) noexcept {
-    return ~0u;
-  }
-#endif
 
   // ref: https://graphics.stanford.edu/~seander/bithacks.html
 

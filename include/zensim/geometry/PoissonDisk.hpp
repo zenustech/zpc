@@ -153,7 +153,9 @@ namespace zs {
         const auto nworkers = std::thread::hardware_concurrency();
         omp_set_num_threads(nworkers);
         std::vector<std::vector<std::array<T, dim>>> localSamples(nworkers);
-#  pragma omp parallel for
+#  if defined(_OPENMP)
+#    pragma omp parallel for
+#  endif
         for (int id = 0; id < nworkers; id++) {
           localSamples[id].reserve(estimate / nworkers);
           for (int i = id; i < cnt; i += nworkers) {

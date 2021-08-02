@@ -206,28 +206,20 @@ endif ()
 
 target_sources(zpc 
   PRIVATE 
-    ${ZENSIM_LIBRARY_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_OMP_SOURCE_FILES}
-    ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
+    ${ZENSIM_LIBRARY_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
   target_precompile_headers(zpc INTERFACE 
     ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
-    ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
 endif()
-target_compile_definitions(zpc PUBLIC ZS_ENABLE_OPENMP=1) #${ZS_ENABLE_OPENMP}
 target_link_libraries(zpc PUBLIC zpc_cxx_deps)
 target_compile_options(zpc # MSVC, GNU, Clang, Intel
-  PRIVATE        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PRIVATE        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2, -O3 $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 target_link_options(zpc
   PRIVATE        $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
-if (ZS_ENABLE_OPENMP)
-target_compile_options(zpc # MSVC, GNU, Clang, Intel
-  PUBLIC         $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
-)
-endif()
 set_target_properties(zpc
   PROPERTIES  # LINKER_LANGUAGE CXX
               POSITION_INDEPENDENT_CODE ON
@@ -235,7 +227,29 @@ set_target_properties(zpc
 )
 # set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_CORE_INCLUDE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}")
 
-# related to cuda
+###############
+# zpc: openmp #
+###############
+if (ZS_ENABLE_OPENMP)
+
+target_sources(zpc 
+  PRIVATE   ${ZENSIM_LIBRARY_OMP_SOURCE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
+)
+if (ENABLE_PCH)
+  target_precompile_headers(zpc INTERFACE ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
+endif()
+
+target_compile_definitions(zpc PUBLIC ZS_ENABLE_OPENMP=1)
+target_compile_options(zpc # MSVC, GNU, Clang, Intel
+  PRIVATE        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+)
+# set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}")
+
+endif(ZS_ENABLE_OPENMP)
+
+#############
+# zpc: cuda #
+#############
 if (ZS_ENABLE_CUDA)
 
 target_sources(zpc 

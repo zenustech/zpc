@@ -1,9 +1,13 @@
 #pragma once
+#include <map>
+#include <stdexcept>
+
 #include "zensim/TypeAlias.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/resource/Resource.h"
+#include "zensim/types/Optional.h"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {
@@ -23,14 +27,37 @@ namespace zs {
     // using TM = vec<T, d, d>;
     using TM = vec<T, d * d>;
     using TMAffine = vec<T, (d + 1) * (d + 1)>;
+    enum struct attrib_e : unsigned char { scalar = 0, vec, mat, affine };
+
+    using Attribute = variant<Vector<T>, Vector<TV>, Vector<TM>, Vector<TMAffine>>;
+    using allocator_type = ZSPmrAllocator<>;
     using size_type = typename Vector<TV>::size_type;
     static constexpr int dim = d;
+    template <typename TT> static constexpr attrib_e get_attribute_enum(const Vector<TT> &) {
+      if constexpr (is_same_v<TT, T>)
+        return attrib_e::scalar;
+      else if constexpr (is_same_v<TT, TV>)
+        return attrib_e::vec;
+      else if constexpr (is_same_v<TT, TM>)
+        return attrib_e::mat;
+      else if constexpr (is_same_v<TT, TMAffine>)
+        return attrib_e::affine;
+      throw std::runtime_error(
+          fmt::format(" array of \"{}\" is not a known attribute type\n", demangle<T>()));
+    }
 
     constexpr MemoryLocation memoryLocation() const noexcept { return X.memoryLocation(); }
     constexpr decltype(auto) getAllocator() const noexcept { return X.allocator(); }
     constexpr memsrc_e space() const noexcept { return X.memspace(); }
     constexpr ProcID devid() const noexcept { return X.devid(); }
     constexpr auto size() const noexcept { return X.size(); }
+    constexpr decltype(auto) allocator() const noexcept { return attr("pos").allocator(); }
+
+    Particles(const allocator_type &allocator, size_type count) {
+      _attributes["pos"] = Vector<TV>{allocator, count};
+    }
+    Particles(size_type count = 0, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : Particles{get_memory_source(mre, devid), count} {}
 
     std::vector<std::array<ValueT, dim>> retrievePositions() const {
       Vector<TV> Xtmp{X.size(), memsrc_e::host, -1};
@@ -57,6 +84,13 @@ namespace zs {
       }
       return ret;
     }
+
+    constexpr bool hasAttr(std::string_view attrib, bool checkEmpty = false) const noexcept {
+      if (auto it = _attributes.find(attrib); it != _attributes.end())
+        if (!checkEmpty || it->second.size() > 0) return true;  // should not be empty
+      return false;
+    }
+
 #define CHECK_ATTRIBUTE(ATTRIB) \
   constexpr bool has##ATTRIB() const noexcept { return ATTRIB.size() > 0; }
 
@@ -68,6 +102,52 @@ namespace zs {
     CHECK_ATTRIBUTE(F)
     CHECK_ATTRIBUTE(C)
 
+    constexpr decltype(auto) attrs() { return _attributes; }
+    constexpr decltype(auto) attrs() const { return _attributes; }
+    // avoid [] because default ctor of Vector is not necessarily expected
+    constexpr decltype(auto) attr(std::string_view attrib) { return _attributes.at(attrib); }
+    constexpr decltype(auto) attr(std::string_view attrib) const { return _attributes.at(attrib); }
+    constexpr auto tryGet(std::string_view attrib) const noexcept {
+      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
+      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
+      return ResultT{};
+    }
+    constexpr auto tryGet(std::string_view attrib) noexcept {
+      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
+      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
+      return ResultT{};
+    }
+    template <typename AT> constexpr decltype(auto) attr(std::string_view attrib) {
+      return std::get<Vector<AT>>(attr(attrib));
+    }
+    template <typename AT> constexpr decltype(auto) attr(std::string_view attrib) const {
+      return std::get<Vector<AT>>(attr(attrib));
+    }
+
+    constexpr decltype(auto) addAttr(std::string_view attrib) { return; }
+    constexpr decltype(auto) addAttr(std::string_view attrib, attrib_e ae) {
+      if (auto obj = tryGet(attrib); obj.has_value()) {
+        if (get_attribute_enum((*obj)->second) == ae) return (*obj)->second;
+      }
+      auto &att = _attributes[attrib];
+      switch (ae) {
+        case attrib_e::scalar:
+          att = Vector<T>{allocator(), size()};
+          break;
+        case attrib_e::vec:
+          att = Vector<TV>{allocator(), size()};
+          break;
+        case attrib_e::mat:
+          att = Vector<TM>{allocator(), size()};
+          break;
+        case attrib_e::affine:
+          att = Vector<TMAffine>{allocator(), size()};
+          break;
+        default:;
+      }
+      return att;
+    }
+
     void append(const Particles &other) {
       M.append(other.M);
       X.append(other.X);
@@ -75,7 +155,23 @@ namespace zs {
       J.append(other.J);
       F.append(other.F);
       C.append(other.C);
+      ///
+      for (auto &&attrib : other.attrs())
+        if (auto obj = tryGet(attrib.first); obj.has_value()) {
+          match(
+              [](auto &&dst,
+                 auto &&src) -> std::enable_if_t<is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
+                dst.append(src);
+              },
+              [&attrib](auto &&dst, auto &&src) {
+                throw std::runtime_error(fmt::format(
+                    "attributes of the same name \"{}\" are of type \"{}\"(dst) and \"{}\"(src)\n",
+                    attrib.first, demangle(dst), demangle(src)));
+              })((*obj)->second, attrib.second);
+        } else
+          _attributes[attrib.first] = attrib.second;
     }
+
     void resize(std::size_t newSize) {
       M.resize(newSize);
       X.resize(newSize);
@@ -83,6 +179,8 @@ namespace zs {
       if (J.size()) J.resize(newSize);
       if (F.size()) F.resize(newSize);
       if (C.size()) C.resize(newSize);
+      ///
+      for (auto &&attrib : attrs()) match([newSize](auto &&att) { att.resize(newSize); })(attrib);
     }
 
     Vector<T> M;
@@ -92,7 +190,10 @@ namespace zs {
     /// aux channels
     // SoAVector<dat32> aux32;
     // SoAVector<dat64> aux64;
-    TileVector<f32, 32> particleBins;  // should be optional (mass, pos, vel, J, F, C, logJp)
+    TileVector<T, 32> particleBins;  // should be optional (mass, pos, vel, J, F, C, logJp)
+
+  protected:
+    std::map<std::string, Attribute> _attributes;
   };
 
 #if 0

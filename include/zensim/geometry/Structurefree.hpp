@@ -44,21 +44,37 @@ namespace zs {
       throw std::runtime_error(
           fmt::format(" array of \"{}\" is not a known attribute type\n", demangle<T>()));
     }
+    static constexpr attrib_e get_attribute_enum(const Attribute &att) {
+      return match([](const auto &att) { return get_attribute_enum(att); })(att);
+    }
 
-    constexpr MemoryLocation memoryLocation() const noexcept { return X.memoryLocation(); }
-    constexpr decltype(auto) getAllocator() const noexcept { return X.allocator(); }
-    constexpr memsrc_e space() const noexcept { return X.memspace(); }
-    constexpr ProcID devid() const noexcept { return X.devid(); }
-    constexpr auto size() const noexcept { return X.size(); }
-    constexpr decltype(auto) allocator() const noexcept { return attr("pos").allocator(); }
+    constexpr MemoryLocation memoryLocation() const noexcept {
+      return match([](auto &&att) { return att.memoryLocation(); })(attr("pos"));
+    }
+    constexpr memsrc_e space() const noexcept {
+      return match([](auto &&att) { return att.memspace(); })(attr("pos"));
+    }
+    constexpr ProcID devid() const noexcept {
+      return match([](auto &&att) { return att.devid(); })(attr("pos"));
+    }
+    constexpr auto size() const noexcept {
+      return match([](auto &&att) { return att.size(); })(attr("pos"));
+    }
+    constexpr decltype(auto) allocator() const noexcept {
+      return match([](auto &&att) { return att.allocator(); })(attr("pos"));
+    }
 
     Particles(const allocator_type &allocator, size_type count) {
+      /// "pos" is a reserved key
       _attributes["pos"] = Vector<TV>{allocator, count};
     }
-    Particles(size_type count = 0, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    Particles(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : Particles{get_memory_source(mre, devid), 0} {}
+    Particles(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Particles{get_memory_source(mre, devid), count} {}
 
     std::vector<std::array<ValueT, dim>> retrievePositions() const {
+      const auto &X = attr<TV>("pos");
       Vector<TV> Xtmp{X.size(), memsrc_e::host, -1};
       copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Xtmp.data()},
            MemoryEntity{X.memoryLocation(), (void *)X.data()}, X.size() * sizeof(TV));
@@ -67,8 +83,10 @@ namespace zs {
       return ret;
     }
     std::vector<T> retrieveStressMagnitude() const {
+      const auto &X = attr<TV>("pos");
       std::vector<T> ret(X.size());
-      if (F.size()) {
+      if (hasAttr("F", true)) {
+        const auto &F = attr<TM>("F");
         Vector<TM> Ftmp{X.size()};
         copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Ftmp.data()},
              MemoryEntity{F.memoryLocation(), (void *)F.data()}, F.size() * sizeof(TM));
@@ -77,54 +95,83 @@ namespace zs {
           ret[i] = v(0) * (v(4) * v(8) - v(5) * v(7)) - v(1) * (v(3) * v(8) - v(5) * v(6))
                    + v(2) * (v(3) * v(7) - v(4) * v(6));
         }
-      } else if (J.size()) {
+      } else if (hasAttr("J", true)) {
+        const auto &J = attr<TM>("F");
         copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)ret.data()},
              MemoryEntity{J.memoryLocation(), (void *)J.data()}, J.size() * sizeof(T));
       }
       return ret;
     }
 
-    constexpr bool hasAttr(std::string_view attrib, bool checkEmpty = false) const noexcept {
-      if (auto it = _attributes.find(attrib); it != _attributes.end())
-        if (!checkEmpty || it->second.size() > 0) return true;  // should not be empty
-      return false;
-    }
-
-#define CHECK_ATTRIBUTE(ATTRIB) \
-  constexpr bool has##ATTRIB() const noexcept { return ATTRIB.size() > 0; }
-
-    CHECK_ATTRIBUTE(M)
-    CHECK_ATTRIBUTE(X)
-    CHECK_ATTRIBUTE(V)
-    CHECK_ATTRIBUTE(J)
-    CHECK_ATTRIBUTE(logJp)
-    CHECK_ATTRIBUTE(F)
-    CHECK_ATTRIBUTE(C)
-
     constexpr decltype(auto) attrs() { return _attributes; }
     constexpr decltype(auto) attrs() const { return _attributes; }
+
+    constexpr auto tryGet(const std::string &attrib) const noexcept {
+      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
+      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
+      return ResultT{};
+    }
+    constexpr auto tryGet(const std::string &attrib) noexcept {
+      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
+      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
+      return ResultT{};
+    }
+    constexpr bool hasAttr(const std::string &attrib, bool checkEmpty = false) const noexcept {
+      if (auto obj = tryGet(attrib); obj.has_value())
+        if (!checkEmpty || match([](auto &&att) -> bool { return att.size() > 0; })((*obj)->second))
+          return true;
+      return false;
+    }
     // avoid [] because default ctor of Vector is not necessarily expected
-    constexpr decltype(auto) attr(std::string_view attrib) { return _attributes.at(attrib); }
-    constexpr decltype(auto) attr(std::string_view attrib) const { return _attributes.at(attrib); }
-    constexpr auto tryGet(std::string_view attrib) const noexcept {
-      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
-      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
-      return ResultT{};
+    constexpr decltype(auto) attr(const std::string &attrib) { return _attributes.at(attrib); }
+    constexpr decltype(auto) attr(const std::string &attrib) const {
+      return _attributes.at(attrib);
     }
-    constexpr auto tryGet(std::string_view attrib) noexcept {
-      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
-      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
-      return ResultT{};
-    }
-    template <typename AT> constexpr decltype(auto) attr(std::string_view attrib) {
+    template <typename AT> constexpr decltype(auto) attr(const std::string &attrib) {
       return std::get<Vector<AT>>(attr(attrib));
     }
-    template <typename AT> constexpr decltype(auto) attr(std::string_view attrib) const {
+    template <typename AT> constexpr decltype(auto) attr(const std::string &attrib) const {
       return std::get<Vector<AT>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrScalar(const std::string &attrib) {
+      return std::get<Vector<T>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrScalar(const std::string &attrib) const {
+      return std::get<Vector<T>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrVector(const std::string &attrib) {
+      return std::get<Vector<TV>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrVector(const std::string &attrib) const {
+      return std::get<Vector<TV>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrMatrix(const std::string &attrib) {
+      return std::get<Vector<TM>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrMatrix(const std::string &attrib) const {
+      return std::get<Vector<TM>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrAffine(const std::string &attrib) {
+      return std::get<Vector<TMAffine>>(attr(attrib));
+    }
+    constexpr decltype(auto) attrAffine(const std::string &attrib) const {
+      return std::get<Vector<TMAffine>>(attr(attrib));
     }
 
-    constexpr decltype(auto) addAttr(std::string_view attrib) { return; }
-    constexpr decltype(auto) addAttr(std::string_view attrib, attrib_e ae) {
+    template <typename TT = void>
+    constexpr decltype(auto) getAttrAddress(const std::string &attrib) {
+      if (hasAttr(attrib))
+        return match([](auto &&att) -> TT * { return att.data(); })(attr(attrib));
+      return (TT *)nullptr;
+    }
+    template <typename TT = void>
+    constexpr decltype(auto) getAttrAddress(const std::string &attrib) const {
+      if (hasAttr(attrib))
+        return match([](auto &&att) -> const TT * { return att.data(); })(attr(attrib));
+      return (const TT *)nullptr;
+    }
+
+    constexpr Attribute &addAttr(const std::string &attrib, attrib_e ae) {
       if (auto obj = tryGet(attrib); obj.has_value()) {
         if (get_attribute_enum((*obj)->second) == ae) return (*obj)->second;
       }
@@ -148,13 +195,6 @@ namespace zs {
     }
 
     void append(const Particles &other) {
-      M.append(other.M);
-      X.append(other.X);
-      V.append(other.V);
-      J.append(other.J);
-      F.append(other.F);
-      C.append(other.C);
-      ///
       for (auto &&attrib : other.attrs())
         if (auto obj = tryGet(attrib.first); obj.has_value()) {
           match(
@@ -162,30 +202,21 @@ namespace zs {
                  auto &&src) -> std::enable_if_t<is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
                 dst.append(src);
               },
-              [&attrib](auto &&dst, auto &&src) {
-                throw std::runtime_error(fmt::format(
-                    "attributes of the same name \"{}\" are of type \"{}\"(dst) and \"{}\"(src)\n",
-                    attrib.first, demangle(dst), demangle(src)));
+              [&attrib](auto &&dst, auto &&src)
+                  -> std::enable_if_t<!is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
+                throw std::runtime_error(
+                    fmt::format("attributes of the same name \"{}\" are of type \"{}\"(dst) and "
+                                "\"{}\"(src)\n",
+                                attrib.first, demangle(dst), demangle(src)));
               })((*obj)->second, attrib.second);
         } else
           _attributes[attrib.first] = attrib.second;
     }
 
     void resize(std::size_t newSize) {
-      M.resize(newSize);
-      X.resize(newSize);
-      V.resize(newSize);
-      if (J.size()) J.resize(newSize);
-      if (F.size()) F.resize(newSize);
-      if (C.size()) C.resize(newSize);
-      ///
       for (auto &&attrib : attrs()) match([newSize](auto &&att) { att.resize(newSize); })(attrib);
     }
 
-    Vector<T> M;
-    Vector<TV> X, V;
-    Vector<T> J, logJp;
-    Vector<TM> F, C;
     /// aux channels
     // SoAVector<dat32> aux32;
     // SoAVector<dat64> aux64;
@@ -212,13 +243,13 @@ namespace zs {
     ParticlesView() = default;
     ~ParticlesView() = default;
     explicit constexpr ParticlesView(ParticlesT &particles)
-        : _M{particles.M.data()},
-          _X{particles.X.data()},
-          _V{particles.V.data()},
-          _J{particles.J.data()},
-          _F{particles.F.data()},
-          _C{particles.C.data()},
-          _logJp{particles.logJp.data()},
+        : _M{(T *)particles.getAttrAddress("mass")},
+          _X{(TV *)particles.getAttrAddress("pos")},
+          _V{(TV *)particles.getAttrAddress("vel")},
+          _J{(T *)particles.getAttrAddress("J")},
+          _F{(TM *)particles.getAttrAddress("F")},
+          _C{(TM *)particles.getAttrAddress("C")},
+          _logJp{(T *)particles.getAttrAddress("logJp")},
           _particleCount{particles.size()} {}
 
     constexpr auto &mass(size_type parid) { return _M[parid]; }
@@ -260,13 +291,13 @@ namespace zs {
     ParticlesView() = default;
     ~ParticlesView() = default;
     explicit constexpr ParticlesView(const ParticlesT &particles)
-        : _M{particles.M.data()},
-          _X{particles.X.data()},
-          _V{particles.V.data()},
-          _J{particles.J.data()},
-          _F{particles.F.data()},
-          _C{particles.C.data()},
-          _logJp{particles.logJp.data()},
+        : _M{(const T *)particles.getAttrAddress("mass")},
+          _X{(const TV *)particles.getAttrAddress("pos")},
+          _V{(const TV *)particles.getAttrAddress("vel")},
+          _J{(const T *)particles.getAttrAddress("J")},
+          _F{(const TM *)particles.getAttrAddress("F")},
+          _C{(const TM *)particles.getAttrAddress("C")},
+          _logJp{(const T *)particles.getAttrAddress("logJp")},
           _particleCount{particles.size()} {}
 
     constexpr auto mass(size_type parid) const { return _M[parid]; }
@@ -284,11 +315,13 @@ namespace zs {
     constexpr auto size() const noexcept { return _particleCount; }
 
   protected:
-    T *_M;
-    TV *_X, *_V;
-    T *_J;
-    TM *_F, *_C;
-    T *_logJp;
+    const T *_M;
+    const TV *_X;
+    const TV *_V;
+    const T *_J;
+    const TM *_F;
+    const TM *_C;
+    const T *_logJp;
     size_type _particleCount;
   };
 
@@ -299,60 +332,6 @@ namespace zs {
   template <execspace_e ExecSpace, typename V, int d>
   constexpr decltype(auto) proxy(const Particles<V, d> &particles) {
     return ParticlesView<ExecSpace, const Particles<V, d>>{particles};
-  }
-
-  ///
-  /// tiles particles
-  ///
-  template <auto Length, typename ValueT = f32, int d = 3> struct TiledParticles {
-    using T = ValueT;
-    using TV = vec<ValueT, d>;
-    using TM = vec<ValueT, d, d>;
-    using TMAffine = vec<ValueT, d + 1, d + 1>;
-    using size_type = std::size_t;
-    static constexpr int dim = d;
-    static constexpr auto lane_width = Length;
-    template <typename TT> using Tiles = TileVector<TT, lane_width, size_type, int>;
-    template <typename TT> using tiles_t =
-        typename TileVector<TT, lane_width, size_type, int>::base_t;
-
-    constexpr MemoryHandle handle() const noexcept { return static_cast<MemoryHandle>(X); }
-    constexpr memsrc_e space() const noexcept { return X.memspace(); }
-    constexpr ProcID devid() const noexcept { return X.devid(); }
-    constexpr auto size() const noexcept { return X.size(); }
-
-    void resize(std::size_t newSize) { X.resize(newSize); }
-
-    Tiles<TV> X;
-  };
-
-  template <execspace_e, typename ParticlesT, typename = void> struct TiledParticlesView;
-  template <execspace_e space, typename TiledParticlesT>
-  struct TiledParticlesView<space, TiledParticlesT> {
-    using T = typename TiledParticlesT::T;
-    using TV = typename TiledParticlesT::TV;
-    using TM = typename TiledParticlesT::TM;
-    static constexpr int dim = TiledParticlesT::dim;
-    using size_type = typename TiledParticlesT::size_type;
-    template <typename TT> using tiles_t = typename TiledParticlesT::template tiles_t<TT>;
-
-    constexpr TiledParticlesView() = default;
-    ~TiledParticlesView() = default;
-    explicit constexpr TiledParticlesView(TiledParticlesT &particles)
-        : _X{particles.X.data()}, _particleCount{particles.size()} {}
-
-    constexpr auto &pos(size_type parid) { return _X[parid]; }
-    constexpr const auto &pos(size_type parid) const { return _X[parid]; }
-    constexpr auto size() const noexcept { return _particleCount; }
-
-  protected:
-    tiles_t<TV> _X;
-    size_type _particleCount;
-  };
-
-  template <execspace_e ExecSpace, auto Length, typename V, int d>
-  constexpr decltype(auto) proxy(TiledParticles<Length, V, d> &particles) {
-    return TiledParticlesView<ExecSpace, TiledParticles<Length, V, d>>{particles};
   }
 
   /// sizeof(float) = 4

@@ -10,7 +10,7 @@ namespace zs {
       constexpr int dim = remove_cvref_t<decltype(p)>::dim;
       for (auto d = dim; d--;) keyCnt /= blocklen;
 
-      HashTable<i32, dim, int> ret{p.getAllocator(), keyCnt};
+      HashTable<i32, dim, int> ret{p.allocator(), keyCnt};
 
       // exec_tags execTag = suggest_exec_space(mh);
       auto execTag = wrapv<space>{};
@@ -19,7 +19,7 @@ namespace zs {
         execPol.device(mloc.devid());
 
       execPol(range(ret._tableSize), CleanSparsity{execTag, ret});
-      execPol(range(p.size()), ComputeSparsity{execTag, dx, blocklen, ret, p.X});
+      execPol(range(p.size()), ComputeSparsity{execTag, dx, blocklen, ret, p.attrVector("pos")});
       return ret;
     })(particles);
   }

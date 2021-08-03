@@ -24,7 +24,7 @@ namespace zs {
       auto execPol = par_exec(execTag).sync(true);
       if constexpr (space == execspace_e::cuda) execPol.device(did);
       execPol(range(table._tableSize), CleanSparsity{execTag, table});
-      execPol(range(pars.size()), ComputeSparsity{execTag, dx, 1, table, pars.X, 0});
+      execPol(range(pars.size()), ComputeSparsity{execTag, dx, 1, table, pars.attrVector("pos"), 0});
       /// counts, offsets, indices
       // counts
       auto &counts = indexBuckets._counts;
@@ -36,7 +36,7 @@ namespace zs {
       })(counts.memoryLocation().getTag());
 
       auto tmp = counts;  // zero-ed array
-      execPol(range(pars.size()), SpatiallyCount{execTag, dx, table, pars.X, counts, 1, 0});
+      execPol(range(pars.size()), SpatiallyCount{execTag, dx, table, pars.attrVector("pos"), counts, 1, 0});
       // offsets
       auto &offsets = indexBuckets._offsets;
       offsets = vector_t{(std::size_t)numCells, memLoc, did};
@@ -45,7 +45,7 @@ namespace zs {
       auto &indices = indexBuckets._indices;
       indices = vector_t{pars.size(), memLoc, did};
       execPol(range(pars.size()),
-              SpatiallyDistribute{execTag, dx, table, pars.X, tmp, offsets, indices, 1, 0});
+              SpatiallyDistribute{execTag, dx, table, pars.attrVector("pos"), tmp, offsets, indices, 1, 0});
       return indexBuckets;
     })(particles);
   }

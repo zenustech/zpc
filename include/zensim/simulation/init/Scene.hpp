@@ -82,7 +82,7 @@ namespace zs {
     SETUP_CONSTITUTIVE_PARAMETER(cohesion, cohesion);
 
     /// push to scene
-    BuilderForSceneParticle &commit(MemoryHandle dst);
+    BuilderForSceneParticle &commit(MemoryLocation dst);
     /// check build status
     BuilderForSceneParticle &output(std::string fn);
 

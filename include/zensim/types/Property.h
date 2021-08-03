@@ -7,9 +7,9 @@ namespace zs {
 
   enum struct attrib_e : unsigned char { scalar = 0, vec, mat, affine };
   constexpr auto scalar_v = wrapv<attrib_e::scalar>{};
-  constexpr auto vec_v = wrapv<attrib_e::vec>{};
-  constexpr auto mat_v = wrapv<attrib_e::mat>{};
-  constexpr auto affine_v = wrapv<attrib_e::affine>{};
+  constexpr auto vector_v = wrapv<attrib_e::vec>{};
+  constexpr auto matrix_v = wrapv<attrib_e::mat>{};
+  constexpr auto affine_matrix_v = wrapv<attrib_e::affine>{};
 
   enum struct layout_e : int { aos = 0, soa, aosoa };
   constexpr auto aos_v = wrapv<layout_e::aos>{};

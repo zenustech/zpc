@@ -117,7 +117,7 @@ namespace zs {
       write_partio<float, 3>(fn + std::to_string(id) + ".bgeo", positions);
     return *this;
   }
-  BuilderForSceneParticle &BuilderForSceneParticle::commit(MemoryHandle dst) {
+  BuilderForSceneParticle &BuilderForSceneParticle::commit(MemoryLocation dst) {
     auto &scene = this->target();
     auto &dstParticles = scene.particles;
     using T = typename Particles<f32, 3>::T;
@@ -191,20 +191,20 @@ namespace zs {
       // constitutive model
       scene.models.emplace_back(config, Scene::model_e::Particle, dstParticles.size());
       // particles
-      dstParticles.push_back(Particles<f32, 3>{});
+      dstParticles.push_back(Particles<f32, 3>{dst.memspace(), dst.devid()});
       match(
           [&tmp, &dst, hasF, hasPlasticity, this](Particles<f32, 3> &pars) {
-            pars.M = tmp.M.clone(dst);
-            pars.X = tmp.X.clone(dst);
-            pars.V = tmp.V.clone(dst);
+            pars.attr("pos") = tmp.X.clone(dst);
+            pars.addAttr("mass", scalar_v) = tmp.M.clone(dst);
+            pars.addAttr("vel", vector_v) = tmp.V.clone(dst);
             if (hasF)
-              pars.F = tmp.F.clone(dst);
+              pars.addAttr("F", matrix_v) = tmp.F.clone(dst);
             else
-              pars.J = tmp.J.clone(dst);
-            pars.C = tmp.C.clone(dst);
-            if (hasPlasticity) pars.logJp = tmp.logJp0.clone(dst);
-            fmt::print("moving {} paticles [{}, {}]\n", pars.X.size(),
-                       magic_enum::enum_name(pars.X.memspace()), static_cast<int>(pars.X.devid()));
+              pars.addAttr("J", scalar_v) = tmp.J.clone(dst);
+            pars.addAttr("C", matrix_v) = tmp.C.clone(dst);
+            if (hasPlasticity) pars.addAttr("logJp", scalar_v) = tmp.logJp0.clone(dst);
+            fmt::print("moving {} paticles [{}, {}]\n", pars.attrVector("pos").size(),
+                       magic_enum::enum_name(pars.attrVector("pos").memspace()), static_cast<int>(pars.attrVector("pos").devid()));
           },
           [](...) {})(dstParticles.back());
     }

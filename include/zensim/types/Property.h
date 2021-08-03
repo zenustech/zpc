@@ -16,6 +16,11 @@ namespace zs {
   constexpr auto soa_v = wrapv<layout_e::soa>{};
   constexpr auto aosoa_v = wrapv<layout_e::aosoa>{};
 
+  enum struct kernel_e { linear = 2, quadratic = 3, cubic = 4 };
+  constexpr auto kernel_linear = wrapv<kernel_e::linear>{};
+  constexpr auto kernel_quad = wrapv<kernel_e::quadratic>{};
+  constexpr auto kernel_cubic = wrapv<kernel_e::cubic>{};
+
   /// comparable
   template <typename T> struct is_equality_comparable {
   private:

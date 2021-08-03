@@ -2,13 +2,9 @@
 #include "zensim/math/Vec.h"
 #include "zensim/tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/Iterator.h"
+#include "zensim/types/Property.h"
 
 namespace zs {
-
-  enum struct kernel_e { linear = 2, quadratic = 3, cubic = 4 };
-  constexpr wrapv<kernel_e::linear> kernel_linear;
-  constexpr wrapv<kernel_e::quadratic> kernel_quad;
-  constexpr wrapv<kernel_e::cubic> kernel_cubic;
 
   template <typename Tn, int dim, typename Ti, typename Table>
   constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength,

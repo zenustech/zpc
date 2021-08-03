@@ -20,7 +20,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../DynamicLoader.h"
 #include "Allocators.cuh"
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"

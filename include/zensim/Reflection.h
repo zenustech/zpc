@@ -51,19 +51,10 @@ namespace zs {
   template <> constexpr const char *type_name<float>() noexcept { return "float"; }
   template <> constexpr const char *type_name<double>() noexcept { return "double"; }
 
-// helper define for defining the type_name() for a type within the vsg
-// namespcae.
-#define ZS_type_name(T) \
-  template <> constexpr const char *type_name<T>() noexcept { return #T; }
-
-// helper define for defining the type_name() for a type in a namesapce other
-// than vsg, note must be placed in global namespace.
-#define EZS_type_name(T) \
-  template <> constexpr const char *zs::type_name<T>() noexcept { return #T; }
-
   /// compile-time type inspection
   template <class T> class that_type;
   template <class T> void name_that_type(T &param) {
+    // forgot where I picked up this trick...
     that_type<T> tType;
     that_type<decltype(param)> paramType;
   }

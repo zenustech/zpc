@@ -1,5 +1,4 @@
 #include "CudaTimers.cuh"
-#include "zensim/cuda/CudaConstants.inc"
 #include "zensim/tpls/fmt/color.h"
 #include "zensim/tpls/fmt/core.h"
 

@@ -1,5 +1,4 @@
 set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
-    DynamicLoader.cpp
     math/probability/Probability.cpp
     math/matrix/MatrixTransform.cpp
     math/matrix/MatrixCtor.cpp
@@ -117,7 +116,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     types/BuilderBase.hpp
     types/SmallVector.hpp
     types/SourceLocation.hpp
-    DynamicLoader.h
     Logger.hpp
     Platform.hpp
     Reflection.h

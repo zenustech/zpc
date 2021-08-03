@@ -1,6 +1,6 @@
 # Zpc框架介绍
 
-ZPC（Zenus Parallel Compute）是一个基于cmake构建的面向异构计算（当前仅支持x64架构）的跨平台（目前windows/linux）c++（数据）并行编程框架，核心目标是支持物理仿真领域相关应用的高效研发（Zenus所稳定维护的Zensim物理仿真库即是基于ZPC而构建）。ZPC在使用接口方面看齐c++标准库的泛型编程风格，并对一系列并行编程中常见的计算模式（如for_each、reduce、scan等）进行封装，提供了各种计算后端（如openmp、cuda）下的高性能实现。开发者在开发并行算法时能够直接基于ZPC所提供的有多后端支持的各类并行模式以及常见的内建函数（如atomic operations、thread_fence、clz等）进行编程。ZPC的开发借鉴了[kokkos]()、[raja]()、[sycl]()等框架或语言在数据并行方面的设计概念与具体实现。为满足物理仿真的实际需求，ZPC还同时开发维护着一系列与空间相关的数据结构（空间哈希、BVH、自适应网格等）以支持高效率的空间操作。
+ZPC（Zenus Parallel Compute）是一个基于cmake构建的面向异构计算（当前仅支持x64架构）的跨平台（目前windows/linux）c++（数据）并行编程框架，核心目标是支持物理仿真领域相关应用的高效研发（Zenus所稳定维护的Zensim物理仿真库即是基于ZPC而构建）。ZPC在使用接口方面看齐c++标准库的泛型编程风格，并对一系列并行编程中常见的计算模式（如for_each、reduce、scan等）进行封装，提供了各种计算后端（如openmp、cuda）下的高性能实现。开发者在开发并行算法时能够直接基于ZPC所提供的有多后端支持的各类并行模式以及常见的内建函数（如atomic operations、thread_fence、clz等）进行编程。ZPC的开发借鉴了[kokkos](https://github.com/kokkos/kokkos)、[raja](https://github.com/LLNL/RAJA)、[sycl](https://www.khronos.org/sycl/)等框架或语言在数据并行方面的设计概念与具体实现。为满足物理仿真的实际需求，ZPC还同时开发维护着一系列与空间相关的数据结构（空间哈希、BVH、自适应网格等）以支持高效率的空间操作。
 
 ## 项目构建和使用
 
@@ -20,10 +20,8 @@ ZPC面向开发者提供以下构建选项：
 
 ### 使用途径
 
-* 作为submodule直接使用source
-* cmake安装后，通过find_package来引入
-
-
+* 作为子模块（submodule）与父项目一同从源码构建
+* 通过cmake安装并通过find_package(zensim)引入项目
 
 ## 数据管理和维护
 
@@ -31,7 +29,7 @@ ZPC面向开发者提供以下构建选项：
 
 ​		ZPC在管理和维护数据时从以下两方面应来处理上述问题：
 
-1. 对ZPC构建时启用的所有计算后端所涵盖的存储空间进行分类（比如cuda后端所支持的device memory和unified memory）和封装（比如allocate, deallocate, memset, memcpy）等
+1. 对ZPC构建时启用的所有计算后端所涵盖的存储空间（memory space）进行分类（比如cuda后端所支持的device memory和unified memory），并封装常用的存储操作（比如allocate, deallocate, memset, memcpy等）
 2. ZPC提供基于**[结构结点]()**的数据结构快速组装和定义功能，以及运行时设置域大小和通道数量的特性支持。方便开发者快速做原型设计
 
 ​		此外，为了便于用户更直接地开发物理仿真算法，ZPC自身还提供*Vector*、*SoAVector*（TBD）、*TileVector*（即AoSoA Vector）、*HashTable*等基础数据结构，以及基于此构建的*IndexBuckets*（用于近邻查询）、*Linear BVH*（碰撞检测、光线追踪）、*Sparse Grid*、*Particles*、*Adaptive Grid*（TBD）等一系列空间数据结构和仿真数据结构，还包含*Sparse Matrix*等线性系统解算所需的结构。
@@ -49,18 +47,18 @@ enum memsrc_e : unsigned char { host, device, um };
 
 // NOTE: template <auto N> using wrapv = std::constant_integral<decltype(N), N>;
 // 存储空间Tag类型及变量，用于tag dispatch
-using host_mem_tag = 			wrapv<memsrc_e::host>;
+using host_mem_tag = 		wrapv<memsrc_e::host>;
 using device_mem_tag = 		wrapv<memsrc_e::device>;
-using um_mem_tag = 				wrapv<memsrc_e::um>;
+using um_mem_tag = 			wrapv<memsrc_e::um>;
 constexpr host_mem_tag		mem_host{};
 constexpr device_mem_tag	mem_device{};
-constexpr um_mem_tag			mem_um{};
+constexpr um_mem_tag		mem_um{};
 
 using mem_tags = variant<host_mem_tag, device_mem_tag, um_mem_tag>;
 
 //
 using ProcID = char;	// processor id (or compute device index). -1 usually means cpu
-struct MemoryHandle {
+struct MemoryLocation {
   memsrc_e space;
   ProcID devid;
 };
@@ -90,7 +88,7 @@ struct MemoryHandle {
 
 * 存储分配器（memory allocator）
 
-  ZPC里的allocator（ZSPmrAllocator）设计参考且基于c++17的polymorphic memory resource（PMR）去搭建，而且还内嵌MemoryHandle这一信息。
+  ZPC里的存储分配器（ZSPmrAllocator）基于c++17的polymorphic memory resource（PMR）去搭建，并额外内嵌MemoryLocation信息。
 
   ```cpp
   /// FILE: zpc/include/zensim/memory/Allocator.h
@@ -106,13 +104,14 @@ struct MemoryHandle {
     using value_type = T;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
+    // 以下三种属性有别于std::polymorphic_allocator<T>
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
     ……
     
-    std::shared_ptr<std::memory_resource> res{};	// holds an allocator or an upstream memory resource (non-owning)
-    MemoryHandle	memDescr{}; // describe the memory space and the device index where this allocator operates
+    std::shared_ptr<std::memory_resource> res{};	// holds an allocator (owning) or an upstream memory resource (non-owning)
+    MemoryLocation memLoc{}; // describe the memory space and the device index where this allocator operates
   };
   ```
 
@@ -136,23 +135,21 @@ struct MemoryHandle {
 
 显式迁移
 
-​		使用数据结构统一的提供clone(...)函数
+​		使用数据结构统一提供的clone(...)函数
 
 隐式迁移
 
-​		自动机
+​		基于状态自动机
 
 ### 结构结点（structural node）
 
-​		下一步准备采用boost-hana模板元编程库来帮助设计
+​		下一步准备采用boost-hana模板元编程库来替换现有实现
 
 ### 下一步重点研发方向
 
-​		对以句柄（handle）表达的存储对象进行封装（包括accessor，类比SYCL的buffer），与目前ZPC里基于地址的存储对象进行接口的统一
-
-​		对虚拟存储典型操作的封装（reserve、allocation、map、unmap、free、release等）
-
-​		对texture memory、constant memory、file memory等特殊存储空间的完善与支持
+* 对以句柄（handle）表达的存储对象进行封装（类比SYCL的buffer，包括accessor），与目前ZPC里基于地址的存储对象进行接口的统一
+* 对虚拟存储典型操作的封装（reserve、allocation、map、unmap、free、release等）
+* 对texture memory、constant memory、file memory等特殊存储空间的支持完善
 
 ## 计算执行策略（execution policy）
 
@@ -246,17 +243,14 @@ execPol(std::vector<float>{...}, execBody);
 
 ### 下一步重点研发方向
 
-​		根据某种空间划分策略（hilbert curve等）对数据自动partition以便schedule到多GPU上同时计算运行并同步结果
-
-​		面向分布式系统的并行计算
-
-​		更完备的上下文（context）抽象和实现（参考SYCL的queue）
-
-​		针对更大范围的体系结构（Arm）提供更精准的支持
+* 根据某种空间划分策略（hilbert curve等）对数据自动partition以便schedule到多GPU上同时计算运行并同步结果
+* 更完备的上下文（context）抽象和实现（参考SYCL的queue）
+* 对更大范围内的体系结构（如Arm）提供支持
+* 面向分布式系统的并行计算
 
 ## ZPC开发维护守则（ZPC develop guideline）
 
-​		ZPC是一个开放式可拓展的框架，允许开发者对各个环节进行拓展，包括但不限于数据结构、存储空间、计算后端、仿真计算等。但由于多后端AOT（ahead-of-time）构建的需要，使用ZPC开发的项目在构建时会依赖宏、c++模板以及c++编译规则等等机制。因此ZPC的可拓展性大体建立在静态多态之上，实现中需要针对不同存储空间和执行空间做针对性的模板特化，并依赖tag dispatch等机制在运行时进行模式匹配（pattern matching）调用对应实现。这与传统的c++面向对象编程中基于动态多态的可拓展性有着本质区别。
+​		ZPC是一个可拓展的框架，允许开发者对各个环节进行拓展，包括但不限于数据结构、存储空间、计算后端、仿真计算等。但由于多后端AOT编译（ahead-of-time compilation）的需要，基于ZPC开发的项目在构建时会依赖宏、c++模板以及c++编译规则等机制。因此ZPC的可拓展性大体建立在静态多态之上，实现中需要针对不同存储空间和执行空间做针对性的模板特化，并依赖tag dispatch等机制在运行时进行模式匹配（pattern matching）调用对应实现。这与传统的c++面向对象编程中基于动态多态的可拓展性有着本质区别。
 
 ### API命名规则约定
 
@@ -267,18 +261,21 @@ execPol(std::vector<float>{...}, execBody);
 框架核心类（如tuple、wrapv等等）：全名词、字母全小写、单词间以下划线分隔
 
 ### 存储空间
+TBD
 
 ### 执行空间
+TBD
 
 ### 数据结构
+TBD
 
 ### 自由函数
 
 提供一段模板实现（\*.tpp）以及前置声明（declaration），在各后端的源文件内include该模板实现（\*.tpp）
 
 
-
 ## ZPC使用样例
+TBD
 
 ### 开发通用的函数
 
@@ -294,4 +291,4 @@ execPol(std::vector<float>{...}, execBody);
 
 
 
-Co​n​g​ra​ts​!​ ​Yo​u​'ve ​f​i​ni​sh​e​d ​the crash course! :tada::tada::tada:
+*Co​n​g​ra​ts​!​ ​Yo​u​'ve ​f​i​ni​sh​e​d ​the crash course! :tada::tada::tada:*

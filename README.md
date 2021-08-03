@@ -1,8 +1,11 @@
 # Zenus Simulation
 *Zenus Simulation* is the codebase **zensim** maintained by **Zenus Tech**, which delivers great parallel computing efficiency for physics-based simulations within a shared-memory heterogeneous architecture through a unified programming interface on multiple compute backends.
 
+This repo is going through rapid changes, and we do not promise ABI compatibility from commit to commit for the moment.
+
 ## **Document**
-See [git wiki](https://github.com/zensim-dev/zpc/wiki) page for more details.
+See [git wiki](https://github.com/zensim-dev/zpc/wiki) page for more build details.
+See [Specification](Specification.md) for more usage info.
 
 ## **Compilation**
 This is a cross-platform C++/CUDA cmake project. The minimum version requirement of cmake is 3.18, yet the latest version is generally recommended. Please install cmake through official website or python3-pip, since the cmake version in apt repo is behind.

@@ -75,12 +75,4 @@ namespace zs::cudri {
     return str;
   }
 
-  void precompile_wranglers(std::string_view progname, std::string_view source) {
-    using jitify2::Kernel;
-    using jitify2::ProgramCache;
-    using jitify2::reflection::Template;
-    using jitify2::reflection::Type;
-    ;
-  }
-
 }  // namespace zs::cudri

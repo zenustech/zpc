@@ -27,7 +27,6 @@ namespace zs {
     // using TM = vec<T, d, d>;
     using TM = vec<T, d * d>;
     using TMAffine = vec<T, (d + 1) * (d + 1)>;
-    enum struct attrib_e : unsigned char { scalar = 0, vec, mat, affine };
 
     using Attribute = variant<Vector<T>, Vector<TV>, Vector<TM>, Vector<TMAffine>>;
     using allocator_type = ZSPmrAllocator<>;

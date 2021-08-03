@@ -14,6 +14,6 @@ namespace zs {
   template <typename T1, typename T2> using is_same
       = std::integral_constant<bool, wrapper<T1>::is_same((wrapper<T2> *)nullptr)>;
 
-  template <typename T1, typename T2> static constexpr auto is_same_v = is_same<T1, T2>::value;
+  template <typename T1, typename T2> constexpr auto is_same_v = is_same<T1, T2>::value;
 
 }  // namespace zs

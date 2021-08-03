@@ -54,8 +54,8 @@ namespace zs {
   template <typename T, T v> struct is_integral_constant<integral_v<T, v>> : std::true_type {};
   template <std::size_t N> using index_v = std::integral_constant<std::size_t, N>;
 
-  static constexpr std::true_type true_v{};
-  static constexpr std::false_type false_v{};
+  constexpr std::true_type true_v{};
+  constexpr std::false_type false_v{};
 
   ///
   /// detection

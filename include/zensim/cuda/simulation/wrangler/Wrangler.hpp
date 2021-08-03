@@ -3,14 +3,9 @@
 #include <string_view>
 #include <vector>
 
-#include "zensim/meta/Meta.h"
+#include "zensim/types/Property.h"
 
 namespace zs {
-
-  enum struct layout_e : int { aos = 0, soa, aosoa };
-  static constexpr auto aos_v = wrapv<layout_e::aos>{};
-  static constexpr auto soa_v = wrapv<layout_e::soa>{};
-  static constexpr auto aosoa_v = wrapv<layout_e::aosoa>{};
 
   struct AccessorAoSoA {
     AccessorAoSoA() = default;

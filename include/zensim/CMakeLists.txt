@@ -107,20 +107,16 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # resource
     resource/Resource.h
     # types
-    types/Event.hpp
     types/Function.h
     types/Iterator.h
-    types/Object.h
     types/Optional.h
     types/Polymorphism.h
     types/Property.h
     types/RuntimeStructurals.hpp
     types/Tuple.h
-    types/Value.h
     types/BuilderBase.hpp
     types/SmallVector.hpp
     types/SourceLocation.hpp
-    types/CPorts.h
     DynamicLoader.h
     Logger.hpp
     Platform.hpp
@@ -215,10 +211,10 @@ if (ENABLE_PCH)
 endif()
 target_link_libraries(zpc PUBLIC zpc_cxx_deps)
 target_compile_options(zpc # MSVC, GNU, Clang, Intel
-  PRIVATE        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2, -O3 $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PUBLIC        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2, -O3 $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 target_link_options(zpc
-  PRIVATE        $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+  PUBLIC        $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
 set_target_properties(zpc
   PROPERTIES  # LINKER_LANGUAGE CXX
@@ -241,7 +237,7 @@ endif()
 
 target_compile_definitions(zpc PUBLIC ZS_ENABLE_OPENMP=1)
 target_compile_options(zpc # MSVC, GNU, Clang, Intel
-  PRIVATE        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+  PUBLIC        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
 # set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}")
 
@@ -307,10 +303,7 @@ if (ENABLE_PCH)
   target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
-target_link_libraries(zpctool PUBLIC zspartio zsloguru zpc zpc_cxx_deps)
-target_compile_options(zpctool
-  PRIVATE     $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>,/O2  /openmp:llvm /openmp:experimental, -O3 -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
-)
+target_link_libraries(zpctool PUBLIC zpc)
 set_target_properties(zpctool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON
 )

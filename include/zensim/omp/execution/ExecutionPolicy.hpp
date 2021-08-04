@@ -4,7 +4,7 @@
 #  error "ZS_ENABLE_OPENMP was not enabled, but Omp::ExecutionPolicy.hpp was included anyway."
 #endif
 
-#if ZS_ENABLE_OPENMP && !defined(_OPENMP)
+#if ZS_ENABLE_OPENMP && !defined(_OPENMP) && !defined(__CUDACC__)
 #  error "ZS_ENABLE_OPENMP defined but the compiler is not defining the _OPENMP macro as expected"
 #  define _OPENMP
 #endif

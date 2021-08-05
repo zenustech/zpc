@@ -19,9 +19,8 @@ namespace zs {
   template <execspace_e space, typename TableT, typename GridBlocksT>
   PrintGridBlocks(wrapv<space>, TableT, GridBlocksT)
       -> PrintGridBlocks<HashTableView<space, TableT>, GridBlocksView<space, GridBlocksT>>;
-  template <execspace_e space, transfer_scheme_e scheme, typename GridBlocksT>
-  ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridBlocksT, float dt, float gravity,
-                           float *maxVel)
+  template <execspace_e space, transfer_scheme_e scheme, typename GridBlocksT, typename Sth>
+  ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridBlocksT, float dt, Sth, float *maxVel)
       -> ComputeGridBlockVelocity<scheme, GridBlocksView<space, GridBlocksT>>;
   template <execspace_e space, typename LevelsetT, typename TableT, typename GridBlocksT>
   ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT, GridBlocksT)
@@ -89,13 +88,21 @@ namespace zs {
     static constexpr auto exectag = wrapv<space>{};
     using gridblocks_t = GridBlocksView<space, GridBlocksT>;
     using gridblock_t = typename gridblocks_t::block_t;
+    using value_t = typename gridblocks_t::value_type;
+    using float_t = RM_CVREF_T(std::declval<value_t>().asFloat());
+    using TV = vec<float_t, gridblocks_t::dim>;
 
     constexpr ComputeGridBlockVelocity() = default;
     ~ComputeGridBlockVelocity() = default;
 
     explicit ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridBlocksT &gridblocks,
                                       float dt, float gravity, float *maxVel)
-        : gridblocks{proxy<space>(gridblocks)}, dt{dt}, gravity{gravity}, maxVel{maxVel} {}
+        : gridblocks{proxy<space>(gridblocks)}, dt{dt}, extf{TV::zeros()}, maxVel{maxVel} {
+      extf[1] = gravity;
+    }
+    explicit ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridBlocksT &gridblocks,
+                                      float dt, TV extf, float *maxVel)
+        : gridblocks{proxy<space>(gridblocks)}, dt{dt}, extf{extf}, maxVel{maxVel} {}
 
     constexpr void operator()(typename gridblocks_t::size_type blockid,
                               typename gridblock_t::size_type cellid) noexcept {
@@ -107,8 +114,9 @@ namespace zs {
         vec<VT, gridblocks_t::dim> vel{};
         for (int d = 0; d < gridblocks_t::dim; ++d) {
           vel[d] = block(d + 1, cellid).asFloat() * mass;
+          vel[d] += extf[d] * dt;
         }
-        vel[1] += gravity * dt;
+        // vel[1] += gravity * dt;
 
         /// write back
         for (int d = 0; d < gridblocks_t::dim; ++d) block(d + 1, cellid).asFloat() = vel[d];
@@ -122,7 +130,7 @@ namespace zs {
 
     gridblocks_t gridblocks;
     float dt;
-    float gravity;
+    TV extf;
     float *maxVel;
   };
 

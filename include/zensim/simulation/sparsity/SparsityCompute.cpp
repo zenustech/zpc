@@ -1,7 +1,6 @@
 #include "SparsityCompute.tpp"
 
 #include "zensim/execution/ExecutionPolicy.hpp"
-#include "zensim/omp/execution/ExecutionPolicy.hpp"
 
 namespace zs {
 

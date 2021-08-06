@@ -8,6 +8,11 @@ namespace zs {
     throw std::runtime_error("proxy of T not implemented");
     return FWD(v);
   }
+
+  template <execspace_e space, typename Structure> using view_t
+      = decltype(proxy<space>(std::declval<Structure &>()));
+  template <execspace_e space, typename Structure> using const_view_t
+      = decltype(proxy<space>(std::declval<const Structure &>()));
   ///
   /// dof traits for dofview
   ///
@@ -29,26 +34,20 @@ namespace zs {
     static constexpr attrib_e preferred_entry_e
         = std::is_floating_point_v<value_type> ? attrib_e::scalar : attrib_e::vector;
 
-    using view_t = decltype(proxy<space>(std::declval<Structure &>()));
-    using const_view_t = decltype(proxy<space>(std::declval<const Structure &>()));
-
-#if 0
-    template <typename Obj = view_t> static ZS_FUNCTION auto get(Obj obj, size_type i)
-        -> decltype(obj(i)) {
+    template <execspace_e es = space, typename s = Structure, typename View = view_t<es, s>>
+    static constexpr auto get(View obj, size_type i = 0) -> RM_CVREF_T(obj(i)) {
       return obj(i);
     }
-#endif
-    template <typename Obj = view_t> static constexpr auto get(Obj obj, size_type i)
-        -> decltype(obj(i)) {
+    template <execspace_e es = space, typename s = Structure, typename View = view_t<es, s>>
+    static constexpr decltype(std::declval<View>()((size_type)0)) ref(View obj, size_type i = 0) {
       return obj(i);
     }
-    template <typename Obj = view_t>
-    static ZS_FUNCTION decltype(std::declval<Obj>()((size_type)0)) ref(Obj obj, size_type i) {
-      return obj(i);
-    }
-    template <typename Obj = view_t, typename V = value_type>
-    static ZS_FUNCTION auto set(Obj obj, size_type i, V &&v) -> decltype(obj.set(FWD(v)), void()) {
-      set(i);
+    template <execspace_e es = space, typename s = Structure, typename View = view_t<es, s>,
+              typename V = value_type>
+    static constexpr auto set(View obj, size_type i = 0, V &&v = {}) -> std::enable_if_t<
+        std::is_reference_v<decltype(
+            ref(obj, i))> && std::is_convertible_v<RM_CVREF_T(v), RM_CVREF_T(ref(obj, i))>> {
+      ref(obj, i) = FWD(v);
     }
   };
 

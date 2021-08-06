@@ -116,6 +116,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     types/BuilderBase.hpp
     types/SmallVector.hpp
     types/SourceLocation.hpp
+    types/View.h
     Logger.hpp
     Platform.hpp
     Reflection.h

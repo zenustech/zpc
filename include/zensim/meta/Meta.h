@@ -89,7 +89,10 @@ namespace zs {
   template <template <class...> class Op, class... Args> using detected_t =
       typename detail::detector<nonesuch, void, Op, Args...>::type;
 
-  template <class Default, template <class...> class Op, class... Args> using detected_or
+  template <typename Default, template <typename...> class Op, typename... Args> using detected_or
       = detail::detector<Default, void, Op, Args...>;
+
+  template <typename Default, template <typename...> class Op, typename... Args> using detected_or_t
+      = typename detected_or<Default, Op, Args...>::type;
 
 }  // namespace zs

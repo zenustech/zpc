@@ -11,21 +11,10 @@
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Polymorphism.h"
+#include "zensim/types/Property.h"
 namespace zs {
 
-  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
-
-  using host_exec_tag = wrapv<execspace_e::host>;
-  using omp_exec_tag = wrapv<execspace_e::openmp>;
-  using cuda_exec_tag = wrapv<execspace_e::cuda>;
-  using hip_exec_tag = wrapv<execspace_e::hip>;
-
   using exec_tags = variant<host_exec_tag, omp_exec_tag, cuda_exec_tag, hip_exec_tag>;
-
-  constexpr host_exec_tag exec_seq{};
-  constexpr omp_exec_tag exec_omp{};
-  constexpr cuda_exec_tag exec_cuda{};
-  constexpr hip_exec_tag exec_hip{};
 
   constexpr const char *execution_space_tag[] = {"HOST", "OPENMP", "CUDA", "HIP"};
   constexpr const char *get_execution_space_tag(execspace_e execpol) {

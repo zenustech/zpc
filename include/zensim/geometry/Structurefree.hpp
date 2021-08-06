@@ -36,9 +36,9 @@ namespace zs {
       if constexpr (is_same_v<TT, T>)
         return attrib_e::scalar;
       else if constexpr (is_same_v<TT, TV>)
-        return attrib_e::vec;
+        return attrib_e::vector;
       else if constexpr (is_same_v<TT, TM>)
-        return attrib_e::mat;
+        return attrib_e::matrix;
       else if constexpr (is_same_v<TT, TMAffine>)
         return attrib_e::affine;
       throw std::runtime_error(
@@ -180,10 +180,10 @@ namespace zs {
         case attrib_e::scalar:
           att = Vector<T>{allocator(), size()};
           break;
-        case attrib_e::vec:
+        case attrib_e::vector:
           att = Vector<TV>{allocator(), size()};
           break;
-        case attrib_e::mat:
+        case attrib_e::matrix:
           att = Vector<TM>{allocator(), size()};
           break;
         case attrib_e::affine:

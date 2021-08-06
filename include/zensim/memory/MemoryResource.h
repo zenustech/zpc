@@ -6,6 +6,7 @@
 #include "zensim/tpls/fmt/format.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Polymorphism.h"
+#include "zensim/types/Property.h"
 
 namespace zs {
 
@@ -58,18 +59,7 @@ namespace zs {
   // using synchronized_pool_resource = pmr::synchronized_pool_resource;
   // template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;
 
-  // HOST, DEVICE, UM
-  enum struct memsrc_e : unsigned char { host = 0, device, um };
-
-  using host_mem_tag = wrapv<memsrc_e::host>;
-  using device_mem_tag = wrapv<memsrc_e::device>;
-  using um_mem_tag = wrapv<memsrc_e::um>;
-
   using mem_tags = variant<host_mem_tag, device_mem_tag, um_mem_tag>;
-
-  constexpr host_mem_tag mem_host{};
-  constexpr device_mem_tag mem_device{};
-  constexpr um_mem_tag mem_um{};
 
   constexpr mem_tags to_memory_source_tag(memsrc_e loc) {
     mem_tags ret{};

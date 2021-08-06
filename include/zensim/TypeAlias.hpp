@@ -67,7 +67,7 @@ namespace zs {
   // vsg::ref_ptr<T>
   template <typename T> using RefPtr = ::std::decay_t<T> *;  ///< non-owning reference
   template <typename T> using ConstRefPtr
-      = const ::std::decay_t<T> > *;  ///< non-owning const reference
+      = const ::std::decay_t<T> *;  ///< non-owning const reference
   template <typename T> using Holder = ::std::unique_ptr<T>;
   template <typename T> using SharedHolder = ::std::shared_ptr<T>;
 

@@ -80,7 +80,7 @@ namespace zs {
           fmt::format("advise(tag um_mem_tag, advice {}, addr {}, bytes {}, devid {})\n", advice,
                       addr, bytes, (int)did));
     if (Cuda::context(did).supportConcurrentUmAccess)
-      cudri::memAdvise(addr, bytes, (unsigned int)option, (int)did, loc);
+      if (bytes > 0) cudri::memAdvise(addr, bytes, (unsigned int)option, (int)did);
   }
 
 }  // namespace zs

@@ -4,7 +4,8 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
 #if defined(_WIN32)
-#  include <winnt.h>
+# include <windows.h>
+// # include <winnt.h>
 #endif
 
 namespace zs {

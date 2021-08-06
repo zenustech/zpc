@@ -7,13 +7,22 @@
 #include "zensim/types/Function.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
+#include "zensim/Platform.hpp"
 
+#ifdef ZS_PLATFORM_WINDOWS
+#include <memory_resource>
+#endif
 namespace zs {
 
   // namespace pmr = std::pmr;
 
   /// since we cannot use memory_resource header in libstdc++
   /// we directly use its implementation
+#ifdef ZS_PLATFORM_WINDOWS
+
+  using mr_t = std::pmr::memory_resource;
+
+#else
   class memory_resource {
     static constexpr size_t _S_max_align = alignof(max_align_t);
 
@@ -55,6 +64,7 @@ namespace zs {
 #endif
 
   using mr_t = memory_resource;
+#endif
   // using unsynchronized_pool_resource = pmr::unsynchronized_pool_resource;
   // using synchronized_pool_resource = pmr::synchronized_pool_resource;
   // template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;

@@ -14,8 +14,10 @@ namespace zs {
     constexpr auto &self() noexcept { return static_cast<TM &>(*this); }
     constexpr const auto &self() const noexcept { return static_cast<const TM &>(*this); }
 
-    constexpr Rotation() noexcept : TM{} {
-      for (int d = 0; d < dim; ++d) (*this)(d, d) = (T)1;
+    constexpr Rotation() noexcept {
+      for (int i = 0; i != dim; ++i)
+        for (int j = 0; j != dim; ++j) 
+          (*this)(i, j) = (i == j ? (T)1 : (T)0);
     }
     constexpr Rotation(const vec<T, 4> &q) noexcept : TM{} {
       if constexpr (dim == 2) {

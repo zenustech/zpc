@@ -8,8 +8,8 @@ namespace zs {
   GeneralIndexBuckets index_buckets_for_particles(const GeneralParticles &particles, float dx) {
     return match([dx](const auto &pars) -> GeneralIndexBuckets {
       using particles_t = remove_cvref_t<decltype(pars)>;
-      constexpr int dim = particles_t::dim;
-      using indexbuckets_t = IndexBuckets<dim>;
+      // constexpr int dim = particles_t::dim;
+      using indexbuckets_t = IndexBuckets<particles_t::dim>;
       using vector_t = typename indexbuckets_t::vector_t;
       const auto memLoc = pars.space();
       const auto did = pars.devid();

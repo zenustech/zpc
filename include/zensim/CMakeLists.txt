@@ -276,7 +276,7 @@ set_target_properties(zpc
 )
 # set_property(TARGET zpc APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}")
 target_compile_definitions(zpc
-  INTERFACE     CMAKE_GENERATOR_PLATFORM=x64
+  PUBLIC    CMAKE_GENERATOR_PLATFORM=x64
 )
 
 endif(ZS_ENABLE_CUDA)
@@ -334,7 +334,7 @@ target_sources(zs_cu_wrangler
   PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES}
 )
 target_compile_options(zs_cu_wrangler 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true --ptx>
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -c --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
 )
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES  LANGUAGE CUDA)
 
@@ -352,6 +352,7 @@ set_target_properties(zs_cu_wrangler
 )
 target_compile_definitions(zpc PUBLIC ZS_PTX_INCLUDE_DIR="${ZS_PTX_INCLUDE_DIR}")
 
+# $<TARGET_OBJECTS:zs_cu_wrangler>
 target_link_libraries(zensim INTERFACE zs_cu_wrangler)  # zs_cu_wrangler -> zensim
 
 endif (ZS_ENABLE_CUDA)

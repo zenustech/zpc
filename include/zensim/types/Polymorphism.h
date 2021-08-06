@@ -89,9 +89,12 @@ namespace zs {
       }
     }
 
-    template <typename... Args,
-              std::enable_if_t<(is_variant<remove_cvref_t<Args>>::value && ...), char> = 0>
-    constexpr void operator()(Args &&...args) {
+    template <typename... Args> constexpr bool all_variant() {
+      return (is_variant<remove_cvref_t<Args>>::value && ...);
+    }
+
+    template <typename... Args>
+    constexpr std::enable_if_t<all_variant<Args...>()> operator()(Args &&...args) {
       using variant_sizes = std::index_sequence<std::variant_size_v<remove_cvref_t<Args>>...>;
       constexpr auto narg = sizeof...(Args);
       constexpr auto lastVariantSize

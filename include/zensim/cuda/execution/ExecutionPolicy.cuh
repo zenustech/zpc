@@ -60,21 +60,21 @@ namespace zs {
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F &&f,
                                                   ZipIter &&iter, index_seq<Is...>) {
-      (zs::get<Is>(iter.iters).advance(i), ...);
+      (std::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
-        f(i, *zs::get<Is>(iter.iters)...);
+        f(i, *std::get<Is>(iter.iters)...);
       else {
-        f(*zs::get<Is>(iter.iters)...);
+        f(*std::get<Is>(iter.iters)...);
       }
     }
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i,
                                                   F &&f, ZipIter &&iter, index_seq<Is...>) {
-      (zs::get<Is>(iter.iters).advance(i), ...);
+      (std::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
-        f(shmem, i, *zs::get<Is>(iter.iters)...);
+        f(shmem, i, *std::get<Is>(iter.iters)...);
       else
-        f(shmem, *zs::get<Is>(iter.iters)...);
+        f(shmem, *std::get<Is>(iter.iters)...);
     }
   }  // namespace detail
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<

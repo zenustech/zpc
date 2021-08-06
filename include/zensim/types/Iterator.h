@@ -458,15 +458,15 @@ namespace zs {
   }
 
   template <typename... Iters, std::size_t... Is>
-  struct zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>
-      : IteratorInterface<zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>> {
+  struct zip_iterator<std::tuple<Iters...>, index_seq<Is...>>
+      : IteratorInterface<zip_iterator<std::tuple<Iters...>, index_seq<Is...>>> {
     static constexpr bool all_random_access_iter = all_convertible_to_raiter<Iters...>();
     using difference_type = conditional_t<
         all_convertible_to_raiter<Iters...>(),
         std::common_type_t<typename std::iterator_traits<Iters>::difference_type...>, void>;
 
     zip_iterator() = default;
-    constexpr zip_iterator(Iters &&...its) : iters{zs::make_tuple<Iters...>(FWD(its)...)} {}
+    constexpr zip_iterator(Iters &&...its) : iters{std::make_tuple<Iters...>(FWD(its)...)} {}
 
     // constexpr auto dereference() { return std::forward_as_tuple((*std::get<Is>(iters))...); }
     template <typename DerefT, enable_if_t<std::is_reference_v<DerefT>> = 0>
@@ -477,34 +477,34 @@ namespace zs {
     constexpr decltype(auto) getRef(DerefT &&deref) {
       return FWD(deref);
     }
-    constexpr auto dereference() { return std::make_tuple(getRef(*zs::get<Is>(iters))...); }
+    constexpr auto dereference() { return std::make_tuple(getRef(*std::get<Is>(iters))...); }
 
     constexpr bool equal_to(const zip_iterator &it) const {
-      return ((zs::get<Is>(iters) == zs::get<Is>(it.iters)) || ...);
+      return ((std::get<Is>(iters) == std::get<Is>(it.iters)) || ...);
     }
     template <bool Cond = !all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr void increment() {
-      ((++zs::get<Is>(iters)), ...);
+      ((++std::get<Is>(iters)), ...);
     }
     template <bool Cond = all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr void advance(difference_type offset) {
-      ((zs::get<Is>(iters) += offset), ...);
+      ((std::get<Is>(iters) += offset), ...);
     }
     template <bool Cond = all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr difference_type distance_to(const zip_iterator &it) const {
       difference_type dist = std::numeric_limits<difference_type>::max();
-      ((dist = dist < (zs::get<Is>(it.iters) - zs::get<Is>(iters))
+      ((dist = dist < (std::get<Is>(it.iters) - std::get<Is>(iters))
                    ? dist
-                   : (zs::get<Is>(it.iters) - zs::get<Is>(iters))),
+                   : (std::get<Is>(it.iters) - std::get<Is>(iters))),
        ...);
       return dist;
     }
 
-    zs::tuple<Iters...> iters;
+    std::tuple<Iters...> iters;
   };
 
   template <typename... Iters> zip_iterator(Iters...)
-      -> zip_iterator<zs::tuple<Iters...>, std::index_sequence_for<Iters...>>;
+      -> zip_iterator<std::tuple<Iters...>, std::index_sequence_for<Iters...>>;
 
   ///
   /// ranges

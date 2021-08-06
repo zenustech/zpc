@@ -23,7 +23,7 @@ namespace zs {
                          matrix_order_e order = matrix_order_e::rowMajor, index_type nrows = 1,
                          index_type ncols = 1) noexcept
         : YaleSparseMatrix<value_type, index_type>{mre, pid, order, nrows, ncols, 512},
-          auxCholBuffer{mre, pid, 512} {
+          auxCholBuffer{mre, pid} {
       pol.template call<culib_cusparse>(cusparseCreateMatDescr, &descr);
       pol.template call<culib_cusparse>(cusparseSetMatType, descr, CUSPARSE_MATRIX_TYPE_GENERAL);
       pol.template call<culib_cusparse>(cusparseSetMatIndexBase, descr, CUSPARSE_INDEX_BASE_ZERO);

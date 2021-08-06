@@ -7,7 +7,8 @@
 #include <shared_mutex>
 
 #if defined(_WIN32)
-#  include <synchapi.h>
+#  include <windows.h>
+// #  include <synchapi.h>
 #elif defined(__linux__)
 #  include <linux/futex.h>
 #  include <sys/syscall.h> /* Definition of SYS_* constants */
@@ -80,7 +81,7 @@ namespace zs {
   int Futex::wake(int count, u32 wakeMask) {
 #if defined(_WIN32)
     if (count == std::numeric_limits<int>::max()) {
-      WaitByAddressAll((void *)this);
+      WakeByAddressAll((void *)this);
       return std::numeric_limits<int>::max();
     } else {
       for (int i = 0; i < count; ++i) WakeByAddressSingle((void *)this);

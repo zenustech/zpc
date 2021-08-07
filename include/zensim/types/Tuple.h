@@ -157,24 +157,24 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr decltype(auto) prefix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
       return prefix_scan_impl<I + 1, Exclusive>(
           std::forward<BinaryOp>(op),
-          tuple_cat(std::move(tup), zs::make_tuple(op(tup.tail(), get<I - Exclusive>()))));
+          zs::tuple_cat(std::move(tup), zs::make_tuple(op(tup.tail(), get<I - Exclusive>()))));
     }
     template <std::size_t I, bool Exclusive, typename BinaryOp, typename Tuple,
               enable_if_t<(I + 1 >= tuple_size)> = 0>
     constexpr decltype(auto) prefix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
-      return tuple_cat(std::move(tup), zs::make_tuple(op(tup.tail(), get<I - Exclusive>())));
+      return zs::tuple_cat(std::move(tup), zs::make_tuple(op(tup.tail(), get<I - Exclusive>())));
     }
     template <std::size_t I, bool Exclusive, typename BinaryOp, typename Tuple,
               enable_if_t<I != 0> = 0>
     constexpr decltype(auto) suffix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
       return suffix_scan_impl<I - 1, Exclusive>(
           std::forward<BinaryOp>(op),
-          tuple_cat(zs::make_tuple(op(get<I + Exclusive>(), tup.head())), std::move(tup)));
+          zs::tuple_cat(zs::make_tuple(op(get<I + Exclusive>(), tup.head())), std::move(tup)));
     }
     template <std::size_t I, bool Exclusive, typename BinaryOp, typename Tuple,
               enable_if_t<I == 0> = 0>
     constexpr decltype(auto) suffix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
-      return tuple_cat(zs::make_tuple(op(get<I + Exclusive>(), tup.head())), std::move(tup));
+      return zs::tuple_cat(zs::make_tuple(op(get<I + Exclusive>(), tup.head())), std::move(tup));
     }
 
     template <typename BinaryOp, auto tupsize = tuple_size, enable_if_t<(tupsize > 1)> = 0>

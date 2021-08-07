@@ -51,6 +51,7 @@ option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp-related build") # mandatory enabled
 set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build")
 set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
+set(ZS_PROPAGATE_DEPS On CACHE BOOL "Pass on dependencies")
 
 option(ZS_ENABLE_INSTALL "Install targets" Off)
 option(ZS_ENABLE_PACKAGE "Build package" Off)
@@ -82,6 +83,12 @@ endif()
 
 # ---- build setup ----- 
 # ======================
+if (ZS_ENABLE_OPENMP)
+  find_package(OpenMP)
+  if (OpenMP_CXX_FOUND)
+    set(ZS_ENABLE_OPENMP 0 FORCE)
+  endif(OpenMP_CXX_FOUND)
+endif(ZS_ENABLE_OPENMP)
 
 if (ZS_ENABLE_CUDA)
   include(CheckLanguage)
@@ -115,12 +122,6 @@ target_compile_definitions(zpc_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )
 
-if (ZS_ENABLE_CUDA)
-  add_library(zpc_cuda_deps INTERFACE)
-  target_compile_features(zpc_cuda_deps INTERFACE cuda_std_17)
-  target_link_libraries(zpc_cuda_deps INTERFACE zsproj_deps)
-endif(ZS_ENABLE_CUDA)
-
 # ---- binaries ----
 # ==================
 
@@ -138,8 +139,11 @@ if (ZS_ENABLE_OPENVDB)
 endif(ZS_ENABLE_OPENVDB)
 
 set(INSTALL_TARGETS zensim zpc zpctool zpc_cxx_deps zsproj_deps ${ZS_INSTALL_DEP_TARGETS})
+if (ZS_ENABLE_OPENMP)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zpcomp zpc_omp_deps)
+endif(ZS_ENABLE_OPENMP)
 if (ZS_ENABLE_CUDA)
-  set(INSTALL_TARGETS ${INSTALL_TARGETS} zpc_cuda_deps)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zpccuda zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
 
 message("project name: ${project_name}")

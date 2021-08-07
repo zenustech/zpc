@@ -522,7 +522,7 @@ namespace zs {
       }
 
       constexpr std::size_t channel_count() const noexcept {
-        return channel_counts::reduce([](const auto &...ns) { return (ns + ...); });
+        return ((const channel_counts *)this)->reduce([](const auto &...ns) { return (ns + ...); });
       }
 
       template <std::size_t I> constexpr std::size_t attrib_size() const noexcept {
@@ -534,8 +534,8 @@ namespace zs {
       }
 
       constexpr std::size_t element_size() const noexcept {
-        std::size_t ebytes{channel_counts::reduce(
-            multiplies<std::size_t>{}, [](const auto &...ns) { return (ns + ...); },
+        std::size_t ebytes{((const channel_counts *)this)->reduce(
+            multiplies<std::size_t>{}, [](auto &&...ns) { return (ns + ...); },
             ordered_attrib_sizes())};
         std::size_t alignbytes = alignment();
         ebytes = (ebytes + alignbytes - 1) / alignbytes * alignbytes;

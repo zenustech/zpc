@@ -25,11 +25,6 @@ template <class U, U func, unsigned int> struct __nv_dl_tag;
 
 namespace zs {
 
-  __device__ __constant__ extern char g_cuda_constant_cache[];
-  template <typename T> __forceinline__ __device__ auto get_cuda_constant_cache() noexcept {
-    return (const remove_cvref_t<T> *)g_cuda_constant_cache;
-  }
-
   // =========================  signature  ==============================
   // loopbody signature: (blockid, warpid, threadid, scratchpadMemory)
   template <typename Tn, typename F> __global__ void thread_launch(Tn n, F f) {

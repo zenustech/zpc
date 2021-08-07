@@ -34,12 +34,13 @@ namespace zs {
   struct AppendParticles<ParticlesView<space, ParticlesT>> {
     using particles_t = ParticlesView<space, ParticlesT>;
 
-    template <
-        typename... Args,
-        enable_if_t<((
-            is_same_v<
+    template <typename... Args>
+    static constexpr bool all_flag_bit_type() noexcept {
+      return ((zs::is_same_v<
                 Args,
-                ParticleAttributeFlagBit> || is_same_v<Args, ParticleAttributeFlagBits>)&&...)> = 0>
+                ParticleAttributeFlagBit> || zs::is_same_v<Args, ParticleAttributeFlagBits>)&&...);
+    }
+    template <typename... Args, enable_if_t<all_flag_bit_type<Args...>()> = 0>
     explicit AppendParticles(wrapv<space>, ParticlesT& dst, ParticlesT& incoming, Args... args)
         : dst{proxy<space>(dst)}, src{proxy<space>(incoming)}, options{(args | ...)} {}
 

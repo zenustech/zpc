@@ -14,7 +14,9 @@ namespace zs {
     constexpr auto &self() noexcept { return static_cast<TM &>(*this); }
     constexpr const auto &self() const noexcept { return static_cast<const TM &>(*this); }
 
-    Rotation() = default;
+    constexpr Rotation() noexcept : TM{TM::zeros()} {
+      for (int d = 0; d != dim; ++d) (*this)(d, d) = (T)1;
+    }
     constexpr Rotation(const vec<T, 4> &q) noexcept : TM{} {
       if constexpr (dim == 2) {
         /// Construct a 2D counter clock wise rotation from the angle \a a in

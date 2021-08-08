@@ -133,6 +133,10 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     simulation/sparsity/SparsityOp.hpp
     simulation/sparsity/SparsityCompute.hpp
     simulation/Utils.hpp
+    # tpp
+    simulation/particle/Query.tpp
+    simulation/sparsity/SparsityCompute.tpp
+    container/BvhImpl.tpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
     io/IO.h
@@ -353,6 +357,11 @@ target_link_libraries(zensim INTERFACE zpctool)  # zpctool -> zensim
 
 if (ZS_ENABLE_CUDA)
 
+if (MSVC)
+target_compile_definitions(zpccuda PUBLIC ZS_PTX_INCLUDE_DIR="")
+
+else()
+
 add_library(zs_cu_wrangler OBJECT)
 
 target_sources(zs_cu_wrangler
@@ -379,6 +388,7 @@ target_compile_definitions(zpccuda PUBLIC ZS_PTX_INCLUDE_DIR="${ZS_PTX_INCLUDE_D
 
 # $<TARGET_OBJECTS:zs_cu_wrangler>
 target_link_libraries(zensim INTERFACE zs_cu_wrangler)  # zs_cu_wrangler -> zensim
+endif(MSVC)
 
 endif (ZS_ENABLE_CUDA)
 

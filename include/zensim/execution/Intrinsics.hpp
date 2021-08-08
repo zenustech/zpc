@@ -19,49 +19,47 @@
 namespace zs {
 
   // __threadfence
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  ZS_FUNCTION void thread_fence(ExecTag) {
 #if defined(__CUDACC__)
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __forceinline__ __device__ void thread_fence(ExecTag) {
     __threadfence();
-#endif
   }
+#endif
 
+#if defined(_OPENMP)
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  ZS_FUNCTION void thread_fence(ExecTag) noexcept {
+  inline void thread_fence(ExecTag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
-#if defined(_OPENMP)
 #  pragma omp flush
-#endif
   }
+#endif
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  ZS_FUNCTION void thread_fence(ExecTag) noexcept {}
+  inline void thread_fence(ExecTag) noexcept {}
 
   // __activemask
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  ZS_FUNCTION unsigned active_mask(ExecTag) {
 #if defined(__CUDACC__)
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __forceinline__ __device__ unsigned active_mask(ExecTag) {
     return __activemask();
-#endif
-    return 0u;
   }
+#endif
 
   // __ballot_sync
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  ZS_FUNCTION unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
 #if defined(__CUDACC__)
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __forceinline__ __device__ unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
     return __ballot_sync(mask, predicate);
-#endif
-    return 0;
   }
+#endif
 
   // ref: https://graphics.stanford.edu/~seander/bithacks.html
 
   /// count leading zeros
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  ZS_FUNCTION int count_lz(ExecTag, T x) {
 #if defined(__CUDACC__)
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __forceinline__ __device__ int count_lz(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
       return __clz((int)x);
@@ -71,15 +69,12 @@ namespace zs {
       static_assert(sizeof(long long int) != nbytes || sizeof(int) != nbytes,
                     "count_lz(tag CUDA, [?] bytes) not viable\n");
     }
-#endif
     return -1;
   }
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  ZS_FUNCTION int count_lz(ExecTag, T x) {
-    return (int)count_leading_zeros(x);
-  }
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  ZS_FUNCTION int count_lz(ExecTag, T x) {
+#endif
+  
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+  inline int count_lz(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return nbytes * 8;
 #if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -102,9 +97,9 @@ namespace zs {
   }
 
   /// reverse bits
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  ZS_FUNCTION T reverse_bits(ExecTag, T x) {
 #if defined(__CUDACC__)
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __forceinline__ __device__ T reverse_bits(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)
       return __brev((unsigned int)x);
@@ -113,15 +108,12 @@ namespace zs {
     else
       static_assert(sizeof(unsigned long long int) != nbytes || sizeof(unsigned int) != nbytes,
                     "reverse_bits(tag [?], [?] bytes) not viable\n");
-#endif
     return x;
   }
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  ZS_FUNCTION T reverse_bits(ExecTag, T x) {
-    return binary_reverse(x);
-  }
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  ZS_FUNCTION T reverse_bits(ExecTag, T x) {
+#endif
+
+  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+  inline T reverse_bits(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return 0;
     using Val = std::make_unsigned_t<T>;

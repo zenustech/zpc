@@ -33,14 +33,6 @@ namespace zs {
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
     constexpr decltype(auto) allocator() const noexcept { return _allocator; }
 
-    constexpr Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _allocator{get_memory_source(mre, devid)}, _base{nullptr}, _size{0}, _capacity{0} {}
-    explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _allocator{get_memory_source(mre, devid)},
-          _base{(pointer)_allocator.allocate(count * sizeof(value_type),
-                                             std::alignment_of_v<value_type>)},
-          _size{count},
-          _capacity{count} {}
     /// allocator-aware
     Vector(const allocator_type &allocator, size_type count)
         : _allocator{allocator},
@@ -48,6 +40,10 @@ namespace zs {
                                              std::alignment_of_v<value_type>)},
           _size{count},
           _capacity{count} {}
+    explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : Vector{get_memory_source(mre, devid), count} {}
+    Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : Vector{get_memory_source(mre, devid), 0} {}
 
     ~Vector() {
       if (_base && _capacity > 0)
@@ -157,7 +153,7 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
-      _allocator = std::move(o._allocator);
+      _allocator = std::exchange(o._allocator, defaultVector._allocator);
       _base = std::exchange(o._base, defaultVector._base);
       _size = std::exchange(o._size, defaultVector.size());
       _capacity = std::exchange(o._capacity, defaultVector._capacity);

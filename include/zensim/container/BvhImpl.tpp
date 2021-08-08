@@ -11,7 +11,7 @@ namespace zs {
     using bv_t = VectorView<space, Vector<BV>>;
     ComputeBoundingVolume() = default;
     constexpr ComputeBoundingVolume(wrapv<space>, Vector<BV>& v) noexcept : box{proxy<space>(v)} {}
-    ZS_FUNCTION void operator()(const BV& bv) {
+    constexpr void operator()(const BV& bv) {
       for (int d = 0; d < dim; ++d) {
         atomic_min(wrapv<space>{}, &box(0)._min[d], bv._min[d]);
         atomic_max(wrapv<space>{}, &box(0)._max[d], bv._max[d]);
@@ -32,10 +32,6 @@ namespace zs {
       auto coord = wholeBox.getUniformCoord(c);  // this is a vec<T, dim>
       code = morton_code<BV::dim>(coord);
       index = id;
-#if 0
-      if (id < 7 || code == 0)
-        printf("%d: %e, %e, %e -> %llx\n", (int)id, coord[0], coord[1], coord[2], (long long)code);
-#endif
     }
 
     BV wholeBox{};
@@ -108,7 +104,7 @@ namespace zs {
           flags{proxy<space>(flags)},
           numLeaves{numLeaves} {}
 
-    ZS_FUNCTION void operator()(Index idx) {
+    constexpr void operator()(Index idx) {
       using TV = vec<T, dim>;
       leafBvs(idx) = primBvs(indices(idx));
 
@@ -332,7 +328,7 @@ namespace zs {
           flags{proxy<space>(refitFlags)},
           bvs{proxy<space>(bvs)} {}
 
-    ZS_FUNCTION void operator()(Index node) {
+    constexpr void operator()(Index node) {
       bvs(node) = primBvs(primitiveIndices(node));
       Index fa = parents(node);
 
@@ -375,7 +371,7 @@ namespace zs {
           numNodes{bvhBvs.size()},
           bound{records.size()} {}
 
-    ZS_FUNCTION void operator()(ResultIndex cid, const Collider& collider) {
+    constexpr void operator()(ResultIndex cid, const Collider& collider) {
       Index node = 0;
       while (node != -1 && node != numNodes) {
         Index level = levels(node);

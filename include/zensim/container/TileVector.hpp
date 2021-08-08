@@ -215,11 +215,11 @@ namespace zs {
     TileVector(TileVector &&o) noexcept {
       const TileVector defaultVector{};
       self() = std::exchange(o.self(), defaultVector.self());
-      _allocator = std::move(o._allocator);
-      _tags = std::move(o._tags);
-      _tagNames = std::move(o._tagNames);
-      _tagSizes = std::move(o._tagSizes);
-      _tagOffsets = std::move(o._tagOffsets);
+      _allocator = std::exchange(o._allocator, defaultVector._allocator);
+      _tags = std::exchange(o._tags, defaultVector._tags);
+      _tagNames = std::exchange(o._tagNames, defaultVector._tagNames);
+      _tagSizes = std::exchange(o._tagSizes, defaultVector._tagSizes);
+      _tagOffsets = std::exchange(o._tagOffsets, defaultVector._tagOffsets);
       _size = std::exchange(o._size, defaultVector.size());
     }
     /// make move-assignment safe for self-assignment

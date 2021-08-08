@@ -45,9 +45,9 @@ namespace zs {
 
     constexpr void operator()(typename Table::value_t entry) noexcept {
       using namespace placeholders;
-      table._table(_0, entry) = Table::key_t::uniform(Table::key_scalar_sentinel_v);
-      table._table(_1, entry) = Table::sentinel_v;  // necessary for query to terminate
-      table._table(_2, entry) = -1;
+      table._table.keys[entry] = Table::key_t::uniform(Table::key_scalar_sentinel_v);
+      table._table.indices[entry] = Table::sentinel_v;  // necessary for query to terminate
+      table._table.status[entry] = -1;
       if (entry == 0) *table._cnt = 0;
     }
 
@@ -127,7 +127,7 @@ namespace zs {
           blockLen{blockLen},
           offset{offset} {}
 
-    ZS_FUNCTION void operator()(typename positions_t::size_type parid) noexcept {
+    constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
       for (int d = 0; d < table_t::dim; ++d)
         coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
@@ -168,7 +168,7 @@ namespace zs {
           blockLen{blockLen},
           offset{offset} {}
 
-    ZS_FUNCTION void operator()(typename positions_t::size_type parid) noexcept {
+    constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
       for (int d = 0; d < table_t::dim; ++d)
         coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;

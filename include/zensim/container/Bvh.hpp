@@ -10,6 +10,7 @@ namespace zs {
   template <int dim_ = 3, int lane_width_ = 32, bool is_double = false> struct LBvh {
     static constexpr int dim = dim_;
     static constexpr int lane_width = lane_width_;
+    using allocator_type = ZSPmrAllocator<>;
     using value_type = conditional_t<is_double, dat64, dat32>;
     using float_type = remove_cvref_t<decltype(std::declval<value_type>().asFloat())>;
     using integer_type = remove_cvref_t<decltype(std::declval<value_type>().asSignedInteger())>;
@@ -24,6 +25,21 @@ namespace zs {
     using tilevector_t = TileVector<float_type, lane_width>;
 
     LBvh() = default;
+
+    LBvh clone(const allocator_type &allocator) const {
+      LBvh ret{};
+      ret.wholeBox = wholeBox;
+      ret.sortedBvs = sortedBvs.clone(allocator);
+      ret.tiledBvs = tiledBvs.clone(allocator);
+      ret.auxIndices = auxIndices.clone(allocator);
+      ret.levels = levels.clone(allocator);
+      ret.parents = parents.clone(allocator);
+      ret.leafIndices = leafIndices.clone(allocator);
+      return ret;
+    }
+    LBvh clone(const MemoryLocation &mloc) const {
+      return clone(get_memory_source(mloc.memspace(), mloc.devid()));
+    }
 
     constexpr auto numNodes() const noexcept { return auxIndices.size(); }
     constexpr auto numLeaves() const noexcept { return (numNodes() + 1) / 2; }

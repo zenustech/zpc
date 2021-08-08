@@ -12,16 +12,23 @@ namespace zs {
 
   /// reference: raja/include/RAJA/policy/atomic_builtin.hpp: BuiltinAtomicCAS
 
-  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_add(ExecTag, T *dest, const T val) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
-      return atomicAdd(dest, val);
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> __forceinline__ __device__ 
+  std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_add(ExecTag, T *dest, const T val) {
+    return atomicAdd(dest, val);
+  }
+#endif
+
+  template <typename ExecTag, typename T> 
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_add(ExecTag, T *dest, const T val) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest += val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } 
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
-
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (std::is_integral_v<T>) {
         if constexpr (sizeof(T) == sizeof(char))
@@ -43,15 +50,15 @@ namespace zs {
       return target.fetch_add(val, std::memory_order_seq_cst);
 #endif
     }
+#endif
     return (T)0;
   }
 
   // https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/
-  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_inc(ExecTag, T *dest) {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-    if constexpr (
-        is_same_v<ExecTag,
-                  cuda_exec_tag> && std::is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
+  template <typename ExecTag, typename T> __forceinline__ __device__ 
+  std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_inc(ExecTag, T *dest) {
+    if constexpr (std::is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
       unsigned int active = __activemask();
       int leader = __ffs(active) - 1;
       int change = __popc(active);
@@ -62,21 +69,33 @@ namespace zs {
       warp_res = __shfl_sync(active, warp_res, leader);
       return warp_res + rank;
     }
+    return atomic_add(ExecTag{}, dest, (T)1);
+  }
 #endif
+  template <typename ExecTag, typename T> 
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_inc(ExecTag, T *dest) {
     return atomic_add(ExecTag{}, dest, (T)1);
   }
 
   ///
   /// exch, cas
   ///
-  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_exch(ExecTag, T *dest, const T val) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>)
-      return atomicExch(dest, val);
-    else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> 
+  __forceinline__ __device__ 
+  std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_exch(ExecTag, T *dest, const T val) {
+    return atomicExch(dest, val);
+  }
+#endif
+  template <typename ExecTag, typename T> 
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_exch(ExecTag, T *dest, const T val) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest = val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } 
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
@@ -95,27 +114,36 @@ namespace zs {
       return target.exchange(val, std::memory_order_seq_cst);
 #endif
     }
+#endif
+    throw std::runtime_error("not implemented");
     return (T)0;
   }
 
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> 
+  __forceinline__ __device__ 
+  std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_cas(ExecTag, T *dest, T expected, T desired) {
+    if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T))
+      return reinterpret_bits<float>(atomicCAS((unsigned int *)dest,
+                                               reinterpret_bits<unsigned int>(expected),
+                                               reinterpret_bits<unsigned int>(desired)));
+    else if constexpr (is_same_v<T, double> && sizeof(unsigned long long int) == sizeof(T))
+      return reinterpret_bits<double>(atomicCAS(
+          (unsigned long long int *)dest, reinterpret_bits<unsigned long long int>(expected),
+          reinterpret_bits<unsigned long long int>(desired)));
+    else
+      return atomicCAS(dest, expected, desired);
+  }
+#endif
   template <typename ExecTag, typename T>
-  ZS_FUNCTION T atomic_cas(ExecTag, T *dest, T expected, T desired) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
-      if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T))
-        return reinterpret_bits<float>(atomicCAS((unsigned int *)dest,
-                                                 reinterpret_bits<unsigned int>(expected),
-                                                 reinterpret_bits<unsigned int>(desired)));
-      else if constexpr (is_same_v<T, double> && sizeof(unsigned long long int) == sizeof(T))
-        return reinterpret_bits<double>(atomicCAS(
-            (unsigned long long int *)dest, reinterpret_bits<unsigned long long int>(expected),
-            reinterpret_bits<unsigned long long int>(desired)));
-      else
-        return atomicCAS(dest, expected, desired);
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_cas(ExecTag, T *dest, T expected, T desired) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old == expected) *dest = desired;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } 
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
 
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -164,6 +192,8 @@ namespace zs {
       return target.compare_exchange_strong(expected, desired, std::memory_order_seq_cst);
 #endif
     }
+#endif
+    throw std::runtime_error("not implemented");
     return (T)0;
   }
 
@@ -172,25 +202,14 @@ namespace zs {
   ///
   // https://github.com/NVIDIA-developer-blog/code-samples/blob/master/posts/cuda-aware-mpi-example/src/Device.cu
   // https://herbsutter.com/2012/08/31/reader-qa-how-to-write-a-cas-loop-using-stdatomics/
-  template <typename ExecTag, typename T>
-  ZS_FUNCTION void atomic_max(ExecTag execTag, T *const dest, const T val) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
-      if constexpr (std::is_integral_v<T>) {
-        atomicMax(dest, val);
-        return;
-      } else {
-        T old = *dest;
-        for (T assumed = old;
-             assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
-             assumed = old)
-          ;
-        return;
-      }
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
-      const T old = *dest;
-      if (old < val) *dest = val;
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> 
+  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> 
+  atomic_max(ExecTag execTag, T *const dest, const T val) {
+    if constexpr (std::is_integral_v<T>) {
+      atomicMax(dest, val);
       return;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
       T old = *dest;
       for (T assumed = old;
            assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
@@ -198,30 +217,39 @@ namespace zs {
         ;
       return;
     }
-    // throw std::runtime_error(
-    //    fmt::format("atomic_add(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+  }
+#endif
+  template <typename ExecTag, typename T>
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> 
+  atomic_max(ExecTag execTag, T *const dest, const T val) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+      const T old = *dest;
+      if (old < val) *dest = val;
+      return;
+    } 
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+      T old = *dest;
+      for (T assumed = old;
+           assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+           assumed = old)
+        ;
+      return;
+    }
+#endif
+    throw std::runtime_error(
+        fmt::format("atomic_max(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return;
   }
 
-  template <typename ExecTag, typename T>
-  ZS_FUNCTION void atomic_min(ExecTag execTag, T *const dest, const T val) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
-      if constexpr (std::is_integral_v<T>) {
-        atomicMin(dest, val);
-        return;
-      } else {
-        T old = *dest;
-        for (T assumed = old;
-             assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
-             assumed = old)
-          ;
-        return;
-      }
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
-      const T old = *dest;
-      if (old > val) *dest = val;
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> 
+  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> 
+  atomic_min(ExecTag execTag, T *const dest, const T val) {
+    if constexpr (std::is_integral_v<T>) {
+      atomicMin(dest, val);
       return;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
       T old = *dest;
       for (T assumed = old;
            assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
@@ -229,20 +257,51 @@ namespace zs {
         ;
       return;
     }
+  }
+#endif
+  template <typename ExecTag, typename T>
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> 
+  atomic_min(ExecTag execTag, T *const dest, const T val) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+      const T old = *dest;
+      if (old > val) *dest = val;
+      return;
+    } 
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+      T old = *dest;
+      for (T assumed = old;
+           assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+           assumed = old)
+        ;
+      return;
+    }
+#endif
+    throw std::runtime_error(
+        fmt::format("atomic_min(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return;
   }
 
   ///
   /// bit-wise operations
   ///
-  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_or(ExecTag, T *dest, const T val) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
-      return atomicOr(dest, val);
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> 
+  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_or(ExecTag, T *dest, const T val) {
+    return atomicOr(dest, val);
+  }
+#endif
+  template <typename ExecTag, typename T> 
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_or(ExecTag, T *dest, const T val) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest |= val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } 
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
 
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -263,17 +322,30 @@ namespace zs {
       return target.fetch_or(val, std::memory_order_seq_cst);
 #endif
     }
+#endif
+    throw std::runtime_error(
+        fmt::format("atomic_or(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
-  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_and(ExecTag, T *dest, const T val) {
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> 
+  __forceinline__ __device__ 
+  std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_and(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicAnd(dest, val);
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    }
+  }
+#endif
+  template <typename ExecTag, typename T> 
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_and(ExecTag, T *dest, const T val) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest &= val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    }
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
@@ -292,19 +364,28 @@ namespace zs {
       return target.fetch_and(val, std::memory_order_seq_cst);
 #endif
     }
-    // throw std::runtime_error(
-    //    fmt::format("atomic_and(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+#endif
+    throw std::runtime_error(
+        fmt::format("atomic_and(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 
-  template <typename ExecTag, typename T> ZS_FUNCTION T atomic_xor(ExecTag, T *dest, const T val) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
-      return atomicXor(dest, val);
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T> 
+  __forceinline__ __device__ 
+  std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_xor(ExecTag, T *dest, const T val) {
+    return atomicXor(dest, val);
+  }
+#endif
+  template <typename ExecTag, typename T> 
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_xor(ExecTag, T *dest, const T val) {
+    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest ^= val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } 
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP 
+    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
@@ -323,6 +404,9 @@ namespace zs {
       return target.fetch_xor(val, std::memory_order_seq_cst);
 #endif
     }
+#endif
+    throw std::runtime_error(
+        fmt::format("atomic_xor(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
     return (T)0;
   }
 

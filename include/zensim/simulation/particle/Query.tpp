@@ -18,7 +18,7 @@ namespace zs {
       indexBuckets._dx = dx;
       // table
       auto &table = indexBuckets._table;
-      table = {pars.size(), memLoc, did};
+      table = RM_CVREF_T(table){pars.size(), memLoc, did};
 
       constexpr auto execTag = wrapv<space>{};
       auto execPol = par_exec(execTag).sync(true);

@@ -14,18 +14,20 @@ namespace zs {
     using index_t = unsigned long long;
     using counter_t = Vector<index_t>;
 
-    BvttFront(std::size_t numNodes, std::size_t estimatedCount, memsrc_e mre = memsrc_e::host,
-              ProcID devid = -1)
+    BvttFront(const allocator_type &allocator, std::size_t numNodes, std::size_t estimatedCount)
         : _numNodes{numNodes},
-          _primIds{estimatedCount, mre, devid},
-          _nodeIds{estimatedCount, mre, devid},
-          _offsets{numNodes + 1, mre, devid},
-          _cnt{1, mre, devid} {
+          _primIds{allocator, estimatedCount},
+          _nodeIds{allocator, estimatedCount},
+          _offsets{allocator, numNodes + 1},
+          _cnt{allocator, 1} {
       counter_t res{1, memsrc_e::host, -1};
       res[0] = static_cast<index_t>(0);
       copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
            MemoryEntity{res.memoryLocation(), (void *)res.data()}, sizeof(index_t));
     }
+    BvttFront(std::size_t numNodes, std::size_t estimatedCount, memsrc_e mre = memsrc_e::host,
+              ProcID devid = -1)
+        : BvttFront{get_memory_source(mre, devid), numNodes, estimatedCount} {}
 
     inline auto size() const {
       counter_t res{1, memsrc_e::host, -1};
@@ -33,14 +35,7 @@ namespace zs {
            MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(index_t));
       return res[0];
     }
-#if 0
-    BvttFront(const allocator_type &allocator, std::size_t estimatedCount,
-              memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : numPrims{numPrims},
-          primIds{allocator, estimatedCount, mre, devid},
-          nodeIds{allocator, estimatedCount, mre, devid},
-          cnt{allocator, 1, mre, devid} {}
-#endif
+
     std::size_t _numNodes;
     prim_vector_t _primIds;
     node_vector_t _nodeIds;
@@ -64,7 +59,18 @@ namespace zs {
           _cnt{bvfront._cnt.data()},
           _numFrontNodes{std::min(bvfront._primIds.size(), bvfront._nodeIds.size())} {}
 
-    ZS_FUNCTION void push_back(prim_id_t prim, node_id_t node) {
+#if defined(__CUDACC__)
+    template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0>
+    __forceinline__ __device__ void push_back(prim_id_t prim, node_id_t node) {
+      const auto no = atomic_add(wrapv<space>{}, _cnt, (index_t)1);
+      if (no < _numFrontNodes) {
+        _prims[no] = prim;
+        _nodes[no] = node;
+      }
+    }
+#endif
+    template <execspace_e S = space, enable_if_t<S != execspace_e::cuda> = 0>
+    inline void push_back(prim_id_t prim, node_id_t node) {
       const auto no = atomic_add(wrapv<space>{}, _cnt, (index_t)1);
       if (no < _numFrontNodes) {
         _prims[no] = prim;
@@ -130,9 +136,10 @@ namespace zs {
     // memset({memdst, devid}, (void *)counts.data(), 0, counts.size() * sizeof(index_t));
     execPol(range(counts.size()),
             [counts = proxy<space>(counts)] ZS_LAMBDA(index_t i) mutable { counts[i] = 0; });
+    auto frontView = proxy<space>(const_cast<const bvtt_t &>(front));
     execPol(range(numFrontNodes),
             [execTag, counts = proxy<space>(counts),
-             front = proxy<space>(const_cast<const bvtt_t &>(front))] ZS_LAMBDA(index_t i) mutable {
+             front = frontView] ZS_LAMBDA(index_t i) mutable {
               // atomic_add(execTag, &counts[front.node(i)], (index_t)1);
               atomic_add(execTag, &counts[front.node(i)], (index_t)1);
             });
@@ -146,7 +153,7 @@ namespace zs {
     execPol(range(numFrontNodes),
             [counts = proxy<space>(counts), primIds = proxy<space>(primIds),
              nodeIds = proxy<space>(nodeIds), offsets = proxy<space>(offsets),
-             front = proxy<space>(const_cast<const bvtt_t &>(front))] ZS_LAMBDA(index_t i) mutable {
+             front = frontView] ZS_LAMBDA(index_t i) mutable {
               auto nodeid = front.node(i);
               // auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
               auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);

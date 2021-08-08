@@ -9,6 +9,7 @@ namespace zs {
 
   template <int dim_ = 3> struct IndexBuckets {
     static constexpr int dim = dim_;
+    using allocator_type = ZSPmrAllocator<>;
     using value_type = f32;
     using index_type = i64;
     using TV = vec<value_type, dim>;
@@ -18,14 +19,17 @@ namespace zs {
 
     constexpr IndexBuckets() = default;
 
-    IndexBuckets clone(const MemoryHandle mh) const {
+    IndexBuckets clone(const allocator_type &allocator) const {
       IndexBuckets ret{};
-      ret._table = _table.clone(mh);
-      ret._indices = _indices.clone(mh);
-      ret._offsets = _offsets.clone(mh);
-      ret._counts = _counts.clone(mh);
+      ret._table = _table.clone(allocator);
+      ret._indices = _indices.clone(allocator);
+      ret._offsets = _offsets.clone(allocator);
+      ret._counts = _counts.clone(allocator);
       ret._dx = _dx;
       return ret;
+    }
+    IndexBuckets clone(const MemoryLocation &mloc) const {
+      return clone(get_memory_source(mloc.memspace(), mloc.devid()));
     }
 
     constexpr auto numEntries() const noexcept { return _indices.size(); }

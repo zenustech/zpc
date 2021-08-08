@@ -31,8 +31,10 @@ namespace zs {
         return nullptr;
     }
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
-      zs::deallocate(MemTag{}, ptr, bytes, alignment);
-      erase_allocation(ptr);
+      if (bytes) {
+        zs::deallocate(MemTag{}, ptr, bytes, alignment);
+        erase_allocation(ptr);
+      }
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };

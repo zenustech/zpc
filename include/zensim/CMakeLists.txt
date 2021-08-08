@@ -358,7 +358,7 @@ target_sources(zs_cu_wrangler
   PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES}
 )
 target_compile_options(zs_cu_wrangler 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -c --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -ptx --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
 )
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES  LANGUAGE CUDA)
 

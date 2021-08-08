@@ -14,7 +14,11 @@ namespace zs {
   }
   void deallocate(host_mem_tag, void *ptr, std::size_t size, std::size_t alignment,
                   const source_location &loc) {
+#ifdef _MSC_VER
+    _aligned_free(ptr);
+#else
     std::free(ptr);
+#endif
   }
   void memset(host_mem_tag, void *addr, int chval, std::size_t size, const source_location &loc) {
     std::memset(addr, chval, size);

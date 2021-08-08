@@ -27,8 +27,8 @@ namespace zs {
         auto ret = zs::allocate(MemTag{}, bytes, alignment);
         record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
         return ret;
-      } else
-        return nullptr;
+      }
+      return nullptr;
     }
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
       if (bytes) {

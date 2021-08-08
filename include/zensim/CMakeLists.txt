@@ -369,7 +369,6 @@ set_target_properties(zs_cu_wrangler
   PROPERTIES  LINKER_LANGUAGE CUDA
               CUDA_EXTENSIONS ON
               CUDA_SEPARABLE_COMPILATION ON
-              ARCHIVE_OUTPUT_DIRECTORY ${ZS_PTX_INCLUDE_DIR}
               CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               CUDA_ARCHITECTURES OFF
               CUDA_PTX_COMPILATION ON # https://stackoverflow.com/questions/55993745/how-should-i-get-cmake-to-also-create-ptx-files-for-my-kernels

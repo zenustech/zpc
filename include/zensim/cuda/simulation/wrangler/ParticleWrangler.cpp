@@ -5,7 +5,7 @@
 #include "zensim/physics/ConstitutiveModel.hpp"
 #include "zensim/types/Tuple.h"
 
-extern "C" __device__ void zfx_wrangle_func(float *globals, float const *params);
+__device__ void zfx_wrangle_func(float *globals, float const *params);
 
 extern "C" __global__ void zpc_particle_wrangle_kernel(std::size_t npars,
                                                        zs::ConstitutiveModelConfig config,

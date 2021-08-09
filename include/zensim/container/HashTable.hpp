@@ -34,6 +34,10 @@ namespace zs {
 
     struct Table {
       Table() = default;
+      Table(const Table&) = default;
+      Table(Table&&) noexcept = default;
+      Table &operator=(const Table &) = default;
+      Table &operator=(Table &&) noexcept = default;
       Table(const allocator_type &allocator, size_type numEntries) : 
         keys{allocator, numEntries}, 
         indices{allocator, numEntries}, 
@@ -73,7 +77,12 @@ namespace zs {
           _allocator{allocator},
           _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
           _cnt{allocator, 1},
-          _activeKeys{allocator, evaluateTableSize(tableSize)} {}
+          _activeKeys{allocator, evaluateTableSize(tableSize)} {
+      Vector<value_t> res{1};
+      res[0] = (value_t)0;
+      copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, 
+           MemoryEntity{res.memoryLocation(), (void *)res.data()}, sizeof(value_t));
+    }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : HashTable{get_memory_source(mre, devid), tableSize} {}
     HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -138,7 +147,7 @@ namespace zs {
     friend void swap(HashTable &a, HashTable &b) { a.swap(b); }
 
     inline value_t size() const {
-      Vector<value_t> res{1, memsrc_e::host, -1};
+      Vector<value_t> res{1};
       copy(MemoryEntity{res.memoryLocation(), (void *)res.data()},
            MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
       return res[0];

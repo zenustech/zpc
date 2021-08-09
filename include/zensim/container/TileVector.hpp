@@ -249,6 +249,36 @@ namespace zs {
     friend void swap(TileVector &a, TileVector &b) { a.swap(b); }
 
     void clear() { *this = TileVector{_allocator, _tags, 0}; }
+    void resize(size_type newSize) {
+      const auto oldSize = size();
+      if (newSize < oldSize) {
+        _size = newSize;
+        return;
+      }
+      if (newSize > oldSize) {
+        const auto oldCapacity = capacity();
+        const auto newCapacity = geometric_size_growth(newSize);
+        if (newCapacity > oldCapacity) {
+          /// virtual memory way
+          /// conventional way
+          TileVector tmp{_allocator, _tags, newCapacity};
+          if (size())
+            copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+                 MemoryEntity{memoryLocation(), (void *)data()}, 
+                 sizeof(value_type) * numChannels() * capacity());
+          tmp._size = newSize;
+          swap(tmp);
+          return;
+        }
+      }
+    }
+    constexpr size_type geometric_size_growth(size_type newSize) noexcept {
+      size_type geometricSize = capacity();
+      geometricSize = geometricSize + geometricSize / 2;
+      geometricSize = count_tiles(geometricSize) * lane_width;
+      if (newSize > geometricSize) return count_tiles(newSize) * lane_width;
+      return geometricSize;
+    }
 
     constexpr channel_counter_type numProperties() const noexcept { return _tags.size(); }
 

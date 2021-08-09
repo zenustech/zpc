@@ -4,32 +4,17 @@
 #include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
-#include "zensim/types/Polymorphism.h"
-#include "zensim/types/RuntimeStructurals.hpp"
 #include "zensim/types/SmallVector.hpp"
 
 namespace zs {
 
-  template <auto Length, typename Snode, typename ChnCounter>  ///< length should be power of 2
-  using tile_snode = ds::snode_t<ds::decorations<ds::soa>, ds::static_domain<Length>, tuple<Snode>,
-                                 tuple<ChnCounter>>;
-
-  template <auto Length, typename Snode, typename ChnCounter, typename Index> using aosoa_snode
-      = ds::snode_t<ds::static_decorator<>, ds::uniform_domain<0, Index, 1, index_seq<0>>,
-                    tuple<tile_snode<Length, Snode, ChnCounter>>, vseq_t<1>>;
-  //                    typename gen_seq<sizeof...(Snodes)>::template uniform_vseq<1>
-
-  template <auto Length, typename T, typename ChnCounter, typename Index> using aosoa_instance
-      = ds::instance_t<ds::dense, aosoa_snode<Length, wrapt<T>, ChnCounter, Index>>;
-
-  template <typename T, auto Length = 8, typename Index = std::size_t,
+  template <typename T, std::size_t Length = 8, typename Index = std::size_t,
             typename ChnCounter = unsigned char>
   struct TileVector {
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
                   "element is not default-constructible or trivially-copyable!");
 
-    using base_t = aosoa_instance<Length, T, ChnCounter, Index>;
     using value_type = T;
     using allocator_type = ZSPmrAllocator<>;
     using size_type = std::make_unsigned_t<Index>;
@@ -48,19 +33,27 @@ namespace zs {
             && std::allocator_traits<allocator_type>::propagate_on_container_swap::value,
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
+    static constexpr size_type count_tiles(size_type elementCount) noexcept {
+      return (elementCount + lane_width - 1) / lane_width;
+    }
+
     constexpr decltype(auto) memoryLocation() noexcept { return _allocator.location; }
     constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
     constexpr decltype(auto) allocator() const noexcept { return _allocator; }
 
-    constexpr base_t &self() noexcept { return _inst; }
-    constexpr const base_t &self() const noexcept { return _inst; }
-
     TileVector(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
                size_type count = 0)
-        : _allocator{allocator}, _tags{channelTags}, _size{count} {
-      const auto N = numTotalChannels(channelTags);
+        : _allocator{allocator}, 
+          _base{nullptr},
+          _tags{channelTags}, 
+          _size{count},
+          _capacity{count_tiles(count) * lane_width},
+          _numChannels{numTotalChannels(channelTags)} {
+      const auto N = numProperties();
+      _base = (pointer)_allocator.allocate(sizeof(value_type) * numChannels() * capacity(),
+                                           std::alignment_of_v<value_type>);
       {
         auto tagNames = Vector<SmallString>{static_cast<std::size_t>(N)};
         auto tagSizes = Vector<channel_counter_type>{static_cast<std::size_t>(N)};
@@ -76,7 +69,6 @@ namespace zs {
         _tagSizes = tagSizes.clone(_allocator);
         _tagOffsets = tagOffsets.clone(_allocator);
       }
-      _inst = buildInstance(N, count);
     }
     TileVector(const std::vector<PropertyTag> &channelTags, size_type count = 0,
                memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -85,23 +77,26 @@ namespace zs {
                ProcID devid = -1)
         : TileVector{get_memory_source(mre, devid), {{"unnamed", numChns}}, count} {}
     TileVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : TileVector{get_memory_source(mre, devid), {}, 0} {}
+        : TileVector{get_memory_source(mre, devid), {{"unnamed", 1}}, 0} {}
 
     ~TileVector() {
-      if (self().address() && self().node().extent() > 0) self().dealloc(_allocator);
+      if (_base && capacity() > 0) 
+        _allocator.deallocate(_base, sizeof(value_type) * numChannels() * capacity(),
+                              std::alignment_of_v<value_type>);
     }
 
     static auto numTotalChannels(const std::vector<PropertyTag> &tags) {
-      tuple_element_t<1, PropertyTag> cnt = 0;
+      channel_counter_type cnt = 0;
       for (std::size_t i = 0; i != tags.size(); ++i) cnt += tags[i].template get<1>();
       return cnt;
     }
     struct iterator_impl : IteratorInterface<iterator_impl> {
-      constexpr iterator_impl(const base_t &range, size_type idx, channel_counter_type chn = 0)
-          : _base{range.data()},
+      constexpr iterator_impl(pointer base, size_type idx,
+                              channel_counter_type chn, channel_counter_type nchns)
+          : _base{base},
             _idx{idx},
             _chn{chn},
-            _numChannels{range.node().child(wrapv<0>{}).channel_count()} {}
+            _numChannels{nchns} {}
 
       constexpr reference dereference() {
         return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
@@ -118,15 +113,15 @@ namespace zs {
     protected:
       pointer _base{nullptr};
       size_type _idx{0};
-      channel_counter_type _chn{0}, _numChannels{0};
+      channel_counter_type _chn{0}, _numChannels{1};
     };
     struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
-      constexpr const_iterator_impl(const base_t &range, size_type idx,
-                                    channel_counter_type chn = 0)
-          : _base{range.data()},
+      constexpr const_iterator_impl(const_pointer base, size_type idx,
+                                    channel_counter_type chn, channel_counter_type nchns)
+          : _base{base},
             _idx{idx},
             _chn{chn},
-            _numChannels{range.node().child(wrapv<0>{}).channel_count()} {}
+            _numChannels{nchns} {}
 
       constexpr const_reference dereference() const {
         return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
@@ -143,52 +138,61 @@ namespace zs {
     protected:
       const_pointer _base{nullptr};
       size_type _idx{0};
-      channel_counter_type _chn{0}, _numChannels{0};
+      channel_counter_type _chn{0}, _numChannels{1};
     };
     using iterator = LegacyIterator<iterator_impl>;
     using const_iterator = LegacyIterator<const_iterator_impl>;
 
-    constexpr auto begin() noexcept { return make_iterator<iterator_impl>(self(), 0); }
-    constexpr auto end() noexcept { return make_iterator<iterator_impl>(self(), size()); }
-    constexpr auto begin() const noexcept { return make_iterator<const_iterator_impl>(self(), 0); }
-    constexpr auto end() const noexcept {
-      return make_iterator<const_iterator_impl>(self(), size());
+    constexpr auto begin(channel_counter_type chn = 0) noexcept { 
+      return make_iterator<iterator_impl>(_base, 0, chn, numChannels()); 
+    }
+    constexpr auto end(channel_counter_type chn = 0) noexcept { 
+      return make_iterator<iterator_impl>(_base, size(), chn, numChannels()); 
+    }
+    constexpr auto begin(channel_counter_type chn = 0) const noexcept { 
+      return make_iterator<const_iterator_impl>(_base, 0, chn, numChannels()); 
+    }
+    constexpr auto end(channel_counter_type chn = 0) const noexcept {
+      return make_iterator<const_iterator_impl>(_base, size(), chn, numChannels());
     }
 
     /// capacity
     constexpr size_type size() const noexcept { return _size; }
-    constexpr size_type capacity() const noexcept { return self().node().extent(); }
+    constexpr size_type capacity() const noexcept { return _capacity; }
+    constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
     constexpr bool empty() noexcept { return size() == 0; }
-    constexpr pointer head() const noexcept { return reinterpret_cast<pointer>(self().address()); }
     constexpr const_pointer data() const noexcept {
-      return reinterpret_cast<const_pointer>(self().address());
+      return reinterpret_cast<const_pointer>(_base);
     }
-    constexpr pointer data() noexcept { return reinterpret_cast<pointer>(self().address()); }
+    constexpr pointer data() noexcept { return reinterpret_cast<pointer>(_base); }
 
     /// element access
     constexpr reference operator[](
         const std::tuple<channel_counter_type, size_type> index) noexcept {
       const auto [chn, idx] = index;
-      return self()(idx / lane_width)(chn, idx % lane_width);
+      return *(data() + (idx / lane_width * numChannels() + chn) * lane_width + idx % lane_width);
     }
     constexpr conditional_t<std::is_fundamental_v<value_type>, value_type, const_reference>
     operator[](const std::tuple<channel_counter_type, size_type> index) const noexcept {
       const auto [chn, idx] = index;
-      return self()(idx / lane_width)(chn, idx % lane_width);
+      return *(data() + (idx / lane_width * numChannels() + chn) * lane_width + idx % lane_width);
     }
     /// ctor, assignment operator
     TileVector(const TileVector &o)
         : _allocator{o._allocator},
+          _base{(pointer)_allocator.allocate(sizeof(value_type) * o.numChannels() * o.capacity(),
+                                             std::alignment_of_v<value_type>)},
           _tags{o._tags},
           _tagNames{o._tagNames},
           _tagSizes{o._tagSizes},
           _tagOffsets{o._tagOffsets},
-          _size{o.size()} {
-      _inst = buildInstance(o.numChannels(), this->size());
-      if (ds::snode_size(o.self().template node<0>()) > 0)
-        copy(MemoryEntity{memoryLocation(), (void *)self().address()},
+          _size{o.size()},
+          _capacity{o.capacity()},
+          _numChannels{o.numChannels()} {
+      if (capacity() > 0)
+        copy(MemoryEntity{memoryLocation(), (void *)data()},
              MemoryEntity{o.memoryLocation(), (void *)o.data()},
-             ds::snode_size(o.self().template node<0>()));
+             sizeof(value_type) * o.numChannels() * o.capacity());
     }
     TileVector &operator=(const TileVector &o) {
       if (this == &o) return *this;
@@ -199,10 +203,10 @@ namespace zs {
     TileVector clone(const allocator_type &allocator) const {
       // capacity() is the count of tiles
       // use size() that represents the number of elements!
-      TileVector ret{allocator, _tags, size()};
+      TileVector ret{allocator, _tags, capacity()};
       copy(MemoryEntity{allocator.location, (void *)ret.data()},
            MemoryEntity{memoryLocation(), (void *)data()},
-           ds::snode_size(self().template node<0>()));
+           sizeof(value_type) * numChannels() * capacity());
       return ret;
     }
     TileVector clone(const MemoryLocation &mloc) const {
@@ -214,13 +218,15 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     TileVector(TileVector &&o) noexcept {
       const TileVector defaultVector{};
-      self() = std::exchange(o.self(), defaultVector.self());
+      _base = std::exchange(o._base, defaultVector._base);
       _allocator = std::exchange(o._allocator, defaultVector._allocator);
       _tags = std::exchange(o._tags, defaultVector._tags);
       _tagNames = std::exchange(o._tagNames, defaultVector._tagNames);
       _tagSizes = std::exchange(o._tagSizes, defaultVector._tagSizes);
       _tagOffsets = std::exchange(o._tagOffsets, defaultVector._tagOffsets);
       _size = std::exchange(o._size, defaultVector.size());
+      _capacity = std::exchange(o._capacity, defaultVector.capacity());
+      _numChannels = std::exchange(o._numChannels, defaultVector.numChannels());
     }
     /// make move-assignment safe for self-assignment
     TileVector &operator=(TileVector &&o) noexcept {
@@ -230,32 +236,27 @@ namespace zs {
       return *this;
     }
     void swap(TileVector &o) noexcept {
-      std::swap(self(), o.self());
+      std::swap(_base, o._base);
       std::swap(_allocator, o._allocator);
       std::swap(_tags, o._tags);
       std::swap(_tagNames, o._tagNames);
       std::swap(_tagSizes, o._tagSizes);
       std::swap(_tagOffsets, o._tagOffsets);
       std::swap(_size, o._size);
+      std::swap(_capacity, o._capacity);
+      std::swap(_numChannels, o._numChannels);
     }
     friend void swap(TileVector &a, TileVector &b) { a.swap(b); }
 
     void clear() { *this = TileVector{_allocator, _tags, 0}; }
 
-    constexpr channel_counter_type numChannels() const noexcept {
-      return self().node().child(wrapv<0>{}).channel_count();
-    }
     constexpr channel_counter_type numProperties() const noexcept { return _tags.size(); }
 
     bool hasProperty(const SmallString &str) const {
-      bool found = false;
-      for (auto &&tag : _tags) {
-        if (str == zs::get<SmallString>(tag)) {
-          found = true;
-          break;
-        }
-      }
-      return found;
+      for (auto &&tag : _tags) 
+        if (str == zs::get<SmallString>(tag)) 
+          return true;
+      return false;
     }
     constexpr const SmallString *tagNameHandle() const noexcept { return _tagNames.data(); }
     constexpr const channel_counter_type *tagSizeHandle() const noexcept {
@@ -266,28 +267,15 @@ namespace zs {
     }
 
   protected:
-    constexpr auto buildInstance(channel_counter_type numChns, size_type capacity) {
-      using namespace ds;
-      tile_snode<lane_width, wrapt<T>, channel_counter_type> tilenode{
-          ds::decorations<ds::soa>{}, static_domain<lane_width>{}, zs::make_tuple(wrapt<T>{}),
-          zs::make_tuple(numChns)};
-      uniform_domain<0, size_type, 1, index_seq<0>> dom{wrapv<0>{},
-                                                        (capacity + lane_width - 1) / lane_width};
-      aosoa_snode<lane_width, wrapt<T>, channel_counter_type, size_type> node{
-          ds::static_decorator<>{}, dom, zs::make_tuple(tilenode), vseq_t<1>{}};
-      auto inst = instance{wrapv<dense>{}, zs::make_tuple(node)};
-      if (capacity) inst.alloc(_allocator);
-      return inst;
-    }
-
-    base_t _inst;
-    allocator_type _allocator;
-    std::vector<PropertyTag> _tags;  // on host
+    allocator_type _allocator{};
+    pointer _base{nullptr};
+    std::vector<PropertyTag> _tags{};  // on host
     /// for proxy use
-    Vector<SmallString> _tagNames;
-    Vector<channel_counter_type> _tagSizes;
-    Vector<channel_counter_type> _tagOffsets;
-    size_type _size{0};  // element size
+    Vector<SmallString> _tagNames{};
+    Vector<channel_counter_type> _tagSizes{};
+    Vector<channel_counter_type> _tagOffsets{};
+    size_type _size{0}, _capacity{0};  // element size
+    channel_counter_type _numChannels{1};
   };
 
   template <execspace_e, typename TileVectorT, typename = void> struct TileVectorView;

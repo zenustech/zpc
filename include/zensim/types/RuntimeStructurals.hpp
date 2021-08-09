@@ -890,18 +890,4 @@ namespace zs {
 
   }  // namespace ds
 
-  using PropertyTag = tuple<SmallString, int>;
-
-  inline auto select_properties(const std::vector<PropertyTag> &props,
-                                const std::vector<SmallString> &names) {
-    std::vector<PropertyTag> ret(0);
-    for (auto &&name : names)
-      for (auto &&prop : props)
-        if (prop.template get<0>() == name) {
-          ret.push_back(prop);
-          break;
-        }
-    return ret;
-  }
-
 }  // namespace zs

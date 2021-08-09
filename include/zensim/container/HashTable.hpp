@@ -38,7 +38,7 @@ namespace zs {
       Table(Table&&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, size_type numEntries) : 
+      Table(const allocator_type &allocator, std::size_t numEntries) : 
         keys{allocator, numEntries}, 
         indices{allocator, numEntries}, 
         status{allocator, numEntries} {}

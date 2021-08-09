@@ -89,7 +89,7 @@ namespace zs {
       }
     }
 
-    template <typename... Args> constexpr bool all_variant() {
+    template <typename... Args> static constexpr bool all_variant() {
       return (is_variant<remove_cvref_t<Args>>::value && ...);
     }
 

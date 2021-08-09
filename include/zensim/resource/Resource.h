@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <vector>
 #include <stdexcept>
 
 #include "zensim/Reflection.h"
@@ -10,6 +11,7 @@
 #include "zensim/memory/MemOps.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/types/SmallVector.hpp"
+#include "zensim/types/Tuple.h"
 
 namespace zs {
 

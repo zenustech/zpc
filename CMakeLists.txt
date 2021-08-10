@@ -129,6 +129,18 @@ target_compile_definitions(zpc_cxx_deps
 # =================
 add_subdirectory(include/zensim)
 
+set(ZS_ENABLE_OPENGL ${ZS_ENABLE_OPENGL} PARENT_SCOPE)
+set(ZS_ENABLE_CUDA ${ZS_ENABLE_CUDA} PARENT_SCOPE)
+set(ZS_ENABLE_PTHREADS ${ZS_ENABLE_PTHREADS} PARENT_SCOPE)
+set(ZS_ENABLE_OPENMP ${ZS_ENABLE_OPENMP} PARENT_SCOPE)
+set(ZS_ENABLE_OPENVDB ${ZS_ENABLE_OPENVDB} PARENT_SCOPE)
+set(ZS_ENABLE_PARTIO ${ZS_ENABLE_PARTIO} PARENT_SCOPE)
+
+message("cmake configure summary")
+message("project name: ${project_name}")
+message("package version: ${project_version}")
+message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}")
+
 # ---- Install ----
 # =================
 if (ZS_ENABLE_INSTALL)

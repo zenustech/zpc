@@ -4,7 +4,6 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     math/matrix/MatrixCtor.cpp
     math/matrix/Matrix.cpp
     memory/Allocator.cpp
-    resource/Resource.cpp
     profile/CppTimers.cpp
     execution/Stacktrace.cpp
     execution/ExecutionPolicy.cpp
@@ -44,6 +43,9 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/simulation/particle/Query.cpp
     omp/simulation/sparsity/SparsityCompute.cpp
     omp/execution/ExecutionPolicy.cpp
+)
+set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
+    resource/Resource.cpp
 )
 
 ## headers
@@ -302,13 +304,22 @@ endif(ZS_ENABLE_CUDA)
 #######
 # zpc #
 #######
-add_library(zpc INTERFACE)
-target_link_libraries(zpc INTERFACE zpccore)
+if (ZS_BUILD_SHARED_LIBS)
+  add_library(zpc SHARED)
+else ()
+  add_library(zpc STATIC)
+endif ()
+
+target_sources(zpc
+  PRIVATE 
+    ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
+)
+target_link_libraries(zpc PUBLIC zpccore)
 if (ZS_ENABLE_OPENMP)
-  target_link_libraries(zpc INTERFACE zpcomp)
+  target_link_libraries(zpc PUBLIC zpcomp)
 endif(ZS_ENABLE_OPENMP)
 if (ZS_ENABLE_CUDA)
-  target_link_libraries(zpc INTERFACE zpccuda)
+  target_link_libraries(zpc PUBLIC zpccuda)
 endif(ZS_ENABLE_CUDA)
 
 target_link_libraries(zensim INTERFACE zpc)  # zpc -> zensim

@@ -83,13 +83,6 @@ endif()
 
 # ---- build setup ----- 
 # ======================
-if (ZS_ENABLE_OPENMP)
-  find_package(OpenMP)
-  if (OpenMP_CXX_FOUND)
-    set(ZS_ENABLE_OPENMP 0 FORCE)
-  endif(OpenMP_CXX_FOUND)
-endif(ZS_ENABLE_OPENMP)
-
 if (ZS_ENABLE_CUDA)
   include(CheckLanguage)
   check_language(CUDA)
@@ -98,7 +91,7 @@ if (ZS_ENABLE_CUDA)
     message("-- cuda-compiler " ${CMAKE_CUDA_COMPILER})
   else(CMAKE_CUDA_COMPILER)
     message(STATUS "No CUDA support")
-    set(ZS_ENABLE_CUDA 0 FORCE)
+    set(ZS_ENABLE_CUDA OFF)
   endif(CMAKE_CUDA_COMPILER)
   set(CUDA_FOUND ${CMAKE_CUDA_COMPILER})
 endif(ZS_ENABLE_CUDA)

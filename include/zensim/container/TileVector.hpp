@@ -25,7 +25,7 @@ namespace zs {
     using const_pointer = const value_type *;
     // tile vector specific configs
     using channel_counter_type = ChnCounter;
-    static constexpr auto lane_width = Length;
+    static constexpr size_type lane_width = Length;
 
     static_assert(
         std::allocator_traits<allocator_type>::propagate_on_container_move_assignment::value
@@ -45,9 +45,9 @@ namespace zs {
 
     TileVector(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
                size_type count = 0)
-        : _allocator{allocator}, 
+        : _allocator{allocator},
           _base{nullptr},
-          _tags{channelTags}, 
+          _tags{channelTags},
           _size{count},
           _capacity{count_tiles(count) * lane_width},
           _numChannels{numTotalChannels(channelTags)} {
@@ -80,7 +80,7 @@ namespace zs {
         : TileVector{get_memory_source(mre, devid), {{"unnamed", 1}}, 0} {}
 
     ~TileVector() {
-      if (_base && capacity() > 0) 
+      if (_base && capacity() > 0)
         _allocator.deallocate(_base, sizeof(value_type) * numChannels() * capacity(),
                               std::alignment_of_v<value_type>);
     }
@@ -91,12 +91,9 @@ namespace zs {
       return cnt;
     }
     struct iterator_impl : IteratorInterface<iterator_impl> {
-      constexpr iterator_impl(pointer base, size_type idx,
-                              channel_counter_type chn, channel_counter_type nchns)
-          : _base{base},
-            _idx{idx},
-            _chn{chn},
-            _numChannels{nchns} {}
+      constexpr iterator_impl(pointer base, size_type idx, channel_counter_type chn,
+                              channel_counter_type nchns)
+          : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
 
       constexpr reference dereference() {
         return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
@@ -116,12 +113,9 @@ namespace zs {
       channel_counter_type _chn{0}, _numChannels{1};
     };
     struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
-      constexpr const_iterator_impl(const_pointer base, size_type idx,
-                                    channel_counter_type chn, channel_counter_type nchns)
-          : _base{base},
-            _idx{idx},
-            _chn{chn},
-            _numChannels{nchns} {}
+      constexpr const_iterator_impl(const_pointer base, size_type idx, channel_counter_type chn,
+                                    channel_counter_type nchns)
+          : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
 
       constexpr const_reference dereference() const {
         return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
@@ -143,14 +137,14 @@ namespace zs {
     using iterator = LegacyIterator<iterator_impl>;
     using const_iterator = LegacyIterator<const_iterator_impl>;
 
-    constexpr auto begin(channel_counter_type chn = 0) noexcept { 
-      return make_iterator<iterator_impl>(_base, 0, chn, numChannels()); 
+    constexpr auto begin(channel_counter_type chn = 0) noexcept {
+      return make_iterator<iterator_impl>(_base, 0, chn, numChannels());
     }
-    constexpr auto end(channel_counter_type chn = 0) noexcept { 
-      return make_iterator<iterator_impl>(_base, size(), chn, numChannels()); 
+    constexpr auto end(channel_counter_type chn = 0) noexcept {
+      return make_iterator<iterator_impl>(_base, size(), chn, numChannels());
     }
-    constexpr auto begin(channel_counter_type chn = 0) const noexcept { 
-      return make_iterator<const_iterator_impl>(_base, 0, chn, numChannels()); 
+    constexpr auto begin(channel_counter_type chn = 0) const noexcept {
+      return make_iterator<const_iterator_impl>(_base, 0, chn, numChannels());
     }
     constexpr auto end(channel_counter_type chn = 0) const noexcept {
       return make_iterator<const_iterator_impl>(_base, size(), chn, numChannels());
@@ -161,9 +155,7 @@ namespace zs {
     constexpr size_type capacity() const noexcept { return _capacity; }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
     constexpr bool empty() noexcept { return size() == 0; }
-    constexpr const_pointer data() const noexcept {
-      return reinterpret_cast<const_pointer>(_base);
-    }
+    constexpr const_pointer data() const noexcept { return reinterpret_cast<const_pointer>(_base); }
     constexpr pointer data() noexcept { return reinterpret_cast<pointer>(_base); }
 
     /// element access
@@ -264,7 +256,7 @@ namespace zs {
           TileVector tmp{_allocator, _tags, newCapacity};
           if (size())
             copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
-                 MemoryEntity{memoryLocation(), (void *)data()}, 
+                 MemoryEntity{memoryLocation(), (void *)data()},
                  sizeof(value_type) * numChannels() * capacity());
           tmp._size = newSize;
           swap(tmp);
@@ -283,9 +275,8 @@ namespace zs {
     constexpr channel_counter_type numProperties() const noexcept { return _tags.size(); }
 
     bool hasProperty(const SmallString &str) const {
-      for (auto &&tag : _tags) 
-        if (str == zs::get<SmallString>(tag)) 
-          return true;
+      for (auto &&tag : _tags)
+        if (str == zs::get<SmallString>(tag)) return true;
       return false;
     }
     constexpr const SmallString *tagNameHandle() const noexcept { return _tagNames.data(); }
@@ -308,11 +299,13 @@ namespace zs {
     channel_counter_type _numChannels{1};
   };
 
-  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorView;
-  template <execspace_e, typename TileVectorT, typename = void> struct TileVectorUnnamedView;
+  template <execspace_e, typename TileVectorT, bool WithinTile = false, typename = void>
+  struct TileVectorView;
+  template <execspace_e, typename TileVectorT, bool WithinTile = false, typename = void>
+  struct TileVectorUnnamedView;
 
-  template <execspace_e Space, typename TileVectorT>
-  struct TileVectorUnnamedView<Space, TileVectorT> {
+  template <execspace_e Space, typename TileVectorT, bool WithinTile>
+  struct TileVectorUnnamedView<Space, TileVectorT, WithinTile> {
     using pointer = typename TileVectorT::pointer;
     using value_type = typename TileVectorT::value_type;
     using reference = typename TileVectorT::reference;
@@ -327,18 +320,28 @@ namespace zs {
         : _vector{tilevector.data()},
           _vectorSize{tilevector.size()},
           _numChannels{tilevector.numChannels()} {}
+    explicit constexpr TileVectorUnnamedView(pointer base, size_type s, channel_counter_type nchns)
+        : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
     constexpr reference operator()(channel_counter_type chn, const size_type i) {
-      return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+      if constexpr (WithinTile)
+        return *(_vector + chn * lane_width + i);
+      else
+        return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
     }
     constexpr const_reference operator()(channel_counter_type chn, const size_type i) const {
-      return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+      if constexpr (WithinTile)
+        return *(_vector + chn * lane_width + i);
+      else
+        return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
     }
 
-    constexpr reference val(channel_counter_type chn, const size_type i) {
-      return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+    constexpr auto tile(const size_type tileid) {
+      return TileVectorUnnamedView<Space, TileVectorT, true>{
+          _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
-    constexpr const_reference val(channel_counter_type chn, const size_type i) const {
-      return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+    constexpr auto tile(const size_type tileid) const {
+      return TileVectorUnnamedView<Space, const TileVectorT, true>{
+          _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
 
     template <auto... Ns> constexpr auto pack(channel_counter_type chn, const size_type i) const {
@@ -375,8 +378,8 @@ namespace zs {
     channel_counter_type _numChannels{0};
   };
 
-  template <execspace_e Space, typename TileVectorT>
-  struct TileVectorUnnamedView<Space, const TileVectorT> {
+  template <execspace_e Space, typename TileVectorT, bool WithinTile>
+  struct TileVectorUnnamedView<Space, const TileVectorT, WithinTile> {
     using const_pointer = typename TileVectorT::const_pointer;
     using const_reference = typename TileVectorT::const_reference;
     using value_type = typename TileVectorT::value_type;
@@ -390,11 +393,19 @@ namespace zs {
         : _vector{tilevector.data()},
           _vectorSize{tilevector.size()},
           _numChannels{tilevector.numChannels()} {}
+    explicit constexpr TileVectorUnnamedView(const_pointer base, size_type s,
+                                             channel_counter_type nchns)
+        : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
     constexpr const_reference operator()(channel_counter_type chn, const size_type i) const {
-      return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+      if constexpr (WithinTile)
+        return *(_vector + chn * lane_width + i);
+      else
+        return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
     }
-    constexpr const_reference val(channel_counter_type chn, const size_type i) const {
-      return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+
+    constexpr auto tile(const size_type tileid) const {
+      return TileVectorUnnamedView<Space, const TileVectorT, true>{
+          _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
 
     template <auto... Ns> constexpr auto pack(channel_counter_type chn, const size_type i) const {
@@ -432,18 +443,19 @@ namespace zs {
     size_type _vectorSize{0};
     channel_counter_type _numChannels{0};
   };
-  template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(const TileVector<T, Length, IndexT, ChnT> &vec) {
     return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, IndexT, ChnT>>{vec};
   }
-  template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT> &vec) {
     return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, IndexT, ChnT>>{vec};
   }
 
-  template <execspace_e Space, typename TileVectorT> struct TileVectorView<Space, TileVectorT>
-      : TileVectorUnnamedView<Space, TileVectorT> {
-    using base_t = TileVectorUnnamedView<Space, TileVectorT>;
+  template <execspace_e Space, typename TileVectorT, bool WithinTile>
+  struct TileVectorView<Space, TileVectorT, WithinTile>
+      : TileVectorUnnamedView<Space, TileVectorT, WithinTile> {
+    using base_t = TileVectorUnnamedView<Space, TileVectorT, WithinTile>;
     using pointer = typename TileVectorT::pointer;
     using value_type = typename TileVectorT::value_type;
     using reference = typename TileVectorT::reference;
@@ -456,19 +468,28 @@ namespace zs {
     ~TileVectorView() = default;
     explicit constexpr TileVectorView(const std::vector<SmallString> &tagNames,
                                       TileVectorT &tilevector)
-        : base_t{tilevector}, N{static_cast<channel_counter_type>(tagNames.size())} {
-      _tagNames = tilevector.tagNameHandle();
-      _tagOffsets = tilevector.tagOffsetHandle();
-      _tagSizes = tilevector.tagSizeHandle();
-    }
+        : base_t{tilevector},
+          _tagNames{tilevector.tagNameHandle()},
+          _tagOffsets{tilevector.tagOffsetHandle()},
+          _tagSizes{tilevector.tagSizeHandle()},
+          _N{static_cast<channel_counter_type>(tagNames.size())} {}
+    explicit constexpr TileVectorView(pointer base, size_type s, channel_counter_type nchns,
+                                      const SmallString *tagNames,
+                                      const channel_counter_type *tagOffsets,
+                                      const channel_counter_type *tagSizes, channel_counter_type N)
+        : base_t{base, s, nchns},
+          _tagNames{tagNames},
+          _tagOffsets{tagOffsets},
+          _tagSizes{tagSizes},
+          _N{N} {}
 
     constexpr auto propIndex(const char propName[]) const {
       channel_counter_type i = 0;
-      for (; i < N; ++i)
+      for (; i < _N; ++i)
         if (_tagNames[i] == propName) break;
       return i;
     }
-    constexpr bool hasProp(const char propName[]) const { return propIndex(propName) != N; }
+    constexpr bool hasProp(const char propName[]) const { return propIndex(propName) != _N; }
 
     constexpr reference operator()(const char propName[], const channel_counter_type chn,
                                    const size_type i) {
@@ -478,11 +499,31 @@ namespace zs {
                                          const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)] + chn, i);
     }
-    constexpr reference val(const char propName[], const size_type i) {
+    constexpr reference operator()(const char propName[], const size_type i) {
       return static_cast<base_t &>(*this)(_tagOffsets[propIndex(propName)], i);
     }
-    constexpr const_reference val(const char propName[], const size_type i) const {
+    constexpr const_reference operator()(const char propName[], const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)], i);
+    }
+    constexpr auto tile(const size_type tileid) {
+      return TileVectorView<Space, TileVectorT, true>{
+          this->_vector + tileid * lane_width * this->_numChannels,
+          lane_width,
+          this->_numChannels,
+          _tagNames,
+          _tagOffsets,
+          _tagSizes,
+          _N};
+    }
+    constexpr auto tile(const size_type tileid) const {
+      return TileVectorView<Space, const TileVectorT, true>{
+          this->_vector + tileid * lane_width * this->_numChannels,
+          lane_width,
+          this->_numChannels,
+          _tagNames,
+          _tagOffsets,
+          _tagSizes,
+          _N};
     }
 
     template <auto... Ns> constexpr auto pack(const char propName[], const size_type i) const {
@@ -499,11 +540,12 @@ namespace zs {
     const SmallString *_tagNames{nullptr};
     const channel_counter_type *_tagOffsets{nullptr};
     const channel_counter_type *_tagSizes{nullptr};
-    channel_counter_type N{0};
+    channel_counter_type _N{0};
   };
-  template <execspace_e Space, typename TileVectorT> struct TileVectorView<Space, const TileVectorT>
-      : TileVectorUnnamedView<Space, const TileVectorT> {
-    using base_t = TileVectorUnnamedView<Space, const TileVectorT>;
+  template <execspace_e Space, typename TileVectorT, bool WithinTile>
+  struct TileVectorView<Space, const TileVectorT, WithinTile>
+      : TileVectorUnnamedView<Space, const TileVectorT, WithinTile> {
+    using base_t = TileVectorUnnamedView<Space, const TileVectorT, WithinTile>;
     using const_pointer = typename TileVectorT::const_pointer;
     using value_type = typename TileVectorT::value_type;
     using const_reference = typename TileVectorT::const_reference;
@@ -514,27 +556,46 @@ namespace zs {
     constexpr TileVectorView() = default;
     ~TileVectorView() = default;
     explicit constexpr TileVectorView(const std::vector<SmallString> &tagNames,
-                                      TileVectorT &tilevector)
-        : base_t{tilevector}, N{static_cast<channel_counter_type>(tagNames.size())} {
-      _tagNames = tilevector.tagNameHandle();
-      _tagOffsets = tilevector.tagOffsetHandle();
-      _tagSizes = tilevector.tagSizeHandle();
-    }
+                                      const TileVectorT &tilevector)
+        : base_t{tilevector},
+          _tagNames{tilevector.tagNameHandle()},
+          _tagOffsets{tilevector.tagOffsetHandle()},
+          _tagSizes{tilevector.tagSizeHandle()},
+          _N{static_cast<channel_counter_type>(tagNames.size())} {}
+    explicit constexpr TileVectorView(const_pointer base, size_type s, channel_counter_type nchns,
+                                      const SmallString *tagNames,
+                                      const channel_counter_type *tagOffsets,
+                                      const channel_counter_type *tagSizes, channel_counter_type N)
+        : base_t{base, s, nchns},
+          _tagNames{tagNames},
+          _tagOffsets{tagOffsets},
+          _tagSizes{tagSizes},
+          _N{N} {}
 
     constexpr auto propIndex(const char propName[]) const {
       channel_counter_type i = 0;
-      for (; i < N; ++i)
+      for (; i < _N; ++i)
         if (_tagNames[i] == propName) break;
       return i;
     }
-    constexpr bool hasProp(const char propName[]) const { return propIndex(propName) != N; }
+    constexpr bool hasProp(const char propName[]) const { return propIndex(propName) != _N; }
 
     constexpr const_reference operator()(const char propName[], const channel_counter_type chn,
                                          const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)] + chn, i);
     }
-    constexpr const_reference val(const char propName[], const size_type i) const {
+    constexpr const_reference operator()(const char propName[], const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)], i);
+    }
+    constexpr auto tile(const size_type tileid) const {
+      return TileVectorView<Space, const TileVectorT, true>{
+          this->_vector + tileid * lane_width * this->_numChannels,
+          lane_width,
+          this->_numChannels,
+          _tagNames,
+          _tagOffsets,
+          _tagSizes,
+          _N};
     }
 
     template <auto... Ns> constexpr auto pack(const char propName[], const size_type i) const {
@@ -551,10 +612,10 @@ namespace zs {
     const SmallString *_tagNames{nullptr};
     const channel_counter_type *_tagOffsets{nullptr};
     const channel_counter_type *_tagSizes{nullptr};
-    channel_counter_type N{0};
+    channel_counter_type _N{0};
   };
 
-  template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  const TileVector<T, Length, IndexT, ChnT> &vec) {
     for (auto &&tag : tagNames)
@@ -563,7 +624,7 @@ namespace zs {
             fmt::format("tilevector attribute [\"{}\"] not exists", (std::string)tag));
     return TileVectorView<ExecSpace, const TileVector<T, Length, IndexT, ChnT>>{tagNames, vec};
   }
-  template <execspace_e ExecSpace, typename T, auto Length, typename IndexT, typename ChnT>
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  TileVector<T, Length, IndexT, ChnT> &vec) {
     for (auto &&tag : tagNames)

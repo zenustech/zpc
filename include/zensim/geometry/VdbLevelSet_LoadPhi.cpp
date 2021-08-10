@@ -109,7 +109,7 @@ namespace zs {
         int cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
-          tiles.val("sdf", blockno * ret._space + cellid) = sdf;
+          tiles("sdf", blockno * ret._space + cellid) = sdf;
           // tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
         }
       }

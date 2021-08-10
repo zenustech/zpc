@@ -50,12 +50,12 @@ namespace zs {
 #  endif
             ptiles.template tuple<dim>("pos",
                                        i);  // = vec<float, 3>{0.f, 1.f, 2.f};  // parray.pos(i);
-            ptiles.val("mass", i) = parray.mass(i);
+            ptiles("mass", i) = parray.mass(i);
             ptiles.template tuple<dim>("vel", i) = parray.vel(i);
             if (ptiles.hasProp("C")) ptiles.template tuple<dim * dim>("C", i) = parray.C(i);
             if (ptiles.hasProp("F")) ptiles.template tuple<dim * dim>("F", i) = parray.F(i);
-            if (ptiles.hasProp("J")) ptiles.val("J", i) = parray.J(i);
-            if (ptiles.hasProp("logjp")) ptiles.val("logjp", i) = parray.logJp(i);
+            if (ptiles.hasProp("J")) ptiles("J", i) = parray.J(i);
+            if (ptiles.hasProp("logjp")) ptiles("logjp", i) = parray.logJp(i);
           });
       return true;
     }

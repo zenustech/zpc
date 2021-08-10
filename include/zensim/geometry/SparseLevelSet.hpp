@@ -121,11 +121,11 @@ namespace zs {
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
             if (_unnamed)
-              arena(dx, dy) = unnamedTiles.val(
+              arena(dx, dy) = unnamedTiles(
                   0, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
             else
-              arena(dx, dy) = tiles.val(
-                  "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+              arena(dx, dy)
+                  = tiles("sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
           }
         }
       } else if constexpr (dim == 3) {
@@ -137,11 +137,11 @@ namespace zs {
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
             if (_unnamed)
-              arena(dx, dy, dz) = unnamedTiles.val(
+              arena(dx, dy, dz) = unnamedTiles(
                   0, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
             else
-              arena(dx, dy, dz) = tiles.val(
-                  "sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+              arena(dx, dy, dz)
+                  = tiles("sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
           }
         }
       }

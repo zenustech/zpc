@@ -138,7 +138,7 @@ namespace zs {
         for (; sdfCell && velCell; ++sdfCell, ++velCell, ++cellid) {
           auto sdf = sdfCell.getValue();
           auto vel = velCell.getValue();
-          tiles.val("sdf", blockno * ret._space + cellid) = sdf;
+          tiles("sdf", blockno * ret._space + cellid) = sdf;
           tiles.template tuple<3>("vel", blockno * ret._space + cellid)
               = TV{vel[0], vel[1], vel[2]};
         }

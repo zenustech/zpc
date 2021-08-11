@@ -98,9 +98,40 @@ namespace zs {
 
     constexpr size_type size() const noexcept { return _size; }
     constexpr size_type numEntries() const noexcept {
-      return _size * (entry_e == attrib_e::scalar ? 1 : dim);
+      return entry_e == attrib_e::scalar ? _size : _size * dim;
     }
     constexpr decltype(auto) ref(size_type i) { return traits::ref(_structure, i); }
+
+    struct iterator_impl : IteratorInterface<iterator_impl> {
+      using traits = typename DofView::traits;
+      using size_type = typename DofView::size_type;
+      using difference_type = std::make_signed_t<size_type>;
+      static constexpr auto entry_e = DofView::entry_e;
+      static constexpr int dim = DofView::dim;
+
+      constexpr iterator_impl(structure_view_t structure, size_type i)
+          : _structure{structure}, _idx{i} {}
+
+      // reference to a value_type
+      constexpr decltype(auto) dereference() {
+        if constexpr (entry_e == attrib_e::scalar)
+          return traits::ref(_structure, _idx);
+        else if constexpr (entry_e == attrib_e::vector)
+          return traits::ref(_structure, _idx / dim)[_idx % dim];
+      }
+      constexpr bool equal_to(iterator_impl it) const noexcept { return it._idx == _idx; }
+      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
+      constexpr difference_type distance_to(iterator_impl it) const noexcept {
+        return it._idx - _idx;
+      }
+
+    protected:
+      structure_view_t _structure;
+      size_type _idx{0};
+    };
+    using iterator = LegacyIterator<iterator_impl>;
+    constexpr auto begin() noexcept { return make_iterator<iterator_impl>(_structure, 0); }
+    constexpr auto end() noexcept { return make_iterator<iterator_impl>(_structure, numEntries()); }
 
     template <attrib_e AccessEntry = entry_e>
     constexpr auto get(size_type i, wrapv<AccessEntry> = {}) const {
@@ -158,6 +189,40 @@ namespace zs {
     constexpr size_type size() const noexcept { return _size; }
     constexpr size_type numEntries() const noexcept { return _size * dim; }
     constexpr decltype(auto) ref(size_type i) { return traits::ref(_structure, _chn, i); }
+
+    struct iterator_impl : IteratorInterface<iterator_impl> {
+      using traits = typename DofView::traits;
+      using size_type = typename DofView::size_type;
+      using difference_type = std::make_signed_t<size_type>;
+      static constexpr auto entry_e = DofView::entry_e;
+      static constexpr int dim = DofView::dim;
+
+      constexpr iterator_impl(structure_view_t structure, channel_counter_type chn, size_type i)
+          : _structure{structure}, _idx{i}, _chn{chn} {}
+
+      // reference to a value_type
+      constexpr decltype(auto) dereference() {
+        if constexpr (entry_e == attrib_e::scalar)
+          return traits::ref(_structure, _chn + _idx % dim, _idx / dim);
+        else if constexpr (entry_e == attrib_e::vector)
+          return traits::ref(_structure, _chn, _idx / dim)[_idx % dim];
+      }
+      constexpr bool equal_to(iterator_impl it) const noexcept { return it._idx == _idx; }
+      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
+      constexpr difference_type distance_to(iterator_impl it) const noexcept {
+        return it._idx - _idx;
+      }
+
+    protected:
+      structure_view_t _structure;
+      size_type _idx{0};
+      channel_counter_type _chn{};
+    };
+    using iterator = LegacyIterator<iterator_impl>;
+    constexpr auto begin() noexcept { return make_iterator<iterator_impl>(_structure, _chn, 0); }
+    constexpr auto end() noexcept {
+      return make_iterator<iterator_impl>(_structure, _chn, numEntries());
+    }
 
     template <attrib_e AccessEntry = entry_e>
     constexpr value_type get(size_type i, wrapv<AccessEntry> = {}) const {

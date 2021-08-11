@@ -130,6 +130,7 @@ namespace zs {
   }  // namespace detail
 
   struct CudaExecutionPolicy : ExecutionPolicyInterface<CudaExecutionPolicy> {
+    using exec_tag = cuda_exec_tag;
     CudaExecutionPolicy &listen(ProcID incProc, StreamID incStream) {
       this->_wait = true;
       incomingProc = incProc;

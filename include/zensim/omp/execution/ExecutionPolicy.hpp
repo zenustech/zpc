@@ -21,6 +21,7 @@ namespace zs {
 
   /// use pragma syntax instead of attribute syntax
   struct OmpExecutionPolicy : ExecutionPolicyInterface<OmpExecutionPolicy> {
+    using exec_tag = omp_exec_tag;
     // EventID eventid{0}; ///< event id
     template <typename Range, typename F>
     void operator()(Range &&range, F &&f,

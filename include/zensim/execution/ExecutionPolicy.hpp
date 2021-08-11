@@ -87,6 +87,7 @@ namespace zs {
   };
 
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
+    using exec_tag = host_exec_tag;
     template <typename Range, typename F> constexpr void operator()(Range &&range, F &&f) const {
       using fts = function_traits<F>;
       if constexpr (fts::arity == 0)

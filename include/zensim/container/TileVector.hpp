@@ -286,6 +286,12 @@ namespace zs {
     constexpr const channel_counter_type *tagOffsetHandle() const noexcept {
       return _tagOffsets.data();
     }
+    constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
+      auto tagOffsets = _tagOffsets.clone({memsrc_e::host, -1});
+      for (auto &&[offset, tag] : zip(tagOffsets, _tags))
+        if (str == zs::get<SmallString>(tag)) return offset;
+      return 0;
+    }
 
   protected:
     allocator_type _allocator{};

@@ -87,12 +87,19 @@ namespace zs {
     static_assert(entry_e == attrib_e::scalar
                       || (entry_e == attrib_e::vector && dim == traits::deduced_dim),
                   "dofview dim and entry dim conflicts!");
+    static_assert(entry_e == attrib_e::scalar || entry_e == attrib_e::vector,
+                  "dofview entry can only be a scalar or a vector");
 
     DofView(wrapv<space>, Structure structure, wrapv<dim> = {})
-        : _structure{proxy<space>(structure)} {}
+        : _structure{proxy<space>(structure)}, _size{structure.size()} {}
 
     structure_view_t _structure;
+    size_type _size;
 
+    constexpr size_type size() const noexcept { return _size; }
+    constexpr size_type numEntries() const noexcept {
+      return _size * (entry_e == attrib_e::scalar ? 1 : dim);
+    }
     constexpr decltype(auto) ref(size_type i) { return traits::ref(_structure, i); }
 
     template <attrib_e AccessEntry = entry_e>
@@ -138,13 +145,18 @@ namespace zs {
     static_assert(entry_e == attrib_e::scalar
                       || (entry_e == attrib_e::vector && dim == traits::deduced_dim),
                   "dofview dim and entry dim conflicts!");
+    static_assert(entry_e == attrib_e::scalar || entry_e == attrib_e::vector,
+                  "dofview entry can only be a scalar or a vector");
 
     DofView(wrapv<space>, Structure structure, channel_counter_type chn, wrapv<dim> = {})
-        : _structure{proxy<space>(structure)}, _chn{chn} {}
+        : _structure{proxy<space>(structure)}, _size{structure.size()}, _chn{chn} {}
 
     structure_view_t _structure;
+    size_type _size;
     channel_counter_type _chn;
 
+    constexpr size_type size() const noexcept { return _size; }
+    constexpr size_type numEntries() const noexcept { return _size * dim; }
     constexpr decltype(auto) ref(size_type i) { return traits::ref(_structure, _chn, i); }
 
     template <attrib_e AccessEntry = entry_e>

@@ -130,8 +130,10 @@ namespace zs {
       size_type _idx{0};
     };
     using iterator = LegacyIterator<iterator_impl>;
-    constexpr auto begin() noexcept { return make_iterator<iterator_impl>(_structure, 0); }
-    constexpr auto end() noexcept { return make_iterator<iterator_impl>(_structure, numEntries()); }
+    constexpr auto begin() const noexcept { return make_iterator<iterator_impl>(_structure, 0); }
+    constexpr auto end() const noexcept {
+      return make_iterator<iterator_impl>(_structure, numEntries());
+    }
 
     template <attrib_e AccessEntry = entry_e>
     constexpr auto get(size_type i, wrapv<AccessEntry> = {}) const {
@@ -148,12 +150,12 @@ namespace zs {
     }
     template <typename V> constexpr auto set(size_type i, V&& v = {})
         -> std::enable_if_t<std::is_lvalue_reference_v<decltype(ref(i))>> {
-      constexpr bool is_scalar = std::is_arithmetic_v<remove_cvref_t<V>>;
-      if constexpr (std::is_assignable_v<decltype(ref(i)), V>)
-        traits::set(_structure, i, FWD(v));
-      else if (is_scalar && entry_e == attrib_e::vector)  // V is a scalar
+      if constexpr (std::is_assignable_v<decltype(ref(i)), V>) traits::set(_structure, i, FWD(v));
+      // V is a scalar
+      else if (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
         ref(i / dim)[i % dim] = FWD(v);
-      else if (!is_scalar && entry_e == attrib_e::scalar) {  // V is a vector
+      // V is a vector
+      else if (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar) {
         if constexpr (remove_cvref_t<V>::extent == dim) {
           const size_type base = i * dim;
           for (int d = 0; d != dim; ++d) ref(base + d) = v[d];
@@ -219,8 +221,10 @@ namespace zs {
       channel_counter_type _chn{};
     };
     using iterator = LegacyIterator<iterator_impl>;
-    constexpr auto begin() noexcept { return make_iterator<iterator_impl>(_structure, _chn, 0); }
-    constexpr auto end() noexcept {
+    constexpr auto begin() const noexcept {
+      return make_iterator<iterator_impl>(_structure, _chn, 0);
+    }
+    constexpr auto end() const noexcept {
       return make_iterator<iterator_impl>(_structure, _chn, numEntries());
     }
 
@@ -239,12 +243,13 @@ namespace zs {
     }
     template <typename V> constexpr auto set(size_type i, V&& v = {})
         -> std::enable_if_t<std::is_lvalue_reference_v<decltype(ref(i))>> {
-      constexpr bool is_scalar = std::is_arithmetic_v<remove_cvref_t<V>>;
       if constexpr (std::is_assignable_v<decltype(ref(i)), V>)
         traits::set(_structure, _chn, i, FWD(v));
-      else if (is_scalar && entry_e == attrib_e::vector)  // V is a scalar
+      // V is a scalar
+      else if (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
         ref(i / dim)[i % dim] = FWD(v);
-      else if (!is_scalar && entry_e == attrib_e::scalar)  // V is a vector
+      // V is a vector
+      else if (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
         if constexpr (remove_cvref_t<V>::extent == dim) {
           /// more complex strategy
           if constexpr (traits::deduced_dim == dim)

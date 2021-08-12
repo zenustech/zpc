@@ -80,6 +80,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/SparseLevelSet.hpp
     # math
     math/bit/Bits.h
+    math/linear/ConjugateGradient.hpp
+    math/linear/LinearOperators.hpp
     math/matrix/MatrixUtils.h
     math/matrix/Utility.h
     math/matrix/MatrixTransform.hpp

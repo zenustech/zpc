@@ -139,9 +139,9 @@ namespace zs {
     constexpr auto get(size_type i, wrapv<AccessEntry> = {}) const {
       if constexpr (AccessEntry == entry_e)
         return traits::get(_structure, i);
-      else if (AccessEntry == attrib_e::scalar && entry_e == attrib_e::vector)
+      else if constexpr (AccessEntry == attrib_e::scalar && entry_e == attrib_e::vector)
         return traits::get(_structure, i / dim)[i % dim];
-      else if (AccessEntry == attrib_e::vector && entry_e == attrib_e::scalar) {
+      else if constexpr (AccessEntry == attrib_e::vector && entry_e == attrib_e::scalar) {
         vec<value_type, dim> ret{};
         const size_type base = i * dim;
         for (int d = 0; d != dim; ++d) ret(d) = traits::get(_structure, base + d);
@@ -152,10 +152,10 @@ namespace zs {
         -> std::enable_if_t<std::is_lvalue_reference_v<decltype(ref(i))>> {
       if constexpr (std::is_assignable_v<decltype(ref(i)), V>) traits::set(_structure, i, FWD(v));
       // V is a scalar
-      else if (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
+      else if constexpr (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
         ref(i / dim)[i % dim] = FWD(v);
       // V is a vector
-      else if (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar) {
+      else if constexpr (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar) {
         if constexpr (remove_cvref_t<V>::extent == dim) {
           const size_type base = i * dim;
           for (int d = 0; d != dim; ++d) ref(base + d) = v[d];
@@ -232,9 +232,9 @@ namespace zs {
     constexpr value_type get(size_type i, wrapv<AccessEntry> = {}) const {
       if constexpr (AccessEntry == entry_e)
         return traits::get(_structure, _chn, i);
-      else if (AccessEntry == attrib_e::scalar && entry_e == attrib_e::vector)
+      else if constexpr (AccessEntry == attrib_e::scalar && entry_e == attrib_e::vector)
         return traits::get(_structure, _chn, i / dim)[i % dim];
-      else if (AccessEntry == attrib_e::vector && entry_e == attrib_e::scalar) {
+      else if constexpr (AccessEntry == attrib_e::vector && entry_e == attrib_e::scalar) {
         // different
         vec<value_type, dim> ret{};
         for (int d = 0; d != dim; ++d) ret(d) = traits::get(_structure, _chn + d, i);
@@ -246,10 +246,10 @@ namespace zs {
       if constexpr (std::is_assignable_v<decltype(ref(i)), V>)
         traits::set(_structure, _chn, i, FWD(v));
       // V is a scalar
-      else if (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
+      else if constexpr (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
         ref(i / dim)[i % dim] = FWD(v);
       // V is a vector
-      else if (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
+      else if constexpr (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
         if constexpr (remove_cvref_t<V>::extent == dim) {
           /// more complex strategy
           if constexpr (traits::deduced_dim == dim)

@@ -1,5 +1,8 @@
 #pragma once
+#include <map>
+
 #include "zensim/TypeAlias.hpp"
+#include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/tpls/gcem/gcem_incl/pow.hpp"
@@ -115,13 +118,85 @@ namespace zs {
     return GridBlocksView<ExecSpace, GridBlocks<GridBlock<V, d, chn_bits, domain_bits>>>{blocks};
   }
 
-  ///
-  template <typename I = i32, int d = 3> struct Nodes {
-    using IV = I[d];
-    Vector<IV> nodes;
-    f32 dx;
+  template <typename ValueT = f32, int d = 3, int SideLength = 4> struct Grids {
+    enum struct grid_e : unsigned char { collocated = 0, cellcentered, staggered };
+
+    using value_type = ValueT;
+    using allocator_type = ZSPmrAllocator<>;
+    static constexpr int dim = d;
+    static constexpr int side_length = SideLength;
+    static constexpr int block_space() noexcept { return gcem::pow(side_length, dim); }
+    using grid_storage_t = TileVector<value_type, (std::size_t)block_space()>;
+    using size_type = typename grid_storage_t::size_type;
+    using channel_counter_type = typename grid_storage_t::channel_counter_type;
+
+    using IV = vec<int, dim>;
+
+    constexpr MemoryLocation memoryLocation() const noexcept {
+      return match([](auto &&att) { return att.memoryLocation(); })(attr("mv"));
+    }
+    constexpr memsrc_e space() const noexcept {
+      return match([](auto &&att) { return att.memspace(); })(attr("mv"));
+    }
+    constexpr ProcID devid() const noexcept {
+      return match([](auto &&att) { return att.devid(); })(attr("mv"));
+    }
+    constexpr auto size() const noexcept {
+      return match([](auto &&att) { return att.size(); })(attr("mv"));
+    }
+    constexpr decltype(auto) allocator() const noexcept {
+      return match([](auto &&att) { return att.allocator(); })(attr("mv"));
+    }
+    constexpr decltype(auto) numBlocks() const noexcept {
+      return match([](auto &&att) { return att.numTiles(); })(attr("mv"));
+    }
+
+    struct Grid {
+      Grid(const allocator_type &allocator, const PropertyTag &channelTag, size_type count = 0,
+           grid_e ge = grid_e::collocated)
+          : blocks{allocator, {channelTag}, count}, category{ge} {}
+      Grid(const PropertyTag &channelTag, size_type count, memsrc_e mre = memsrc_e::host,
+           ProcID devid = -1, grid_e ge = grid_e::collocated)
+          : Grid{get_memory_source(mre, devid), channelTag, count, ge} {}
+      Grid(channel_counter_type numChns, size_type count, memsrc_e mre = memsrc_e::host,
+           ProcID devid = -1, grid_e ge = grid_e::collocated)
+          : Grid{get_memory_source(mre, devid), PropertyTag{"default", numChns}, count, ge} {}
+      Grid(memsrc_e mre = memsrc_e::host, ProcID devid = -1, grid_e ge = grid_e::collocated)
+          : Grid{get_memory_source(mre, devid), PropertyTag{"default", 1 + dim}, 0, ge} {}
+      grid_storage_t blocks;
+      grid_e category;
+    };
+    struct GridDescriptor {
+      const SmallString name;
+      const channel_counter_type nchns;
+      const grid_e category;
+    };
+
+    static GridDescriptor get_grid_property(const Grid &grid) noexcept {
+      auto prop = grid.getPropertyTag(0);
+      return GridDescriptor{std::get<SmallString>(prop), (channel_counter_type)std::get<1>(prop),
+                            grid.category};
+    }
+
+    constexpr Grids(const allocator_type &allocator, value_type dx = 1.f, size_type numBlocks = 0,
+                    grid_e ge = grid_e::collocated) {
+      _grids["mv"] = Grid{allocator, {"mv", 1 + dim}, numBlocks, ge};
+    }
+    constexpr Grids(value_type dx = 1.f, size_type numBlocks = 0, memsrc_e mre = memsrc_e::host,
+                    ProcID devid = -1, grid_e ge = grid_e::collocated)
+        : Grids{get_memory_source(mre, devid), dx, numBlocks, ge} {}
+
+    constexpr decltype(auto) attr(const std::string &attrib) { return _grids.at(attrib); }
+    constexpr decltype(auto) attr(const std::string &attrib) const { return _grids.at(attrib); }
+
+    // void resize(size_type newSize) { blocks.resize(newSize); }
+    // void capacity() const noexcept { blocks.capacity(); }
+
+    std::map<std::string, Grid> _grids;
+    value_type _dx;
   };
 
-  using GeneralNodes = variant<Nodes<i32, 2>, Nodes<i64, 2>, Nodes<i32, 3>, Nodes<i64, 3>>;
+  using GeneralGrids = variant<Grids<f32, 3, 4>, Grids<f32, 3, 2>, Grids<f32, 3, 1>,
+                               Grids<f32, 2, 4>, Grids<f32, 2, 2>, Grids<f32, 2, 1>>;
 
 }  // namespace zs

@@ -154,6 +154,10 @@ namespace zs {
     constexpr size_type size() const noexcept { return _size; }
     constexpr size_type capacity() const noexcept { return _capacity; }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
+    constexpr size_type numTiles() const noexcept { return (size() + lane_width - 1) / lane_width; }
+    constexpr size_type tileBytes() const noexcept {
+      return numChannels() * lane_width * sizeof(value_type);
+    }
     constexpr bool empty() noexcept { return size() == 0; }
     constexpr const_pointer data() const noexcept { return reinterpret_cast<const_pointer>(_base); }
     constexpr pointer data() noexcept { return reinterpret_cast<pointer>(_base); }
@@ -256,8 +260,7 @@ namespace zs {
           TileVector tmp{_allocator, _tags, newCapacity};
           if (size())
             copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
-                 MemoryEntity{memoryLocation(), (void *)data()},
-                 sizeof(value_type) * numChannels() * capacity());
+                 MemoryEntity{memoryLocation(), (void *)data()}, numTiles() * tileBytes());
           tmp._size = newSize;
           swap(tmp);
           return;
@@ -292,6 +295,7 @@ namespace zs {
         if (str == zs::get<SmallString>(tag)) return offset;
       return 0;
     }
+    constexpr PropertyTag getPropertyTag(std::size_t i = 0) const { return _tags[i]; }
 
   protected:
     allocator_type _allocator{};

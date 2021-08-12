@@ -106,19 +106,17 @@ namespace zs {
     constexpr decltype(auto) attrs() { return _attributes; }
     constexpr decltype(auto) attrs() const { return _attributes; }
 
-    constexpr auto tryGet(const std::string &attrib) const noexcept {
-      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
-      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
-      return ResultT{};
+    constexpr const Attribute *tryGet(const std::string &attrib) const noexcept {
+      if (auto it = _attributes.find(attrib); it != _attributes.end()) return &it->second;
+      return nullptr;
     }
-    constexpr auto tryGet(const std::string &attrib) noexcept {
-      using ResultT = RM_CVREF_T(std::optional{_attributes.find(attrib)});
-      if (auto it = _attributes.find(attrib); it != _attributes.end()) return std::optional{it};
-      return ResultT{};
+    constexpr Attribute *tryGet(const std::string &attrib) noexcept {
+      if (auto it = _attributes.find(attrib); it != _attributes.end()) return &it->second;
+      return nullptr;
     }
     constexpr bool hasAttr(const std::string &attrib, bool checkEmpty = false) const noexcept {
-      if (auto obj = tryGet(attrib); obj.has_value())
-        if (!checkEmpty || match([](auto &&att) -> bool { return att.size() > 0; })((*obj)->second))
+      if (auto obj = tryGet(attrib); obj)
+        if (!checkEmpty || match([](auto &&att) -> bool { return att.size() > 0; })(*obj))
           return true;
       return false;
     }
@@ -172,8 +170,8 @@ namespace zs {
     }
 
     constexpr Attribute &addAttr(const std::string &attrib, attrib_e ae) {
-      if (auto obj = tryGet(attrib); obj.has_value()) {
-        if (get_attribute_enum((*obj)->second) == ae) return (*obj)->second;
+      if (auto obj = tryGet(attrib); obj) {
+        if (get_attribute_enum(*obj) == ae) return *obj;
       }
       auto &att = _attributes[attrib];
       switch (ae) {
@@ -196,7 +194,7 @@ namespace zs {
 
     void append(const Particles &other) {
       for (auto &&attrib : other.attrs())
-        if (auto obj = tryGet(attrib.first); obj.has_value()) {
+        if (auto obj = tryGet(attrib.first); obj) {
           match(
               [](auto &&dst,
                  auto &&src) -> std::enable_if_t<is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
@@ -208,7 +206,7 @@ namespace zs {
                     fmt::format("attributes of the same name \"{}\" are of type \"{}\"(dst) and "
                                 "\"{}\"(src)\n",
                                 attrib.first, demangle(dst), demangle(src)));
-              })((*obj)->second, attrib.second);
+              })(*obj, attrib.second);
         } else
           _attributes[attrib.first] = attrib.second;
     }

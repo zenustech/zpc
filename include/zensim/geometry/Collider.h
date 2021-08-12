@@ -70,7 +70,7 @@ namespace zs {
     T s{1};
     T dsdt{0};
     /** rotation **/
-    Rotation<T, dim> R{};
+    Rotation<T, dim> R{Rotation<T, dim>::identity()};
     AngularVelocity<T, dim> omega{};
     /** translation **/
     TV b{TV::zeros()};
@@ -113,7 +113,7 @@ namespace zs {
     T s{1};
     T dsdt{0};
     /** rotation **/
-    Rotation<T, dim> R{};
+    Rotation<T, dim> R{Rotation<T, dim>::identity()};
     AngularVelocity<T, dim> omega{};
     /** translation **/
     TV b{TV::zeros()};

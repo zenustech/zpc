@@ -93,7 +93,7 @@ namespace zs {
       return __builtin_clzll((unsigned long long)x);
 #endif
     throw std::runtime_error(fmt::format("count_lz(tag {}, {} bytes) not viable\n",
-                                         get_execution_space_tag(ExecTag{}), sizeof(T)));
+                                         get_execution_tag_name(ExecTag{}), sizeof(T)));
   }
 
   /// reverse bits
@@ -135,7 +135,7 @@ namespace zs {
 #endif
     else
       throw std::runtime_error(fmt::format("reverse_bits(tag {}, {} bytes) not viable\n",
-                                           get_execution_space_tag(ExecTag{}), sizeof(T)));
+                                           get_execution_tag_name(ExecTag{}), sizeof(T)));
     // reverse within each byte
     for (int bitoffset = 0; tmp; bitoffset += 8) {
       unsigned char b = tmp & 0xff;

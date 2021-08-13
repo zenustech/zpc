@@ -238,7 +238,7 @@ namespace zs {
     }
 #endif
     throw std::runtime_error(
-        fmt::format("atomic_max(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+        fmt::format("atomic_max(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
     return;
   }
 
@@ -278,7 +278,7 @@ namespace zs {
     }
 #endif
     throw std::runtime_error(
-        fmt::format("atomic_min(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+        fmt::format("atomic_min(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
     return;
   }
 
@@ -324,7 +324,7 @@ namespace zs {
     }
 #endif
     throw std::runtime_error(
-        fmt::format("atomic_or(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+        fmt::format("atomic_or(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
     return (T)0;
   }
 
@@ -366,7 +366,7 @@ namespace zs {
     }
 #endif
     throw std::runtime_error(
-        fmt::format("atomic_and(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+        fmt::format("atomic_and(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
     return (T)0;
   }
 
@@ -406,7 +406,7 @@ namespace zs {
     }
 #endif
     throw std::runtime_error(
-        fmt::format("atomic_xor(tag {}, ...) not viable\n", get_execution_space_tag(ExecTag{})));
+        fmt::format("atomic_xor(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
     return (T)0;
   }
 

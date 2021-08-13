@@ -17,12 +17,12 @@ namespace zs {
   using exec_tags = variant<host_exec_tag, omp_exec_tag, cuda_exec_tag, hip_exec_tag>;
 
   constexpr const char *execution_space_tag[] = {"HOST", "OPENMP", "CUDA", "HIP"};
-  constexpr const char *get_execution_space_tag(execspace_e execpol) {
+  constexpr const char *get_execution_tag_name(execspace_e execpol) {
     return execution_space_tag[magic_enum::enum_integer(execpol)];
   }
 
-  constexpr exec_tags suggest_exec_space(MemoryHandle mh) {
-    switch (mh.memspace()) {
+  constexpr exec_tags suggest_exec_space(const MemoryLocation &mloc) {
+    switch (mloc.memspace()) {
       case memsrc_e::host:
 #ifdef _OPENMP
         return exec_omp;
@@ -35,7 +35,7 @@ namespace zs {
     }
     throw std::runtime_error(
         fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n",
-                    get_memory_source_tag(mh.memspace()), (int)mh.devid()));
+                    get_memory_tag_name(mloc.memspace()), (int)mloc.devid()));
     return exec_seq;
   }
 

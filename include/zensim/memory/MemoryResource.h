@@ -89,7 +89,7 @@ namespace zs {
   }
 
   constexpr const char* memory_source_tag[] = {"HOST", "DEVICE", "UM"};
-  constexpr const char* get_memory_source_tag(memsrc_e loc) {
+  constexpr const char* get_memory_tag_name(memsrc_e loc) {
     return memory_source_tag[static_cast<unsigned char>(loc)];
   }
 
@@ -115,7 +115,7 @@ namespace zs {
     constexpr memsrc_e memspace() const noexcept { return _memsrc; }
 
     constexpr bool onHost() const noexcept { return _memsrc == memsrc_e::host; }
-    constexpr const char* memSpaceName() const { return get_memory_source_tag(memspace()); }
+    constexpr const char* memSpaceName() const { return get_memory_tag_name(memspace()); }
     constexpr mem_tags getTag() const { return to_memory_source_tag(_memsrc); }
 
     void swap(MemoryLocation& o) noexcept {
@@ -176,8 +176,8 @@ namespace zs {
       return to_memory_source_tag(memsrc_e::um);
     else
       throw std::runtime_error(fmt::format("memop_tag for ({}, {}) is undefined!",
-                                           get_memory_source_tag(a.memspace()),
-                                           get_memory_source_tag(b.memspace())));
+                                           get_memory_tag_name(a.memspace()),
+                                           get_memory_tag_name(b.memspace())));
   }
 
 }  // namespace zs

@@ -1,5 +1,6 @@
 #include "MemOps.hpp"
 
+#include "zensim/Logger.hpp"
 #include "zensim/cuda/Cuda.h"
 
 namespace zs {
@@ -8,6 +9,8 @@ namespace zs {
     int devid;
     cudri::getContextDevice{&devid};
     if (devid != did) {
+      ZS_WARN(fmt::format("context switching during (de)allocation of [tag [{}] @ device [{}]]",
+                          get_memory_tag_name(device_mem_tag{}), (int)did));
       if (did < Cuda::device_count() && did >= 0)
         Cuda::context(did).setContext();
       else
@@ -41,6 +44,8 @@ namespace zs {
     int devid;
     cudri::getContextDevice{&devid};
     if (devid != did) {
+      ZS_WARN(fmt::format("context switching during (de)allocation of [tag [{}] @ device [{}]]",
+                          get_memory_tag_name(um_mem_tag{}), (int)did));
       if (did < Cuda::device_count() && did >= 0)
         Cuda::context(did).setContext();
       else

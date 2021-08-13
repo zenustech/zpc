@@ -151,8 +151,8 @@ namespace zs {
   }
   /**
    *	\fn uint32_t bit_count(uint32_t N)
-   *	\brief compute the count of digits required to express integers in [0,
-   *N) \param N the maximum of the range
+   *	\brief compute the count of digits required to express integers in [0, N)
+   *  \param N the maximum of the range
    */
   template <typename Integer> constexpr Integer bit_count(Integer N) noexcept {
     if (N > 0)

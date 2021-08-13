@@ -20,7 +20,7 @@ namespace zs {
   template <typename ExecTag, typename... Args>
   GeneralIndexBuckets build_neighbor_list(ExecTag, Args &&...) {
     throw std::runtime_error(fmt::format("build_neighbor_list(tag {}, ...) not implemented\n",
-                                         get_execution_space_tag(ExecTag{})));
+                                         get_execution_tag_name(ExecTag{})));
     return {};
   }
   [[deprecated]] GeneralIndexBuckets build_neighbor_list(const GeneralParticles &particles,

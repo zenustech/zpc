@@ -52,7 +52,7 @@ namespace zs {
       const auto &[ptr, info] = record;
       fmt::print("recycling allocation [{}], tag [{}], size [{}], alignment [{}], allocator [{}]\n",
                  (std::uintptr_t)ptr,
-                 match([](auto &tag) { return get_memory_source_tag(tag); })(info.tag), info.size,
+                 match([](auto &tag) { return get_memory_tag_name(tag); })(info.tag), info.size,
                  info.alignment, info.allocatorType);
     }
   }

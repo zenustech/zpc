@@ -121,9 +121,11 @@ namespace zs {
   template <typename ValueT = f32, int d_ = 3, auto SideLength = 4> struct Grids {
     using value_type = ValueT;
     using allocator_type = ZSPmrAllocator<>;
+    using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
+    using domain_index_type = conditional_t<(sizeof(value_type) <= 4), i32, i64>;
     static constexpr int dim = d_;
-    static constexpr auto side_length = SideLength;
-    static constexpr auto block_space() noexcept {
+    static constexpr cell_index_type side_length = SideLength;
+    static constexpr cell_index_type block_space() noexcept {
       if constexpr (dim == 1)
         return side_length;
       else if constexpr (dim == 2)
@@ -144,8 +146,6 @@ namespace zs {
     using grid_storage_t = TileVector<value_type, (std::size_t)block_space()>;
     using size_type = typename grid_storage_t::size_type;
     using channel_counter_type = typename grid_storage_t::channel_counter_type;
-    using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
-    using domain_index_type = conditional_t<(sizeof(value_type) <= 4), i32, i64>;
 
     using CellIV = vec<cell_index_type, dim>;
     using IV = vec<domain_index_type, dim>;

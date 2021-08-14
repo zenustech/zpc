@@ -88,12 +88,17 @@ namespace zs {
     /// particle model groups
     /// grid blocks, partitions
     this->target().gridBlocks.resize(memDsts.size());
+    this->target().grids.resize(memDsts.size());  // new
     this->target().partitions.resize(memDsts.size());
     this->target().maxVelSqrNorms.resize(memDsts.size());
-    for (auto&& [memDst, nblocks, gridBlocks, partition, maxVel] :
-         zs::zip(memDsts, numBlocks, this->target().gridBlocks, this->target().partitions,
+    // for (auto&& [memDst, nblocks, gridBlocks, partition, maxVel] :
+    for (auto&& [memDst, nblocks, grids, partition, maxVel] :
+         //zs::zip(memDsts, numBlocks, this->target().gridBlocks, this->target().partitions,
+         zs::zip(memDsts, numBlocks, this->target().grids, this->target().partitions,
                  this->target().maxVelSqrNorms)) {
-      gridBlocks = GridBlocks<GridBlock<dat32, 3, 2, 2>>{target().simOptions.dx, nblocks,
+      //gridBlocks = GridBlocks<GridBlock<dat32, 3, 2, 2>>{target().simOptions.dx, nblocks,
+      //                                                   memDst.memspace(), memDst.devid()};
+      grids = Grids<f32, 3, 4>{{{"mv", 1 + 3}}, target().simOptions.dx, nblocks,
                                                          memDst.memspace(), memDst.devid()};
       partition = HashTable<i32, 3, int>{nblocks, memDst.memspace(), memDst.devid()};
       maxVel = Vector<float>{1, memDst.memspace(), memDst.devid()};

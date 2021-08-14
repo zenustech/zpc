@@ -35,6 +35,7 @@ namespace zs {
     std::vector<std::vector<std::tuple<std::size_t, std::size_t>>> groups;  // (model id, object id)
     /// background grid
     std::vector<GeneralGridBlocks> gridBlocks;
+    std::vector<GeneralGrids> grids;
     /// sparsity info (hash table)
     std::vector<GeneralHashTable> partitions;
     std::vector<Vector<float>> maxVelSqrNorms;

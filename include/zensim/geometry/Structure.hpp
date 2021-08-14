@@ -173,6 +173,8 @@ namespace zs {
       Grid(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
           : Grid{get_memory_source(mre, devid), {{"mv", 1 + dim}}, 0} {}
 
+      void resize(size_type numBlocks) { blocks.resize(numBlocks * block_space()); }
+
       grid_storage_t blocks;
     };
 
@@ -293,6 +295,14 @@ namespace zs {
     template <typename BlockTileView> struct Block {
       constexpr Block(BlockTileView tile, value_type dx) noexcept : block{tile}, dx{dx} {}
 
+      template <typename Ti>
+      constexpr auto &operator()(channel_counter_type c, const vec<Ti, dim> &loc) noexcept {
+        return block(c, coord_to_cellid(loc));
+      }
+      template <typename Ti>
+      constexpr auto operator()(channel_counter_type c, const vec<Ti, dim> &loc) const noexcept {
+        return block(c, coord_to_cellid(loc));
+      }
       constexpr decltype(auto) operator()(channel_counter_type chn, cell_index_type cellid) {
         return block(chn, cellid);
       }
@@ -329,6 +339,14 @@ namespace zs {
         return Block<TileT>{_cellcenteredGrid.tile(i), _dx};
       else if constexpr (category == grid_e::staggered)
         return Block<TileT>{_staggeredGrid.tile(i), _dx};
+    }
+    template <grid_e category = grid_e::collocated, bool b = is_const_structure,
+              enable_if_t<!b> = 0>
+    constexpr auto operator[](size_type i) {
+      return block(i);
+    }
+    template <grid_e category = grid_e::collocated> constexpr auto operator[](size_type i) const {
+      return block(i);
     }
 
     /// cell

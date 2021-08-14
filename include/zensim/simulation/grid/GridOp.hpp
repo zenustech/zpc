@@ -14,8 +14,13 @@ namespace zs {
   template <typename ColliderT, typename TableT, typename GridBlocksT>
   struct ApplyBoundaryConditionOnGridBlocks;
 
-  template <execspace_e space, typename GridBlocksT> CleanGridBlocks(wrapv<space>, GridBlocksT)
-      -> CleanGridBlocks<GridBlocksView<space, GridBlocksT>>;
+  template <execspace_e space, typename V, int d, int chnbits, int dombits>
+  CleanGridBlocks(wrapv<space>, GridBlocks<GridBlock<V, d, chnbits, dombits>>)
+      -> CleanGridBlocks<GridBlocksView<space, GridBlocks<GridBlock<V, d, chnbits, dombits>>>>;
+  template <execspace_e space, typename T, int d, auto l>
+  CleanGridBlocks(wrapv<space>, Grids<T, d, l>)
+      -> CleanGridBlocks<GridsView<space, Grids<T, d, l>>>;
+
   template <execspace_e space, typename TableT, typename GridBlocksT>
   PrintGridBlocks(wrapv<space>, TableT, GridBlocksT)
       -> PrintGridBlocks<HashTableView<space, TableT>, GridBlocksView<space, GridBlocksT>>;
@@ -52,6 +57,22 @@ namespace zs {
     }
 
     gridblocks_t gridblocks;
+  };
+
+  template <execspace_e space, typename GridsT> struct CleanGridBlocks<GridsView<space, GridsT>> {
+    using grid_t = GridsView<space, GridsT>;
+
+    explicit CleanGridBlocks(wrapv<space>, GridsT &grids) : grids{proxy<space>(grids)} {}
+
+    constexpr void operator()(typename GridsT::size_type blockid,
+                              typename GridsT::cell_index_type cellid) noexcept {
+      using value_type = typename GridsT::value_type;
+      auto block = grids.block(blockid);
+      block(0, cellid) = (0);
+      block.set(1, cellid, vec<value_type, GridsT::dim>::zeros());
+    }
+
+    grid_t grids;
   };
 
   template <execspace_e space, typename TableT, typename GridBlocksT>

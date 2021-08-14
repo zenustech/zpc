@@ -204,7 +204,8 @@ namespace zs {
             pars.addAttr("C", matrix_v) = tmp.C.clone(dst);
             if (hasPlasticity) pars.addAttr("logJp", scalar_v) = tmp.logJp0.clone(dst);
             fmt::print("moving {} paticles [{}, {}]\n", pars.attrVector("pos").size(),
-                       magic_enum::enum_name(pars.attrVector("pos").memspace()), static_cast<int>(pars.attrVector("pos").devid()));
+                       magic_enum::enum_name(pars.attrVector("pos").memspace()),
+                       static_cast<int>(pars.attrVector("pos").devid()));
           },
           [](...) {})(dstParticles.back());
     }

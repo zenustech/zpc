@@ -187,7 +187,8 @@ namespace zs {
 
     // void resize(size_type newSize) { blocks.resize(newSize); }
     // void capacity() const noexcept { blocks.capacity(); }
-    template <grid_e category> constexpr auto &grid(wrapv<category>) noexcept {
+    template <grid_e category = grid_e::collocated>
+    constexpr auto &grid(wrapv<category> = {}) noexcept {
       if constexpr (category == grid_e::collocated)
         return _collocatedGrid;
       else if constexpr (category == grid_e::cellcentered)
@@ -195,13 +196,23 @@ namespace zs {
       else if constexpr (category == grid_e::staggered)
         return _staggeredGrid;
     }
-    template <grid_e category> constexpr const auto &grid(wrapv<category>) const noexcept {
+    template <grid_e category = grid_e::collocated>
+    constexpr const auto &grid(wrapv<category> = {}) const noexcept {
       if constexpr (category == grid_e::collocated)
         return _collocatedGrid;
       else if constexpr (category == grid_e::cellcentered)
         return _cellcenteredGrid;
       else if constexpr (category == grid_e::staggered)
         return _staggeredGrid;
+    }
+    template <grid_e category = grid_e::collocated>
+    constexpr auto numCells(wrapv<category> = {}) const noexcept {
+      if constexpr (category == grid_e::collocated)
+        return _collocatedGrid.blocks.size() * _collocatedGrid.blocks.numChannels();
+      else if constexpr (category == grid_e::cellcentered)
+        return _cellcenteredGrid.blocks.size() * _cellcenteredGrid.blocks.numChannels();
+      else if constexpr (category == grid_e::staggered)
+        return _staggeredGrid.blocks.size() * _staggeredGrid.blocks.numChannels();
     }
 
     Grid<grid_e::collocated> _collocatedGrid{};

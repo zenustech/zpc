@@ -323,15 +323,14 @@ namespace zs {
     TileVectorView src, dst;
   };
   template <typename T, std::size_t Length, typename Index, typename ChnT>
-  template <typename Policy>
-  void TileVector<T, Length, Index, ChnT>::append_channels(Policy &&policy,
-                                                           const std::vector<PropertyTag> &tags) {
+  template <typename Policy> void TileVector<T, Length, Index, ChnT>::append_channels(
+      Policy &&policy, const std::vector<PropertyTag> &appendTags) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    const auto size = size();
+    const auto s = size();
     auto tags = getPropertyTags();
-    tags.insert(std::end(tags), std::begin(tags), std::end(tags));
-    TileVector<T, Length, Index, ChnT> tmp{allocator(), tags, size};
-    policy(range(size), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
+    tags.insert(std::end(tags), std::begin(appendTags), std::end(appendTags));
+    TileVector<T, Length, Index, ChnT> tmp{allocator(), tags, s};
+    policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);
   }
 

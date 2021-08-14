@@ -182,6 +182,8 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/math/matrix/MatrixCtor.hpp
     omp/math/matrix/MatrixTransform.hpp
 )
+set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
+)
 # wrangler
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
 )
@@ -315,6 +317,7 @@ endif ()
 target_sources(zpc
   PRIVATE 
     ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
+    ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
 )
 target_link_libraries(zpc PUBLIC zpccore)
 if (ZS_ENABLE_OPENMP)

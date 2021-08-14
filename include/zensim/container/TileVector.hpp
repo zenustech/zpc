@@ -274,6 +274,8 @@ namespace zs {
       if (newSize > geometricSize) return count_tiles(newSize) * lane_width;
       return geometricSize;
     }
+    template <typename Policy>
+    void append_channels(Policy &&, const std::vector<PropertyTag> &tags);
 
     constexpr channel_counter_type numProperties() const noexcept { return _tags.size(); }
 
@@ -296,6 +298,7 @@ namespace zs {
       return 0;
     }
     constexpr PropertyTag getPropertyTag(std::size_t i = 0) const { return _tags[i]; }
+    constexpr const auto &getPropertyTags() const { return _tags; }
 
   protected:
     allocator_type _allocator{};
@@ -308,6 +311,29 @@ namespace zs {
     size_type _size{0}, _capacity{0};  // element size
     channel_counter_type _numChannels{1};
   };
+
+  template <typename TileVectorView> struct TileVectorCopy {
+    using size_type = typename TileVectorView::size_type;
+    using channel_counter_type = typename TileVectorView::channel_counter_type;
+    TileVectorCopy(TileVectorView src, TileVectorView dst) : src{src}, dst{dst} {}
+    constexpr void operator()(size_type i) {
+      const auto nchns = src.numChannels();
+      for (channel_counter_type chn = 0; chn != nchns; ++chn) dst(chn, i) = src(chn, i);
+    }
+    TileVectorView src, dst;
+  };
+  template <typename T, std::size_t Length, typename Index, typename ChnT>
+  template <typename Policy>
+  void TileVector<T, Length, Index, ChnT>::append_channels(Policy &&policy,
+                                                           const std::vector<PropertyTag> &tags) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    const auto size = size();
+    auto tags = getPropertyTags();
+    tags.insert(std::end(tags), std::begin(tags), std::end(tags));
+    TileVector<T, Length, Index, ChnT> tmp{allocator(), tags, size};
+    policy(range(size), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
+    *this = std::move(tmp);
+  }
 
   template <execspace_e, typename TileVectorT, bool WithinTile = false, typename = void>
   struct TileVectorView;

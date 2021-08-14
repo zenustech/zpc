@@ -5,6 +5,25 @@
 
 namespace zs {
 
+  // HOST, DEVICE, UM
+  enum struct memsrc_e : unsigned char { host = 0, device, um };
+  using host_mem_tag = wrapv<memsrc_e::host>;
+  using device_mem_tag = wrapv<memsrc_e::device>;
+  using um_mem_tag = wrapv<memsrc_e::um>;
+  constexpr auto mem_host = host_mem_tag{};
+  constexpr auto mem_device = device_mem_tag{};
+  constexpr auto mem_um = um_mem_tag{};
+
+  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
+  using host_exec_tag = wrapv<execspace_e::host>;
+  using omp_exec_tag = wrapv<execspace_e::openmp>;
+  using cuda_exec_tag = wrapv<execspace_e::cuda>;
+  using hip_exec_tag = wrapv<execspace_e::hip>;
+  constexpr auto exec_seq = host_exec_tag{};
+  constexpr auto exec_omp = omp_exec_tag{};
+  constexpr auto exec_cuda = cuda_exec_tag{};
+  constexpr auto exec_hip = hip_exec_tag{};
+
   enum struct attrib_e : unsigned char { scalar = 0, vector, matrix, affine };
   using attrib_scalar_tag = wrapv<attrib_e::scalar>;
   using attrib_vector_tag = wrapv<attrib_e::vector>;
@@ -31,24 +50,13 @@ namespace zs {
   constexpr auto kernel_quad = kernel_quadratic_tag{};
   constexpr auto kernel_cubic = kernel_cubic_tag{};
 
-  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
-  using host_exec_tag = wrapv<execspace_e::host>;
-  using omp_exec_tag = wrapv<execspace_e::openmp>;
-  using cuda_exec_tag = wrapv<execspace_e::cuda>;
-  using hip_exec_tag = wrapv<execspace_e::hip>;
-  constexpr auto exec_seq = host_exec_tag{};
-  constexpr auto exec_omp = omp_exec_tag{};
-  constexpr auto exec_cuda = cuda_exec_tag{};
-  constexpr auto exec_hip = hip_exec_tag{};
-
-  // HOST, DEVICE, UM
-  enum struct memsrc_e : unsigned char { host = 0, device, um };
-  using host_mem_tag = wrapv<memsrc_e::host>;
-  using device_mem_tag = wrapv<memsrc_e::device>;
-  using um_mem_tag = wrapv<memsrc_e::um>;
-  constexpr auto mem_host = host_mem_tag{};
-  constexpr auto mem_device = device_mem_tag{};
-  constexpr auto mem_um = um_mem_tag{};
+  enum struct grid_e : unsigned char { collocated = 0, cellcentered, staggered, total };
+  using grid_collocated_tag = wrapv<grid_e::collocated>;
+  using grid_cellcentered_tag = wrapv<grid_e::cellcentered>;
+  using grid_staggered_tag = wrapv<grid_e::staggered>;
+  static constexpr auto collocated_v = grid_collocated_tag{};
+  static constexpr auto cellcentered_v = grid_cellcentered_tag{};
+  static constexpr auto staggered_v = grid_staggered_tag{};
 
   /// comparable
   template <typename T> struct is_equality_comparable {

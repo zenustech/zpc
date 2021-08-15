@@ -24,19 +24,42 @@ namespace zs {
   template <execspace_e space, typename TableT, typename GridBlocksT>
   PrintGridBlocks(wrapv<space>, TableT, GridBlocksT)
       -> PrintGridBlocks<HashTableView<space, TableT>, GridBlocksView<space, GridBlocksT>>;
-  template <execspace_e space, transfer_scheme_e scheme, typename GridBlocksT, typename Sth>
-  ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridBlocksT, float dt, Sth, float *maxVel)
-      -> ComputeGridBlockVelocity<scheme, GridBlocksView<space, GridBlocksT>>;
-  template <execspace_e space, typename LevelsetT, typename TableT, typename GridBlocksT>
-  ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT, GridBlocksT)
-      -> ApplyBoundaryConditionOnGridBlocks<Collider<LevelsetT>, HashTableView<space, TableT>,
-                                            GridBlocksView<space, GridBlocksT>>;
-  template <execspace_e space, typename TableT, typename GridBlocksT>
+
+  template <execspace_e space, transfer_scheme_e scheme, typename V, int d, int chnbits,
+            int dombits, typename Sth>
+  ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>,
+                           GridBlocks<GridBlock<V, d, chnbits, dombits>>, float dt, Sth,
+                           float *maxVel)
+      -> ComputeGridBlockVelocity<
+          scheme, GridBlocksView<space, GridBlocks<GridBlock<V, d, chnbits, dombits>>>>;
+  template <execspace_e space, transfer_scheme_e scheme, typename T, int d, auto l, typename Sth>
+  ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, Grids<T, d, l>, float dt, Sth,
+                           float *maxVel)
+      -> ComputeGridBlockVelocity<scheme, GridsView<space, Grids<T, d, l>>>;
+
+  template <execspace_e space, typename LevelsetT, typename TableT, typename V, int d, int chnbits,
+            int dombits>
+  ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT,
+                                     GridBlocks<GridBlock<V, d, chnbits, dombits>>)
+      -> ApplyBoundaryConditionOnGridBlocks<
+          Collider<LevelsetT>, HashTableView<space, TableT>,
+          GridBlocksView<space, GridBlocks<GridBlock<V, d, chnbits, dombits>>>>;
+  template <execspace_e space, typename TableT, typename V, int d, int chnbits, int dombits>
   ApplyBoundaryConditionOnGridBlocks(wrapv<space>, LevelSetBoundary<SparseLevelSet<3>>, TableT,
-                                     GridBlocksT)
+                                     GridBlocks<GridBlock<V, d, chnbits, dombits>>)
+      -> ApplyBoundaryConditionOnGridBlocks<
+          Collider<SparseLevelSetView<space, SparseLevelSet<3>>>, HashTableView<space, TableT>,
+          GridBlocksView<space, GridBlocks<GridBlock<V, d, chnbits, dombits>>>>;
+  template <execspace_e space, typename LevelsetT, typename TableT, typename T, int d, auto l>
+  ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT, Grids<T, d, l>)
+      -> ApplyBoundaryConditionOnGridBlocks<Collider<LevelsetT>, HashTableView<space, TableT>,
+                                            GridsView<space, Grids<T, d, l>>>;
+  template <execspace_e space, typename TableT, typename T, int d, auto l>
+  ApplyBoundaryConditionOnGridBlocks(wrapv<space>, LevelSetBoundary<SparseLevelSet<3>>, TableT,
+                                     Grids<T, d, l>)
       -> ApplyBoundaryConditionOnGridBlocks<Collider<SparseLevelSetView<space, SparseLevelSet<3>>>,
                                             HashTableView<space, TableT>,
-                                            GridBlocksView<space, GridBlocksT>>;
+                                            GridsView<space, Grids<T, d, l>>>;
 
   template <execspace_e space, typename GridBlocksT>
   struct CleanGridBlocks<GridBlocksView<space, GridBlocksT>> {
@@ -154,6 +177,46 @@ namespace zs {
     TV extf;
     float *maxVel;
   };
+  template <execspace_e space, transfer_scheme_e scheme, typename GridsT>
+  struct ComputeGridBlockVelocity<scheme, GridsView<space, GridsT>> {
+    static constexpr auto exectag = wrapv<space>{};
+    using grids_t = GridsView<space, GridsT>;
+    using value_type = typename grids_t::value_type;
+    using TV = vec<value_type, grids_t::dim>;
+
+    constexpr ComputeGridBlockVelocity() = default;
+    ~ComputeGridBlockVelocity() = default;
+
+    explicit ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridsT &grids, float dt,
+                                      float gravity, float *maxVel)
+        : grids{proxy<space>(grids)}, dt{dt}, extf{TV::zeros()}, maxVel{maxVel} {
+      extf[1] = gravity;
+    }
+    explicit ComputeGridBlockVelocity(wrapv<space>, wrapv<scheme>, GridsT &grids, float dt, TV extf,
+                                      float *maxVel)
+        : grids{proxy<space>(grids)}, dt{dt}, extf{extf}, maxVel{maxVel} {}
+
+    constexpr void operator()(typename grids_t::size_type blockid,
+                              typename grids_t::cell_index_type cellid) noexcept {
+      auto block = grids[blockid];
+      value_type mass = block(0, cellid);
+      if (mass != (value_type)0) {
+        mass = (value_type)1 / mass;
+        TV vel = block.pack<grids_t::dim>(1, cellid) * mass + extf * dt;
+        /// write back
+        // for (int d = 0; d != grids_t::dim; ++d) block(1 + d, cellid) = vel[d];
+        block.set(1, cellid, vel);
+        /// cfl dt
+        value_type ret = vel.l2NormSqr();
+        atomic_max(exectag, maxVel, ret);
+      }
+    }
+
+    grids_t grids;
+    float dt;
+    TV extf;
+    float *maxVel;
+  };
 
   template <execspace_e space, typename ColliderT, typename TableT, typename GridBlocksT>
   struct ApplyBoundaryConditionOnGridBlocks<ColliderT, HashTableView<space, TableT>,
@@ -200,6 +263,47 @@ namespace zs {
     collider_t collider;
     partition_t partition;
     gridblocks_t gridblocks;
+  };
+  template <execspace_e space, typename ColliderT, typename TableT, typename GridsT>
+  struct ApplyBoundaryConditionOnGridBlocks<ColliderT, HashTableView<space, TableT>,
+                                            GridsView<space, GridsT>> {
+    using collider_t = ColliderT;
+    using partition_t = HashTableView<space, TableT>;
+    using grids_t = GridsView<space, GridsT>;
+    using value_type = typename grids_t::value_type;
+
+    template <typename Boundary = ColliderT,
+              enable_if_t<!is_levelset_boundary<Boundary>::value> = 0>
+    ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Boundary &collider, TableT &table,
+                                       GridsT &grids)
+        : collider{collider}, partition{proxy<space>(table)}, grids{proxy<space>(grids)} {}
+    template <typename Boundary, enable_if_t<is_levelset_boundary<Boundary>::value> = 0>
+    ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Boundary &boundary, TableT &table,
+                                       GridsT &grids)
+        : collider{Collider{proxy<space>(boundary.levelset), boundary.type/*, boundary.s,
+                            boundary.dsdt, boundary.R, boundary.omega, boundary.b, boundary.dbdt*/}},
+          partition{proxy<space>(table)},
+          grids{proxy<space>(grids)} {}
+
+    constexpr void operator()(typename grids_t::size_type blockid,
+                              typename grids_t::cell_index_type cellid) noexcept {
+      auto blockkey = partition._activeKeys[blockid];
+      auto block = grids[blockid];
+
+      if (block(0, cellid) > 0) {
+        auto vel = block.pack<grids_t::dim>(1, cellid);
+        auto pos = (blockkey * (value_type)grids_t::side_length + grids_t::cellid_to_coord(cellid))
+                   * grids._dx;
+
+        collider.resolveCollision(pos, vel);
+
+        block.set(1, cellid, vel);
+      }
+    }
+
+    collider_t collider;
+    partition_t partition;
+    grids_t grids;
   };
 
 }  // namespace zs

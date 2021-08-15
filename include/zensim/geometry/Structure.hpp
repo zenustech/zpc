@@ -181,7 +181,7 @@ namespace zs {
     Grids(const allocator_type &allocator,
           const std::vector<PropertyTag> &channelTags = {PropertyTag{"mv", 1 + dim}},
           value_type dx = 1.f, size_type numBlocks = 0, grid_e ge = grid_e::collocated)
-        : _collocatedGrid{allocator, channelTags, numBlocks} {}
+        : _collocatedGrid{allocator, channelTags, numBlocks}, _dx{dx} {}
     Grids(const std::vector<PropertyTag> &channelTags = {PropertyTag{"mv", 1 + dim}},
           value_type dx = 1.f, size_type numBlocks = 0, memsrc_e mre = memsrc_e::host,
           ProcID devid = -1, grid_e ge = grid_e::collocated)
@@ -270,7 +270,7 @@ namespace zs {
       if constexpr (is_power_of_two)
         for (int d = 0; d != dim; ++d) ret = (ret << num_cell_bits) | coord[d];
       else
-        for (int d = 0; d != dim; ++d) ret = (ret * side_length) + coord[d];
+        for (int d = 0; d != dim; ++d) ret = (ret * (Ti)side_length) + coord[d];
       return ret;
     }
     template <typename Ti>
@@ -280,7 +280,7 @@ namespace zs {
         for (int d = 0; d != dim; ++d)
           ret = (ret << num_cell_bits) | (coord[d] & (side_length - 1));
       else
-        for (int d = 0; d != dim; ++d) ret = (ret * side_length) + (coord[d] % side_length);
+        for (int d = 0; d != dim; ++d) ret = (ret * (Ti)side_length) + (coord[d] % (Ti)side_length);
       return ret;
     }
 
@@ -303,7 +303,10 @@ namespace zs {
       constexpr auto operator()(channel_counter_type c, const vec<Ti, dim> &loc) const noexcept {
         return block(c, coord_to_cellid(loc));
       }
-      constexpr decltype(auto) operator()(channel_counter_type chn, cell_index_type cellid) {
+      constexpr auto &operator()(channel_counter_type chn, cell_index_type cellid) {
+        return block(chn, cellid);
+      }
+      constexpr auto operator()(channel_counter_type chn, cell_index_type cellid) const {
         return block(chn, cellid);
       }
       template <auto N>

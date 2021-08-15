@@ -208,14 +208,21 @@ namespace zs {
         using VT = typename grids_t::value_type;
         auto arena = make_local_arena((VT)dx, local_pos);
         for (auto loc : arena.range()) {
+#if 0
           auto [grid_block, local_index]
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
+#else
+          auto [blockcoord, local_index]
+              = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length);
+          auto blockno = partition.query(blockcoord);
+          auto grid_block = grids.block(blockno);
+#endif
           auto xixp = arena.diff(loc);
           VT W = arena.weight(loc);
           VT wm = mass * W;
           const auto cellid = grids_t::coord_to_cellid(local_index);
           atomicAdd(&grid_block(0, cellid), wm);
-          for (int d = 0; d < particles_t::dim; ++d)
+          for (int d = 0; d != particles_t::dim; ++d)
             atomicAdd(
                 &grid_block(d + 1, cellid),
                 (VT)(wm * vel[d]

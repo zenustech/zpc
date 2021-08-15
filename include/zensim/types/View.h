@@ -96,6 +96,7 @@ namespace zs {
     structure_view_t _structure;
     size_type _size;
 
+    constexpr structure_view_t getStructure() const noexcept { return _structure; }
     constexpr size_type size() const noexcept { return _size; }
     constexpr size_type numEntries() const noexcept {
       return entry_e == attrib_e::scalar ? _size : _size * dim;
@@ -188,6 +189,7 @@ namespace zs {
     size_type _size;
     channel_counter_type _chn;
 
+    constexpr structure_view_t getStructure() const noexcept { return _structure; }
     constexpr size_type size() const noexcept { return _size; }
     constexpr size_type numEntries() const noexcept { return _size * dim; }
     constexpr decltype(auto) ref(size_type i) { return traits::ref(_structure, _chn, i); }
@@ -280,13 +282,15 @@ namespace zs {
   }
 
   template <execspace_e space, typename T>
-  constexpr decltype(auto) dof_view(T&& t, const SmallString& str) {
+  constexpr decltype(auto) dof_view(T&& t, const SmallString& str,
+                                    typename dof_traits<space, T>::channel_counter_type c = 0) {
     return DofView<space, T, dof_traits<space, T>::deduced_dim, true>{wrapv<space>{}, t,
-                                                                      t.getChannelOffset(str)};
+                                                                      t.getChannelOffset(str) + c};
   }
   template <execspace_e space, int dim, typename T>
-  constexpr decltype(auto) dof_view(T&& t, const SmallString& str) {
-    return DofView<space, T, dim, true>{wrapv<space>{}, t, t.getChannelOffset(str)};
+  constexpr decltype(auto) dof_view(T&& t, const SmallString& str,
+                                    typename dof_traits<space, T>::channel_counter_type c = 0) {
+    return DofView<space, T, dim, true>{wrapv<space>{}, t, t.getChannelOffset(str) + c};
   }
 
 }  // namespace zs

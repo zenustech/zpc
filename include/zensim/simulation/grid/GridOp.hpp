@@ -83,7 +83,7 @@ namespace zs {
   };
 
   template <execspace_e space, typename GridsT> struct CleanGridBlocks<GridsView<space, GridsT>> {
-    using grid_t = GridsView<space, GridsT>;
+    using grids_t = GridsView<space, GridsT>;
 
     explicit CleanGridBlocks(wrapv<space>, GridsT &grids) : grids{proxy<space>(grids)} {}
 
@@ -95,7 +95,7 @@ namespace zs {
       block.set(1, cellid, vec<value_type, GridsT::dim>::zeros());
     }
 
-    grid_t grids;
+    grids_t grids;
   };
 
   template <execspace_e space, typename TableT, typename GridBlocksT>

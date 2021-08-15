@@ -118,7 +118,10 @@ namespace zs {
     return GridBlocksView<ExecSpace, GridBlocks<GridBlock<V, d, chn_bits, domain_bits>>>{blocks};
   }
 
-  template <typename ValueT = f32, int d_ = 3, auto SideLength = 4> struct Grids {
+  template <typename ValueT = f32, int d_ = 3, auto SideLength = 4,
+            grid_e category = grid_e::collocated>
+  struct Grid {
+    static_assert(d_ > 0, "dimension must be positive!");
     using value_type = ValueT;
     using allocator_type = ZSPmrAllocator<>;
     using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
@@ -126,17 +129,9 @@ namespace zs {
     static constexpr int dim = d_;
     static constexpr cell_index_type side_length = SideLength;
     static constexpr cell_index_type block_space() noexcept {
-      if constexpr (dim == 1)
-        return side_length;
-      else if constexpr (dim == 2)
-        return side_length * side_length;
-      else if constexpr (dim == 3)
-        return side_length * side_length * side_length;
-      else {
-        auto ret = side_length;
-        for (int d = 1; d != dim; ++d) ret *= side_length;
-        return ret;
-      }
+      auto ret = side_length;
+      for (int d = 1; d != dim; ++d) ret *= side_length;
+      return ret;
     }
     /// ninja optimization
     static constexpr bool is_power_of_two
@@ -151,6 +146,56 @@ namespace zs {
     using IV = vec<domain_index_type, dim>;
     using TV = vec<value_type, dim>;
 
+    constexpr MemoryLocation memoryLocation() const noexcept { return blocks.memoryLocation(); }
+    constexpr memsrc_e space() const noexcept { return blocks.memspace(); }
+    constexpr ProcID devid() const noexcept { return blocks.devid(); }
+    constexpr auto size() const noexcept { return blocks.size(); }
+    constexpr decltype(auto) allocator() const noexcept { return blocks.allocator(); }
+    constexpr decltype(auto) numBlocks() const noexcept { return blocks.numTiles(); }
+    constexpr channel_counter_type numChannels() const noexcept { return blocks.numChannels(); }
+
+    Grid(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
+         value_type dx, size_type count = 0)
+        : blocks{allocator, channelTags, count * block_space()}, dx{dx} {}
+    Grid(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
+         memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : Grid{get_memory_source(mre, devid), channelTags, dx, count} {}
+    Grid(channel_counter_type numChns, value_type dx, size_type count,
+         memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : Grid{get_memory_source(mre, devid), {{"default", numChns}}, dx, count} {}
+    Grid(value_type dx = 1.f, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : Grid{get_memory_source(mre, devid), {{"mvel", 1 + dim}}, dx, 0} {}
+
+    void resize(size_type numBlocks) { blocks.resize(numBlocks * block_space()); }
+
+    grid_storage_t blocks;
+    value_type dx;
+  };
+  template <typename ValueT = f32, int d_ = 3, auto SideLength = 4> struct Grids {
+    template <grid_e category = grid_e::collocated> using grid_t
+        = Grid<ValueT, d_, SideLength, category>;
+    using collocated_grid_t = Grid<ValueT, d_, SideLength>;
+    using value_type = typename collocated_grid_t::value_type;
+    using allocator_type = typename collocated_grid_t::allocator_type;
+    using cell_index_type = typename collocated_grid_t::cell_index_type;
+    using domain_index_type = typename collocated_grid_t::domain_index_type;
+    static constexpr int dim = d_;
+    static constexpr cell_index_type side_length = collocated_grid_t::side_length;
+    static constexpr cell_index_type block_space() noexcept {
+      return collocated_grid_t::block_space();
+    }
+    /// ninja optimization
+    static constexpr bool is_power_of_two = collocated_grid_t::is_power_of_two;
+    static constexpr auto num_cell_bits = collocated_grid_t::num_cell_bits;
+
+    using grid_storage_t = typename collocated_grid_t::grid_storage_t;
+    using size_type = typename collocated_grid_t::size_type;
+    using channel_counter_type = typename collocated_grid_t::channel_counter_type;
+
+    using CellIV = typename collocated_grid_t::CellIV;
+    using IV = typename collocated_grid_t::IV;
+    using TV = typename collocated_grid_t::TV;
+
     constexpr MemoryLocation memoryLocation() const noexcept {
       return grid(collocated_v).memoryLocation();
     }
@@ -160,35 +205,25 @@ namespace zs {
     constexpr decltype(auto) allocator() const noexcept { return grid(collocated_v).allocator(); }
     constexpr decltype(auto) numBlocks() const noexcept { return grid(collocated_v).numTiles(); }
 
-    template <grid_e category = grid_e::collocated> struct Grid {
-      Grid(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
-           size_type count = 0)
-          : blocks{allocator, channelTags, count * block_space()} {}
-      Grid(const std::vector<PropertyTag> &channelTags, size_type count,
-           memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-          : Grid{get_memory_source(mre, devid), channelTags, count} {}
-      Grid(channel_counter_type numChns, size_type count, memsrc_e mre = memsrc_e::host,
-           ProcID devid = -1)
-          : Grid{get_memory_source(mre, devid), {{"mv", numChns}}, count} {}
-      Grid(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-          : Grid{get_memory_source(mre, devid), {{"mv", 1 + dim}}, 0} {}
-
-      void resize(size_type numBlocks) { blocks.resize(numBlocks * block_space()); }
-
-      grid_storage_t blocks;
-    };
-
     Grids(const allocator_type &allocator,
           const std::vector<PropertyTag> &channelTags = {PropertyTag{"mv", 1 + dim}},
           value_type dx = 1.f, size_type numBlocks = 0, grid_e ge = grid_e::collocated)
-        : _collocatedGrid{allocator, channelTags, numBlocks}, _dx{dx} {}
+        : _collocatedGrid{allocator, channelTags, dx},
+          _cellcenteredGrid{allocator, channelTags, dx},
+          _staggeredGrid{allocator, channelTags, dx},
+          _dx{dx} {
+      if (ge == grid_e::collocated)
+        _collocatedGrid.resize(numBlocks);
+      else if (ge == grid_e::cellcentered)
+        _cellcenteredGrid.resize(numBlocks);
+      else if (ge == grid_e::staggered)
+        _staggeredGrid.resize(numBlocks);
+    }
     Grids(const std::vector<PropertyTag> &channelTags = {PropertyTag{"mv", 1 + dim}},
           value_type dx = 1.f, size_type numBlocks = 0, memsrc_e mre = memsrc_e::host,
           ProcID devid = -1, grid_e ge = grid_e::collocated)
         : Grids{get_memory_source(mre, devid), channelTags, dx, numBlocks, ge} {}
 
-    // void resize(size_type newSize) { blocks.resize(newSize); }
-    // void capacity() const noexcept { blocks.capacity(); }
     template <grid_e category = grid_e::collocated>
     constexpr auto &grid(wrapv<category> = {}) noexcept {
       if constexpr (category == grid_e::collocated)
@@ -210,16 +245,16 @@ namespace zs {
     template <grid_e category = grid_e::collocated>
     constexpr auto numCells(wrapv<category> = {}) const noexcept {
       if constexpr (category == grid_e::collocated)
-        return _collocatedGrid.blocks.size() * _collocatedGrid.blocks.numChannels();
+        return _collocatedGrid.size() * _collocatedGrid.numChannels();
       else if constexpr (category == grid_e::cellcentered)
-        return _cellcenteredGrid.blocks.size() * _cellcenteredGrid.blocks.numChannels();
+        return _cellcenteredGrid.size() * _cellcenteredGrid.numChannels();
       else if constexpr (category == grid_e::staggered)
-        return _staggeredGrid.blocks.size() * _staggeredGrid.blocks.numChannels();
+        return _staggeredGrid.size() * _staggeredGrid.numChannels();
     }
 
-    Grid<grid_e::collocated> _collocatedGrid{};
-    Grid<grid_e::cellcentered> _cellcenteredGrid{};
-    Grid<grid_e::staggered> _staggeredGrid{};
+    grid_t<grid_e::collocated> _collocatedGrid{};
+    grid_t<grid_e::cellcentered> _cellcenteredGrid{};
+    grid_t<grid_e::staggered> _staggeredGrid{};
     value_type _dx{};
   };
 
@@ -229,28 +264,27 @@ namespace zs {
   template <execspace_e, typename GridsT, typename = void> struct GridsView;
   template <execspace_e space, typename GridsT> struct GridsView<space, GridsT> {
     static constexpr bool is_const_structure = std::is_const_v<GridsT>;
-    using grid_t = std::remove_const_t<GridsT>;
-    using value_type = typename grid_t::value_type;
-    static constexpr int dim = grid_t::dim;
-    static constexpr auto side_length = grid_t::side_length;
-    static constexpr auto block_space() noexcept { return grid_t::block_space(); }
-    static constexpr bool is_power_of_two = grid_t::is_power_of_two;
-    static constexpr auto num_cell_bits = grid_t::num_cell_bits;
+    using grids_t = std::remove_const_t<GridsT>;
+    using value_type = typename grids_t::value_type;
+    static constexpr int dim = grids_t::dim;
+    static constexpr auto side_length = grids_t::side_length;
+    static constexpr auto block_space() noexcept { return grids_t::block_space(); }
+    static constexpr bool is_power_of_two = grids_t::is_power_of_two;
+    static constexpr auto num_cell_bits = grids_t::num_cell_bits;
 
-    using grid_storage_t = typename grid_t::grid_storage_t;
+    using grid_storage_t = typename grids_t::grid_storage_t;
     using grid_view_t = RM_CVREF_T(proxy<space>(
         std::declval<
             conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()));
-    using size_type = typename grid_t::size_type;
-    using channel_counter_type = typename grid_t::channel_counter_type;
-    using cell_index_type = typename grid_t::cell_index_type;
-    using domain_index_type = typename grid_t::domain_index_type;
+    using grid_block_view_t = typename grid_view_t::tile_view_type;  // tilevector view property
+    using size_type = typename grids_t::size_type;
+    using channel_counter_type = typename grids_t::channel_counter_type;
+    using cell_index_type = typename grids_t::cell_index_type;
+    using domain_index_type = typename grids_t::domain_index_type;
 
-    using CellIV = typename grid_t::CellIV;
-    using IV = typename grid_t::IV;
-    using TV = typename grid_t::TV;
-
-    template <grid_e category> using block_t = decltype(std::declval<grid_view_t>().tile(0));
+    using CellIV = typename grids_t::CellIV;
+    using IV = typename grids_t::IV;
+    using TV = typename grids_t::TV;
 
     static constexpr auto cellid_to_coord(cell_index_type cellid) noexcept {
       CellIV ret{CellIV::zeros()};
@@ -292,8 +326,8 @@ namespace zs {
           _staggeredGrid{proxy<space>(grids.grid(staggered_v).blocks)},
           _dx{grids._dx} {}
 
-    template <typename BlockTileView> struct Block {
-      constexpr Block(BlockTileView tile, value_type dx) noexcept : block{tile}, dx{dx} {}
+    template <grid_e category = grid_e::collocated> struct Block {
+      constexpr Block(grid_block_view_t tile, value_type dx) noexcept : block{tile}, dx{dx} {}
 
       template <typename Ti>
       constexpr auto &operator()(channel_counter_type c, const vec<Ti, dim> &loc) noexcept {
@@ -318,30 +352,83 @@ namespace zs {
         block.template tuple<N>(chn, cellid) = val;
       }
 
-      BlockTileView block;
+      constexpr auto size() const noexcept { return block.size(); }
+
+      grid_block_view_t block;
       value_type dx;
     };
+    template <grid_e category = grid_e::collocated> struct Grid {
+      constexpr Grid(grid_view_t grid, value_type dx) noexcept : grid{grid}, dx{dx} {}
+
+      template <typename Ti>
+      constexpr auto &operator()(channel_counter_type c, const vec<Ti, dim> &loc) noexcept {
+        return grid(c, coord_to_cellid(loc));
+      }
+      template <typename Ti>
+      constexpr auto operator()(channel_counter_type c, const vec<Ti, dim> &loc) const noexcept {
+        return grid(c, coord_to_cellid(loc));
+      }
+      constexpr auto &operator()(channel_counter_type chn, cell_index_type cellid) {
+        return grid(chn, cellid);
+      }
+      constexpr auto operator()(channel_counter_type chn, cell_index_type cellid) const {
+        return grid(chn, cellid);
+      }
+      template <auto N>
+      constexpr auto pack(channel_counter_type chn, cell_index_type cellid) const {
+        return grid.template pack<N>(chn, cellid);
+      }
+      template <auto N, typename V, bool b = is_const_structure, enable_if_t<!b> = 0>
+      constexpr void set(channel_counter_type chn, cell_index_type cellid, const vec<V, N> &val) {
+        grid.template tuple<N>(chn, cellid) = val;
+      }
+
+      constexpr auto size() const noexcept { return grid.size(); }
+      constexpr auto numChannels() const noexcept { return grid.numChannels(); }
+
+      grid_view_t grid;
+      value_type dx;
+    };
+
+    /// grid
+    template <grid_e category = grid_e::collocated, bool b = is_const_structure,
+              enable_if_t<!b> = 0>
+    constexpr auto &grid(wrapv<category> = {}) {
+      if constexpr (category == grid_e::collocated)
+        return Grid<category>{_collocatedGrid, _dx};
+      else if constexpr (category == grid_e::cellcentered)
+        return Grid<category>{_cellcenteredGrid, _dx};
+      else if constexpr (category == grid_e::staggered)
+        return Grid<category>{_staggeredGrid, _dx};
+    }
+    template <grid_e category = grid_e::collocated>
+    constexpr const auto &grid(wrapv<category> = {}) const {
+      if constexpr (category == grid_e::collocated)
+        return Grid<category>{_collocatedGrid, _dx};
+      else if constexpr (category == grid_e::cellcentered)
+        return Grid<category>{_cellcenteredGrid, _dx};
+      else if constexpr (category == grid_e::staggered)
+        return Grid<category>{_staggeredGrid, _dx};
+    }
 
     /// block
     template <grid_e category = grid_e::collocated, bool b = is_const_structure,
               enable_if_t<!b> = 0>
     constexpr auto block(size_type i) {
-      using TileT = block_t<category>;
       if constexpr (category == grid_e::collocated)
-        return Block<TileT>{_collocatedGrid.tile(i), _dx};
+        return Block<category>{_collocatedGrid.tile(i), _dx};
       else if constexpr (category == grid_e::cellcentered)
-        return Block<TileT>{_cellcenteredGrid.tile(i), _dx};
+        return Block<category>{_cellcenteredGrid.tile(i), _dx};
       else if constexpr (category == grid_e::staggered)
-        return Block<TileT>{_staggeredGrid.tile(i), _dx};
+        return Block<category>{_staggeredGrid.tile(i), _dx};
     }
     template <grid_e category = grid_e::collocated> constexpr auto block(size_type i) const {
-      using TileT = block_t<category>;
       if constexpr (category == grid_e::collocated)
-        return Block<TileT>{_collocatedGrid.tile(i), _dx};
+        return Block<category>{_collocatedGrid.tile(i), _dx};
       else if constexpr (category == grid_e::cellcentered)
-        return Block<TileT>{_cellcenteredGrid.tile(i), _dx};
+        return Block<category>{_cellcenteredGrid.tile(i), _dx};
       else if constexpr (category == grid_e::staggered)
-        return Block<TileT>{_staggeredGrid.tile(i), _dx};
+        return Block<category>{_staggeredGrid.tile(i), _dx};
     }
     template <grid_e category = grid_e::collocated, bool b = is_const_structure,
               enable_if_t<!b> = 0>
@@ -406,6 +493,17 @@ namespace zs {
   template <execspace_e space, typename V, int d, auto SideLength>
   constexpr decltype(auto) proxy(const Grids<V, d, SideLength> &grids) {
     return GridsView<space, const Grids<V, d, SideLength>>{grids};
+  }
+
+  template <execspace_e space, typename V, int d, auto SideLength, grid_e category>
+  constexpr decltype(auto) proxy(Grid<V, d, SideLength, category> &grid) {
+    return typename GridsView<space, Grids<V, d, SideLength>>::template Grid<category>{
+        proxy<space>(grid.blocks), grid.dx};
+  }
+  template <execspace_e space, typename V, int d, auto SideLength, grid_e category>
+  constexpr decltype(auto) proxy(const Grid<V, d, SideLength, category> &grid) {
+    return typename GridsView<space, const Grids<V, d, SideLength>>::template Grid<category>{
+        proxy<space>(grid.blocks), grid.dx};
   }
 
 }  // namespace zs

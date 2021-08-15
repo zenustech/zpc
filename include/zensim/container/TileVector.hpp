@@ -347,6 +347,8 @@ namespace zs {
     using const_reference = typename TileVectorT::const_reference;
     using size_type = typename TileVectorT::size_type;
     using channel_counter_type = typename TileVectorT::channel_counter_type;
+    using whole_view_type = TileVectorUnnamedView<Space, TileVectorT, false>;
+    using tile_view_type = TileVectorUnnamedView<Space, TileVectorT, true>;
     static constexpr auto lane_width = TileVectorT::lane_width;
 
     constexpr TileVectorUnnamedView() = default;
@@ -357,6 +359,7 @@ namespace zs {
           _numChannels{tilevector.numChannels()} {}
     explicit constexpr TileVectorUnnamedView(pointer base, size_type s, channel_counter_type nchns)
         : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
+
     constexpr reference operator()(channel_counter_type chn, const size_type i) {
       if constexpr (WithinTile)
         return *(_vector + chn * lane_width + i);
@@ -406,6 +409,7 @@ namespace zs {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
     }
 
+    constexpr size_type size() const noexcept { return _vectorSize; }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
 
     pointer _vector{nullptr};
@@ -420,6 +424,8 @@ namespace zs {
     using value_type = typename TileVectorT::value_type;
     using size_type = typename TileVectorT::size_type;
     using channel_counter_type = typename TileVectorT::channel_counter_type;
+    using whole_view_type = TileVectorUnnamedView<Space, const TileVectorT, false>;
+    using tile_view_type = TileVectorUnnamedView<Space, const TileVectorT, true>;
     static constexpr auto lane_width = TileVectorT::lane_width;
 
     constexpr TileVectorUnnamedView() = default;
@@ -431,6 +437,7 @@ namespace zs {
     explicit constexpr TileVectorUnnamedView(const_pointer base, size_type s,
                                              channel_counter_type nchns)
         : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
+
     constexpr const_reference operator()(channel_counter_type chn, const size_type i) const {
       if constexpr (WithinTile)
         return *(_vector + chn * lane_width + i);
@@ -472,6 +479,7 @@ namespace zs {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
     }
 
+    constexpr size_type size() const noexcept { return _vectorSize; }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
 
     const_pointer _vector{nullptr};
@@ -497,6 +505,8 @@ namespace zs {
     using const_reference = typename TileVectorT::const_reference;
     using size_type = typename TileVectorT::size_type;
     using channel_counter_type = typename TileVectorT::channel_counter_type;
+    using whole_view_type = TileVectorView<Space, TileVectorT, false>;
+    using tile_view_type = TileVectorView<Space, TileVectorT, true>;
     static constexpr auto lane_width = TileVectorT::lane_width;
 
     constexpr TileVectorView() = default;
@@ -586,6 +596,8 @@ namespace zs {
     using const_reference = typename TileVectorT::const_reference;
     using size_type = typename TileVectorT::size_type;
     using channel_counter_type = typename TileVectorT::channel_counter_type;
+    using whole_view_type = TileVectorView<Space, const TileVectorT, false>;
+    using tile_view_type = TileVectorView<Space, const TileVectorT, true>;
     static constexpr auto lane_width = TileVectorT::lane_width;
 
     constexpr TileVectorView() = default;

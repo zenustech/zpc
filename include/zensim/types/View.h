@@ -231,7 +231,7 @@ namespace zs {
     }
 
     template <attrib_e AccessEntry = entry_e>
-    constexpr value_type get(size_type i, wrapv<AccessEntry> = {}) const {
+    constexpr auto get(size_type i, wrapv<AccessEntry> = {}) const {
       if constexpr (AccessEntry == entry_e)
         return traits::get(_structure, _chn, i);
       else if constexpr (AccessEntry == attrib_e::scalar && entry_e == attrib_e::vector)

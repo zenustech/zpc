@@ -9,28 +9,27 @@
 namespace zs {
 
   struct ImplicitMPMSystem {
-    ImplicitMPMSystem(MPMSimulator& simulator, float dt) : simulator{simulator}, dt{dt} {}
+    ImplicitMPMSystem(MPMSimulator& simulator, float dt, std::size_t partI)
+        : simulator{simulator}, partI{partI}, dt{dt} {}
 
     template <class ExecutionPolicy, typename In, typename Out>
     void multiply(ExecutionPolicy&& policy, In&& in, Out&& out) {
       constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
       constexpr auto execTag = wrapv<space>{};
-      for (std::size_t partI = 0; partI != simulator.numPartitions(); ++partI) {
-        auto mh = simulator.memDsts[partI];
-        for (auto&& [modelId, objId] : simulator.groups[partI]) {
-          auto& [model, objId_] = simulator.models[modelId];
-          assert_with_msg(objId_ == objId, "[MPMSimulator] model-object id conflicts, error build");
-          if (objId_ != objId) throw std::runtime_error("WTF???");
-          match(
-              [&, this, did = mh.devid()](auto& constitutiveModel, auto& partition, auto& obj)
-                  -> std::enable_if_t<
-                      remove_cvref_t<decltype(obj)>::dim == remove_cvref_t<decltype(partition)>::dim
-                      && remove_cvref_t<decltype(obj)>::dim == RM_CVREF_T(in)::dim> {
-                policy({obj.size()}, G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt,
-                                                   constitutiveModel, in, out, partition, obj});
-              },
-              [](...) {})(model, simulator.partitions[partI], simulator.particles[objId]);
-        }
+      auto mh = simulator.memDsts[partI];
+      for (auto&& [modelId, objId] : simulator.groups[partI]) {
+        auto& [model, objId_] = simulator.models[modelId];
+        assert_with_msg(objId_ == objId, "[MPMSimulator] model-object id conflicts, error build");
+        if (objId_ != objId) throw std::runtime_error("WTF???");
+        match(
+            [&, this, did = mh.devid()](auto& constitutiveModel, auto& partition, auto& obj)
+                -> std::enable_if_t<remove_cvref_t<decltype(obj)>::dim
+                                        == remove_cvref_t<decltype(partition)>::dim
+                                    && remove_cvref_t<decltype(obj)>::dim == RM_CVREF_T(in)::dim> {
+              policy({obj.size()}, G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt,
+                                                 constitutiveModel, in, out, partition, obj});
+            },
+            [](...) {})(model, simulator.partitions[partI], simulator.particles[objId]);
       }
       // DofCompwiseUnaryOp{std::negate<void>{}}(policy, FWD(in), FWD(out));
       // policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
@@ -70,39 +69,67 @@ namespace zs {
     template <class ExecutionPolicy, typename InOut>
     void project(ExecutionPolicy&& policy, InOut&& inout) {
       constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-      constexpr auto execTag = wrapv<space>{};
-      for (std::size_t partI = 0; partI != simulator.numPartitions(); ++partI) {
-        auto mh = simulator.memDsts[partI];
-        assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
-        for (auto& boundary : simulator.boundaries) {
-          match(
-              [&, did = mh.devid()](auto& collider, auto& partition)
-                  -> std::enable_if_t<remove_cvref_t<decltype(collider)>::dim
-                                          == remove_cvref_t<decltype(partition)>::dim
-                                      && remove_cvref_t<decltype(collider)>::dim
-                                             == RM_CVREF_T(inout)::dim> {
-                using Grid = remove_cvref_t<decltype(inout.getStructure())>;
-                fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
-                if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
-                  policy({(std::size_t)inout.size()},
-                         Projector{Collider{proxy<space>(collider.levelset), collider.type},
-                                   proxy<space>(partition), inout});
-                else {
-                  policy({(std::size_t)inout.size()},
-                         Projector{collider, proxy<space>(partition), inout});
-                }
-              },
-              [](...) {})(boundary, simulator.partitions[partI]);
-        }
+      auto mh = simulator.memDsts[partI];
+      assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
+      for (auto& boundary : simulator.boundaries) {
+        match(
+            [&, did = mh.devid()](auto& collider, auto& partition)
+                -> std::enable_if_t<remove_cvref_t<decltype(collider)>::dim
+                                        == remove_cvref_t<decltype(partition)>::dim
+                                    && remove_cvref_t<decltype(collider)>::dim
+                                           == RM_CVREF_T(inout)::dim> {
+              using Grid = remove_cvref_t<decltype(inout.getStructure())>;
+              fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
+              if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
+                policy({(std::size_t)inout.size()},
+                       Projector{Collider{proxy<space>(collider.levelset), collider.type},
+                                 proxy<space>(partition), inout});
+              else {
+                policy({(std::size_t)inout.size()},
+                       Projector{collider, proxy<space>(partition), inout});
+              }
+            },
+            [](...) {})(boundary, simulator.partitions[partI]);
       }
     }
 
+    template <typename DofA, typename DofB, typename DofC> struct DivPernodeMass {
+      using Index = typename DofA::size_type;
+      DivPernodeMass(DofA a, DofB b, DofC c) : a{a}, b{b}, c{c} {}
+
+      constexpr void operator()(Index node) {
+        if (b.get(node) != 0) c.set(node, a.get(node, vector_v) / b.get(node));
+      }
+      DofA a;
+      DofB b;
+      DofC c;
+    };
+
     template <class ExecutionPolicy, typename In, typename Out>
     void precondition(ExecutionPolicy&& policy, In&& in, Out&& out) {
-      policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
+      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      auto mh = simulator.memDsts[partI];
+      assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
+      match(
+          [&, did = mh.devid()](auto& partition, auto& grids)
+              -> std::enable_if_t<remove_cvref_t<decltype(partition)>::dim == RM_CVREF_T(in)::dim> {
+            fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
+
+            if (partition.size() < 0 || in.size() != grids.grid().size()) {
+              fmt::print("{}, {}, {}\n", partition.size(), in.size(), grids.grid().size());
+	      getchar();
+            }
+
+            auto gridm = dof_view<space, 1>(grids.grid(), 0);
+            // DofCompwiseOp{std::divides<void>{}}(policy, in, gridm, out);
+            policy({in.size()}, DivPernodeMass{in, gridm, out});
+          },
+          [](...) {})(simulator.partitions[partI], simulator.grids[partI]);
+      // policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
     }
 
     MPMSimulator& simulator;
+    std::size_t partI;
     float dt;
   };
 

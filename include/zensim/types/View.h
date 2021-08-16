@@ -266,31 +266,31 @@ namespace zs {
 
   ///
   template <execspace_e space, typename T> constexpr decltype(auto) dof_view(T&& t) {
-    return DofView<space, T, dof_traits<space, T>::deduced_dim>{wrapv<space>{}, t};
+    return DofView<space, T, dof_traits<space, T>::deduced_dim>{wrapv<space>{}, FWD(t)};
   }
   template <execspace_e space, int dim, typename T> constexpr decltype(auto) dof_view(T&& t) {
-    return DofView<space, T, dim>{wrapv<space>{}, t};
+    return DofView<space, T, dim>{wrapv<space>{}, FWD(t)};
   }
 
   template <execspace_e space, typename T>
   constexpr decltype(auto) dof_view(T&& t, typename dof_traits<space, T>::channel_counter_type c) {
-    return DofView<space, T, dof_traits<space, T>::deduced_dim, true>{wrapv<space>{}, t, c};
+    return DofView<space, T, dof_traits<space, T>::deduced_dim, true>{wrapv<space>{}, FWD(t), c};
   }
   template <execspace_e space, int dim, typename T>
   constexpr decltype(auto) dof_view(T&& t, typename dof_traits<space, T>::channel_counter_type c) {
-    return DofView<space, T, dim, true>{wrapv<space>{}, t, c};
+    return DofView<space, T, dim, true>{wrapv<space>{}, FWD(t), c};
   }
 
   template <execspace_e space, typename T>
   constexpr decltype(auto) dof_view(T&& t, const SmallString& str,
-                                    typename dof_traits<space, T>::channel_counter_type c = 0) {
-    return DofView<space, T, dof_traits<space, T>::deduced_dim, true>{wrapv<space>{}, t,
+                                    typename dof_traits<space, T>::channel_counter_type c) {
+    return DofView<space, T, dof_traits<space, T>::deduced_dim, true>{wrapv<space>{}, FWD(t),
                                                                       t.getChannelOffset(str) + c};
   }
   template <execspace_e space, int dim, typename T>
   constexpr decltype(auto) dof_view(T&& t, const SmallString& str,
-                                    typename dof_traits<space, T>::channel_counter_type c = 0) {
-    return DofView<space, T, dim, true>{wrapv<space>{}, t, t.getChannelOffset(str) + c};
+                                    typename dof_traits<space, T>::channel_counter_type c) {
+    return DofView<space, T, dim, true>{wrapv<space>{}, FWD(t), t.getChannelOffset(str) + c};
   }
 
 }  // namespace zs

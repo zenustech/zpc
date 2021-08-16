@@ -327,6 +327,7 @@ namespace zs {
           _dx{grids._dx} {}
 
     template <grid_e category = grid_e::collocated> struct Block {
+      static constexpr auto block_space() noexcept { return GridsView::block_space(); }
       constexpr Block(grid_block_view_t tile, value_type dx) noexcept : block{tile}, dx{dx} {}
 
       template <typename Ti>
@@ -358,8 +359,26 @@ namespace zs {
       value_type dx;
     };
     template <grid_e category = grid_e::collocated> struct Grid {
+      using size_type = typename GridsView::size_type;
+      using value_type = typename GridsView::value_type;
+      static constexpr int dim = GridsView::dim;
+      static constexpr auto side_length = GridsView::side_length;
+      static constexpr auto block_space() noexcept { return GridsView::block_space(); }
+      static constexpr auto cellid_to_coord(cell_index_type cellid) noexcept {
+        return GridsView::cellid_to_coord(cellid);
+      }
+      template <typename Ti>
+      static constexpr auto coord_to_cellid(const vec<Ti, dim> &coord) noexcept {
+        return GridsView::coord_to_cellid(coord);
+      }
+      template <typename Ti>
+      static constexpr auto global_coord_to_cellid(const vec<Ti, dim> &coord) noexcept {
+        return GridsView::global_coord_to_cellid(coord);
+      }
       constexpr Grid(grid_view_t grid, value_type dx) noexcept : grid{grid}, dx{dx} {}
 
+      constexpr auto block(size_type i) { return Block<category>{grid.tile(i), dx}; }
+      constexpr auto block(size_type i) const { return Block<category>{grid.tile(i), dx}; }
       template <typename Ti>
       constexpr auto &operator()(channel_counter_type c, const vec<Ti, dim> &loc) noexcept {
         return grid(c, coord_to_cellid(loc));

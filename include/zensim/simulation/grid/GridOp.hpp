@@ -50,13 +50,15 @@ namespace zs {
       -> ApplyBoundaryConditionOnGridBlocks<
           Collider<SparseLevelSetView<space, SparseLevelSet<3>>>, HashTableView<space, TableT>,
           GridBlocksView<space, GridBlocks<GridBlock<V, d, chnbits, dombits>>>>;
-  template <execspace_e space, typename LevelsetT, typename TableT, typename T, int d, auto l>
-  ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT, Grids<T, d, l>)
+  template <execspace_e space, typename LevelsetT, typename TableT, typename T, int d, auto l,
+            typename... Sth>
+  ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Collider<LevelsetT>, TableT, Grids<T, d, l>,
+                                     Sth...)
       -> ApplyBoundaryConditionOnGridBlocks<Collider<LevelsetT>, HashTableView<space, TableT>,
                                             GridsView<space, Grids<T, d, l>>>;
-  template <execspace_e space, typename TableT, typename T, int d, auto l>
+  template <execspace_e space, typename TableT, typename T, int d, auto l, typename... Sth>
   ApplyBoundaryConditionOnGridBlocks(wrapv<space>, LevelSetBoundary<SparseLevelSet<3>>, TableT,
-                                     Grids<T, d, l>)
+                                     Grids<T, d, l>, Sth...)
       -> ApplyBoundaryConditionOnGridBlocks<Collider<SparseLevelSetView<space, SparseLevelSet<3>>>,
                                             HashTableView<space, TableT>,
                                             GridsView<space, Grids<T, d, l>>>;
@@ -275,15 +277,18 @@ namespace zs {
     template <typename Boundary = ColliderT,
               enable_if_t<!is_levelset_boundary<Boundary>::value> = 0>
     ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Boundary &collider, TableT &table,
-                                       GridsT &grids)
-        : collider{collider}, partition{proxy<space>(table)}, grids{proxy<space>(grids)} {}
+                                       GridsT &grids, float t = 0.f)
+        : collider{collider},
+          partition{proxy<space>(table)},
+          grids{proxy<space>(grids)},
+          curTime{t} {}
     template <typename Boundary, enable_if_t<is_levelset_boundary<Boundary>::value> = 0>
     ApplyBoundaryConditionOnGridBlocks(wrapv<space>, Boundary &boundary, TableT &table,
-                                       GridsT &grids)
+                                       GridsT &grids, float t = 0.f)
         : collider{Collider{proxy<space>(boundary.levelset), boundary.type/*, boundary.s,
                             boundary.dsdt, boundary.R, boundary.omega, boundary.b, boundary.dbdt*/}},
           partition{proxy<space>(table)},
-          grids{proxy<space>(grids)} {}
+          grids{proxy<space>(grids)}, curTime{t} {}
 
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
@@ -295,7 +300,15 @@ namespace zs {
         auto pos = (blockkey * (value_type)grids_t::side_length + grids_t::cellid_to_coord(cellid))
                    * grids._dx;
 
+#if 1
         collider.resolveCollision(pos, vel);
+#else
+        float vy = sinf(curTime * 300) * 2;
+        if (pos[2] < 0) {
+          vel[0] = vel[2] = 0.f;
+          vel[1] = vy;
+        }
+#endif
 
         block.set(1, cellid, vel);
       }
@@ -304,6 +317,7 @@ namespace zs {
     collider_t collider;
     partition_t partition;
     grids_t grids;
+    float curTime;
   };
 
 }  // namespace zs

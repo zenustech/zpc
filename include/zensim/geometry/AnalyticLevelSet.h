@@ -5,7 +5,7 @@
 
 namespace zs {
 
-  enum class analytic_geometry_e { Plane, Cuboid, Sphere, Torus };
+  enum class analytic_geometry_e { Plane, Cuboid, Sphere, Cylinder, Torus };
 
   template <analytic_geometry_e geomT, typename DataType, int d> struct AnalyticLevelSet;
 
@@ -101,8 +101,74 @@ namespace zs {
     T _radius{};
   };
 
-  template <typename T, int dim> using GenericAnalyticLevelSet
-      = variant<AnalyticLevelSet<analytic_geometry_e::Cuboid, T, dim>>;
+  template <typename DataType, int d>
+  struct AnalyticLevelSet<analytic_geometry_e::Cylinder, DataType, d>
+      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Cylinder, DataType, d>, DataType,
+                          d> {
+    static_assert(d == 3, "dimension of cylinder must be 3");
+    using T = DataType;
+    static constexpr int dim = d;
+    using TV = vec<T, dim>;
+
+    AnalyticLevelSet() = default;
+    ~AnalyticLevelSet() = default;
+    constexpr AnalyticLevelSet(TV bottom, T radius, T length, int ori)
+        : _bottom{bottom}, _radius{radius}, _length{length}, _d{ori} {}
+
+    constexpr T getSignedDistance(const TV &X) const noexcept {
+      vec<T, dim - 1> diffR{};
+      for (int k = 0, i = 0; k != dim; ++k)
+        if (k != _d) diffR[i++] = X[k] - _bottom[k];
+      auto disR = gcem::sqrt(diffR.l2NormSqr());
+      bool outsideCircle = disR > _radius;
+
+      if (X[_d] < _bottom[_d]) {
+        T disL = _bottom[_d] - X[_d];
+        if (outsideCircle)
+          return gcem::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
+        else
+          return disL;
+      } else if (X[_d] > _bottom[_d] + _length) {
+        T disL = X[_d] - (_bottom[_d] + _length);
+        if (outsideCircle)
+          return gcem::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
+        else
+          return disL;
+      } else {
+        if (outsideCircle)
+          return disR - _radius;
+        else {
+          T disL = std::min(_bottom[_d] + _length - X[_d], X[_d] - _bottom[_d]);
+          return -std::min(disL, _radius - disR);
+        }
+      }
+    }
+    constexpr TV getNormal(const TV &X) const noexcept {
+      TV diff{}, v1{}, v2{};
+      T eps = (T)1e-6;
+      /// compute a local partial derivative
+      for (int i = 0; i < dim; i++) {
+        v1 = X;
+        v2 = X;
+        v1(i) = X(i) + eps;
+        v2(i) = X(i) - eps;
+        diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
+      }
+      return diff.normalized();
+    }
+    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr decltype(auto) do_getBoundingBox() const noexcept {
+      auto diffR = TV::uniform(_radius);
+      diffR[_d] = (T)0;
+      auto diffL = TV::zeros();
+      diffL[_d] = _length;
+      return std::make_tuple(_bottom - diffR, _bottom + diffR + diffL);
+    }
+
+    TV _bottom{};
+    T _radius{}, _length{};
+    int _d{};
+  };
 
   /// Bounding Volume
   /// AABBBox

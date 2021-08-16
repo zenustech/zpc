@@ -83,6 +83,7 @@ namespace zs {
       = variant<Collider<AnalyticLevelSet<analytic_geometry_e::Plane, T, dim>>,
                 Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, T, dim>>,
                 Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>>,
+                Collider<AnalyticLevelSet<analytic_geometry_e::Cylinder, T, dim>>,
                 Collider<LevelSet<T, dim>>, Collider<HeightField<T>>>;
 
   template <typename LS> struct LevelSetBoundary {
@@ -129,6 +130,7 @@ namespace zs {
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Plane, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 3>>,
+                                  Collider<AnalyticLevelSet<analytic_geometry_e::Cylinder, f32, 3>>,
                                   Collider<LevelSet<f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, f32, 2>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 2>>,

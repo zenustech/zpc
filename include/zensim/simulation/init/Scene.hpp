@@ -53,6 +53,8 @@ namespace zs {
                                        float ppc);
     BuilderForSceneParticle &addCube(std::vector<float> c, float len, float dx, float ppc);
     BuilderForSceneParticle &addSphere(std::vector<float> c, float r, float dx, float ppc);
+    BuilderForSceneParticle &addCylinder(std::vector<float> c, float r, float length, int d,
+                                         float dx, float ppc);
 
     /// constitutive models
     BuilderForSceneParticle &setConstitutiveModel(constitutive_model_e);

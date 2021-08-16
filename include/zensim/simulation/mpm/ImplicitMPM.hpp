@@ -28,13 +28,13 @@ namespace zs {
         auto blockid = dofi / grids_t::block_space();
         auto cellid = dofi % grids_t::block_space();
         auto blockkey = partition._activeKeys[blockid];
-        auto block = griddof.getStructure()[blockid];
+        auto block = griddof.getStructure().block(blockid);
 
         if (block(0, cellid) > 0) {
-          auto vel = block.pack<grids_t::dim>(1, cellid);
+          auto vel = block.pack<GridDofView::dim>(1, cellid);
           auto pos
               = (blockkey * (value_type)grids_t::side_length + grids_t::cellid_to_coord(cellid))
-                * griddof.getStructure()._dx;
+                * griddof.getStructure().dx;
 
           collider.resolveCollision(pos, vel);
 
@@ -58,7 +58,8 @@ namespace zs {
           match(
               [&, did = mh.devid()](auto& collider, auto& partition)
                   -> std::enable_if_t<remove_cvref_t<decltype(collider)>::dim
-                                      == remove_cvref_t<decltype(partition)>::dim> {
+                                          == remove_cvref_t<decltype(partition)>::dim
+                                      && remove_cvref_t<decltype(collider)>::dim == RM_CVREF_T(inout)::dim> {
                 using Grid = remove_cvref_t<decltype(inout.getStructure())>;
                 fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
                 if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)

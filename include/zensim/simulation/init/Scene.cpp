@@ -82,6 +82,21 @@ namespace zs {
     if (positions.size()) particlePositions.push_back(std::move(positions));
     return *this;
   }
+  BuilderForSceneParticle &BuilderForSceneParticle::addCylinder(std::vector<float> c, float r,
+                                                                float length, int d, float dx,
+                                                                float ppc) {
+    using ALS = AnalyticLevelSet<analytic_geometry_e::Cylinder, float, 3>;
+    ParticleModel positions{};
+    if (c.size() == 3)
+      positions = sample_from_levelset(ALS{vec<float, 3>{c[0], c[1], c[2]}, r, length, d}, dx, ppc);
+    else
+      fmt::print(fg(fmt::color::red), "sphere build config dimension error center{}\n", c.size());
+    fmt::print(fg(fmt::color::green),
+               "done sampling {} particles [sphere ({}, {}, {}), {}] with (dx: {}, ppc: {})\n",
+               positions.size(), c[0], c[1], c[2], r, dx, ppc);
+    if (positions.size()) particlePositions.push_back(std::move(positions));
+    return *this;
+  }
 
   BuilderForSceneParticle &BuilderForSceneParticle::setConstitutiveModel(
       constitutive_model_e model) {

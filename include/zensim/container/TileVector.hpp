@@ -253,15 +253,13 @@ namespace zs {
       }
       if (newSize > oldSize) {
         const auto oldCapacity = capacity();
-        const auto newCapacity = geometric_size_growth(newSize);
-        if (newCapacity > oldCapacity) {
+        if (newSize > oldCapacity) {
           /// virtual memory way
           /// conventional way
-          TileVector tmp{_allocator, _tags, newCapacity};
+          TileVector tmp{_allocator, _tags, newSize};
           if (size())
             copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
                  MemoryEntity{memoryLocation(), (void *)data()}, numTiles() * tileBytes());
-          tmp._size = newSize;
           swap(tmp);
           return;
         }

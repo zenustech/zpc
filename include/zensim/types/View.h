@@ -284,13 +284,16 @@ namespace zs {
   template <execspace_e space, typename T>
   constexpr decltype(auto) dof_view(T&& t, const SmallString& str,
                                     typename dof_traits<space, T>::channel_counter_type c) {
-    return DofView<space, T, dof_traits<space, T>::deduced_dim, true>{wrapv<space>{}, FWD(t),
-                                                                      t.getChannelOffset(str) + c};
+    return DofView<space, T, dof_traits<space, T>::deduced_dim, true>{
+        wrapv<space>{}, FWD(t),
+        (typename dof_traits<space, T>::channel_counter_type)(t.getChannelOffset(str) + c)};
   }
   template <execspace_e space, int dim, typename T>
   constexpr decltype(auto) dof_view(T&& t, const SmallString& str,
                                     typename dof_traits<space, T>::channel_counter_type c) {
-    return DofView<space, T, dim, true>{wrapv<space>{}, FWD(t), t.getChannelOffset(str) + c};
+    return DofView<space, T, dim, true>{
+        wrapv<space>{}, FWD(t),
+        (typename dof_traits<space, T>::channel_counter_type)(t.getChannelOffset(str) + c)};
   }
 
 }  // namespace zs

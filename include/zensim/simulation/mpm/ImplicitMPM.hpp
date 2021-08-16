@@ -59,16 +59,18 @@ namespace zs {
               [&, did = mh.devid()](auto& collider, auto& partition)
                   -> std::enable_if_t<remove_cvref_t<decltype(collider)>::dim
                                           == remove_cvref_t<decltype(partition)>::dim
-                                      && remove_cvref_t<decltype(collider)>::dim == RM_CVREF_T(inout)::dim> {
+                                      && remove_cvref_t<decltype(collider)>::dim
+                                             == RM_CVREF_T(inout)::dim> {
                 using Grid = remove_cvref_t<decltype(inout.getStructure())>;
                 fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
                 if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
-                  policy({(std::size_t)partition.size(), (std::size_t)Grid::block_space()},
+                  policy({(std::size_t)inout.size()},
                          Projector{Collider{proxy<space>(collider.levelset), collider.type},
                                    proxy<space>(partition), inout});
-                else
-                  policy({(std::size_t)partition.size(), (std::size_t)Grid::block_space()},
+                else {
+                  policy({(std::size_t)inout.size()},
                          Projector{collider, proxy<space>(partition), inout});
+                }
               },
               [](...) {})(boundary, simulator.partitions[partI]);
         }

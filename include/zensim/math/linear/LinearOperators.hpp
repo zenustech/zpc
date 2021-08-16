@@ -19,14 +19,14 @@ namespace zs {
     DofViewA dofa;
     DofViewB dofb;
   };
-  template <typename DofView> struct DofFill {
+  template <typename DofView, typename V> struct DofFill {
     using size_type = typename DofView::size_type;
-    using value_type = typename DofView::value_type;
-    constexpr DofFill(DofView a, value_type v) : dof{a}, v{v} {}
+    using value_type = V;
+    constexpr DofFill(DofView a, V v) : dof{a}, v{v} {}
     constexpr void operator()(size_type i) { dof.set(i, v); }
 
     DofView dof;
-    value_type v;
+    V v;
   };
 
   template <typename T> struct LinearCombineOp {

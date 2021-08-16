@@ -41,12 +41,13 @@ namespace zs {
                 -> std::enable_if_t<remove_cvref_t<decltype(obj)>::dim
                                         == remove_cvref_t<decltype(partition)>::dim
                                     && remove_cvref_t<decltype(obj)>::dim == RM_CVREF_T(in)::dim> {
+              policy(range(out.numEntries()), DofFill{out, 0});
               // compute f_i (out)
-              policy({obj.size()}, G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt,
-                                                 constitutiveModel, in, out, partition, obj});
+              policy(range(obj.size()), G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt,
+                                                      constitutiveModel, in, out, partition, obj});
               // update v_i
               auto gridm = dof_view<space, 1>(grids.grid(), 0);
-              policy({in.size()}, MulDtSqrDivMass{out, gridm, out, in, dt});
+              policy(range(in.size()), MulDtSqrDivMass{out, gridm, out, in, dt});
             },
             [](...) {})(model, simulator.partitions[partI], simulator.particles[objId],
                         simulator.grids[partI]);
@@ -101,11 +102,11 @@ namespace zs {
               using Grid = remove_cvref_t<decltype(inout.getStructure())>;
               fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
               if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
-                policy({(std::size_t)inout.size()},
+                policy(range((std::size_t)inout.size()),
                        Projector{Collider{proxy<space>(collider.levelset), collider.type},
                                  proxy<space>(partition), inout});
               else {
-                policy({(std::size_t)inout.size()},
+                policy(range((std::size_t)inout.size()),
                        Projector{collider, proxy<space>(partition), inout});
               }
             },
@@ -135,7 +136,7 @@ namespace zs {
               -> std::enable_if_t<remove_cvref_t<decltype(partition)>::dim == RM_CVREF_T(in)::dim> {
             fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
             auto gridm = dof_view<space, 1>(grids.grid(), 0);
-            policy({in.size()}, DivPernodeMass{in, gridm, out});
+            policy(range(in.size()), DivPernodeMass{in, gridm, out});
           },
           [](...) {})(simulator.partitions[partI], simulator.grids[partI]);
       // policy(range(out.size()), DofAssign{FWD(in), FWD(out)});

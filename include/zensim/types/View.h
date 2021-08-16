@@ -151,7 +151,9 @@ namespace zs {
     }
     template <typename V> constexpr auto set(size_type i, V&& v = {})
         -> std::enable_if_t<std::is_lvalue_reference_v<decltype(ref(i))>> {
-      if constexpr (std::is_assignable_v<decltype(ref(i)), V>) traits::set(_structure, i, FWD(v));
+      if constexpr ((std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
+                    || (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector))
+        traits::set(_structure, i, FWD(v));
       // V is a scalar
       else if constexpr (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
         ref(i / dim)[i % dim] = FWD(v);
@@ -232,8 +234,8 @@ namespace zs {
 
     template <attrib_e AccessEntry = entry_e>
     constexpr auto get(size_type i, wrapv<AccessEntry> = {}) const {
-      if constexpr (AccessEntry == entry_e)
-        return traits::get(_structure, _chn, i);
+      if constexpr (AccessEntry == attrib_e::scalar && entry_e == attrib_e::scalar)
+        return traits::get(_structure, _chn + i % dim, i / dim);
       else if constexpr (AccessEntry == attrib_e::scalar && entry_e == attrib_e::vector)
         return traits::get(_structure, _chn, i / dim)[i % dim];
       else if constexpr (AccessEntry == attrib_e::vector && entry_e == attrib_e::scalar) {
@@ -241,17 +243,18 @@ namespace zs {
         vec<value_type, dim> ret{};
         for (int d = 0; d != dim; ++d) ret(d) = traits::get(_structure, _chn + d, i);
         return ret;
-      }
+      } else if constexpr (AccessEntry == attrib_e::vector && entry_e == attrib_e::vector)
+        return traits::get(_structure, _chn, i);
     }
     template <typename V> constexpr auto set(size_type i, V&& v = {})
         -> std::enable_if_t<std::is_lvalue_reference_v<decltype(ref(i))>> {
-      if constexpr (std::is_assignable_v<decltype(ref(i)), V>)
-        traits::set(_structure, _chn, i, FWD(v));
+      if constexpr (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
+        traits::ref(_structure, _chn + i % dim, i / dim) = FWD(v);
       // V is a scalar
       else if constexpr (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
         ref(i / dim)[i % dim] = FWD(v);
       // V is a vector
-      else if constexpr (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
+      else if constexpr (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar) {
         if constexpr (remove_cvref_t<V>::extent == dim) {
           /// more complex strategy
           if constexpr (traits::deduced_dim == dim)
@@ -261,6 +264,8 @@ namespace zs {
             for (int d = 0; d != dim; ++d) ref(base + d) = v[d];
           }
         }
+      } else if constexpr (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector)
+        ref(i) = FWD(v);
     }
   };
 

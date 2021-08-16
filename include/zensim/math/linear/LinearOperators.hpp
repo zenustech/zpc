@@ -1,8 +1,8 @@
 #pragma once
-#include "zensim/types/View.h"
-#include "zensim/types/Polymorphism.h"
 #include "zensim/container/Vector.hpp"
 #include "zensim/meta/Functional.h"
+#include "zensim/types/Polymorphism.h"
+#include "zensim/types/View.h"
 
 namespace zs {
 
@@ -18,6 +18,15 @@ namespace zs {
 
     DofViewA dofa;
     DofViewB dofb;
+  };
+  template <typename DofView> struct DofFill {
+    using size_type = typename DofView::size_type;
+    using value_type = typename DofView::value_type;
+    constexpr DofFill(DofView a, value_type v) : dof{a}, v{v} {}
+    constexpr void operator()(size_type i) { dof.set(i, v); }
+
+    DofView dof;
+    value_type v;
   };
 
   template <typename T> struct LinearCombineOp {

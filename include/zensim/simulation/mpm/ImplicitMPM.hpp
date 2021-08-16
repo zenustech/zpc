@@ -12,6 +12,20 @@ namespace zs {
     ImplicitMPMSystem(MPMSimulator& simulator, float dt, std::size_t partI)
         : simulator{simulator}, partI{partI}, dt{dt} {}
 
+    template <typename DofA, typename DofB, typename DofC, typename DofD> struct MulDtSqrDivMass {
+      using Index = typename DofA::size_type;
+      MulDtSqrDivMass(DofA a, DofB b, DofC c, DofD d, float dt) : f{a}, m{b}, c{c}, x0{d}, dt{dt} {}
+
+      constexpr void operator()(Index node) {
+        if (m.get(node) != 0)
+          c.set(node, f.get(node, vector_v) * dt / m.get(node) * dt + x0.get(node, vector_v));
+      }
+      DofA f;
+      DofB m;
+      DofC c;
+      DofD x0;
+      float dt;
+    };
     template <class ExecutionPolicy, typename In, typename Out>
     void multiply(ExecutionPolicy&& policy, In&& in, Out&& out) {
       constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
@@ -22,14 +36,20 @@ namespace zs {
         assert_with_msg(objId_ == objId, "[MPMSimulator] model-object id conflicts, error build");
         if (objId_ != objId) throw std::runtime_error("WTF???");
         match(
-            [&, this, did = mh.devid()](auto& constitutiveModel, auto& partition, auto& obj)
+            [&, this, did = mh.devid()](auto& constitutiveModel, auto& partition, auto& obj,
+                                        auto& grids)
                 -> std::enable_if_t<remove_cvref_t<decltype(obj)>::dim
                                         == remove_cvref_t<decltype(partition)>::dim
                                     && remove_cvref_t<decltype(obj)>::dim == RM_CVREF_T(in)::dim> {
+              // compute f_i (out)
               policy({obj.size()}, G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt,
                                                  constitutiveModel, in, out, partition, obj});
+              // update v_i
+              auto gridm = dof_view<space, 1>(grids.grid(), 0);
+              policy({in.size()}, MulDtSqrDivMass{out, gridm, out, in, dt});
             },
-            [](...) {})(model, simulator.partitions[partI], simulator.particles[objId]);
+            [](...) {})(model, simulator.partitions[partI], simulator.particles[objId],
+                        simulator.grids[partI]);
       }
       // DofCompwiseUnaryOp{std::negate<void>{}}(policy, FWD(in), FWD(out));
       // policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
@@ -114,14 +134,7 @@ namespace zs {
           [&, did = mh.devid()](auto& partition, auto& grids)
               -> std::enable_if_t<remove_cvref_t<decltype(partition)>::dim == RM_CVREF_T(in)::dim> {
             fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
-
-            if (partition.size() < 0 || in.size() != grids.grid().size()) {
-              fmt::print("{}, {}, {}\n", partition.size(), in.size(), grids.grid().size());
-	      getchar();
-            }
-
             auto gridm = dof_view<space, 1>(grids.grid(), 0);
-            // DofCompwiseOp{std::divides<void>{}}(policy, in, gridm, out);
             policy({in.size()}, DivPernodeMass{in, gridm, out});
           },
           [](...) {})(simulator.partitions[partI], simulator.grids[partI]);

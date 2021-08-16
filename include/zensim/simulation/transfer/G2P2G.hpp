@@ -119,7 +119,7 @@ namespace zs {
             }
           }
         }
-        contrib *= (dt * dt * D_inv);
+        contrib *= D_inv;
 
         for (auto loc : arena.range()) {
           auto [blockcoord, local_index]

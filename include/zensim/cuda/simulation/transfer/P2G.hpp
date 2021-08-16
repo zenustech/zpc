@@ -208,15 +208,8 @@ namespace zs {
         using VT = typename grids_t::value_type;
         auto arena = make_local_arena((VT)dx, local_pos);
         for (auto loc : arena.range()) {
-#if 0
           auto [grid_block, local_index]
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
-#else
-          auto [blockcoord, local_index]
-              = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length);
-          auto blockno = partition.query(blockcoord);
-          auto grid_block = grids.block(blockno);
-#endif
           auto xixp = arena.diff(loc);
           VT W = arena.weight(loc);
           VT wm = mass * W;

@@ -4,6 +4,7 @@
 #include "zensim/geometry/Structurefree.hpp"
 #include "zensim/math/linear/LinearOperators.hpp"
 #include "zensim/simulation/mpm/Simulator.hpp"
+#include "zensim/simulation/transfer/G2P2G.hpp"
 
 namespace zs {
 
@@ -12,8 +13,27 @@ namespace zs {
 
     template <class ExecutionPolicy, typename In, typename Out>
     void multiply(ExecutionPolicy&& policy, In&& in, Out&& out) {
+      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr auto execTag = wrapv<space>{};
+      for (std::size_t partI = 0; partI != simulator.numPartitions(); ++partI) {
+        auto mh = simulator.memDsts[partI];
+        for (auto&& [modelId, objId] : simulator.groups[partI]) {
+          auto& [model, objId_] = simulator.models[modelId];
+          assert_with_msg(objId_ == objId, "[MPMSimulator] model-object id conflicts, error build");
+          if (objId_ != objId) throw std::runtime_error("WTF???");
+          match(
+              [&, this, did = mh.devid()](auto& constitutiveModel, auto& partition, auto& obj)
+                  -> std::enable_if_t<
+                      remove_cvref_t<decltype(obj)>::dim == remove_cvref_t<decltype(partition)>::dim
+                      && remove_cvref_t<decltype(obj)>::dim == RM_CVREF_T(in)::dim> {
+                policy({obj.size()}, G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt,
+                                                   constitutiveModel, in, out, partition, obj});
+              },
+              [](...) {})(model, simulator.partitions[partI], simulator.particles[objId]);
+        }
+      }
       // DofCompwiseUnaryOp{std::negate<void>{}}(policy, FWD(in), FWD(out));
-      policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
+      // policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
     }
 
     template <typename ColliderView, typename TableView, typename GridDofView> struct Projector {

@@ -131,6 +131,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     simulation/mpm/Simulator.hpp
     simulation/transfer/P2G.hpp
     simulation/transfer/G2P.hpp
+    simulation/transfer/G2P2G.hpp
     simulation/grid/GridOp.hpp
     simulation/particle/ParticleOp.hpp
     simulation/particle/Query.hpp

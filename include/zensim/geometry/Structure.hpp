@@ -167,6 +167,10 @@ namespace zs {
         : Grid{get_memory_source(mre, devid), {{"mvel", 1 + dim}}, dx, 0} {}
 
     void resize(size_type numBlocks) { blocks.resize(numBlocks * block_space()); }
+    bool hasProperty(const SmallString &str) const { return blocks.hasProperty(str); }
+    constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
+      return blocks.getChannelOffset(str);
+    }
 
     grid_storage_t blocks;
     value_type dx;
@@ -379,6 +383,8 @@ namespace zs {
 
       constexpr auto block(size_type i) { return Block<category>{grid.tile(i), dx}; }
       constexpr auto block(size_type i) const { return Block<category>{grid.tile(i), dx}; }
+      constexpr auto operator[](size_type i) { return block(i); }
+      constexpr auto operator[](size_type i) const { return block(i); }
       template <typename Ti>
       constexpr auto &operator()(channel_counter_type c, const vec<Ti, dim> &loc) noexcept {
         return grid(c, coord_to_cellid(loc));

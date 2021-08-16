@@ -137,15 +137,8 @@ namespace zs {
         vec9 C{vec9::zeros()};
         auto arena = make_local_arena(dx, pos);
         for (auto loc : arena.range()) {
-#if 0
           auto [grid_block, local_index]
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
-#else
-          auto [blockcoord, local_index]
-              = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length);
-          auto blockno = partition.query(blockcoord);
-          auto grid_block = grids.block(blockno);
-#endif
           auto xixp = arena.diff(loc);
           float W = arena.weight(loc);
 

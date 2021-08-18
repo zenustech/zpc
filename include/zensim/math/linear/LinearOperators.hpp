@@ -97,51 +97,6 @@ namespace zs {
     Ops _op;
   };
 
-  struct DofDot {
-    template <class ExecutionPolicy, typename DofA, typename DofB>
-    auto operator()(ExecutionPolicy&& policy, const DofA& a, const DofB& b) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-      auto va = dof_view<space>(a);
-      auto vb = dof_view<space>(b);
-      if (va.numEntries() != vb.numEntries()) throw std::runtime_error("dof mismatch!");
-
-      auto tmp = a;
-      auto vtmp = dof_view<space>(tmp);
-      using ValueT = typename std::iterator_traits<RM_CVREF_T(std::begin(vtmp))>::value_type;
-
-      DofCompwiseOp transOp{std::multiplies<void>{}};
-      transOp(policy, va, vb, vtmp);
-
-      Vector<ValueT> init{1, memsrc_e::host};
-      init[0] = (ValueT)0;
-      Vector<ValueT> res = init.clone(b.allocator());
-      reduce(policy, std::begin(vtmp), std::end(vtmp), std::begin(res), (ValueT)0,
-             std::plus<ValueT>{});
-      return res.clone({memsrc_e::host, -1})[0];
-    }
-    template <class ExecutionPolicy, typename Dof>
-    auto operator()(ExecutionPolicy&& policy, const Dof& a) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-      using ValueA =
-          typename std::iterator_traits<RM_CVREF_T(std::begin(dof_view<space>(a)))>::value_type;
-
-      auto va = dof_view<space>(a);
-      auto tmp = a;
-      auto vtmp = dof_view<space>(tmp);
-
-      DofCompwiseOp transOp{std::multiplies<void>{}};
-      transOp(policy, va, va, vtmp);
-
-      Vector<ValueA> init{1, memsrc_e::host};
-      init[0] = 0;
-      Vector<ValueA> res = init.clone(a.allocator());
-      // fmt::print("soon to be reducing {} entries\n", va.numEntries());
-      reduce(policy, std::begin(vtmp), std::end(vtmp), std::begin(res), (ValueA)0,
-             std::plus<ValueA>{});
-      return res.clone({memsrc_e::host, -1})[0];
-    }
-  };
-
   struct IdentitySystem {  ///< accepts dofviews as inputs
     template <class ExecutionPolicy, typename In, typename Out>
     void multiply(ExecutionPolicy&& policy, In&& in, Out&& out) {

@@ -12,18 +12,19 @@ namespace zs {
     ImplicitMPMSystem(MPMSimulator& simulator, float dt, std::size_t partI)
         : simulator{simulator}, partI{partI}, dt{dt} {}
 
-    template <typename DofA, typename DofB, typename DofC, typename DofD> struct MulDtSqrDivMass {
+    template <typename DofA, typename DofB, typename DofC, typename DofD> struct MulDtSqrPlusMV {
       using Index = typename DofA::size_type;
-      MulDtSqrDivMass(DofA a, DofB b, DofC c, DofD d, float dt) : f{a}, m{b}, c{c}, x0{d}, dt{dt} {}
+      static constexpr int dim = DofA::dim;
+      MulDtSqrPlusMV(DofA a, DofB b, DofC c, DofD d, float dt) : f{a}, m{b}, Ax{c}, dv{d}, dt{dt} {}
 
-      constexpr void operator()(Index node) {
-        if (m.get(node) != 0)
-          c.set(node, f.get(node, vector_v) * dt / m.get(node) * dt + x0.get(node, vector_v));
+      constexpr void operator()(Index i) {
+        if (auto mass = m.get(i / dim); mass > 0)
+          Ax.set(i, f.get(i, scalar_v) * dt * dt + dv.get(i, scalar_v) * mass);
       }
       DofA f;
       DofB m;
-      DofC c;
-      DofD x0;
+      DofC Ax;
+      DofD dv;
       float dt;
     };
     template <class ExecutionPolicy, typename In, typename Out>
@@ -36,55 +37,56 @@ namespace zs {
         assert_with_msg(objId_ == objId, "[MPMSimulator] model-object id conflicts, error build");
         if (objId_ != objId) throw std::runtime_error("WTF???");
         match(
-            [&, this, did = mh.devid()](auto& constitutiveModel, auto& partition, auto& obj,
-                                        auto& grids)
-                -> std::enable_if_t<remove_cvref_t<decltype(obj)>::dim
-                                        == remove_cvref_t<decltype(partition)>::dim
-                                    && remove_cvref_t<decltype(obj)>::dim == RM_CVREF_T(in)::dim> {
+            [&, this, did = mh.devid()](
+                auto& constitutiveModel, auto& partition, auto& obj,
+                auto& grids) -> std::enable_if_t<RM_CVREF_T(obj)::dim == RM_CVREF_T(partition)::dim
+                                                 && RM_CVREF_T(obj)::dim == RM_CVREF_T(grids)::dim
+                                                 && RM_CVREF_T(obj)::dim == RM_CVREF_T(in)::dim> {
               policy(range(out.numEntries()), DofFill{out, 0});
               // compute f_i (out)
-              policy(range(obj.size()), G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt,
-                                                      constitutiveModel, in, out, partition, obj});
+              policy(range(obj.size()),
+                     G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt, constitutiveModel,
+                                   proxy<space>(grids.grid()), in, out, partition, obj});
               // update v_i
-              auto gridm = dof_view<space, 1>(grids.grid(), 0);
-              policy(range(in.size()), MulDtSqrDivMass{out, gridm, out, in, dt});
+              auto gridm = dof_view<space, 1>(grids.grid(), "mass", 0);
+              policy(range(in.numEntries()), MulDtSqrPlusMV{out, gridm, out, in, dt});
             },
             [](...) {})(model, simulator.partitions[partI], simulator.particles[objId],
                         simulator.grids[partI]);
       }
-      // DofCompwiseUnaryOp{std::negate<void>{}}(policy, FWD(in), FWD(out));
-      // policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
     }
 
-    template <typename ColliderView, typename TableView, typename GridDofView> struct Projector {
-      using grids_t = typename GridDofView::structure_view_t;
-      using dof_index_t = typename grids_t::size_type;
-      using value_type = typename grids_t::value_type;
+    template <typename ColliderView, typename TableView, typename GridView, typename GridDofView>
+    struct Projector {
+      using grid_t = GridView;
+      using dof_index_t = typename grid_t::size_type;
+      using value_type = typename grid_t::value_type;
 
-      Projector(ColliderView col, TableView part, GridDofView grids)
-          : collider{col}, partition{part}, griddof{grids} {}
+      Projector(ColliderView col, TableView part, GridView grid, GridDofView dof)
+          : collider{col}, partition{part}, grid{grid}, dof{dof} {}
 
-      constexpr void operator()(dof_index_t dofi) {
-        auto blockid = dofi / grids_t::block_space();
-        auto cellid = dofi % grids_t::block_space();
+      constexpr void operator()(dof_index_t nodei) {
+        auto blockid = nodei / grid_t::block_space();
+        auto cellid = nodei % grid_t::block_space();
         auto blockkey = partition._activeKeys[blockid];
-        auto block = griddof.getStructure().block(blockid);
 
-        if (block(0, cellid) > 0) {
-          auto vel = block.pack<GridDofView::dim>(1, cellid);
-          auto pos
-              = (blockkey * (value_type)grids_t::side_length + grids_t::cellid_to_coord(cellid))
-                * griddof.getStructure().dx;
+        if (grid[blockid](0, cellid) > 0) {
+          // auto vel = block.pack<GridDofView::dim>(1, cellid);
+          auto vel = dof.get(nodei, vector_v);
+          auto pos = (blockkey * (value_type)grid_t::side_length + grid_t::cellid_to_coord(cellid))
+                     * grid.dx;
 
           collider.resolveCollision(pos, vel);
 
-          block.set(1, cellid, vel);
+          dof.set(nodei, vel);
+          // block.set(1, cellid, vel);
         }
       }
 
       ColliderView collider;
       TableView partition;
-      GridDofView griddof;
+      GridView grid;
+      GridDofView dof;
     };
 
     template <class ExecutionPolicy, typename InOut>
@@ -94,32 +96,35 @@ namespace zs {
       assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
       for (auto& boundary : simulator.boundaries) {
         match(
-            [&, did = mh.devid()](auto& collider, auto& partition)
-                -> std::enable_if_t<remove_cvref_t<decltype(collider)>::dim
-                                        == remove_cvref_t<decltype(partition)>::dim
-                                    && remove_cvref_t<decltype(collider)>::dim
-                                           == RM_CVREF_T(inout)::dim> {
-              using Grid = remove_cvref_t<decltype(inout.getStructure())>;
-              fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
+            [&, did = mh.devid()](auto& collider, auto& partition, auto& grids)
+                -> std::enable_if_t<RM_CVREF_T(collider)::dim == RM_CVREF_T(partition)::dim
+                                    && RM_CVREF_T(collider)::dim == RM_CVREF_T(grids)::dim
+                                    && RM_CVREF_T(collider)::dim == RM_CVREF_T(inout)::dim> {
+              fmt::print("[gpu {}]\tprojecting {} grid blocks, dof dim: {}\n", (int)did,
+                         partition.size(), RM_CVREF_T(inout)::dim);
               if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
-                policy(range((std::size_t)inout.size()),
+                policy(range((std::size_t)inout.numEntries()
+                             / remove_cvref_t<decltype(collider)>::dim),
                        Projector{Collider{proxy<space>(collider.levelset), collider.type},
-                                 proxy<space>(partition), inout});
+                                 proxy<space>(partition), proxy<space>(grids.grid()), inout});
               else {
-                policy(range((std::size_t)inout.size()),
-                       Projector{collider, proxy<space>(partition), inout});
+                policy(range((std::size_t)inout.numEntries()
+                             / remove_cvref_t<decltype(collider)>::dim),
+                       Projector{collider, proxy<space>(partition), proxy<space>(grids.grid()),
+                                 inout});
               }
             },
-            [](...) {})(boundary, simulator.partitions[partI]);
+            [](...) {})(boundary, simulator.partitions[partI], simulator.grids[partI]);
       }
     }
 
     template <typename DofA, typename DofB, typename DofC> struct DivPernodeMass {
       using Index = typename DofA::size_type;
+      static constexpr auto dim = DofC::dim;
       DivPernodeMass(DofA a, DofB b, DofC c) : a{a}, b{b}, c{c} {}
 
-      constexpr void operator()(Index node) {
-        if (b.get(node) != 0) c.set(node, a.get(node, vector_v) / b.get(node));
+      constexpr void operator()(Index i) {
+        if (auto mass = b.get(i / dim); mass > 0) c.set(i, a.get(i, scalar_v) / mass);
       }
       DofA a;
       DofB b;
@@ -133,13 +138,12 @@ namespace zs {
       assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
       match(
           [&, did = mh.devid()](auto& partition, auto& grids)
-              -> std::enable_if_t<remove_cvref_t<decltype(partition)>::dim == RM_CVREF_T(in)::dim> {
-            fmt::print("[gpu {}]\tprojecting {} grid blocks\n", (int)did, partition.size());
-            auto gridm = dof_view<space, 1>(grids.grid(), 0);
-            policy(range(in.size()), DivPernodeMass{in, gridm, out});
+              -> std::enable_if_t<RM_CVREF_T(partition)::dim == RM_CVREF_T(grids)::dim> {
+            fmt::print("[gpu {}]\tpreconditioning {} grid blocks\n", (int)did, partition.size());
+            auto gridm = dof_view<space, 1>(grids.grid(), "mass", 0);
+            policy(range(out.numEntries()), DivPernodeMass{in, gridm, out});
           },
           [](...) {})(simulator.partitions[partI], simulator.grids[partI]);
-      // policy(range(out.size()), DofAssign{FWD(in), FWD(out)});
     }
 
     MPMSimulator& simulator;

@@ -135,6 +135,7 @@ namespace zs {
     constexpr auto end() const noexcept {
       return make_iterator<iterator_impl>(_structure, numEntries());
     }
+    using scalar_value_type = typename std::iterator_traits<iterator>::value_type;
 
     template <attrib_e AccessEntry = entry_e>
     constexpr auto get(size_type i, wrapv<AccessEntry> = {}) const {
@@ -159,10 +160,8 @@ namespace zs {
         ref(i / dim)[i % dim] = FWD(v);
       // V is a vector
       else if constexpr (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar) {
-        if constexpr (remove_cvref_t<V>::extent == dim) {
-          const size_type base = i * dim;
-          for (int d = 0; d != dim; ++d) ref(base + d) = v[d];
-        }
+        const size_type base = i * remove_cvref_t<V>::extent;
+        for (int d = 0; d != remove_cvref_t<V>::extent; ++d) ref(base + d) = v[d];
       }
     }
   };
@@ -231,6 +230,7 @@ namespace zs {
     constexpr auto end() const noexcept {
       return make_iterator<iterator_impl>(_structure, _chn, numEntries());
     }
+    using scalar_value_type = typename std::iterator_traits<iterator>::value_type;
 
     template <attrib_e AccessEntry = entry_e>
     constexpr auto get(size_type i, wrapv<AccessEntry> = {}) const {

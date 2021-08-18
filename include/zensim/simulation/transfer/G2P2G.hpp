@@ -11,42 +11,42 @@
 
 namespace zs {
 
-  template <transfer_scheme_e, typename ConstitutiveModel, typename GridDofView, typename TableT,
-            typename ParticlesT>
+  template <transfer_scheme_e, typename ConstitutiveModel, typename GridView, typename GridDofView,
+            typename TableT, typename ParticlesT>
   struct G2P2GTransfer;
 
-  template <execspace_e space, transfer_scheme_e scheme, typename Model, typename GridDofView,
-            typename TableT, typename ParticlesT>
-  G2P2GTransfer(wrapv<space>, wrapv<scheme>, float, Model, GridDofView, GridDofView, TableT,
-                ParticlesT)
-      -> G2P2GTransfer<scheme, Model, GridDofView, HashTableView<space, TableT>,
+  template <execspace_e space, transfer_scheme_e scheme, typename Model, typename GridView,
+            typename GridDofView, typename TableT, typename ParticlesT>
+  G2P2GTransfer(wrapv<space>, wrapv<scheme>, float, Model, GridView, GridDofView, GridDofView,
+                TableT, ParticlesT)
+      -> G2P2GTransfer<scheme, Model, GridView, GridDofView, HashTableView<space, TableT>,
                        ParticlesView<space, ParticlesT>>;
 
-  template <execspace_e space, transfer_scheme_e scheme, typename ModelT, typename GridDofView,
-            typename TableT, typename ParticlesT>
-  struct G2P2GTransfer<scheme, ModelT, GridDofView, HashTableView<space, TableT>,
+  template <execspace_e space, transfer_scheme_e scheme, typename ModelT, typename GridView,
+            typename GridDofView, typename TableT, typename ParticlesT>
+  struct G2P2GTransfer<scheme, ModelT, GridView, GridDofView, HashTableView<space, TableT>,
                        ParticlesView<space, ParticlesT>> {
     using model_t = ModelT;  ///< constitutive model
+    using grid_view_t = GridView;
     using grid_dof_view_t = GridDofView;
-    using grid_view_t = decltype(std::declval<GridDofView>().getStructure());
-    using value_type = typename grid_view_t::value_type;
+    using value_type = typename grid_dof_view_t::scalar_value_type;
     using partition_t = HashTableView<space, TableT>;
     using particles_t = ParticlesView<space, ParticlesT>;
-    static_assert(particles_t::dim == partition_t::dim && particles_t::dim == grid_view_t::dim,
+    static_assert(particles_t::dim == partition_t::dim,
                   "[particle-partition-grid] dimension mismatch");
 
     explicit G2P2GTransfer(wrapv<space>, wrapv<scheme>, float dt, const ModelT& model,
-                           grid_dof_view_t& x, grid_dof_view_t& r, TableT& table,
+                           grid_view_t grid, grid_dof_view_t x, grid_dof_view_t r, TableT& table,
                            ParticlesT& particles)
         : model{model},
-          gridv{x.getStructure()},
-          gridr{r.getStructure()},
+          gridv{x},
+          gridr{r},
           partition{proxy<space>(table)},
           particles{proxy<space>(particles)},
+          dx{grid.dx},
           dt{dt} {}
 
     constexpr void operator()(typename particles_t::size_type parid) noexcept {
-      value_type const dx = gridv.dx;
       value_type const dx_inv = (value_type)1 / dx;
       if constexpr (particles_t::dim == 3) {
         value_type const D_inv = 4.f * dx_inv * dx_inv;
@@ -60,14 +60,21 @@ namespace zs {
         vec9 C{vec9::zeros()}, contrib{vec9::zeros()};
         auto arena = make_local_arena(dx, pos);
         for (auto loc : arena.range()) {
-          auto [grid_block, local_index]
-              = unpack_coord_in_grid(arena.coord(loc), grid_view_t::side_length, partition, gridv);
+          auto [blockcoord, local_index]
+              = unpack_coord_in_grid(arena.coord(loc), grid_view_t::side_length);
+
+          auto blockno = partition.query(blockcoord);
+          const auto cellid = grid_view_t::coord_to_cellid(local_index);
+
           auto xixp = arena.diff(loc);
           float W = arena.weight(loc);
 
-          vec3 vi = grid_block.pack<particles_t::dim>(1, grid_view_t::coord_to_cellid(local_index));
+          vec3 vi = gridv.get(blockno * grid_view_t::block_space() + cellid, vector_v);
+          // vec3 vi = grid_block.pack<particles_t::dim>(1,
+          // grid_view_t::coord_to_cellid(local_index));
           vel += vi * W;
-          for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3);
+          for (int d = 0; d < 9; ++d)
+            C[d] += W * vi(d % particles_t::dim) * xixp(d / particles_t::dim);
         }
 
         // pos += vel * dt;
@@ -125,22 +132,29 @@ namespace zs {
           auto [blockcoord, local_index]
               = unpack_coord_in_grid(arena.coord(loc), grid_view_t::side_length);
           auto blockno = partition.query(blockcoord);
-          auto grid_block = gridr.block(blockno);
+          // auto grid_block = gridr.block(blockno);
           auto xixp = arena.diff(loc);
           value_type W = arena.weight(loc);
           const auto cellid = grid_view_t::coord_to_cellid(local_index);
+          const auto node = blockno * grid_view_t::block_space() + cellid;
           for (int d = 0; d != particles_t::dim; ++d)
+            atomicAdd(
+                &gridr.ref(node * particles_t::dim + d),
+                (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]) * W);
+#if 0
             atomicAdd(
                 &grid_block(d + 1, cellid),
                 (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]) * W);
+#endif
         }
       }
     }
 
     model_t model;
-    grid_view_t gridv, gridr;
+    grid_dof_view_t gridv, gridr;
     partition_t partition;
     particles_t particles;
+    value_type dx;
     float dt;
   };
 

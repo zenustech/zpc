@@ -203,7 +203,8 @@ namespace zs {
           }
         }
 
-        contrib = C * mass * D_inv - contrib * dt * D_inv;
+        contrib = contrib * -dt * D_inv;
+        // contrib = (C * mass) * D_inv;
 
         using VT = typename grids_t::value_type;
         auto arena = make_local_arena((VT)dx, local_pos);
@@ -212,15 +213,16 @@ namespace zs {
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
           auto xixp = arena.diff(loc);
           VT W = arena.weight(loc);
-          VT wm = mass * W;
           const auto cellid = grids_t::coord_to_cellid(local_index);
-          atomicAdd(&grid_block(0, cellid), wm);
-          for (int d = 0; d != particles_t::dim; ++d)
+          atomicAdd(&grid_block(0, cellid), mass * W);
+          for (int d = 0; d != particles_t::dim; ++d) {
+            // vi
+            atomicAdd(&grid_block(d + 1, cellid), mass * W * vel[d]);
+            // rhs
             atomicAdd(
-                &grid_block(d + 1, cellid),
-                (VT)(wm * vel[d]
-                     + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2])
-                           * W));
+                &grid_block(particles_t::dim + d + 1, cellid),
+                ((contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2])) * W);
+          }
         }
       }
     }

@@ -221,6 +221,8 @@ namespace zs {
     static int deduce_block_size(const CudaContext &ctx, void *f, std::function<std::size_t(int)>,
                                  std::string_view = "");
 
+    mutable bool errorStatus;
+
   private:
     int numTotalDevice;
 
@@ -251,16 +253,18 @@ namespace zs {
         (void)Cuda::instance();                                                           \
       error = func(args...);                                                              \
       if (error != 0) {                                                                   \
+        if (Cuda::instance().errorStatus) return;                                         \
         const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());         \
         const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());    \
         const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());         \
         fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold, \
                    "\n{}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n", get_cu_error_message(error), \
                    " cuda api error location ", fileInfo, locInfo, funcInfo, "=");        \
+        Cuda::instance().errorStatus = true;                                              \
       }                                                                                   \
     }                                                                                     \
     explicit operator u32() const noexcept { return error; }                              \
-  };
+  };  // namespace cudri
 #include "cuda_driver_functions.inc.h"
 #undef PER_CUDA_FUNCTION
 

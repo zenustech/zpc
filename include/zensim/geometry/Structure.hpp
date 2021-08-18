@@ -162,9 +162,9 @@ namespace zs {
         : Grid{get_memory_source(mre, devid), channelTags, dx, count} {}
     Grid(channel_counter_type numChns, value_type dx, size_type count,
          memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Grid{get_memory_source(mre, devid), {{"default", numChns}}, dx, count} {}
+        : Grid{get_memory_source(mre, devid), {{"unnamed", numChns}}, dx, count} {}
     Grid(value_type dx = 1.f, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Grid{get_memory_source(mre, devid), {{"mvel", 1 + dim}}, dx, 0} {}
+        : Grid{get_memory_source(mre, devid), {{"mass", 1}, {"vel", dim}}, dx, 0} {}
 
     void resize(size_type numBlocks) { blocks.resize(numBlocks * block_space()); }
     bool hasProperty(const SmallString &str) const { return blocks.hasProperty(str); }

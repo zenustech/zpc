@@ -169,6 +169,7 @@ namespace zs {
 
   Cuda::Cuda() {
     fmt::print("[Init -- Begin] Cuda\n");
+    errorStatus = false;
     cudri::load_cuda_driver_apis();
 
     numTotalDevice = 0;

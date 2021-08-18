@@ -98,8 +98,11 @@ namespace zs {
                  this->target().partitions, this->target().maxVelSqrNorms)) {
       gridBlocks = GridBlocks<GridBlock<dat32, 3, 2, 2>>{target().simOptions.dx, nblocks,
                                                          memDst.memspace(), memDst.devid()};
-      grids = Grids<f32, 3, 4>{
-          {{"mv", 1 + 3}}, target().simOptions.dx, nblocks, memDst.memspace(), memDst.devid()};
+      grids = Grids<f32, 3, 4>{{{"mass", 1}, {"vel", 3}, {"rhs", 3}},
+                               target().simOptions.dx,
+                               nblocks,
+                               memDst.memspace(),
+                               memDst.devid()};
       partition = HashTable<i32, 3, int>{nblocks, memDst.memspace(), memDst.devid()};
       maxVel = Vector<float>{1, memDst.memspace(), memDst.devid()};
     }

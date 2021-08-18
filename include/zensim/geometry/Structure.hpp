@@ -210,7 +210,7 @@ namespace zs {
     constexpr decltype(auto) numBlocks() const noexcept { return grid(collocated_v).numTiles(); }
 
     Grids(const allocator_type &allocator,
-          const std::vector<PropertyTag> &channelTags = {PropertyTag{"mv", 1 + dim}},
+          const std::vector<PropertyTag> &channelTags = {{"mass", 1}, {"vel", dim}},
           value_type dx = 1.f, size_type numBlocks = 0, grid_e ge = grid_e::collocated)
         : _collocatedGrid{allocator, channelTags, dx},
           _cellcenteredGrid{allocator, channelTags, dx},
@@ -223,7 +223,7 @@ namespace zs {
       else if (ge == grid_e::staggered)
         _staggeredGrid.resize(numBlocks);
     }
-    Grids(const std::vector<PropertyTag> &channelTags = {PropertyTag{"mv", 1 + dim}},
+    Grids(const std::vector<PropertyTag> &channelTags = {{"mass", 1}, {"vel", dim}},
           value_type dx = 1.f, size_type numBlocks = 0, memsrc_e mre = memsrc_e::host,
           ProcID devid = -1, grid_e ge = grid_e::collocated)
         : Grids{get_memory_source(mre, devid), channelTags, dx, numBlocks, ge} {}
@@ -385,13 +385,13 @@ namespace zs {
       constexpr auto block(size_type i) const { return Block<category>{grid.tile(i), dx}; }
       constexpr auto operator[](size_type i) { return block(i); }
       constexpr auto operator[](size_type i) const { return block(i); }
-      template <typename Ti>
-      constexpr auto &operator()(channel_counter_type c, const vec<Ti, dim> &loc) noexcept {
-        return grid(c, coord_to_cellid(loc));
+      template <typename Ti> constexpr auto &operator()(channel_counter_type c, size_type blockid,
+                                                        const vec<Ti, dim> &loc) noexcept {
+        return grid(c, blockid * block_space() + coord_to_cellid(loc));
       }
-      template <typename Ti>
-      constexpr auto operator()(channel_counter_type c, const vec<Ti, dim> &loc) const noexcept {
-        return grid(c, coord_to_cellid(loc));
+      template <typename Ti> constexpr auto operator()(channel_counter_type c, size_type blockid,
+                                                       const vec<Ti, dim> &loc) const noexcept {
+        return grid(c, blockid * block_space() + coord_to_cellid(loc));
       }
       constexpr auto &operator()(channel_counter_type chn, cell_index_type cellid) {
         return grid(chn, cellid);

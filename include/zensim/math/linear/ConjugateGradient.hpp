@@ -34,7 +34,7 @@ namespace zs {
           normSqr_{allocator, 1},
           numDofs{ndofs},
           tol{is_same_v<T, float> ? (T)1e-6 : (T)1e-12},
-          maxIters{100},
+          maxIters{1000},
           relTol{1} {}
     ConjugateGradient(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : ConjugateGradient{get_memory_source(mre, devid), (size_type)0} {}
@@ -120,11 +120,10 @@ namespace zs {
         if (shouldPrint(iter % 10 == 9))
           fmt::print("iter: {}, norm: {}, tol {}\n", iter, residualPreconditionedNorm, localTol);
         if (residualPreconditionedNorm <= localTol) {
-          policy(range(numDofs), DofAssign{x, xinout});
           ///
           // print(xinout);
           ///
-          return iter;
+          break;
         }
         A.multiply(policy, p, temp);
         if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, done multiply\n", iter);
@@ -152,6 +151,7 @@ namespace zs {
 
         residualPreconditionedNorm = std::sqrt(zTrk);
       }
+      policy(range(numDofs), DofAssign{x, xinout});
       return iter;
     }
   };

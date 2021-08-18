@@ -19,7 +19,7 @@ namespace zs {
 
       constexpr void operator()(Index i) {
         if (auto mass = m.get(i / dim); mass > 0)
-          Ax.set(i, f.get(i, scalar_v) * dt * dt + dv.get(i, scalar_v) * mass);
+          Ax.set(i, (f.get(i, scalar_v) * dt * dt + mass) * dv.get(i, scalar_v));
       }
       DofA f;
       DofB m;
@@ -100,8 +100,8 @@ namespace zs {
                 -> std::enable_if_t<RM_CVREF_T(collider)::dim == RM_CVREF_T(partition)::dim
                                     && RM_CVREF_T(collider)::dim == RM_CVREF_T(grids)::dim
                                     && RM_CVREF_T(collider)::dim == RM_CVREF_T(inout)::dim> {
-              fmt::print("[gpu {}]\tprojecting {} grid blocks, dof dim: {}\n", (int)did,
-                         partition.size(), RM_CVREF_T(inout)::dim);
+              // fmt::print("[gpu {}]\tprojecting {} grid blocks, dof dim: {}\n", (int)did,
+              //            partition.size(), RM_CVREF_T(inout)::dim);
               if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
                 policy(range((std::size_t)inout.numEntries()
                              / remove_cvref_t<decltype(collider)>::dim),

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <atomic>
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
@@ -134,14 +134,17 @@ namespace zs {
   Resource &get_resource_manager() noexcept;
 
   /// property tag
-  using PropertyTag = tuple<SmallString, int>;
+  struct PropertyTag {
+    SmallString name;
+    int numChannels;
+  };
 
   inline auto select_properties(const std::vector<PropertyTag> &props,
                                 const std::vector<SmallString> &names) {
     std::vector<PropertyTag> ret(0);
     for (auto &&name : names)
       for (auto &&prop : props)
-        if (prop.template get<0>() == name) {
+        if (prop.name == name) {
           ret.push_back(prop);
           break;
         }

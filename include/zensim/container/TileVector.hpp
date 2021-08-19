@@ -60,8 +60,8 @@ namespace zs {
         auto tagOffsets = Vector<channel_counter_type>{static_cast<std::size_t>(N)};
         channel_counter_type curOffset = 0;
         for (auto &&[name, size, offset, src] : zip(tagNames, tagSizes, tagOffsets, channelTags)) {
-          name = zs::get<SmallString>(src);
-          size = zs::get<1>(src);
+          name = src.name;
+          size = src.numChannels;
           offset = curOffset;
           curOffset += size;
         }
@@ -87,7 +87,7 @@ namespace zs {
 
     static auto numTotalChannels(const std::vector<PropertyTag> &tags) {
       channel_counter_type cnt = 0;
-      for (std::size_t i = 0; i != tags.size(); ++i) cnt += tags[i].template get<1>();
+      for (std::size_t i = 0; i != tags.size(); ++i) cnt += tags[i].numChannels;
       return cnt;
     }
     struct iterator_impl : IteratorInterface<iterator_impl> {
@@ -279,7 +279,7 @@ namespace zs {
 
     bool hasProperty(const SmallString &str) const {
       for (auto &&tag : _tags)
-        if (str == zs::get<SmallString>(tag)) return true;
+        if (str == tag.name) return true;
       return false;
     }
     constexpr const SmallString *tagNameHandle() const noexcept { return _tagNames.data(); }
@@ -290,9 +290,11 @@ namespace zs {
       return _tagOffsets.data();
     }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
-      auto tagOffsets = _tagOffsets.clone({memsrc_e::host, -1});
-      for (auto &&[offset, tag] : zip(tagOffsets, _tags))
-        if (str == zs::get<SmallString>(tag)) return offset;
+      channel_counter_type offset = 0;
+      for (auto &&tag : _tags) {
+        if (str == tag.name) return offset;
+        offset += tag.numChannels;
+      }
       return 0;
     }
     constexpr PropertyTag getPropertyTag(std::size_t i = 0) const { return _tags[i]; }

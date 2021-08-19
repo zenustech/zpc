@@ -103,8 +103,7 @@ namespace zs {
               arena.coord(loc), gridblock_t::side_length(), partition, gridblocks);
           auto xixp = arena.diff(loc);
           VT W = arena.weight(loc);
-          VT wm = mass * W;
-          atomicAdd(&grid_block(0, local_index).asFloat(), wm);
+          atomicAdd(&grid_block(0, local_index).asFloat(), mass * W);
           for (int d = 0; d < particles_t::dim; ++d)
             atomicAdd(&grid_block(d + 1, local_index).asFloat(),
                       (VT)(W
@@ -215,14 +214,14 @@ namespace zs {
           const auto cellid = grids_t::coord_to_cellid(local_index);
           atomicAdd(&grid_block(0, cellid), mass * W);
           for (int d = 0; d != particles_t::dim; ++d) {
-            // vi
+            // vi: W m v + W m C (xi - xp)
             atomicAdd(
-                &grid_block(d + 1, cellid),
+                &grid_block(1 + d, cellid),
                 W * mass * (vel[d] + (C[d] * xixp[0] + C[3 + d] * xixp[1] + C[6 + d] * xixp[2])));
-            // rhs
+            // rhs: f * dt
             atomicAdd(
-                &grid_block(particles_t::dim + d + 1, cellid),
-                ((contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2])) * W);
+                &grid_block(particles_t::dim + 1 + d, cellid),
+                (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]) * W);
           }
         }
       }

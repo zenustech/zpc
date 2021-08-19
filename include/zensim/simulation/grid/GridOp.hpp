@@ -92,9 +92,10 @@ namespace zs {
     constexpr void operator()(typename GridsT::size_type blockid,
                               typename GridsT::cell_index_type cellid) noexcept {
       using value_type = typename GridsT::value_type;
-      auto block = grids.block(blockid);
-      block(0, cellid) = (0);
-      block.set(1, cellid, vec<value_type, GridsT::dim>::zeros());
+      auto grid = grids.grid(collocated_v);
+      auto block = grid.block(blockid);
+      auto nchns = grid.numChannels();
+      for (int i = 0; i != nchns; ++i) block(i, cellid) = 0;
     }
 
     grids_t grids;

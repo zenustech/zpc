@@ -55,7 +55,6 @@ namespace zs {
         using vec9 = vec<value_type, particles_t::dim * particles_t::dim>;
         using vec3x3 = vec<value_type, particles_t::dim, particles_t::dim>;
         vec3 pos{particles.pos(parid)};
-        vec3 vel{vec3::zeros()};
 
         vec9 C{vec9::zeros()}, contrib{vec9::zeros()};
         auto arena = make_local_arena(dx, pos);
@@ -72,17 +71,14 @@ namespace zs {
           vec3 vi = gridv.get(blockno * grid_view_t::block_space() + cellid, vector_v);
           // vec3 vi = grid_block.pack<particles_t::dim>(1,
           // grid_view_t::coord_to_cellid(local_index));
-          vel += vi * W;
           for (int d = 0; d < 9; ++d)
-            C[d] += W * vi(d % particles_t::dim) * xixp(d / particles_t::dim);
+            C[d] += W * vi(d % particles_t::dim) * xixp(d / particles_t::dim) * D_inv;
         }
-
-        // pos += vel * dt;
 
         // compute dPdF
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);
-          J = (1 + (C[0] + C[4] + C[8]) * dt * D_inv) * J;
+          J = (1 + (C[0] + C[4] + C[8]) * dt) * J;
           // if (J < 0.1) J = 0.1;
           float vol = model.volume * J;
           float pressure = model.bulk;
@@ -105,7 +101,7 @@ namespace zs {
           contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
         } else {
           vec9 oldF{particles.F(parid)}, tmp{}, F{};
-          for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt * D_inv + ((d & 0x3) ? 0.f : 1.f);
+          for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt + ((d & 0x3) ? 0.f : 1.f);
           matrixMatrixMultiplication3d(tmp.data(), oldF.data(), F.data());
           // particles.F(parid) = F;
           const auto [mu, lambda] = lame_parameters(model.E, model.nu);
@@ -140,12 +136,7 @@ namespace zs {
           for (int d = 0; d != particles_t::dim; ++d)
             atomicAdd(
                 &gridr.ref(node * particles_t::dim + d),
-                (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]) * W);
-#if 0
-            atomicAdd(
-                &grid_block(d + 1, cellid),
-                (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]) * W);
-#endif
+                W * (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]));
         }
       }
     }

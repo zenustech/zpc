@@ -12,10 +12,12 @@ namespace zs {
     ImplicitMPMSystem(MPMSimulator& simulator, float dt, std::size_t partI)
         : simulator{simulator}, partI{partI}, dt{dt} {}
 
-    template <typename DofA, typename DofB, typename DofC, typename DofD> struct MulDtSqrPlusMV {
+    template <typename DofA, typename DofB, typename DofC, typename DofD>
+    struct ForceDtSqrPlusMass {
       using Index = typename DofA::size_type;
       static constexpr int dim = DofA::dim;
-      MulDtSqrPlusMV(DofA a, DofB b, DofC c, DofD d, float dt) : f{a}, m{b}, Ax{c}, dv{d}, dt{dt} {}
+      ForceDtSqrPlusMass(DofA a, DofB b, DofC c, DofD d, float dt)
+          : f{a}, m{b}, Ax{c}, dv{d}, dt{dt} {}
 
       constexpr void operator()(Index i) {
         if (auto mass = m.get(i / dim); mass > 0)
@@ -49,7 +51,7 @@ namespace zs {
                                    proxy<space>(grids.grid()), in, out, partition, obj});
               // update v_i
               auto gridm = dof_view<space, 1>(grids.grid(), "mass", 0);
-              policy(range(in.numEntries()), MulDtSqrPlusMV{out, gridm, out, in, dt});
+              policy(range(in.numEntries()), ForceDtSqrPlusMass{out, gridm, out, in, dt});
             },
             [](...) {})(model, simulator.partitions[partI], simulator.particles[objId],
                         simulator.grids[partI]);
@@ -80,6 +82,9 @@ namespace zs {
 
           dof.set(nodei, vel);
           // block.set(1, cellid, vel);
+        } else {  // clear non-dof nodes as well
+          using V = decltype(dof.get(0, vector_v));
+          dof.set(nodei, V::zeros());
         }
       }
 

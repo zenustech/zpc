@@ -418,7 +418,7 @@ namespace zs {
     /// grid
     template <grid_e category = grid_e::collocated, bool b = is_const_structure,
               enable_if_t<!b> = 0>
-    constexpr auto &grid(wrapv<category> = {}) {
+    constexpr auto grid(wrapv<category> = {}) {
       if constexpr (category == grid_e::collocated)
         return Grid<category>{_collocatedGrid, _dx};
       else if constexpr (category == grid_e::cellcentered)
@@ -427,7 +427,7 @@ namespace zs {
         return Grid<category>{_staggeredGrid, _dx};
     }
     template <grid_e category = grid_e::collocated>
-    constexpr const auto &grid(wrapv<category> = {}) const {
+    constexpr auto grid(wrapv<category> = {}) const {
       if constexpr (category == grid_e::collocated)
         return Grid<category>{_collocatedGrid, _dx};
       else if constexpr (category == grid_e::cellcentered)

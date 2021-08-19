@@ -74,18 +74,18 @@ namespace zs {
           vec3 vi{grid_block(1, local_index).asFloat(), grid_block(2, local_index).asFloat(),
                   grid_block(3, local_index).asFloat()};
           vel += vi * W;
-          for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3);
+          for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3) * D_inv;
         }
         pos += vel * dt;
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);
-          J = (1 + (C[0] + C[4] + C[8]) * dt * D_inv) * J;
+          J = (1 + (C[0] + C[4] + C[8]) * dt) * J;
           // if (J < 0.1) J = 0.1;
           particles.J(parid) = J;
         } else {
           vec9 oldF{particles.F(parid)}, tmp{}, F{};
-          for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt * D_inv + ((d & 0x3) ? 0.f : 1.f);
+          for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt + ((d & 0x3) ? 0.f : 1.f);
           matrixMatrixMultiplication3d(tmp.data(), oldF.data(), F.data());
           particles.F(parid) = F;
         }
@@ -144,18 +144,18 @@ namespace zs {
 
           vec3 vi = grid_block.pack<particles_t::dim>(1, grids_t::coord_to_cellid(local_index));
           vel += vi * W;
-          for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3);
+          for (int d = 0; d < 9; ++d) C[d] += W * vi(d % 3) * xixp(d / 3) * D_inv;
         }
         pos += vel * dt;
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);
-          J = (1 + (C[0] + C[4] + C[8]) * dt * D_inv) * J;
+          J = (1 + (C[0] + C[4] + C[8]) * dt) * J;
           // if (J < 0.1) J = 0.1;
           particles.J(parid) = J;
         } else {
           vec9 oldF{particles.F(parid)}, tmp{}, F{};
-          for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt * D_inv + ((d & 0x3) ? 0.f : 1.f);
+          for (int d = 0; d < 9; ++d) tmp(d) = C[d] * dt + ((d & 0x3) ? 0.f : 1.f);
           matrixMatrixMultiplication3d(tmp.data(), oldF.data(), F.data());
           particles.F(parid) = F;
         }

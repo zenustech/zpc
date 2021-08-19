@@ -93,7 +93,7 @@ namespace zs {
           }
         }
 
-        contrib = C * mass * D_inv - contrib * dt * D_inv;
+        contrib = C * mass - contrib * dt * D_inv;
 
         using VT
             = std::decay_t<decltype(std::declval<typename gridblock_t::value_type>().asFloat())>;
@@ -106,11 +106,11 @@ namespace zs {
           VT wm = mass * W;
           atomicAdd(&grid_block(0, local_index).asFloat(), wm);
           for (int d = 0; d < particles_t::dim; ++d)
-            atomicAdd(
-                &grid_block(d + 1, local_index).asFloat(),
-                (VT)(wm * vel[d]
-                     + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2])
-                           * W));
+            atomicAdd(&grid_block(d + 1, local_index).asFloat(),
+                      (VT)(W
+                           * (mass * vel[d]
+                              + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1]
+                                 + contrib[6 + d] * xixp[2]))));
         }
       }
     }
@@ -204,7 +204,6 @@ namespace zs {
         }
 
         contrib = contrib * -dt * D_inv;
-        // contrib = (C * mass) * D_inv;
 
         using VT = typename grids_t::value_type;
         auto arena = make_local_arena((VT)dx, local_pos);
@@ -217,7 +216,9 @@ namespace zs {
           atomicAdd(&grid_block(0, cellid), mass * W);
           for (int d = 0; d != particles_t::dim; ++d) {
             // vi
-            atomicAdd(&grid_block(d + 1, cellid), mass * W * vel[d]);
+            atomicAdd(
+                &grid_block(d + 1, cellid),
+                W * mass * (vel[d] + (C[d] * xixp[0] + C[3 + d] * xixp[1] + C[6 + d] * xixp[2])));
             // rhs
             atomicAdd(
                 &grid_block(particles_t::dim + d + 1, cellid),

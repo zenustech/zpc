@@ -35,7 +35,7 @@ namespace zs {
           numDofs{ndofs},
           tol{is_same_v<T, float> ? (T)1e-6 : (T)1e-12},
           maxIters{1000},
-          relTol{1} {}
+          relTol{0.5f} {}
     ConjugateGradient(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : ConjugateGradient{get_memory_source(mre, devid), (size_type)0} {}
     ConjugateGradient(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -82,42 +82,45 @@ namespace zs {
       auto dofSqr = dof_view<space, dim>(dofSqr_), normSqr = dof_view<space, dim>(normSqr_);
 
       int iter = 0;
-      auto shouldPrint = [](bool v = false) { return v; };
+      auto condition = [&iter]() { return iter >= 1; };
+      auto shouldPrint = [](bool v = true) { return v; };
+      auto checkVector = [&policy, this](auto&& v, fmt::color c = fmt::color::white) {
+        auto res = dotProduct(policy, v, v);
+        fmt::print(fg(c), "\tchecking result dotprod: {}\n", res);
+      };
       T alpha, beta, residualPreconditionedNorm, zTrk, zTrkLast;
 
+      checkVector(b, fmt::color::light_yellow);
       A.multiply(policy, x, temp);
       DofCompwiseOp{std::minus<void>{}}(policy, b, temp, r);  // r = b - temp;
       if (shouldPrint()) {
-        auto res = dotProduct(policy, r, r);
-        fmt::print("(after minus Ax) normSqr rhs: {}\n", res);
+        fmt::print("pre loop, b - Ax -> r\n");
+        checkVector(r, fmt::color::yellow);
       }
-      fmt::print("check num dofs: {}, r dofs: {}\n", x.numEntries(), r.numEntries());
       A.project(policy, r);
-      fmt::print("done proj, r dofs: {}\n", r.numEntries());
       if (shouldPrint()) {
-        auto res = dotProduct(policy, r, r);
-        fmt::print("(after proj) normSqr rhs: {}\n", res);
+        fmt::print("pre loop, project r\n");
+        checkVector(r, fmt::color::yellow);
       }
 
       A.precondition(policy, r, q);  // NOTE: requires that preconditioning matrix is projected
       if (shouldPrint()) {
-        auto res = dotProduct(policy, q, q);
-        fmt::print("(after precondition) normSqr rhs: {}\n", res);
+        fmt::print("pre loop, Mr -> q\n");
+        checkVector(q, fmt::color::brown);
       }
-      fmt::print("done precondition, r dofs: {}\n", q.numEntries());
       policy(range(numDofs), DofAssign{q, p});  // p = q;
       if (shouldPrint()) {
         auto res = dotProduct(policy, p, p);
-        fmt::print("(after assign) normSqr rhs: {}\n", res);
+        fmt::print("pre loop, q -> p\n");
+        checkVector(p, fmt::color::brown);
       }
 
       zTrk = dotProduct(policy, r, q);  // zTrk = std::abs(dotProduct(r, q));
-      fmt::print("iter: {}, zTrk {}\n", iter, zTrk);
+      fmt::print(fg(fmt::color::blue), "pre loop, zTrk {} (r.dot(q))\n", zTrk);
       residualPreconditionedNorm = std::sqrt(zTrk);
       T localTol = std::min(relTol * residualPreconditionedNorm, tol);
       for (; iter != maxIters; ++iter) {
-        // if (iter % 10 == 9) getchar();
-        if (shouldPrint(iter % 10 == 9))
+        if (shouldPrint(condition()))
           fmt::print("iter: {}, norm: {}, tol {}\n", iter, residualPreconditionedNorm, localTol);
         if (residualPreconditionedNorm <= localTol) {
           ///
@@ -126,30 +129,38 @@ namespace zs {
           break;
         }
         A.multiply(policy, p, temp);
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, done multiply\n", iter);
+        if (shouldPrint(condition()))
+          fmt::print("iter: {}, Ap -> temp\n", iter), checkVector(temp, fmt::color::yellow);
         A.project(policy, temp);
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, done project\n", iter);
+        if (shouldPrint(condition()))
+          fmt::print("iter: {}, project temp\n", iter), checkVector(temp, fmt::color::yellow);
         alpha = zTrk / dotProduct(policy, temp, p);  // alpha = zTrk / dotProduct(temp, p);
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, alpha {}\n", iter, alpha);
+        if (shouldPrint(condition())) fmt::print("iter: {}, alpha {}\n", iter, alpha);
 
         DofCompwiseOp{LinearCombineOp(alpha)}(policy, p, x, x);  // x = x + alpha * p;
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, done x += a * p\n", iter);
+        if (shouldPrint(condition()))
+          fmt::print("iter: {}, x += a * p\n", iter), checkVector(x, fmt::color::green);
         DofCompwiseOp{LinearCombineOp(-alpha)}(policy, temp, r, r);  // r = r - alpha * temp;
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, done r -= a * temp\n", iter);
+        if (shouldPrint(condition()))
+          fmt::print("iter: {}, r -= a * temp\n", iter), checkVector(r, fmt::color::yellow);
         A.precondition(policy, r, q);  // NOTE: requires that preconditioning matrix is projected
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, done precondition\n", iter);
+        if (shouldPrint(condition()))
+          fmt::print("iter: {}, Mr -> q\n", iter), checkVector(q, fmt::color::brown);
 
         zTrkLast = zTrk;
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, last ztrk {}\n", iter, zTrkLast);
         zTrk = dotProduct(policy, q, r);  // zTrk = dotProduct(q, r);
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, new ztrk {}\n", iter, zTrk);
+        if (shouldPrint(condition()))
+          fmt::print(fg(fmt::color::blue), "iter: {}, ztrk(dot(q, r)) {} -> {}\n", iter, zTrkLast,
+                     zTrk);
         beta = zTrk / zTrkLast;
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, beta {}\n", iter, beta);
+        if (shouldPrint(condition())) fmt::print("iter: {}, beta {}\n", iter, beta);
 
         DofCompwiseOp{LinearCombineOp(beta)}(policy, p, q, p);  // p = q + beta * p;
-        if (shouldPrint(iter % 10 == 9)) fmt::print("iter: {}, done p = q + beta * p\n", iter);
+        if (shouldPrint(condition()))
+          fmt::print("iter: {}, p = q + beta * p\n", iter), checkVector(p, fmt::color::brown);
 
         residualPreconditionedNorm = std::sqrt(zTrk);
+        if (iter >= 1) getchar();
       }
       policy(range(numDofs), DofAssign{x, xinout});
       return iter;

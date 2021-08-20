@@ -133,6 +133,7 @@ namespace zs {
     float fps;
     float dt;
     float dx;
+    float cfl{1.f};
     static SimOptionsBuilder create();
   };
 
@@ -148,6 +149,10 @@ namespace zs {
     }
     BuilderForSimOptions &dx(float v) {
       this->object.dx = v;
+      return *this;
+    }
+    BuilderForSimOptions &cfl(float v) {
+      this->object.cfl = v;
       return *this;
     }
   };

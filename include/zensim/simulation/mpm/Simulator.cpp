@@ -2,6 +2,7 @@
 
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Collider.h"
+#include "zensim/physics/SoundSpeedCfl.hpp"
 #include "zensim/tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
@@ -43,6 +44,20 @@ namespace zs {
         if (mloc.memspace() == entry.memspace() && mloc.devid() == entry.devid()) return id;
       return -1;
     };
+    {
+      const auto dx = this->target().simOptions.dx;
+      const auto cfl = this->target().simOptions.cfl;
+      float defaultDt = std::numeric_limits<float>::max();
+      for (auto&& [model, id] : this->target().models) {
+        match([dx, cfl, &defaultDt](auto&& m) {
+          if constexpr (!is_same_v<RM_CVREF_T(m), EquationOfStateConfig>) {
+            auto v = evaluate_timestep_linear_elasticity(m.E, m.nu, m.rho, dx, cfl);
+            if (v < defaultDt) defaultDt = v;
+          }
+        })(model);
+      }
+      this->target().evaluatedDt = defaultDt;
+    }
     auto searchModel = [&models = this->target().models](std::size_t objId) {
       int modelid{0};
       for (auto&& [model, id] : models) {

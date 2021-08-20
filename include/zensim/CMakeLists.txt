@@ -128,6 +128,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     TypeAlias.hpp
     # simulation
     physics/ConstitutiveModel.hpp
+    physics/SoundSpeedCfl.hpp
     simulation/mpm/Simulator.hpp
     simulation/transfer/P2G.hpp
     simulation/transfer/G2P.hpp

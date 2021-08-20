@@ -45,6 +45,7 @@ namespace zs {
     // apic/ flip
     /// simulation setup
     SimOptions simOptions;
+    float evaluatedDt;
   };
 
   template <execspace_e, typename Simulator, typename = void> struct MPMSimulatorView;

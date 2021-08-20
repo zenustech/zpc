@@ -61,8 +61,8 @@ namespace zs {
     }
     template <typename svt, enable_if_t<is_same_v<svt, structure_view_t>> = 0>
     static constexpr auto ref(svt obj, channel_counter_type chn, size_type i)
-        -> std::enable_if_t<std::is_reference_v<decltype(obj(
-                                chn, i))> && is_same_v<decltype(get(obj, chn, i)), value_type>,
+        -> std::enable_if_t<std::is_reference_v<decltype(
+                                obj(chn, i))> && is_same_v<decltype(get(obj, chn, i)), value_type>,
                             decltype(obj(chn, i))> {
       return obj(chn, i);
     }
@@ -110,8 +110,8 @@ namespace zs {
       static constexpr auto entry_e = DofView::entry_e;
       static constexpr int dim = DofView::dim;
 
-      constexpr iterator_impl(structure_view_t structure, size_type i)
-          : _structure{structure}, _idx{i} {}
+      template <typename Ti> constexpr iterator_impl(structure_view_t structure, Ti i)
+          : _structure{structure}, _idx{static_cast<size_type>(i)} {}
 
       // reference to a value_type
       constexpr decltype(auto) dereference() {
@@ -202,8 +202,9 @@ namespace zs {
       static constexpr auto entry_e = DofView::entry_e;
       static constexpr int dim = DofView::dim;
 
-      constexpr iterator_impl(structure_view_t structure, channel_counter_type chn, size_type i)
-          : _structure{structure}, _idx{i}, _chn{chn} {}
+      template <typename Ti>
+      constexpr iterator_impl(structure_view_t structure, channel_counter_type chn, Ti i)
+          : _structure{structure}, _idx{static_cast<size_type>(i)}, _chn{chn} {}
 
       // reference to a value_type
       constexpr decltype(auto) dereference() {

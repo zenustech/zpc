@@ -81,6 +81,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # math
     math/bit/Bits.h
     math/linear/ConjugateGradient.hpp
+    math/linear/MinimumResidual.hpp
     math/linear/LinearOperators.hpp
     math/matrix/MatrixUtils.h
     math/matrix/Utility.h

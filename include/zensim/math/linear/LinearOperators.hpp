@@ -70,6 +70,33 @@ namespace zs {
 
     Ops _op;
   };
+  template <template <typename> class Op, typename T> struct DofCompwiseCustomUnaryOp {
+    constexpr DofCompwiseCustomUnaryOp(Op<void> op, T v) : op{op}, v{v} {}
+
+    template <typename DofViewA, typename DofViewB> struct ComputeOp {
+      using Index = std::common_type_t<typename DofViewA::size_type, typename DofViewB::size_type>;
+      ComputeOp(DofViewA a, DofViewB b, Op<void> op, T v) : va{a}, vb{b}, op{op}, v{v} {}
+      constexpr void operator()(Index i) { vb.set(i, op(va.get(i, scalar_v), v)); }
+
+      DofViewA va;
+      DofViewB vb;
+      Op<void> op;
+      T v;
+    };
+
+    template <class ExecutionPolicy, typename DofViewA, typename DofViewB>
+    void operator()(ExecutionPolicy&& policy, DofViewA va, DofViewB vb) {
+      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      if (va.numEntries() != vb.numEntries()) throw std::runtime_error("dof mismatch!");
+      policy(range(va.numEntries()), ComputeOp<DofViewA, DofViewB>{va, vb, op, v});
+    }
+
+    Op<void> op;
+    T v;
+  };
+  template <template <typename> class Op, typename T> DofCompwiseCustomUnaryOp(Op<void>, T)
+      -> DofCompwiseCustomUnaryOp<Op, T>;
+
   struct DofCompwiseUnaryOp {
     using Ops = variant<std::negate<void>>;
     template <typename Op> DofCompwiseUnaryOp(Op op) : _op{op} {}

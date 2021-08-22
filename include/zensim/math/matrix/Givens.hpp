@@ -33,7 +33,7 @@ namespace zs {
       T c;
       T s;
 
-      constexpr GivensRotation(int rowi_in, int rowk_in)
+      constexpr GivensRotation(int rowi_in = 0, int rowk_in = 1)
           : rowi(rowi_in), rowk(rowk_in), c(1), s(0) {}
 
       constexpr GivensRotation(T a, T b, int rowi_in, int rowk_in) : rowi(rowi_in), rowk(rowk_in) {
@@ -147,9 +147,9 @@ namespace zs {
         }
       }
 
-      template <int Dim, typename T1> constexpr void vecRotation(T1 A[Dim]) const {
-        T1 tau1 = A[rowi];
-        T1 tau2 = A[rowk];
+      template <typename Vector> constexpr void vecRotation(Vector A) const {
+        auto tau1 = A[rowi];
+        auto tau2 = A[rowk];
         A[rowi] = c * tau1 - s * tau2;
         A[rowk] = s * tau1 + c * tau2;
       }

@@ -103,6 +103,12 @@ namespace zs {
     }
     constexpr decltype(auto) ref(size_type i) { return traits::ref(_structure, i); }
 
+    constexpr void swap(DofView& v) noexcept {
+      auto s = *this;
+      *this = v;
+      v = s;
+    }
+
     struct iterator_impl : IteratorInterface<iterator_impl> {
       using traits = typename DofView::traits;
       using size_type = typename DofView::size_type;
@@ -194,6 +200,12 @@ namespace zs {
     constexpr size_type size() const noexcept { return _size; }
     constexpr size_type numEntries() const noexcept { return _size * dim; }
     constexpr decltype(auto) ref(size_type i) { return traits::ref(_structure, _chn, i); }
+
+    constexpr void swap(DofView& v) noexcept {
+      auto s = *this;
+      *this = v;
+      v = s;
+    }
 
     struct iterator_impl : IteratorInterface<iterator_impl> {
       using traits = typename DofView::traits;

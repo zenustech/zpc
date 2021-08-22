@@ -73,6 +73,7 @@ namespace zs {
     int solve(ExecutionPolicy&& policy, M&& A, XView&& xinout, BView&& b) {
       constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
       resize(xinout.numEntries());
+
       auto x = dof_view<space, dim>(x_);
       policy(range(numDofs), DofAssign{xinout, x});
 
@@ -122,12 +123,7 @@ namespace zs {
       for (; iter != maxIters; ++iter) {
         if (shouldPrint(condition()))
           fmt::print("iter: {}, norm: {}, tol {}\n", iter, residualPreconditionedNorm, localTol);
-        if (residualPreconditionedNorm <= localTol) {
-          ///
-          // print(xinout);
-          ///
-          break;
-        }
+        if (residualPreconditionedNorm <= localTol) break;
         A.multiply(policy, p, temp);
         if (shouldPrint(condition()))
           fmt::print("iter: {}, Ap -> temp\n", iter), checkVector(temp, fmt::color::yellow);

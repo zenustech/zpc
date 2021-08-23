@@ -34,7 +34,8 @@ namespace zs {
                                  coord - blockCoord * (Tn)sideLength);
   }
 
-  template <int dim_, kernel_e kt = kernel_e::quadratic, typename T = f32, typename Ti = int>
+  template <grid_e gt = grid_e::collocated, kernel_e kt = kernel_e::quadratic, typename T = f32,
+            int dim_ = 3, typename Ti = int>
   struct LocalArena {
     using value_type = T;
     using index_type = Ti;
@@ -44,13 +45,32 @@ namespace zs {
     using TM = vec<value_type, dim, width>;
     using IV = vec<index_type, dim>;
 
+    constexpr IV world_to_index_base(const TV &pos) const noexcept {
+      const auto dxInv = (T)1 / dx;
+      constexpr index_type offset
+          = kt == kernel_e::quadratic ? -1 : (kt == kernel_e::linear ? 0 : -2);
+      IV ret{};
+      for (int d = 0; d != dim; ++d)
+        if constexpr (gt == grid_e::collocated)
+          ret[d] = lower_trunc(pos[d] * dxInv + (T)0.5) + offset;
+        else if constexpr (gt == grid_e::cellcentered)
+          ret[d] = lower_trunc(pos[d] * dxInv) + offset;
+        else if constexpr (gt == grid_e::staggered)
+          ret[d] = lower_trunc(pos[d] * dxInv) + offset;
+      return ret;
+    }
+
     constexpr void init(const value_type dx_, const TV &pos) {
       dx = dx_;
-      const auto dxInv = (T)1 / dx;
-      for (int d = 0; d < dim; ++d) corner[d] = lower_trunc(pos[d] * dxInv + (T)0.5) - 1;
-      localPos = pos - this->corner * dx;
-      if constexpr (kt == kernel_e::quadratic)
-        weights = bspline_weight(pos - corner * dx, (T)1 / dx);
+      corner = world_to_index_base(pos);
+      if constexpr (gt == grid_e::collocated)
+        localPos = pos - corner * dx;
+      else if constexpr (gt == grid_e::cellcentered)
+        localPos = pos - (corner + (T)0.5) * dx;
+      else if constexpr (gt == grid_e::staggered)
+        localPos = pos - corner * dx;
+
+      weights = bspline_weight(localPos, (T)1 / dx);
     }
 
     constexpr auto range() const noexcept { return ndrange<dim>(width); }
@@ -91,10 +111,10 @@ namespace zs {
     value_type dx{0};
   };
 
-  template <kernel_e kt = kernel_e::quadratic, typename Ti = int, int dim = 3, typename T = f32,
-            typename TT = T>
-  constexpr LocalArena<dim, kt, T, Ti> make_local_arena(TT dx, const vec<T, dim> &pos) {
-    LocalArena<dim, kt, T, Ti> ret{};
+  template <grid_e gt = grid_e::collocated, kernel_e kt = kernel_e::quadratic, typename T = f32,
+            int dim = 3, typename Ti = int, typename TT = T>
+  constexpr LocalArena<gt, kt, T, dim, Ti> make_local_arena(TT dx, const vec<T, dim> &pos) {
+    LocalArena<gt, kt, T, dim, Ti> ret{};
     ret.init(dx, pos);
     return ret;
   }

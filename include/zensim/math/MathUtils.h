@@ -45,7 +45,6 @@ namespace zs {
       y = *(float *)&i;
       y = y * (1.5f - (x2 * y * y));
       y = y * (1.5f - (x2 * y * y));
-      y = y * (1.5f - (x2 * y * y));
       return y;
     }
     constexpr double q_rsqrt(double number) noexcept {
@@ -54,7 +53,6 @@ namespace zs {
       i = *(uint64_t *)&y;
       i = 0x5fe6eb50c7b537a9 - (i >> 1);
       y = *(double *)&i;
-      y = y * (1.5 - (x2 * y * y));
       y = y * (1.5 - (x2 * y * y));
       y = y * (1.5 - (x2 * y * y));
       return y;

@@ -60,8 +60,10 @@ namespace zs {
 
     BuilderForMPMSimulator& addScene(Scene&& scene);
     BuilderForMPMSimulator& setSimOptions(const SimOptions& ops);
+    BuilderForMPMSimulator& setPrimaryGridType(grid_e gt);
 
     operator MPMSimulator() noexcept;
+    grid_e gridType{grid_e::collocated};
   };
 
   struct MPMSimulatorBuilder : BuilderForMPMSimulator {

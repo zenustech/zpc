@@ -35,6 +35,10 @@ namespace zs {
     this->target().simOptions = ops;
     return *this;
   }
+  BuilderForMPMSimulator& BuilderForMPMSimulator::setPrimaryGridType(grid_e gt) {
+    this->gridType = gt;
+    return *this;
+  }
 
   BuilderForMPMSimulator::operator MPMSimulator() noexcept {
     std::vector<MemoryProperty> memDsts(0);
@@ -117,7 +121,8 @@ namespace zs {
                                target().simOptions.dx,
                                nblocks,
                                memDst.memspace(),
-                               memDst.devid()};
+                               memDst.devid(),
+                               gridType};
       partition = HashTable<i32, 3, int>{nblocks, memDst.memspace(), memDst.devid()};
       maxVel = Vector<float>{1, memDst.memspace(), memDst.devid()};
     }

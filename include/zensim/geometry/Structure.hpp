@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <stdexcept>
 
 #include "zensim/TypeAlias.hpp"
 #include "zensim/container/TileVector.hpp"
@@ -200,14 +201,44 @@ namespace zs {
     using IV = typename collocated_grid_t::IV;
     using TV = typename collocated_grid_t::TV;
 
-    constexpr MemoryLocation memoryLocation() const noexcept {
-      return grid(collocated_v).memoryLocation();
+    template <typename F> constexpr decltype(auto) gridApply(grid_e category, F &&f) {
+      if (category == grid_e::collocated)
+        return std::invoke(f, grid(collocated_v));
+      else if (category == grid_e::cellcentered)
+        return std::invoke(f, grid(cellcentered_v));
+      else
+        return std::invoke(f, grid(staggered_v));
     }
-    constexpr memsrc_e space() const noexcept { return grid(collocated_v).memspace(); }
-    constexpr ProcID devid() const noexcept { return grid(collocated_v).devid(); }
-    constexpr auto size() const noexcept { return grid(collocated_v).size(); }
-    constexpr decltype(auto) allocator() const noexcept { return grid(collocated_v).allocator(); }
-    constexpr decltype(auto) numBlocks() const noexcept { return grid(collocated_v).numTiles(); }
+    template <typename F> constexpr decltype(auto) gridApply(grid_e category, F &&f) const {
+      if (category == grid_e::collocated)
+        return std::invoke(f, grid(collocated_v));
+      else if (category == grid_e::cellcentered)
+        return std::invoke(f, grid(cellcentered_v));
+      else
+        return std::invoke(f, grid(staggered_v));
+    }
+    constexpr MemoryLocation memoryLocation() const noexcept {
+      return gridApply(_primaryGrid,
+                       [](auto &&grid) -> MemoryLocation { return grid.memoryLocation(); });
+    }
+    constexpr memsrc_e space() const noexcept {
+      return gridApply(_primaryGrid, [](auto &&grid) -> memsrc_e { return grid.memspace(); });
+    }
+    constexpr ProcID devid() const noexcept {
+      return gridApply(_primaryGrid, [](auto &&grid) -> ProcID { return grid.devid(); });
+    }
+    constexpr size_type size() const noexcept {
+      return gridApply(_primaryGrid, [](auto &&grid) -> size_type { return grid.size(); });
+    }
+    constexpr const allocator_type &allocator() const {
+      return gridApply(_primaryGrid,
+                       [](auto &&grid) -> decltype(grid.allocator()) { return grid.allocator(); });
+      throw std::runtime_error(
+          fmt::format("primary grid \"{}\" not known", magic_enum::enum_name(_primaryGrid)));
+    }
+    constexpr size_type numBlocks() const noexcept {
+      return gridApply(_primaryGrid, [](auto &&grid) -> size_type { return grid.numTiles(); });
+    }
 
     Grids(const allocator_type &allocator,
           const std::vector<PropertyTag> &channelTags = {{"mass", 1}, {"vel", dim}},
@@ -215,7 +246,8 @@ namespace zs {
         : _collocatedGrid{allocator, channelTags, dx},
           _cellcenteredGrid{allocator, channelTags, dx},
           _staggeredGrid{allocator, channelTags, dx},
-          _dx{dx} {
+          _dx{dx},
+          _primaryGrid{ge} {
       if (ge == grid_e::collocated)
         _collocatedGrid.resize(numBlocks);
       else if (ge == grid_e::cellcentered)
@@ -227,6 +259,12 @@ namespace zs {
           value_type dx = 1.f, size_type numBlocks = 0, memsrc_e mre = memsrc_e::host,
           ProcID devid = -1, grid_e ge = grid_e::collocated)
         : Grids{get_memory_source(mre, devid), channelTags, dx, numBlocks, ge} {}
+
+    void align(grid_e targetGrid) {
+      if (targetGrid == _primaryGrid) return;
+      const auto nblocks = numBlocks();
+      gridApply(targetGrid, [nblocks](auto &&grid) { return grid.resize(nblocks); });
+    }
 
     template <grid_e category = grid_e::collocated>
     constexpr auto &grid(wrapv<category> = {}) noexcept {
@@ -260,6 +298,7 @@ namespace zs {
     grid_t<grid_e::cellcentered> _cellcenteredGrid{};
     grid_t<grid_e::staggered> _staggeredGrid{};
     value_type _dx{};
+    grid_e _primaryGrid{};
   };
 
   using GeneralGrids = variant<Grids<f32, 3, 4>, Grids<f32, 3, 2>, Grids<f32, 3, 1>,
@@ -364,6 +403,7 @@ namespace zs {
     };
     template <grid_e category = grid_e::collocated> struct Grid {
       using size_type = typename GridsView::size_type;
+      using cell_index_type = typename GridsView::cell_index_type;
       using value_type = typename GridsView::value_type;
       static constexpr int dim = GridsView::dim;
       static constexpr auto side_length = GridsView::side_length;

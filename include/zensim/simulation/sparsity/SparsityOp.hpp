@@ -60,17 +60,18 @@ namespace zs {
     using positions_t = VectorView<space, const X>;
 
     explicit ComputeSparsity(wrapv<space>, T dx, int blockLen, Table& table, const X& pos,
-                             int offset = -2)
+                             int offset = -2, T displacement = (T)0.5f)
         : table{proxy<space>(table)},
           pos{proxy<space>(pos)},
           dxinv{(T)1.0 / dx},
+          displacement{displacement},
           blockLen{blockLen},
           offset{offset} {}
 
     constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
       for (int d = 0; d < table_t::dim; ++d)
-        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
+        coord[d] = lower_trunc(pos(parid)[d] * dxinv + displacement) + offset;
       auto blockid = coord;
       for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
       blockid = blockid / blockLen;
@@ -79,7 +80,7 @@ namespace zs {
 
     table_t table;
     positions_t pos;
-    T dxinv;
+    T dxinv, displacement;
     int blockLen;
     int offset;
   };

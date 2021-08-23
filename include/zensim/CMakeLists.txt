@@ -90,6 +90,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/matrix/Matrix.hpp
     math/matrix/Givens.hpp
     math/matrix/qr.hpp
+    math/matrix/SVD.hpp
     math/probability/Probability.h
     math/Hash.hpp
     math/MathUtils.h
@@ -128,6 +129,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     Singleton.h
     TypeAlias.hpp
     # simulation
+    physics/ConstitutiveModel_Vol_dP.hpp
     physics/ConstitutiveModel.hpp
     physics/SoundSpeedCfl.hpp
     simulation/mpm/Simulator.hpp

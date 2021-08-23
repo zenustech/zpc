@@ -45,6 +45,7 @@ namespace zs {
       y = *(float *)&i;
       y = y * (1.5f - (x2 * y * y));
       y = y * (1.5f - (x2 * y * y));
+      y = y * (1.5f - (x2 * y * y));
       return y;
     }
     constexpr double q_rsqrt(double number) noexcept {
@@ -53,6 +54,7 @@ namespace zs {
       i = *(uint64_t *)&y;
       i = 0x5fe6eb50c7b537a9 - (i >> 1);
       y = *(double *)&i;
+      y = y * (1.5 - (x2 * y * y));
       y = y * (1.5 - (x2 * y * y));
       y = y * (1.5 - (x2 * y * y));
       return y;
@@ -71,6 +73,45 @@ namespace zs {
     }
     // best guess starting square
     constexpr double q_sqrt(double fp) noexcept { return 1.0 / q_rsqrt(fp); }
+    /// ref:
+    /// https://stackoverflow.com/questions/66752842/ieee-754-conformant-sqrtf-implementation-taking-into-account-hardware-restrict
+    constexpr float abs(float v) noexcept { return v < 0.f ? -v : v; }
+    /* square root computation suitable for all IEEE-754 binary32 arguments */
+    constexpr float sqrt(float arg) noexcept {
+      const float FP32_INFINITY = reinterpret_bits<float>(0x7f800000u);
+      const float FP32_QNAN = reinterpret_bits<float>(0x7fffffffu); /* system specific */
+      const float scale_in = 0x1.0p+26f;
+      const float scale_out = 0x1.0p-13f;
+      float rsq{}, err{}, sqt{};
+
+      if (arg < 0.0f) {
+        return FP32_QNAN;
+      }
+      // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__DOUBLE.html#group__CUDA__MATH__DOUBLE_1g1c6fe34b4ac091e40eceeb0bae58459f
+      else if ((arg == 0.0f) || !(abs(arg) < FP32_INFINITY)) { /* Inf, NaN */
+        return arg + arg;
+      } else {
+        /* scale subnormal arguments towards unity */
+        arg = arg * scale_in;
+
+        /* generate low-accuracy approximation to rsqrt(arg) */
+        rsq = q_rsqrt(arg);
+
+        /* apply two Newton-Raphson iterations with quadratic convergence */
+        rsq = ((-0.5f * arg * rsq) * rsq + 0.5f) * rsq + rsq;
+        rsq = ((-0.5f * arg * rsq) * rsq + 0.5f) * rsq + rsq;
+
+        /* compute sqrt from rsqrt, round to nearest or even */
+        sqt = rsq * arg;
+        err = sqt * -sqt + arg;
+        sqt = (0.5f * rsq * err + sqt);
+
+        /* compensate scaling of argument by counter-scaling the result */
+        sqt = sqt * scale_out;
+
+        return sqt;
+      }
+    }
   }  // namespace math
 
   template <typename... Args>

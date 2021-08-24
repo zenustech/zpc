@@ -80,9 +80,9 @@ namespace zs {
     value_type dx;
   };
 
-  template <execspace_e ExecSpace, int dim>
-  constexpr decltype(auto) proxy(IndexBuckets<dim> &indexBuckets) {
-    return IndexBucketsView<ExecSpace, IndexBuckets<dim>>{indexBuckets};
+  template <execspace_e ExecSpace, int dim, typename Index, typename Tn>
+  constexpr decltype(auto) proxy(IndexBuckets<dim, Index, Tn> &indexBuckets) {
+    return IndexBucketsView<ExecSpace, IndexBuckets<dim, Index, Tn>>{indexBuckets};
   }
 
 }  // namespace zs

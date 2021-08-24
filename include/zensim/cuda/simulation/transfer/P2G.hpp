@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
-#include "zensim/cuda/physics/ConstitutiveModel.hpp"
+// #include "zensim/cuda/physics/ConstitutiveModel.hpp"
+#include "zensim/physics/ConstitutiveModel_Vol_dP.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Structurefree.hpp"
 #include "zensim/physics/ConstitutiveModel.hpp"

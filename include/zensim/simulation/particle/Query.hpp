@@ -28,5 +28,9 @@ namespace zs {
 
   template <execspace_e space>
   GeneralIndexBuckets index_buckets_for_particles(const GeneralParticles &particles, float dx);
+  template <typename ExecPol>
+  GeneralIndexBuckets index_buckets_for_particles(const ExecPol &,
+                                                  const GeneralParticles &particles, float dx,
+                                                  float displacement);
 
 }  // namespace zs

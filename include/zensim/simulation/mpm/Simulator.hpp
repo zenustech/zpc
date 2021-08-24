@@ -1,5 +1,6 @@
 #pragma once
 #include "zensim/container/HashTable.hpp"
+#include "zensim/container/IndexBuckets.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/simulation/init/Scene.hpp"
@@ -42,6 +43,8 @@ namespace zs {
     /// transfer operator
     /// boundary
     std::vector<GeneralBoundary> boundaries;
+    ///
+    std::vector<GeneralIndexBuckets> buckets;
     // apic/ flip
     /// simulation setup
     SimOptions simOptions;

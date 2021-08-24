@@ -8,6 +8,9 @@ namespace zs {
   template GeneralIndexBuckets index_buckets_for_particles<execspace_e::host>(
       const GeneralParticles &particles, float);
 
+  template GeneralIndexBuckets index_buckets_for_particles<SequentialExecutionPolicy>(
+      const SequentialExecutionPolicy &, const GeneralParticles &particles, float, float);
+
   GeneralIndexBuckets build_neighbor_list_impl(host_exec_tag, const GeneralParticles &particles,
                                                float dx) {
     return match([](const auto &pars) -> GeneralIndexBuckets {

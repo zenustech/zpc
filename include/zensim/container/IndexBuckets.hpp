@@ -7,14 +7,16 @@
 
 namespace zs {
 
-  template <int dim_ = 3> struct IndexBuckets {
+  template <int dim_ = 3, typename Index = i64, typename Tn_ = i32> struct IndexBuckets {
     static constexpr int dim = dim_;
     using allocator_type = ZSPmrAllocator<>;
     using value_type = f32;
-    using index_type = i64;
+    using index_type = std::make_signed_t<Index>;
+    using size_type = std::make_unsigned_t<index_type>;
+    using Tn = std::make_signed_t<Tn_>;
     using TV = vec<value_type, dim>;
-    using IV = vec<index_type, dim>;
-    using table_t = HashTable<int, dim, index_type>;
+    using IV = vec<Tn, dim>;
+    using table_t = HashTable<Tn, dim, index_type>;
     using vector_t = Vector<index_type>;
 
     constexpr IndexBuckets() = default;
@@ -40,7 +42,10 @@ namespace zs {
     value_type _dx{1};
   };
 
-  using GeneralIndexBuckets = variant<IndexBuckets<3>>;
+  using GeneralIndexBuckets
+      = variant<IndexBuckets<3, i32, i32>, IndexBuckets<3, i64, i32>, IndexBuckets<3, i32, i64>,
+                IndexBuckets<3, i64, i64>, IndexBuckets<2, i32, i32>, IndexBuckets<2, i64, i32>,
+                IndexBuckets<2, i32, i64>, IndexBuckets<2, i64, i64>>;
 
   template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsView {
     using value_type = typename IndexBucketsT::value_type;

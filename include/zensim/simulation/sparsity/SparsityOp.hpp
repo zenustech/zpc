@@ -70,10 +70,10 @@ namespace zs {
 
     constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
-      for (int d = 0; d < table_t::dim; ++d)
+      for (int d = 0; d != table_t::dim; ++d)
         coord[d] = lower_trunc(pos(parid)[d] * dxinv + displacement) + offset;
       auto blockid = coord;
-      for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
+      for (int d = 0; d != table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
       blockid = blockid / blockLen;
       table.insert(blockid);
     }
@@ -120,20 +120,21 @@ namespace zs {
     using counter_interger_type = std::make_unsigned_t<typename CountT::value_type>;
 
     explicit SpatiallyCount(wrapv<space>, T dx, Table& table, const X& pos, CountT& cnts,
-                            int blockLen = 1, int offset = 0)
+                            int blockLen = 1, int offset = 0, T displacement = (T)0.5f)
         : table{proxy<space>(table)},
           pos{proxy<space>(pos)},
           counts{proxy<space>(cnts)},
           dxinv{(T)1.0 / dx},
+          displacement{displacement},
           blockLen{blockLen},
           offset{offset} {}
 
     constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
-      for (int d = 0; d < table_t::dim; ++d)
-        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
+      for (int d = 0; d != table_t::dim; ++d)
+        coord[d] = lower_trunc(pos(parid)[d] * dxinv + displacement) + offset;
       auto blockid = coord;
-      for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
+      for (int d = 0; d != table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
       blockid = blockid / blockLen;
       /// guarantee counts are non-negative, thus perform this explicit type conversion for cuda
       /// atomic overload
@@ -144,7 +145,7 @@ namespace zs {
     table_t table;
     positions_t pos;
     counters_t counts;
-    T dxinv;
+    T dxinv, displacement;
     int blockLen;
     int offset;
   };
@@ -159,20 +160,21 @@ namespace zs {
 
     explicit SpatiallyDistribute(wrapv<space>, T dx, Table& table, const X& pos, Indices& cnts,
                                  Indices& offsets, Indices& indices, int blockLen = 1,
-                                 int offset = 0)
+                                 int offset = 0, T displacement = (T)0.5f)
         : table{proxy<space>(table)},
           pos{proxy<space>(pos)},
           counts{proxy<space>(cnts)},
           offsets{proxy<space>(offsets)},
           indices{proxy<space>(indices)},
           dxinv{(T)1.0 / dx},
+          displacement{displacement},
           blockLen{blockLen},
           offset{offset} {}
 
     constexpr void operator()(typename positions_t::size_type parid) noexcept {
       vec<int, table_t::dim> coord{};
-      for (int d = 0; d < table_t::dim; ++d)
-        coord[d] = lower_trunc(pos(parid)[d] * dxinv + 0.5) + offset;
+      for (int d = 0; d != table_t::dim; ++d)
+        coord[d] = lower_trunc(pos(parid)[d] * dxinv + displacement) + offset;
       auto blockid = coord;
       for (int d = 0; d < table_t::dim; ++d) blockid[d] += (coord[d] < 0 ? -blockLen + 1 : 0);
       blockid = blockid / blockLen;
@@ -187,7 +189,7 @@ namespace zs {
     table_t table;
     positions_t pos;
     indices_t counts, offsets, indices;
-    T dxinv;
+    T dxinv, displacement;
     int blockLen;
     int offset;
   };

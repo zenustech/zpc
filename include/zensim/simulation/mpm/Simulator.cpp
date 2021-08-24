@@ -72,6 +72,7 @@ namespace zs {
     };
     std::vector<std::size_t> numParticles(0);
     std::size_t id = 0;
+    this->target().buckets.resize(this->target().particles.size());  // new
     for (auto&& particles : this->target().particles) {
       match([&](auto& ps) {
         auto did = searchHandle(ps.memoryLocation());

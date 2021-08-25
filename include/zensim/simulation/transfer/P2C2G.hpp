@@ -58,14 +58,12 @@ namespace zs {
         float const D_inv = 4.f * dx_inv * dx_inv;
         using value_type = typename GridsT::value_type;
         auto grid = grids.grid(cellcentered_v);
-        auto coord = partition._activeKeys[blockid] * grids_t::side_length
+        auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
                      + grids_t::cellid_to_coord(cellid);
-        auto posi = coord * dx + (value_type)0.5;
-        auto checkInKernelRange = [&posi, dx](auto &&posp) {
+        auto posi = (coord + (value_type)0.5) * dx;
+        auto checkInKernelRange = [&posi, dx](auto&& posp) -> bool {
           for (int d = 0; d != grids_t::dim; ++d)
-            if (posp[d] + (value_type)2.0 * dx < posi[d]
-                || posp[d] - (value_type)2.0 * dx > posi[d])
-              return false;
+            if (gcem::abs(posp[d] - posi[d]) > 1.5 * dx) return false;
           return true;
         };
         auto block = grid.block(blockid);
@@ -73,12 +71,13 @@ namespace zs {
         coord = coord - 1;  /// move to base coord
         for (auto&& iter : ndrange<grids_t::dim>(3)) {
           auto bucketno = buckets.table.query(coord + make_vec<typename partition_t::Tn>(iter));
-          if (bucketno >= 0)
-            for (int st = buckets.offsets(bucketno), ed = buckets.offsets(bucketno + 1); st < ed;
+          if (bucketno >= 0) {
+            for (int st = buckets.offsets(bucketno), ed = buckets.offsets(bucketno + 1); st != ed;
                  ++st) {
               auto parid = buckets.indices(st);
               auto posp = particles.pos(parid);
               if (checkInKernelRange(posp)) {
+                // printf("actually block %d, cell %d is in!\n", (int)blockid, (int)cellid);
                 auto vel = particles.vel(parid);
                 auto mass = particles.mass(parid);
                 auto C = particles.C(parid);
@@ -136,14 +135,15 @@ namespace zs {
                 auto diff = xixp * dx_inv;
                 for (int d = 0; d != grids_t::dim; ++d) {
                   const auto xabs = gcem::abs(diff[d]);
-                  if (xabs < 1)
-                    W *= (0.5 * xabs * xabs * xabs - xabs * xabs + 2. / 3);
-                  else if (xabs < 2)
-                    W *= (1.0 / 6.0 * xabs * xabs * xabs + xabs * xabs - 2. * xabs + 4. / 3);
+                  if (xabs <= 0.5)
+                    // W *= (0.5 * xabs * xabs * xabs - xabs * xabs + 2. / 3);
+                    W *= 3. / 4 - xabs * xabs;
+                  else if (xabs <= 1.5)
+                    // W *= (-1.0 / 6.0 * xabs * xabs * xabs + xabs * xabs - 2. * xabs + 4. / 3);
+                    W *= 0.5 * (1.5 - xabs) * (1.5 - xabs);
+                  else
+                    W *= 0.f;
                 }
-                if (W <= 0.f)
-                  printf("THE FUCK! block %d, cell %d, weight %f\n", (int)blockid, (int)cellid,
-                         (float)W);
                 block(0, cellid) += mass * W;
                 for (int d = 0; d != particles_t::dim; ++d)
                   block(1 + d, cellid) += (mass * vel[d]
@@ -152,8 +152,9 @@ namespace zs {
                                           * W;
               }  // check in range
             }    // iterate in the bucket
-        }        // iterate buckets within neighbor
-      }          // dim == 3
+          }
+        }  // iterate buckets within neighbor
+      }    // dim == 3
     }
 #else
 

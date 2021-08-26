@@ -50,6 +50,7 @@ namespace zs {
   template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsView {
     using value_type = typename IndexBucketsT::value_type;
     using index_type = typename IndexBucketsT::index_type;
+    using size_type = typename IndexBucketsT::size_type;
     using TV = typename IndexBucketsT::TV;
     using IV = typename IndexBucketsT::IV;
     using table_t = typename IndexBucketsT::table_t;

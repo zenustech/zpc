@@ -43,6 +43,7 @@ namespace zs {
     using value_type = typename grids_t::value_type;
     using partition_t = HashTableView<space, TableT>;
     using particles_t = ParticlesView<space, ParticlesT>;
+    static constexpr int dim = particles_t::dim;
     static_assert(particles_t::dim == partition_t::dim && particles_t::dim == grids_t::dim,
                   "[particle-partition-grid] dimension mismatch");
 
@@ -56,18 +57,39 @@ namespace zs {
           dt{dt} {}
 
 #if 1
-    constexpr void operator()(typename grids_t::size_type blockid,
-                              typename grids_t::cell_index_type cellid) noexcept {
-      float const dx = grids._dx;
+    constexpr void operator()(typename buckets_t::size_type bucketno) noexcept {
+      value_type const dx = grids._dx;
       value_type const dx_inv = (value_type)1 / dx;
       if constexpr (grids_t::dim == 3) {
-        float const D_inv = 4.f * dx_inv * dx_inv;
-        using value_type = typename GridsT::value_type;
-        auto grid = grids.grid(cellcentered_v);
-        auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
-                     + grids_t::cellid_to_coord(cellid).template cast<typename partition_t::Tn>();
-        auto posi = (coord + (value_type)0.5) * dx;
-        auto block = grid.block(blockid);
+        value_type const D_inv = 4.f * dx_inv * dx_inv;
+        using TV = vec<value_type, grids_t::dim>;
+        using TM = vec<value_type, grids_t::dim * grids_t::dim>;
+
+        auto coord = buckets.coord(bucketno);
+        TV v_c{TV::zeros()};
+        TM v_cross_x_c{TM::zeros()};
+
+        auto grid = grids.grid(collocated_v);
+        for (auto&& iter : ndrange<grids_t::dim>(2)) {
+          const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);
+          const auto posi = coordi * dx;
+          auto [block, local_index]
+              = unpack_coord_in_grid(coordi, grids_t::side_length, partition, grid);
+          value_type W = 1. / 8;  // 3d
+          const auto cellid = grids_t::coord_to_cellid(local_index);
+          auto v_i = block.pack<grids_t::dim>(1, grids_t::coord_to_cellid(local_index));
+          v_c += v_i * W;
+          for (int d = 0; d < grids_t::dim * grids_t::dim; ++d)
+            v_cross_x_c[d] += W * v_i(d % 3) * posi(d / 3);
+        }
+
+        auto posc = (coord + (value_type)0.5) * dx;
+        auto checkInKernelRange = [&posc, dx](auto&& posp) -> bool {
+          for (int d = 0; d != grids_t::dim; ++d)
+            if (gcem::abs(posp[d] - posc[d]) > dx) return false;
+          return true;
+        };
+
         coord = coord - 1;  /// move to base coord
         for (auto&& iter : ndrange<grids_t::dim>(3)) {
           auto bucketno = buckets.table.query(coord + make_vec<typename partition_t::Tn>(iter));
@@ -76,27 +98,24 @@ namespace zs {
                  ++st) {
               auto parid = buckets.indices(st);
               auto posp = particles.pos(parid);
-              if (true) {
-                auto xixp = posi - posp;
+              if (checkInKernelRange(posp)) {
+                auto xcxp = posc - posp;
                 value_type W = 1.f;
-                auto diff = xixp * dx_inv;
-                for (int d = 0; d != grids_t::dim; ++d) {
+                auto diff = xcxp * dx_inv;
+                for (int d = 0; d != dim; ++d) {
                   const auto xabs = gcem::abs(diff[d]);
-                  if (xabs <= 0.5)
-                    W *= (3. / 4 - xabs * xabs);
-                  else if (xabs <= 1.5)
-                    W *= (0.5 * (1.5 - xabs) * (1.5 - xabs));
+                  if (xabs <= 1)
+                    W *= ((value_type)1. - xabs);
                   else
                     W *= 0.f;
                 }
-                auto vi = block.template pack<grids_t::dim>(1, cellid);
                 auto& vp = particles.vel(parid);
                 auto& Cp = particles.C(parid);
 
-                for (int d = 0; d != grids_t::dim; ++d)
-                  atomic_add(wrapv<space>{}, &vp[d], vi[d] * W);
-                for (int d = 0; d != grids_t::dim * grids_t::dim; ++d)
-                  atomic_add(wrapv<space>{}, &Cp[d], W * vi[d % 3] * xixp[d / 3] * D_inv);
+                for (int d = 0; d != dim; ++d) atomic_add(wrapv<space>{}, &vp[d], v_c[d] * W);
+                for (int d = 0; d != dim * dim; ++d)
+                  atomic_add(wrapv<space>{}, &Cp[d],
+                             W * (v_cross_x_c[d] - v_c(d % dim) * posp(d / dim)));
               }
             }
           }

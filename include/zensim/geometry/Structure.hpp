@@ -125,8 +125,9 @@ namespace zs {
     static_assert(d_ > 0, "dimension must be positive!");
     using value_type = ValueT;
     using allocator_type = ZSPmrAllocator<>;
-    using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
     using domain_index_type = conditional_t<(sizeof(value_type) <= 4), i32, i64>;
+    // using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
+    using cell_index_type = domain_index_type;
     static constexpr int dim = d_;
     static constexpr cell_index_type side_length = SideLength;
     static constexpr cell_index_type block_space() noexcept {

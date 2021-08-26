@@ -94,6 +94,8 @@ namespace zs {
       auto &offsets = indexBuckets._offsets;
       offsets = vector_t{allocator, (std::size_t)numCells};
       exclusive_scan(execPol, counts.begin(), counts.end(), offsets.begin());
+      // fmt::print("scanned num particles: {}, num buckets: {} ({})\n", offsets[numCells - 1],
+      //           numCells - 1, indexBuckets.numBuckets());
       // indices
       auto &indices = indexBuckets._indices;
       indices = vector_t{allocator, pars.size()};

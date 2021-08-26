@@ -245,6 +245,7 @@ namespace zs {
     constexpr decltype(auto) operator[](size_type i) const { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
+    constexpr size_type size() const noexcept { return _vectorSize; }
 
     vector_t _vector{nullptr};
     size_type _vectorSize{0};
@@ -263,6 +264,7 @@ namespace zs {
     constexpr decltype(auto) operator[](size_type i) const { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
     constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
+    constexpr size_type size() const noexcept { return _vectorSize; }
 
     vector_t _vector{nullptr};
     size_type _vectorSize{0};

@@ -59,13 +59,15 @@ namespace zs {
         using value_type = typename GridsT::value_type;
         auto grid = grids.grid(cellcentered_v);
         auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
-                     + grids_t::cellid_to_coord(cellid);
+                     + grids_t::cellid_to_coord(cellid).template cast<typename partition_t::Tn>();
         auto posi = (coord + (value_type)0.5) * dx;
-        auto checkInKernelRange = [&posi, dx](auto&& posp) -> bool {
-          for (int d = 0; d != grids_t::dim; ++d)
-            if (gcem::abs(posp[d] - posi[d]) > 1.5 * dx) return false;
-          return true;
-        };
+        /*
+      auto checkInKernelRange = [&posi, dx](auto&& posp) -> bool {
+        for (int d = 0; d != grids_t::dim; ++d)
+          if (gcem::abs(posp[d] - posi[d]) > 1.5 * dx) return false;
+        return true;
+      };
+      */
         auto block = grid.block(blockid);
         // auto nchns = grid.numChannels();
         coord = coord - 1;  /// move to base coord
@@ -76,7 +78,12 @@ namespace zs {
                  ++st) {
               auto parid = buckets.indices(st);
               auto posp = particles.pos(parid);
-              if (checkInKernelRange(posp)) {
+              if (true) {
+#  if 0
+                if (parid == 0)
+                  printf("parid %d is indeed accessed by (%d, %d)!\n", (int)parid, (int)blockid,
+                         (int)cellid);
+#  endif
                 // printf("actually block %d, cell %d is in!\n", (int)blockid, (int)cellid);
                 auto vel = particles.vel(parid);
                 auto mass = particles.mass(parid);
@@ -137,10 +144,10 @@ namespace zs {
                   const auto xabs = gcem::abs(diff[d]);
                   if (xabs <= 0.5)
                     // W *= (0.5 * xabs * xabs * xabs - xabs * xabs + 2. / 3);
-                    W *= 3. / 4 - xabs * xabs;
+                    W *= (3. / 4 - xabs * xabs);
                   else if (xabs <= 1.5)
                     // W *= (-1.0 / 6.0 * xabs * xabs * xabs + xabs * xabs - 2. * xabs + 4. / 3);
-                    W *= 0.5 * (1.5 - xabs) * (1.5 - xabs);
+                    W *= (0.5 * (1.5 - xabs) * (1.5 - xabs));
                   else
                     W *= 0.f;
                 }
@@ -155,6 +162,93 @@ namespace zs {
           }
         }  // iterate buckets within neighbor
       }    // dim == 3
+    }
+
+#elif 1
+
+    constexpr void operator()(int bucketno) noexcept {
+      float const dx = grids._dx;
+      float const dx_inv = dxinv();
+      if constexpr (particles_t::dim == 3) {
+        float const D_inv = 4.f * dx_inv * dx_inv;
+        using ivec3 = vec<int, particles_t::dim>;
+        using vec3 = vec<float, particles_t::dim>;
+        using vec9 = vec<float, particles_t::dim * particles_t::dim>;
+        using vec3x3 = vec<float, particles_t::dim, particles_t::dim>;
+
+        for (int st = buckets.offsets(bucketno), ed = buckets.offsets(bucketno + 1); st < ed;
+             ++st) {
+          auto parid = buckets.indices(st);
+
+          vec3 local_pos{particles.pos(parid)};
+          vec3 vel{particles.vel(parid)};
+          float mass = particles.mass(parid);
+          vec9 contrib{}, C{particles.C(parid)};
+
+          if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
+            float J = particles.J(parid);
+            float vol = model.volume * J;
+            float pressure = model.bulk;
+            {
+              float J2 = J * J;
+              float J4 = J2 * J2;
+              // pressure = pressure * (powf(J, -model.gamma) - 1.f);
+              pressure = pressure * (1 / (J * J2 * J4) - 1);  // from Bow
+            }
+            contrib[0] = ((C[0] + C[0]) * model.viscosity - pressure) * vol;
+            contrib[1] = (C[1] + C[3]) * model.viscosity * vol;
+            contrib[2] = (C[2] + C[6]) * model.viscosity * vol;
+
+            contrib[3] = (C[3] + C[1]) * model.viscosity * vol;
+            contrib[4] = ((C[4] + C[4]) * model.viscosity - pressure) * vol;
+            contrib[5] = (C[5] + C[7]) * model.viscosity * vol;
+
+            contrib[6] = (C[6] + C[2]) * model.viscosity * vol;
+            contrib[7] = (C[7] + C[5]) * model.viscosity * vol;
+            contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
+
+          } else {
+            const auto [mu, lambda] = lame_parameters(model.E, model.nu);
+            vec9 F{particles.F(parid)};
+            if constexpr (is_same_v<model_t, FixedCorotatedConfig>) {
+              compute_stress_fixedcorotated(model.volume, mu, lambda, F, contrib);
+            } else if constexpr (is_same_v<model_t, VonMisesFixedCorotatedConfig>) {
+              compute_stress_vonmisesfixedcorotated(model.volume, mu, lambda, model.yieldStress, F,
+                                                    contrib);
+            } else {
+              /// with plasticity additionally
+              float logJp = particles.logJp(parid);
+              if constexpr (is_same_v<model_t, DruckerPragerConfig>) {
+                compute_stress_sand(model.volume, mu, lambda, model.cohesion, model.beta,
+                                    model.yieldSurface, model.volumeCorrection, logJp, F, contrib);
+              } else if constexpr (is_same_v<model_t, NACCConfig>) {
+                compute_stress_nacc(model.volume, mu, lambda, model.bulk(), model.xi, model.beta,
+                                    model.Msqr(), model.hardeningOn, logJp, F, contrib);
+              }
+              particles.logJp(parid) = logJp;
+            }
+          }
+
+          contrib = C * mass - contrib * dt * D_inv;
+
+          using VT = typename grids_t::value_type;
+          auto arena = make_local_arena<grid_e::cellcentered>(dx, local_pos);
+          for (auto loc : arena.range()) {
+            auto [grid_block, local_index] = unpack_coord_in_grid(
+                arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_v));
+            auto xixp = arena.diff(loc);
+            VT W = arena.weight(loc);
+            const auto cellid = grids_t::coord_to_cellid(local_index);
+            atomic_add(wrapv<space>{}, &grid_block(0, cellid), mass * W);
+            for (int d = 0; d != particles_t::dim; ++d)
+              atomic_add(
+                  wrapv<space>{}, &grid_block(1 + d, cellid),
+                  (mass * vel[d]
+                   + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]))
+                      * W);
+          }
+        }
+      }
     }
 #else
 

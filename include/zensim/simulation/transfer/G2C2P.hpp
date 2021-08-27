@@ -62,7 +62,6 @@ namespace zs {
       value_type const dx = grids._dx;
       value_type const dx_inv = (value_type)1 / dx;
       if constexpr (grids_t::dim == 3) {
-        value_type const D_inv = 4.f * dx_inv * dx_inv;
         using TV = vec<value_type, grids_t::dim>;
         using TM = vec<value_type, grids_t::dim * grids_t::dim>;
 
@@ -108,6 +107,11 @@ namespace zs {
               auto parid = buckets.indices(st);
               auto posp = particles.pos(parid);
               if (checkInKernelRange(posp)) {
+                TV Dinv{};
+                for (int d = 0; d != dim; ++d) {
+                  Dinv[d] = gcem::fmod(posp[d], dx * (value_type)0.5);
+                  Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
+                }
                 auto xcxp = posc - posp;
                 value_type W = 1.f;
                 auto diff = xcxp * dx_inv;
@@ -124,7 +128,7 @@ namespace zs {
                 for (int d = 0; d != dim; ++d) atomic_add(wrapv<space>{}, &vp[d], v_c[d] * W);
                 for (int d = 0; d != dim * dim; ++d)
                   atomic_add(wrapv<space>{}, &Cp[d],
-                             W * (v_cross_x_c[d] - v_c(d % dim) * posp(d / dim)) * D_inv);
+                             W * (v_cross_x_c[d] - v_c(d % dim) * posp(d / dim)) * Dinv[d / dim]);
               }
             }
           }

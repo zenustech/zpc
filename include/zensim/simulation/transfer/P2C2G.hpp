@@ -35,6 +35,7 @@ namespace zs {
     using partition_t = HashTableView<space, TableT>;
     using grids_t = GridsView<space, GridsT>;
     using value_type = typename grids_t::value_type;
+    static constexpr int dim = particles_t::dim;
     static_assert(particles_t::dim == partition_t::dim && particles_t::dim == GridsT::dim,
                   "[particle-partition-grid] dimension mismatch");
 
@@ -54,9 +55,8 @@ namespace zs {
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
       value_type const dx_inv = dxinv();
-      if constexpr (grids_t::dim == 3) {
-        value_type const D_inv = 4.f * dx_inv * dx_inv;
-        using TV = vec<value_type, grids_t::dim>;
+      if constexpr (dim == 3) {
+        using TV = vec<value_type, dim>;
 
         value_type m_c{(value_type)0};
         TV mv_c{TV::zeros()};
@@ -65,14 +65,14 @@ namespace zs {
         // auto coord = buckets.coord(bucketno);
         auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
                      + grids_t::cellid_to_coord(cellid).template cast<typename partition_t::Tn>();
-        auto posi = (coord + (value_type)0.5) * dx;
-        auto checkInKernelRange = [&posi, dx](auto&& posp) -> bool {
-          for (int d = 0; d != grids_t::dim; ++d)
-            if (gcem::abs(posp[d] - posi[d]) > dx) return false;
+        auto posc = (coord + (value_type)0.5) * dx;
+        auto checkInKernelRange = [&posc, dx](auto&& posp) -> bool {
+          for (int d = 0; d != dim; ++d)
+            if (gcem::abs(posp[d] - posc[d]) > dx) return false;
           return true;
         };
         coord = coord - 1;  /// move to base coord
-        for (auto&& iter : ndrange<grids_t::dim>(3)) {
+        for (auto&& iter : ndrange<dim>(3)) {
           auto bucketno = buckets.bucketNo(coord + make_vec<typename partition_t::Tn>(iter));
           if (bucketno >= 0) {
             for (int st = buckets.offsets(bucketno), ed = buckets.offsets(bucketno + 1); st != ed;
@@ -80,6 +80,11 @@ namespace zs {
               auto parid = buckets.indices(st);
               auto posp = particles.pos(parid);
               if (checkInKernelRange(posp)) {
+                TV Dinv{};
+                for (int d = 0; d != dim; ++d) {
+                  Dinv[d] = gcem::fmod(posp[d], dx * (value_type)0.5);
+                  Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
+                }
                 auto vel = particles.vel(parid);
                 auto mass = particles.mass(parid);
                 auto C = particles.C(parid);
@@ -130,12 +135,14 @@ namespace zs {
                   }
                 }
 
-                contrib = C * mass - contrib * dt * D_inv;
+                // contrib = C * mass - contrib * dt * D_inv;
+                for (int d = 0; d != dim * dim; ++d) contrib[d] *= Dinv[d / dim];
+                contrib = C * mass - contrib * dt;
 
-                auto xixp = posi - posp;
+                auto xcxp = posc - posp;
                 value_type W = 1.f;
-                auto diff = xixp * dx_inv;
-                for (int d = 0; d != grids_t::dim; ++d) {
+                auto diff = xcxp * dx_inv;
+                for (int d = 0; d != dim; ++d) {
                   const auto xabs = gcem::abs(diff[d]);
                   if (xabs <= 1)
                     W *= ((value_type)1. - xabs);
@@ -145,8 +152,8 @@ namespace zs {
                 m_c += mass * W;
                 for (int d = 0; d != particles_t::dim; ++d)
                   mv_c[d] += (mass * vel[d]
-                              + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1]
-                                 + contrib[6 + d] * xixp[2]))
+                              + (contrib[d] * xcxp[0] + contrib[3 + d] * xcxp[1]
+                                 + contrib[6 + d] * xcxp[2]))
                              * W;
               }  // check in range
             }    // iterate in the bucket
@@ -156,7 +163,7 @@ namespace zs {
         /// stage 2 (c -> i)
         auto grid = grids.grid(collocated_v);
         coord = coord + 1;  /// move to base coord
-        for (auto&& iter : ndrange<grids_t::dim>(2)) {
+        for (auto&& iter : ndrange<dim>(2)) {
           auto [blockno, local_index] = unpack_coord_in_grid(
               coord + make_vec<typename partition_t::Tn>(iter), grids_t::side_length, partition);
           if (blockno >= 0) {
@@ -164,7 +171,7 @@ namespace zs {
             value_type W = 1. / 8;  // 3d
             const auto cellid = grids_t::coord_to_cellid(local_index);
             atomic_add(wrapv<space>{}, &block(0, cellid), m_c * W);
-            for (int d = 0; d != grids_t::dim; ++d)
+            for (int d = 0; d != dim; ++d)
               atomic_add(wrapv<space>{}, &block(1 + d, cellid), mv_c[d] * W);
           }
         }

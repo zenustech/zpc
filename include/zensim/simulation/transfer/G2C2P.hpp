@@ -57,7 +57,8 @@ namespace zs {
           dt{dt} {}
 
 #if 1
-    constexpr void operator()(typename buckets_t::size_type bucketno) noexcept {
+    constexpr void operator()(typename grids_t::size_type blockid,
+                              typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
       value_type const dx_inv = (value_type)1 / dx;
       if constexpr (grids_t::dim == 3) {
@@ -65,7 +66,9 @@ namespace zs {
         using TV = vec<value_type, grids_t::dim>;
         using TM = vec<value_type, grids_t::dim * grids_t::dim>;
 
-        auto coord = buckets.coord(bucketno);
+        // auto coord = buckets.coord(bucketno);
+        auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
+                     + grids_t::cellid_to_coord(cellid).template cast<typename partition_t::Tn>();
         TV v_c{TV::zeros()};
         TM v_cross_x_c{TM::zeros()};
 
@@ -73,14 +76,20 @@ namespace zs {
         for (auto&& iter : ndrange<grids_t::dim>(2)) {
           const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);
           const auto posi = coordi * dx;
-          auto [block, local_index]
-              = unpack_coord_in_grid(coordi, grids_t::side_length, partition, grid);
-          value_type W = 1. / 8;  // 3d
-          const auto cellid = grids_t::coord_to_cellid(local_index);
-          auto v_i = block.pack<grids_t::dim>(1, grids_t::coord_to_cellid(local_index));
-          v_c += v_i * W;
-          for (int d = 0; d < grids_t::dim * grids_t::dim; ++d)
-            v_cross_x_c[d] += W * v_i(d % 3) * posi(d / 3);
+
+          // auto [block, local_index]
+          //    = unpack_coord_in_grid(coordi, grids_t::side_length, partition, grid);
+          auto [blockno, local_index]
+              = unpack_coord_in_grid(coordi, grids_t::side_length, partition);
+          if (blockno >= 0) {
+            auto block = grid.block(blockno);
+            value_type W = 1. / 8;  // 3d
+            const auto cellid = grids_t::coord_to_cellid(local_index);
+            auto v_i = block.pack<grids_t::dim>(1, grids_t::coord_to_cellid(local_index));
+            v_c += v_i * W;
+            for (int d = 0; d < grids_t::dim * grids_t::dim; ++d)
+              v_cross_x_c[d] += W * v_i(d % 3) * posi(d / 3);
+          }
         }
 
         auto posc = (coord + (value_type)0.5) * dx;
@@ -115,7 +124,7 @@ namespace zs {
                 for (int d = 0; d != dim; ++d) atomic_add(wrapv<space>{}, &vp[d], v_c[d] * W);
                 for (int d = 0; d != dim * dim; ++d)
                   atomic_add(wrapv<space>{}, &Cp[d],
-                             W * (v_cross_x_c[d] - v_c(d % dim) * posp(d / dim)));
+                             W * (v_cross_x_c[d] - v_c(d % dim) * posp(d / dim)) * D_inv);
               }
             }
           }

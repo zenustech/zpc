@@ -50,7 +50,8 @@ namespace zs {
     constexpr float dxinv() const { return static_cast<decltype(grids._dx)>(1.0) / grids._dx; }
 
 #if 1
-    constexpr void operator()(typename buckets_t::size_type bucketno) noexcept {
+    constexpr void operator()(typename grids_t::size_type blockid,
+                              typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
       value_type const dx_inv = dxinv();
       if constexpr (grids_t::dim == 3) {
@@ -61,7 +62,9 @@ namespace zs {
         TV mv_c{TV::zeros()};
 
         /// stage 1 (p -> c)
-        auto coord = buckets.coord(bucketno);
+        // auto coord = buckets.coord(bucketno);
+        auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
+                     + grids_t::cellid_to_coord(cellid).template cast<typename partition_t::Tn>();
         auto posi = (coord + (value_type)0.5) * dx;
         auto checkInKernelRange = [&posi, dx](auto&& posp) -> bool {
           for (int d = 0; d != grids_t::dim; ++d)
@@ -154,14 +157,16 @@ namespace zs {
         auto grid = grids.grid(collocated_v);
         coord = coord + 1;  /// move to base coord
         for (auto&& iter : ndrange<grids_t::dim>(2)) {
-          auto [block, local_index]
-              = unpack_coord_in_grid(coord + make_vec<typename partition_t::Tn>(iter),
-                                     grids_t::side_length, partition, grid);
-          value_type W = 1. / 8;  // 3d
-          const auto cellid = grids_t::coord_to_cellid(local_index);
-          atomic_add(wrapv<space>{}, &block(0, cellid), m_c * W);
-          for (int d = 0; d != grids_t::dim; ++d)
-            atomic_add(wrapv<space>{}, &block(1 + d, cellid), mv_c[d] * W);
+          auto [blockno, local_index] = unpack_coord_in_grid(
+              coord + make_vec<typename partition_t::Tn>(iter), grids_t::side_length, partition);
+          if (blockno >= 0) {
+            auto block = grid.block(blockno);
+            value_type W = 1. / 8;  // 3d
+            const auto cellid = grids_t::coord_to_cellid(local_index);
+            atomic_add(wrapv<space>{}, &block(0, cellid), m_c * W);
+            for (int d = 0; d != grids_t::dim; ++d)
+              atomic_add(wrapv<space>{}, &block(1 + d, cellid), mv_c[d] * W);
+          }
         }
       }  // dim == 3
     }

@@ -180,8 +180,6 @@ namespace zs {
         vec9 C{particles.B(parid)};
         TV Dinv{};
 
-        pos += vel * dt;
-
         for (int d = 0; d != dim; ++d) {
           Dinv[d] = gcem::fmod(pos[d], dx * (value_type)0.5);
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
@@ -199,6 +197,8 @@ namespace zs {
           matrixMatrixMultiplication3d(tmp.data(), oldF.data(), F.data());
           particles.F(parid) = F;
         }
+
+        pos += vel * dt;
         particles.pos(parid) = pos;
       }
     }

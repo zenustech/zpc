@@ -212,6 +212,7 @@ namespace zs {
             pars.attr("pos") = tmp.X.clone(dst);
             pars.addAttr("mass", scalar_v) = tmp.M.clone(dst);
             pars.addAttr("vel", vector_v) = tmp.V.clone(dst);
+            pars.addAttr("Dinv", vector_v) = tmp.V.clone(dst);
             if (hasF)
               pars.addAttr("F", matrix_v) = tmp.F.clone(dst);
             else

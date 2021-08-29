@@ -244,6 +244,7 @@ namespace zs {
         : _M{(T *)particles.getAttrAddress("mass")},
           _X{(TV *)particles.getAttrAddress("pos")},
           _V{(TV *)particles.getAttrAddress("vel")},
+          _Dinv{(TV *)particles.getAttrAddress("Dinv")},
           _J{(T *)particles.getAttrAddress("J")},
           _F{(TM *)particles.getAttrAddress("F")},
           _C{(TM *)particles.getAttrAddress("C")},
@@ -256,6 +257,8 @@ namespace zs {
     constexpr const auto &pos(size_type parid) const { return _X[parid]; }
     constexpr auto &vel(size_type parid) { return _V[parid]; }
     constexpr const auto &vel(size_type parid) const { return _V[parid]; }
+    constexpr auto &Dinv(size_type parid) { return _Dinv[parid]; }
+    constexpr const auto &Dinv(size_type parid) const { return _Dinv[parid]; }
     /// deformation for water
     constexpr auto &J(size_type parid) { return _J[parid]; }
     constexpr const auto &J(size_type parid) const { return _J[parid]; }
@@ -265,6 +268,8 @@ namespace zs {
     /// for apic transfer only
     constexpr auto &C(size_type parid) { return _C[parid]; }
     constexpr const auto &C(size_type parid) const { return _C[parid]; }
+    constexpr auto &B(size_type parid) { return _C[parid]; }
+    constexpr const auto &B(size_type parid) const { return _C[parid]; }
     /// plasticity
     constexpr auto &logJp(size_type parid) { return _logJp[parid]; }
     constexpr const auto &logJp(size_type parid) const { return _logJp[parid]; }
@@ -272,7 +277,7 @@ namespace zs {
 
   protected:
     T *_M;
-    TV *_X, *_V;
+    TV *_X, *_V, *_Dinv;
     T *_J;
     TM *_F, *_C;
     T *_logJp;
@@ -292,6 +297,7 @@ namespace zs {
         : _M{(const T *)particles.getAttrAddress("mass")},
           _X{(const TV *)particles.getAttrAddress("pos")},
           _V{(const TV *)particles.getAttrAddress("vel")},
+          _Dinv{(const TV *)particles.getAttrAddress("Dinv")},
           _J{(const T *)particles.getAttrAddress("J")},
           _F{(const TM *)particles.getAttrAddress("F")},
           _C{(const TM *)particles.getAttrAddress("C")},
@@ -301,12 +307,14 @@ namespace zs {
     constexpr auto mass(size_type parid) const { return _M[parid]; }
     constexpr const auto &pos(size_type parid) const { return _X[parid]; }
     constexpr const auto &vel(size_type parid) const { return _V[parid]; }
+    constexpr const auto &Dinv(size_type parid) const { return _Dinv[parid]; }
     /// deformation for water
     constexpr const auto &J(size_type parid) const { return _J[parid]; }
     /// deformation for solid
     constexpr const auto &F(size_type parid) const { return _F[parid]; }
     /// for apic transfer only
     constexpr const auto &C(size_type parid) const { return _C[parid]; }
+    constexpr const auto &B(size_type parid) const { return _C[parid]; }
     /// plasticity
     constexpr const auto &logJp(size_type parid) const { return _logJp[parid]; }
 
@@ -315,7 +323,7 @@ namespace zs {
   protected:
     const T *_M;
     const TV *_X;
-    const TV *_V;
+    const TV *_V, *_Dinv;
     const T *_J;
     const TM *_F;
     const TM *_C;

@@ -50,16 +50,19 @@ namespace zs {
 
     constexpr float dxinv() const { return static_cast<decltype(grids._dx)>(1.0) / grids._dx; }
 
-#if 1
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
       value_type const dx_inv = dxinv();
       if constexpr (dim == 3) {
+        // value_type const D_inv = 4.f * dx_inv * dx_inv;
         using TV = vec<value_type, dim>;
+        using TM = vec<value_type, dim * dim>;
 
         value_type m_c{(value_type)0};
         TV mv_c{TV::zeros()};
+        TM QDinv_c{TM::zeros()};
+        TV QDinvXp_c{TV::zeros()};
 
         /// stage 1 (p -> c)
         // auto coord = buckets.coord(bucketno);
@@ -87,7 +90,8 @@ namespace zs {
                 }
                 auto vel = particles.vel(parid);
                 auto mass = particles.mass(parid);
-                auto C = particles.C(parid);
+                auto C = particles.B(parid);
+                for (int d = 0; d != dim * dim; ++d) C[d] *= Dinv[d / dim];
                 RM_CVREF_T(C) contrib{};
                 if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
                   float J = particles.J(parid);
@@ -135,26 +139,27 @@ namespace zs {
                   }
                 }
 
-                // contrib = C * mass - contrib * dt * D_inv;
                 for (int d = 0; d != dim * dim; ++d) contrib[d] *= Dinv[d / dim];
                 contrib = C * mass - contrib * dt;
 
                 auto xcxp = posc - posp;
-                value_type W = 1.f;
+                value_type Wpc = 1.f;
                 auto diff = xcxp * dx_inv;
                 for (int d = 0; d != dim; ++d) {
                   const auto xabs = gcem::abs(diff[d]);
                   if (xabs <= 1)
-                    W *= ((value_type)1. - xabs);
+                    Wpc *= ((value_type)1. - xabs);
                   else
-                    W *= 0.f;
+                    Wpc *= 0.f;
                 }
-                m_c += mass * W;
-                for (int d = 0; d != particles_t::dim; ++d)
-                  mv_c[d] += (mass * vel[d]
-                              + (contrib[d] * xcxp[0] + contrib[3 + d] * xcxp[1]
-                                 + contrib[6 + d] * xcxp[2]))
-                             * W;
+                m_c += mass * Wpc;
+                for (int d = 0; d != dim; ++d) {
+                  mv_c[d] += mass * vel[d] * Wpc;
+                  QDinvXp_c[d] += (contrib[d] * posp[0] + contrib[3 + d] * posp[1]
+                                   + contrib[6 + d] * posp[2])
+                                  * Wpc;
+                }
+                for (int d = 0; d != dim * dim; ++d) QDinv_c[d] += contrib[d] * Wpc;
               }  // check in range
             }    // iterate in the bucket
           }
@@ -164,188 +169,26 @@ namespace zs {
         auto grid = grids.grid(collocated_v);
         coord = coord + 1;  /// move to base coord
         for (auto&& iter : ndrange<dim>(2)) {
-          auto [blockno, local_index] = unpack_coord_in_grid(
-              coord + make_vec<typename partition_t::Tn>(iter), grids_t::side_length, partition);
+          const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);
+          const auto posi = coordi * dx;
+          auto [blockno, local_index]
+              = unpack_coord_in_grid(coordi, grids_t::side_length, partition);
           if (blockno >= 0) {
             auto block = grid.block(blockno);
-            value_type W = 1. / 8;  // 3d
+            constexpr value_type Wci = 1. / 8;  // 3d
             const auto cellid = grids_t::coord_to_cellid(local_index);
-            atomic_add(wrapv<space>{}, &block(0, cellid), m_c * W);
+            atomic_add(wrapv<space>{}, &block(0, cellid), m_c * Wci);
             for (int d = 0; d != dim; ++d)
-              atomic_add(wrapv<space>{}, &block(1 + d, cellid), mv_c[d] * W);
+              atomic_add(
+                  wrapv<space>{}, &block(1 + d, cellid),
+                  (mv_c[d]
+                   + ((QDinv_c[d] * posi[0] + QDinv_c[3 + d] * posi[1] + QDinv_c[6 + d] * posi[2])
+                      - QDinvXp_c[d]))
+                      * Wci);
           }
         }
       }  // dim == 3
     }
-
-#elif 1
-
-    constexpr void operator()(int bucketno) noexcept {
-      float const dx = grids._dx;
-      float const dx_inv = dxinv();
-      if constexpr (particles_t::dim == 3) {
-        float const D_inv = 4.f * dx_inv * dx_inv;
-        using ivec3 = vec<int, particles_t::dim>;
-        using vec3 = vec<float, particles_t::dim>;
-        using vec9 = vec<float, particles_t::dim * particles_t::dim>;
-        using vec3x3 = vec<float, particles_t::dim, particles_t::dim>;
-
-        for (int st = buckets.offsets(bucketno), ed = buckets.offsets(bucketno + 1); st < ed;
-             ++st) {
-          auto parid = buckets.indices(st);
-
-          vec3 local_pos{particles.pos(parid)};
-          vec3 vel{particles.vel(parid)};
-          float mass = particles.mass(parid);
-          vec9 contrib{}, C{particles.C(parid)};
-
-          if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
-            float J = particles.J(parid);
-            float vol = model.volume * J;
-            float pressure = model.bulk;
-            {
-              float J2 = J * J;
-              float J4 = J2 * J2;
-              // pressure = pressure * (powf(J, -model.gamma) - 1.f);
-              pressure = pressure * (1 / (J * J2 * J4) - 1);  // from Bow
-            }
-            contrib[0] = ((C[0] + C[0]) * model.viscosity - pressure) * vol;
-            contrib[1] = (C[1] + C[3]) * model.viscosity * vol;
-            contrib[2] = (C[2] + C[6]) * model.viscosity * vol;
-
-            contrib[3] = (C[3] + C[1]) * model.viscosity * vol;
-            contrib[4] = ((C[4] + C[4]) * model.viscosity - pressure) * vol;
-            contrib[5] = (C[5] + C[7]) * model.viscosity * vol;
-
-            contrib[6] = (C[6] + C[2]) * model.viscosity * vol;
-            contrib[7] = (C[7] + C[5]) * model.viscosity * vol;
-            contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
-
-          } else {
-            const auto [mu, lambda] = lame_parameters(model.E, model.nu);
-            vec9 F{particles.F(parid)};
-            if constexpr (is_same_v<model_t, FixedCorotatedConfig>) {
-              compute_stress_fixedcorotated(model.volume, mu, lambda, F, contrib);
-            } else if constexpr (is_same_v<model_t, VonMisesFixedCorotatedConfig>) {
-              compute_stress_vonmisesfixedcorotated(model.volume, mu, lambda, model.yieldStress, F,
-                                                    contrib);
-            } else {
-              /// with plasticity additionally
-              float logJp = particles.logJp(parid);
-              if constexpr (is_same_v<model_t, DruckerPragerConfig>) {
-                compute_stress_sand(model.volume, mu, lambda, model.cohesion, model.beta,
-                                    model.yieldSurface, model.volumeCorrection, logJp, F, contrib);
-              } else if constexpr (is_same_v<model_t, NACCConfig>) {
-                compute_stress_nacc(model.volume, mu, lambda, model.bulk(), model.xi, model.beta,
-                                    model.Msqr(), model.hardeningOn, logJp, F, contrib);
-              }
-              particles.logJp(parid) = logJp;
-            }
-          }
-
-          contrib = C * mass - contrib * dt * D_inv;
-
-          using VT = typename grids_t::value_type;
-          auto arena = make_local_arena<grid_e::cellcentered>(dx, local_pos);
-          for (auto loc : arena.range()) {
-            auto [grid_block, local_index] = unpack_coord_in_grid(
-                arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_v));
-            auto xixp = arena.diff(loc);
-            VT W = arena.weight(loc);
-            const auto cellid = grids_t::coord_to_cellid(local_index);
-            atomic_add(wrapv<space>{}, &grid_block(0, cellid), mass * W);
-            for (int d = 0; d != particles_t::dim; ++d)
-              atomic_add(
-                  wrapv<space>{}, &grid_block(1 + d, cellid),
-                  (mass * vel[d]
-                   + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]))
-                      * W);
-          }
-        }
-      }
-    }
-#else
-
-    constexpr void operator()(typename particles_t::size_type parid) noexcept {
-      float const dx = grids._dx;
-      float const dx_inv = dxinv();
-      if constexpr (particles_t::dim == 3) {
-        float const D_inv = 4.f * dx_inv * dx_inv;
-        using ivec3 = vec<int, particles_t::dim>;
-        using vec3 = vec<float, particles_t::dim>;
-        using vec9 = vec<float, particles_t::dim * particles_t::dim>;
-        using vec3x3 = vec<float, particles_t::dim, particles_t::dim>;
-
-        vec3 local_pos{particles.pos(parid)};
-        vec3 vel{particles.vel(parid)};
-        float mass = particles.mass(parid);
-        vec9 contrib{}, C{particles.C(parid)};
-
-        if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
-          float J = particles.J(parid);
-          float vol = model.volume * J;
-          float pressure = model.bulk;
-          {
-            float J2 = J * J;
-            float J4 = J2 * J2;
-            // pressure = pressure * (powf(J, -model.gamma) - 1.f);
-            pressure = pressure * (1 / (J * J2 * J4) - 1);  // from Bow
-          }
-          contrib[0] = ((C[0] + C[0]) * model.viscosity - pressure) * vol;
-          contrib[1] = (C[1] + C[3]) * model.viscosity * vol;
-          contrib[2] = (C[2] + C[6]) * model.viscosity * vol;
-
-          contrib[3] = (C[3] + C[1]) * model.viscosity * vol;
-          contrib[4] = ((C[4] + C[4]) * model.viscosity - pressure) * vol;
-          contrib[5] = (C[5] + C[7]) * model.viscosity * vol;
-
-          contrib[6] = (C[6] + C[2]) * model.viscosity * vol;
-          contrib[7] = (C[7] + C[5]) * model.viscosity * vol;
-          contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
-
-        } else {
-          const auto [mu, lambda] = lame_parameters(model.E, model.nu);
-          vec9 F{particles.F(parid)};
-          if constexpr (is_same_v<model_t, FixedCorotatedConfig>) {
-            compute_stress_fixedcorotated(model.volume, mu, lambda, F, contrib);
-          } else if constexpr (is_same_v<model_t, VonMisesFixedCorotatedConfig>) {
-            compute_stress_vonmisesfixedcorotated(model.volume, mu, lambda, model.yieldStress, F,
-                                                  contrib);
-          } else {
-            /// with plasticity additionally
-            float logJp = particles.logJp(parid);
-            if constexpr (is_same_v<model_t, DruckerPragerConfig>) {
-              compute_stress_sand(model.volume, mu, lambda, model.cohesion, model.beta,
-                                  model.yieldSurface, model.volumeCorrection, logJp, F, contrib);
-            } else if constexpr (is_same_v<model_t, NACCConfig>) {
-              compute_stress_nacc(model.volume, mu, lambda, model.bulk(), model.xi, model.beta,
-                                  model.Msqr(), model.hardeningOn, logJp, F, contrib);
-            }
-            particles.logJp(parid) = logJp;
-          }
-        }
-
-        contrib = C * mass - contrib * dt * D_inv;
-
-        using VT = typename grids_t::value_type;
-        auto arena = make_local_arena<grid_e::cellcentered>(dx, local_pos);
-        for (auto loc : arena.range()) {
-          auto [grid_block, local_index] = unpack_coord_in_grid(
-              arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_v));
-          auto xixp = arena.diff(loc);
-          VT W = arena.weight(loc);
-          const auto cellid = grids_t::coord_to_cellid(local_index);
-          atomic_add(wrapv<space>{}, &grid_block(0, cellid), mass * W);
-          for (int d = 0; d != particles_t::dim; ++d)
-            atomic_add(
-                wrapv<space>{}, &grid_block(1 + d, cellid),
-                (mass * vel[d]
-                 + (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]))
-                    * W);
-        }
-      }
-    }
-#endif
 
     model_t model;
     buckets_t buckets;

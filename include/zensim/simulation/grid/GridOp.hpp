@@ -15,6 +15,7 @@ namespace zs {
   struct ApplyBoundaryConditionOnGridBlocks;
   template <grid_e category, typename GridsViewT> struct ResetGrid;
   template <grid_e category, typename GridsViewT> struct GridMomentumToVelocity;
+  template <grid_e category, typename TableT, typename GridT> struct GridAngularMomentum;
 
   template <execspace_e space, typename V, int d, int chnbits, int dombits>
   CleanGridBlocks(wrapv<space>, GridBlocks<GridBlock<V, d, chnbits, dombits>>)
@@ -71,6 +72,16 @@ namespace zs {
   template <execspace_e space, typename T, int d, auto l, grid_e category>
   GridMomentumToVelocity(wrapv<space>, Grid<T, d, l, category>, int, int, float *maxVel)
       -> GridMomentumToVelocity<category, GridsView<space, Grids<T, d, l>>>;
+
+  template <execspace_e space, typename TableT, typename T, int d, auto l, grid_e category>
+  GridAngularMomentum(wrapv<space>, TableT &table, Grid<T, d, l, category>, int, int, double *sum)
+      -> GridAngularMomentum<category, HashTableView<space, TableT>,
+                             GridsView<space, Grids<T, d, l>>>;
+  template <execspace_e space, typename TableT, typename V, int d, int chnbits, int dombits>
+  GridAngularMomentum(wrapv<space>, TableT &table, GridBlocks<GridBlock<V, d, chnbits, dombits>>,
+                      int, int, double *sum)
+      -> GridAngularMomentum<grid_e::collocated, HashTableView<space, TableT>,
+                             GridBlocksView<space, GridBlocks<GridBlock<V, d, chnbits, dombits>>>>;
 
   template <execspace_e space, typename GridBlocksT>
   struct CleanGridBlocks<GridBlocksView<space, GridBlocksT>> {
@@ -379,6 +390,95 @@ namespace zs {
     float *maxVel;
     int mChn, mvChn;
   };
+
+  template <grid_e category, execspace_e space, typename TableT, typename T, int d, auto l>
+  struct GridAngularMomentum<category, HashTableView<space, TableT>,
+                             GridsView<space, Grids<T, d, l>>> {
+    using partition_t = HashTableView<space, TableT>;
+    using grid_view_t = typename GridsView<space, Grids<T, d, l>>::template Grid<category>;
+    using value_type = typename grid_view_t::value_type;
+    static constexpr int dim = grid_view_t::dim;
+
+    GridAngularMomentum() = default;
+    explicit GridAngularMomentum(wrapv<space>, TableT &table, Grid<T, d, l, category> &grid,
+                                 int mChn = 0, int mvChn = 1, double *sumAngularMomentum = nullptr)
+        : partition{proxy<space>(table)},
+          grid{proxy<space>(grid)},
+          sumAngularMomentum{sumAngularMomentum},
+          mChn{mChn},
+          mvChn{mvChn} {}
+
+    constexpr void operator()(typename grid_view_t::size_type blockid,
+                              typename grid_view_t::cell_index_type cellid) noexcept {
+      auto block = grid.block(blockid);
+      value_type mass = block(mChn, cellid);
+      if (mass != (value_type)0) {
+        auto blockkey = partition._activeKeys[blockid];
+        auto x = (blockkey * (value_type)grid_view_t::side_length
+                  + grid_view_t::cellid_to_coord(cellid))
+                 * grid.dx;
+        auto mv = block.pack<dim>(mvChn, cellid);
+        /// x cross mv;
+        auto res = x.cross(mv);
+
+        for (int i = 0; i != dim; ++i)
+          atomic_add(wrapv<space>{}, sumAngularMomentum + i, (double)res[i]);
+        for (int i = 0; i != dim; ++i)
+          atomic_add(wrapv<space>{}, sumAngularMomentum + i + dim, (double)mv[i]);
+      }
+    }
+
+    partition_t partition;
+    grid_view_t grid;
+    double *sumAngularMomentum;
+    int mChn, mvChn;
+  };
+#if 1
+  template <execspace_e space, typename TableT, typename GridBlocksT>
+  struct GridAngularMomentum<grid_e::collocated, HashTableView<space, TableT>,
+                             GridBlocksView<space, GridBlocksT>> {
+    using partition_t = HashTableView<space, TableT>;
+    using grid_view_t = GridBlocksView<space, GridBlocksT>;
+    using gridblock_t = typename grid_view_t::block_t;
+    using value_type = float;
+    static constexpr int dim = grid_view_t::dim;
+
+    GridAngularMomentum() = default;
+    explicit GridAngularMomentum(wrapv<space>, TableT &table, GridBlocksT &grid, int mChn = 0,
+                                 int mvChn = 1, double *sumAngularMomentum = nullptr)
+        : partition{proxy<space>(table)},
+          grid{proxy<space>(grid)},
+          sumAngularMomentum{sumAngularMomentum},
+          mChn{mChn},
+          mvChn{mvChn} {}
+
+    constexpr void operator()(typename grid_view_t::size_type blockid,
+                              typename gridblock_t::size_type cellid) noexcept {
+      auto &block = grid[blockid];
+      value_type mass = block(mChn, cellid).asFloat();
+      if (mass != (value_type)0) {
+        auto blockkey = partition._activeKeys[blockid];
+        auto x = (blockkey * gridblock_t::side_length() + gridblock_t::to_coord(cellid))
+                 * grid._dx.asFloat();
+        vec<value_type, dim> mv{};
+        for (int d = 0; d != dim; ++d)
+          mv[d] = static_cast<value_type>(block(d + mvChn, cellid).asFloat());
+        /// x cross mv;
+        auto res = x.cross(mv);
+
+        for (int i = 0; i != dim; ++i)
+          atomic_add(wrapv<space>{}, sumAngularMomentum + i, (double)res[i]);
+        for (int i = 0; i != dim; ++i)
+          atomic_add(wrapv<space>{}, sumAngularMomentum + i + dim, (double)mv[i]);
+      }
+    }
+
+    partition_t partition;
+    grid_view_t grid;
+    double *sumAngularMomentum;
+    int mChn, mvChn;
+  };
+#endif
 
 #if 0
   template <execspace_e space, typename ColliderT, typename TableT, typename GridsT>

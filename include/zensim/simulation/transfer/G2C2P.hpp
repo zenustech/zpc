@@ -9,6 +9,8 @@
 #include "zensim/math/matrix/MatrixUtils.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
 
+#define ZS_USE_NEW 1
+
 namespace zs {
 
   template <transfer_scheme_e, typename ConstitutiveModel, typename BucketsT, typename GridsT,
@@ -56,6 +58,7 @@ namespace zs {
           particles{proxy<space>(particles)},
           dt{dt} {}
 
+#if 0
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
@@ -131,6 +134,72 @@ namespace zs {
         }
       }
     }
+#else
+    constexpr void operator()(typename particles_t::size_type parid) noexcept {
+      value_type const dx = grids._dx;
+      value_type const dx_inv = (value_type)1 / dx;
+      if constexpr (dim == 3) {
+        using ivec3 = vec<int, dim>;
+        using TV = vec<value_type, dim>;
+        using WeightPC = vec<value_type, dim, 2>;
+        using vec9 = vec<value_type, dim * dim>;
+        using vec3x3 = vec<value_type, dim, dim>;
+        TV pos{particles.pos(parid)};
+        TV Xrel{}, Dinv{};
+        for (int d = 0; d != dim; ++d) {
+          // Xrel[d] = gcem::fmod(pos[d], dx * (value_type)0.5);
+          Xrel[d] = pos[d] - lower_trunc(pos[d] * dx_inv + (value_type)0.5) * dx;
+          Dinv[d] = ((value_type)2 / (dx * dx - 2 * Xrel[d] * Xrel[d]));
+        }
+        auto Wpi = vec<value_type, 3, 3, 3>::zeros();
+        WeightPC Wpc{};
+        for (int d = 0; d != dim; ++d) {
+          Wpc(d, 0) = 0.5 - Xrel[d] * dx_inv;
+          Wpc(d, 1) = 0.5 + Xrel[d] * dx_inv;
+        }
+        auto weight_pc = [&Wpc](int i, int j, int k) { return Wpc(0, i) * Wpc(1, j) * Wpc(2, k); };
+
+        double s = 0., res = 0., sum = 0.;
+        for (int cx = 0; cx != 2; cx++)
+          for (int cy = 0; cy != 2; cy++)
+            for (int cz = 0; cz != 2; cz++) s += weight_pc(cx, cy, cz);
+        for (int cx = 0; cx != 2; cx++)
+          for (int cy = 0; cy != 2; cy++)
+            for (int cz = 0; cz != 2; cz++)
+              for (int x = 0; x != 2; x++)
+                for (int y = 0; y != 2; y++)
+                  for (int z = 0; z != 2; z++) {
+                    Wpi(cx + x, cy + y, cz + z) += weight_pc(cx, cy, cz) * (1. / 8);
+                    sum += weight_pc(cx, cy, cz) * (1. / 8);
+                  }
+        TV vel{TV::zeros()};
+        vec9 B{vec9::zeros()};
+        auto arena = make_local_arena(dx, pos);
+        for (auto loc : arena.range()) {
+          auto [grid_block, local_index]
+              = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
+          auto xixp = arena.diff(loc);
+
+#  if ZS_USE_NEW
+          value_type W = Wpi(std::get<0>(loc), std::get<1>(loc), std::get<2>(loc));
+#  else
+          value_type W = arena.weight(loc);
+#  endif
+          res += W;
+
+          TV vi = grid_block.pack<particles_t::dim>(1, grids_t::coord_to_cellid(local_index));
+          vel += vi * W;
+          for (int d = 0; d != dim * dim; ++d) B[d] += W * vi(d % dim) * xixp(d / dim);
+        }
+        if (parid == 0) {
+          printf("\t\t## -> weight sum_i %f, sum_c %f, total %f\n", (float)sum, (float)s,
+                 (float)res);
+        }
+        particles.vel(parid) = vel;
+        particles.B(parid) = B;
+      }
+    }
+#endif
 
     model_t model;
     buckets_t buckets;
@@ -174,6 +243,7 @@ namespace zs {
         using vec3 = vec<value_type, particles_t::dim>;
         using vec9 = vec<value_type, particles_t::dim * particles_t::dim>;
         using vec3x3 = vec<value_type, particles_t::dim, particles_t::dim>;
+        float const D_inv = 4.f / dx / dx;
         vec3 pos{particles.pos(parid)};
         vec3 vel{particles.vel(parid)};
 
@@ -184,7 +254,12 @@ namespace zs {
           Dinv[d] = gcem::fmod(pos[d], dx * (value_type)0.5);
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
         }
+
+#if ZS_USE_NEW
         for (int d = 0; d != dim * dim; ++d) C[d] *= Dinv[d / dim];
+#else
+        for (int d = 0; d != dim * dim; ++d) C[d] *= D_inv;
+#endif
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);

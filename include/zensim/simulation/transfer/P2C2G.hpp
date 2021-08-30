@@ -10,6 +10,8 @@
 #include "zensim/physics/ConstitutiveModel_Vol_dP.hpp"
 #include "zensim/simulation/Utils.hpp"
 
+#define ZS_USE_NEW 1
+
 namespace zs {
 
   template <transfer_scheme_e, typename ConstitutiveModel, typename BucketsT, typename ParticlesT,
@@ -50,6 +52,7 @@ namespace zs {
 
     constexpr float dxinv() const { return static_cast<decltype(grids._dx)>(1.0) / grids._dx; }
 
+#if 0
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
@@ -141,6 +144,73 @@ namespace zs {
         }
       }  // dim == 3
     }
+#else
+    constexpr void operator()(typename particles_t::size_type parid) noexcept {
+      float const dx = grids._dx;
+      float const dx_inv = dxinv();
+      if constexpr (dim == 3) {
+        float const D_inv = 4.f * dx_inv * dx_inv;
+        using ivec3 = vec<int, dim>;
+        using vec3 = vec<float, dim>;
+        using vec9 = vec<float, dim * dim>;
+        using vec3x3 = vec<float, dim, dim>;
+
+        vec3 local_pos{particles.pos(parid)};
+        vec3 vel{particles.vel(parid)};
+        float mass = particles.mass(parid);
+        vec9 contrib{}, C{particles.B(parid)};
+
+        vec3 Xrel{}, Dinv{};
+        for (int d = 0; d != dim; ++d) {
+          Xrel[d] = local_pos[d] - lower_trunc(local_pos[d] * dx_inv + (value_type)0.5) * dx;
+          // Xrel[d] = gcem::fmod(local_pos[d], dx * (value_type)0.5);
+          Dinv[d] = ((value_type)2 / (dx * dx - 2 * Xrel[d] * Xrel[d]));
+        }
+#  if ZS_USE_NEW
+        for (int d = 0; d != dim * dim; ++d) C[d] *= Dinv[d / dim];
+#  else
+        for (int d = 0; d != dim * dim; ++d) C[d] *= D_inv;
+#  endif
+        auto Wpi = vec<value_type, 3, 3, 3>::zeros();
+        vec<value_type, dim, 2> Wpc{};
+        for (int d = 0; d != dim; ++d) {
+          Wpc(d, 0) = 0.5 - Xrel[d] * dx_inv;
+          Wpc(d, 1) = 0.5 + Xrel[d] * dx_inv;
+        }
+        auto weight_pc = [&Wpc](int i, int j, int k) { return Wpc(0, i) * Wpc(1, j) * Wpc(2, k); };
+
+        for (int cx = 0; cx != 2; cx++)
+          for (int cy = 0; cy != 2; cy++)
+            for (int cz = 0; cz != 2; cz++)
+              for (int x = 0; x != 2; x++)
+                for (int y = 0; y != 2; y++)
+                  for (int z = 0; z != 2; z++) {
+                    Wpi(cx + x, cy + y, cz + z) += weight_pc(cx, cy, cz) * (1. / 8);
+                  }
+
+        using VT = typename grids_t::value_type;
+        auto arena = make_local_arena((VT)dx, local_pos);
+        for (auto loc : arena.range()) {
+          auto [grid_block, local_index]
+              = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
+          auto xixp = arena.diff(loc);
+#  if ZS_USE_NEW
+          value_type W = Wpi(std::get<0>(loc), std::get<1>(loc), std::get<2>(loc));
+#  else
+          value_type W = arena.weight(loc);
+#  endif
+          const auto cellid = grids_t::coord_to_cellid(local_index);
+          atomic_add(wrapv<space>{}, &grid_block(0, cellid), mass * W);
+          for (int d = 0; d != particles_t::dim; ++d) {
+            // vi: W m v + W m C (xi - xp)
+            atomic_add(
+                wrapv<space>{}, &grid_block(1 + d, cellid),
+                W * mass * (vel[d] + (C[d] * xixp[0] + C[3 + d] * xixp[1] + C[6 + d] * xixp[2])));
+          }
+        }
+      }
+    }
+#endif
 
     model_t model;
     buckets_t buckets;
@@ -189,6 +259,7 @@ namespace zs {
 
     constexpr float dxinv() const { return static_cast<decltype(grids._dx)>(1.0) / grids._dx; }
 
+#if 0
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
@@ -321,6 +392,122 @@ namespace zs {
         }
       }  // dim == 3
     }
+#else
+    constexpr void operator()(typename particles_t::size_type parid) noexcept {
+      float const dx = grids._dx;
+      float const dx_inv = dxinv();
+      if constexpr (particles_t::dim == 3) {
+        float const D_inv = 4.f * dx_inv * dx_inv;
+        using ivec3 = vec<int, particles_t::dim>;
+        using vec3 = vec<float, particles_t::dim>;
+        using vec9 = vec<float, particles_t::dim * particles_t::dim>;
+        using vec3x3 = vec<float, particles_t::dim, particles_t::dim>;
+
+        vec3 local_pos{particles.pos(parid)};
+        vec3 vel{particles.vel(parid)};
+        float mass = particles.mass(parid);
+        vec9 contrib{}, C{particles.B(parid)};
+
+        vec3 Xrel{}, Dinv{};
+        for (int d = 0; d != dim; ++d) {
+          // Xrel[d] = gcem::fmod(local_pos[d], dx * (value_type)0.5);
+          Xrel[d] = local_pos[d] - lower_trunc(local_pos[d] * dx_inv + (value_type)0.5) * dx;
+          Dinv[d] = ((value_type)2 / (dx * dx - 2 * Xrel[d] * Xrel[d]));
+        }
+#  if ZS_USE_NEW
+        for (int d = 0; d != dim * dim; ++d) C[d] *= Dinv[d / dim];
+#  else
+        for (int d = 0; d != dim * dim; ++d) C[d] *= D_inv;
+#  endif
+
+        auto Wpi = vec<value_type, 3, 3, 3>::zeros();
+        vec<value_type, dim, 2> Wpc{};
+        for (int d = 0; d != dim; ++d) {
+          Wpc(d, 0) = 0.5 - Xrel[d] * dx_inv;
+          Wpc(d, 1) = 0.5 + Xrel[d] * dx_inv;
+        }
+        auto weight_pc = [&Wpc](int i, int j, int k) { return Wpc(0, i) * Wpc(1, j) * Wpc(2, k); };
+
+        for (int cx = 0; cx != 2; cx++)
+          for (int cy = 0; cy != 2; cy++)
+            for (int cz = 0; cz != 2; cz++)
+              for (int x = 0; x != 2; x++)
+                for (int y = 0; y != 2; y++)
+                  for (int z = 0; z != 2; z++) {
+                    Wpi(cx + x, cy + y, cz + z) += weight_pc(cx, cy, cz) * (1. / 8);
+                  }
+
+        if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
+          float J = particles.J(parid);
+          float vol = model.volume * J;
+          float pressure = model.bulk;
+          {
+            float J2 = J * J;
+            float J4 = J2 * J2;
+            // pressure = pressure * (powf(J, -model.gamma) - 1.f);
+            pressure = pressure * (1 / (J * J2 * J4) - 1);  // from Bow
+          }
+          contrib[0] = ((C[0] + C[0]) * model.viscosity - pressure) * vol;
+          contrib[1] = (C[1] + C[3]) * model.viscosity * vol;
+          contrib[2] = (C[2] + C[6]) * model.viscosity * vol;
+
+          contrib[3] = (C[3] + C[1]) * model.viscosity * vol;
+          contrib[4] = ((C[4] + C[4]) * model.viscosity - pressure) * vol;
+          contrib[5] = (C[5] + C[7]) * model.viscosity * vol;
+
+          contrib[6] = (C[6] + C[2]) * model.viscosity * vol;
+          contrib[7] = (C[7] + C[5]) * model.viscosity * vol;
+          contrib[8] = ((C[8] + C[8]) * model.viscosity - pressure) * vol;
+
+        } else {
+          const auto [mu, lambda] = lame_parameters(model.E, model.nu);
+          vec9 F{particles.F(parid)};
+          if constexpr (is_same_v<model_t, FixedCorotatedConfig>) {
+            compute_stress_fixedcorotated(model.volume, mu, lambda, F, contrib);
+          } else if constexpr (is_same_v<model_t, VonMisesFixedCorotatedConfig>) {
+            compute_stress_vonmisesfixedcorotated(model.volume, mu, lambda, model.yieldStress, F,
+                                                  contrib);
+          } else {
+            /// with plasticity additionally
+            float logJp = particles.logJp(parid);
+            if constexpr (is_same_v<model_t, DruckerPragerConfig>) {
+              compute_stress_sand(model.volume, mu, lambda, model.cohesion, model.beta,
+                                  model.yieldSurface, model.volumeCorrection, logJp, F, contrib);
+            } else if constexpr (is_same_v<model_t, NACCConfig>) {
+              compute_stress_nacc(model.volume, mu, lambda, model.bulk(), model.xi, model.beta,
+                                  model.Msqr(), model.hardeningOn, logJp, F, contrib);
+            }
+            particles.logJp(parid) = logJp;
+          }
+        }
+
+#  if ZS_USE_NEW
+        for (int d = 0; d != dim * dim; ++d) contrib[d] *= Dinv[d / dim] * -dt;
+#  else
+        for (int d = 0; d != dim * dim; ++d) contrib[d] *= D_inv * -dt;
+#  endif
+
+        using VT = typename grids_t::value_type;
+        auto arena = make_local_arena((VT)dx, local_pos);
+        for (auto loc : arena.range()) {
+          auto [grid_block, local_index]
+              = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
+          auto xixp = arena.diff(loc);
+#  if ZS_USE_NEW
+          value_type W = Wpi(std::get<0>(loc), std::get<1>(loc), std::get<2>(loc));
+#  else
+          value_type W = arena.weight(loc);
+#  endif
+          const auto cellid = grids_t::coord_to_cellid(local_index);
+          for (int d = 0; d != particles_t::dim; ++d) {
+            atomic_add(
+                wrapv<space>{}, &grid_block(1 + d, cellid),
+                (contrib[d] * xixp[0] + contrib[3 + d] * xixp[1] + contrib[6 + d] * xixp[2]) * W);
+          }
+        }
+      }
+    }
+#endif
 
     model_t model;
     buckets_t buckets;

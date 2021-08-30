@@ -52,7 +52,7 @@ namespace zs {
 
     constexpr float dxinv() const { return static_cast<decltype(grids._dx)>(1.0) / grids._dx; }
 
-#if 0
+#if 1
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
@@ -88,7 +88,8 @@ namespace zs {
               if (checkInKernelRange(posp)) {
                 TV Dinv{};
                 for (int d = 0; d != dim; ++d) {
-                  Dinv[d] = gcem::fmod(posp[d], dx * (value_type)0.5);
+                  // Dinv[d] = gcem::fmod(posp[d], dx * (value_type)0.5);
+                  Dinv[d] = posp[d] - lower_trunc(posp[d] * dx_inv + (value_type)0.5) * dx;
                   Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
                 }
                 auto vel = particles.vel(parid);
@@ -259,7 +260,7 @@ namespace zs {
 
     constexpr float dxinv() const { return static_cast<decltype(grids._dx)>(1.0) / grids._dx; }
 
-#if 0
+#if 1
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
@@ -293,7 +294,7 @@ namespace zs {
               if (checkInKernelRange(posp)) {
                 TV Dinv{};
                 for (int d = 0; d != dim; ++d) {
-                  Dinv[d] = gcem::fmod(posp[d], dx * (value_type)0.5);
+                  Dinv[d] = posp[d] - lower_trunc(posp[d] * dx_inv + (value_type)0.5) * dx;
                   Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
                 }
                 auto vel = particles.vel(parid);

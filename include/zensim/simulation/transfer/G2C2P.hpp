@@ -58,7 +58,7 @@ namespace zs {
           particles{proxy<space>(particles)},
           dt{dt} {}
 
-#if 0
+#if 1
     constexpr void operator()(typename grids_t::size_type blockid,
                               typename grids_t::cell_index_type cellid) noexcept {
       value_type const dx = grids._dx;
@@ -243,6 +243,7 @@ namespace zs {
         using vec3 = vec<value_type, particles_t::dim>;
         using vec9 = vec<value_type, particles_t::dim * particles_t::dim>;
         using vec3x3 = vec<value_type, particles_t::dim, particles_t::dim>;
+        value_type dx_inv = (value_type)1 / dx;
         float const D_inv = 4.f / dx / dx;
         vec3 pos{particles.pos(parid)};
         vec3 vel{particles.vel(parid)};
@@ -251,7 +252,8 @@ namespace zs {
         TV Dinv{};
 
         for (int d = 0; d != dim; ++d) {
-          Dinv[d] = gcem::fmod(pos[d], dx * (value_type)0.5);
+          // Dinv[d] = gcem::fmod(pos[d], dx * (value_type)0.5);
+          Dinv[d] = pos[d] - lower_trunc(pos[d] * dx_inv + (value_type)0.5) * dx;
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
         }
 

@@ -10,11 +10,16 @@ namespace zs {
   // https://github.com/microsoft/STL/blob/62137922ab168f8e23ec1a95c946821e24bde230/stl/inc/source_location
   // https://github.com/microsoft/STL/issues/54
   struct source_location {
-    // 14.1.2, source_location creation
+// 14.1.2, source_location creation
+#if defined(__SYCL_DEVICE_ONLY__)
+    static constexpr source_location current(const char* __file = "", const char* __func = "",
+                                             int __line = 0, int __col = 0) noexcept
+#else
     static constexpr source_location current(const char* __file = __builtin_FILE(),
                                              const char* __func = __builtin_FUNCTION(),
-                                             int __line = __builtin_LINE(),
-                                             int __col = 0) noexcept {
+                                             int __line = __builtin_LINE(), int __col = 0) noexcept
+#endif
+    {
       source_location __loc{};
       __loc._M_file = __file;
       __loc._M_func = __func;

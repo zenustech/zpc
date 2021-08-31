@@ -48,8 +48,9 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
 
 option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
-set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp-related build") # mandatory enabled
-set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda-related build")
+set(ZS_ENABLE_SYCL_COMPUTECPP On CACHE BOOL "Enable SYCL[ComputeCpp] backend")
+set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp backend")
+set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda backend")
 set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
 set(ZS_PROPAGATE_DEPS On CACHE BOOL "Pass on dependencies")
 
@@ -123,6 +124,10 @@ target_compile_definitions(zpc_cxx_deps
 add_subdirectory(include/zensim)
 
 set(ZS_ENABLE_OPENGL ${ZS_ENABLE_OPENGL} PARENT_SCOPE)
+set(ZS_ENABLE_SYCL_COMPUTECPP ${ZS_ENABLE_SYCL_COMPUTECPP} PARENT_SCOPE)
+if (ZS_ENABLE_SYCL_COMPUTECPP)
+  set(COMPUTECPP_DEVICE_COMPILER_FLAGS ${COMPUTECPP_DEVICE_COMPILER_FLAGS} PARENT_SCOPE)
+endif()
 set(ZS_ENABLE_CUDA ${ZS_ENABLE_CUDA} PARENT_SCOPE)
 set(ZS_ENABLE_PTHREADS ${ZS_ENABLE_PTHREADS} PARENT_SCOPE)
 set(ZS_ENABLE_OPENMP ${ZS_ENABLE_OPENMP} PARENT_SCOPE)
@@ -132,7 +137,7 @@ set(ZS_ENABLE_PARTIO ${ZS_ENABLE_PARTIO} PARENT_SCOPE)
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}")
+message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}")
 
 # ---- Install ----
 # =================
@@ -150,6 +155,9 @@ endif(ZS_ENABLE_OPENMP)
 if (ZS_ENABLE_CUDA)
   set(INSTALL_TARGETS ${INSTALL_TARGETS} zpccuda zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
+if (ZS_ENABLE_SYCL_COMPUTECPP)
+  set(INSTALL_TARGETS ${INSTALL_TARGETS} zpcsycl zpc_sycl_deps)
+endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
 message("project name: ${project_name}")
 message("package version: ${project_version}")

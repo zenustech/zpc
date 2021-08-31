@@ -249,6 +249,12 @@ else()
   target_compile_definitions(zpccore PUBLIC ZS_ENABLE_CUDA=0)
 endif(ZS_ENABLE_CUDA)
 
+if (ZS_ENABLE_SYCL_COMPUTECPP)
+  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_COMPUTECPP=1)
+else()
+  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_COMPUTECPP=0)
+endif(ZS_ENABLE_SYCL_COMPUTECPP)
+
 ###############
 # zpc: openmp #
 ###############
@@ -293,7 +299,7 @@ target_link_libraries(zpccuda PUBLIC zpccore zpc_cuda_deps) # cuda_runtime cuda 
 target_compile_options(zpccuda 
   PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
 # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
-  PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe "--diag_suppress=implicit_return_from_non_void_function">
+  PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe --diag_suppress=implicit_return_from_non_void_function>
 )
 target_link_options(zpccuda 
   PRIVATE       $<DEVICE_LINK:-dlto>
@@ -311,6 +317,27 @@ target_compile_definitions(zpccuda
 )
 
 endif(ZS_ENABLE_CUDA)
+
+#############
+# zpc: sycl #
+#############
+if (ZS_ENABLE_SYCL_COMPUTECPP)
+
+add_library(zpcsycl INTERFACE)
+#[=[
+if (ZS_BUILD_SHARED_LIBS)
+  add_library(zpcsycl SHARED)
+else ()
+  add_library(zpcsycl STATIC)
+endif ()
+target_sources(zpcsycl 
+  PRIVATE   ${ZENSIM_LIBRARY_SYCL_SOURCE_FILES}
+)
+target_link_libraries(zpcsycl PUBLIC zpccore zpc_sycl_deps)
+#]=]
+target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
+
+endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
 #######
 # zpc #
@@ -333,6 +360,9 @@ endif(ZS_ENABLE_OPENMP)
 if (ZS_ENABLE_CUDA)
   target_link_libraries(zpc PUBLIC zpccuda)
 endif(ZS_ENABLE_CUDA)
+if (ZS_ENABLE_SYCL_COMPUTECPP)
+  target_link_libraries(zpc PUBLIC zpcsycl)
+endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
 target_link_libraries(zensim INTERFACE zpc)  # zpc -> zensim
 

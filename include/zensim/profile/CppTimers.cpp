@@ -38,7 +38,7 @@ namespace zs {
 #else
     struct timespec t;
     std::timespec_get(&t, TIME_UTC);
-    last = t.tv_sec * 1e3 + t.tv_sec * 1e-6;
+    last = t.tv_sec * 1e3 + t.tv_nsec * 1e-6;
 #endif
   }
   void CppTimer::tock() {
@@ -48,7 +48,7 @@ namespace zs {
 #else
     struct timespec t;
     std::timespec_get(&t, TIME_UTC);
-    cur = t.tv_sec * 1e3 + t.tv_sec * 1e-6;
+    cur = t.tv_sec * 1e3 + t.tv_nsec * 1e-6;
 #endif
   }
   void CppTimer::tock(std::string_view tag) {

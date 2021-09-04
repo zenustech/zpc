@@ -337,7 +337,22 @@ target_link_libraries(zpcsycl PUBLIC zpccore zpc_sycl_deps)
 #]=]
 target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
 
-endif(ZS_ENABLE_SYCL_COMPUTECPP)
+elseif(ZS_ENABLE_SYCL_DPCPP)
+
+add_library(zpcsycl INTERFACE)
+target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
+
+endif(ZS_ENABLE_SYCL)
+
+#############
+# zpc: cl   #
+#############
+if (ZS_ENABLE_OPENCL)
+
+add_library(zpccl INTERFACE)
+target_link_libraries(zpccl INTERFACE zpccore zpc_cl_deps)
+
+endif(ZS_ENABLE_OPENCL)
 
 #######
 # zpc #
@@ -354,15 +369,24 @@ target_sources(zpc
     ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
 )
 target_link_libraries(zpc PUBLIC zpccore)
+
 if (ZS_ENABLE_OPENMP)
   target_link_libraries(zpc PUBLIC zpcomp)
 endif(ZS_ENABLE_OPENMP)
+
 if (ZS_ENABLE_CUDA)
   target_link_libraries(zpc PUBLIC zpccuda)
 endif(ZS_ENABLE_CUDA)
+
 if (ZS_ENABLE_SYCL_COMPUTECPP)
   target_link_libraries(zpc PUBLIC zpcsycl)
-endif(ZS_ENABLE_SYCL_COMPUTECPP)
+elseif (ZS_ENABLE_SYCL_DPCPP)
+  target_link_libraries(zpc PUBLIC zpcsycl)
+endif(ZS_ENABLE_SYCL)
+
+if (ZS_ENABLE_OPENCL)
+  target_link_libraries(zpc PUBLIC zpccl)
+endif(ZS_ENABLE_OPENCL)
 
 target_link_libraries(zensim INTERFACE zpc)  # zpc -> zensim
 

@@ -30,3 +30,13 @@ static_assert(false, "32-bit Windows systems are not supported")
 #else
 #  define ZS_UNREACHABLE __builtin_unreachable();
 #endif
+
+///
+#if defined(SYCL_LANGUAGE_VERSION)
+#define ZS_COMPILER_SYCL
+#endif
+
+///
+#if defined(__INTEL_COMPILER)
+#define ZS_COMPILER_INTEL_CLASSIC
+#endif

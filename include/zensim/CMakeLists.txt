@@ -255,6 +255,18 @@ else()
   target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_COMPUTECPP=0)
 endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
+if (ZS_ENABLE_SYCL_DPCPP)
+  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_DPCPP=1)
+else()
+  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_DPCPP=0)
+endif(ZS_ENABLE_SYCL_DPCPP)
+
+if (ZS_ENABLE_SYCL)
+  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL=1)
+else()
+  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL=0)
+endif(ZS_ENABLE_SYCL)
+
 ###############
 # zpc: openmp #
 ###############
@@ -324,17 +336,6 @@ endif(ZS_ENABLE_CUDA)
 if (ZS_ENABLE_SYCL_COMPUTECPP)
 
 add_library(zpcsycl INTERFACE)
-#[=[
-if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpcsycl SHARED)
-else ()
-  add_library(zpcsycl STATIC)
-endif ()
-target_sources(zpcsycl 
-  PRIVATE   ${ZENSIM_LIBRARY_SYCL_SOURCE_FILES}
-)
-target_link_libraries(zpcsycl PUBLIC zpccore zpc_sycl_deps)
-#]=]
 target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
 
 elseif(ZS_ENABLE_SYCL_DPCPP)
@@ -342,7 +343,12 @@ elseif(ZS_ENABLE_SYCL_DPCPP)
 add_library(zpcsycl INTERFACE)
 target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
 
-endif(ZS_ENABLE_SYCL)
+elseif(ZS_ENABLE_SYCL)
+
+add_library(zpcsycl INTERFACE)
+target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
+
+endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
 #############
 # zpc: cl   #
@@ -382,7 +388,9 @@ if (ZS_ENABLE_SYCL_COMPUTECPP)
   target_link_libraries(zpc PUBLIC zpcsycl)
 elseif (ZS_ENABLE_SYCL_DPCPP)
   target_link_libraries(zpc PUBLIC zpcsycl)
-endif(ZS_ENABLE_SYCL)
+elseif (ZS_ENABLE_SYCL)
+  target_link_libraries(zpc PUBLIC zpcsycl)
+endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
 if (ZS_ENABLE_OPENCL)
   target_link_libraries(zpc PUBLIC zpccl)

@@ -9,8 +9,6 @@
 #include "zensim/math/matrix/MatrixUtils.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
 
-#define ZS_USE_NEW 1
-
 namespace zs {
 
   template <transfer_scheme_e, typename ConstitutiveModel, typename BucketsT, typename GridsT,
@@ -180,11 +178,7 @@ namespace zs {
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
           auto xixp = arena.diff(loc);
 
-#  if ZS_USE_NEW
           value_type W = Wpi(std::get<0>(loc), std::get<1>(loc), std::get<2>(loc));
-#  else
-          value_type W = arena.weight(loc);
-#  endif
           res += W;
 
           TV vi = grid_block.pack<particles_t::dim>(1, grids_t::coord_to_cellid(local_index));
@@ -257,11 +251,7 @@ namespace zs {
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
         }
 
-#if ZS_USE_NEW
         for (int d = 0; d != dim * dim; ++d) C[d] *= Dinv[d / dim];
-#else
-        for (int d = 0; d != dim * dim; ++d) C[d] *= D_inv;
-#endif
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);

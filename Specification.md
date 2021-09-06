@@ -1,6 +1,6 @@
 # Zpc框架介绍
 
-ZPC（Zenus Parallel Compute）是一个基于cmake构建的面向异构计算（当前仅支持x64架构）的跨平台（目前windows/linux）c++（数据）并行编程框架，核心目标是支持物理仿真领域相关应用的高效研发（Zenus所稳定维护的Zensim物理仿真库即是基于ZPC而构建）。ZPC在使用接口方面看齐c++标准库的泛型编程风格，并对一系列并行编程中常见的计算模式（如for_each、reduce、scan、radix_sort等）进行封装，提供了各种计算后端（如openmp、cuda）下的高性能实现。开发者在开发并行算法时能够直接基于ZPC所提供的有多后端支持的各类并行模式以及常见的内建函数（如atomic operations、thread_fence、clz等）进行编程。ZPC的开发借鉴了[kokkos](https://github.com/kokkos/kokkos)、[raja](https://github.com/LLNL/RAJA)、[sycl](https://www.khronos.org/sycl/)等框架或语言在数据并行方面的设计概念与具体实现。为满足物理仿真的实际需求，ZPC还同时开发维护着一系列与空间相关的数据结构（空间哈希、BVH、自适应网格等）以支持高效率的空间操作。
+ZPC（Zenus Parallel Compute）是一个基于cmake构建的面向异构计算（当前仅支持x64架构）的跨平台（目前windows/linux）c++（数据）并行编程框架，核心目标是支持物理仿真领域相关应用的高效研发（Zenus所稳定维护的Zensim物理仿真库即是基于ZPC而构建）。ZPC在使用接口方面看齐c++标准库的泛型编程风格，并对一系列并行编程中常见的计算模式（如for_each、reduce、scan、radix_sort等）进行封装，提供了各种计算后端（如openmp、cuda）下的高性能实现（采用多编译器编译模型，即host端c++编译器msvc、clang、gcc等配合nvcc、hip等device compiler共同构建；未来会过渡到SYCL单编译器编译模型）。开发者在开发并行算法时能够直接基于ZPC所提供的有多后端支持的各类并行模式以及常见的内建函数（如atomic operations、thread_fence、clz等）进行编程。ZPC的开发借鉴了[kokkos](https://github.com/kokkos/kokkos)、[raja](https://github.com/LLNL/RAJA)、[sycl](https://www.khronos.org/sycl/)等框架或语言在数据并行方面的设计概念与具体实现。为满足物理仿真的实际需求，ZPC还同时开发维护着一系列与空间相关的数据结构（空间哈希、BVH、自适应网格等）以支持高效率的空间操作。
 
 ## 项目构建和使用
 

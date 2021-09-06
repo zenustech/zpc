@@ -45,8 +45,8 @@ namespace zs {
 
     template <typename DofViewA, typename DofViewB, typename DofViewC, typename Op>
     struct ComputeOp {
-      using Index = std::common_type_t<typename DofViewA::size_type, typename DofViewB::size_type,
-                                       typename DofViewC::size_type>;
+      using Index = math::op_result_t<typename DofViewA::size_type, typename DofViewB::size_type,
+                                      typename DofViewC::size_type>;
       ComputeOp(DofViewA a, DofViewB b, DofViewC c, Op op) : va{a}, vb{b}, vc{c}, op{op} {}
       constexpr void operator()(Index i) {
         vc.set(i, op(va.get(i, scalar_v), vb.get(i, scalar_v)));

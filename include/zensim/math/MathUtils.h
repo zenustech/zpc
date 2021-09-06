@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "zensim/math/bit/Bits.h"
+#include "zensim/meta/ControlFlow.h"
 #include "zensim/meta/Meta.h"
 #include "zensim/meta/Relationship.h"
 #include "zensim/meta/Sequence.h"
@@ -30,6 +31,33 @@ namespace zs {
       return (((std::make_signed_t<std::size_t>)Is > I ? std::forward<Args>(args) : 1) * ...);
     }
   }  // namespace mathutil_impl
+
+  namespace math {
+    /// binary_op_result
+    template <typename T0, typename T1> struct binary_op_result {
+      static constexpr auto determine_type() noexcept {
+        if constexpr (std::is_integral_v<T0> && std::is_integral_v<T1>) {
+          using bigger_type = conditional_t<(sizeof(T0) >= sizeof(T1)), T0, T1>;
+          if constexpr (std::is_signed_v<T0> || std::is_signed_v<T1>)
+            return std::make_signed_t<bigger_type>{};
+          else
+            return bigger_type{};
+        } else
+          return std::common_type_t<T0, T1>{};
+      }
+      using type = decltype(determine_type());
+    };
+    template <typename T0, typename T1> using binary_op_result_t =
+        typename binary_op_result<T0, T1>::type;
+
+    /// op_result
+    template <typename... Ts> struct op_result;
+    template <typename T> struct op_result<T> { using type = T; };
+    template <typename T, typename... Ts> struct op_result<T, Ts...> {
+      using type = binary_op_result_t<T, typename op_result<Ts...>::type>;
+    };
+    template <typename... Args> using op_result_t = typename op_result<Args...>::type;
+  }  // namespace math
 
   namespace math {
     /// ref: http://www.lomont.org/papers/2003/InvSqrt.pdf

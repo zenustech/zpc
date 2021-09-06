@@ -146,7 +146,7 @@ using vec =
     constexpr vec_impl &operator=(const vec_impl &o) = default;
 #if 0
     constexpr volatile vec_impl &operator=(const vec_impl &o) volatile {
-      for (Tn i = 0; i < extent; ++i) data()[i] = o.data()[i];
+      for (Tn i = 0; i != extent; ++i) data()[i] = o.data()[i];
       return *this;
     }
 #endif
@@ -178,17 +178,17 @@ using vec =
 
     static constexpr vec_impl from_array(const std::array<T, extent> &arr) noexcept {
       vec_impl r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = arr[i];
+      for (Tn i = 0; i != extent; ++i) r.val(i) = arr[i];
       return r;
     }
     constexpr std::array<T, extent> to_array() const noexcept {
       std::array<T, extent> r{};
-      for (Tn i = 0; i < extent; ++i) r[i] = _data[i];
+      for (Tn i = 0; i != extent; ++i) r[i] = _data[i];
       return r;
     }
     static constexpr vec_impl uniform(T v) noexcept {
       vec_impl r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = v;
+      for (Tn i = 0; i != extent; ++i) r.val(i) = v;
       return r;
     }
     static constexpr vec_impl zeros() noexcept { return uniform(0); }
@@ -199,7 +199,7 @@ using vec =
       return r;
     }
     constexpr void set(T val) noexcept {
-      for (Tn idx = 0; idx < extent; ++idx) _data[idx] = val;
+      for (Tn idx = 0; idx != extent; ++idx) _data[idx] = val;
     }
     /// random access
     // ()
@@ -245,38 +245,39 @@ using vec =
 
     template <typename TT> constexpr auto cast() const noexcept {
       vec_impl<TT, extents> r{};
-      for (Tn idx = 0; idx < extent; ++idx) r.val(idx) = _data[idx];
+      for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = _data[idx];
       return r;
     }
     template <typename TT> constexpr operator vec_impl<TT, extents>() const noexcept {
       vec_impl<TT, extents> r{};
-      for (Tn idx = 0; idx < extent; ++idx) r.val(idx) = _data[idx];
+      for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = _data[idx];
       return r;
     }
     /// compare
     template <typename TT>
     constexpr bool operator==(const vec_impl<TT, extents> &o) const noexcept {
-      for (Tn i = 0; i < extent; ++i)
+      for (Tn i = 0; i != extent; ++i)
         if (_data[i] != o.val(i)) return false;
       return true;
     }
     template <typename TT>
     constexpr bool operator!=(const vec_impl<TT, extents> &&o) const noexcept {
-      for (Tn i = 0; i < extent; ++i)
+      for (Tn i = 0; i != extent; ++i)
         if (_data[i] == o.val(i)) return false;
       return true;
     }
 
     /// linalg
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    constexpr R dot(vec_impl<TT, extents> const &o) const noexcept {
+    template <typename TT> constexpr auto dot(vec_impl<TT, extents> const &o) const noexcept {
+      using R = math::op_result_t<T, TT>;
       R res{0};
-      for (Tn i = 0; i < extent; ++i) res += _data[i] * o.val(i);
+      for (Tn i = 0; i != extent; ++i) res += _data[i] * o.val(i);
       return res;
     }
-    template <typename TT, typename R = std::common_type_t<T, TT>, std::size_t d = dim,
-              std::size_t ext = extent, enable_if_all<d == 1, ext == 3> = 0>
+    template <typename TT, std::size_t d = dim, std::size_t ext = extent,
+              enable_if_all<d == 1, ext == 3> = 0>
     constexpr auto cross(const vec_impl<TT, extents> &o) const noexcept {
+      using R = math::op_result_t<T, TT>;
       vec_impl<R, extents> res{0};
       res.val(0) = _data[1] * o.val(2) - _data[2] * o.val(1);
       res.val(1) = _data[2] * o.val(0) - _data[0] * o.val(2);
@@ -304,25 +305,23 @@ using vec =
     }
     constexpr T prod() const noexcept {
       T res{1};
-      for (Tn i = 0; i < extent; ++i) res *= _data[i];
+      for (Tn i = 0; i != extent; ++i) res *= _data[i];
       return res;
     }
     constexpr T sum() const noexcept {
       T res{0};
-      for (Tn i = 0; i < extent; ++i) res += _data[i];
+      for (Tn i = 0; i != extent; ++i) res += _data[i];
       return res;
     }
     constexpr T l2NormSqr() const noexcept {
       T res{0};
-      for (Tn i = 0; i < extent; ++i) res += _data[i] * _data[i];
+      for (Tn i = 0; i != extent; ++i) res += _data[i] * _data[i];
       return res;
     }
     constexpr T infNormSqr() const noexcept {
       T res{0};
-      for (Tn i = 0; i < extent; ++i) {
-        T sqr = _data[i] * _data[i];
-        if (sqr > res) res = sqr;
-      }
+      for (Tn i = 0; i != extent; ++i)
+        if (T sqr = _data[i] * _data[i]; sqr > res) res = sqr;
       return res;
     }
     static constexpr T sqrtNewtonRaphson(T x, T curr, T prev) noexcept {
@@ -341,12 +340,12 @@ using vec =
     constexpr vec_impl normalized() const noexcept { return (*this) / length(); }
     constexpr vec_impl abs() const noexcept {
       vec_impl r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = _data[i] > 0 ? _data[i] : -_data[i];
+      for (Tn i = 0; i != extent; ++i) r.val(i) = _data[i] > 0 ? _data[i] : -_data[i];
       return r;
     }
     constexpr T max() const noexcept {
       T res{_data[0]};
-      for (Tn i = 1; i < extent; ++i)
+      for (Tn i = 1; i != extent; ++i)
         if (_data[i] > res) res = _data[i];
       return res;
     }
@@ -356,274 +355,195 @@ using vec =
     /// east const
     //!@name Unary operators
     constexpr vec_impl operator-() const noexcept {
-      vec_impl r;
-      for (Tn i = 0; i < extent; ++i) r.val(i) = -_data[i];
+      vec_impl r{};
+      for (Tn i = 0; i != extent; ++i) r.val(i) = -_data[i];
+      return r;
+    }
+    template <bool IsIntegral = std::is_integral_v<T>, enable_if_t<IsIntegral> = 0>
+    constexpr vec_impl<bool, extents> operator!() const noexcept {
+      vec_impl<bool, extents> r{};
+      for (Tn i = 0; i != extent; ++i) r.val(i) = !_data[i];
       return r;
     }
 
     //!@name Binary operators
     // scalar
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator+(vec_impl const &e, TT const v) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = e.val(i) + v;
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator+(TT const v, vec_impl const &e) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = e.val(i) + v;
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator-(vec_impl const &e, TT const v) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = e.val(i) - v;
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator-(TT const v, vec_impl const &e) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = v - e.val(i);
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator*(vec_impl const &e, TT const v) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = e.val(i) * v;
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator*(TT const v, vec_impl const &e) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = e.val(i) * v;
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator/(vec_impl const &e, TT const v) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = e.val(i) / v;
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    friend constexpr auto operator/(TT const v, vec_impl const &e) noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = v / e.val(i);
-      return r;
-    }
-    // vector
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    constexpr auto operator+(vec_impl<TT, extents> const &o) const noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = _data[i] + o.val(i);
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    constexpr auto operator-(vec_impl<TT, extents> const &o) const noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = _data[i] - o.val(i);
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    constexpr auto operator*(vec_impl<TT, extents> const &o) const noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = _data[i] * o.val(i);
-      return r;
-    }
-    template <typename TT, typename R = std::common_type_t<T, TT>>
-    constexpr auto operator/(vec_impl<TT, extents> const &o) const noexcept {
-      vec_impl<R, extents> r{};
-      for (Tn i = 0; i < extent; ++i) r.val(i) = _data[i] / o.val(i);
-      return r;
-    }
-    //!@name Assignment operators
-    // scalar
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator+=(TT &&v) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] += std::forward<TT>(v);
-      return *this;
-    }
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator-=(TT &&v) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] -= std::forward<TT>(v);
-      return *this;
-    }
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator*=(TT &&v) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] *= std::forward<TT>(v);
-      return *this;
-    }
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator/=(TT &&v) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] /= std::forward<TT>(v);
-      return *this;
-    }
-    // vector
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator+=(vec_impl<TT, extents> const &o) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] += o.val(i);
-      return *this;
-    }
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator-=(vec_impl<TT, extents> const &o) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] -= o.val(i);
-      return *this;
-    }
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator*=(vec_impl<TT, extents> const &o) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] *= o.val(i);
-      return *this;
-    }
-    template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>
-    constexpr vec_impl &operator/=(vec_impl<TT, extents> const &o) noexcept {
-      for (Tn i = 0; i < extent; ++i) _data[i] /= o.val(i);
-      return *this;
-    }
+#define DEFINE_OP_SCALAR(OP)                                                  \
+  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>  \
+  friend constexpr auto operator OP(vec_impl const &e, TT const v) noexcept { \
+    using R = math::op_result_t<T, TT>;                                       \
+    vec_impl<R, extents> r{};                                                 \
+    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);         \
+    return r;                                                                 \
+  }                                                                           \
+  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>  \
+  friend constexpr auto operator OP(TT const v, vec_impl const &e) noexcept { \
+    using R = math::op_result_t<T, TT>;                                       \
+    vec_impl<R, extents> r{};                                                 \
+    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));         \
+    return r;                                                                 \
+  }
+    DEFINE_OP_SCALAR(+)
+    DEFINE_OP_SCALAR(-)
+    DEFINE_OP_SCALAR(*)
+    DEFINE_OP_SCALAR(/)
 
-#if 0
-  //!@name Bitwise operators
-  vec_impl operator<<(vec_impl const &o) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] << o.val(i);
-    return r;
+    // scalar integral
+#define DEFINE_OP_SCALAR_INTEGRAL(OP)                                                      \
+  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  friend constexpr auto operator OP(vec_impl const &e, TT const v) noexcept {              \
+    using R = math::op_result_t<T, TT>;                                                    \
+    vec_impl<R, extents> r{};                                                              \
+    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);                      \
+    return r;                                                                              \
+  }                                                                                        \
+  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  friend constexpr auto operator OP(TT const v, vec_impl const &e) noexcept {              \
+    using R = math::op_result_t<T, TT>;                                                    \
+    vec_impl<R, extents> r{};                                                              \
+    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));                      \
+    return r;                                                                              \
   }
-  vec_impl operator>>(vec_impl const &o) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] >> o.val(i);
-    return r;
-  }
-  vec_impl operator&(vec_impl const &o) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] & o.val(i);
-    return r;
-  }
-  vec_impl operator|(vec_impl const &o) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] | o.val(i);
-    return r;
-  }
-  vec_impl operator^(vec_impl const &o) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] ^ o.val(i);
-    return r;
-  }
-  vec_impl operator<<(T const v) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] << v;
-    return r;
-  }
-  vec_impl operator>>(T const v) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] >> v;
-    return r;
-  }
-  vec_impl operator&(T const v) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] & v;
-    return r;
-  }
-  vec_impl operator|(T const v) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] | v;
-    return r;
-  }
-  vec_impl operator^(T const v) const noexcept {
-    vec_impl r;
-    for (Tn i = 0; i < extent; ++i)
-      r.val(i) = _data[i] ^ v;
-    return r;
-  }
+    DEFINE_OP_SCALAR_INTEGRAL(&)
+    DEFINE_OP_SCALAR_INTEGRAL(|)
+    DEFINE_OP_SCALAR_INTEGRAL(^)
+    DEFINE_OP_SCALAR_INTEGRAL(>>)
+    DEFINE_OP_SCALAR_INTEGRAL(<<)
 
-  //!@name Bitwise Assignment operators
-  vec_impl &operator<<=(vec_impl const &o) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] <<= o.val(i);
-    return *this;
+    // vector
+#define DEFINE_OP_VECTOR(OP)                                                        \
+  template <typename TT> constexpr auto operator OP(vec_impl<TT, extents> const &o) \
+      const noexcept {                                                              \
+    using R = math::op_result_t<T, TT>;                                             \
+    vec_impl<R, extents> r{};                                                       \
+    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)_data[i] OP((R)o.val(i));        \
+    return r;                                                                       \
   }
-  vec_impl &operator>>=(vec_impl const &o) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] >>= o.val(i);
-    return *this;
+    DEFINE_OP_VECTOR(+)
+    DEFINE_OP_VECTOR(-)
+    DEFINE_OP_VECTOR(*)
+    DEFINE_OP_VECTOR(/)
+
+    // vector integral
+#define DEFINE_OP_VECTOR_INTEGRAL(OP)                                                      \
+  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  constexpr auto operator OP(vec_impl<TT, extents> const &o) const noexcept {              \
+    using R = math::op_result_t<T, TT>;                                                    \
+    vec_impl<R, extents> r{};                                                              \
+    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)_data[i] OP((R)o.val(i));               \
+    return r;                                                                              \
   }
-  vec_impl &operator&=(vec_impl const &o) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] &= o.val(i);
-    return *this;
+    DEFINE_OP_VECTOR_INTEGRAL(&)
+    DEFINE_OP_VECTOR_INTEGRAL(|)
+    DEFINE_OP_VECTOR_INTEGRAL(^)
+    DEFINE_OP_VECTOR_INTEGRAL(>>)
+    DEFINE_OP_VECTOR_INTEGRAL(<<)
+
+//!@name Assignment operators
+// scalar
+#define DEFINE_OP_SCALAR_ASSIGN(OP)                                          \
+  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0> \
+  constexpr vec_impl &operator OP(TT &&v) noexcept {                         \
+    using R = math::op_result_t<T, TT>;                                      \
+    for (Tn i = 0; i != extent; ++i) _data[i] OP((R)v);                      \
+    return *this;                                                            \
   }
-  vec_impl &operator|=(vec_impl const &o) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] |= o.val(i);
-    return *this;
+    DEFINE_OP_SCALAR_ASSIGN(+=)
+    DEFINE_OP_SCALAR_ASSIGN(-=)
+    DEFINE_OP_SCALAR_ASSIGN(*=)
+    DEFINE_OP_SCALAR_ASSIGN(/=)
+
+    // scalar integral
+#define DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(OP)                                               \
+  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  constexpr vec_impl &operator OP(TT &&v) noexcept {                                       \
+    using R = math::op_result_t<T, TT>;                                                    \
+    for (Tn i = 0; i != extent; ++i) _data[i] OP((R)v);                                    \
+    return *this;                                                                          \
   }
-  vec_impl &operator^=(vec_impl const &o) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] ^= o.val(i);
-    return *this;
+    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(&=)
+    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(|=)
+    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(^=)
+    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(>>=)
+    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(<<=)
+
+    // vector
+#define DEFINE_OP_VECTOR_ASSIGN(OP)                                          \
+  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0> \
+  constexpr vec_impl &operator OP(vec_impl<TT, extents> const &o) noexcept { \
+    using R = math::op_result_t<T, TT>;                                      \
+    for (Tn i = 0; i != extent; ++i) _data[i] OP((R)o.val(i));               \
+    return *this;                                                            \
   }
-  vec_impl &operator<<=(T const v) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] <<= v;
-    return *this;
+    DEFINE_OP_VECTOR_ASSIGN(+=)
+    DEFINE_OP_VECTOR_ASSIGN(-=)
+    DEFINE_OP_VECTOR_ASSIGN(*=)
+    DEFINE_OP_VECTOR_ASSIGN(/=)
+
+#define DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(OP)                                               \
+  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  constexpr vec_impl &operator OP(vec_impl<TT, extents> const &o) noexcept {               \
+    using R = math::op_result_t<T, TT>;                                                    \
+    for (Tn i = 0; i != extent; ++i) _data[i] OP((R)o.val(i));                             \
+    return *this;                                                                          \
   }
-  vec_impl &operator>>=(T const v) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] >>= v;
-    return *this;
-  }
-  vec_impl &operator&=(T const v) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] &= v;
-    return *this;
-  }
-  vec_impl &operator|=(T const v) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] |= v;
-    return *this;
-  }
-  vec_impl &operator^=(T const v) noexcept {
-    for (Tn i = 0; i < extent; ++i)
-      _data[i] ^= v;
-    return *this;
-  }
-#endif
+    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(&=)
+    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(|=)
+    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(^=)
+    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(>>=)
+    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(<<=)
   };
 
   /// make vec
   template <typename... Args, enable_if_all<(!is_std_tuple<remove_cvref_t<Args>>::value, ...)> = 0>
-  constexpr auto make_vec(Args &&...args) {
-    using Tn = std::common_type_t<remove_cvref_t<Args>...>;
+  constexpr auto make_vec(Args &&...args) noexcept {
+    using Tn = math::op_result_t<remove_cvref_t<Args>...>;
     return vec<Tn, sizeof...(Args)>{FWD(args)...};
   }
   /// make vec from std tuple
   template <typename T, typename... Ts, std::size_t... Is>
-  constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const std::tuple<Ts...> &tup, index_seq<Is...>) {
+  constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const std::tuple<Ts...> &tup,
+                                                  index_seq<Is...>) noexcept {
     return vec<T, (sizeof...(Ts))>{std::get<Is>(tup)...};
   }
-  template <typename T, typename... Ts> constexpr auto make_vec(const std::tuple<Ts...> &tup) {
+  template <typename T, typename... Ts>
+  constexpr auto make_vec(const std::tuple<Ts...> &tup) noexcept {
     return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
   }
   /// make vec from zs tuple
   template <typename T, typename... Ts, std::size_t... Is>
-  constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const tuple<Ts...> &tup, index_seq<Is...>) {
+  constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const tuple<Ts...> &tup,
+                                                  index_seq<Is...>) noexcept {
     return vec<T, (sizeof...(Ts))>{get<Is>(tup)...};
   }
-  template <typename T, typename... Ts> constexpr auto make_vec(const tuple<Ts...> &tup) {
+  template <typename T, typename... Ts> constexpr auto make_vec(const tuple<Ts...> &tup) noexcept {
     return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
   }
 
+  /// vector-vector product
+  template <typename T0, typename T1, typename Tn, Tn N>
+  constexpr auto dot(vec_impl<T0, std::integer_sequence<Tn, N>> const &row,
+                     vec_impl<T1, std::integer_sequence<Tn, N>> const &col) noexcept {
+    using R = math::op_result_t<T0, T1>;
+    R sum = 0;
+    for (Tn i = 0; i != N; ++i) sum += row(i) * col(i);
+    return sum;
+  }
+  template <typename T0, typename T1, typename Tn, Tn Nc, Tn Nr>
+  constexpr auto outer_dot(vec_impl<T0, std::integer_sequence<Tn, Nc>> const &col,
+                           vec_impl<T1, std::integer_sequence<Tn, Nr>> const &row) noexcept {
+    using R = math::op_result_t<T0, T1>;
+    vec_impl<R, std::integer_sequence<Tn, Nc, Nr>> r{};
+    for (Tn i = 0; i != Nc; ++i)
+      for (Tn j = 0; j != Nr; ++j) r(i, j) = col(i) * row(j);
+    return r;
+  }
+
+  /// matrix-vector product
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
   constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A,
                            vec_impl<T1, std::integer_sequence<Tn, N1>> const &x) noexcept {
-    using R = std::common_type_t<T0, T1>;
+    using R = math::op_result_t<T0, T1>;
     vec_impl<R, std::integer_sequence<Tn, N0>> r{};
     for (Tn i = 0; i < N0; ++i) {
       r(i) = 0;
@@ -634,7 +554,7 @@ using vec =
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
   constexpr auto operator*(vec_impl<T1, std::integer_sequence<Tn, N0>> const &x,
                            vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A) noexcept {
-    using R = std::common_type_t<T0, T1>;
+    using R = math::op_result_t<T0, T1>;
     vec_impl<R, std::integer_sequence<Tn, N1>> r{};
     for (Tn i = 0; i < N1; ++i) {
       r(i) = 0;
@@ -646,7 +566,7 @@ using vec =
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
   constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A,
                            vec_impl<T1, std::integer_sequence<Tn, N1 - 1>> const &x) noexcept {
-    using R = std::common_type_t<T0, T1>;
+    using R = math::op_result_t<T0, T1>;
     vec_impl<R, std::integer_sequence<Tn, N0 - 1>> r{};
     for (Tn i = 0; i < N0 - 1; ++i) {
       r(i) = 0;
@@ -657,7 +577,7 @@ using vec =
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
   constexpr auto operator*(vec_impl<T1, std::integer_sequence<Tn, N0 - 1>> const &x,
                            vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A) noexcept {
-    using R = std::common_type_t<T0, T1>;
+    using R = math::op_result_t<T0, T1>;
     vec_impl<R, std::integer_sequence<Tn, N1 - 1>> r{};
     for (Tn i = 0; i < N1 - 1; ++i) {
       r(i) = 0;
@@ -670,7 +590,7 @@ using vec =
   /// vector(vec+{0}) homogeneous coordinates
 
   template <typename... Args> constexpr auto make_array(Args &&...args) {
-    return std::array<std::common_type_t<remove_cvref_t<Args>...>, sizeof...(Args)>{FWD(args)...};
+    return std::array<math::op_result_t<remove_cvref_t<Args>...>, sizeof...(Args)>{FWD(args)...};
   }
   template <typename RetT, typename... Args> constexpr auto make_array(Args &&...args) {
     return std::array<RetT, sizeof...(Args)>{FWD(args)...};

@@ -34,14 +34,14 @@ namespace zs {
 
     struct Table {
       Table() = default;
-      Table(const Table&) = default;
-      Table(Table&&) noexcept = default;
+      Table(const Table &) = default;
+      Table(Table &&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, std::size_t numEntries) : 
-        keys{allocator, numEntries}, 
-        indices{allocator, numEntries}, 
-        status{allocator, numEntries} {}
+      Table(const allocator_type &allocator, std::size_t numEntries)
+          : keys{allocator, numEntries},
+            indices{allocator, numEntries},
+            status{allocator, numEntries} {}
 
       Vector<key_t> keys;
       Vector<value_t> indices;
@@ -73,14 +73,14 @@ namespace zs {
       return next_2pow(entryCnt) * reserve_ratio_v;
     }
     HashTable(const allocator_type &allocator, std::size_t tableSize)
-        : _table{allocator, evaluateTableSize(tableSize)}, 
+        : _table{allocator, evaluateTableSize(tableSize)},
           _allocator{allocator},
           _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(tableSize)} {
       Vector<value_t> res{1};
       res[0] = (value_t)0;
-      copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, 
+      copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
            MemoryEntity{res.memoryLocation(), (void *)res.data()}, sizeof(value_t));
     }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -91,7 +91,7 @@ namespace zs {
     ~HashTable() = default;
 
     HashTable(const HashTable &o)
-        : _table{o._table}, 
+        : _table{o._table},
           _allocator{o._allocator},
           _tableSize{o._tableSize},
           _cnt{o._cnt},
@@ -208,7 +208,7 @@ namespace zs {
   using GeneralHashTable = variant<HashTable<i32, 2, int>, HashTable<i32, 2, long long int>,
                                    HashTable<i32, 3, int>, HashTable<i32, 3, long long int>>;
 #else
-  using GeneralHashTable = variant<HashTable<i32, 3, int>>;
+  using GeneralHashTable = variant<HashTable<i32, 3, int>, HashTable<i32, 2, int>>;
 #endif
 
   template <execspace_e, typename HashTableT, typename = void> struct HashTableView;
@@ -223,9 +223,9 @@ namespace zs {
     using unsigned_value_t = std::make_unsigned_t<value_t>;
     using status_t = typename HashTableT::status_t;
     struct table_t {
-      key_t* keys;
-      value_t* indices;
-      status_t* status;
+      key_t *keys;
+      value_t *indices;
+      status_t *status;
     };
 
     constexpr HashTableView() = default;
@@ -238,7 +238,7 @@ namespace zs {
           _activeKeys{table._activeKeys.data()} {}
 
 #if defined(__CUDACC__)
-    template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0> 
+    template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ value_t insert(const key_t &key) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
@@ -259,7 +259,7 @@ namespace zs {
       return HashTableT::sentinel_v;
     }
 #endif
-    template <execspace_e S = space, enable_if_t<S != execspace_e::cuda> = 0> 
+    template <execspace_e S = space, enable_if_t<S != execspace_e::cuda> = 0>
     inline value_t insert(const key_t &key) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
@@ -316,7 +316,8 @@ namespace zs {
     }
 #if defined(__CUDACC__)
     template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0>
-    __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest, const key_t &val) {
+    __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
+                                                  const key_t &val) {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
@@ -378,9 +379,9 @@ namespace zs {
     using unsigned_value_t = std::make_unsigned_t<value_t>;
     using status_t = typename HashTableT::status_t;
     struct table_t {
-      const key_t* keys;
-      const value_t* indices;
-      const status_t* status;
+      const key_t *keys;
+      const value_t *indices;
+      const status_t *status;
     };
 
     constexpr HashTableView() = default;

@@ -228,7 +228,7 @@ namespace zs {
   using GeneralParticles
       = variant<Particles<f32, 2>, Particles<f64, 2>, Particles<f32, 3>, Particles<f64, 3>>;
 #else
-  using GeneralParticles = variant<Particles<f32, 3>>;
+  using GeneralParticles = variant<Particles<f32, 3>, Particles<f32, 2>>;
 #endif
 
   template <execspace_e space, typename ParticlesT, typename = void> struct ParticlesView {

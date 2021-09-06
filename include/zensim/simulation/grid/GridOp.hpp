@@ -419,10 +419,12 @@ namespace zs {
                  * grid.dx;
         auto mv = block.pack<dim>(mvChn, cellid);
         /// x cross mv;
-        auto res = x.cross(mv);
+        if constexpr (dim == 3) {
+          auto res = x.cross(mv);
 
-        for (int i = 0; i != dim; ++i)
-          atomic_add(wrapv<space>{}, sumAngularMomentum + i, (double)res[i]);
+          for (int i = 0; i != dim; ++i)
+            atomic_add(wrapv<space>{}, sumAngularMomentum + i, (double)res[i]);
+        }
         for (int i = 0; i != dim; ++i)
           atomic_add(wrapv<space>{}, sumAngularMomentum + i + dim, (double)mv[i]);
       }

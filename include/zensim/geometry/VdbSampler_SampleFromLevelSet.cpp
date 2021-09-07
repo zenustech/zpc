@@ -18,8 +18,6 @@
 
 namespace zs {
 
-  void initialize_openvdb() { openvdb::initialize(); }
-
   std::vector<std::array<float, 3>> sample_from_levelset(openvdb::FloatGrid::Ptr vdbls, float dx,
                                                          float ppc) {
     using TV = vec<float, 3>;

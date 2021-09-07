@@ -12,6 +12,8 @@
 
 namespace zs {
 
+  void initialize_openvdb() { openvdb::initialize(); }
+
   OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn) {
     using GridType = openvdb::FloatGrid;
     openvdb::io::File file(fn);

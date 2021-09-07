@@ -9,6 +9,8 @@
 
 namespace zs {
 
+  void initialize_openvdb();
+
   tuple<DenseGrid<float, int, 3>, vec<float, 3>, vec<float, 3>> readPhiFromVdbFile(
       const std::string &fn, float dx);
 

@@ -1,22 +1,24 @@
 #pragma once
 #include <utility>
 
+#include "Structure.hpp"
 #include "zensim/container/HashTable.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
 
 namespace zs {
 
-  template <int dim_ = 3> struct SparseLevelSet {
+  template <int dim_ = 3, grid_e category_ = grid_e::collocated> struct SparseLevelSet {
     static constexpr int dim = dim_;
     static constexpr int lane_width = 32;
+    static constexpr auto category = category_;
     using value_type = f32;
-    using index_type = i64;
+    using index_type = i32;
     using TV = vec<value_type, dim>;
     using IV = vec<index_type, dim>;
     using Affine = vec<value_type, dim + 1, dim + 1>;
-    using tiles_t = TileVector<value_type, lane_width>;
     using table_t = HashTable<index_type, dim, i64>;
+    using grid_t = Grid<value_type, dim, 8, category>;
 
     constexpr SparseLevelSet() = default;
 
@@ -28,7 +30,7 @@ namespace zs {
       ret._backgroundValue = _backgroundValue;
       ret._backgroundVecValue = _backgroundVecValue;
       ret._table = _table.clone(mh);
-      ret._tiles = _tiles.clone(mh);
+      ret._grid = _grid.clone(mh);
       ret._min = _min;
       ret._max = _max;
       ret._w2v = _w2v;
@@ -41,7 +43,7 @@ namespace zs {
     value_type _backgroundValue{0};
     TV _backgroundVecValue{TV::zeros()};
     table_t _table{};
-    tiles_t _tiles{};
+    grid_t _grid{};
     TV _min{}, _max{};
     Affine _w2v{};
   };
@@ -53,7 +55,10 @@ namespace zs {
       : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>,
                           typename SparseLevelSetT::value_type, SparseLevelSetT::dim> {
     using table_t = typename SparseLevelSetT::table_t;
-    using tiles_t = typename SparseLevelSetT::tiles_t;
+    using grid_t = typename SparseLevelSetT::grid_t;
+    using grid_view_t =
+        typename GridsView<Space,
+                           typename grid_t::grids_t>::template Grid<SparseLevelSetT::category>;
     using T = typename SparseLevelSetT::value_type;
     using Ti = typename SparseLevelSetT::index_type;
     using TV = typename SparseLevelSetT::TV;
@@ -70,11 +75,6 @@ namespace zs {
     }
 
     template <typename Val> using Arena = decltype(arena_type<Val, dim>());
-    constexpr auto offset(i64 bid, IV cellCoord) const noexcept {
-      auto res{cellCoord[0]};
-      for (int d = 1; d < dim; ++d) res = res * _sideLength + cellCoord[d];
-      return bid * _space + res;
-    }
 
     constexpr SparseLevelSetView() = default;
     ~SparseLevelSetView() = default;
@@ -84,9 +84,8 @@ namespace zs {
           _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
           _backgroundVecValue{ls._backgroundVecValue},
-          _unnamed{false},
           table{proxy<Space>(ls._table)},
-          tiles{proxy<Space>(tagNames, ls._tiles)},
+          _grid{proxy<Space>(ls._grid)},
           _min{ls._min},
           _max{ls._max},
           _w2v{ls._w2v} {}
@@ -96,9 +95,8 @@ namespace zs {
           _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
           _backgroundVecValue{ls._backgroundVecValue},
-          _unnamed{true},
           table{proxy<Space>(ls._table)},
-          unnamedTiles{proxy<Space>(ls._tiles)},
+          _grid{proxy<Space>(ls._grid)},
           _min{ls._min},
           _max{ls._max},
           _w2v{ls._w2v} {}
@@ -120,12 +118,7 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            if (_unnamed)
-              arena(dx, dy) = unnamedTiles(
-                  0, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
-            else
-              arena(dx, dy)
-                  = tiles("sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            arena(dx, dy) = _grid(0, blockno, coord - blockid * _sideLength);
           }
         }
       } else if constexpr (dim == 3) {
@@ -136,12 +129,7 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            if (_unnamed)
-              arena(dx, dy, dz) = unnamedTiles(
-                  0, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
-            else
-              arena(dx, dy, dz)
-                  = tiles("sdf", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            arena(dx, dy, dz) = _grid(0, blockno, coord - blockid * _sideLength);
           }
         }
       }
@@ -161,7 +149,7 @@ namespace zs {
       return diff.normalized();
     }
     constexpr TV getMaterialVelocity(const TV &x) const noexcept {
-      if (tiles.numChannels() != 1 + dim) return TV::zeros();
+      // if (!_grid.hasProperty("vel")) return TV::zeros();
       /// world to local
       auto arena = Arena<TV>::uniform(_backgroundVecValue);
       IV loc{};
@@ -178,12 +166,7 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            if (_unnamed)
-              arena(dx, dy) = unnamedTiles.template pack<dim>(
-                  1, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
-            else
-              arena(dx, dy) = tiles.template pack<dim>(
-                  "vel", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            arena(dx, dy) = _grid.template pack<dim>(1, blockno, coord - blockid * _sideLength);
           }
         }
       } else if constexpr (dim == 3) {
@@ -194,12 +177,7 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            if (_unnamed)
-              arena(dx, dy, dz) = unnamedTiles.template pack<dim>(
-                  1, offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
-            else
-              arena(dx, dy, dz) = tiles.template pack<dim>(
-                  "vel", offset(blockno, coord - blockid * _sideLength));  //< bid + cellid
+            arena(dx, dy, dz) = _grid.template pack<dim>(1, blockno, coord - blockid * _sideLength);
           }
         }
       }
@@ -224,9 +202,7 @@ namespace zs {
     T _backgroundValue;
     TV _backgroundVecValue;
     HashTableView<Space, table_t> table;
-    bool _unnamed{false};
-    TileVectorView<Space, tiles_t> tiles;
-    TileVectorUnnamedView<Space, tiles_t> unnamedTiles;
+    grid_view_t _grid;
     TV _min, _max;
     Affine _w2v;
   };

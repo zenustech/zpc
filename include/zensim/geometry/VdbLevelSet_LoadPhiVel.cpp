@@ -59,8 +59,10 @@ namespace zs {
     const SDFPtr &sdfGridPtr = sdf.as<SDFPtr>();
     const VelPtr &velGridPtr = vel.as<VelPtr>();
 
-    using IV = typename SparseLevelSet<3>::table_t::key_t;
-    using TV = vec<f32, 3>;
+    using SpLs = SparseLevelSet<3, grid_e::collocated>;
+
+    using IV = typename SpLs::table_t::key_t;
+    using TV = vec<typename SpLs::value_type, 3>;
 
     SparseLevelSet<3> ret{};
     const auto leafCount = sdfGridPtr->tree().leafCount();
@@ -73,8 +75,10 @@ namespace zs {
       ret._backgroundVecValue = TV{v[0], v[1], v[2]};
     }
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
-    ret._tiles = typename SparseLevelSet<3>::tiles_t{
-        {{"sdf", 1}, {"vel", 3}}, leafCount * ret._space, memsrc_e::host, -1};
+    // ret._tiles = typename SparseLevelSet<3>::tiles_t{
+    //    {{"sdf", 1}, {"vel", 3}}, leafCount * ret._space, memsrc_e::host, -1};
+    ret._grid =
+        typename SpLs::grid_t{{{"sdf", 1}, {"vel", 3}}, ret._dx, leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = sdfGridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -108,7 +112,8 @@ namespace zs {
     ret._w2v = transform;
 
     auto table = proxy<execspace_e::host>(ret._table);
-    auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
+    // auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
+    auto gridview = proxy<execspace_e::host>(ret._grid);
     table.clear();
 
     SDFTreeType::LeafCIter sdfIter = sdfGridPtr->tree().cbeginLeaf();
@@ -132,15 +137,18 @@ namespace zs {
         blockid = blockid / ret._sideLength;
         auto blockno = table.insert(blockid);
 
-        int cellid = 0;
+        RM_CVREF_T(blockno) cellid = 0;
         auto sdfCell = sdfNode.beginValueAll();
         auto velCell = velNode.beginValueAll();
         for (; sdfCell && velCell; ++sdfCell, ++velCell, ++cellid) {
           auto sdf = sdfCell.getValue();
           auto vel = velCell.getValue();
-          tiles("sdf", blockno * ret._space + cellid) = sdf;
-          tiles.template tuple<3>("vel", blockno * ret._space + cellid)
-              = TV{vel[0], vel[1], vel[2]};
+          // tiles("sdf", blockno * ret._space + cellid) = sdf;
+          // tiles.template tuple<3>("vel", blockno * ret._space + cellid)
+          //    = TV{vel[0], vel[1], vel[2]};
+
+          gridview(0, blockno * ret._space + cellid) = sdf;
+          gridview.set(1, blockno * ret._space + cellid, TV{vel[0], vel[1], vel[2]});
         }
       }
     }

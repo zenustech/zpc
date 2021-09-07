@@ -32,30 +32,30 @@ namespace zs {
 #  if 1
             if (i == 0) {
               printf("num total channels %d\n", (int)ptiles.numChannels());
-              printf("mass channel %d offset: %d (%d)\n", (int)ptiles.propIndex("mass"),
-                     (int)ptiles._tagOffsets[ptiles.propIndex("mass")], ptiles.hasProp("mass"));
-              printf("pos channel %d offset: %d (%d)\n", (int)ptiles.propIndex("pos"),
-                     (int)ptiles._tagOffsets[ptiles.propIndex("pos")], ptiles.hasProp("pos"));
-              printf("vel channel %d offset: %d (%d)\n", (int)ptiles.propIndex("vel"),
-                     (int)ptiles._tagOffsets[ptiles.propIndex("vel")], ptiles.hasProp("vel"));
-              printf("F channel %d offset: %d (%d)\n", (int)ptiles.propIndex("F"),
-                     (int)ptiles._tagOffsets[ptiles.propIndex("F")], ptiles.hasProp("F"));
-              printf("C channel %d offset: %d (%d)\n", (int)ptiles.propIndex("C"),
-                     (int)ptiles._tagOffsets[ptiles.propIndex("C")], ptiles.hasProp("C"));
-              printf("J channel %d offset: %d (%d)\n", (int)ptiles.propIndex("J"),
-                     (int)ptiles._tagOffsets[ptiles.propIndex("J")], ptiles.hasProp("J"));
-              printf("logJp channel %d offset: %d (%d)\n", (int)ptiles.propIndex("logjp"),
-                     (int)ptiles._tagOffsets[ptiles.propIndex("logjp")], ptiles.hasProp("logjp"));
+              printf("mass channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("mass"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("mass")], ptiles.hasProperty("mass"));
+              printf("pos channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("pos"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("pos")], ptiles.hasProperty("pos"));
+              printf("vel channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("vel"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("vel")], ptiles.hasProperty("vel"));
+              printf("F channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("F"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("F")], ptiles.hasProperty("F"));
+              printf("C channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("C"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("C")], ptiles.hasProperty("C"));
+              printf("J channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("J"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("J")], ptiles.hasProperty("J"));
+              printf("logJp channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("logjp"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("logjp")], ptiles.hasProperty("logjp"));
             }
 #  endif
             ptiles.template tuple<dim>("pos",
                                        i);  // = vec<float, 3>{0.f, 1.f, 2.f};  // parray.pos(i);
             ptiles("mass", i) = parray.mass(i);
             ptiles.template tuple<dim>("vel", i) = parray.vel(i);
-            if (ptiles.hasProp("C")) ptiles.template tuple<dim * dim>("C", i) = parray.C(i);
-            if (ptiles.hasProp("F")) ptiles.template tuple<dim * dim>("F", i) = parray.F(i);
-            if (ptiles.hasProp("J")) ptiles("J", i) = parray.J(i);
-            if (ptiles.hasProp("logjp")) ptiles("logjp", i) = parray.logJp(i);
+            if (ptiles.hasProperty("C")) ptiles.template tuple<dim * dim>("C", i) = parray.C(i);
+            if (ptiles.hasProperty("F")) ptiles.template tuple<dim * dim>("F", i) = parray.F(i);
+            if (ptiles.hasProperty("J")) ptiles("J", i) = parray.J(i);
+            if (ptiles.hasProperty("logjp")) ptiles("logjp", i) = parray.logJp(i);
           });
       return true;
     }

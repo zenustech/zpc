@@ -50,18 +50,18 @@ namespace zs {
     using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
     using SDFPtr = typename GridType::Ptr;
     const SDFPtr &gridPtr = grid.as<SDFPtr>();
-    using IV = typename SparseLevelSet<3>::table_t::key_t;
-    using TV = vec<f32, 3>;
+    using SpLs = SparseLevelSet<3, grid_e::collocated>;
+    using IV = typename SpLs::table_t::key_t;
+    using TV = vec<typename SpLs::value_type, 3>;
 
-    SparseLevelSet<3> ret{};
+    SpLs ret{};
     const auto leafCount = gridPtr->tree().leafCount();
     ret._sideLength = 8;
     ret._space = 512;
     ret._dx = gridPtr->transform().voxelSize()[0];
     ret._backgroundValue = gridPtr->background();
-    ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
-    ret._tiles = typename SparseLevelSet<3>::tiles_t{
-        {{"sdf", 1}}, leafCount * ret._space, memsrc_e::host, -1};
+    ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
+    ret._grid = typename SpLs::grid_t{{{"sdf", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -95,7 +95,7 @@ namespace zs {
     ret._w2v = transform;
 
     auto table = proxy<execspace_e::host>(ret._table);
-    auto tiles = proxy<execspace_e::host>({"sdf"}, ret._tiles);
+    auto gridview = proxy<execspace_e::host>(ret._grid);
     table.clear();
     for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
       const TreeType::LeafNodeType &node = *iter;
@@ -108,10 +108,10 @@ namespace zs {
           blockid[d] += (coord[d] < 0 ? -ret._sideLength + 1 : 0);
         blockid = blockid / ret._sideLength;
         auto blockno = table.insert(blockid);
-        int cellid = 0;
+        RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
-          tiles("sdf", blockno * ret._space + cellid) = sdf;
+          gridview(0, blockno * ret._space + cellid) = sdf;
           // tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
         }
       }

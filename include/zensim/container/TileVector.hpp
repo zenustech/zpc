@@ -528,27 +528,29 @@ namespace zs {
           _tagSizes{tagSizes},
           _N{N} {}
 
-    constexpr auto propIndex(const char propName[]) const {
+    constexpr auto propertyIndex(const SmallString &propName) const {
       channel_counter_type i = 0;
       for (; i < _N; ++i)
         if (_tagNames[i] == propName) break;
       return i;
     }
-    constexpr bool hasProp(const char propName[]) const { return propIndex(propName) != _N; }
+    constexpr bool hasProperty(const SmallString &propName) const {
+      return propertyIndex(propName) != _N;
+    }
 
     constexpr reference operator()(const char propName[], const channel_counter_type chn,
                                    const size_type i) {
-      return static_cast<base_t &>(*this)(_tagOffsets[propIndex(propName)] + chn, i);
+      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
     constexpr const_reference operator()(const char propName[], const channel_counter_type chn,
                                          const size_type i) const {
-      return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)] + chn, i);
+      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
     constexpr reference operator()(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this)(_tagOffsets[propIndex(propName)], i);
+      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     constexpr const_reference operator()(const char propName[], const size_type i) const {
-      return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)], i);
+      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     constexpr auto tile(const size_type tileid) {
       return TileVectorView<Space, TileVectorT, true>{
@@ -573,13 +575,13 @@ namespace zs {
 
     template <auto... Ns> constexpr auto pack(const char propName[], const size_type i) const {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
-          _tagOffsets[propIndex(propName)], i);
+          _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d> constexpr auto tuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propIndex(propName)], i);
+      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d> constexpr auto stdtuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propIndex(propName)], i);
+      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)], i);
     }
 
     const SmallString *_tagNames{nullptr};
@@ -619,20 +621,22 @@ namespace zs {
           _tagSizes{tagSizes},
           _N{N} {}
 
-    constexpr auto propIndex(const char propName[]) const {
+    constexpr auto propertyIndex(const SmallString &propName) const {
       channel_counter_type i = 0;
       for (; i < _N; ++i)
         if (_tagNames[i] == propName) break;
       return i;
     }
-    constexpr bool hasProp(const char propName[]) const { return propIndex(propName) != _N; }
+    constexpr bool hasProperty(const SmallString &propName) const {
+      return propertyIndex(propName) != _N;
+    }
 
     constexpr const_reference operator()(const char propName[], const channel_counter_type chn,
                                          const size_type i) const {
-      return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)] + chn, i);
+      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
     constexpr const_reference operator()(const char propName[], const size_type i) const {
-      return static_cast<const base_t &>(*this)(_tagOffsets[propIndex(propName)], i);
+      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     constexpr auto tile(const size_type tileid) const {
       return TileVectorView<Space, const TileVectorT, true>{
@@ -647,13 +651,13 @@ namespace zs {
 
     template <auto... Ns> constexpr auto pack(const char propName[], const size_type i) const {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
-          _tagOffsets[propIndex(propName)], i);
+          _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d> constexpr auto tuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propIndex(propName)], i);
+      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d> constexpr auto stdtuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propIndex(propName)], i);
+      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)], i);
     }
 
     const SmallString *_tagNames{nullptr};

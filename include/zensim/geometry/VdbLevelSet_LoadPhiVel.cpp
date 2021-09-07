@@ -147,8 +147,8 @@ namespace zs {
           // tiles.template tuple<3>("vel", blockno * ret._space + cellid)
           //    = TV{vel[0], vel[1], vel[2]};
 
-          gridview(0, blockno * ret._space + cellid) = sdf;
-          gridview.set(1, blockno * ret._space + cellid, TV{vel[0], vel[1], vel[2]});
+          gridview("sdf", blockno * ret._space + cellid) = sdf;
+          gridview.set("vel", blockno * ret._space + cellid, TV{vel[0], vel[1], vel[2]});
         }
       }
     }

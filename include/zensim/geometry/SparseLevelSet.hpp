@@ -118,7 +118,7 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = _grid(0, blockno, coord - blockid * _sideLength);
+            arena(dx, dy) = _grid("sdf", blockno, coord - blockid * _sideLength);
           }
         }
       } else if constexpr (dim == 3) {
@@ -129,7 +129,7 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy, dz) = _grid(0, blockno, coord - blockid * _sideLength);
+            arena(dx, dy, dz) = _grid("sdf", blockno, coord - blockid * _sideLength);
           }
         }
       }
@@ -149,7 +149,7 @@ namespace zs {
       return diff.normalized();
     }
     constexpr TV getMaterialVelocity(const TV &x) const noexcept {
-      // if (!_grid.hasProperty("vel")) return TV::zeros();
+      if (!_grid.hasProperty("vel")) return TV::zeros();
       /// world to local
       auto arena = Arena<TV>::uniform(_backgroundVecValue);
       IV loc{};
@@ -166,7 +166,7 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = _grid.template pack<dim>(1, blockno, coord - blockid * _sideLength);
+            arena(dx, dy) = _grid.template pack<dim>("vel", blockno, coord - blockid * _sideLength);
           }
         }
       } else if constexpr (dim == 3) {
@@ -177,7 +177,8 @@ namespace zs {
           blockid = blockid / _sideLength;
           auto blockno = table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy, dz) = _grid.template pack<dim>(1, blockno, coord - blockid * _sideLength);
+            arena(dx, dy, dz)
+                = _grid.template pack<dim>("vel", blockno, coord - blockid * _sideLength);
           }
         }
       }

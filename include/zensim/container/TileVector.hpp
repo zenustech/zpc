@@ -538,18 +538,22 @@ namespace zs {
       return propertyIndex(propName) != _N;
     }
 
-    constexpr reference operator()(const char propName[], const channel_counter_type chn,
+    using base_t::operator();
+    using base_t::pack;
+    using base_t::stdtuple;
+    using base_t::tuple;
+    constexpr reference operator()(const SmallString &propName, const channel_counter_type chn,
                                    const size_type i) {
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
-    constexpr const_reference operator()(const char propName[], const channel_counter_type chn,
-                                         const size_type i) const {
+    constexpr const_reference operator()(const SmallString &propName,
+                                         const channel_counter_type chn, const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
-    constexpr reference operator()(const char propName[], const size_type i) {
+    constexpr reference operator()(const SmallString &propName, const size_type i) {
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
-    constexpr const_reference operator()(const char propName[], const size_type i) const {
+    constexpr const_reference operator()(const SmallString &propName, const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     constexpr auto tile(const size_type tileid) {
@@ -573,15 +577,18 @@ namespace zs {
           _N};
     }
 
-    template <auto... Ns> constexpr auto pack(const char propName[], const size_type i) const {
+    template <auto... Ns>
+    constexpr auto pack(const SmallString &propName, const size_type i) const {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
           _tagOffsets[propertyIndex(propName)], i);
     }
-    template <auto d> constexpr auto tuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)], i);
+    template <auto d> constexpr auto tuple(const SmallString &propName, const size_type i) {
+      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)],
+                                                            i);
     }
-    template <auto d> constexpr auto stdtuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)], i);
+    template <auto d> constexpr auto stdtuple(const SmallString &propName, const size_type i) {
+      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)],
+                                                               i);
     }
 
     const SmallString *_tagNames{nullptr};
@@ -631,11 +638,15 @@ namespace zs {
       return propertyIndex(propName) != _N;
     }
 
-    constexpr const_reference operator()(const char propName[], const channel_counter_type chn,
-                                         const size_type i) const {
+    using base_t::operator();
+    using base_t::pack;
+    using base_t::stdtuple;
+    using base_t::tuple;
+    constexpr const_reference operator()(const SmallString &propName,
+                                         const channel_counter_type chn, const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
-    constexpr const_reference operator()(const char propName[], const size_type i) const {
+    constexpr const_reference operator()(const SmallString &propName, const size_type i) const {
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     constexpr auto tile(const size_type tileid) const {
@@ -649,15 +660,18 @@ namespace zs {
           _N};
     }
 
-    template <auto... Ns> constexpr auto pack(const char propName[], const size_type i) const {
+    template <auto... Ns>
+    constexpr auto pack(const SmallString &propName, const size_type i) const {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
           _tagOffsets[propertyIndex(propName)], i);
     }
-    template <auto d> constexpr auto tuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)], i);
+    template <auto d> constexpr auto tuple(const SmallString &propName, const size_type i) {
+      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)],
+                                                            i);
     }
-    template <auto d> constexpr auto stdtuple(const char propName[], const size_type i) {
-      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)], i);
+    template <auto d> constexpr auto stdtuple(const SmallString &propName, const size_type i) {
+      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)],
+                                                               i);
     }
 
     const SmallString *_tagNames{nullptr};

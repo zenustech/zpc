@@ -195,7 +195,7 @@ namespace zs {
   template <typename ValueT = f32, int d_ = 3, auto SideLength = 4> struct Grids {
     template <grid_e category = grid_e::collocated> using grid_t
         = Grid<ValueT, d_, SideLength, category>;
-    using collocated_grid_t = Grid<ValueT, d_, SideLength>;
+    using collocated_grid_t = grid_t<grid_e::collocated>;
     using value_type = typename collocated_grid_t::value_type;
     using allocator_type = typename collocated_grid_t::allocator_type;
     using cell_index_type = typename collocated_grid_t::cell_index_type;
@@ -333,8 +333,8 @@ namespace zs {
 
     using grid_storage_t = typename grids_t::grid_storage_t;
     using grid_view_t = RM_CVREF_T(proxy<space>(
-        std::declval<
-            conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()));
+        {}, std::declval<
+                conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()));
     using grid_block_view_t = typename grid_view_t::tile_view_type;  // tilevector view property
     using size_type = typename grids_t::size_type;
     using channel_counter_type = typename grids_t::channel_counter_type;
@@ -380,9 +380,9 @@ namespace zs {
     constexpr GridsView() = default;
     ~GridsView() = default;
     explicit GridsView(GridsT &grids)
-        : _collocatedGrid{proxy<space>(grids.grid(collocated_v).blocks)},
-          _cellcenteredGrid{proxy<space>(grids.grid(cellcentered_v).blocks)},
-          _staggeredGrid{proxy<space>(grids.grid(staggered_v).blocks)},
+        : _collocatedGrid{proxy<space>({}, grids.grid(collocated_v).blocks)},
+          _cellcenteredGrid{proxy<space>({}, grids.grid(cellcentered_v).blocks)},
+          _staggeredGrid{proxy<space>({}, grids.grid(staggered_v).blocks)},
           _dx{grids._dx} {}
 
     template <grid_e category = grid_e::collocated> struct Block {
@@ -400,19 +400,42 @@ namespace zs {
       constexpr auto operator()(channel_counter_type c, const vec<Ti, dim> &loc) const noexcept {
         return block(c, coord_to_cellid(loc));
       }
+      template <typename Ti>
+      constexpr auto &operator()(const SmallString &propName, const vec<Ti, dim> &loc) noexcept {
+        return block(propName, coord_to_cellid(loc));
+      }
+      template <typename Ti> constexpr auto operator()(const SmallString &propName,
+                                                       const vec<Ti, dim> &loc) const noexcept {
+        return block(propName, coord_to_cellid(loc));
+      }
       constexpr auto &operator()(channel_counter_type chn, cell_index_type cellid) {
         return block(chn, cellid);
       }
       constexpr auto operator()(channel_counter_type chn, cell_index_type cellid) const {
         return block(chn, cellid);
       }
+      constexpr auto &operator()(const SmallString &propName, cell_index_type cellid) {
+        return block(propName, cellid);
+      }
+      constexpr auto operator()(const SmallString &propName, cell_index_type cellid) const {
+        return block(propName, cellid);
+      }
       template <auto N>
       constexpr auto pack(channel_counter_type chn, cell_index_type cellid) const {
         return block.template pack<N>(chn, cellid);
       }
+      template <auto N>
+      constexpr auto pack(const SmallString &propName, cell_index_type cellid) const {
+        return block.template pack<N>(propName, cellid);
+      }
       template <auto N, typename V, bool b = is_const_structure, enable_if_t<!b> = 0>
       constexpr void set(channel_counter_type chn, cell_index_type cellid, const vec<V, N> &val) {
         block.template tuple<N>(chn, cellid) = val;
+      }
+      template <auto N, typename V, bool b = is_const_structure, enable_if_t<!b> = 0>
+      constexpr void set(const SmallString &propName, cell_index_type cellid,
+                         const vec<V, N> &val) {
+        block.template tuple<N>(propName, cellid) = val;
       }
 
       constexpr auto size() const noexcept { return block.size(); }
@@ -455,23 +478,51 @@ namespace zs {
                                                        const vec<Ti, dim> &loc) const noexcept {
         return grid(c, blockid * block_space() + coord_to_cellid(loc));
       }
+      template <typename Ti> constexpr auto &operator()(const SmallString &propName,
+                                                        size_type blockid,
+                                                        const vec<Ti, dim> &loc) noexcept {
+        return grid(propName, blockid * block_space() + coord_to_cellid(loc));
+      }
+      template <typename Ti> constexpr auto operator()(const SmallString &propName,
+                                                       size_type blockid,
+                                                       const vec<Ti, dim> &loc) const noexcept {
+        return grid(propName, blockid * block_space() + coord_to_cellid(loc));
+      }
       constexpr auto &operator()(channel_counter_type chn, size_type cellid) {
         return grid(chn, cellid);
       }
       constexpr auto operator()(channel_counter_type chn, size_type cellid) const {
         return grid(chn, cellid);
       }
+      constexpr auto &operator()(const SmallString &propName, size_type cellid) {
+        return grid(propName, cellid);
+      }
+      constexpr auto operator()(const SmallString &propName, size_type cellid) const {
+        return grid(propName, cellid);
+      }
       template <auto N> constexpr auto pack(channel_counter_type chn, size_type cellid) const {
         return grid.template pack<N>(chn, cellid);
+      }
+      template <auto N> constexpr auto pack(const SmallString &propName, size_type cellid) const {
+        return grid.template pack<N>(propName, cellid);
       }
       template <auto N, typename Ti> constexpr auto pack(channel_counter_type chn,
                                                          size_type blockid,
                                                          const vec<Ti, dim> &loc) const {
         return grid.template pack<N>(chn, blockid * block_space() + coord_to_cellid(loc));
       }
+      template <auto N, typename Ti> constexpr auto pack(const SmallString &propName,
+                                                         size_type blockid,
+                                                         const vec<Ti, dim> &loc) const {
+        return grid.template pack<N>(propName, blockid * block_space() + coord_to_cellid(loc));
+      }
       template <auto N, typename V, bool b = is_const_structure, enable_if_t<!b> = 0>
       constexpr void set(channel_counter_type chn, size_type cellid, const vec<V, N> &val) {
         grid.template tuple<N>(chn, cellid) = val;
+      }
+      template <auto N, typename V, bool b = is_const_structure, enable_if_t<!b> = 0>
+      constexpr void set(const SmallString &propName, size_type cellid, const vec<V, N> &val) {
+        grid.template tuple<N>(propName, cellid) = val;
       }
 
       constexpr auto size() const noexcept { return grid.size(); }
@@ -589,12 +640,12 @@ namespace zs {
   template <execspace_e space, typename V, int d, auto SideLength, grid_e category>
   constexpr decltype(auto) proxy(Grid<V, d, SideLength, category> &grid) {
     return typename GridsView<space, Grids<V, d, SideLength>>::template Grid<category>{
-        proxy<space>(grid.blocks), grid.dx};
+        proxy<space>({}, grid.blocks), grid.dx};
   }
   template <execspace_e space, typename V, int d, auto SideLength, grid_e category>
   constexpr decltype(auto) proxy(const Grid<V, d, SideLength, category> &grid) {
     return typename GridsView<space, const Grids<V, d, SideLength>>::template Grid<category>{
-        proxy<space>(grid.blocks), grid.dx};
+        proxy<space>({}, grid.blocks), grid.dx};
   }
 
 }  // namespace zs

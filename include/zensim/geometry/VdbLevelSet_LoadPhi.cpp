@@ -111,7 +111,7 @@ namespace zs {
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
-          gridview(0, blockno * ret._space + cellid) = sdf;
+          gridview("sdf", blockno * ret._space + cellid) = sdf;
           // tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
         }
       }

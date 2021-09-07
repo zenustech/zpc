@@ -119,7 +119,7 @@ namespace zs {
       : LevelSetInterface<LevelSetImpl<DataType, tseq_t<Tn...>>, DataType, sizeof...(Tn)>,
         levelset_instance<DataType, Tn...> {
     using T = DataType;
-    using Ti = op_result_t<Tn...>;
+    using Ti = math::op_result_t<Tn...>;
     static constexpr int dim = sizeof...(Tn);
     using TV = vec<T, dim>;
     using IV = vec<Ti, dim>;

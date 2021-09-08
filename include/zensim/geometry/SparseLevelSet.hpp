@@ -3,14 +3,13 @@
 
 #include "Structure.hpp"
 #include "zensim/container/HashTable.hpp"
-#include "zensim/container/TileVector.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
 
 namespace zs {
 
   template <int dim_ = 3, grid_e category_ = grid_e::collocated> struct SparseLevelSet {
     static constexpr int dim = dim_;
-    static constexpr int lane_width = 32;
+    static constexpr int side_length = 8;
     static constexpr auto category = category_;
     using value_type = f32;
     using index_type = i32;
@@ -18,7 +17,7 @@ namespace zs {
     using IV = vec<index_type, dim>;
     using Affine = vec<value_type, dim + 1, dim + 1>;
     using table_t = HashTable<index_type, dim, i64>;
-    using grid_t = Grid<value_type, dim, 8, category>;
+    using grid_t = Grid<value_type, dim, side_length, category>;
 
     constexpr SparseLevelSet() = default;
 
@@ -47,6 +46,9 @@ namespace zs {
     TV _min{}, _max{};
     Affine _w2v{};
   };
+
+  using GeneralSparseLevelSet
+      = variant<SparseLevelSet<3, grid_e::collocated>, SparseLevelSet<2, grid_e::collocated>>;
 
   template <execspace_e, typename SparseLevelSetT, typename = void> struct SparseLevelSetView;
 

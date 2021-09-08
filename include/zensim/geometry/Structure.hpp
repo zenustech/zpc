@@ -317,8 +317,8 @@ namespace zs {
     grid_e _primaryGrid{};
   };
 
-  using GeneralGrids = variant<Grids<f32, 3, 4>, Grids<f32, 3, 2>, Grids<f32, 3, 1>,
-                               Grids<f32, 2, 4>, Grids<f32, 2, 2>, Grids<f32, 2, 1>>;
+  using GeneralGrids
+      = variant<Grids<f32, 3, 4>, Grids<f32, 3, 8>, Grids<f32, 2, 4>, Grids<f32, 2, 8>>;
 
   template <execspace_e, typename GridsT, typename = void> struct GridsView;
   template <execspace_e space, typename GridsT> struct GridsView<space, GridsT> {
@@ -447,6 +447,7 @@ namespace zs {
       using size_type = typename GridsView::size_type;
       using cell_index_type = typename GridsView::cell_index_type;
       using value_type = typename GridsView::value_type;
+      using channel_counter_type = typename GridsView::channel_counter_type;
       static constexpr int dim = GridsView::dim;
       static constexpr auto side_length = GridsView::side_length;
       static constexpr auto block_space() noexcept { return GridsView::block_space(); }

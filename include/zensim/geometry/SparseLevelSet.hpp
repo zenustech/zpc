@@ -18,6 +18,11 @@ namespace zs {
     using Affine = vec<value_type, dim + 1, dim + 1>;
     using table_t = HashTable<index_type, dim, i64>;
     using grid_t = Grid<value_type, dim, side_length, category>;
+    using size_type = typename grid_t::size_type;
+#if 0
+    static_assert(is_same_v<typename grid_t::size_type, typename table_t::size_type>,
+                  "table & grid size_type not match!");
+#endif
 
     constexpr SparseLevelSet() = default;
 
@@ -56,6 +61,8 @@ namespace zs {
   struct SparseLevelSetView<Space, SparseLevelSetT>
       : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>,
                           typename SparseLevelSetT::value_type, SparseLevelSetT::dim> {
+    using value_type = typename SparseLevelSetT::value_type;
+    using size_type = typename SparseLevelSetT::size_type;
     using table_t = typename SparseLevelSetT::table_t;
     using grid_t = typename SparseLevelSetT::grid_t;
     using grid_view_t =
@@ -188,7 +195,6 @@ namespace zs {
     }
     constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
-  protected:
     template <std::size_t d, typename Field, enable_if_t<(d == dim - 1)> = 0>
     constexpr auto trilinear_interop(const TV &diff, const Field &arena) const noexcept {
       return linear_interop(diff(d), arena(0), arena(1));

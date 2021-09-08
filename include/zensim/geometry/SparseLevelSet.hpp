@@ -74,6 +74,7 @@ namespace zs {
     using IV = typename SparseLevelSetT::IV;
     using Affine = typename SparseLevelSetT::Affine;
     static constexpr int dim = SparseLevelSetT::dim;
+    static constexpr auto side_length = SparseLevelSetT::side_length;
 
     template <typename Val, std::size_t... Is>
     static constexpr auto arena_type_impl(index_seq<Is...>) {
@@ -93,7 +94,7 @@ namespace zs {
           _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
           _backgroundVecValue{ls._backgroundVecValue},
-          table{proxy<Space>(ls._table)},
+          _table{proxy<Space>(ls._table)},
           _grid{proxy<Space>(ls._grid)},
           _min{ls._min},
           _max{ls._max},
@@ -104,7 +105,7 @@ namespace zs {
           _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
           _backgroundVecValue{ls._backgroundVecValue},
-          table{proxy<Space>(ls._table)},
+          _table{proxy<Space>(ls._table)},
           _grid{proxy<Space>(ls._grid)},
           _min{ls._min},
           _max{ls._max},
@@ -125,7 +126,7 @@ namespace zs {
           auto blockid = coord;
           for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
           blockid = blockid / _sideLength;
-          auto blockno = table.query(blockid);
+          auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
             arena(dx, dy) = _grid("sdf", blockno, coord - blockid * _sideLength);
           }
@@ -136,7 +137,7 @@ namespace zs {
           auto blockid = coord;
           for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
           blockid = blockid / _sideLength;
-          auto blockno = table.query(blockid);
+          auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
             arena(dx, dy, dz) = _grid("sdf", blockno, coord - blockid * _sideLength);
           }
@@ -173,7 +174,7 @@ namespace zs {
           auto blockid = coord;
           for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
           blockid = blockid / _sideLength;
-          auto blockno = table.query(blockid);
+          auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
             arena(dx, dy) = _grid.template pack<dim>("vel", blockno, coord - blockid * _sideLength);
           }
@@ -184,7 +185,7 @@ namespace zs {
           auto blockid = coord;
           for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
           blockid = blockid / _sideLength;
-          auto blockno = table.query(blockid);
+          auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
             arena(dx, dy, dz)
                 = _grid.template pack<dim>("vel", blockno, coord - blockid * _sideLength);
@@ -210,7 +211,7 @@ namespace zs {
     T _dx;
     T _backgroundValue;
     TV _backgroundVecValue;
-    HashTableView<Space, table_t> table;
+    HashTableView<Space, table_t> _table;
     grid_view_t _grid;
     TV _min, _max;
     Affine _w2v;

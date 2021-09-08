@@ -183,7 +183,7 @@ namespace zs {
       return clone(get_memory_source(mloc.memspace(), mloc.devid()));
     }
 
-    void resize(size_type numBlocks) { blocks.resize(numBlocks * block_space()); }
+    void resize(size_type numBlocks) { blocks.resize(numBlocks * (size_type)block_space()); }
     bool hasProperty(const SmallString &str) const { return blocks.hasProperty(str); }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       return blocks.getChannelOffset(str);

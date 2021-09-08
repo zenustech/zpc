@@ -56,12 +56,13 @@ namespace zs {
 
     SpLs ret{};
     const auto leafCount = gridPtr->tree().leafCount();
-    ret._sideLength = 8;
-    ret._space = 512;
+    ret._sideLength = SpLs::side_length;
+    ret._space = SpLs::grid_t::block_space();
     ret._dx = gridPtr->transform().voxelSize()[0];
     ret._backgroundValue = gridPtr->background();
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
-    ret._grid = typename SpLs::grid_t{{{"sdf", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
+    ret._grid =
+        typename SpLs::grid_t{{{"sdf", 1}, {"tag", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -85,9 +86,9 @@ namespace zs {
     openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
 
     gridPtr->transform().print();
-    fmt::print("background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
-               ret._backgroundValue, ret._dx, ret._min[0], ret._min[1], ret._min[2], ret._max[0],
-               ret._max[1], ret._max[2]);
+    fmt::print("leaf count: {}. background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
+               leafCount, ret._backgroundValue, ret._dx, ret._min[0], ret._min[1], ret._min[2],
+               ret._max[0], ret._max[1], ret._max[2]);
 
     auto w2v = v2w.inverse();
     vec<float, 4, 4> transform;
@@ -111,8 +112,9 @@ namespace zs {
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
-          gridview("sdf", blockno * ret._space + cellid) = sdf;
-          // tiles.template tuple<3>("vel", blockno * ret._space + cellid) = TV::zeros();
+          const auto offset = blockno * ret._space + cellid;
+          gridview("sdf", offset) = sdf;
+          gridview("tag", offset) = cell.isValueOn() ? 1 : 0;
         }
       }
     }

@@ -66,8 +66,8 @@ namespace zs {
 
     SparseLevelSet<3> ret{};
     const auto leafCount = sdfGridPtr->tree().leafCount();
-    ret._sideLength = 8;
-    ret._space = 512;
+    ret._sideLength = SpLs::side_length;
+    ret._space = SpLs::grid_t::block_space();
     ret._dx = sdfGridPtr->transform().voxelSize()[0];
     ret._backgroundValue = sdfGridPtr->background();
     {
@@ -77,8 +77,8 @@ namespace zs {
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
     // ret._tiles = typename SparseLevelSet<3>::tiles_t{
     //    {{"sdf", 1}, {"vel", 3}}, leafCount * ret._space, memsrc_e::host, -1};
-    ret._grid =
-        typename SpLs::grid_t{{{"sdf", 1}, {"vel", 3}}, ret._dx, leafCount, memsrc_e::host, -1};
+    ret._grid = typename SpLs::grid_t{
+        {{"sdf", 1}, {"vel", 3}, {"tag", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = sdfGridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -146,9 +146,10 @@ namespace zs {
           // tiles("sdf", blockno * ret._space + cellid) = sdf;
           // tiles.template tuple<3>("vel", blockno * ret._space + cellid)
           //    = TV{vel[0], vel[1], vel[2]};
-
-          gridview("sdf", blockno * ret._space + cellid) = sdf;
-          gridview.set("vel", blockno * ret._space + cellid, TV{vel[0], vel[1], vel[2]});
+          const auto offset = blockno * ret._space + cellid;
+          gridview("sdf", offset) = sdf;
+          gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+          gridview("tag", offset) = sdfCell.isValueOn() ? 1 : 0;
         }
       }
     }

@@ -517,7 +517,7 @@ namespace zs {
           _tagNames{tilevector.tagNameHandle()},
           _tagOffsets{tilevector.tagOffsetHandle()},
           _tagSizes{tilevector.tagSizeHandle()},
-          _N{static_cast<channel_counter_type>(tagNames.size())} {}
+          _N{static_cast<channel_counter_type>(tilevector.numProperties())} {}
     explicit constexpr TileVectorView(pointer base, size_type s, channel_counter_type nchns,
                                       const SmallString *tagNames,
                                       const channel_counter_type *tagOffsets,
@@ -530,7 +530,7 @@ namespace zs {
 
     constexpr auto propertyIndex(const SmallString &propName) const {
       channel_counter_type i = 0;
-      for (; i < _N; ++i)
+      for (; i != _N; ++i)
         if (_tagNames[i] == propName) break;
       return i;
     }
@@ -617,7 +617,7 @@ namespace zs {
           _tagNames{tilevector.tagNameHandle()},
           _tagOffsets{tilevector.tagOffsetHandle()},
           _tagSizes{tilevector.tagSizeHandle()},
-          _N{static_cast<channel_counter_type>(tagNames.size())} {}
+          _N{static_cast<channel_counter_type>(tilevector.numProperties())} {}
     explicit constexpr TileVectorView(const_pointer base, size_type s, channel_counter_type nchns,
                                       const SmallString *tagNames,
                                       const channel_counter_type *tagOffsets,
@@ -630,7 +630,7 @@ namespace zs {
 
     constexpr auto propertyIndex(const SmallString &propName) const {
       channel_counter_type i = 0;
-      for (; i < _N; ++i)
+      for (; i != _N; ++i)
         if (_tagNames[i] == propName) break;
       return i;
     }

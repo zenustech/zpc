@@ -78,10 +78,10 @@ namespace zs {
           _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(tableSize)} {
-      Vector<value_t> res{1};
+      value_t res[1];
       res[0] = (value_t)0;
       copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
-           MemoryEntity{res.memoryLocation(), (void *)res.data()}, sizeof(value_t));
+           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res}, sizeof(value_t));
     }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : HashTable{get_memory_source(mre, devid), tableSize} {}
@@ -147,8 +147,8 @@ namespace zs {
     friend void swap(HashTable &a, HashTable &b) { a.swap(b); }
 
     inline value_t size() const {
-      Vector<value_t> res{1};
-      copy(MemoryEntity{res.memoryLocation(), (void *)res.data()},
+      value_t res[1];
+      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
            MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
       return res[0];
     }
@@ -197,12 +197,27 @@ namespace zs {
       return make_iterator<const_iterator_impl>(_activeKeys.data(), size());
     }
 
+    template <typename Policy> void resize(Policy &&, std::size_t tableSize);
+
     Table _table;
     allocator_type _allocator;
     value_t _tableSize;
     Vector<value_t> _cnt;
     Vector<key_t> _activeKeys;
   };
+
+  template <typename Tn, int dim, typename Index> template <typename Policy>
+  void HashTable<Tn, dim, Index>::resize(Policy &&policy, std::size_t tableSize) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+#if 0
+    const auto s = size();
+    auto tags = getPropertyTags();
+    tags.insert(std::end(tags), std::begin(appendTags), std::end(appendTags));
+    HashTable<Tn, dim, Index> tmp{allocator(), tableSize};
+    policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
+    *this = std::move(tmp);
+#endif
+  }
 
 #if 0
   using GeneralHashTable = variant<HashTable<i32, 2, int>, HashTable<i32, 2, long long int>,

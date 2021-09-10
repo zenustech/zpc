@@ -213,8 +213,8 @@ namespace zs {
         resize(size() + count);
       else
         _size += count;
-      copy({memoryLocation(), (void *)(_base + size())},
-           {other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
+      copy(MemoryEntity{memoryLocation(), (void *)(_base + size())},
+           MemoryEntity{other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
     }
 
   protected:

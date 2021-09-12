@@ -4,6 +4,7 @@
 #include "Structure.hpp"
 #include "zensim/container/HashTable.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
+#include "zensim/tpls/fmt/color.h"
 
 namespace zs {
 
@@ -111,6 +112,56 @@ namespace zs {
           _max{ls._max},
           _w2v{ls._w2v} {}
 
+    constexpr T getNodeValue(const IV &c, const SmallString &str = "sdf") const noexcept {
+      auto bc = c;
+      for (int d = 0; d != dim; ++d) bc[d] += (c[d] < 0 ? -side_length + 1 : 0);
+      bc /= side_length;
+      if (auto no = _table.query(bc); no >= 0) return _grid(str, no, c - bc * side_length);
+      return _backgroundValue;
+    }
+    void print() {
+      if constexpr (dim == 2) {
+        auto blockCnt = *_table._cnt;
+        using Ti = RM_CVREF_T(blockCnt);
+        using IV = vec<Ti, dim>;
+        for (Ti bno = 0; bno != blockCnt; ++bno) {
+          auto blockCoord = _table._activeKeys[bno];
+          fmt::print(fg(fmt::color::orange), "\nblock [{}] ({}, {})\n", bno, blockCoord[0],
+                     blockCoord[1]);
+          if (blockCoord[0] >= 0 || blockCoord[1] >= 0) {
+            fmt::print("skip\n");
+            continue;
+          }
+
+          auto block = _grid.block(bno);
+          for (Ti cno = 0, ed = grid_t::block_space(); cno != ed; ++cno) {
+            IV cellCoord{cno % side_length, side_length - 1 - cno / side_length};
+            auto val = block("sdf", cellCoord);
+            auto tag = block("tag", cellCoord);
+            auto mask = block("mask", cellCoord);
+            auto tagmask = block("tagmask", cellCoord);
+            auto c = fg(fmt::color::white);
+            if (mask == 0 || tagmask == 0) {
+            } else {
+              if (tag > 1)
+                c = fg(fmt::color::dark_olive_green);
+              else if (tag > 0)
+                c = fg(fmt::color::light_sea_green);
+              else
+                c = fg(fmt::color::yellow_green);
+            }
+            // if (tag < 0) fmt::print("WTF at {} ({}, {})??\n", (int)bno, (int)cellCoord[0],
+            // (int)cellCoord[1]);
+            auto candi = fmt::format("{:.4f}", val);
+            auto candi1 = fmt::format("{}", tag);
+            fmt::print(c, "[{}{}({})] ", val < 0 ? "" : " ", mask ? candi : "------",
+                       tagmask ? candi1 : " ");
+            if (cno % side_length == side_length - 1) fmt::print("\n");
+          }
+          fmt::print("\n");
+        }
+      }
+    }
     constexpr T getSignedDistance(const TV &x) const noexcept {
       /// world to local
       auto arena = Arena<T>::uniform(_backgroundValue);

@@ -9,6 +9,7 @@
 #include "zensim/Logger.hpp"
 #include "zensim/execution/Concurrency.h"
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/types/Property.h"
 
 namespace zs {
 
@@ -62,7 +63,7 @@ namespace zs {
     ret._backgroundValue = gridPtr->background();
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
     ret._grid =
-        typename SpLs::grid_t{{{"sdf", 1}, {"tag", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
+        typename SpLs::grid_t{{{"sdf", 1}, {"mask", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -114,7 +115,13 @@ namespace zs {
           auto sdf = cell.getValue();
           const auto offset = blockno * ret._space + cellid;
           gridview("sdf", offset) = sdf;
-          gridview("tag", offset) = cell.isValueOn() ? 1 : 0;
+          gridview("mask", offset) = cell.isValueOn() ? 1 : 0;
+#if 0
+          if (cell.isValueOn() && sdf < 0) {
+            fmt::print("coord ({}, {}, {}) is on with sdf {}\n", cell.getCoord()[0],
+                       cell.getCoord()[1], cell.getCoord()[2], sdf);
+          }
+#endif
         }
       }
     }

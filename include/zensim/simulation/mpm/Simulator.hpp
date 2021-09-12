@@ -17,8 +17,8 @@ namespace zs {
     std::size_t numModels() const noexcept { return particles.size(); }
     std::size_t numPartitions() const noexcept { return partitions.size(); }
     float getMaxVel(int partI) const {
-      Vector<float> ret{1, memsrc_e::host, -1};
-      copy(MemoryEntity{ret.memoryLocation(), ret.data()},
+      float ret[1];
+      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, ret},
            MemoryEntity{maxVelSqrNorms[partI].memoryLocation(),
                         const_cast<float*>(maxVelSqrNorms[partI].data())},
            sizeof(float));

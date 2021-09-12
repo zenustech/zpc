@@ -603,4 +603,21 @@ using vec =
     return coord;
   }
 
+  template <typename Tn, int dim>
+  constexpr auto unpack_coord(const vec<Tn, dim> &id, Tn side_length) {
+    using T = std::make_signed_t<Tn>;
+    auto bid = id;
+    for (int d = 0; d != dim; ++d) bid[d] += (id[d] < 0 ? ((T)1 - (T)side_length) : 0);
+    bid = bid / side_length;
+    return std::make_tuple(bid, id - bid * side_length);
+  }
+  template <int dim, typename Tn, typename Ti>
+  constexpr auto linear_to_coord(Tn offset, Ti sideLength) {
+    using T = math::op_result_t<Tn, Ti>;
+    vec<Tn, dim> ret{};
+    for (int d = dim - 1; d != -1 && offset; --d, offset = (T)offset / (T)sideLength)
+      ret[d] = (T)offset % (T)sideLength;
+    return ret;
+  }
+
 }  // namespace zs

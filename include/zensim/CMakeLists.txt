@@ -78,6 +78,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/Mesh.hpp
     geometry/PoissonDisk.hpp
     geometry/SparseLevelSet.hpp
+    geometry/LevelSetUtils.hpp
     # math
     math/bit/Bits.h
     math/linear/ConjugateGradient.hpp

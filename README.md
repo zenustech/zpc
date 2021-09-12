@@ -25,7 +25,12 @@ git submodule update
 
 If CUDA (>=11.3) is installed and required, be sure to set *ZS_ENABLE_CUDA=On* first.
 
-Configure the project using the *CMake Tools* extension in *Visual Studio Code* (recommended), or follow the build instructions in [git wiki](https://github.com/zensim-dev/zpc/wiki).
+Configure the project using the *CMake Tools* extension in *Visual Studio Code* (recommended), or follow the build instructions in [git wiki](https://github.com/zensim-dev/zpc/wiki). 
+
+In addition, make sure to install *zlib* for building *partio* when building on linux.
+```
+sudo apt install zlib1g
+```
 
 ## **Integration**
 

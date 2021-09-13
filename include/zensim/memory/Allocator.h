@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 
 #include "MemOps.hpp"
@@ -79,6 +80,30 @@ namespace zs {
     std::string option;
     ProcID did;
   };
+
+#if 0
+  template <typename MemTag> struct virtual_memory_resource : mr_t {  // default impl falls back to
+    virtual_memory_resource(ProcID did = 0, std::string_view type = "DEVICE_PINNED")
+        : type{type}, did{did} {}
+    ~virtual_memory_resource() = default;
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+      throw std::runtime_error(
+          fmt::format("virtual_memory_resource[{}], type [{}]: \"allocate\" not implemented\n",
+                      get_memory_tag_name(MemTag::value), type));
+      return nullptr;
+    }
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+      throw std::runtime_error(
+          fmt::format("virtual_memory_resource[{}], type [{}]: \"deallocate\" not implemented\n",
+                      get_memory_tag_name(MemTag::value), type));
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+
+  private:
+    std::string type;
+    ProcID did;
+  };
+#endif
 
   class handle_resource : mr_t {
   public:

@@ -3,20 +3,20 @@
 #include <memory>
 #include <stdexcept>
 
+#include "zensim/Platform.hpp"
 #include "zensim/tpls/fmt/format.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
-#include "zensim/Platform.hpp"
 
 #ifdef ZS_PLATFORM_WINDOWS
-#include <memory_resource>
+#  include <memory_resource>
 #endif
 namespace zs {
 
   // namespace pmr = std::pmr;
 
-  /// since we cannot use memory_resource header in libstdc++
+  /// since we cannot use memory_resource header in libstdc++ (chrono_nvcc compilation issue)
   /// we directly use its implementation
 #ifdef ZS_PLATFORM_WINDOWS
 
@@ -57,11 +57,11 @@ namespace zs {
     return &__a == &__b || __a.is_equal(__b);
   }
 
-#if __cpp_impl_three_way_comparison < 201907L
+#  if __cpp_impl_three_way_comparison < 201907L
   inline bool operator!=(const memory_resource& __a, const memory_resource& __b) noexcept {
     return !(__a == __b);
   }
-#endif
+#  endif
 
   using mr_t = memory_resource;
 #endif

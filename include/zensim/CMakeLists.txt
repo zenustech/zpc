@@ -231,7 +231,7 @@ target_compile_options(zpccore
   PUBLIC        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2, -O3 $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 target_link_options(zpccore
-  PUBLIC        $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>, /MACHINE:X64 /OPT:REF /OPT:ICF, -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+  PUBLIC        $<HOST_LINK:$<IF:$<CXX_COMPILER_ID:MSVC>, /MACHINE:X64 /OPT:REF /OPT:ICF, "LINKER:--no-as-needed" -O3 -m64 $<IF:$<CXX_COMPILER_ID:Clang>, ,> >>
 )
 set_target_properties(zpccore
   PROPERTIES  POSITION_INDEPENDENT_CODE ON

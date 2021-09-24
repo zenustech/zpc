@@ -17,7 +17,6 @@ namespace zs {
 
     bool reserve(std::size_t desiredSpace);
 
-  private:
     std::vector<std::pair<unsigned long long, size_t>> _vaRanges;
     std::vector<unsigned long long> _allocHandles;
     std::vector<std::pair<void *, size_t>> _allocationRanges;

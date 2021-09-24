@@ -8,7 +8,16 @@
 namespace zs {
 
   monotonic_virtual_memory_resource<device_mem_tag>::monotonic_virtual_memory_resource(
-      ProcID did, std::string_view type) {
+      ProcID did, std::string_view type)
+      : _vaRanges{},
+        _allocHandles{},
+        _allocationRanges{},
+        _type{type},
+        _addr{nullptr},
+        _offset{0},
+        _reservedSpace{0},
+        _allocatedSpace{0},
+        _did{did} {
     CUmemAllocationProp allocProp{};
     if (type != "DEVICE_PINNED")
       throw std::runtime_error(
@@ -102,7 +111,7 @@ namespace zs {
     // cudri::vcreate(&handle, allocationBytes, &allocProp, (unsigned long long)0);
     auto status = cuMemCreate(&handle, allocationBytes, &allocProp, 0ull);
     if (status != CUDA_SUCCESS) return nullptr;
-    ZS_WARN(fmt::format("alloc handle is {}, bytes {}\n", handle, allocationBytes));
+    // ZS_WARN(fmt::format("alloc handle is {}, bytes {}\n", handle, allocationBytes));
 
     void *base = (char *)_addr + _offset;
     // cudri::mmap(base, allocationBytes, (size_t)0, handle, (unsigned long long)0);
@@ -131,6 +140,12 @@ namespace zs {
 
   void monotonic_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr,
                                                                         std::size_t bytes,
-                                                                        std::size_t alignment) {}
+                                                                        std::size_t alignment) {
+#if 0
+    std::size_t i = _allocationRanges.size();
+    for (; i != 0 && (std::uintptr_t)_allocationRanges[i - 1].first >= (std::uintptr_t)ptr; --i)
+      ;
+#endif
+  }
 
 }  // namespace zs

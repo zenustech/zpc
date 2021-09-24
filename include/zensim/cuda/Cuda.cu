@@ -279,6 +279,8 @@ namespace zs {
   }
 
   Cuda::~Cuda() {
+#if 0
+    /// let driver automatically recycles resource 
     for (int i = 0; i < numTotalDevice; i++) {
       auto &context = contexts[i];
       context.setContext();
@@ -296,54 +298,7 @@ namespace zs {
       cudri::destroyContext(context.getContext());
     }
     fmt::print("  Finished \'Cuda\' termination\n");
-  }
-
-  void Cuda::CudaContext::initDeviceMemory() {
-    /// memory
-    std::size_t free_byte, total_byte;
-    checkError(cudaMemGetInfo(&free_byte, &total_byte));
-    deviceMem = std::make_unique<MonotonicAllocator>(free_byte >> MEM_POOL_CTRL,
-                                                     driver().textureAlignment);
-    fmt::print(
-        "\t[InitInfo -- memory] device {}\n\t\tfree bytes/total bytes: "
-        "{}/{},\n\t\tpre-allocated device memory: {} bytes\n\n",
-        getDevId(), free_byte, total_byte, (free_byte >> MEM_POOL_CTRL));
-  }
-  void Cuda::CudaContext::initUnifiedMemory() {
-#if defined(_WIN32)
-    throw std::runtime_error("unified virtual memory manually disabled on windows!");
-    return;
 #endif
-    std::size_t free_byte, total_byte;
-    checkError(cudaMemGetInfo(&free_byte, &total_byte));
-    unifiedMem = std::make_unique<MonotonicVirtualAllocator>(getDevId(), total_byte * 4,
-                                                             driver().textureAlignment);
-    fmt::print(
-        "\t[InitInfo -- memory] device {}\n\t\tfree bytes/total bytes: "
-        "{}/{},\n\t\tpre-allocated unified memory: {} bytes\n\n",
-        getDevId(), free_byte, total_byte, total_byte * 4);
-  }
-
-  auto Cuda::CudaContext::borrow(std::size_t bytes) -> void * {
-    if (!deviceMem) initDeviceMemory();
-    return deviceMem->borrow(bytes);
-  }
-  void Cuda::CudaContext::resetMem() {
-    if (!deviceMem) initDeviceMemory();
-    deviceMem->reset();
-  }
-
-  auto Cuda::CudaContext::borrowVirtual(std::size_t bytes) -> void * {
-#if defined(_WIN32)
-    throw std::runtime_error("unified virtual memory manually disabled on windows!");
-    return nullptr;
-#endif
-    if (!unifiedMem) initUnifiedMemory();
-    return unifiedMem->borrow(bytes);
-  }
-  void Cuda::CudaContext::resetVirtualMem() {
-    if (!unifiedMem) initUnifiedMemory();
-    unifiedMem->reset();
   }
 
   /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101

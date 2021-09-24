@@ -26,7 +26,7 @@ namespace zs {
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       if (bytes) {
         auto ret = zs::allocate(MemTag{}, bytes, alignment);
-        record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
+        // record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
         return ret;
       }
       return nullptr;
@@ -34,7 +34,7 @@ namespace zs {
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
       if (bytes) {
         zs::deallocate(MemTag{}, ptr, bytes, alignment);
-        erase_allocation(ptr);
+        // erase_allocation(ptr);
       }
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
@@ -81,11 +81,11 @@ namespace zs {
     ProcID did;
   };
 
-#if 0
-  template <typename MemTag> struct virtual_memory_resource : mr_t {  // default impl falls back to
-    virtual_memory_resource(ProcID did = 0, std::string_view type = "DEVICE_PINNED")
+  template <typename MemTag> struct monotonic_virtual_memory_resource
+      : mr_t {  // default impl falls back to
+    monotonic_virtual_memory_resource(ProcID did = 0, std::string_view type = "DEVICE_PINNED")
         : type{type}, did{did} {}
-    ~virtual_memory_resource() = default;
+    ~monotonic_virtual_memory_resource() = default;
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       throw std::runtime_error(
           fmt::format("virtual_memory_resource[{}], type [{}]: \"allocate\" not implemented\n",
@@ -103,7 +103,6 @@ namespace zs {
     std::string type;
     ProcID did;
   };
-#endif
 
   class handle_resource : mr_t {
   public:

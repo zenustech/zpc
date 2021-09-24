@@ -20,9 +20,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Allocators.cuh"
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"
+#include "zensim/Singleton.h"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/tpls/fmt/color.h"
 #include "zensim/types/SourceLocation.hpp"
@@ -181,16 +181,6 @@ namespace zs {
         }
       }
 
-      /// allocator initialization on use
-      [[deprecated]] void initDeviceMemory();
-      [[deprecated]] void initUnifiedMemory();
-
-      [[deprecated]] auto borrow(std::size_t bytes) -> void *;
-      [[deprecated]] void resetMem();
-
-      [[deprecated]] auto borrowVirtual(std::size_t bytes) -> void *;
-      [[deprecated]] void resetVirtualMem();
-
       struct Config {
         int optBlockSize{0};
       };
@@ -209,8 +199,6 @@ namespace zs {
       mutable std::unordered_map<void *, Config> funcLaunchConfigs;
 
       mutable bool errorStatus;
-      [[deprecated]] std::unique_ptr<MonotonicAllocator> deviceMem;
-      [[deprecated]] std::unique_ptr<MonotonicVirtualAllocator> unifiedMem;
     };  //< [end] struct CudaContext
 
     // const char *(*get_cuda_error_name)(uint32_t);

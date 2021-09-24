@@ -29,12 +29,12 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/Cuda.cu
-	  cuda/Allocators.cu
 	  cuda/profile/CudaTimers.cu
     cuda/math/matrix/Matrix.cpp
     cuda/simulation/particle/Query.cpp
     cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
+    cuda/memory/Allocator.cpp
     cuda/simulation/wrangler/Wrangler.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
@@ -166,9 +166,9 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/DeviceUtils.cuh
     cuda/HostUtils.hpp
     cuda/CudaLaunchConfig.cuh
-    cuda/Allocators.cuh
     cuda/profile/CudaTimers.cuh
     cuda/memory/MemOps.hpp
+    cuda/memory/Allocator.h
     cuda/math/matrix/EigenDecomposition.cuh
     cuda/math/matrix/svd.cuh
     cuda/math/matrix/Matrix.hpp # recent

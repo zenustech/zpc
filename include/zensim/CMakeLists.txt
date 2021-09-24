@@ -30,9 +30,6 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/Cuda.cu
 	  cuda/profile/CudaTimers.cu
-    cuda/math/matrix/Matrix.cpp
-    cuda/simulation/particle/Query.cpp
-    cuda/simulation/sparsity/SparsityCompute.cpp
     cuda/memory/MemOps.cpp
     cuda/memory/Allocator.cpp
     cuda/simulation/wrangler/Wrangler.cpp
@@ -40,13 +37,30 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/math/matrix/MatrixCtor.cpp
     omp/math/matrix/MatrixTransform.cpp
-    omp/simulation/particle/Query.cpp
-    omp/simulation/sparsity/SparsityCompute.cpp
     omp/execution/ExecutionPolicy.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
     resource/Resource.cpp
 )
+set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES 
+  cuda/math/matrix/Matrix.cpp
+  cuda/simulation/particle/Query.cpp
+  cuda/simulation/sparsity/SparsityCompute.cpp
+)
+if (ZS_ENABLE_CUDA)
+set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES} 
+  ${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES}
+)
+endif ()
+set(ZENSIM_LIBRARY_ZPC_OMP_SOURCE_FILES 
+  omp/simulation/particle/Query.cpp
+  omp/simulation/sparsity/SparsityCompute.cpp
+)
+if (ZS_ENABLE_OPENMP)
+set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES} 
+  ${ZENSIM_LIBRARY_ZPC_OMP_SOURCE_FILES}
+)
+endif ()
 
 ## headers
 set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
@@ -171,7 +185,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/memory/Allocator.h
     cuda/math/matrix/EigenDecomposition.cuh
     cuda/math/matrix/svd.cuh
-    cuda/math/matrix/Matrix.hpp # recent
     cuda/execution/ExecutionPolicy.cuh
     # container
     cuda/geometry/Structurefree.hpp # recent
@@ -179,7 +192,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/algorithm/SortKernels.cuh
     # simulation
     cuda/simulation/transfer/P2G.hpp
-    cuda/simulation/particle/Query.hpp
     # physics
     cuda/physics/ConstitutiveModel.hpp
     # wrangler
@@ -192,6 +204,16 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
 )
 set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
 )
+if (ZS_ENABLE_CUDA)
+set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES} 
+  cuda/math/matrix/Matrix.hpp
+  cuda/simulation/particle/Query.hpp
+)
+endif ()
+if (ZS_ENABLE_OMP)
+set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES} 
+)
+endif ()
 # wrangler
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
 )
@@ -382,6 +404,7 @@ if (ZS_ENABLE_OPENMP)
 endif(ZS_ENABLE_OPENMP)
 
 if (ZS_ENABLE_CUDA)
+  set_source_files_properties(${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
   target_link_libraries(zpc PUBLIC zpccuda)
 endif(ZS_ENABLE_CUDA)
 

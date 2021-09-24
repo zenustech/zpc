@@ -7,7 +7,7 @@
 
 namespace zs {
 
-  monotonic_virtual_memory_resource<device_mem_tag>::monotonic_virtual_memory_resource(
+  stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(
       ProcID did, std::string_view type)
       : _vaRanges{},
         _allocHandles{},
@@ -40,13 +40,13 @@ namespace zs {
     if (status != CUDA_SUCCESS) throw std::runtime_error("alloc granularity retrieval failed.");
   }
 
-  monotonic_virtual_memory_resource<device_mem_tag>::~monotonic_virtual_memory_resource() {
+  stack_virtual_memory_resource<device_mem_tag>::~stack_virtual_memory_resource() {
     cuMemUnmap((CUdeviceptr)_addr, _reservedSpace);
     for (auto &&varange : _vaRanges) cuMemAddressFree(varange.first, varange.second);
     for (auto &&handle : _allocHandles) cuMemRelease(handle);
   }
 
-  bool monotonic_virtual_memory_resource<device_mem_tag>::reserve(std::size_t desiredSpace) {
+  bool stack_virtual_memory_resource<device_mem_tag>::reserve(std::size_t desiredSpace) {
     if (desiredSpace <= _reservedSpace) return true;
     auto newSpace = (desiredSpace + _granularity - 1) / _granularity * _granularity;
     CUdeviceptr ptr = 0ull;
@@ -93,8 +93,8 @@ namespace zs {
     return true;
   }
 
-  void *monotonic_virtual_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,
-                                                                       std::size_t alignment) {
+  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,
+                                                                   std::size_t alignment) {
     auto &allocProp = std::any_cast<CUmemAllocationProp &>(_allocProp);
     unsigned long long handle{};  // CUmemGenericAllocationHandle
     _offset = (_offset + alignment - 1) / alignment * alignment;
@@ -138,14 +138,18 @@ namespace zs {
     return (void *)base;
   }
 
-  void monotonic_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr,
-                                                                        std::size_t bytes,
-                                                                        std::size_t alignment) {
-#if 0
+  void stack_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
+                                                                    std::size_t alignment) {
     std::size_t i = _allocationRanges.size();
-    for (; i != 0 && (std::uintptr_t)_allocationRanges[i - 1].first >= (std::uintptr_t)ptr; --i)
-      ;
-#endif
+    for (; i != 0 && (std::uintptr_t)_allocationRanges[i - 1].first >= (std::uintptr_t)ptr;) {
+      --i;
+      cuMemUnmap((CUdeviceptr)_allocationRanges[i].first, _allocationRanges[i].second);
+      cuMemRelease(_allocHandles[i]);
+      _allocatedSpace -= _allocationRanges[i].second;
+      _allocationRanges.pop_back();
+      _allocHandles.pop_back();
+    }
+    if (_offset > _allocatedSpace) _offset = _allocatedSpace;
   }
 
 }  // namespace zs

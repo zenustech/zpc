@@ -5,7 +5,95 @@
 #include "zensim/tpls/fmt/core.h"
 #include "zensim/tpls/fmt/format.h"
 
+#if defined(ZS_PLATFORM_UNIX)
+#  include <sys/mman.h>
+#  include <unistd.h>
+#elif defined(ZS_PLATFORM_WINDOWS)
+#  define NOMINMAX
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
+#endif
+
 namespace zs {
+
+#if defined(ZS_PLATFORM_UNIX)
+  stack_virtual_memory_resource<host_mem_tag>::stack_virtual_memory_resource(ProcID did,
+                                                                             std::string_view type)
+      : _type{type},
+        _granularity{0},
+        _addr{nullptr},
+        _offset{0},
+        _allocatedSpace{0},
+        _reservedSpace{0},
+        _did{did} {
+    if (did >= 0)
+      throw std::runtime_error(
+          fmt::format("hostvm target device index [{}] is not negative", (int)did));
+    if (type != "HOST_VIRTUAL")
+      throw std::runtime_error(
+          fmt::format("currently hostvm does not support allocation type {}", type));
+
+    _granularity = (size_t)getpagesize();
+  }
+
+  stack_virtual_memory_resource<host_mem_tag>::~stack_virtual_memory_resource() {
+    if (_reservedSpace) munmap(_addr, _reservedSpace);
+  }
+
+  bool stack_virtual_memory_resource<host_mem_tag>::reserve(std::size_t desiredSpace) {
+    if (desiredSpace <= _reservedSpace) return true;
+
+    auto newSpace = (desiredSpace + _granularity - 1) / _granularity * _granularity;
+    if (_reservedSpace == 0) {
+      auto ret = mmap(nullptr, newSpace, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+      if (ret == MAP_FAILED) return false;
+      _addr = ret;
+      _reservedSpace = newSpace;
+      return true;
+    }
+    auto ret = mremap(_addr, _reservedSpace, newSpace, MREMAP_MAYMOVE);
+    if (ret == MAP_FAILED) return false;
+    if (_addr != ret) _addr = ret;
+    _reservedSpace = newSpace;
+    return true;
+  }
+
+  void *stack_virtual_memory_resource<host_mem_tag>::do_allocate(std::size_t bytes,
+                                                                 std::size_t alignment) {
+    _offset = (_offset + alignment - 1) / alignment * alignment;
+
+    if (!reserve(_offset + bytes)) return nullptr;
+
+    if (_offset + bytes <= _allocatedSpace) {
+      void *ret = (void *)((char *)_addr + _offset);
+      _offset += bytes;
+      return ret;
+    }
+
+    auto allocationBytes = (bytes + _granularity - 1) / _granularity * _granularity;
+    if (mprotect((char *)_addr + _allocatedSpace, allocationBytes, PROT_READ | PROT_WRITE) == 0) {
+      _allocatedSpace += allocationBytes;
+      auto ret = (char *)_addr + _offset;
+      _offset += bytes;
+      return (void *)ret;
+    }
+    return nullptr;
+  }
+
+  void stack_virtual_memory_resource<host_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
+                                                                  std::size_t alignment) {
+    auto split = ((size_t)ptr + _granularity - 1) / _granularity * _granularity;
+    if (split < (size_t)_addr) split = (size_t)_addr;
+    bytes = (split - (size_t)_addr);
+    if (bytes > _allocatedSpace) return;
+    bytes = (size_t)_allocatedSpace - bytes;
+    if (madvise((void *)split, bytes, MADV_DONTNEED) != 0) return;
+    if (mprotect((void *)split, bytes, PROT_NONE) == 0) {
+      _allocatedSpace -= bytes;
+      if (_allocatedSpace < _offset) _offset = _allocatedSpace;
+    }
+  }
+#endif
 
   /// handle_resource
   handle_resource::handle_resource(mr_t *upstream) noexcept : _upstream{upstream} {}

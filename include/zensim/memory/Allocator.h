@@ -81,28 +81,44 @@ namespace zs {
     ProcID did;
   };
 
-  template <typename MemTag> struct monotonic_virtual_memory_resource
+  template <typename MemTag> struct stack_virtual_memory_resource;
+
+#ifdef ZS_PLATFORM_WINDOWS
+  template <> struct stack_virtual_memory_resource<host_mem_tag>
       : mr_t {  // default impl falls back to
-    monotonic_virtual_memory_resource(ProcID did = 0, std::string_view type = "DEVICE_PINNED")
-        : type{type}, did{did} {}
-    ~monotonic_virtual_memory_resource() = default;
+    template <typename... Args> stack_virtual_memory_resource(Args...) {
+      throw std::runtime("windows virtual memory allocator not implemented!");
+    }
+    ~stack_virtualmemory_resource() = default;
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime_error(
-          fmt::format("virtual_memory_resource[{}], type [{}]: \"allocate\" not implemented\n",
-                      get_memory_tag_name(MemTag::value), type));
+      throw std::runtime("windows virtual memory allocator not implemented!");
       return nullptr;
     }
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime_error(
-          fmt::format("virtual_memory_resource[{}], type [{}]: \"deallocate\" not implemented\n",
-                      get_memory_tag_name(MemTag::value), type));
+      throw std::runtime("windows virtual memory allocator not implemented!");
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
-
-  private:
-    std::string type;
-    ProcID did;
   };
+
+#elif defined(ZS_PLATFORM_UNIX)
+
+  template <> struct stack_virtual_memory_resource<host_mem_tag>
+      : mr_t {  // default impl falls back to
+    stack_virtual_memory_resource(ProcID did = -1, std::string_view type = "HOST_VIRTUAL");
+    ~stack_virtual_memory_resource();
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override;
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+
+    bool reserve(std::size_t desiredSpace);
+
+    std::string _type;
+    size_t _granularity;
+    void *_addr;
+    size_t _offset, _allocatedSpace, _reservedSpace;
+    ProcID _did;
+  };
+#endif
 
   class handle_resource : mr_t {
   public:

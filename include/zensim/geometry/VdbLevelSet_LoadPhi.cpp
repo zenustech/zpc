@@ -1,5 +1,6 @@
 #include <openvdb/Grid.h>
 #include <openvdb/io/File.h>
+#include <openvdb/math/Transform.h>
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/GridOperators.h>
 #include <openvdb/tools/Interpolation.h>
@@ -130,6 +131,32 @@ namespace zs {
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
                                                      const MemoryHandle mh) {
     return convertFloatGridToSparseLevelSet(grid).clone(mh);
+  }
+
+  OpenVDBStruct convertSparseLevelSetToFloatGrid(const SparseLevelSet<3> &splsIn) {
+    auto spls = splsIn.clone(MemoryHandle{memsrc_e::host, -1});
+    openvdb::FloatGrid::Ptr grid
+        = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
+    // meta
+    grid->insertMeta("zpctag", openvdb::FloatMetadata(0.f));
+    // transform
+    openvdb::Mat4R w2v{};
+    for (auto &&[r, c] : ndrange<2>(4)) w2v[r][c] = spls._w2v[r][c];
+    grid->setTransform(openvdb::math::Transform::createLinearTransform(w2v.inverse()));
+    // tree
+    auto table = proxy<execspace_e::host>(spls._table);
+    auto gridview = proxy<execspace_e::host>(spls._grid);
+    auto accessor = grid->getAccessor();
+    using GridT = RM_CVREF_T(gridview);
+    for (auto &&[blockno, blockid] :
+         zip(range(spls._grid.size() / spls._space), spls._table._activeKeys))
+      for (int cid = 0; cid != spls._space; ++cid) {
+        const auto offset = (int)blockno * (int)spls._space + cid;
+        const auto coord = blockid * (int)spls._sideLength + GridT::cellid_to_coord(cid);
+        // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
+        accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, gridview("sdf", offset));
+      }
+    return OpenVDBStruct{grid};
   }
 
   void checkFloatGrid(OpenVDBStruct &grid) {

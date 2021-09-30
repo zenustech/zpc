@@ -32,6 +32,7 @@ namespace zs {
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid);
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
                                                      const MemoryHandle mh);
+  OpenVDBStruct convertSparseLevelSetToFloatGrid(const SparseLevelSet<3> &grid);
 
   SparseLevelSet<3> convertLevelSetGridToSparseLevelSet(const OpenVDBStruct &sdf,
                                                         const OpenVDBStruct &vel);

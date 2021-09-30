@@ -89,17 +89,6 @@ namespace zs {
 
     constexpr SparseLevelSetView() = default;
     ~SparseLevelSetView() = default;
-    constexpr SparseLevelSetView(const std::vector<SmallString> &tagNames, SparseLevelSetT &ls)
-        : _sideLength{ls._sideLength},
-          _space{ls._space},
-          _dx{ls._dx},
-          _backgroundValue{ls._backgroundValue},
-          _backgroundVecValue{ls._backgroundVecValue},
-          _table{proxy<Space>(ls._table)},
-          _grid{proxy<Space>(ls._grid)},
-          _min{ls._min},
-          _max{ls._max},
-          _w2v{ls._w2v} {}
     constexpr SparseLevelSetView(SparseLevelSetT &ls)
         : _sideLength{ls._sideLength},
           _space{ls._space},

@@ -139,6 +139,8 @@ namespace zs {
         = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
     // meta
     grid->insertMeta("zpctag", openvdb::FloatMetadata(0.f));
+    grid->setGridClass(openvdb::GRID_LEVEL_SET);
+    grid->setName("ZpcLevelSet");
     // transform
     openvdb::Mat4R w2v{};
     for (auto &&[r, c] : ndrange<2>(4)) w2v[r][c] = spls._w2v[r][c];
@@ -152,11 +154,23 @@ namespace zs {
          zip(range(spls._grid.size() / spls._space), spls._table._activeKeys))
       for (int cid = 0; cid != spls._space; ++cid) {
         const auto offset = (int)blockno * (int)spls._space + cid;
+        const auto sdfVal = gridview("sdf", offset);
+        if (sdfVal == spls._backgroundValue) continue;
         const auto coord = blockid * (int)spls._sideLength + GridT::cellid_to_coord(cid);
         // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
-        accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, gridview("sdf", offset));
+        accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
       }
     return OpenVDBStruct{grid};
+  }
+  bool writeFloatGridToVdbFile(std::string_view fn, const OpenVDBStruct &grid) {
+    openvdb::io::File file(fn.data());
+    // if (!file.isOpen()) return false;
+    openvdb::GridPtrVec grids{};
+    const auto &gridPtr = grid.as<typename openvdb::FloatGrid::Ptr>();
+    grids.push_back(gridPtr);
+    file.write(grids);
+    file.close();
+    return true;
   }
 
   void checkFloatGrid(OpenVDBStruct &grid) {

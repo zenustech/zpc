@@ -28,6 +28,7 @@ namespace zs {
 
   OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn);
   OpenVDBStruct loadVec3fGridFromVdbFile(const std::string &fn);
+  bool writeFloatGridToVdbFile(std::string_view fn, const OpenVDBStruct &grid);
 
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid);
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,

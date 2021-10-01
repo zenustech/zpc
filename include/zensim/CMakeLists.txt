@@ -73,6 +73,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/Bvh.hpp
     container/Bvtt.hpp
     container/IndexBuckets.hpp
+    geometry/PointDataGrid.hpp
+    geometry/OverlayGrid.hpp
     geometry/Structure.hpp
     geometry/Structurefree.hpp
     # execution

@@ -23,6 +23,7 @@ namespace zs {
     openvdb::GridPtrVecPtr grids = file.getGrids();
     file.close();
 
+    fmt::print("{} grid{} in file \"{}\"\n", grids->size(), grids->size() > 1 ? "s" : "", fn);
     using SDFPtr = typename GridType::Ptr;
     SDFPtr grid;
     for (openvdb::GridPtrVec::iterator iter = grids->begin(); iter != grids->end(); ++iter) {
@@ -56,6 +57,7 @@ namespace zs {
     using IV = typename SpLs::table_t::key_t;
     using TV = vec<typename SpLs::value_type, 3>;
 
+    gridPtr->tree().voxelizeActiveTiles();
     SpLs ret{};
     const auto leafCount = gridPtr->tree().leafCount();
     ret._sideLength = SpLs::side_length;

@@ -64,7 +64,9 @@ namespace zs {
     using IV = typename SpLs::table_t::key_t;
     using TV = vec<typename SpLs::value_type, 3>;
 
-    SparseLevelSet<3> ret{};
+    sdfGridPtr->tree().voxelizeActiveTiles();
+    velGridPtr->tree().voxelizeActiveTiles();
+    SpLs ret{};
     const auto leafCount = sdfGridPtr->tree().leafCount();
     ret._sideLength = SpLs::side_length;
     ret._space = SpLs::grid_t::block_space();

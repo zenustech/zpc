@@ -15,7 +15,7 @@ namespace zs {
     using deleter_type = Deleter;
 
     template <typename U, typename E, template <typename, typename> class PTR>
-    constexpr bool __safe_conversion_up() noexcept {
+    static constexpr bool __safe_conversion_up() noexcept {
       return std::is_convertible_v<typename PTR<U, E>::pointer, pointer> && !std::is_array_v<U>;
     }
 

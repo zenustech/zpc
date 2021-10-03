@@ -75,6 +75,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     container/IndexBuckets.hpp
     geometry/PointDataGrid.hpp
     geometry/OverlayGrid.hpp
+    geometry/AdaptiveGrid.hpp
     geometry/Structure.hpp
     geometry/Structurefree.hpp
     # execution
@@ -129,6 +130,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     # resource
     resource/Resource.h
     # types
+    types/Pointers.hpp
     types/Function.h
     types/Iterator.h
     types/Optional.h

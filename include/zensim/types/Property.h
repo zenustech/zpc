@@ -71,4 +71,8 @@ namespace zs {
     static constexpr bool value = decltype(test<T>(nullptr, nullptr))::value;
   };
 
+  template <class T> struct is_unbounded_array : std::false_type {};
+
+  template <class T> struct is_unbounded_array<T[]> : std::true_type {};
+
 }  // namespace zs

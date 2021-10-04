@@ -10,6 +10,7 @@
 #include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemOps.hpp"
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/types/Pointers.hpp"
 #include "zensim/types/SmallVector.hpp"
 #include "zensim/types/Tuple.h"
 
@@ -29,14 +30,11 @@ namespace zs {
     ZSPmrAllocator() = default;
     ZSPmrAllocator(ZSPmrAllocator &&) = default;
     ZSPmrAllocator &operator=(ZSPmrAllocator &&) = default;
-    ZSPmrAllocator(const ZSPmrAllocator &) = default;
-    ZSPmrAllocator &operator=(const ZSPmrAllocator &) = default;
-    ZSPmrAllocator(mr_t *mr, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : res{mr}, location{mre, devid} { /*res.reset(mr);*/
+    ZSPmrAllocator(const ZSPmrAllocator &o) { *this = o.select_on_container_copy_construction(); }
+    ZSPmrAllocator &operator=(const ZSPmrAllocator &o) {
+      *this = o.select_on_container_copy_construction();
+      return *this;
     }
-    ZSPmrAllocator(const SharedHolder<mr_t> &mr, memsrc_e mre = memsrc_e::host,
-                   ProcID devid = -1) noexcept
-        : res{mr}, location{mre, devid} {}
 
     friend void swap(ZSPmrAllocator &a, ZSPmrAllocator &b) {
       std::swap(a.res, b.res);
@@ -55,36 +53,30 @@ namespace zs {
       return res.get() == other.res.get() && location == other.location;
     }
 
-    ZSPmrAllocator select_on_container_copy_construction() const { return *this; }
+    ZSPmrAllocator select_on_container_copy_construction() const {
+      ZSPmrAllocator ret{};
+      ret.cloner = this->cloner;
+      ret.res = this->cloner();
+      ret.location = this->location;
+      return ret;
+    }
 
-    /// non-owning upstream should specify deleter
-    template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
-    void setNonOwningUpstream(mem_tags tag, ProcID devid, std::tuple<Args &&...> args,
-                              index_seq<Is...>) {
-      match([&](auto t) {
-        res = std::shared_ptr<ResourceT<decltype(t)>>(
-            new ResourceT<decltype(t)>(std::get<Is>(args)...), free_mem_resource);
-        location = MemoryLocation{get_memory_tag_enum(tag), devid};
-      })(tag);
-    }
-    template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
-    void setNonOwningUpstream(MemTag tag, ProcID devid, Args &&...args) {
-      if constexpr (is_same_v<MemTag, mem_tags>)
-        setNonOwningUpstream<ResourceT>(tag, devid, std::forward_as_tuple(FWD(args)...),
-                                        std::index_sequence_for<Args...>{});
-      else {
-        res = std::shared_ptr<ResourceT<MemTag>>(new ResourceT<MemTag>(FWD(args)...),
-                                                 free_mem_resource);
-        location = MemoryLocation{get_memory_tag_enum(tag), devid};
-      }
-    }
     /// owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
     void setOwningUpstream(mem_tags tag, ProcID devid, std::tuple<Args &&...> args,
                            index_seq<Is...>) {
       match([&](auto t) {
-        res = std::make_shared<ResourceT<decltype(t)>>(devid, std::get<Is>(args)...);
-        location = MemoryLocation{get_memory_tag_enum(tag), devid};
+        res = std::make_unique<ResourceT<decltype(t)>>(devid, std::get<Is>(args)...);
+        location = MemoryLocation{t.value, devid};
+        cloner = [devid, args]() -> std::unique_ptr<mr_t> {
+          std::unique_ptr<mr_t> ret{};
+          std::apply(
+              [&ret](auto &&...ctorArgs) {
+                ret = std::make_unique<ResourceT<decltype(t)>>(FWD(ctorArgs)...);
+              },
+              std::tuple_cat(std::make_tuple(devid), args));
+          return ret;
+        };
       })(tag);
     }
     template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
@@ -93,12 +85,22 @@ namespace zs {
         setOwningUpstream<ResourceT>(tag, devid, std::forward_as_tuple(FWD(args)...),
                                      std::index_sequence_for<Args...>{});
       else {
-        res = std::make_shared<ResourceT<MemTag>>(devid, FWD(args)...);
-        location = MemoryLocation{get_memory_tag_enum(tag), devid};
+        res = std::make_unique<ResourceT<MemTag>>(devid, FWD(args)...);
+        location = MemoryLocation{MemTag::value, devid};
+        cloner = [devid, args = std::make_tuple(args...)]() -> std::unique_ptr<mr_t> {
+          std::unique_ptr<mr_t> ret{};
+          std::apply(
+              [&ret](auto &&...ctorArgs) {
+                ret = std::make_unique<ResourceT<MemTag>>(FWD(ctorArgs)...);
+              },
+              std::tuple_cat(std::make_tuple(devid), args));
+          return ret;
+        };
       }
     }
 
-    SharedHolder<mr_t> res{};
+    std::function<std::unique_ptr<mr_t>()> cloner{};
+    std::unique_ptr<mr_t> res{};
     MemoryLocation location{memsrc_e::host, -1};
   };
 

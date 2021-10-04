@@ -140,7 +140,7 @@ namespace zs {
     static constexpr size_t s_chunk_granularity_bits = (size_t)21;
     static constexpr size_t s_chunk_granularity = (size_t)1 << s_chunk_granularity_bits;
 
-    arena_virtual_memory_resource(size_t space, ProcID did = -1);
+    arena_virtual_memory_resource(ProcID did = -1, size_t space = s_chunk_granularity);
     ~arena_virtual_memory_resource();
     bool checkResidency(std::size_t offset, std::size_t bytes = s_chunk_granularity) const;
     bool commit(std::size_t offset, std::size_t bytes = s_chunk_granularity);

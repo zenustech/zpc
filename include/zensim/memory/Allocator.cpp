@@ -94,8 +94,8 @@ namespace zs {
     }
   }
 
-  arena_virtual_memory_resource<host_mem_tag>::arena_virtual_memory_resource(size_t space,
-                                                                             ProcID did)
+  arena_virtual_memory_resource<host_mem_tag>::arena_virtual_memory_resource(ProcID did,
+                                                                             size_t space)
       : _did{did}, _reservedSpace{round_up(space, s_chunk_granularity)} {
     if (did >= 0)
       throw std::runtime_error(
@@ -130,8 +130,6 @@ namespace zs {
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
 
     if (mprotect((char *)_addr + st, ed - st, PROT_READ | PROT_WRITE) == 0) {
-      fmt::print("marking chunk [{}, {})\n", st >> s_chunk_granularity_bits,
-                 ed >> s_chunk_granularity_bits);
       for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
         _activeChunkMasks[st >> 6] |= ((size_t)1 << (st & 63));
       return true;

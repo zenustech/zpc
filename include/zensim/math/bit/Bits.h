@@ -128,6 +128,12 @@ namespace zs {
     return morton_2d<T>(coord[0], coord[1]);
   }
 #endif
+  template <typename Integer> constexpr Integer round_down(Integer n, Integer alignment) noexcept {
+    return n & (~(alignment - 1));
+  }
+  template <typename Integer> constexpr Integer round_up(Integer n, Integer alignment) noexcept {
+    return (n + alignment - 1) & (~(alignment - 1));
+  }
   /**
    */
   template <typename Integer> constexpr Integer interleaved_bit_mask(int dim) noexcept {

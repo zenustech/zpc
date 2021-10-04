@@ -93,6 +93,54 @@ namespace zs {
       if (_allocatedSpace < _offset) _offset = _allocatedSpace;
     }
   }
+
+  arena_virtual_memory_resource<host_mem_tag>::arena_virtual_memory_resource(size_t space,
+                                                                             ProcID did)
+      : _did{did}, _reservedSpace{round_up(space, s_chunk_granularity)} {
+    if (did >= 0)
+      throw std::runtime_error(
+          fmt::format("hostvm target device index [{}] is not negative", (int)did));
+    _granularity = (size_t)getpagesize();
+    auto ret = mmap(nullptr, _reservedSpace, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+    if (ret == MAP_FAILED)
+      throw std::runtime_error(
+          fmt::format("failed to reserve a virtual address range of size {}", _reservedSpace));
+    _addr = ret;
+    _activeChunkMasks.resize((_reservedSpace / s_chunk_granularity + 63) / 64, (u64)0);
+  }
+
+  arena_virtual_memory_resource<host_mem_tag>::~arena_virtual_memory_resource() {
+    munmap(_addr, _reservedSpace);
+  }
+
+  bool arena_virtual_memory_resource<host_mem_tag>::checkResidency(std::size_t offset,
+                                                                   std::size_t bytes) const {
+    size_t st = round_down(offset, s_chunk_granularity);
+    size_t ed = round_up(offset + bytes, s_chunk_granularity);
+    for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
+      if ((_activeChunkMasks[st >> 6] & (1 << (st & 63))) == 0) return false;
+    return true;
+  }
+  bool arena_virtual_memory_resource<host_mem_tag>::commit(std::size_t offset, std::size_t bytes) {
+    size_t st = round_down(offset, s_chunk_granularity);
+    size_t ed = round_up(offset + bytes, s_chunk_granularity);
+
+    if (mprotect((char *)_addr + st, ed - st, PROT_READ | PROT_WRITE) == 0) {
+      for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
+        _activeChunkMasks[st >> 6] |= (1 << (st & 63));
+      return true;
+    }
+    return false;
+  }
+
+  bool arena_virtual_memory_resource<host_mem_tag>::evict(std::size_t offset, std::size_t bytes) {
+    size_t st = round_up(offset, s_chunk_granularity);
+    size_t ed = round_down(offset + bytes, s_chunk_granularity);
+    if (st >= ed) return true;
+    ed -= st;
+    if (madvise((void *)st, ed, MADV_DONTNEED) != 0) return false;
+    return (mprotect((void *)st, ed, PROT_NONE) == 0);
+  }
 #endif
 
   /// handle_resource

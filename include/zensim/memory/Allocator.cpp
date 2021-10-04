@@ -116,18 +116,24 @@ namespace zs {
   bool arena_virtual_memory_resource<host_mem_tag>::checkResidency(std::size_t offset,
                                                                    std::size_t bytes) const {
     size_t st = round_down(offset, s_chunk_granularity);
-    size_t ed = round_up(offset + bytes, s_chunk_granularity);
+    if (st >= _reservedSpace) return false;
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
     for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
-      if ((_activeChunkMasks[st >> 6] & (1 << (st & 63))) == 0) return false;
+      if ((_activeChunkMasks[st >> 6] & ((size_t)1 << (st & 63))) == 0) return false;
     return true;
   }
   bool arena_virtual_memory_resource<host_mem_tag>::commit(std::size_t offset, std::size_t bytes) {
     size_t st = round_down(offset, s_chunk_granularity);
-    size_t ed = round_up(offset + bytes, s_chunk_granularity);
+    if (st >= _reservedSpace) return false;
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
 
     if (mprotect((char *)_addr + st, ed - st, PROT_READ | PROT_WRITE) == 0) {
+      fmt::print("marking chunk [{}, {})\n", st >> s_chunk_granularity_bits,
+                 ed >> s_chunk_granularity_bits);
       for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
-        _activeChunkMasks[st >> 6] |= (1 << (st & 63));
+        _activeChunkMasks[st >> 6] |= ((size_t)1 << (st & 63));
       return true;
     }
     return false;
@@ -135,11 +141,15 @@ namespace zs {
 
   bool arena_virtual_memory_resource<host_mem_tag>::evict(std::size_t offset, std::size_t bytes) {
     size_t st = round_up(offset, s_chunk_granularity);
-    size_t ed = round_down(offset + bytes, s_chunk_granularity);
-    if (st >= ed) return true;
-    ed -= st;
-    if (madvise((void *)st, ed, MADV_DONTNEED) != 0) return false;
-    return (mprotect((void *)st, ed, PROT_NONE) == 0);
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_down(offset, s_chunk_granularity) : _reservedSpace;
+    if (st >= ed) return false;
+    bytes = ed - st;
+    if (madvise((void *)((char *)_addr + st), bytes, MADV_DONTNEED) != 0) return false;
+    if (mprotect((void *)((char *)_addr + st), bytes, PROT_NONE) != 0) return false;
+    for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
+      _activeChunkMasks[st >> 6] &= ~((size_t)1 << (st & 63));
+    return true;
   }
 #endif
 

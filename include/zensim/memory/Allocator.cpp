@@ -113,8 +113,8 @@ namespace zs {
     munmap(_addr, _reservedSpace);
   }
 
-  bool arena_virtual_memory_resource<host_mem_tag>::checkResidency(std::size_t offset,
-                                                                   std::size_t bytes) const {
+  bool arena_virtual_memory_resource<host_mem_tag>::do_check_residency(std::size_t offset,
+                                                                       std::size_t bytes) const {
     size_t st = round_down(offset, s_chunk_granularity);
     if (st >= _reservedSpace) return false;
     offset += bytes;
@@ -123,7 +123,8 @@ namespace zs {
       if ((_activeChunkMasks[st >> 6] & ((size_t)1 << (st & 63))) == 0) return false;
     return true;
   }
-  bool arena_virtual_memory_resource<host_mem_tag>::commit(std::size_t offset, std::size_t bytes) {
+  bool arena_virtual_memory_resource<host_mem_tag>::do_commit(std::size_t offset,
+                                                              std::size_t bytes) {
     size_t st = round_down(offset, s_chunk_granularity);
     if (st >= _reservedSpace) return false;
     offset += bytes;
@@ -137,7 +138,8 @@ namespace zs {
     return false;
   }
 
-  bool arena_virtual_memory_resource<host_mem_tag>::evict(std::size_t offset, std::size_t bytes) {
+  bool arena_virtual_memory_resource<host_mem_tag>::do_evict(std::size_t offset,
+                                                             std::size_t bytes) {
     size_t st = round_up(offset, s_chunk_granularity);
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_down(offset, s_chunk_granularity) : _reservedSpace;

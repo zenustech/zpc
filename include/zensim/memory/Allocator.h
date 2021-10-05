@@ -135,19 +135,21 @@ namespace zs {
     ProcID _did;
   };
 
-  template <> struct arena_virtual_memory_resource<host_mem_tag> {  // default impl falls back to
+  template <> struct arena_virtual_memory_resource<host_mem_tag>
+      : vmr_t {  // default impl falls back to
     /// 2M chunk granularity
-    static constexpr size_t s_chunk_granularity_bits = (size_t)21;
-    static constexpr size_t s_chunk_granularity = (size_t)1 << s_chunk_granularity_bits;
+    static constexpr size_t s_chunk_granularity_bits = vmr_t::s_chunk_granularity_bits;
+    static constexpr size_t s_chunk_granularity = vmr_t::s_chunk_granularity;
 
     arena_virtual_memory_resource(ProcID did = -1, size_t space = s_chunk_granularity);
     ~arena_virtual_memory_resource();
-    bool checkResidency(std::size_t offset, std::size_t bytes = s_chunk_granularity) const;
-    bool commit(std::size_t offset, std::size_t bytes = s_chunk_granularity);
-    bool evict(std::size_t offset, std::size_t bytes = s_chunk_granularity);
-    bool is_equal(const arena_virtual_memory_resource &other) const noexcept {
-      return this == &other;
-    }
+    bool do_check_residency(std::size_t offset, std::size_t bytes) const override;
+    bool do_commit(std::size_t offset, std::size_t bytes) override;
+    bool do_evict(std::size_t offset, std::size_t bytes) override;
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override { return _addr; }
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {}
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     size_t _granularity;
     const size_t _reservedSpace;

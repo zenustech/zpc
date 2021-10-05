@@ -65,6 +65,27 @@ namespace zs {
 
   using mr_t = memory_resource;
 #endif
+
+  struct vmr_t : public mr_t {
+    static constexpr std::size_t s_chunk_granularity_bits = (size_t)21;
+    static constexpr std::size_t s_chunk_granularity = (size_t)1 << s_chunk_granularity_bits;
+    vmr_t() = default;
+    vmr_t(const vmr_t&) = default;
+    vmr_t& operator=(const vmr_t&) = default;
+    virtual ~vmr_t() = default;
+
+    bool commit(std::size_t offset, std::size_t bytes = s_chunk_granularity) { return do_commit(offset, bytes); }
+    bool evict(std::size_t offset, std::size_t bytes = s_chunk_granularity) { return do_evict(offset, bytes); }
+    bool check_residency(std::size_t offset, std::size_t bytes = s_chunk_granularity) const {
+      return do_check_residency(offset, bytes);
+    }
+
+  private:
+    virtual bool do_commit(std::size_t, std::size_t) = 0;
+    virtual bool do_evict(std::size_t, std::size_t) = 0;
+    virtual bool do_check_residency(std::size_t, std::size_t) const = 0;
+  };
+
   // using unsynchronized_pool_resource = pmr::unsynchronized_pool_resource;
   // using synchronized_pool_resource = pmr::synchronized_pool_resource;
   // template <typename T> using object_allocator = pmr::polymorphic_allocator<T>;

@@ -534,9 +534,11 @@ namespace zs {
       }
 
       constexpr std::size_t element_size() const noexcept {
-        std::size_t ebytes{((const channel_counts *)this)->reduce(
-            multiplies<std::size_t>{}, [](auto &&...ns) { return (ns + ...); },
-            ordered_attrib_sizes())};
+        std::size_t ebytes{((const channel_counts *)this)
+                               ->reduce(
+                                   multiplies<std::size_t>{},
+                                   [](auto &&...ns) { return (ns + ...); },
+                                   ordered_attrib_sizes())};
         std::size_t alignbytes = alignment();
         ebytes = (ebytes + alignbytes - 1) / alignbytes * alignbytes;
         return ebytes;
@@ -688,22 +690,22 @@ namespace zs {
         }
         return alignment;
       }
-      template <typename T> constexpr void alloc(ZSPmrAllocator<T> &allocator) {
+      template <bool V, typename T> constexpr void alloc(ZSPmrAllocator<V, T> &allocator) {
         auto nodesizes = snode_sizes();
         const auto align = maxAlignment();
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes), align)), ...);
       }
-      template <typename T> constexpr void alloc(ZSPmrAllocator<T> &&allocator) {
+      template <bool V, typename T> constexpr void alloc(ZSPmrAllocator<V, T> &&allocator) {
         auto nodesizes = snode_sizes();
         const auto align = maxAlignment();
         ((zs::get<Is>(self().handles) = allocator.allocate(zs::get<Is>(nodesizes), align)), ...);
       }
-      template <typename T> constexpr void dealloc(ZSPmrAllocator<T> &allocator) {
+      template <bool V, typename T> constexpr void dealloc(ZSPmrAllocator<V, T> &allocator) {
         auto nodesizes = snode_sizes();
         const auto align = maxAlignment();
         ((allocator.deallocate(zs::get<Is>(self().handles), zs::get<Is>(nodesizes), align)), ...);
       }
-      template <typename T> constexpr void dealloc(ZSPmrAllocator<T> &&allocator) {
+      template <bool V, typename T> constexpr void dealloc(ZSPmrAllocator<V, T> &&allocator) {
         auto nodesizes = snode_sizes();
         const auto align = maxAlignment();
         ((allocator.deallocate(zs::get<Is>(self().handles), zs::get<Is>(nodesizes), align)), ...);

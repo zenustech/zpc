@@ -137,7 +137,7 @@ namespace zs {
 
   template <> struct arena_virtual_memory_resource<host_mem_tag>
       : vmr_t {  // default impl falls back to
-    /// 2M chunk granularity
+    /// 2MB chunk granularity
     static constexpr size_t s_chunk_granularity_bits = vmr_t::s_chunk_granularity_bits;
     static constexpr size_t s_chunk_granularity = vmr_t::s_chunk_granularity;
 
@@ -146,10 +146,11 @@ namespace zs {
     bool do_check_residency(std::size_t offset, std::size_t bytes) const override;
     bool do_commit(std::size_t offset, std::size_t bytes) override;
     bool do_evict(std::size_t offset, std::size_t bytes) override;
+    void *do_address(std::size_t offset) const override {
+      return static_cast<void *>(static_cast<char *>(_addr) + offset);
+    }
 
     void *do_allocate(std::size_t bytes, std::size_t alignment) override { return _addr; }
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {}
-    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     size_t _granularity;
     const size_t _reservedSpace;

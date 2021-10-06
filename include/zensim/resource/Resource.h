@@ -16,7 +16,7 @@
 
 namespace zs {
 
-  template <typename T = std::byte> struct ZSPmrAllocator {
+  template <bool is_virtual_ = false, typename T = std::byte> struct ZSPmrAllocator {
     using value_type = T;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -24,8 +24,8 @@ namespace zs {
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
-
-    static void free_mem_resource(mr_t *) noexcept {}
+    using is_virtual = wrapv<is_virtual_>;
+    using resource_type = conditional_t<is_virtual::value, vmr_t, mr_t>;
 
     ZSPmrAllocator() = default;
     ZSPmrAllocator(ZSPmrAllocator &&) = default;
@@ -41,7 +41,7 @@ namespace zs {
       std::swap(a.location, b.location);
     }
 
-    constexpr mr_t *resource() noexcept { return res.get(); }
+    constexpr resource_type *resource() noexcept { return res.get(); }
     [[nodiscard]] void *allocate(std::size_t bytes,
                                  std::size_t alignment = alignof(std::max_align_t)) {
       return res->allocate(bytes, alignment);
@@ -51,6 +51,24 @@ namespace zs {
     }
     bool is_equal(const ZSPmrAllocator &other) const noexcept {
       return res.get() == other.res.get() && location == other.location;
+    }
+    template <bool V = is_virtual::value>
+    std::enable_if_t<V, bool> commit(std::size_t offset,
+                                     std::size_t bytes = resource_type::s_chunk_granularity) {
+      return res->commit(offset, bytes);
+    }
+    template <bool V = is_virtual::value>
+    std::enable_if_t<V, bool> evict(std::size_t offset,
+                                    std::size_t bytes = resource_type::s_chunk_granularity) {
+      return res->evict(offset, bytes);
+    }
+    template <bool V = is_virtual::value> std::enable_if_t<V, bool> check_residency(
+        std::size_t offset, std::size_t bytes = resource_type::s_chunk_granularity) const {
+      return res->check_residency(offset, bytes);
+    }
+    template <bool V = is_virtual::value>
+    std::enable_if_t<V, void *> address(std::size_t offset = 0) const {
+      return res->address(offset);
     }
 
     ZSPmrAllocator select_on_container_copy_construction() const {
@@ -68,8 +86,8 @@ namespace zs {
       match([&](auto t) {
         res = std::make_unique<ResourceT<decltype(t)>>(devid, std::get<Is>(args)...);
         location = MemoryLocation{t.value, devid};
-        cloner = [devid, args]() -> std::unique_ptr<mr_t> {
-          std::unique_ptr<mr_t> ret{};
+        cloner = [devid, args]() -> std::unique_ptr<resource_type> {
+          std::unique_ptr<resource_type> ret{};
           std::apply(
               [&ret](auto &&...ctorArgs) {
                 ret = std::make_unique<ResourceT<decltype(t)>>(FWD(ctorArgs)...);
@@ -87,8 +105,8 @@ namespace zs {
       else {
         res = std::make_unique<ResourceT<MemTag>>(devid, FWD(args)...);
         location = MemoryLocation{MemTag::value, devid};
-        cloner = [devid, args = std::make_tuple(args...)]() -> std::unique_ptr<mr_t> {
-          std::unique_ptr<mr_t> ret{};
+        cloner = [devid, args = std::make_tuple(args...)]() -> std::unique_ptr<resource_type> {
+          std::unique_ptr<resource_type> ret{};
           std::apply(
               [&ret](auto &&...ctorArgs) {
                 ret = std::make_unique<ResourceT<MemTag>>(FWD(ctorArgs)...);
@@ -99,8 +117,8 @@ namespace zs {
       }
     }
 
-    std::function<std::unique_ptr<mr_t>()> cloner{};
-    std::unique_ptr<mr_t> res{};
+    std::function<std::unique_ptr<resource_type>()> cloner{};
+    std::unique_ptr<resource_type> res{};
     MemoryLocation location{memsrc_e::host, -1};
   };
 

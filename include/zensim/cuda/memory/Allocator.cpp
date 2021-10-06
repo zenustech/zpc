@@ -3,6 +3,7 @@
 #include <cuda.h>
 
 #include "zensim/Logger.hpp"
+#include "zensim/math/bit/Bits.h"
 #include "zensim/types/Iterator.h"
 
 namespace zs {
@@ -150,6 +151,109 @@ namespace zs {
       _allocHandles.pop_back();
     }
     if (_offset > _allocatedSpace) _offset = _allocatedSpace;
+  }
+
+  arena_virtual_memory_resource<device_mem_tag>::arena_virtual_memory_resource(ProcID did,
+                                                                               size_t space)
+      : _did{did}, _reservedSpace{round_up(space, s_chunk_granularity)} {
+    if (did < 0)
+      throw std::runtime_error(
+          fmt::format("devicevm target device index [{}] is negative", (int)did));
+    CUmemAllocationProp allocProp{};
+    allocProp.type = CU_MEM_ALLOCATION_TYPE_PINNED;
+    allocProp.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    allocProp.location.id = (int)did;
+    allocProp.win32HandleMetaData = NULL;
+    _allocProp = allocProp;
+    CUmemAccessDesc accessDescr;
+    accessDescr.location = allocProp.location;
+    accessDescr.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    _accessDescr = accessDescr;
+
+    // _granularity
+    auto status = cuMemGetAllocationGranularity(&_granularity, &allocProp,
+                                                CU_MEM_ALLOC_GRANULARITY_MINIMUM);
+    if (status != CUDA_SUCCESS) throw std::runtime_error("alloc granularity retrieval failed.");
+    if (s_chunk_granularity % _granularity != 0)
+      throw std::runtime_error("chunk granularity not a multiple of alloc granularity.");
+    // _addr
+    status = cuMemAddressReserve((CUdeviceptr *)&_addr, _reservedSpace, (size_t)0 /*alignment*/,
+                                 (CUdeviceptr)0, 0ull /*flag*/);
+    if (status != CUDA_SUCCESS)
+      throw std::runtime_error("virtual address range reservation failed.");
+    // active chunk masks
+    _activeChunkMasks.resize((_reservedSpace / s_chunk_granularity + 63) / 64, (u64)0);
+  }
+
+  arena_virtual_memory_resource<device_mem_tag>::~arena_virtual_memory_resource() {
+    cuMemUnmap((CUdeviceptr)_addr, _reservedSpace);
+    cuMemAddressFree((CUdeviceptr)_addr, _reservedSpace);
+    for (auto &&[offset, handle] : _allocations) cuMemRelease(handle);
+  }
+
+  bool arena_virtual_memory_resource<device_mem_tag>::do_check_residency(std::size_t offset,
+                                                                         std::size_t bytes) const {
+    size_t st = round_down(offset, s_chunk_granularity);
+    if (st >= _reservedSpace) return false;
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
+    for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
+      if ((_activeChunkMasks[st >> 6] & ((u64)1 << (st & 63))) == 0) return false;
+    return true;
+  }
+  bool arena_virtual_memory_resource<device_mem_tag>::do_commit(std::size_t offset,
+                                                                std::size_t bytes) {
+    size_t st = round_down(offset, s_chunk_granularity);
+    if (st >= _reservedSpace) return false;
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
+
+    auto &allocProp = std::any_cast<CUmemAllocationProp &>(_allocProp);
+    auto &accessDescr = std::any_cast<CUmemAccessDesc &>(_accessDescr);
+
+    for (; st != ed; st += s_chunk_granularity) {
+      unsigned long long handle{};  // CUmemGenericAllocationHandle
+      auto status = cuMemCreate(&handle, s_chunk_granularity, &allocProp, 0ull);
+      if (status != CUDA_SUCCESS) return false;
+
+      if ((status = cuMemMap((CUdeviceptr)_addr + st, s_chunk_granularity, (size_t)0, handle, 0ull))
+          == CUDA_SUCCESS) {
+        if ((status = cuMemSetAccess((CUdeviceptr)_addr + st, (size_t)s_chunk_granularity,
+                                     &accessDescr, 1ull))
+            == CUDA_SUCCESS) {
+          auto chunkid = st >> s_chunk_granularity_bits;
+          _activeChunkMasks[chunkid >> 6] |= ((u64)1 << (chunkid & 63));
+          _allocations.emplace(st, handle);
+        }
+        if (status != CUDA_SUCCESS) {
+          (void)cuMemUnmap((CUdeviceptr)_addr + st, s_chunk_granularity);
+          return false;
+        }
+      }
+      if (status != CUDA_SUCCESS) {
+        (void)cuMemRelease(handle);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool arena_virtual_memory_resource<device_mem_tag>::do_evict(std::size_t offset,
+                                                               std::size_t bytes) {
+    size_t st = round_up(offset, s_chunk_granularity);
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_down(offset, s_chunk_granularity) : _reservedSpace;
+    if (st >= ed) return false;
+
+    for (; st != ed; st += s_chunk_granularity) {
+      if (cuMemUnmap((CUdeviceptr)_addr + st, s_chunk_granularity) != CUDA_SUCCESS) return false;
+      if (cuMemRelease(_allocations[st]) != CUDA_SUCCESS) return false;
+
+      _allocations.erase(st);
+      auto chunkid = st >> s_chunk_granularity_bits;
+      _activeChunkMasks[chunkid >> 6] &= ~((u64)1 << (chunkid & 63));
+    }
+    return true;
   }
 
 }  // namespace zs

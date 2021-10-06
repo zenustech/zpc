@@ -120,7 +120,7 @@ namespace zs {
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
     for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
-      if ((_activeChunkMasks[st >> 6] & ((size_t)1 << (st & 63))) == 0) return false;
+      if ((_activeChunkMasks[st >> 6] & ((u64)1 << (st & 63))) == 0) return false;
     return true;
   }
   bool arena_virtual_memory_resource<host_mem_tag>::do_commit(std::size_t offset,
@@ -132,7 +132,7 @@ namespace zs {
 
     if (mprotect((char *)_addr + st, ed - st, PROT_READ | PROT_WRITE) == 0) {
       for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
-        _activeChunkMasks[st >> 6] |= ((size_t)1 << (st & 63));
+        _activeChunkMasks[st >> 6] |= ((u64)1 << (st & 63));
       return true;
     }
     return false;
@@ -148,7 +148,7 @@ namespace zs {
     if (madvise((void *)((char *)_addr + st), bytes, MADV_DONTNEED) != 0) return false;
     if (mprotect((void *)((char *)_addr + st), bytes, PROT_NONE) != 0) return false;
     for (st >>= s_chunk_granularity_bits, ed >>= s_chunk_granularity_bits; st != ed; ++st)
-      _activeChunkMasks[st >> 6] &= ~((size_t)1 << (st & 63));
+      _activeChunkMasks[st >> 6] &= ~((u64)1 << (st & 63));
     return true;
   }
 #endif

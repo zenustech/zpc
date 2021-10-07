@@ -1,8 +1,4 @@
 #pragma once
-#include "SparseGrid.hpp"
+#include "AdaptiveGrid.hpp"
 
-namespace zs {
-
-
-
-}
+namespace zs {}

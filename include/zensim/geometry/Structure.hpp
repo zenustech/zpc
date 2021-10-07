@@ -157,7 +157,7 @@ namespace zs {
     constexpr memsrc_e space() const noexcept { return blocks.memspace(); }
     constexpr ProcID devid() const noexcept { return blocks.devid(); }
     constexpr auto size() const noexcept { return blocks.size(); }
-    constexpr decltype(auto) allocator() const noexcept { return blocks.allocator(); }
+    decltype(auto) allocator() const noexcept { return blocks.allocator(); }
     constexpr decltype(auto) numBlocks() const noexcept { return blocks.numTiles(); }
     constexpr channel_counter_type numChannels() const noexcept { return blocks.numChannels(); }
 

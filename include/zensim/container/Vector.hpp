@@ -31,7 +31,7 @@ namespace zs {
     constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
-    constexpr decltype(auto) allocator() const noexcept { return _allocator; }
+    decltype(auto) allocator() const noexcept { return _allocator; }
 
     /// allocator-aware
     Vector(const allocator_type &allocator, size_type count)

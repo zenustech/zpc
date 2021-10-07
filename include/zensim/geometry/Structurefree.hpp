@@ -60,7 +60,7 @@ namespace zs {
     constexpr auto size() const noexcept {
       return match([](auto &&att) { return att.size(); })(attr("pos"));
     }
-    constexpr decltype(auto) allocator() const noexcept {
+    decltype(auto) allocator() const noexcept {
       return match([](auto &&att) { return att.allocator(); })(attr("pos"));
     }
 

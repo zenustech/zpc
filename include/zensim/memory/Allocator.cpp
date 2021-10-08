@@ -17,6 +17,8 @@
 namespace zs {
 
 #if defined(ZS_PLATFORM_UNIX)
+
+#  if 0
   stack_virtual_memory_resource<host_mem_tag>::stack_virtual_memory_resource(ProcID did,
                                                                              std::string_view type)
       : _type{type},
@@ -93,6 +95,7 @@ namespace zs {
       if (_allocatedSpace < _offset) _offset = _allocatedSpace;
     }
   }
+#  endif  // disable this stack vmr impl
 
   arena_virtual_memory_resource<host_mem_tag>::arena_virtual_memory_resource(ProcID did,
                                                                              size_t space)
@@ -151,7 +154,101 @@ namespace zs {
       _activeChunkMasks[st >> 6] &= ~((u64)1 << (st & 63));
     return true;
   }
+#endif  // end UNIX
+
+  stack_virtual_memory_resource<host_mem_tag>::stack_virtual_memory_resource(ProcID did,
+                                                                             std::size_t size)
+      : _allocatedSpace{0}, _did{did} {
+    if (did >= 0)
+      throw std::runtime_error(
+          fmt::format("hostvm target device index [{}] is not negative", (int)did));
+
+#if defined(ZS_PLATFORM_WINDOWS)
+    {
+      auto info = SYSTEM_INFO{};
+      GetSystemInfo(&info);
+      _granularity = (size_t)info.dwAllocationGranularity;
+    }
+#elif defined(ZS_PLATFORM_UNIX)
+    _granularity = (size_t)getpagesize();
 #endif
+    if (s_chunk_granularity % _granularity != 0)
+      throw std::runtime_error("chunk granularity not a multiple of alloc granularity.");
+
+    _reservedSpace = round_up(size, s_chunk_granularity);
+
+#if defined(ZS_PLATFORM_WINDOWS)
+    _addr = VirtualAlloc(nullptr, _reservedSpace, MEM_RESERVE, PAGE_NOACCESS);
+    if (_addr == nullptr) {
+      auto const err = GetLastError();
+      throw std::system_error(std::error_code(err, std::system_category()),
+                              "fails to reserve a host virtual range.");
+    }
+#elif defined(ZS_PLATFORM_UNIX)
+    _addr = mmap(nullptr, _reservedSpace, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+    if (_addr == MAP_FAILED) throw std::runtime_error("fails to reserve a host virtual range.");
+#endif
+  }
+
+  stack_virtual_memory_resource<host_mem_tag>::~stack_virtual_memory_resource() {
+    if (_reservedSpace) {
+#if defined(ZS_PLATFORM_WINDOWS)
+      (void)VirtualFree(_addr, 0, MEM_RELEASE);
+#elif defined(ZS_PLATFORM_UNIX)
+      (void)munmap(_addr, _reservedSpace);
+#endif
+    }
+  }
+
+  bool stack_virtual_memory_resource<host_mem_tag>::do_check_residency(std::size_t offset,
+                                                                       std::size_t bytes) const {
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
+    return ed <= _allocatedSpace;
+  }
+  bool stack_virtual_memory_resource<host_mem_tag>::do_commit(std::size_t offset,
+                                                              std::size_t bytes) {
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
+    if (ed < _allocatedSpace) return true;
+
+#if defined(ZS_PLATFORM_WINDOWS)
+    if (VirtualAlloc(_addr, ed, MEM_COMMIT, PAGE_READWRITE) == nullptr) return false;
+#elif defined(ZS_PLATFORM_UNIX)
+    if (mprotect(_addr, ed, PROT_READ | PROT_WRITE) != 0) return false;
+#endif
+
+    _allocatedSpace = ed;
+    return true;
+  }
+
+  bool stack_virtual_memory_resource<host_mem_tag>::do_evict(std::size_t offset,
+                                                             std::size_t bytes) {
+    ZS_WARN_IF(round_down(offset + bytes, s_chunk_granularity) < _allocatedSpace,
+               "will evict more bytes (till the end) than asking");
+    size_t st = round_up(offset, s_chunk_granularity);
+    if (st >= _allocatedSpace) return true;
+
+#if defined(ZS_PLATFORM_WINDOWS)
+    if (VirtualFree((void *)((char *)_addr + st), _allocatedSpace - st, MEM_DECOMMIT) == 0)
+      return false;
+#elif defined(ZS_PLATFORM_UNIX)
+    if (madvise((void *)((char *)_addr + st), _allocatedSpace - st, MADV_DONTNEED) != 0)
+      return false;
+    if (mprotect((void *)((char *)_addr + st), _allocatedSpace - st, PROT_NONE) != 0) return false;
+#endif
+
+    _allocatedSpace = st;
+    return true;
+  }
+
+  void *stack_virtual_memory_resource<host_mem_tag>::do_allocate(std::size_t bytes,
+                                                                 std::size_t alignment) {
+    return nullptr;
+  }
+
+  void stack_virtual_memory_resource<host_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
+                                                                  std::size_t alignment) {}
 
   /// handle_resource
   handle_resource::handle_resource(mr_t *upstream) noexcept : _upstream{upstream} {}

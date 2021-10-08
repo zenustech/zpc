@@ -115,6 +115,7 @@ namespace zs {
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
+
   template <typename MemTag> struct arena_virtual_memory_resource : vmr_t {
     template <typename... Args> arena_virtual_memory_resource(Args...) {
       throw std::runtime_error("arena virtual memory allocator not implemented!");
@@ -150,41 +151,11 @@ namespace zs {
   };
 
 #ifdef ZS_PLATFORM_WINDOWS
-  template <> struct stack_virtual_memory_resource<host_mem_tag>
-      : mr_t {  // default impl falls back to
-    template <typename... Args> stack_virtual_memory_resource(Args...) {
-      throw std::runtime_error("windows virtual memory allocator not implemented!");
-    }
-    ~stack_virtualmemory_resource() = default;
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime_error("windows virtual memory allocator not implemented!");
-      return nullptr;
-    }
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime_error("windows virtual memory allocator not implemented!");
-    }
-    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
-  };
-  template <> struct arena_virtual_memory_resource<host_mem_tag>
-      : mr_t {  // default impl falls back to
-    template <typename... Args> arena_virtual_memory_resource(Args...) {
-      throw std::runtime_error("windows virtual memory allocator not implemented!");
-    }
-    ~arena_virtual_memory_resource() = default;
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime_error("windows virtual memory allocator not implemented!");
-      return nullptr;
-    }
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime_error("windows virtual memory allocator not implemented!");
-    }
-    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
-  };
-
 #elif defined(ZS_PLATFORM_UNIX)
 
+#  if 0
   template <> struct stack_virtual_memory_resource<host_mem_tag>
-      : mr_t {  // default impl falls back to
+      : vmr_t {  // default impl falls back to
     stack_virtual_memory_resource(ProcID did = -1, std::string_view type = "HOST_VIRTUAL");
     ~stack_virtual_memory_resource();
     void *do_allocate(std::size_t bytes, std::size_t alignment) override;
@@ -199,6 +170,29 @@ namespace zs {
     size_t _offset, _allocatedSpace, _reservedSpace;
     ProcID _did;
   };
+#  else
+  template <> struct stack_virtual_memory_resource<host_mem_tag>
+      : vmr_t {  // default impl falls back to
+    stack_virtual_memory_resource(ProcID did = -1, std::size_t size = vmr_t::s_chunk_granularity);
+    ~stack_virtual_memory_resource();
+    bool do_check_residency(std::size_t offset, std::size_t bytes) const override;
+    bool do_commit(std::size_t offset, std::size_t bytes) override;
+    bool do_evict(std::size_t offset, std::size_t bytes) override;
+    void *do_address(std::size_t offset) const override {
+      return static_cast<void *>(static_cast<char *>(_addr) + offset);
+    }
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override;
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+
+    size_t _granularity;
+    void *_addr;
+    size_t _allocatedSpace, _reservedSpace;
+    ProcID _did;
+  };
+
+#  endif
 
   template <> struct arena_virtual_memory_resource<host_mem_tag>
       : vmr_t {  // default impl falls back to

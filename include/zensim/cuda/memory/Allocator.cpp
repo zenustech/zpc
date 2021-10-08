@@ -8,6 +8,7 @@
 
 namespace zs {
 
+#if 0
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(
       ProcID did, std::string_view type)
       : _vaRanges{},
@@ -152,6 +153,114 @@ namespace zs {
     }
     if (_offset > _allocatedSpace) _offset = _allocatedSpace;
   }
+
+#else
+  stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(ProcID did,
+                                                                               std::size_t size)
+      : _allocHandles{}, _allocRanges{}, _allocatedSpace{0}, _did{did} {
+    CUmemAllocationProp allocProp{};
+    allocProp.type = CU_MEM_ALLOCATION_TYPE_PINNED;
+    allocProp.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    allocProp.location.id = (int)did;
+    allocProp.win32HandleMetaData = NULL;
+    _allocProp = allocProp;
+
+    // _accessDescr
+    CUmemAccessDesc accessDescr;
+    accessDescr.location = allocProp.location;
+    accessDescr.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    _accessDescr = accessDescr;
+
+    // _granularity
+    auto status = cuMemGetAllocationGranularity(&_granularity, &allocProp,
+                                                CU_MEM_ALLOC_GRANULARITY_MINIMUM);
+    if (status != CUDA_SUCCESS) throw std::runtime_error("alloc granularity retrieval failed.");
+    if (s_chunk_granularity % _granularity != 0)
+      throw std::runtime_error("chunk granularity not a multiple of alloc granularity.");
+
+    // _reservedSpace
+    _reservedSpace = round_up(size, s_chunk_granularity);
+
+    // _addr
+    status = cuMemAddressReserve((CUdeviceptr *)&_addr, _reservedSpace, (size_t)0 /*alignment*/,
+                                 (CUdeviceptr)0ull, 0ull /*flag*/);
+    if (status != CUDA_SUCCESS) throw std::runtime_error("fails to reserve a device virtual range.");
+  }
+
+  stack_virtual_memory_resource<device_mem_tag>::~stack_virtual_memory_resource() {
+    cuMemUnmap((CUdeviceptr)_addr, _reservedSpace);
+    cuMemAddressFree((CUdeviceptr)_addr, _reservedSpace);
+    for (auto &&handle : _allocHandles) cuMemRelease(handle);
+  }
+
+  bool stack_virtual_memory_resource<device_mem_tag>::do_check_residency(std::size_t offset,
+                                                                         std::size_t bytes) const {
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
+    return ed <= _allocatedSpace;
+  }
+  bool stack_virtual_memory_resource<device_mem_tag>::do_commit(std::size_t offset,
+                                                                std::size_t bytes) {
+    offset += bytes;
+    size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
+
+    auto &allocProp = std::any_cast<CUmemAllocationProp &>(_allocProp);
+    auto &accessDescr = std::any_cast<CUmemAccessDesc &>(_accessDescr);
+
+    if (ed <= _allocatedSpace) return true;
+
+    unsigned long long handle{};  // CUmemGenericAllocationHandle
+    const auto allocationBytes = ed - _allocatedSpace;
+    auto status = cuMemCreate(&handle, allocationBytes, &allocProp, 0ull);
+    if (status != CUDA_SUCCESS) return false;
+
+    if ((status
+         = cuMemMap((CUdeviceptr)_addr + _allocatedSpace, allocationBytes, (size_t)0, handle, 0ull))
+        == CUDA_SUCCESS) {
+      if ((status = cuMemSetAccess((CUdeviceptr)_addr + _allocatedSpace, (size_t)allocationBytes,
+                                   &accessDescr, 1ull))
+          == CUDA_SUCCESS) {
+        _allocRanges.push_back(std::make_pair(_allocatedSpace, allocationBytes));
+        _allocHandles.push_back(handle);
+      }
+      if (status != CUDA_SUCCESS)
+        (void)cuMemUnmap((CUdeviceptr)_addr + _allocatedSpace, allocationBytes);
+    }
+    if (status != CUDA_SUCCESS) {
+      (void)cuMemRelease(handle);
+      return false;
+    }
+    _allocatedSpace += allocationBytes;
+    return true;
+  }
+
+  bool stack_virtual_memory_resource<device_mem_tag>::do_evict(std::size_t offset,
+                                                               std::size_t bytes) {
+    ZS_WARN_IF(round_down(offset + bytes, s_chunk_granularity) < _allocatedSpace,
+               "will evict more bytes (till the end) than asking");
+    size_t st = round_up(offset, s_chunk_granularity);
+    sint_t i = _allocRanges.size() - 1;
+    for (; i >= 0 && _allocRanges[i].first >= st; --i) {
+      if (cuMemUnmap((CUdeviceptr)_addr + _allocRanges[i].first, _allocRanges[i].second)
+          != CUDA_SUCCESS)
+        return false;
+      if (cuMemRelease(_allocHandles[i]) != CUDA_SUCCESS) return false;
+      _allocatedSpace = _allocRanges[i].first;
+    }
+    return true;
+  }
+
+  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,
+                                                                   std::size_t alignment) {
+    return nullptr;
+  }
+
+  void stack_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
+                                                                    std::size_t alignment) {
+    return;
+  }
+
+#endif
 
   arena_virtual_memory_resource<device_mem_tag>::arena_virtual_memory_resource(ProcID did,
                                                                                size_t space)

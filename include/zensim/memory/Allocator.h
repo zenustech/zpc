@@ -81,37 +81,102 @@ namespace zs {
     ProcID did;
   };
 
-  template <typename MemTag> struct stack_virtual_memory_resource;
-  template <typename MemTag> struct arena_virtual_memory_resource;
+  template <typename MemTag> struct stack_virtual_memory_resource
+      : vmr_t {  // default impl falls back to
+    template <typename... Args> stack_virtual_memory_resource(Args...) {
+      throw std::runtime_error("stack virtual memory allocator not implemented!");
+    }
+    ~stack_virtual_memory_resource() = default;
+
+    bool do_check_residency(std::size_t offset, std::size_t bytes) const override {
+      throw std::runtime_error("stack virtual memory allocator not implemented!");
+      return false;
+    }
+    bool do_commit(std::size_t offset, std::size_t bytes) override {
+      throw std::runtime_error("stack virtual memory allocator not implemented!");
+      return false;
+    }
+    bool do_evict(std::size_t offset, std::size_t bytes) override {
+      throw std::runtime_error("stack virtual memory allocator not implemented!");
+      return false;
+    }
+    void *do_address(std::size_t offset) const override {
+      throw std::runtime_error("stack virtual memory allocator not implemented!");
+      return nullptr;
+    }
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+      throw std::runtime_error("stack virtual memory allocator not implemented!");
+      return nullptr;
+    }
+
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+      throw std::runtime_error("stack virtual memory allocator not implemented!");
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+  };
+  template <typename MemTag> struct arena_virtual_memory_resource : vmr_t {
+    template <typename... Args> arena_virtual_memory_resource(Args...) {
+      throw std::runtime_error("arena virtual memory allocator not implemented!");
+    }
+    ~arena_virtual_memory_resource() = default;
+
+    bool do_check_residency(std::size_t offset, std::size_t bytes) const override {
+      throw std::runtime_error("arena virtual memory allocator not implemented!");
+      return false;
+    }
+    bool do_commit(std::size_t offset, std::size_t bytes) override {
+      throw std::runtime_error("arena virtual memory allocator not implemented!");
+      return false;
+    }
+    bool do_evict(std::size_t offset, std::size_t bytes) override {
+      throw std::runtime_error("arena virtual memory allocator not implemented!");
+      return false;
+    }
+    void *do_address(std::size_t offset) const override {
+      throw std::runtime_error("arena virtual memory allocator not implemented!");
+      return nullptr;
+    }
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+      throw std::runtime_error("arena virtual memory allocator not implemented!");
+      return nullptr;
+    }
+
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+      throw std::runtime_error("arena virtual memory allocator not implemented!");
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+  };
 
 #ifdef ZS_PLATFORM_WINDOWS
   template <> struct stack_virtual_memory_resource<host_mem_tag>
       : mr_t {  // default impl falls back to
     template <typename... Args> stack_virtual_memory_resource(Args...) {
-      throw std::runtime("windows virtual memory allocator not implemented!");
+      throw std::runtime_error("windows virtual memory allocator not implemented!");
     }
     ~stack_virtualmemory_resource() = default;
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime("windows virtual memory allocator not implemented!");
+      throw std::runtime_error("windows virtual memory allocator not implemented!");
       return nullptr;
     }
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime("windows virtual memory allocator not implemented!");
+      throw std::runtime_error("windows virtual memory allocator not implemented!");
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
   template <> struct arena_virtual_memory_resource<host_mem_tag>
       : mr_t {  // default impl falls back to
     template <typename... Args> arena_virtual_memory_resource(Args...) {
-      throw std::runtime("windows virtual memory allocator not implemented!");
+      throw std::runtime_error("windows virtual memory allocator not implemented!");
     }
     ~arena_virtual_memory_resource() = default;
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime("windows virtual memory allocator not implemented!");
+      throw std::runtime_error("windows virtual memory allocator not implemented!");
       return nullptr;
     }
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
-      throw std::runtime("windows virtual memory allocator not implemented!");
+      throw std::runtime_error("windows virtual memory allocator not implemented!");
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };

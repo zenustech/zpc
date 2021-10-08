@@ -129,6 +129,8 @@ namespace zs {
 
   ZSPmrAllocator<> get_memory_source(memsrc_e mre, ProcID devid,
                                      std::string_view advice = std::string_view{});
+  ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid, std::size_t bytes,
+                                                 std::string_view option = "STACK");
 
   struct Resource : Singleton<Resource> {
     static std::atomic_ullong &counter() noexcept { return instance()._counter; }

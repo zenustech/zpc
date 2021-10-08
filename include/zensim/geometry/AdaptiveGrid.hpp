@@ -253,6 +253,12 @@ namespace zs {
     static constexpr int dim = 3;
     using coord_t = vec<index_type, dim>;
 
+    SparseGrid(size_type numChunks = 512, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : _rootDicts{numChunks, mre, devid},
+          _numChannels{1},
+          _sparseBlocks{mre, devid},
+          _forests{} {}
+
     struct RootNode {
       // log2 of voxel count in a chunk in one dimension
       static constexpr std::size_t log2dim = 12;  // 3 + 4 + 5
@@ -279,16 +285,14 @@ namespace zs {
         }
 
         vmr_allocator_type _allocator;
-        Vector<u64> _activeChunkMasks;
       };
       struct MaskArena {
-        MaskArena(memsrc_e mre = memsrc_e::host, ProcID did = -1) : _activeChunkMasks{mre, did} {
+        MaskArena(memsrc_e mre = memsrc_e::host, ProcID did = -1) {
           const mem_tags tag = to_memory_source_tag(mre);
           _allocator.setOwningUpstream<arena_virtual_memory_resource>(tag, did, total_mask_bytes);
         }
 
         vmr_allocator_type _allocator;
-        Vector<u64> _activeChunkMasks;
       };
 
       // make container vmr first?
@@ -309,11 +313,11 @@ namespace zs {
     Vec3iTable _rootDicts;  /// coord -> index
     size_type _numChannels;
     Vector<coord_t> _sparseBlocks;
-    Vector<RootNode> _rootNodes;
+    std::vector<RootNode> _forests;
   };
   /// 1 recompute sparsity pass 0 (compute device): [coords -> _sparseBlocks]
   /// 2 activation pass (host): [_sparseBlocks, nchns -> _rootNodes (evict + insert + resize chns)]
-  ///  prepare rootnode, allocate mask&data memory
+  ///  prepare rootnode, allocate mask&data memory in each rootnode
   /// 3 access pass (compute device): [view -> _dataArena]
 
 #if 0

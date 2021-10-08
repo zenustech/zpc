@@ -1,7 +1,11 @@
 #include "Resource.h"
 
 #include "zensim/execution/Concurrency.h"
+#include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemoryResource.h"
+#if defined(ZS_ENABLE_CUDA)
+#  include "zensim/cuda/memory/Allocator.h"
+#endif
 
 namespace zs {
 
@@ -44,6 +48,27 @@ namespace zs {
       match([&ret, &advice, devid](auto &tag) {
         ret.setOwningUpstream<advisor_memory_resource>(tag, devid, advice);
       })(tag);
+    return ret;
+  }
+  ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid, std::size_t bytes,
+                                                 std::string_view option) {
+    const mem_tags tag = to_memory_source_tag(mre);
+    ZSPmrAllocator<true> ret{};
+    if (mre == memsrc_e::um)
+      throw std::runtime_error("no corresponding virtual memory resource for [um]");
+    match(
+        [&ret, devid, bytes,
+         option](auto tag) -> std::enable_if_t<!is_same_v<decltype(tag), um_mem_tag>> {
+          if (option == "ARENA")
+            ret.setOwningUpstream<arena_virtual_memory_resource>(tag, devid, bytes);
+#if 0
+          else if (option == "STACK" || option.empty())
+            ret.setOwningUpstream<stack_virtual_memory_resource>(tag, devid, bytes);
+          else
+            throw std::runtime_error(fmt::format("unkonwn vmr option [{}]\n", option));
+#endif
+        },
+        [](...) {})(tag);
     return ret;
   }
 

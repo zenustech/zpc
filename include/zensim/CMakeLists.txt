@@ -98,6 +98,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     geometry/LevelSetUtils.hpp
     # math
     math/bit/Bits.h
+    math/linear/ConjugateResidual.hpp
     math/linear/ConjugateGradient.hpp
     math/linear/MinimumResidual.hpp
     math/linear/LinearOperators.hpp

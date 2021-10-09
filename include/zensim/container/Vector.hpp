@@ -40,12 +40,21 @@ namespace zs {
       else
         return get_memory_source(mre, devid);
     }
+    pointer allocate(std::size_t bytes) {
+      /// virtual memory way
+      if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
+        _allocator.commit(0, bytes);
+        return (pointer)_allocator.address(0);
+      }
+      /// conventional way
+      else
+        return (pointer)_allocator.allocate(bytes, std::alignment_of_v<value_type>);
+    }
 
     /// allocator-aware
     Vector(const allocator_type &allocator, size_type count)
         : _allocator{allocator},
-          _base{(pointer)_allocator.allocate(count * sizeof(value_type),
-                                             std::alignment_of_v<value_type>)},
+          _base{allocate(count * sizeof(value_type))},
           _size{count},
           _capacity{count} {}
     explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -132,8 +141,7 @@ namespace zs {
     /// ctor, assignment operator
     Vector(const Vector &o)
         : _allocator{o._allocator},
-          _base{(pointer)_allocator.allocate(sizeof(value_type) * o._capacity,
-                                             std::alignment_of_v<value_type>)},
+          _base{allocate(sizeof(value_type) * o._capacity)},
           _size{o.size()},
           _capacity{o._capacity} {
       if (o.data() && o.size() > 0)
@@ -153,7 +161,7 @@ namespace zs {
       return ret;
     }
     Vector clone(const MemoryLocation &mloc) const {
-      return clone(get_memory_source(mloc.memspace(), mloc.devid()));
+      return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
     /// assignment or destruction after std::move
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
@@ -193,7 +201,9 @@ namespace zs {
         if (newSize > oldCapacity) {
           /// virtual memory way
           if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
-            _allocator.commit(geometric_size_growth(newSize) * sizeof(value_type));
+            _capacity = geometric_size_growth(newSize);
+            _allocator.commit(_capacity * sizeof(value_type));
+            _size = newSize;
           }
           /// conventional way
           else {

@@ -8,6 +8,8 @@
 namespace zs {
 
   template <typename T, typename AllocatorT = ZSPmrAllocator<>> struct Vector {
+    static_assert(is_zs_allocator<AllocatorT>::value,
+                  "Vector only works with zspmrallocator for now.");
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
     static_assert(std::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
@@ -32,6 +34,12 @@ namespace zs {
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
     decltype(auto) get_allocator() const noexcept { return _allocator; }
+    decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
+      if constexpr (is_virtual_zs_allocator<allocator_type>::value)
+        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+      else
+        return get_memory_source(mre, devid);
+    }
 
     /// allocator-aware
     Vector(const allocator_type &allocator, size_type count)
@@ -41,9 +49,9 @@ namespace zs {
           _size{count},
           _capacity{count} {}
     explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Vector{get_memory_source(mre, devid), count} {}
+        : Vector{get_default_allocator(mre, devid), count} {}
     Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Vector{get_memory_source(mre, devid), 0} {}
+        : Vector{get_default_allocator(mre, devid), 0} {}
 
     ~Vector() {
       if (_base && _capacity > 0)
@@ -184,13 +192,18 @@ namespace zs {
         const auto oldCapacity = capacity();
         if (newSize > oldCapacity) {
           /// virtual memory way
+          if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
+            _allocator.commit(geometric_size_growth(newSize) * sizeof(value_type));
+          }
           /// conventional way
-          Vector tmp{_allocator, geometric_size_growth(newSize)};
-          if (size())
-            copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
-                 MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
-          tmp._size = newSize;
-          swap(tmp);
+          else {
+            Vector tmp{_allocator, geometric_size_growth(newSize)};
+            if (size())
+              copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+                   MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
+            tmp._size = newSize;
+            swap(tmp);
+          }
           return;
         }
       }

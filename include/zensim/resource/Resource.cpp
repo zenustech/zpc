@@ -61,12 +61,10 @@ namespace zs {
          option](auto tag) -> std::enable_if_t<!is_same_v<decltype(tag), um_mem_tag>> {
           if (option == "ARENA")
             ret.setOwningUpstream<arena_virtual_memory_resource>(tag, devid, bytes);
-#if 0
           else if (option == "STACK" || option.empty())
             ret.setOwningUpstream<stack_virtual_memory_resource>(tag, devid, bytes);
           else
             throw std::runtime_error(fmt::format("unkonwn vmr option [{}]\n", option));
-#endif
         },
         [](...) {})(tag);
     return ret;

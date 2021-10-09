@@ -122,6 +122,13 @@ namespace zs {
     MemoryLocation location{memsrc_e::host, -1};
   };
 
+  template <typename Allocator> struct is_zs_allocator : std::false_type {};
+  template <bool is_virtual, typename T> struct is_zs_allocator<ZSPmrAllocator<is_virtual, T>>
+      : std::true_type {};
+  template <typename Allocator> using is_virtual_zs_allocator
+      = conditional_t<is_zs_allocator<Allocator>::value, typename Allocator::is_virtual,
+                      std::false_type>;
+
   /// global free function
   void record_allocation(mem_tags, void *, std::string_view, std::size_t = 0, std::size_t = 0);
   void erase_allocation(void *);

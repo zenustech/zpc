@@ -157,7 +157,7 @@ namespace zs {
     constexpr memsrc_e space() const noexcept { return blocks.memspace(); }
     constexpr ProcID devid() const noexcept { return blocks.devid(); }
     constexpr auto size() const noexcept { return blocks.size(); }
-    decltype(auto) allocator() const noexcept { return blocks.allocator(); }
+    decltype(auto) get_allocator() const noexcept { return blocks.get_allocator(); }
     constexpr decltype(auto) numBlocks() const noexcept { return blocks.numTiles(); }
     constexpr channel_counter_type numChannels() const noexcept { return blocks.numChannels(); }
 
@@ -246,9 +246,9 @@ namespace zs {
     constexpr size_type size() const noexcept {
       return gridApply(_primaryGrid, [](auto &&grid) -> size_type { return grid.size(); });
     }
-    constexpr const allocator_type &allocator() const {
+    constexpr const allocator_type &get_allocator() const {
       return gridApply(_primaryGrid,
-                       [](auto &&grid) -> decltype(grid.allocator()) { return grid.allocator(); });
+                       [](auto &&grid) -> decltype(grid.get_allocator()) { return grid.get_allocator(); });
       throw std::runtime_error(
           fmt::format("primary grid \"{}\" not known", magic_enum::enum_name(_primaryGrid)));
     }

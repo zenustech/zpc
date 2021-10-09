@@ -60,8 +60,8 @@ namespace zs {
     constexpr auto size() const noexcept {
       return match([](auto &&att) { return att.size(); })(attr("pos"));
     }
-    decltype(auto) allocator() const noexcept {
-      return match([](auto &&att) { return att.allocator(); })(attr("pos"));
+    decltype(auto) get_allocator() const noexcept {
+      return match([](auto &&att) { return att.get_allocator(); })(attr("pos"));
     }
 
     Particles(const allocator_type &allocator, size_type count) {
@@ -176,16 +176,16 @@ namespace zs {
       auto &att = _attributes[attrib];
       switch (ae) {
         case attrib_e::scalar:
-          att = Vector<T>{allocator(), size()};
+          att = Vector<T>{get_allocator(), size()};
           break;
         case attrib_e::vector:
-          att = Vector<TV>{allocator(), size()};
+          att = Vector<TV>{get_allocator(), size()};
           break;
         case attrib_e::matrix:
-          att = Vector<TM>{allocator(), size()};
+          att = Vector<TM>{get_allocator(), size()};
           break;
         case attrib_e::affine:
-          att = Vector<TMAffine>{allocator(), size()};
+          att = Vector<TMAffine>{get_allocator(), size()};
           break;
         default:;
       }

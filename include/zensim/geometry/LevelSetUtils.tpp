@@ -37,11 +37,11 @@ namespace zs {
     int iter = 0;
     grid.resize(tableSize * 2);
 
-    Vector<typename SpLs::size_type> ks{grid.allocator(), grid.size()};
+    Vector<typename SpLs::size_type> ks{grid.get_allocator(), grid.size()};
     do {
       Vector<int> tmp{1, memsrc_e::host, -1};
       tmp[0] = 0;
-      auto seedcnt = tmp.clone(grid.allocator());
+      auto seedcnt = tmp.clone(grid.get_allocator());
 
       policy(range(tableSize * (std::size_t)grid.block_space()),
              ReserveForNeighbor<space, RM_CVREF_T(ls)>{ls});

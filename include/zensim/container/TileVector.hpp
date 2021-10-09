@@ -41,7 +41,7 @@ namespace zs {
     constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
-    decltype(auto) allocator() const noexcept { return _allocator; }
+    decltype(auto) get_allocator() const noexcept { return _allocator; }
 
     TileVector(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
                size_type count = 0)
@@ -329,7 +329,7 @@ namespace zs {
     const auto s = size();
     auto tags = getPropertyTags();
     tags.insert(std::end(tags), std::begin(appendTags), std::end(appendTags));
-    TileVector<T, Length, Index, ChnT> tmp{allocator(), tags, s};
+    TileVector<T, Length, Index, ChnT> tmp{get_allocator(), tags, s};
     policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);
   }

@@ -64,7 +64,7 @@ namespace zs {
                          int>;
       using vector_t = typename indexbuckets_t::vector_t;
 
-      const auto &allocator = pars.allocator();
+      const auto &allocator = pars.get_allocator();
 
       indexbuckets_t indexBuckets{};
       indexBuckets._dx = dx;

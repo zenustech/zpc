@@ -44,7 +44,7 @@ namespace zs {
     constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
-    decltype(auto) allocator() const noexcept { return _allocator; }
+    decltype(auto) get_allocator() const noexcept { return _allocator; }
 
     constexpr auto &self() noexcept { return _table; }
     constexpr const auto &self() const noexcept { return _table; }
@@ -150,7 +150,7 @@ namespace zs {
   template <typename Policy> void Vec3iTable::resize(Policy &&policy, std::size_t tableSize) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto s = size();
-    Vec3iTable tmp{allocator(), tableSize};
+    Vec3iTable tmp{get_allocator(), tableSize};
     policy(range(s), Vec3iTableReinsert{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);
   }

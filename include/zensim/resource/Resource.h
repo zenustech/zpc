@@ -26,6 +26,45 @@ namespace zs {
     using propagate_on_container_swap = std::true_type;
     using is_virtual = wrapv<is_virtual_>;
     using resource_type = conditional_t<is_virtual::value, vmr_t, mr_t>;
+    
+    struct ResourceCloner {
+      struct Interface {
+        virtual ~Interface() = default;
+        virtual std::unique_ptr<Interface> clone() const = 0;
+        virtual std::unique_ptr<resource_type> invoke() const = 0;
+      };
+      template <typename F> struct Cloner : Interface {
+        template <typename Fn> Cloner(Fn &&f) : _f{FWD(f)} {}
+        std::unique_ptr<Interface> clone() const override {
+          return std::make_unique<Cloner<F>>(_f);
+        }
+        std::unique_ptr<resource_type> invoke() const override { return std::invoke(_f); }
+
+        F _f;
+      };
+
+      constexpr ResourceCloner() = default;
+      ~ResourceCloner() = default;
+      ResourceCloner(const ResourceCloner &o) : _cloner{o._cloner->clone()} {}
+      ResourceCloner(ResourceCloner &&) = default;
+      ResourceCloner &operator=(const ResourceCloner &o) {
+        ResourceCloner tmp{o};
+        std::swap(*this, tmp);
+        return *this;
+      }
+      ResourceCloner &operator=(ResourceCloner &&) = default;
+      ResourceCloner &swap(ResourceCloner &o) noexcept {
+        std::swap(_cloner, o._cloner);
+        return *this;
+      }
+
+      template <typename F> constexpr ResourceCloner(F &&f)
+          : _cloner{std::make_unique<Cloner<F>>(FWD(f))} {}
+
+      std::unique_ptr<resource_type> operator()() const { return _cloner->invoke(); }
+
+      std::unique_ptr<Interface> _cloner{};
+    };
 
     ZSPmrAllocator() = default;
     ZSPmrAllocator(ZSPmrAllocator &&) = default;
@@ -117,7 +156,7 @@ namespace zs {
       }
     }
 
-    std::function<std::unique_ptr<resource_type>()> cloner{};
+    ResourceCloner cloner{};
     std::unique_ptr<resource_type> res{};
     MemoryLocation location{memsrc_e::host, -1};
   };

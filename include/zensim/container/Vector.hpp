@@ -7,15 +7,15 @@
 
 namespace zs {
 
-  template <typename T, typename Index = std::size_t> struct Vector {
+  template <typename T, typename AllocatorT = ZSPmrAllocator<>> struct Vector {
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
     static_assert(std::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
 
     using value_type = T;
-    using allocator_type = ZSPmrAllocator<>;
-    using size_type = std::make_unsigned_t<Index>;
-    using difference_type = std::make_signed_t<size_type>;
+    using allocator_type = AllocatorT;
+    using size_type = std::size_t;
+    using difference_type = sint_t;
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;
@@ -270,13 +270,13 @@ namespace zs {
     size_type _vectorSize{0};
   };
 
-  template <execspace_e ExecSpace, typename T, typename Index>
-  constexpr decltype(auto) proxy(Vector<T, Index> &vec) {  // currently ignore constness
-    return VectorView<ExecSpace, Vector<T, Index>>{vec};
+  template <execspace_e ExecSpace, typename T, typename Allocator>
+  constexpr decltype(auto) proxy(Vector<T, Allocator> &vec) {  // currently ignore constness
+    return VectorView<ExecSpace, Vector<T, Allocator>>{vec};
   }
-  template <execspace_e ExecSpace, typename T, typename Index>
-  constexpr decltype(auto) proxy(const Vector<T, Index> &vec) {  // currently ignore constness
-    return VectorView<ExecSpace, const Vector<T, Index>>{vec};
+  template <execspace_e ExecSpace, typename T, typename Allocator>
+  constexpr decltype(auto) proxy(const Vector<T, Allocator> &vec) {  // currently ignore constness
+    return VectorView<ExecSpace, const Vector<T, Allocator>>{vec};
   }
 
 }  // namespace zs

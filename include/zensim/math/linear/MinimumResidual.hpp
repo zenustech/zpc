@@ -9,7 +9,7 @@ namespace zs {
 
   /// Bow/Math/LinearSolver/ConjugateGradient.h
   template <typename T, int dim, typename Index = std::size_t> struct MinRes {
-    using TV = Vector<T, Index>;
+    using TV = Vector<T>;
     using allocator_type = ZSPmrAllocator<>;
     using size_type = std::make_unsigned_t<Index>;
 

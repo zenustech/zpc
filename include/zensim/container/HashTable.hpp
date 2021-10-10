@@ -12,7 +12,10 @@
 
 namespace zs {
 
-  template <typename Tn_, int dim_, typename Index> struct HashTable {
+  template <typename Tn_, int dim_, typename Index, typename AllocatorT = ZSPmrAllocator<>>
+  struct HashTable {
+    static_assert(is_zs_allocator<AllocatorT>::value,
+                  "Hashtable only works with zspmrallocator for now.");
     static_assert(is_same_v<Tn_, remove_cvref_t<Tn_>>, "Key is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<Tn_>, "Key is not default-constructible!");
     static_assert(std::is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
@@ -24,7 +27,7 @@ namespace zs {
     using status_t = int;
 
     using value_type = key_t;
-    using allocator_type = ZSPmrAllocator<>;
+    using allocator_type = AllocatorT;
     using size_type = std::make_unsigned_t<value_t>;
     using difference_type = std::make_signed_t<size_type>;
     using reference = value_type &;
@@ -64,6 +67,12 @@ namespace zs {
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
     decltype(auto) get_allocator() const noexcept { return _allocator; }
+    decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
+      if constexpr (is_virtual_zs_allocator<allocator_type>::value)
+        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+      else
+        return get_memory_source(mre, devid);
+    }
 
     constexpr auto &self() noexcept { return _table; }
     constexpr const auto &self() const noexcept { return _table; }
@@ -84,9 +93,9 @@ namespace zs {
            MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res}, sizeof(value_t));
     }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : HashTable{get_memory_source(mre, devid), tableSize} {}
+        : HashTable{get_default_allocator(mre, devid), tableSize} {}
     HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : HashTable{get_memory_source(mre, devid), (std::size_t)0} {}
+        : HashTable{get_default_allocator(mre, devid), (std::size_t)0} {}
 
     ~HashTable() = default;
 
@@ -119,7 +128,7 @@ namespace zs {
       return ret;
     }
     HashTable clone(const MemoryLocation &mloc) const {
-      return clone(get_memory_source(mloc.memspace(), mloc.devid()));
+      return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
 
     HashTable(HashTable &&o) noexcept {
@@ -206,14 +215,14 @@ namespace zs {
     Vector<key_t> _activeKeys;
   };
 
-  template <typename Tn, int dim, typename Index> template <typename Policy>
-  void HashTable<Tn, dim, Index>::resize(Policy &&policy, std::size_t tableSize) {
+  template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
+  void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy, std::size_t tableSize) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
 #if 0
     const auto s = size();
     auto tags = getPropertyTags();
     tags.insert(std::end(tags), std::begin(appendTags), std::end(appendTags));
-    HashTable<Tn, dim, Index> tmp{get_allocator(), tableSize};
+    HashTable<Tn, dim, Index, Allocator> tmp{get_allocator(), tableSize};
     policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);
 #endif
@@ -432,13 +441,13 @@ namespace zs {
     }
   };
 
-  template <execspace_e ExecSpace, typename Tn, int dim, typename Index>
-  constexpr decltype(auto) proxy(HashTable<Tn, dim, Index> &table) {
-    return HashTableView<ExecSpace, HashTable<Tn, dim, Index>>{table};
+  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, typename Allocator>
+  constexpr decltype(auto) proxy(HashTable<Tn, dim, Index, Allocator> &table) {
+    return HashTableView<ExecSpace, HashTable<Tn, dim, Index, Allocator>>{table};
   }
-  template <execspace_e ExecSpace, typename Tn, int dim, typename Index>
-  constexpr decltype(auto) proxy(const HashTable<Tn, dim, Index> &table) {
-    return HashTableView<ExecSpace, const HashTable<Tn, dim, Index>>{table};
+  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, typename Allocator>
+  constexpr decltype(auto) proxy(const HashTable<Tn, dim, Index, Allocator> &table) {
+    return HashTableView<ExecSpace, const HashTable<Tn, dim, Index, Allocator>>{table};
   }
 
 }  // namespace zs

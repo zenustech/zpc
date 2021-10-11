@@ -8,8 +8,8 @@
 
 namespace zs {
 
-  template <typename T, std::size_t Length = 8, typename Index = std::size_t,
-            typename ChnCounter = unsigned char, typename AllocatorT = ZSPmrAllocator<>>
+  template <typename T, std::size_t Length = 8, typename ChnCounter = unsigned char,
+            typename AllocatorT = ZSPmrAllocator<>>
   struct TileVector {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "TileVector only works with zspmrallocator for now.");
@@ -19,7 +19,7 @@ namespace zs {
 
     using value_type = T;
     using allocator_type = AllocatorT;
-    using size_type = std::make_unsigned_t<Index>;
+    using size_type = std::size_t;
     using difference_type = std::make_signed_t<size_type>;
     using reference = value_type &;
     using const_reference = const value_type &;
@@ -345,14 +345,14 @@ namespace zs {
     }
     TileVectorView src, dst;
   };
-  template <typename T, std::size_t Length, typename Index, typename ChnT, typename Allocator>
-  template <typename Policy> void TileVector<T, Length, Index, ChnT, Allocator>::append_channels(
+  template <typename T, std::size_t Length, typename ChnT, typename Allocator>
+  template <typename Policy> void TileVector<T, Length, ChnT, Allocator>::append_channels(
       Policy &&policy, const std::vector<PropertyTag> &appendTags) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto s = size();
     auto tags = getPropertyTags();
     tags.insert(std::end(tags), std::begin(appendTags), std::end(appendTags));
-    TileVector<T, Length, Index, ChnT, Allocator> tmp{get_allocator(), tags, s};
+    TileVector<T, Length, ChnT, Allocator> tmp{get_allocator(), tags, s};
     policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);
   }
@@ -465,17 +465,16 @@ namespace zs {
     channel_counter_type _numChannels{0};
   };
 
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT,
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
             typename Allocator>
-  constexpr decltype(auto) proxy(const TileVector<T, Length, IndexT, ChnT, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, IndexT, ChnT, Allocator>,
-                                 false>{vec};
-  }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT,
-            typename Allocator>
-  constexpr decltype(auto) proxy(TileVector<T, Length, IndexT, ChnT, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, IndexT, ChnT, Allocator>, false>{
+  constexpr decltype(auto) proxy(const TileVector<T, Length, ChnT, Allocator> &vec) {
+    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, ChnT, Allocator>, false>{
         vec};
+  }
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
+            typename Allocator>
+  constexpr decltype(auto) proxy(TileVector<T, Length, ChnT, Allocator> &vec) {
+    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, ChnT, Allocator>, false>{vec};
   }
 
   template <execspace_e Space, typename TileVectorT, bool WithinTile, typename = void>
@@ -598,27 +597,26 @@ namespace zs {
     channel_counter_type _N{0};
   };
 
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT,
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
             typename Allocator>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 const TileVector<T, Length, IndexT, ChnT, Allocator> &vec) {
+                                 const TileVector<T, Length, ChnT, Allocator> &vec) {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
             fmt::format("tilevector attribute [\"{}\"] not exists", (std::string)tag));
-    return TileVectorView<ExecSpace, const TileVector<T, Length, IndexT, ChnT, Allocator>, false>{
-        tagNames, vec};
+    return TileVectorView<ExecSpace, const TileVector<T, Length, ChnT, Allocator>, false>{tagNames,
+                                                                                          vec};
   }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename IndexT, typename ChnT,
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
             typename Allocator>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 TileVector<T, Length, IndexT, ChnT, Allocator> &vec) {
+                                 TileVector<T, Length, ChnT, Allocator> &vec) {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
             fmt::format("tilevector attribute [\"{}\"] not exists\n", (std::string)tag));
-    return TileVectorView<ExecSpace, TileVector<T, Length, IndexT, ChnT, Allocator>, false>{
-        tagNames, vec};
+    return TileVectorView<ExecSpace, TileVector<T, Length, ChnT, Allocator>, false>{tagNames, vec};
   }
 
 }  // namespace zs

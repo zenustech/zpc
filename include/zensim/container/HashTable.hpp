@@ -12,7 +12,7 @@
 
 namespace zs {
 
-  template <typename Tn_, int dim_, typename Index, typename AllocatorT = ZSPmrAllocator<>>
+  template <typename Tn_, int dim_, typename Index = int, typename AllocatorT = ZSPmrAllocator<>>
   struct HashTable {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "Hashtable only works with zspmrallocator for now.");

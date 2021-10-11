@@ -235,17 +235,17 @@ namespace zs {
   using GeneralHashTable = variant<HashTable<i32, 3, int>, HashTable<i32, 2, int>>;
 #endif
 
-  template <execspace_e, typename HashTableT, typename = void> struct HashTableView;
-
   /// proxy to work within each backends
-  template <execspace_e space, typename HashTableT> struct HashTableView<space, HashTableT> {
-    static constexpr int dim = HashTableT::dim;
+  template <execspace_e space, typename HashTableT, typename = void> struct HashTableView {
+    static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
+    using hash_table_type = std::remove_const_t<HashTableT>;
+    static constexpr int dim = hash_table_type::dim;
     static constexpr auto exectag = wrapv<space>{};
-    using Tn = typename HashTableT::Tn;
-    using key_t = typename HashTableT::key_t;
-    using value_t = typename HashTableT::value_t;
+    using Tn = typename hash_table_type::Tn;
+    using key_t = typename hash_table_type::key_t;
+    using value_t = typename hash_table_type::value_t;
     using unsigned_value_t = std::make_unsigned_t<value_t>;
-    using status_t = typename HashTableT::status_t;
+    using status_t = typename hash_table_type::status_t;
     struct table_t {
       key_t *keys;
       value_t *indices;
@@ -262,7 +262,8 @@ namespace zs {
           _activeKeys{table._activeKeys.data()} {}
 
 #if defined(__CUDACC__)
-    template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_t<S == execspace_e::cuda && !V> = 0>
     __forceinline__ __device__ value_t insert(const key_t &key) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
@@ -283,7 +284,8 @@ namespace zs {
       return HashTableT::sentinel_v;
     }
 #endif
-    template <execspace_e S = space, enable_if_t<S != execspace_e::cuda> = 0>
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_t<S != execspace_e::cuda && !V> = 0>
     inline value_t insert(const key_t &key) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
@@ -314,7 +316,9 @@ namespace zs {
         if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
       }
     }
-    template <execspace_e S = space, enable_if_t<S == execspace_e::host> = 0> void clear() {
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_t<S == execspace_e::host && !V> = 0>
+    void clear() {
       using namespace placeholders;
       // reset counter
       *_cnt = 0;
@@ -339,7 +343,8 @@ namespace zs {
       return static_cast<value_t>(ret);
     }
 #if defined(__CUDACC__)
-    template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_t<S == execspace_e::cuda && !V> = 0>
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                                                   const key_t &val) {
       constexpr auto execTag = wrapv<S>{};
@@ -374,7 +379,8 @@ namespace zs {
       return return_val;
     }
 #endif
-    template <execspace_e S = space, enable_if_t<S != execspace_e::cuda> = 0>
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_t<S != execspace_e::cuda && !V> = 0>
     inline key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest, const key_t &val) {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
@@ -392,52 +398,6 @@ namespace zs {
         }
       }
       return return_val;
-    }
-  };
-  template <execspace_e space, typename HashTableT> struct HashTableView<space, const HashTableT> {
-    static constexpr int dim = HashTableT::dim;
-    static constexpr auto exectag = wrapv<space>{};
-    using Tn = typename HashTableT::Tn;
-    using key_t = typename HashTableT::key_t;
-    using value_t = typename HashTableT::value_t;
-    using unsigned_value_t = std::make_unsigned_t<value_t>;
-    using status_t = typename HashTableT::status_t;
-    struct table_t {
-      const key_t *keys;
-      const value_t *indices;
-      const status_t *status;
-    };
-
-    constexpr HashTableView() = default;
-    ~HashTableView() = default;
-
-    explicit constexpr HashTableView(const HashTableT &table)
-        : _table{table.self().keys.data(), table.self().indices.data(), table.self().status.data()},
-          _tableSize{table._tableSize},
-          _cnt{table._cnt.data()},
-          _activeKeys{table._activeKeys.data()} {}
-
-    constexpr value_t query(const key_t &key) const {
-      using namespace placeholders;
-      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
-      while (true) {
-        if (key == (key_t)_table.keys[hashedentry]) return _table.indices[hashedentry];
-        if (_table.indices[hashedentry] == HashTableT::sentinel_v) return HashTableT::sentinel_v;
-        hashedentry += 127;  ///< search next entry
-        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
-      }
-    }
-
-    table_t _table;
-    const value_t _tableSize;
-    value_t *_cnt;
-    key_t *_activeKeys;
-
-  protected:
-    constexpr value_t do_hash(const key_t &key) const {
-      std::size_t ret = key[0];
-      for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
-      return static_cast<value_t>(ret);
     }
   };
 

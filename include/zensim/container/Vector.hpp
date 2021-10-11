@@ -256,7 +256,11 @@ namespace zs {
   };
 
   template <execspace_e, typename VectorT, typename = void> struct VectorView {
-    using vector_t = typename VectorT::pointer;
+    static constexpr bool is_const_structure = std::is_const_v<VectorT>;
+    using vector_type = std::remove_const_t<VectorT>;
+    using const_vector_type = std::add_const_t<vector_type>;
+    using pointer = conditional_t<is_const_structure, typename VectorT::const_pointer,
+                                  typename VectorT::pointer>;
     using size_type = typename VectorT::size_type;
 
     constexpr VectorView() = default;
@@ -264,32 +268,21 @@ namespace zs {
     explicit constexpr VectorView(VectorT &vector)
         : _vector{vector.data()}, _vectorSize{vector.size()} {}
 
-    constexpr decltype(auto) operator[](size_type i) { return _vector[i]; }
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr decltype(auto) operator[](size_type i) {
+      return _vector[i];
+    }
     constexpr decltype(auto) operator[](size_type i) const { return _vector[i]; }
-    constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
+
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr decltype(auto) operator()(size_type i) {
+      return _vector[i];
+    }
     constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
+
     constexpr size_type size() const noexcept { return _vectorSize; }
 
-    vector_t _vector{nullptr};
-    size_type _vectorSize{0};
-  };
-
-  template <execspace_e Space, typename VectorT> struct VectorView<Space, const VectorT> {
-    using vector_t = typename VectorT::const_pointer;
-    using size_type = typename VectorT::size_type;
-
-    constexpr VectorView() = default;
-    ~VectorView() = default;
-    explicit constexpr VectorView(const VectorT &vector)
-        : _vector{vector.data()}, _vectorSize{vector.size()} {}
-
-    constexpr decltype(auto) operator[](size_type i) { return _vector[i]; }
-    constexpr decltype(auto) operator[](size_type i) const { return _vector[i]; }
-    constexpr decltype(auto) operator()(size_type i) { return _vector[i]; }
-    constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
-    constexpr size_type size() const noexcept { return _vectorSize; }
-
-    vector_t _vector{nullptr};
+    pointer _vector{nullptr};
     size_type _vectorSize{0};
   };
 

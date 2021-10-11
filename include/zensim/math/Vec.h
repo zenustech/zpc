@@ -192,10 +192,11 @@ using vec =
       return r;
     }
     static constexpr vec_impl zeros() noexcept { return uniform(0); }
+    template <int d = dim, Tn n = select_indexed_value<0, Ns...>::value,
+              enable_if_all<dim == 2, n * n == extent> = 0>
     static constexpr vec_impl identity() noexcept {
       vec_impl r = zeros();
-      for (Tn i = 0; i < vseq_t<Ns...>::reduce(getmax<Tn>{}); ++i)
-        r.val(base_t::identity_offset(i)) = 1;
+      for (Tn i = 0; i != n; ++i) r(i, i) = (value_type)1;
       return r;
     }
     constexpr void set(T val) noexcept {

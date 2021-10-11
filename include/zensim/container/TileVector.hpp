@@ -367,6 +367,7 @@ namespace zs {
     using reference = typename tile_vector_type::reference;
     using const_reference = typename tile_vector_type::const_reference;
     using size_type = typename tile_vector_type::size_type;
+    using difference_type = typename tile_vector_type::difference_type;
     using channel_counter_type = typename tile_vector_type::channel_counter_type;
     using whole_view_type = TileVectorUnnamedView<Space, TileVectorT, false>;
     using tile_view_type = TileVectorUnnamedView<Space, TileVectorT, true>;
@@ -490,6 +491,7 @@ namespace zs {
     using reference = typename base_t::reference;
     using const_reference = typename base_t::const_reference;
     using size_type = typename base_t::size_type;
+    using difference_type = typename base_t::difference_type;
     using channel_counter_type = typename base_t::channel_counter_type;
     using whole_view_type = TileVectorView<Space, TileVectorT, false>;
     using tile_view_type = TileVectorView<Space, TileVectorT, true>;

@@ -259,9 +259,10 @@ namespace zs {
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
     using vector_type = std::remove_const_t<VectorT>;
     using const_vector_type = std::add_const_t<vector_type>;
-    using pointer = conditional_t<is_const_structure, typename VectorT::const_pointer,
-                                  typename VectorT::pointer>;
-    using size_type = typename VectorT::size_type;
+    using pointer = conditional_t<is_const_structure, typename vector_type::const_pointer,
+                                  typename vector_type::pointer>;
+    using size_type = typename vector_type::size_type;
+    using difference_type = typename vector_type::difference_type;
 
     constexpr VectorView() = default;
     ~VectorView() = default;

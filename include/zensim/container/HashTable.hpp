@@ -45,6 +45,11 @@ namespace zs {
           : keys{allocator, numEntries},
             indices{allocator, numEntries},
             status{allocator, numEntries} {}
+      void resize(size_type size) {
+        keys.resize(size);
+        indices.resize(size);
+        status.resize(size);
+      }
 
       Vector<key_t> keys;
       Vector<value_t> indices;
@@ -215,17 +220,43 @@ namespace zs {
     Vector<key_t> _activeKeys;
   };
 
+  template <typename HashTableView> struct ResetHashTable {
+    using hash_table_type = typename HashTableView::hash_table_type;
+    explicit ResetHashTable(HashTableView tv) : table{tv} {}
+
+    constexpr void operator()(typename HashTableView::size_type entry) noexcept {
+      using namespace placeholders;
+      table._table.keys[entry]
+          = hash_table_type::key_t::uniform(hash_table_type::key_scalar_sentinel_v);
+      table._table.indices[entry]
+          = hash_table_type::sentinel_v;  // necessary for query to terminate
+      table._table.status[entry] = -1;
+      if (entry == 0) *table._cnt = 0;
+    }
+
+    HashTableView table;
+  };
+  template <typename HashTableView> struct ReinsertHashTable {
+    using hash_table_type = typename HashTableView::hash_table_type;
+    explicit ReinsertHashTable(HashTableView tv) : table{tv} {}
+
+    constexpr void operator()(typename HashTableView::size_type entry) noexcept {
+      table.insert(table._activeKeys[entry], entry);
+    }
+
+    HashTableView table;
+  };
+
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy, std::size_t tableSize) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-#if 0
-    const auto s = size();
-    auto tags = getPropertyTags();
-    tags.insert(std::end(tags), std::begin(appendTags), std::end(appendTags));
-    HashTable<Tn, dim, Index, Allocator> tmp{get_allocator(), tableSize};
-    policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
-    *this = std::move(tmp);
-#endif
+    const auto newTableSize = evaluateTableSize(tableSize);
+    _table.resize(newTableSize);
+    _tableSize = newTableSize;
+    _activeKeys.resize(newTableSize);
+    policy(range(newTableSize), ResetHashTable{proxy<space>(*this)});
+    const auto numEntries = size();
+    policy(range(numEntries), ReinsertHashTable{proxy<space>(*this)});
   }
 
 #if 0
@@ -241,6 +272,12 @@ namespace zs {
     using hash_table_type = std::remove_const_t<HashTableT>;
     static constexpr int dim = hash_table_type::dim;
     static constexpr auto exectag = wrapv<space>{};
+    using pointer = typename hash_table_type::pointer;
+    using value_type = typename hash_table_type::value_type;
+    using reference = typename hash_table_type::reference;
+    using const_reference = typename hash_table_type::const_reference;
+    using size_type = typename hash_table_type::size_type;
+    using difference_type = typename hash_table_type::difference_type;
     using Tn = typename hash_table_type::Tn;
     using key_t = typename hash_table_type::key_t;
     using value_t = typename hash_table_type::value_t;
@@ -257,9 +294,9 @@ namespace zs {
 
     explicit constexpr HashTableView(HashTableT &table)
         : _table{table.self().keys.data(), table.self().indices.data(), table.self().status.data()},
+          _activeKeys{table._activeKeys.data()},
           _tableSize{table._tableSize},
-          _cnt{table._cnt.data()},
-          _activeKeys{table._activeKeys.data()} {}
+          _cnt{table._cnt.data()} {}
 
 #if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
@@ -305,6 +342,44 @@ namespace zs {
       }
       return HashTableT::sentinel_v;
     }
+
+#if defined(__CUDACC__)
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_t<S == execspace_e::cuda && !V> = 0>
+    __forceinline__ __device__ bool insert(const key_t &key, value_t id) {
+      using namespace placeholders;
+      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
+      key_t storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
+      for (; !(storedKey == key_sentinel_v || storedKey == key);) {
+        hashedentry = (hashedentry + 127) % _tableSize;
+        storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
+      }
+      if (storedKey == key_sentinel_v) {
+        _table.indices[hashedentry] = id;
+        return true;
+      }
+      return false;
+    }
+#endif
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_t<S != execspace_e::cuda && !V> = 0>
+    inline bool insert(const key_t &key, value_t id) {
+      using namespace placeholders;
+      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
+      key_t storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
+      for (; !(storedKey == key_sentinel_v || storedKey == key);) {
+        hashedentry = (hashedentry + 127) % _tableSize;
+        storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
+      }
+      if (storedKey == key_sentinel_v) {
+        _table.indices[hashedentry] = id;
+        return true;
+      }
+      return false;
+    }
+
     /// make sure no one else is inserting in the same time!
     constexpr value_t query(const key_t &key) const {
       using namespace placeholders;
@@ -332,9 +407,9 @@ namespace zs {
     }
 
     table_t _table;
+    key_t *_activeKeys;
     const value_t _tableSize;
     value_t *_cnt;
-    key_t *_activeKeys;
 
   protected:
     constexpr value_t do_hash(const key_t &key) const {

@@ -563,6 +563,18 @@ using vec =
     }
     return r;
   }
+  template <typename T0, typename T1, typename Tn, Tn Ni, Tn Nk, Tn Nj>
+  constexpr auto mul(vec_impl<T0, std::integer_sequence<Tn, Ni, Nk>> const &A,
+                     vec_impl<T1, std::integer_sequence<Tn, Nk, Nj>> const &B) noexcept {
+    using R = math::op_result_t<T0, T1>;
+    vec_impl<R, std::integer_sequence<Tn, Ni, Nj>> r{};
+    for (Tn i = 0; i != Ni; ++i)
+      for (Tn j = 0; j != Nj; ++j) {
+        r(i, j) = 0;
+        for (Tn k = 0; k != Nk; ++k) r(i, j) += A(i, k) * B(k, j);
+      }
+    return r;
+  }
   template <typename T, typename Tn, Tn N0, Tn N1>
   constexpr T det2(vec_impl<T, std::integer_sequence<Tn, N0, N1>> const &A, Tn i0, Tn i1) noexcept {
     return A(i0, 0) * A(i1, 1) - A(i1, 0) * A(i0, 1);
@@ -680,8 +692,8 @@ using vec =
     ret(2, 3) = -cofactor<3, 2>(A);
     ret(3, 3) = cofactor<3, 3>(A);
     return ret
-           / (ret(0, 0) * ret(0, 0) + ret(1, 0) * ret(0, 1) + ret(2, 0) * ret(0, 2)
-              + ret(3, 0) * ret(0, 3));
+           / (A(0, 0) * ret(0, 0) + A(1, 0) * ret(0, 1) + A(2, 0) * ret(0, 2)
+              + A(3, 0) * ret(0, 3));
   }
   /// affine transform
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>

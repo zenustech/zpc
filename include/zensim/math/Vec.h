@@ -563,6 +563,126 @@ using vec =
     }
     return r;
   }
+  template <typename T, typename Tn, Tn N0, Tn N1>
+  constexpr T det2(vec_impl<T, std::integer_sequence<Tn, N0, N1>> const &A, Tn i0, Tn i1) noexcept {
+    return A(i0, 0) * A(i1, 1) - A(i1, 0) * A(i0, 1);
+  }
+  template <typename T, typename Tn, Tn N0, Tn N1>
+  constexpr T det3(vec_impl<T, std::integer_sequence<Tn, N0, N1>> const &A, Tn i0, const T &d0,
+                   Tn i1, const T &d1, Tn i2, const T &d2) noexcept {
+    return A(i0, 2) * d0 + (-A(i1, 2) * d1 + A(i2, 2) * d2);
+  }
+  template <typename T, typename Tn>
+  constexpr T determinant(vec_impl<T, std::integer_sequence<Tn, 1, 1>> const &A) noexcept {
+    return A.val(0);
+  }
+  template <typename T, typename Tn>
+  constexpr T determinant(vec_impl<T, std::integer_sequence<Tn, 2, 2>> const &A) noexcept {
+    return A(0, 0) * A(1, 1) - A(1, 0) * A(0, 1);
+  }
+  template <typename T, typename Tn>
+  constexpr T determinant(vec_impl<T, std::integer_sequence<Tn, 3, 3>> const &A) noexcept {
+    return A(0, 0) * (A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1))
+           - A(0, 1) * (A(1, 0) * A(2, 2) - A(1, 2) * A(2, 0))
+           + A(0, 2) * (A(1, 0) * A(2, 1) - A(1, 1) * A(2, 0));
+  }
+  template <typename T, typename Tn>
+  constexpr T determinant(vec_impl<T, std::integer_sequence<Tn, 4, 4>> const &A) noexcept {
+    T d2_01 = det2(A, 0, 1);
+    T d2_02 = det2(A, 0, 2);
+    T d2_03 = det2(A, 0, 3);
+    T d2_12 = det2(A, 1, 2);
+    T d2_13 = det2(A, 1, 3);
+    T d2_23 = det2(A, 2, 3);
+    T d3_0 = det3(A, 1, d2_23, 2, d2_13, 3, d2_12);
+    T d3_1 = det3(A, 0, d2_23, 2, d2_03, 3, d2_02);
+    T d3_2 = det3(A, 0, d2_13, 1, d2_03, 3, d2_01);
+    T d3_3 = det3(A, 0, d2_12, 1, d2_02, 2, d2_01);
+    return -A(0, 3) * d3_0 + A(1, 3) * d3_1 + -A(2, 3) * d3_2 + A(3, 3) * d3_3;
+  }
+  template <typename T, typename Tn>
+  constexpr auto inverse(vec_impl<T, std::integer_sequence<Tn, 1, 1>> const &A) noexcept {
+    return vec_impl<T, std::integer_sequence<Tn, 1, 1>>{(T)1 / A.val(0)};
+  }
+  template <typename T, typename Tn>
+  constexpr auto inverse(vec_impl<T, std::integer_sequence<Tn, 2, 2>> const &A) noexcept {
+    vec_impl<T, std::integer_sequence<Tn, 2, 2>> ret{};
+    auto invdet = (T)1 / determinant(A);
+    ret(0, 0) = A(1, 1) * invdet;
+    ret(1, 0) = -A(1, 0) * invdet;
+    ret(0, 1) = -A(0, 1) * invdet;
+    ret(1, 1) = A(0, 0) * invdet;
+    return ret;
+  }
+  template <int i, int j, typename T, typename Tn>
+  constexpr T cofactor(vec_impl<T, std::integer_sequence<Tn, 3, 3>> const &A) noexcept {
+    constexpr int i1 = (i + 1) % 3;
+    constexpr int i2 = (i + 2) % 3;
+    constexpr int j1 = (j + 1) % 3;
+    constexpr int j2 = (j + 2) % 3;
+    return A(i1, j1) * A(i2, j2) - A(i1, j2) * A(i2, j1);
+  }
+  template <int i, int j, typename T, typename Tn>
+  constexpr T cofactor(vec_impl<T, std::integer_sequence<Tn, 4, 4>> const &A) noexcept {
+    constexpr int i1 = (i + 1) % 4;
+    constexpr int i2 = (i + 2) % 4;
+    constexpr int i3 = (i + 3) % 4;
+    constexpr int j1 = (j + 1) % 4;
+    constexpr int j2 = (j + 2) % 4;
+    constexpr int j3 = (j + 3) % 4;
+    const auto det3 = [&A](int i1, int i2, int i3, int j1, int j2, int j3) {
+      return A(i1, j1) * (A(i2, j2) * A(i3, j3) - A(i2, j3) * A(i3, j2));
+    };
+    return det3(i1, i2, i3, j1, j2, j3) + det3(i2, i3, i1, j1, j2, j3)
+           + det3(i3, i1, i2, j1, j2, j3);
+  }
+  template <typename T, typename Tn>
+  constexpr auto inverse(vec_impl<T, std::integer_sequence<Tn, 3, 3>> const &A) noexcept {
+    vec_impl<T, std::integer_sequence<Tn, 3, 3>> ret{};
+    ret(0, 0) = cofactor<0, 0>(A);
+    ret(0, 1) = cofactor<1, 0>(A);
+    ret(0, 2) = cofactor<2, 0>(A);
+    const T invdet = (T)1 / (ret(0, 0) * A(0, 0) + ret(0, 1) * A(1, 0) + ret(0, 2) * A(2, 0));
+    T c01 = cofactor<0, 1>(A);
+    T c11 = cofactor<1, 1>(A);
+    T c02 = cofactor<0, 2>(A);
+    ret(1, 2) = cofactor<2, 1>(A) * invdet;
+    ret(2, 1) = cofactor<1, 2>(A) * invdet;
+    ret(2, 2) = cofactor<2, 2>(A) * invdet;
+    ret(1, 0) = c01;
+    ret(1, 1) = c11;
+    ret(2, 0) = c02;
+    ret(0, 0) *= invdet;
+    ret(0, 1) *= invdet;
+    ret(0, 2) *= invdet;
+    return ret;
+  }
+  template <typename T, typename Tn>
+  constexpr auto inverse(vec_impl<T, std::integer_sequence<Tn, 4, 4>> const &A) noexcept {
+    vec_impl<T, std::integer_sequence<Tn, 4, 4>> ret{};
+    ret(0, 0) = cofactor<0, 0>(A);
+    ret(1, 0) = -cofactor<0, 1>(A);
+    ret(2, 0) = cofactor<0, 2>(A);
+    ret(3, 0) = -cofactor<0, 3>(A);
+
+    ret(0, 2) = cofactor<2, 0>(A);
+    ret(1, 2) = -cofactor<2, 1>(A);
+    ret(2, 2) = cofactor<2, 2>(A);
+    ret(3, 2) = -cofactor<2, 3>(A);
+
+    ret(0, 1) = -cofactor<1, 0>(A);
+    ret(1, 1) = cofactor<1, 1>(A);
+    ret(2, 1) = -cofactor<1, 2>(A);
+    ret(3, 1) = cofactor<1, 3>(A);
+
+    ret(0, 3) = -cofactor<3, 0>(A);
+    ret(1, 3) = cofactor<3, 1>(A);
+    ret(2, 3) = -cofactor<3, 2>(A);
+    ret(3, 3) = cofactor<3, 3>(A);
+    return ret
+           / (ret(0, 0) * ret(0, 0) + ret(1, 0) * ret(0, 1) + ret(2, 0) * ret(0, 2)
+              + ret(3, 0) * ret(0, 3));
+  }
   /// affine transform
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
   constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A,

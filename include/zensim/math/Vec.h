@@ -300,8 +300,8 @@ using vec =
       constexpr auto N1 = select_indexed_value<1, Ns...>::value;
       using extentsT = std::integer_sequence<Tn, N1, N0>;
       vec_impl<T, extentsT> r{};
-      for (Tn i = 0; i < N0; ++i)
-        for (Tn j = 0; j < N1; ++j) r(j, i) = (*this)(i, j);
+      for (Tn i = 0; i != N0; ++i)
+        for (Tn j = 0; j != N1; ++j) r(j, i) = (*this)(i, j);
       return r;
     }
     constexpr T prod() const noexcept {
@@ -695,6 +695,26 @@ using vec =
     return ret
            / (A(0, 0) * ret(0, 0) + A(1, 0) * ret(0, 1) + A(2, 0) * ret(0, 2)
               + A(3, 0) * ret(0, 3));
+  }
+  template <typename T0, typename T1, typename Tn, Tn Nr, Tn Nc>
+  constexpr auto diag_mul(vec_impl<T0, std::integer_sequence<Tn, Nr, Nc>> const &A,
+                          vec_impl<T1, std::integer_sequence<Tn, Nc>> const &diag) noexcept {
+    using R = math::op_result_t<T0, T1>;
+    using extentsT = std::integer_sequence<Tn, Nr, Nc>;
+    vec_impl<R, extentsT> r{};
+    for (Tn i = 0; i != Nr; ++i)
+      for (Tn j = 0; j != Nc; ++j) r(i, j) = A(i, j) * diag(j);
+    return r;
+  }
+  template <typename T0, typename T1, typename Tn, Tn Nr, Tn Nc>
+  constexpr auto diag_mul(vec_impl<T1, std::integer_sequence<Tn, Nr>> const &diag,
+                          vec_impl<T0, std::integer_sequence<Tn, Nr, Nc>> const &A) noexcept {
+    using R = math::op_result_t<T0, T1>;
+    using extentsT = std::integer_sequence<Tn, Nr, Nc>;
+    vec_impl<R, extentsT> r{};
+    for (Tn i = 0; i != Nr; ++i)
+      for (Tn j = 0; j != Nc; ++j) r(i, j) = A(i, j) * diag(i);
+    return r;
   }
   /// affine transform
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>

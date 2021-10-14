@@ -96,7 +96,7 @@ namespace zs {
 
     YaleSparseMatrix(const allocator_type &allocator, size_type nrows = 1, size_type ncols = 1,
                      matrix_order_e order = matrix_order_e::rowMajor)
-        : base_t{nrows, ncols, order},
+        : base_t{(index_type)nrows, (index_type)ncols, order},
           _allocator{allocator},
           offsets{_allocator, nrows + 1},
           indices{_allocator, 0},

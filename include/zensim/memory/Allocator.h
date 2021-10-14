@@ -150,9 +150,6 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
 
-#ifdef ZS_PLATFORM_WINDOWS
-#elif defined(ZS_PLATFORM_UNIX)
-
 #  if 0
   template <> struct stack_virtual_memory_resource<host_mem_tag>
       : vmr_t {  // default impl falls back to
@@ -193,6 +190,9 @@ namespace zs {
   };
 
 #  endif
+
+#ifdef ZS_PLATFORM_WINDOWS
+#elif defined(ZS_PLATFORM_UNIX)
 
   template <> struct arena_virtual_memory_resource<host_mem_tag>
       : vmr_t {  // default impl falls back to

@@ -314,7 +314,7 @@ if (ENABLE_PCH)
 endif()
 target_link_libraries(zpcomp PUBLIC zpccore zpc_omp_deps)
 target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
-  PRIVATE   $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+  PUBLIC   $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
 
 endif(ZS_ENABLE_OPENMP)

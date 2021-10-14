@@ -197,7 +197,7 @@ using vec =
     }
     static constexpr vec_impl zeros() noexcept { return uniform(0); }
     template <int d = dim, Tn n = select_indexed_value<0, Ns...>::value,
-              enable_if_all<dim == 2, n * n == extent> = 0>
+              enable_if_all<d == 2, n * n == extent> = 0>
     static constexpr vec_impl identity() noexcept {
       vec_impl r = zeros();
       for (Tn i = 0; i != n; ++i) r(i, i) = (value_type)1;
@@ -395,14 +395,14 @@ using vec =
 
     // scalar integral
 #define DEFINE_OP_SCALAR_INTEGRAL(OP)                                                      \
-  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  template <typename TT, typename T_ = T, enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
   friend constexpr auto operator OP(vec_impl const &e, TT const v) noexcept {              \
     using R = math::op_result_t<T, TT>;                                                    \
     vec_impl<R, extents> r{};                                                              \
     for (Tn i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);                      \
     return r;                                                                              \
   }                                                                                        \
-  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  template <typename TT, typename T_ = T, enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
   friend constexpr auto operator OP(TT const v, vec_impl const &e) noexcept {              \
     using R = math::op_result_t<T, TT>;                                                    \
     vec_impl<R, extents> r{};                                                              \
@@ -440,7 +440,7 @@ using vec =
 
     // vector integral
 #define DEFINE_OP_VECTOR_INTEGRAL(OP)                                                      \
-  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  template <typename TT, typename T_ = T, enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
   constexpr auto operator OP(vec_impl<TT, extents> const &o) const noexcept {              \
     using R = math::op_result_t<T, TT>;                                                    \
     vec_impl<R, extents> r{};                                                              \
@@ -469,7 +469,7 @@ using vec =
 
     // scalar integral
 #define DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(OP)                                               \
-  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  template <typename TT, typename T_ = T, enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
   constexpr vec_impl &operator OP##=(TT &&v) noexcept {                                    \
     using R = math::op_result_t<T, TT>;                                                    \
     for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)v);                      \
@@ -495,7 +495,7 @@ using vec =
     DEFINE_OP_VECTOR_ASSIGN(/)
 
 #define DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(OP)                                               \
-  template <typename TT, enable_if_all<std::is_integral_v<T>, std::is_integral_v<TT>> = 0> \
+  template <typename TT, typename T_ = T, enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
   constexpr vec_impl &operator OP##=(vec_impl<TT, extents> const &o) noexcept {            \
     using R = math::op_result_t<T, TT>;                                                    \
     for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)o.val(i));               \

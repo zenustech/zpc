@@ -10,11 +10,11 @@ namespace zs {
   constexpr auto eval_I1_deriv_hessian(const vec_t<T0, Tn, dim, dim>& F,
                                        const vec_t<T1, Tn, dim>& a) {
     if constexpr (Opt == 1)
-      return std::make_tuple(mul(F, a).l2NormSqr());
+      return std::make_tuple((F * a).l2NormSqr());
     else {
       auto dyadicAa = dyadic_prod(a, a);
       if constexpr (Opt == 2)
-        return std::make_tuple(mul(F, a).l2NormSqr(), 2 * vectorize(mul(F, dyadicAa)));
+        return std::make_tuple((F * a).l2NormSqr(), 2 * vectorize(F * dyadicAa));
       else {
         using R = math::op_result_t<T0, T1>;
         auto H = vec_t<R, Tn, dim * dim, dim * dim>::zeros();
@@ -23,7 +23,7 @@ namespace zs {
             const auto v = dyadicAa(i, j);
             for (Tn d = 0, bj = j * dim; d != dim; ++d) H(bi + d, bj + d) = v;
           }
-        return std::make_tuple(mul(F, a).l2NormSqr(), 2 * vectorize(mul(F, dyadicAa)), H * 2);
+        return std::make_tuple((F * a).l2NormSqr(), 2 * vectorize(F * dyadicAa), H * 2);
       }
     }
   }
@@ -33,12 +33,12 @@ namespace zs {
   constexpr auto eval_I2_deriv_hessian(const vec_t<T0, Tn, dim, dim>& F,
                                        const vec_t<T1, Tn, dim>& a1, const vec_t<T2, Tn, dim>& a2) {
     if constexpr (Opt == 1)
-      return std::make_tuple(mul(F, a1).dot(mul(F, a2)));
+      return std::make_tuple((F * a1).dot((F * a2)));
     else {
       auto dyadicA12 = dyadic_prod(a1, a2);
       dyadicA12 = (dyadicA12 + dyadicA12.transpose());
       if constexpr (Opt == 2)
-        return std::make_tuple(mul(F, a1).dot(mul(F, a2)), vectorize(F * dyadicA12));
+        return std::make_tuple((F * a1).dot(F * a2), vectorize(F * dyadicA12));
       else {
         using R = math::op_result_t<T0, T1, T2>;
         auto H = vec_t<R, Tn, dim * dim, dim * dim>::zeros();
@@ -47,7 +47,7 @@ namespace zs {
             const auto v = dyadicA12(i, j);
             for (Tn d = 0, bj = j * dim; d != dim; ++d) H(bi + d, bj + d) = v;
           }
-        return std::make_tuple(mul(F, a1).dot(mul(F, a2)), vectorize(F * dyadicA12), H);
+        return std::make_tuple((F * a1).dot(F * a2), vectorize(F * dyadicA12), H);
       }
     }
   }
@@ -111,18 +111,37 @@ namespace zs {
   template <typename T0, typename T1, typename T2, typename Tn>
   constexpr auto eval_I1_delta(const vec_t<T0, Tn, (Tn)3>& aw,
                                const vec_t<T1, Tn, (Tn)3, (Tn)3>& fiber_dir,
-                               const vec_t<T2, Tn, (Tn)3, (Tn)3>& F) {
+                               const vec_t<T2, Tn, (Tn)3, (Tn)3>& F) noexcept {
     auto awSqr = aw * aw;
-    auto dM = diag_mul(mul(mul(fiber_dir.transpose(), F), fiber_dir), awSqr);
-    return 2 * 3 * dM.trace() / aw.squaredNorm();
+    auto dM = diag_mul(fiber_dir.transpose() * F * fiber_dir, awSqr);
+    return 2 * 3 * trace(dM) / aw.squaredNorm();
   }
 
   template <typename T0, typename T1, typename Tn>
   constexpr auto eval_I1_delta_deriv(const vec_t<T0, Tn, (Tn)3>& aw,
-                                     const vec_t<T0, Tn, (Tn)3, (Tn)3>& fiber_dir) {
+                                     const vec_t<T0, Tn, (Tn)3, (Tn)3>& fiber_dir) noexcept {
     auto awSqr = aw * aw;
-    auto dM = mul(diag_mul(fiber_dir, awSqr), fiber_dir.transpose());
+    auto dM = diag_mul(fiber_dir, awSqr) * fiber_dir.transpose();
     return 2 * 3 * dM / aw.squaredNorm();
+  }
+
+  template <typename T, typename Tn>
+  constexpr auto eval_dFact_dF(const vec_t<T, Tn, (Tn)3, (Tn)3>& actInv) noexcept {
+    auto M = vec_t<T, Tn, (Tn)9, (Tn)9>::zeros();
+
+    M(0, 0) = M(1, 1) = M(2, 2) = actInv(0, 0);
+    M(3, 0) = M(4, 1) = M(5, 2) = actInv(0, 1);
+    M(6, 0) = M(7, 1) = M(8, 2) = actInv(0, 2);
+
+    M(0, 3) = M(1, 4) = M(2, 5) = actInv(1, 0);
+    M(3, 3) = M(4, 4) = M(5, 5) = actInv(1, 1);
+    M(6, 3) = M(7, 4) = M(8, 5) = actInv(1, 2);
+
+    M(0, 6) = M(1, 7) = M(2, 8) = actInv(2, 0);
+    M(3, 6) = M(4, 7) = M(5, 8) = actInv(2, 1);
+    M(6, 6) = M(7, 7) = M(8, 8) = actInv(2, 2);
+
+    return M;
   }
 
 }  // namespace zs

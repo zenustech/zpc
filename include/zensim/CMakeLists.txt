@@ -149,6 +149,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     Singleton.h
     TypeAlias.hpp
     # simulation
+    physics/constitutive_models/NeoHookean.hpp
     physics/ConstitutiveModelHelper.hpp
     physics/ConstitutiveModel_Vol_dP.hpp
     physics/ConstitutiveModel.hpp

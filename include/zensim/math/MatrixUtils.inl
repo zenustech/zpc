@@ -18,6 +18,13 @@ namespace zs {
     for (Tn i = 0; i != Nr; ++i) ret(i) = mat(i, j);
     return ret;
   }
+  template <typename T, typename Tn, Tn N>
+  constexpr auto trace(const vec_impl<T, std::integer_sequence<Tn, N, N>> &mat) {
+    constexpr Tn N2 = N * N;
+    auto sum = (T)0;
+    for (Tn i = 0; i < N2; i += (N + 1)) sum += mat.val(i);
+    return sum;
+  }
 
   template <typename T0, typename T1, typename Tn>
   constexpr auto cross(const vec_impl<T0, std::integer_sequence<Tn, (Tn)2>> &lhs,
@@ -79,8 +86,8 @@ namespace zs {
     return r;
   }
   template <typename T0, typename T1, typename Tn, Tn Ni, Tn Nk, Tn Nj>
-  constexpr auto mul(vec_impl<T0, std::integer_sequence<Tn, Ni, Nk>> const &A,
-                     vec_impl<T1, std::integer_sequence<Tn, Nk, Nj>> const &B) noexcept {
+  constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, Ni, Nk>> const &A,
+                           vec_impl<T1, std::integer_sequence<Tn, Nk, Nj>> const &B) noexcept {
     using R = math::op_result_t<T0, T1>;
     vec_impl<R, std::integer_sequence<Tn, Ni, Nj>> r{};
     for (Tn i = 0; i != Ni; ++i)

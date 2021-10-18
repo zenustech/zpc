@@ -150,6 +150,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     TypeAlias.hpp
     # simulation
     physics/constitutive_models/NeoHookean.hpp
+    physics/constitutive_models/DirichletDamping.hpp
     physics/ConstitutiveModelHelper.hpp
     physics/ConstitutiveModel_Vol_dP.hpp
     physics/ConstitutiveModel.hpp

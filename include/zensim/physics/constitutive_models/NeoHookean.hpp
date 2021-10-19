@@ -85,8 +85,7 @@ namespace zs {
                                            const vec_t<T1, Tn, (Tn)3>& weights,
                                            const vec_t<T1, Tn, (Tn)3, (Tn)3>& fiberDirection,
                                            const T2 E, const T2 nu,
-                                           const vec_t<T2, Tn, (Tn)3, (Tn)3>& F,
-                                           bool enforcingSpd = true) {
+                                           const vec_t<T2, Tn, (Tn)3, (Tn)3>& F) {
     using R = math::op_result_t<T0, T1, T2>;
     using vec3 = vec_t<R, Tn, (Tn)3>;
     using vec9 = vec_t<R, Tn, (Tn)9>;

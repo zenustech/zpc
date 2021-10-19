@@ -155,6 +155,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     physics/ConstitutiveModel_Vol_dP.hpp
     physics/ConstitutiveModel.hpp
     physics/SoundSpeedCfl.hpp
+    simulation/fem/ElementToDof.hpp
     simulation/mpm/Simulator.hpp
     simulation/transfer/P2G.hpp
     simulation/transfer/G2P.hpp

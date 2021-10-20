@@ -32,7 +32,7 @@ namespace zs {
       for (auto&& v : std::get<2>(ret)) v = mat9::zeros();
     T1 weightSum = 0;
     for (Tn i = 0; i != 3; ++i) {
-      auto pack = eval_I1_deriv_hessian<Opt>(F, orient.col(i));
+      auto pack = eval_I1_deriv_hessian<Opt>(F, col(orient, i));
       auto weight = weights[i] * weights[i];
       std::get<0>(ret)[0] += weight * std::get<0>(pack);
       if constexpr (Opt > 1) std::get<1>(ret)[0] += weight * std::get<1>(pack);
@@ -46,7 +46,7 @@ namespace zs {
     weightSum = 0;
     for (Tn i = 0; i != 3; ++i)
       for (Tn j = i + 1; j != 3; ++j) {
-        auto pack = eval_I2_deriv_hessian<Opt>(F, orient.col(i), orient.col(j));
+        auto pack = eval_I2_deriv_hessian<Opt>(F, col(orient, i), col(orient, j));
         auto weight = weights[i] * weights[j];
         std::get<0>(ret)[1] += weight * std::get<0>(pack);
         if constexpr (Opt > 1) std::get<1>(ret)[1] += weight * std::get<1>(pack);
@@ -54,8 +54,8 @@ namespace zs {
         weightSum += weight;
       }
     std::get<0>(ret)[1] /= weightSum;
-    if constexpr (Opt > 1) std::get<1>(ret)[1] /= weightSum;
-    if constexpr (Opt > 2) std::get<2>(ret)[1] /= weightSum;
+    if constexpr (Opt > 1) std::get<1>(ret)[1] = std::get<1>(ret)[1] / weightSum;
+    if constexpr (Opt > 2) std::get<2>(ret)[1] = std::get<2>(ret)[1] / weightSum;
 
     {
       auto pack = eval_I3_deriv_hessian<Opt>(F);
@@ -85,7 +85,7 @@ namespace zs {
                                            const vec_t<T1, Tn, (Tn)3>& weights,
                                            const vec_t<T1, Tn, (Tn)3, (Tn)3>& fiberDirection,
                                            const T2 E, const T2 nu,
-                                           const vec_t<T2, Tn, (Tn)3, (Tn)3>& F) {
+                                           vec_t<T2, Tn, (Tn)3, (Tn)3> F) {
     using R = math::op_result_t<T0, T1, T2>;
     using vec3 = vec_t<R, Tn, (Tn)3>;
     using vec9 = vec_t<R, Tn, (Tn)9>;
@@ -100,7 +100,7 @@ namespace zs {
     F = F * actInv;  // fiber-space deformation gradient
 
     // Is, Ds, Hs
-    auto pack = compute_anisotrpic_invariant_deriv_hesssian<1>(fiberDirection, weights, F);
+    auto pack = compute_anisotrpic_invariant_deriv_hesssian<Opt>(fiberDirection, weights, F);
 
     auto I1_d = eval_I1_delta(weights, fiberDirection, F);                      // scalar
     auto I1_d_deriv = vectorize(eval_I1_delta_deriv(weights, fiberDirection));  // vec9
@@ -125,6 +125,7 @@ namespace zs {
                          + lambda * I2_minus_1 * std::get<2>(pack)[2];
       std::get<2>(ret) = dFact_dF.transpose() * std::get<2>(ret) * dFact_dF;
     }
+    return ret;
   }
 
 }  // namespace zs

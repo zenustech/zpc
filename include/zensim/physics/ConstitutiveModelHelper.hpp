@@ -114,15 +114,15 @@ namespace zs {
                                const vec_t<T2, Tn, (Tn)3, (Tn)3>& F) noexcept {
     auto awSqr = aw * aw;
     auto dM = diag_mul(fiber_dir.transpose() * F * fiber_dir, awSqr);
-    return 2 * 3 * trace(dM) / aw.squaredNorm();
+    return 2 * 3 * trace(dM) / aw.l2NormSqr();
   }
 
   template <typename T0, typename T1, typename Tn>
   constexpr auto eval_I1_delta_deriv(const vec_t<T0, Tn, (Tn)3>& aw,
-                                     const vec_t<T0, Tn, (Tn)3, (Tn)3>& fiber_dir) noexcept {
+                                     const vec_t<T1, Tn, (Tn)3, (Tn)3>& fiber_dir) noexcept {
     auto awSqr = aw * aw;
     auto dM = diag_mul(fiber_dir, awSqr) * fiber_dir.transpose();
-    return 2 * 3 * dM / aw.squaredNorm();
+    return 2 * 3 * dM / aw.l2NormSqr();
   }
 
   template <typename T, typename Tn>

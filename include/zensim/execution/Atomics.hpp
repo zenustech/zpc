@@ -33,6 +33,25 @@ namespace zs {
   }
 #endif
 
+template <typename ExecTag, typename T>
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_add_impl(ExecTag, T *dest,
+                                                                            const T val) {
+    static_assert(is_same_v<ExecTag, omp_exec_tag>);
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+    if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+      using TT = conditional_t<sizeof(T) == 2, i16, conditional_t<sizeof(T) == 4, i32, i64>>;
+      static_assert(sizeof(T) == sizeof(TT));
+      TT oldVal{reinterpret_bits<TT>(*dest)};
+      TT newVal{reinterpret_bits<TT>(reinterpret_bits<T>(oldVal) + val)}, readVal{};
+      while ((readVal = atomic_cas(ExecTag{}, (TT*)dest, oldVal, newVal)) != oldVal) {
+        oldVal = readVal;
+        newVal = reinterpret_bits<TT>(reinterpret_bits<T>(oldVal) + val);
+      }
+      return reinterpret_bits<T>(oldVal);
+    }
+#endif
+  }
+
   template <typename ExecTag, typename T>
   inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_add(ExecTag, T *dest,
                                                                             const T val) {
@@ -55,8 +74,13 @@ namespace zs {
         else if constexpr (sizeof(T) == sizeof(__int64))
           return InterlockedAdd64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
       }
+      else 
+        return atomic_add_impl(ExecTag{}, dest, val);
 #    else
-      return __atomic_fetch_add(dest, val, __ATOMIC_SEQ_CST);
+      if constexpr (std::is_integral_v<T>) 
+        return __atomic_fetch_add(dest, val, __ATOMIC_SEQ_CST);
+      else
+        return atomic_add_impl(ExecTag{}, dest, val);
 #    endif
 
 #  else

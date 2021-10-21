@@ -24,10 +24,10 @@ namespace zs {
     auto nodalMass = mass * (T)0.25;  // evenly distributed to vertices
 
     mat3 Ds{}, Dv{};
-    for (Tn i = 0; i != 3; ++i) {
-      for (Tn d = 0, base = (i + 1) * 3; d != 3; ++d) {
-        Ds(d, i) = u_n[base + d] - u_n[d];
-        Dv(d, i) = v_n[base + d] - v_n[d];
+    for (Tn i = 0, base = 3; i != 3; ++i) {
+      for (Tn d = 0; d != 3; ++d, ++base) {
+        Ds(d, i) = u_n[base] - u_n[d];
+        Dv(d, i) = v_n[base] - v_n[d];
       }
     }
     auto F = Ds * DmInv;
@@ -68,10 +68,10 @@ namespace zs {
     auto nodalMass = vol * rho * (T)0.25;  // evenly distributed to vertices
 
     mat3 Ds{}, Dv{};
-    for (Tn i = 0; i != 3; ++i) {
-      for (Tn d = 0, base = (i + 1) * 3; d != 3; ++d) {
-        Ds(d, i) = u_n[base + d] - u_n[d];
-        Dv(d, i) = v_n[base + d] - v_n[d];
+    for (Tn i = 0, base = 3; i != 3; ++i) {
+      for (Tn d = 0; d != 3; ++d, ++base) {
+        Ds(d, i) = u_n[base] - u_n[d];
+        Dv(d, i) = v_n[base] - v_n[d];
       }
     }
     auto F = Ds * DmInv;

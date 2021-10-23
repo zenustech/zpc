@@ -2,6 +2,7 @@
 #include <type_traits>
 
 #include "zensim/meta/Meta.h"
+#include "zensim/meta/Relationship.h"
 
 namespace zs {
 
@@ -14,6 +15,12 @@ namespace zs {
   constexpr auto mem_device = device_mem_tag{};
   constexpr auto mem_um = um_mem_tag{};
 
+  template <typename Tag> constexpr bool is_memory_tag(Tag = {}) noexcept {
+    return (
+        is_same_v<Tag,
+                  host_mem_tag> || is_same_v<Tag, device_mem_tag> || is_same_v<Tag, um_mem_tag>);
+  }
+
   enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
   using host_exec_tag = wrapv<execspace_e::host>;
   using omp_exec_tag = wrapv<execspace_e::openmp>;
@@ -23,6 +30,13 @@ namespace zs {
   constexpr auto exec_omp = omp_exec_tag{};
   constexpr auto exec_cuda = cuda_exec_tag{};
   constexpr auto exec_hip = hip_exec_tag{};
+
+  template <typename Tag> constexpr bool is_execution_tag(Tag = {}) noexcept {
+    return (
+        is_same_v<
+            Tag,
+            host_exec_tag> || is_same_v<Tag, omp_exec_tag> || is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, hip_exec_tag>);
+  }
 
   enum struct attrib_e : unsigned char { scalar = 0, vector, matrix, affine };
   using attrib_scalar_tag = wrapv<attrib_e::scalar>;
@@ -34,6 +48,13 @@ namespace zs {
   constexpr auto matrix_v = attrib_matrix_tag{};
   constexpr auto affine_matrix_v = attrib_affine_matrix_tag{};
 
+  template <typename Tag> constexpr bool is_attribute_tag(Tag = {}) noexcept {
+    return (
+        is_same_v<
+            Tag,
+            attrib_scalar_tag> || is_same_v<Tag, attrib_vector_tag> || is_same_v<Tag, attrib_matrix_tag> || is_same_v<Tag, attrib_affine_matrix_tag>);
+  }
+
   enum struct layout_e : int { aos = 0, soa, aosoa };
   using layout_aos_tag = wrapv<layout_e::aos>;
   using layout_soa_tag = wrapv<layout_e::soa>;
@@ -41,6 +62,13 @@ namespace zs {
   constexpr auto aos_v = layout_aos_tag{};
   constexpr auto soa_v = layout_soa_tag{};
   constexpr auto aosoa_v = layout_aosoa_tag{};
+
+  template <typename Tag> constexpr bool is_layout_tag(Tag = {}) noexcept {
+    return (
+        is_same_v<
+            Tag,
+            layout_aos_tag> || is_same_v<Tag, layout_soa_tag> || is_same_v<Tag, layout_aosoa_tag>);
+  }
 
   enum struct kernel_e { linear = 2, quadratic = 3, cubic = 4 };
   using kernel_linear_tag = wrapv<kernel_e::linear>;
@@ -50,6 +78,13 @@ namespace zs {
   constexpr auto kernel_quad = kernel_quadratic_tag{};
   constexpr auto kernel_cubic = kernel_cubic_tag{};
 
+  template <typename Tag> constexpr bool is_kernel_tag(Tag = {}) noexcept {
+    return (
+        is_same_v<
+            Tag,
+            kernel_linear_tag> || is_same_v<Tag, kernel_quadratic_tag> || is_same_v<Tag, kernel_cubic_tag>);
+  }
+
   enum struct grid_e : unsigned char { collocated = 0, cellcentered, staggered, total };
   using grid_collocated_tag = wrapv<grid_e::collocated>;
   using grid_cellcentered_tag = wrapv<grid_e::cellcentered>;
@@ -57,6 +92,13 @@ namespace zs {
   static constexpr auto collocated_v = grid_collocated_tag{};
   static constexpr auto cellcentered_v = grid_cellcentered_tag{};
   static constexpr auto staggered_v = grid_staggered_tag{};
+
+  template <typename Tag> constexpr bool is_grid_tag(Tag = {}) noexcept {
+    return (
+        is_same_v<
+            Tag,
+            grid_collocated_tag> || is_same_v<Tag, grid_cellcentered_tag> || is_same_v<Tag, grid_staggered_tag>);
+  }
 
   /// comparable
   template <typename T> struct is_equality_comparable {

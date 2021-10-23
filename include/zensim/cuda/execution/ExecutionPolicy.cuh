@@ -464,6 +464,9 @@ namespace zs {
     ProcID procid{0};  ///< 0-th gpu
   };
 
+  constexpr bool is_backend_available(CudaExecutionPolicy) noexcept { return true; }
+  constexpr bool is_backend_available(cuda_exec_tag) noexcept { return true; }
+
   constexpr CudaExecutionPolicy cuda_exec() noexcept { return CudaExecutionPolicy{}; }
   constexpr CudaExecutionPolicy par_exec(cuda_exec_tag) noexcept { return CudaExecutionPolicy{}; }
 

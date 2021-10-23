@@ -684,6 +684,9 @@ namespace zs {
     int _dop{1};
   };
 
+  constexpr bool is_backend_available(OmpExecutionPolicy) noexcept { return true; }
+  constexpr bool is_backend_available(omp_exec_tag) noexcept { return true; }
+
   uint get_hardware_concurrency() noexcept;
   inline OmpExecutionPolicy omp_exec() noexcept {
     return OmpExecutionPolicy{}.threads(get_hardware_concurrency() - 1);

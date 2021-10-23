@@ -26,7 +26,7 @@ namespace zs {
     using propagate_on_container_swap = std::true_type;
     using is_virtual = wrapv<is_virtual_>;
     using resource_type = conditional_t<is_virtual::value, vmr_t, mr_t>;
-    
+
     struct ResourceCloner {
       struct Interface {
         virtual ~Interface() = default;

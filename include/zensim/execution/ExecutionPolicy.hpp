@@ -345,6 +345,21 @@ namespace zs {
     par_exec<Is...>(SeqPolicies{}, std::move(ranges), FWD(bodies)...);
   }
 
+  //
+  template <typename ExecPol> constexpr bool is_backend_available(ExecPol = {}) noexcept {
+    return false;
+  }
+
+  template <typename ExecTag> constexpr bool is_backend_activated(ExecTag) noexcept {
+    if constexpr (is_same_v<ExecTag, omp_exec_tag>)
+      return ZS_ENABLE_OPENMP;
+    else if constexpr (is_same_v<ExecTag, cuda_exec_tag>)
+      return ZS_ENABLE_CUDA;
+    else if constexpr (is_same_v<ExecTag, host_exec_tag>)
+      return true;
+    return false;
+  }
+
   // ===================== parallel pattern wrapper ====================
   /// for_each
   template <class ExecutionPolicy, class ForwardIt, class UnaryFunction>

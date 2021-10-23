@@ -33,19 +33,19 @@ namespace zs {
   }
 #endif
 
-template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_add_impl(ExecTag, T *dest,
-                                                                            const T val) {
+  template <typename ExecTag, typename T>
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_add_impl(ExecTag, T *dest, const T val) {
     static_assert(is_same_v<ExecTag, omp_exec_tag>);
 #if defined(_OPENMP) && ZS_ENABLE_OPENMP
     if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-      using TT = conditional_t<sizeof(T) == 2, i16, conditional_t<sizeof(T) == 4, i32, i64>>;
+      using TT = conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, u64>>;
       static_assert(sizeof(T) == sizeof(TT));
       TT oldVal{reinterpret_bits<TT>(*dest)};
       TT newVal{reinterpret_bits<TT>(reinterpret_bits<T>(oldVal) + val)}, readVal{};
-      while ((readVal = atomic_cas(ExecTag{}, (TT*)dest, oldVal, newVal)) != oldVal) {
+      while ((readVal = atomic_cas(ExecTag{}, (TT *)dest, oldVal, newVal)) != oldVal) {
         oldVal = readVal;
-        newVal = reinterpret_bits<TT>(reinterpret_bits<T>(oldVal) + val);
+        newVal = reinterpret_bits<TT>(reinterpret_bits<T>(readVal) + val);
       }
       return reinterpret_bits<T>(oldVal);
     }
@@ -53,8 +53,8 @@ template <typename ExecTag, typename T>
   }
 
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_add(ExecTag, T *dest,
-                                                                            const T val) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_add(ExecTag, T *dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest += val;
@@ -73,11 +73,10 @@ template <typename ExecTag, typename T>
           return InterlockedAdd(const_cast<long volatile *>((long *)dest), (long)val);
         else if constexpr (sizeof(T) == sizeof(__int64))
           return InterlockedAdd64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
-      }
-      else 
+      } else
         return atomic_add_impl(ExecTag{}, dest, val);
 #    else
-      if constexpr (std::is_integral_v<T>) 
+      if constexpr (std::is_integral_v<T>)
         return __atomic_fetch_add(dest, val, __ATOMIC_SEQ_CST);
       else
         return atomic_add_impl(ExecTag{}, dest, val);
@@ -113,7 +112,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_inc(ExecTag, T *dest) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_inc(ExecTag, T *dest) {
     return atomic_add(ExecTag{}, dest, (T)1);
   }
 
@@ -128,8 +128,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_exch(ExecTag, T *dest,
-                                                                             const T val) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_exch(ExecTag, T *dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest = val;
@@ -177,8 +177,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_cas(ExecTag, T *dest,
-                                                                            T expected, T desired) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_cas(ExecTag, T *dest, T expected, T desired) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old == expected) *dest = desired;
@@ -206,25 +206,20 @@ template <typename ExecTag, typename T>
 #    else
 
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T)) {
-        const T old = expected;
         int expected_ = reinterpret_bits<int>(expected);
-        if (__atomic_compare_exchange_n((int *)dest, &expected_, reinterpret_bits<int>(desired),
-                                        false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
-          return old;
-        return reinterpret_bits<float>(expected_);
+        __atomic_compare_exchange_n(const_cast<int volatile *>((int *)dest), &expected_,
+                                    reinterpret_bits<int>(desired), false, __ATOMIC_ACQ_REL,
+                                    __ATOMIC_RELAXED);
+        return reinterpret_bits<T>(expected_);
       } else if constexpr (is_same_v<T, double> && sizeof(long long) == sizeof(T)) {
-        const T old = expected;
         long long expected_ = reinterpret_bits<long long>(expected);
-        if (__atomic_compare_exchange_n((long long *)dest, &expected_,
-                                        reinterpret_bits<long long>(desired), false,
-                                        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
-          return old;
-        return reinterpret_bits<double>(expected_);
+        __atomic_compare_exchange_n(const_cast<long long volatile *>((long long *)dest), &expected_,
+                                    reinterpret_bits<long long>(desired), false, __ATOMIC_ACQ_REL,
+                                    __ATOMIC_RELAXED);
+        return reinterpret_bits<T>(expected_);
       } else {
-        const T old = expected;
-        if (__atomic_compare_exchange_n(dest, &expected, desired, false, __ATOMIC_SEQ_CST,
-                                        __ATOMIC_SEQ_CST))
-          return old;
+        __atomic_compare_exchange_n(const_cast<T volatile *>(dest), &expected, desired, false,
+                                    __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
         return expected;
       }
 #    endif
@@ -262,9 +257,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> atomic_max(ExecTag execTag,
-                                                                         T *const dest,
-                                                                         const T val) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>()>
+  atomic_max(ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old < val) *dest = val;
@@ -303,9 +297,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>> atomic_min(ExecTag execTag,
-                                                                         T *const dest,
-                                                                         const T val) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>()>
+  atomic_min(ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old > val) *dest = val;
@@ -337,8 +330,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_or(ExecTag, T *dest,
-                                                                           const T val) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_or(ExecTag, T *dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest |= val;
@@ -382,8 +375,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_and(ExecTag, T *dest,
-                                                                            const T val) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_and(ExecTag, T *dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest &= val;
@@ -423,8 +416,8 @@ template <typename ExecTag, typename T>
   }
 #endif
   template <typename ExecTag, typename T>
-  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag>, T> atomic_xor(ExecTag, T *dest,
-                                                                            const T val) {
+  inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  atomic_xor(ExecTag, T *dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest ^= val;

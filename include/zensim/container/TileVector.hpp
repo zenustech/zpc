@@ -72,9 +72,9 @@ namespace zs {
       const auto N = numProperties();
       _base = allocate(sizeof(value_type) * numChannels() * capacity());
       {
-        auto tagNames = Vector<SmallString>{static_cast<std::size_t>(N)};
-        auto tagSizes = Vector<channel_counter_type>{static_cast<std::size_t>(N)};
-        auto tagOffsets = Vector<channel_counter_type>{static_cast<std::size_t>(N)};
+        auto tagNames = Vector<SmallString, allocator_type>{static_cast<std::size_t>(N)};
+        auto tagSizes = Vector<channel_counter_type, allocator_type>{static_cast<std::size_t>(N)};
+        auto tagOffsets = Vector<channel_counter_type, allocator_type>{static_cast<std::size_t>(N)};
         channel_counter_type curOffset = 0;
         for (auto &&[name, size, offset, src] : zip(tagNames, tagSizes, tagOffsets, channelTags)) {
           name = src.name;
@@ -328,9 +328,9 @@ namespace zs {
     pointer _base{nullptr};
     std::vector<PropertyTag> _tags{};  // on host
     /// for proxy use
-    Vector<SmallString> _tagNames{};
-    Vector<channel_counter_type> _tagSizes{};
-    Vector<channel_counter_type> _tagOffsets{};
+    Vector<SmallString, allocator_type> _tagNames{};
+    Vector<channel_counter_type, allocator_type> _tagSizes{};
+    Vector<channel_counter_type, allocator_type> _tagOffsets{};
     size_type _size{0}, _capacity{0};  // element size
     channel_counter_type _numChannels{1};
   };

@@ -13,12 +13,20 @@ namespace zs {
                     std::string tag = std::string{"position"}) {
     Partio::ParticlesDataMutable *parts = Partio::create();
 
-    Partio::ParticleAttribute attrib = parts->addAttribute(tag.c_str(), Partio::VECTOR, dim);
+    Partio::ParticleAttribute attrib = parts->addAttribute(tag.c_str(), Partio::VECTOR, 3);
 
     parts->addParticles(data.size());
     for (int idx = 0; idx < (int)data.size(); ++idx) {
       float *val = parts->dataWrite<float>(attrib, idx);
-      for (int k = 0; k < dim; k++) val[k] = data[idx][k];
+      val[0] = data[idx][0];
+      if constexpr (dim > 1) {
+        val[1] = data[idx][1];
+        if constexpr (dim > 2)
+          val[2] = data[idx][2];
+        else
+          val[2] = 0.f;
+      } else
+        val[1] = val[2] = 0.f;
     }
     Partio::write(filename.c_str(), *parts);
     parts->release();
@@ -29,16 +37,22 @@ namespace zs {
                                 const std::vector<T> &stressData) {
     Partio::ParticlesDataMutable *parts = Partio::create();
 
-    Partio::ParticleAttribute pattrib = parts->addAttribute("position", Partio::VECTOR, dim);
+    Partio::ParticleAttribute pattrib = parts->addAttribute("position", Partio::VECTOR, 3);
     Partio::ParticleAttribute sattrib = parts->addAttribute("stress", Partio::FLOAT, 1);
 
     parts->addParticles(data.size());
     for (int idx = 0; idx < (int)data.size(); ++idx) {
       float *val = parts->dataWrite<float>(pattrib, idx);
       float *stress = parts->dataWrite<float>(sattrib, idx);
-      for (int k = 0; k < dim; k++) {
-        val[k] = data[idx][k];
-      }
+      val[0] = data[idx][0];
+      if constexpr (dim > 1) {
+        val[1] = data[idx][1];
+        if constexpr (dim > 2)
+          val[2] = data[idx][2];
+        else
+          val[2] = 0.f;
+      } else
+        val[1] = val[2] = 0.f;
       stress[0] = stressData[idx];
     }
     Partio::write(filename.c_str(), *parts);

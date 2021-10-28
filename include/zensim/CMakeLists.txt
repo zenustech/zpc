@@ -115,6 +115,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/MathUtils.h
     math/RandomNumber.hpp
     math/Rotation.hpp
+    math/VecInterface.hpp
     math/Vec.h
     # memory
     memory/MemOps.hpp

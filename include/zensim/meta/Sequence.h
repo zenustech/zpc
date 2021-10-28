@@ -10,16 +10,23 @@
 
 namespace zs {
 
+  template <typename Tn, Tn... Ns> using integer_seq = std::integer_sequence<Tn, Ns...>;
+  template <auto... Ns> using index_seq = std::index_sequence<Ns...>;
+
   /// indexable type list to avoid recursion
   namespace type_impl {
-    template <std::size_t, typename T> struct indexed_type { using type = T; };
+    template <std::size_t I, typename T> struct indexed_type {
+      using type = T;
+      static constexpr std::size_t value = I;
+    };
     template <typename, typename... Ts> struct indexed_types;
 
-    template <std::size_t... Is, typename... Ts>
-    struct indexed_types<std::index_sequence<Is...>, Ts...> : indexed_type<Is, Ts>... {};
+    template <std::size_t... Is, typename... Ts> struct indexed_types<index_seq<Is...>, Ts...>
+        : indexed_type<Is, Ts>... {};
 
     // use pointer rather than reference as in taocpp! [incomplete type error]
     template <std::size_t I, typename T> indexed_type<I, T> extract_type(indexed_type<I, T> *);
+    template <typename T, std::size_t I> indexed_type<I, T> extract_index(indexed_type<I, T> *);
   }  // namespace type_impl
 
   /******************************************************************/
@@ -50,18 +57,14 @@ namespace zs {
   /** definition: monoid_op, type_seq, value_seq, gen_seq, gather */
   /******************************************************************/
   /// static uniform non-types
-  template <typename Tn, Tn... Ns> using integral_seq = std::integer_sequence<Tn, Ns...>;
-  template <auto... Ns> using index_seq = std::index_sequence<Ns...>;
-
-  template <std::size_t... Is> struct gen_seq_impl<std::index_sequence<Is...>> {
+  template <std::size_t... Is> struct gen_seq_impl<index_seq<Is...>> {
     using signed_size_t = std::make_signed_t<std::size_t>;
-    template <auto N0 = 0, auto Step = 1> using arithmetic
-        = std::index_sequence<static_cast<std::size_t>(
-            static_cast<signed_size_t>(N0)
-            + static_cast<signed_size_t>(Is) * static_cast<signed_size_t>(Step))...>;
+    template <auto N0 = 0, auto Step = 1> using arithmetic = index_seq<static_cast<std::size_t>(
+        static_cast<signed_size_t>(N0)
+        + static_cast<signed_size_t>(Is) * static_cast<signed_size_t>(Step))...>;
     using ascend = arithmetic<0, 1>;
     using descend = arithmetic<sizeof...(Is) - 1, -1>;
-    template <auto J> using uniform = integral_seq<decltype(J), (Is == Is ? J : J)...>;
+    template <auto J> using uniform = integer_seq<decltype(J), (Is == Is ? J : J)...>;
     template <auto J> using uniform_vseq = vseq_t<(Is == Is ? J : J)...>;
     template <template <typename...> typename T, typename Arg> using uniform_types_t
         = T<std::enable_if_t<Is >= 0, Arg>...>;
@@ -76,6 +79,15 @@ namespace zs {
     using tseq = zs::tseq<type_seq<Ts...>>;
     template <std::size_t I> using type = typename decltype(type_impl::extract_type<I>(
         std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::type;
+
+    template <typename, typename = void> struct locator {
+      using index = integral_v<std::size_t, std::numeric_limits<std::size_t>::max()>;
+    };
+    template <typename T> struct locator<T, std::enable_if_t<((int)is_same_v<T, Ts> + ...) == 1>> {
+      using index = integral_v<std::size_t, decltype(type_impl::extract_index<T>(
+          std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::value>;
+    };
+    template <typename T> using index = typename locator<T>::index;
   };
 
   /// select type by index
@@ -86,7 +98,7 @@ namespace zs {
   /** sequence transformations */
   template <typename, typename> struct tseqop_impl;
   template <std::size_t... Is, typename... Ts>
-  struct tseqop_impl<std::index_sequence<Is...>, type_seq<Ts...>> {
+  struct tseqop_impl<index_seq<Is...>, type_seq<Ts...>> {
     using indices = std::index_sequence_for<Ts...>;
     /// convert
     template <template <typename> typename Unary> using to_vseq = vseq_t<Unary<Ts>::value...>;
@@ -99,7 +111,7 @@ namespace zs {
       using type = tseq_t<Unary<Js, Ts>...>;
     };
     template <template <std::size_t, typename> typename Unary, std::size_t... Js>
-    struct shuffle_convert_impl<Unary, std::index_sequence<Js...>>
+    struct shuffle_convert_impl<Unary, index_seq<Js...>>
         : shuffle_convert_impl<Unary, vseq_t<Js...>> {};
     template <template <std::size_t, typename> typename Unary, typename Indices>
     using shuffle_convert = typename shuffle_convert_impl<Unary, Indices>::type;
@@ -108,7 +120,7 @@ namespace zs {
     template <auto... Js> struct shuffle_impl<vseq_t<Js...>> {
       using type = tseq_t<typename type_seq<Ts...>::template type<Js>...>;
     };
-    template <std::size_t... Js> struct shuffle_impl<std::index_sequence<Js...>>
+    template <std::size_t... Js> struct shuffle_impl<index_seq<Js...>>
         : shuffle_impl<vseq_t<Js...>> {};
     template <typename Indices> using shuffle = typename shuffle_impl<Indices>::type;
   };
@@ -131,7 +143,7 @@ namespace zs {
   template <auto... Ns> struct value_seq : tseq_t<std::integral_constant<decltype(Ns), Ns>...> {
     static constexpr auto count = sizeof...(Ns);
     using Tn = std::common_type_t<decltype(Ns)...>;
-    using iseq = integral_seq<Tn, (Tn)Ns...>;
+    using iseq = integer_seq<Tn, (Tn)Ns...>;
     using vseq = zs::vseq_t<Ns...>;
   };
 
@@ -143,8 +155,7 @@ namespace zs {
 
   /** sequence transformations */
   template <typename, typename> struct vseqop_impl;
-  template <std::size_t... Is, auto... Ns>
-  struct vseqop_impl<std::index_sequence<Is...>, value_seq<Ns...>> {
+  template <std::size_t... Is, auto... Ns> struct vseqop_impl<index_seq<Is...>, value_seq<Ns...>> {
     using indices = std::make_index_sequence<sizeof...(Ns)>;
     /// monoid calculation
     template <typename BinaryOp> static constexpr auto reduce(BinaryOp &&) noexcept {
@@ -167,8 +178,7 @@ namespace zs {
         typename component_wise_impl<BinaryOp, Seq>::type;
     /// map (Op(i), index_sequence)
     template <typename MonoidOp, typename Js> struct map_impl;
-    template <typename MapOp, std::size_t... Js>
-    struct map_impl<MapOp, std::index_sequence<Js...>> {
+    template <typename MapOp, std::size_t... Js> struct map_impl<MapOp, index_seq<Js...>> {
       /// gather-style mapping
       using type = vseq_t<MapOp{}(Js, Ns...)...>;  ///< J is the target index
     };
@@ -179,7 +189,7 @@ namespace zs {
     template <auto... Js> struct shuffle_impl<vseq_t<Js...>> {
       using type = vseq_t<(value_seq<Ns...>::template type<Js>::value)...>;
     };
-    template <std::size_t... Js> struct shuffle_impl<std::index_sequence<Js...>>
+    template <std::size_t... Js> struct shuffle_impl<index_seq<Js...>>
         : shuffle_impl<vseq_t<Js...>> {};
     template <typename Indices> using shuffle = typename shuffle_impl<Indices>::type;
     /// transform
@@ -191,7 +201,7 @@ namespace zs {
     /// scan
     template <std::size_t, typename, typename> struct scan_element;
     template <std::size_t J, typename BinaryOp, std::size_t... Js>
-    struct scan_element<J, BinaryOp, std::index_sequence<Js...>> {
+    struct scan_element<J, BinaryOp, index_seq<Js...>> {
       using T = decltype(monoid_op<BinaryOp>::e);
       // excl/incl prefix/suffix
       static constexpr T value(std::size_t I) noexcept {
@@ -207,14 +217,14 @@ namespace zs {
         = vseq_t<scan_element<Is, BinaryOp, indices>::value(Cate)...>;
   };
   template <std::size_t... Is, typename Tn, Tn... Ns>
-  struct vseqop_impl<std::index_sequence<Is...>, integral_seq<Tn, Ns...>>
-      : vseqop_impl<std::index_sequence<Is...>, value_seq<Ns...>> {};
+  struct vseqop_impl<index_seq<Is...>, integer_seq<Tn, Ns...>>
+      : vseqop_impl<index_seq<Is...>, value_seq<Ns...>> {};
 
   template <typename> struct vseqop;
   template <auto... Ns> struct vseqop<value_seq<Ns...>>
       : vseqop_impl<std::make_index_sequence<sizeof...(Ns)>, value_seq<Ns...>> {};
-  template <typename Tn, Tn... Ns> struct vseqop<integral_seq<Tn, Ns...>>
-      : vseqop_impl<std::make_index_sequence<sizeof...(Ns)>, integral_seq<Tn, Ns...>> {};
+  template <typename Tn, Tn... Ns> struct vseqop<integer_seq<Tn, Ns...>>
+      : vseqop_impl<std::make_index_sequence<sizeof...(Ns)>, integer_seq<Tn, Ns...>> {};
 
   template <auto... Ns> struct vseq<value_seq<Ns...>> : value_seq<Ns...>, vseqop<value_seq<Ns...>> {
     using vals = value_seq<Ns...>;
@@ -230,7 +240,7 @@ namespace zs {
     using op::shuffle;
     using op::transform;
   };
-  template <typename Tn, Tn... Ns> struct vseq<integral_seq<Tn, Ns...>> : vseq<value_seq<Ns...>> {};
+  template <typename Tn, Tn... Ns> struct vseq<integer_seq<Tn, Ns...>> : vseq<value_seq<Ns...>> {};
 
   /** utilities */
 
@@ -250,12 +260,11 @@ namespace zs {
 
   /// uniform value sequence
   template <std::size_t... Is, typename T, T... Ns>
-  struct gather<std::index_sequence<Is...>, integral_seq<T, Ns...>> {
-    using type = integral_seq<T, select_indexed_value<Is, Ns...>{}...>;
+  struct gather<index_seq<Is...>, integer_seq<T, Ns...>> {
+    using type = integer_seq<T, select_indexed_value<Is, Ns...>{}...>;
   };
   /// non uniform value sequence
-  template <std::size_t... Is, auto... Ns>
-  struct gather<std::index_sequence<Is...>, value_seq<Ns...>> {
+  template <std::size_t... Is, auto... Ns> struct gather<index_seq<Is...>, value_seq<Ns...>> {
     using type = value_seq<(select_value<Is, value_seq<Ns...>>::value)...>;
   };
 

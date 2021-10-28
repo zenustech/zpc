@@ -80,6 +80,7 @@ namespace zs {
     SETUP_CONSTITUTIVE_PARAMETER(xi, xi);
     SETUP_CONSTITUTIVE_PARAMETER(beta, beta);
     SETUP_CONSTITUTIVE_PARAMETER(yieldSurface, yieldSurface);
+    SETUP_CONSTITUTIVE_PARAMETER(yieldStress, yieldStress);
     SETUP_CONSTITUTIVE_PARAMETER(cohesion, cohesion);
 
     /// push to scene

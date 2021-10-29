@@ -6,6 +6,35 @@
 
 namespace zs {
 
+#if 0
+  template <typename Tn, int dim, typename Ti, typename Table>
+  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength,
+                                      const Table &table) {
+    using IV = vec<Tn, dim>;
+    IV blockCoord = coord;
+    for (int d = 0; d < dim; ++d) blockCoord[d] += (coord[d] < 0 ? -(Tn)sideLength + 1 : 0);
+    blockCoord = blockCoord / (Tn)sideLength;
+    return std::make_tuple(table.query(blockCoord), coord - blockCoord * (Tn)sideLength);
+  }
+  template <typename Tn, int dim, typename Ti>
+  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength) {
+    using IV = vec<Tn, dim>;
+    IV blockCoord = coord;
+    for (int d = 0; d < dim; ++d) blockCoord[d] += (coord[d] < 0 ? -(Tn)sideLength + 1 : 0);
+    blockCoord = blockCoord / (Tn)sideLength;
+    return std::make_tuple(blockCoord, coord - blockCoord * (Tn)sideLength);
+  }
+  template <typename Tn, int dim, typename Ti, typename Table, typename Grid>
+  constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength, const Table &table,
+                                      Grid &&grid) {
+    using IV = vec<Tn, dim>;
+    IV blockCoord = coord;
+    for (int d = 0; d < dim; ++d) blockCoord[d] += (coord[d] < 0 ? -(Tn)sideLength + 1 : 0);
+    blockCoord = blockCoord / (Tn)sideLength;
+    return std::forward_as_tuple(grid[table.query(blockCoord)],
+                                 coord - blockCoord * (Tn)sideLength);
+  }
+#else
   template <typename Tn, int dim, typename Ti>
   constexpr auto unpack_coord_in_grid(const vec<Tn, dim> &coord, Ti sideLength) {
     auto loc = coord & (Tn)(sideLength - 1);
@@ -26,6 +55,7 @@ namespace zs {
     else
       return std::make_tuple(grid[table.query((coord - loc) / (Tn)sideLength)], loc);
   }
+#endif
 
   template <grid_e gt = grid_e::collocated, kernel_e kt = kernel_e::quadratic, typename T = f32,
             int dim_ = 3, typename Ti = int>

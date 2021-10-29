@@ -65,7 +65,7 @@ namespace zs {
         vec3 local_pos{particles.pos(parid)};
         vec3 vel{particles.vel(parid)};
         float mass = particles.mass(parid);
-        vec9 contrib{}, C{particles.C(parid)};
+        vec9 contrib{vec9::zeros()}, C{particles.C(parid)};
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);
@@ -173,7 +173,7 @@ namespace zs {
         vec3 local_pos{particles.pos(parid)};
         vec3 vel{particles.vel(parid)};
         float mass = particles.mass(parid);
-        vec9 contrib{}, C{particles.C(parid)};
+        vec9 contrib{vec9::zeros()}, C{particles.C(parid)};
 
         if constexpr (is_same_v<model_t, EquationOfStateConfig>) {
           float J = particles.J(parid);

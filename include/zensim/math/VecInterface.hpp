@@ -23,7 +23,8 @@ namespace zs {
     using storage_extents_impl
         = integer_seq<index_type, select_indexed_value<StorageOrders, Ns...>::value...>;
     using storage_bases = value_seq<excl_suffix_mul(Is, storage_extents_impl{})...>;
-    using lookup_bases = value_seq<storage_bases::template type<lookup_orders::template type<Is>::value>::value...>;
+    using lookup_bases = value_seq<
+        storage_bases::template type<lookup_orders::template type<Is>::value>::value...>;
 
     template <std::size_t I> static constexpr index_type storage_range() noexcept {
       return select_indexed_value<storage_orders::template type<I>::value, Ns...>::value;
@@ -36,11 +37,11 @@ namespace zs {
       return ((is * lookup_bases::template type<Is>::value) + ...);
     }
     template <std::size_t... Js, typename... Args>
-    static constexpr index_type offset_impl(index_seq<Js...>, Args &&...args) noexcept {
+    static constexpr index_type offset_impl(index_seq<Js...>, Args&&... args) noexcept {
       return (... + ((index_type)args * lookup_bases::template type<Js>::value));
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
-    static constexpr index_type offset(Args &&...args) noexcept {
+    static constexpr index_type offset(Args&&... args) noexcept {
       return offset_impl(std::index_sequence_for<Args...>{}, FWD(args)...);
     }
   };
@@ -50,27 +51,32 @@ namespace zs {
                      std::make_index_sequence<sizeof...(Ns)>>;
 
   template <typename Orders, typename Tn, Tn... Ns> using ordered_indexer
-      = indexer_impl<integer_seq<Tn, Ns...>, Orders,
-                     std::make_index_sequence<sizeof...(Ns)>>;
+      = indexer_impl<integer_seq<Tn, Ns...>, Orders, std::make_index_sequence<sizeof...(Ns)>>;
 
-  template <typename Derived, typename T = typename Derived::value_type,
-            typename Tn = typename Derived::index_type,
-            typename Indexer = typename Derived::indexer_type>
-  struct VecInterface {
-    using value_type = T;
-    using index_type = Tn;
-    using indexer_type = Indexer;
-    static constexpr int dim = indexer_type::dim;
+  template <typename Derived> struct VecInterface {
+#define DECLARE_ATTRIBUTES                             \
+  using value_type = typename Derived::value_type;     \
+  using index_type = typename Derived::index_type;     \
+  using indexer_type = typename Derived::indexer_type; \
+  using extents = typename indexer_type::extents;      \
+  constexpr index_type extent = indexer_type::extent;  \
+  constexpr auto dim = indexer_type::dim;
 
-    constexpr auto data() noexcept -> value_type* { return static_cast<Derived*>(this)->do_data(); }
-    constexpr auto data() volatile noexcept -> volatile value_type* {
-      return static_cast<volatile Derived*>(this)->do_data();
+    constexpr auto data() noexcept {
+      DECLARE_ATTRIBUTES
+      return (value_type*)static_cast<Derived*>(this)->do_data();
     }
-    constexpr auto data() const noexcept -> const value_type* {
-      return static_cast<const Derived*>(this)->do_data();
+    constexpr auto data() volatile noexcept {
+      DECLARE_ATTRIBUTES
+      return (volatile value_type*)static_cast<volatile Derived*>(this)->do_data();
     }
-    constexpr auto data() const volatile noexcept -> const volatile value_type* {
-      return static_cast<const volatile Derived*>(this)->do_data();
+    constexpr auto data() const noexcept {
+      DECLARE_ATTRIBUTES
+      return (const value_type*)static_cast<const Derived*>(this)->do_data();
+    }
+    constexpr auto data() const volatile noexcept {
+      DECLARE_ATTRIBUTES
+      return (const volatile value_type*)static_cast<const volatile Derived*>(this)->do_data();
     }
     /// property query
     // template <std::size_t I> static constexpr index_type range() noexcept {
@@ -78,12 +84,16 @@ namespace zs {
     // }
 
     /// entry access
-    template <typename... Tis, enable_if_t<sizeof...(Tis) <= dim> = 0>
+    template <typename VecT = Derived, typename... Tis,
+              enable_if_t<sizeof...(Tis) <= VecT::dim> = 0>
     constexpr decltype(auto) operator()(Tis&&... is) noexcept {
+      DECLARE_ATTRIBUTES
       return static_cast<Derived*>(this)->operator()(FWD(is)...);
     }
-    template <typename... Tis, enable_if_t<sizeof...(Tis) <= dim> = 0>
+    template <typename VecT = Derived, typename... Tis,
+              enable_if_t<sizeof...(Tis) <= VecT::dim> = 0>
     constexpr decltype(auto) operator()(Tis&&... is) const noexcept {
+      DECLARE_ATTRIBUTES
       return static_cast<const Derived*>(this)->operator()(FWD(is)...);
     }
     template <typename Ti, enable_if_t<std::is_integral_v<Ti>> = 0>
@@ -95,13 +105,15 @@ namespace zs {
       return static_cast<const Derived*>(this)->operator[](is);
     }
     // tuple as index
-    template <typename... Ts, enable_if_all<sizeof...(Ts) <= dim,
-                                            (std::is_integral_v<remove_cvref_t<Ts>>, ...)> = 0>
+    template <typename VecT = Derived, typename... Ts,
+              enable_if_all<sizeof...(Ts) <= VecT::dim,
+                            (std::is_integral_v<remove_cvref_t<Ts>>, ...)> = 0>
     constexpr decltype(auto) operator()(const std::tuple<Ts...>& is) noexcept {
       return std::apply(static_cast<Derived&>(*this), is);
     }
-    template <typename... Ts, enable_if_all<(sizeof...(Ts) <= dim),
-                                            (std::is_integral_v<remove_cvref_t<Ts>>, ...)> = 0>
+    template <typename VecT = Derived, typename... Ts,
+              enable_if_all<(sizeof...(Ts) <= VecT::dim),
+                            (std::is_integral_v<remove_cvref_t<Ts>>, ...)> = 0>
     constexpr decltype(auto) operator()(const std::tuple<Ts...>& is) const noexcept {
       return std::apply(static_cast<const Derived&>(*this), is);
     }

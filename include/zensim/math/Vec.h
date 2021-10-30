@@ -38,13 +38,13 @@ using vec =
   /// vec without lifetime managing
   template <typename T, typename Tn, Tn... Ns> struct vec_view<T, std::integer_sequence<Tn, Ns...>>
       : indexer<Tn, Ns...> {
-    using base_t = indexer<Tn, Ns...>;
-    using base_t::dim;
-    using base_t::extent;
+    using indexer_type = indexer<Tn, Ns...>;
+    using indexer_type::dim;
+    using indexer_type::extent;
     using value_type = T;
-    using base_t::offset;
-    using typename base_t::extents;
-    using typename base_t::index_type;
+    using indexer_type::offset;
+    using typename indexer_type::extents;
+    using typename indexer_type::index_type;
 
     constexpr vec_view() = delete;
     constexpr explicit vec_view(T *ptr) : _data{ptr} {}
@@ -53,11 +53,11 @@ using vec =
     // ()
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr T &operator()(Args &&...args) noexcept {
-      return _data[base_t::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(std::forward<Args>(args)...)];
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr const T &operator()(Args &&...args) const noexcept {
-      return _data[base_t::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(std::forward<Args>(args)...)];
     }
     // []
     template <typename Index,
@@ -65,7 +65,7 @@ using vec =
               = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
     constexpr R operator[](Index &&index) noexcept {
-      return R{_data + base_t::offset(std::forward<Index>(index))};
+      return R{_data + indexer_type::offset(std::forward<Index>(index))};
     }
     template <typename Index,
               typename R
@@ -73,7 +73,7 @@ using vec =
                          gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
     constexpr R operator[](Index index) const noexcept {
-      return R{_data + base_t::offset(std::forward<Index>(index))};
+      return R{_data + indexer_type::offset(std::forward<Index>(index))};
     }
     template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
     constexpr T &operator[](Index index) noexcept {
@@ -95,16 +95,18 @@ using vec =
   };
 
   /// vec
-  template <typename T, typename Tn, Tn... Ns>
-  struct vec_impl<T, std::integer_sequence<Tn, Ns...>> {
+  template <typename T, typename Tn, Tn... Ns> struct vec_impl<T, std::integer_sequence<Tn, Ns...>>
+      : VecInterface<vec_impl<T, std::integer_sequence<Tn, Ns...>>> {
     // static_assert(std::is_trivial<T>::value,
     //              "Vec element type is not trivial!\n");
-    using base_t = indexer<Tn, Ns...>;
+    using indexer_type = indexer<Tn, Ns...>;
     static constexpr auto dim = sizeof...(Ns);
     static constexpr auto extent = (Ns * ...);
     using value_type = T;
     using index_type = Tn;
     using extents = std::integer_sequence<Tn, Ns...>;
+
+    template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
     T _data[extent];
 
@@ -115,6 +117,10 @@ using vec =
     constexpr auto data() const noexcept -> const T * { return _data; }
 
     /// think this does not break rule of five
+    constexpr vec_impl() = default;
+    template <typename... Ts, enable_if_all<(sizeof...(Ts) <= extent),
+                                            (std::is_convertible_v<Ts, value_type> && ...)> = 0>
+    constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}
     /// https://github.com/kokkos/kokkos/issues/177
     constexpr vec_impl &operator=(const vec_impl &o) = default;
 #if 0
@@ -179,11 +185,11 @@ using vec =
     // ()
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr T &operator()(Args &&...args) noexcept {
-      return _data[base_t::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(std::forward<Args>(args)...)];
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr const T &operator()(Args &&...args) const noexcept {
-      return _data[base_t::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(std::forward<Args>(args)...)];
     }
     // []
     template <typename Index,
@@ -191,7 +197,7 @@ using vec =
               = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
     constexpr R operator[](Index &&index) noexcept {
-      return R{_data + base_t::offset(std::forward<Index>(index))};
+      return R{_data + indexer_type::offset(std::forward<Index>(index))};
     }
     template <typename Index,
               typename R
@@ -199,7 +205,7 @@ using vec =
                          gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
     constexpr R operator[](Index index) const noexcept {
-      return R{_data + base_t::offset(std::forward<Index>(index))};
+      return R{_data + indexer_type::offset(std::forward<Index>(index))};
     }
     template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
     constexpr T &operator[](Index index) noexcept {
@@ -216,7 +222,6 @@ using vec =
       return _data[std::forward<Index>(index)];
     }
     ///
-
     template <typename TT> constexpr auto cast() const noexcept {
       vec_impl<TT, extents> r{};
       for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = _data[idx];
@@ -340,27 +345,31 @@ using vec =
       return r;
     }
 
-    //!@name Binary operators
+//!@name Binary operators
+#if 0
     // scalar
-#define DEFINE_OP_SCALAR(OP)                                                  \
-  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>  \
-  friend constexpr auto operator OP(vec_impl const &e, TT const v) noexcept { \
-    using R = math::op_result_t<T, TT>;                                       \
-    vec_impl<R, extents> r{};                                                 \
-    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);         \
-    return r;                                                                 \
-  }                                                                           \
-  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>  \
-  friend constexpr auto operator OP(TT const v, vec_impl const &e) noexcept { \
-    using R = math::op_result_t<T, TT>;                                       \
-    vec_impl<R, extents> r{};                                                 \
-    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));         \
-    return r;                                                                 \
-  }
+#  define DEFINE_OP_SCALAR(OP)                                                                 \
+    template <typename TT,                                                                     \
+              enable_if_t<std::is_convertible<T, TT>::value && std::is_fundamental_v<TT>> = 0> \
+    friend constexpr auto operator OP(vec_impl const &e, TT const v) noexcept {                \
+      using R = math::op_result_t<T, TT>;                                                      \
+      vec_impl<R, extents> r{};                                                                \
+      for (Tn i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);                        \
+      return r;                                                                                \
+    }                                                                                          \
+    template <typename TT,                                                                     \
+              enable_if_t<std::is_convertible<T, TT>::value && std::is_fundamental_v<TT>> = 0> \
+    friend constexpr auto operator OP(TT const v, vec_impl const &e) noexcept {                \
+      using R = math::op_result_t<T, TT>;                                                      \
+      vec_impl<R, extents> r{};                                                                \
+      for (Tn i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));                        \
+      return r;                                                                                \
+    }
     DEFINE_OP_SCALAR(+)
     DEFINE_OP_SCALAR(-)
     DEFINE_OP_SCALAR(*)
     DEFINE_OP_SCALAR(/)
+#endif
 
     // scalar integral
 #define DEFINE_OP_SCALAR_INTEGRAL(OP)                                          \
@@ -427,12 +436,13 @@ using vec =
 
 //!@name Assignment operators
 // scalar
-#define DEFINE_OP_SCALAR_ASSIGN(OP)                                          \
-  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0> \
-  constexpr vec_impl &operator OP##=(TT &&v) noexcept {                      \
-    using R = math::op_result_t<T, TT>;                                      \
-    for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)v);        \
-    return *this;                                                            \
+#define DEFINE_OP_SCALAR_ASSIGN(OP)                                                          \
+  template <typename TT,                                                                     \
+            enable_if_all<std::is_convertible<T, TT>::value, std::is_fundamental_v<TT>> = 0> \
+  constexpr vec_impl &operator OP##=(TT &&v) noexcept {                                      \
+    using R = math::op_result_t<T, TT>;                                                      \
+    for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)v);                        \
+    return *this;                                                                            \
   }
     DEFINE_OP_SCALAR_ASSIGN(+)
     DEFINE_OP_SCALAR_ASSIGN(-)

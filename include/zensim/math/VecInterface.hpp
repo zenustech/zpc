@@ -13,9 +13,10 @@ namespace zs {
   template <typename Tn, Tn... Ns, std::size_t... StorageOrders, std::size_t... Is>
   struct indexer_impl<integer_seq<Tn, Ns...>, index_seq<StorageOrders...>, index_seq<Is...>> {
     static_assert(sizeof...(Ns) == sizeof...(StorageOrders), "dimension mismatch");
-    static constexpr auto dim = sizeof...(Ns);
-    static constexpr auto extent = (Ns * ...);
+    static_assert(std::is_integral_v<Tn>, "index type is not an integral");
+    static constexpr int dim = sizeof...(Ns);
     using index_type = Tn;
+    static constexpr index_type extent = (Ns * ...);
     using extents = integer_seq<Tn, Ns...>;
     using storage_orders = value_seq<select_indexed_value<Is, StorageOrders...>::value...>;
     using lookup_orders = value_seq<storage_orders::template index<wrapv<Is>>::value...>;
@@ -53,30 +54,24 @@ namespace zs {
   template <typename Orders, typename Tn, Tn... Ns> using ordered_indexer
       = indexer_impl<integer_seq<Tn, Ns...>, Orders, std::make_index_sequence<sizeof...(Ns)>>;
 
+  template <typename T, typename Dims> struct vec_impl;
+
   template <typename Derived> struct VecInterface {
-#define DECLARE_ATTRIBUTES                             \
-  using value_type = typename Derived::value_type;     \
-  using index_type = typename Derived::index_type;     \
-  using indexer_type = typename Derived::indexer_type; \
-  using extents = typename indexer_type::extents;      \
-  constexpr index_type extent = indexer_type::extent;  \
+#define DECLARE_ATTRIBUTES                                                                     \
+  using value_type = typename Derived::value_type;                                             \
+  using index_type = typename Derived::index_type;                                             \
+  using extents = typename Derived::extents; /*not necessarily same as indexer_type::extents*/ \
+  using indexer_type = typename Derived::indexer_type;                                         \
+  constexpr index_type extent = indexer_type::extent;                                          \
   constexpr auto dim = indexer_type::dim;
 
-    constexpr auto data() noexcept {
-      DECLARE_ATTRIBUTES
-      return (value_type*)static_cast<Derived*>(this)->do_data();
-    }
+    constexpr auto data() noexcept { return static_cast<Derived*>(this)->do_data(); }
     constexpr auto data() volatile noexcept {
-      DECLARE_ATTRIBUTES
-      return (volatile value_type*)static_cast<volatile Derived*>(this)->do_data();
+      return static_cast<volatile Derived*>(this)->do_data();
     }
-    constexpr auto data() const noexcept {
-      DECLARE_ATTRIBUTES
-      return (const value_type*)static_cast<const Derived*>(this)->do_data();
-    }
+    constexpr auto data() const noexcept { return static_cast<const Derived*>(this)->do_data(); }
     constexpr auto data() const volatile noexcept {
-      DECLARE_ATTRIBUTES
-      return (const volatile value_type*)static_cast<const volatile Derived*>(this)->do_data();
+      return static_cast<const volatile Derived*>(this)->do_data();
     }
     /// property query
     // template <std::size_t I> static constexpr index_type range() noexcept {
@@ -95,6 +90,15 @@ namespace zs {
     constexpr decltype(auto) operator()(Tis&&... is) const noexcept {
       DECLARE_ATTRIBUTES
       return static_cast<const Derived*>(this)->operator()(FWD(is)...);
+    }
+    // one dimension index
+    template <typename Ti> constexpr decltype(auto) val(Ti i) noexcept {
+      DECLARE_ATTRIBUTES
+      return static_cast<Derived*>(this)->do_val(i);
+    }
+    template <typename Ti> constexpr decltype(auto) val(Ti i) const noexcept {
+      DECLARE_ATTRIBUTES
+      return static_cast<const Derived*>(this)->do_val(i);
     }
     template <typename Ti, enable_if_t<std::is_integral_v<Ti>> = 0>
     constexpr decltype(auto) operator[](Ti is) noexcept {
@@ -116,6 +120,52 @@ namespace zs {
                             (std::is_integral_v<remove_cvref_t<Ts>>, ...)> = 0>
     constexpr decltype(auto) operator()(const std::tuple<Ts...>& is) const noexcept {
       return std::apply(static_cast<const Derived&>(*this), is);
+    }
+
+    //!@name Binary operators
+    // scalar
+#define DEFINE_VEC_OP_SCALAR(OP)                                                  \
+  template <typename TT, typename VecT = Derived,                                 \
+            enable_if_t<std::is_convertible<typename VecT::value_type, TT>::value \
+                        && std::is_fundamental_v<TT>> = 0>                        \
+  friend constexpr auto operator OP(Derived const& e, TT const v) noexcept {      \
+    DECLARE_ATTRIBUTES                                                            \
+    using R = math::op_result_t<value_type, TT>;                                  \
+    typename Derived::template variant_vec<R, extents> r{};                       \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);     \
+    return r;                                                                     \
+  }                                                                               \
+  template <typename TT, typename VecT = Derived,                                 \
+            enable_if_t<std::is_convertible<typename VecT::value_type, TT>::value \
+                        && std::is_fundamental_v<TT>> = 0>                        \
+  friend constexpr auto operator OP(TT const v, Derived const& e) noexcept {      \
+    DECLARE_ATTRIBUTES                                                            \
+    using R = math::op_result_t<value_type, TT>;                                  \
+    typename Derived::template variant_vec<R, extents> r{};                       \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));     \
+    return r;                                                                     \
+  }
+    DEFINE_VEC_OP_SCALAR(+)
+    DEFINE_VEC_OP_SCALAR(-)
+    DEFINE_VEC_OP_SCALAR(*)
+    DEFINE_VEC_OP_SCALAR(/)
+
+  protected:
+    constexpr auto do_data() noexcept {
+      DECLARE_ATTRIBUTES
+      return (value_type*)nullptr;
+    }
+    constexpr auto do_data() volatile noexcept {
+      DECLARE_ATTRIBUTES
+      return (volatile value_type*)nullptr;
+    }
+    constexpr auto do_data() const noexcept {
+      DECLARE_ATTRIBUTES
+      return (const value_type*)nullptr;
+    }
+    constexpr auto do_data() const volatile noexcept {
+      DECLARE_ATTRIBUTES
+      return (const volatile value_type*)nullptr;
     }
   };
 

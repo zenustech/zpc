@@ -37,17 +37,18 @@ using vec =
 
   /// vec without lifetime managing
   template <typename T, typename Tn, Tn... Ns> struct vec_view<T, std::integer_sequence<Tn, Ns...>>
-      : indexer<Tn, Ns...> {
+      : VecInterface<vec_view<T, std::integer_sequence<Tn, Ns...>>> {
     using indexer_type = indexer<Tn, Ns...>;
-    using indexer_type::dim;
-    using indexer_type::extent;
+    static constexpr auto dim = sizeof...(Ns);
+    static constexpr auto extent = (Ns * ...);
     using value_type = T;
-    using indexer_type::offset;
-    using typename indexer_type::extents;
-    using typename indexer_type::index_type;
+    using index_type = Tn;
+    using extents = std::integer_sequence<Tn, Ns...>;
+
+    template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
     constexpr vec_view() = delete;
-    constexpr explicit vec_view(T *ptr) : _data{ptr} {}
+    constexpr explicit vec_view(value_type *ptr) : _data{ptr} {}
 
     /// random access
     // ()
@@ -64,8 +65,8 @@ using vec =
               typename R
               = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
-    constexpr R operator[](Index &&index) noexcept {
-      return R{_data + indexer_type::offset(std::forward<Index>(index))};
+    constexpr R operator[](Index index) noexcept {
+      return R{_data + indexer_type::offset(index)};
     }
     template <typename Index,
               typename R
@@ -73,21 +74,19 @@ using vec =
                          gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
     constexpr R operator[](Index index) const noexcept {
-      return R{_data + indexer_type::offset(std::forward<Index>(index))};
+      return R{_data + indexer_type::offset(index)};
     }
     template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
     constexpr T &operator[](Index index) noexcept {
-      return _data[std::forward<Index>(index)];
+      return _data[index];
     }
     template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
     constexpr const T &operator[](Index index) const noexcept {
-      return _data[std::forward<Index>(index)];
+      return _data[index];
     }
-    template <typename Index> constexpr T &val(Index index) noexcept {
-      return _data[std::forward<Index>(index)];
-    }
-    template <typename Index> constexpr const T &val(Index index) const noexcept {
-      return _data[std::forward<Index>(index)];
+    template <typename Index> constexpr T &do_val(Index index) noexcept { return _data[index]; }
+    template <typename Index> constexpr const T &do_val(Index index) const noexcept {
+      return _data[index];
     }
 
   private:
@@ -196,8 +195,8 @@ using vec =
               typename R
               = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
-    constexpr R operator[](Index &&index) noexcept {
-      return R{_data + indexer_type::offset(std::forward<Index>(index))};
+    constexpr R operator[](Index index) noexcept {
+      return R{_data + indexer_type::offset(index)};
     }
     template <typename Index,
               typename R
@@ -205,21 +204,19 @@ using vec =
                          gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
     constexpr R operator[](Index index) const noexcept {
-      return R{_data + indexer_type::offset(std::forward<Index>(index))};
+      return R{_data + indexer_type::offset(index)};
     }
     template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
     constexpr T &operator[](Index index) noexcept {
-      return _data[std::forward<Index>(index)];
+      return _data[index];
     }
     template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
     constexpr const T &operator[](Index index) const noexcept {
-      return _data[std::forward<Index>(index)];
+      return _data[index];
     }
-    template <typename Index> constexpr T &do_val(Index index) noexcept {
-      return _data[std::forward<Index>(index)];
-    }
+    template <typename Index> constexpr T &do_val(Index index) noexcept { return _data[index]; }
     template <typename Index> constexpr const T &do_val(Index index) const noexcept {
-      return _data[std::forward<Index>(index)];
+      return _data[index];
     }
     ///
     template <typename TT> constexpr auto cast() const noexcept {

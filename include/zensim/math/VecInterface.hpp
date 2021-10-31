@@ -127,9 +127,9 @@ namespace zs {
     /// ref: https://github.com/cemyuksel/cyCodeBase/blob/master/cyIVector.h
     ///
     //!@name Unary operators
-    constexpr Derived operator-() const noexcept {
+    constexpr auto operator-() const noexcept {
       DECLARE_ATTRIBUTES
-      Derived r{};
+      typename Derived::template variant_vec<value_type, extents> r{};
       for (index_type i = 0; i != extent; ++i) r.val(i) = -this->val(i);
       return r;
     }

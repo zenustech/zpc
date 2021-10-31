@@ -215,10 +215,10 @@ using vec =
     constexpr const T &operator[](Index index) const noexcept {
       return _data[std::forward<Index>(index)];
     }
-    template <typename Index> constexpr T &val(Index index) noexcept {
+    template <typename Index> constexpr T &do_val(Index index) noexcept {
       return _data[std::forward<Index>(index)];
     }
-    template <typename Index> constexpr const T &val(Index index) const noexcept {
+    template <typename Index> constexpr const T &do_val(Index index) const noexcept {
       return _data[std::forward<Index>(index)];
     }
     ///
@@ -265,9 +265,9 @@ using vec =
     }
     template <std::size_t d = dim, std::size_t ext = extent, enable_if_all<d == 1, ext == 3> = 0>
     constexpr vec_impl orthogonal() const noexcept {
-      T x = gcem::abs(val(0));
-      T y = gcem::abs(val(1));
-      T z = gcem::abs(val(2));
+      T x = gcem::abs(do_val(0));
+      T y = gcem::abs(do_val(1));
+      T z = gcem::abs(do_val(2));
       vec_impl other = x < y ? (x < z ? vec_impl{1, 0, 0} : vec_impl{0, 0, 1})
                              : (y < z ? vec_impl{0, 1, 0} : vec_impl{0, 0, 1});
       return cross(other);
@@ -328,168 +328,6 @@ using vec =
         if (_data[i] > res) res = _data[i];
       return res;
     }
-
-    /// borrowed from
-    /// https://github.com/cemyuksel/cyCodeBase/blob/master/cyIVector.h
-    /// east const
-    //!@name Unary operators
-    constexpr vec_impl operator-() const noexcept {
-      vec_impl r{};
-      for (Tn i = 0; i != extent; ++i) r.val(i) = -_data[i];
-      return r;
-    }
-    template <bool IsIntegral = std::is_integral_v<T>, enable_if_t<IsIntegral> = 0>
-    constexpr vec_impl<bool, extents> operator!() const noexcept {
-      vec_impl<bool, extents> r{};
-      for (Tn i = 0; i != extent; ++i) r.val(i) = !_data[i];
-      return r;
-    }
-
-//!@name Binary operators
-#if 0
-    // scalar
-#  define DEFINE_OP_SCALAR(OP)                                                                 \
-    template <typename TT,                                                                     \
-              enable_if_t<std::is_convertible<T, TT>::value && std::is_fundamental_v<TT>> = 0> \
-    friend constexpr auto operator OP(vec_impl const &e, TT const v) noexcept {                \
-      using R = math::op_result_t<T, TT>;                                                      \
-      vec_impl<R, extents> r{};                                                                \
-      for (Tn i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);                        \
-      return r;                                                                                \
-    }                                                                                          \
-    template <typename TT,                                                                     \
-              enable_if_t<std::is_convertible<T, TT>::value && std::is_fundamental_v<TT>> = 0> \
-    friend constexpr auto operator OP(TT const v, vec_impl const &e) noexcept {                \
-      using R = math::op_result_t<T, TT>;                                                      \
-      vec_impl<R, extents> r{};                                                                \
-      for (Tn i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));                        \
-      return r;                                                                                \
-    }
-    DEFINE_OP_SCALAR(+)
-    DEFINE_OP_SCALAR(-)
-    DEFINE_OP_SCALAR(*)
-    DEFINE_OP_SCALAR(/)
-#endif
-
-    // scalar integral
-#define DEFINE_OP_SCALAR_INTEGRAL(OP)                                          \
-  template <typename TT, typename T_ = T,                                      \
-            enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
-  friend constexpr auto operator OP(vec_impl const &e, TT const v) noexcept {  \
-    using R = math::op_result_t<T, TT>;                                        \
-    vec_impl<R, extents> r{};                                                  \
-    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);          \
-    return r;                                                                  \
-  }                                                                            \
-  template <typename TT, typename T_ = T,                                      \
-            enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
-  friend constexpr auto operator OP(TT const v, vec_impl const &e) noexcept {  \
-    using R = math::op_result_t<T, TT>;                                        \
-    vec_impl<R, extents> r{};                                                  \
-    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));          \
-    return r;                                                                  \
-  }
-    DEFINE_OP_SCALAR_INTEGRAL(&)
-    DEFINE_OP_SCALAR_INTEGRAL(|)
-    DEFINE_OP_SCALAR_INTEGRAL(^)
-    DEFINE_OP_SCALAR_INTEGRAL(>>)
-    DEFINE_OP_SCALAR_INTEGRAL(<<)
-
-    // vector
-#define DEFINE_OP_VECTOR(OP)                                                        \
-  template <typename TT> constexpr auto operator OP(vec_impl<TT, extents> const &o) \
-      const noexcept {                                                              \
-    using R = math::op_result_t<T, TT>;                                             \
-    vec_impl<R, extents> r{};                                                       \
-    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)_data[i] OP((R)o.val(i));        \
-    return r;                                                                       \
-  }
-    DEFINE_OP_VECTOR(+)
-    DEFINE_OP_VECTOR(-)
-    DEFINE_OP_VECTOR(/)
-
-#define DEFINE_OP_VECTOR_GENERAL(OP)                                                     \
-  template <typename TT, typename Extents, enable_if_t<is_same_v<extents, Extents>> = 0> \
-  constexpr auto operator OP(vec_impl<TT, Extents> const &o) const noexcept {            \
-    using R = math::op_result_t<T, TT>;                                                  \
-    vec_impl<R, extents> r{};                                                            \
-    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)_data[i] OP((R)o.val(i));             \
-    return r;                                                                            \
-  }
-    DEFINE_OP_VECTOR_GENERAL(*)
-
-    // vector integral
-#define DEFINE_OP_VECTOR_INTEGRAL(OP)                                          \
-  template <typename TT, typename T_ = T,                                      \
-            enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
-  constexpr auto operator OP(vec_impl<TT, extents> const &o) const noexcept {  \
-    using R = math::op_result_t<T, TT>;                                        \
-    vec_impl<R, extents> r{};                                                  \
-    for (Tn i = 0; i != extent; ++i) r.val(i) = (R)_data[i] OP((R)o.val(i));   \
-    return r;                                                                  \
-  }
-    DEFINE_OP_VECTOR_INTEGRAL(&)
-    DEFINE_OP_VECTOR_INTEGRAL(|)
-    DEFINE_OP_VECTOR_INTEGRAL(^)
-    DEFINE_OP_VECTOR_INTEGRAL(>>)
-    DEFINE_OP_VECTOR_INTEGRAL(<<)
-
-//!@name Assignment operators
-// scalar
-#define DEFINE_OP_SCALAR_ASSIGN(OP)                                                          \
-  template <typename TT,                                                                     \
-            enable_if_all<std::is_convertible<T, TT>::value, std::is_fundamental_v<TT>> = 0> \
-  constexpr vec_impl &operator OP##=(TT &&v) noexcept {                                      \
-    using R = math::op_result_t<T, TT>;                                                      \
-    for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)v);                        \
-    return *this;                                                                            \
-  }
-    DEFINE_OP_SCALAR_ASSIGN(+)
-    DEFINE_OP_SCALAR_ASSIGN(-)
-    DEFINE_OP_SCALAR_ASSIGN(*)
-    DEFINE_OP_SCALAR_ASSIGN(/)
-
-    // scalar integral
-#define DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(OP)                                   \
-  template <typename TT, typename T_ = T,                                      \
-            enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0> \
-  constexpr vec_impl &operator OP##=(TT &&v) noexcept {                        \
-    using R = math::op_result_t<T, TT>;                                        \
-    for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)v);          \
-    return *this;                                                              \
-  }
-    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(&)
-    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(|)
-    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(^)
-    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(>>)
-    DEFINE_OP_SCALAR_INTEGRAL_ASSIGN(<<)
-
-    // vector
-#define DEFINE_OP_VECTOR_ASSIGN(OP)                                             \
-  template <typename TT, enable_if_t<std::is_convertible<T, TT>::value> = 0>    \
-  constexpr vec_impl &operator OP##=(vec_impl<TT, extents> const &o) noexcept { \
-    using R = math::op_result_t<T, TT>;                                         \
-    for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)o.val(i));    \
-    return *this;                                                               \
-  }
-    DEFINE_OP_VECTOR_ASSIGN(+)
-    DEFINE_OP_VECTOR_ASSIGN(-)
-    DEFINE_OP_VECTOR_ASSIGN(*)
-    DEFINE_OP_VECTOR_ASSIGN(/)
-
-#define DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(OP)                                    \
-  template <typename TT, typename T_ = T,                                       \
-            enable_if_all<std::is_integral_v<T_>, std::is_integral_v<TT>> = 0>  \
-  constexpr vec_impl &operator OP##=(vec_impl<TT, extents> const &o) noexcept { \
-    using R = math::op_result_t<T, TT>;                                         \
-    for (Tn i = 0; i != extent; ++i) _data[i] = (R)_data[i] OP((R)o.val(i));    \
-    return *this;                                                               \
-  }
-    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(&)
-    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(|)
-    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(^)
-    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(>>)
-    DEFINE_OP_VECTOR_INTEGRAL_ASSIGN(<<)
   };
 
   /// make vec

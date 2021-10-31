@@ -122,6 +122,26 @@ namespace zs {
       return std::apply(static_cast<const Derived&>(*this), is);
     }
 
+    ///
+    /// arithmetic operators
+    /// ref: https://github.com/cemyuksel/cyCodeBase/blob/master/cyIVector.h
+    ///
+    //!@name Unary operators
+    constexpr Derived operator-() const noexcept {
+      DECLARE_ATTRIBUTES
+      Derived r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = -this->val(i);
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_integral_v<typename VecT::value_Type>> = 0>
+    constexpr auto operator!() const noexcept {
+      DECLARE_ATTRIBUTES
+      typename Derived::template variant_vec<bool, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = !static_cast<bool>(this->val(i));
+      return r;
+    }
+
     //!@name Binary operators
     // scalar
 #define DEFINE_VEC_OP_SCALAR(OP)                                                  \
@@ -149,6 +169,149 @@ namespace zs {
     DEFINE_VEC_OP_SCALAR(-)
     DEFINE_VEC_OP_SCALAR(*)
     DEFINE_VEC_OP_SCALAR(/)
+
+// scalar integral
+#define DEFINE_VEC_OP_SCALAR_INTEGRAL(OP)                                                       \
+  template <                                                                                    \
+      typename TT, typename VecT = Derived,                                                     \
+      enable_if_all<std::is_integral_v<typename VecT::value_type>, std::is_integral_v<TT>> = 0> \
+  friend constexpr auto operator OP(Derived const& e, TT const v) noexcept {                    \
+    DECLARE_ATTRIBUTES                                                                          \
+    using R = math::op_result_t<value_type, TT>;                                                \
+    typename Derived::template variant_vec<R, extents> r{};                                     \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);                   \
+    return r;                                                                                   \
+  }                                                                                             \
+  template <                                                                                    \
+      typename TT, typename VecT = Derived,                                                     \
+      enable_if_all<std::is_integral_v<typename VecT::value_type>, std::is_integral_v<TT>> = 0> \
+  friend constexpr auto operator OP(TT const v, Derived const& e) noexcept {                    \
+    DECLARE_ATTRIBUTES                                                                          \
+    using R = math::op_result_t<value_type, TT>;                                                \
+    typename Derived::template variant_vec<R, extents> r{};                                     \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));                   \
+    return r;                                                                                   \
+  }
+    DEFINE_VEC_OP_SCALAR_INTEGRAL(&)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL(|)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL(^)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL(>>)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL(<<)
+
+    // vector
+#define DEFINE_VEC_OP_VECTOR(OP)                                                             \
+  template <typename OtherVecT, typename VecT = Derived,                                     \
+            enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0> \
+  friend constexpr auto operator OP(Derived const& lhs,                                      \
+                                    VecInterface<OtherVecT> const& rhs) noexcept {           \
+    DECLARE_ATTRIBUTES                                                                       \
+    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;                 \
+    typename Derived::template variant_vec<R, extents> r{};                                  \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i));     \
+    return r;                                                                                \
+  }
+    DEFINE_VEC_OP_VECTOR(+)
+    DEFINE_VEC_OP_VECTOR(-)
+    DEFINE_VEC_OP_VECTOR(/)
+
+#define DEFINE_VEC_OP_VECTOR_GENERAL(OP)                                                     \
+  template <typename OtherVecT, typename VecT = Derived,                                     \
+            enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0> \
+  friend constexpr auto operator OP(Derived const& lhs,                                      \
+                                    VecInterface<OtherVecT> const& rhs) noexcept {           \
+    DECLARE_ATTRIBUTES                                                                       \
+    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;                 \
+    typename Derived::template variant_vec<R, extents> r{};                                  \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i));     \
+    return r;                                                                                \
+  }
+    DEFINE_VEC_OP_VECTOR_GENERAL(*)
+
+    // vector integral
+#define DEFINE_VEC_OP_VECTOR_INTEGRAL(OP)                                                 \
+  template <typename OtherVecT, typename VecT = Derived,                                  \
+            enable_if_all<is_same_v<typename OtherVecT::extents, typename VecT::extents>, \
+                          std::is_integral_v<typename OtherVecT::value_type>,             \
+                          std::is_integral_v<typename VecT::value_type>> = 0>             \
+  friend constexpr auto operator OP(Derived const& lhs,                                   \
+                                    VecInterface<OtherVecT> const& rhs) noexcept {        \
+    DECLARE_ATTRIBUTES                                                                    \
+    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;              \
+    typename Derived::template variant_vec<R, extents> r{};                               \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i));  \
+    return r;                                                                             \
+  }
+    DEFINE_VEC_OP_VECTOR_INTEGRAL(&)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL(|)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL(^)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL(>>)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL(<<)
+
+//!@name Assignment operators
+// scalar
+#define DEFINE_VEC_OP_SCALAR_ASSIGN(OP)                                               \
+  template <typename TT, typename VecT = Derived,                                     \
+            enable_if_all<std::is_convertible_v<typename VecT::value_type, TT>,       \
+                          std::is_fundamental_v<TT>> = 0>                             \
+  constexpr Derived& operator OP##=(TT&& v) noexcept {                                \
+    DECLARE_ATTRIBUTES                                                                \
+    using R = math::op_result_t<value_type, TT>;                                      \
+    for (index_type i = 0; i != extent; ++i) this->val(i) = (R)this->val(i) OP((R)v); \
+    return static_cast<Derived&>(*this);                                              \
+  }
+    DEFINE_VEC_OP_SCALAR_ASSIGN(+)
+    DEFINE_VEC_OP_SCALAR_ASSIGN(-)
+    DEFINE_VEC_OP_SCALAR_ASSIGN(*)
+    DEFINE_VEC_OP_SCALAR_ASSIGN(/)
+
+    // scalar integral
+#define DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(OP)                                                \
+  template <                                                                                    \
+      typename TT, typename VecT = Derived,                                                     \
+      enable_if_all<std::is_integral_v<typename VecT::value_type>, std::is_integral_v<TT>> = 0> \
+  constexpr Derived& operator OP##=(TT&& v) noexcept {                                          \
+    DECLARE_ATTRIBUTES                                                                          \
+    using R = math::op_result_t<value_type, TT>;                                                \
+    for (index_type i = 0; i != extent; ++i) this->val(i) = (R)this->val(i) OP((R)v);           \
+    return static_cast<Derived&>(*this);                                                        \
+  }
+    DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(&)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(|)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(^)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(>>)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(<<)
+
+    // vector
+#define DEFINE_VEC_OP_VECTOR_ASSIGN(OP)                                                      \
+  template <typename OtherVecT, typename VecT = Derived,                                     \
+            enable_if_t<std::is_convertible_v<typename VecT::value_type,                     \
+                                              typename OtherVecT::value_type>> = 0>          \
+  constexpr Derived& operator OP##=(VecInterface<OtherVecT> const& o) noexcept {             \
+    DECLARE_ATTRIBUTES                                                                       \
+    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;                 \
+    for (index_type i = 0; i != extent; ++i) this->val(i) = (R)this->val(i) OP((R)o.val(i)); \
+    return static_cast<Derived&>(*this);                                                     \
+  }
+    DEFINE_VEC_OP_VECTOR_ASSIGN(+)
+    DEFINE_VEC_OP_VECTOR_ASSIGN(-)
+    DEFINE_VEC_OP_VECTOR_ASSIGN(*)
+    DEFINE_VEC_OP_VECTOR_ASSIGN(/)
+
+#define DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(OP)                                             \
+  template <typename OtherVecT, typename VecT = Derived,                                     \
+            enable_if_all<std::is_integral_v<typename VecT::value_type>,                     \
+                          std::is_integral_v<typename OtherVecT::value_type>> = 0>           \
+  constexpr Derived& operator OP##=(VecInterface<OtherVecT> const& o) noexcept {             \
+    DECLARE_ATTRIBUTES                                                                       \
+    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;                 \
+    for (index_type i = 0; i != extent; ++i) this->val(i) = (R)this->val(i) OP((R)o.val(i)); \
+    return static_cast<Derived&>(*this);                                                     \
+  }
+    DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(&)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(|)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(^)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(>>)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(<<)
 
   protected:
     constexpr auto do_data() noexcept {

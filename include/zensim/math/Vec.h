@@ -48,7 +48,15 @@ using vec =
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
     constexpr vec_view() = delete;
+    constexpr vec_view(const vec_view &) = delete;             // prevents accidental copy of view
+    constexpr vec_view &operator=(const vec_view &) = delete;  // prevents accidental copy of view
     constexpr explicit vec_view(value_type *ptr) : _data{ptr} {}
+
+    constexpr explicit operator variant_vec<value_type, extents>() const noexcept {
+      variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i);
+      return r;
+    }
 
     /// random access
     // ()

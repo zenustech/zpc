@@ -1,4 +1,5 @@
 #pragma once
+#include "zensim/math/MathUtils.h"
 #include "zensim/math/Vec.h"
 #include "zensim/math/matrix/MatrixUtils.h"
 #include "zensim/math/matrix/SVD.hpp"
@@ -62,8 +63,8 @@ namespace zs {
       tau_trial(d) = 2 * mu * (Sclamp(d) - 1) * Sclamp(d) + lambda * (J - 1) * J;
     T trace_tau = tau_trial.sum();
     TV s_trial = tau_trial - (trace_tau / (T)3);
-    T s_norm = math::sqrt(s_trial.l2NormSqr());
-    T scaled_tauy = math::sqrt((T)2 / ((T)6 - 3)) * yield_stress;
+    T s_norm = math::sqrtNewtonRaphson(s_trial.l2NormSqr());
+    T scaled_tauy = math::sqrtNewtonRaphson((T)2 / ((T)6 - 3)) * yield_stress;
     if (s_norm - scaled_tauy > 0) {
       T alpha = scaled_tauy / s_norm;
       TV tau_new = alpha * s_trial + (trace_tau / (T)3);
@@ -72,7 +73,7 @@ namespace zs {
         T b2m4ac = mu * mu - 2 * mu * (lambda * (J - 1) * J - tau_new(d));
         // ZIRAN_ASSERT(b2m4ac >= 0, "Wrong projection ", b2m4ac);
         if (b2m4ac < 0) printf("Wrong projection!\n");
-        T sqrtb2m4ac = math::sqrt(b2m4ac);
+        T sqrtb2m4ac = b2m4ac < 0 ? 0 : math::sqrtNewtonRaphson(b2m4ac);
         T x1 = (mu + sqrtb2m4ac) / (2 * mu);
         S(d) = x1;
       }

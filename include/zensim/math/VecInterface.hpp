@@ -437,28 +437,43 @@ namespace zs {
     ///
     /// linalg
     ///
+    // member func version
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
                             std::is_arithmetic_v<typename OtherVecT::value_type>> = 0>
-    friend constexpr auto dot(Derived const& lhs, VecInterface<OtherVecT> const& rhs) noexcept {
+    constexpr auto dot(VecInterface<OtherVecT> const& rhs) const noexcept {
       DECLARE_ATTRIBUTES
       using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
       R res{0};
-      for (index_type i = 0; i != extent; ++i) res += lhs.val(i) * rhs.val(i);
+      for (index_type i = 0; i != extent; ++i) res += this->val(i) * rhs.val(i);
       return res;
     }
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
                             std::is_arithmetic_v<typename OtherVecT::value_type>, VecT::dim == 1,
                             OtherVecT::dim == 1, VecT::extent == 3, OtherVecT::extent == 3> = 0>
-    friend constexpr auto cross(Derived const& lhs, VecInterface<OtherVecT> const& rhs) noexcept {
+    constexpr auto cross(VecInterface<OtherVecT> const& rhs) const noexcept {
       DECLARE_ATTRIBUTES
       using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
       typename Derived::template variant_vec<R, extents> res{};  // extents type follows 'lhs'
-      res.val(0) = lhs.val(1) * rhs.val(2) - lhs.val(2) * rhs.val(1);
-      res.val(1) = lhs.val(2) * rhs.val(0) - lhs.val(0) * rhs.val(2);
-      res.val(2) = lhs.val(0) * rhs.val(1) - lhs.val(1) * rhs.val(0);
+      res.val(0) = this->val(1) * rhs.val(2) - this->val(2) * rhs.val(1);
+      res.val(1) = this->val(2) * rhs.val(0) - this->val(0) * rhs.val(2);
+      res.val(2) = this->val(0) * rhs.val(1) - this->val(1) * rhs.val(0);
       return res;
+    }
+    // friend version
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
+                            std::is_arithmetic_v<typename OtherVecT::value_type>> = 0>
+    friend constexpr auto dot(Derived const& lhs, VecInterface<OtherVecT> const& rhs) noexcept {
+      return lhs.dot(rhs);
+    }
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
+                            std::is_arithmetic_v<typename OtherVecT::value_type>, VecT::dim == 1,
+                            OtherVecT::dim == 1, VecT::extent == 3, OtherVecT::extent == 3> = 0>
+    friend constexpr auto cross(Derived const& lhs, VecInterface<OtherVecT> const& rhs) noexcept {
+      return lhs.cross(rhs);
     }
 
     ///

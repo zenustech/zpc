@@ -43,7 +43,8 @@ using vec =
     static constexpr auto extent = (Ns * ...);
     using value_type = T;
     using index_type = Tn;
-    using extents = std::integer_sequence<Tn, Ns...>;
+    using extents = integer_seq<index_type, Ns...>;
+    using dims = sindex_seq<Ns...>;
 
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
@@ -111,7 +112,8 @@ using vec =
     static constexpr auto extent = (Ns * ...);
     using value_type = T;
     using index_type = Tn;
-    using extents = std::integer_sequence<Tn, Ns...>;
+    using extents = integer_seq<index_type, Ns...>;
+    using dims = sindex_seq<Ns...>;
 
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 

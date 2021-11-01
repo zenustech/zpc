@@ -250,7 +250,7 @@ namespace zs {
     template <typename VecT = Derived,
               enable_if_all<std::is_arithmetic_v<typename VecT::value_type>, VecT::dim == 1,
                             VecT::extent == 3> = 0>
-    constexpr auto orthogonal() noexcept {
+    constexpr auto orthogonal() const noexcept {
       DECLARE_ATTRIBUTES
       using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
                               conditional_t<(sizeof(value_type) >= 8), double, float>>;

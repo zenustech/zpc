@@ -12,6 +12,7 @@ namespace zs {
 
   template <typename Tn, Tn... Ns> using integer_seq = std::integer_sequence<Tn, Ns...>;
   template <auto... Ns> using index_seq = std::index_sequence<Ns...>;
+  template <auto... Ns> using sindex_seq = std::integer_sequence<sint_t, Ns...>;
 
   /// indexable type list to avoid recursion
   namespace type_impl {
@@ -84,8 +85,10 @@ namespace zs {
       using index = integral_v<std::size_t, std::numeric_limits<std::size_t>::max()>;
     };
     template <typename T> struct locator<T, std::enable_if_t<((int)is_same_v<T, Ts> + ...) == 1>> {
-      using index = integral_v<std::size_t, decltype(type_impl::extract_index<T>(
-          std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::value>;
+      using index
+          = integral_v<std::size_t,
+                       decltype(type_impl::extract_index<T>(
+                           std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::value>;
     };
     template <typename T> using index = typename locator<T>::index;
   };

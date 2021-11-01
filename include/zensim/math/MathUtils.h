@@ -9,6 +9,7 @@
 #include "zensim/meta/Meta.h"
 #include "zensim/meta/Relationship.h"
 #include "zensim/meta/Sequence.h"
+#include "zensim/tpls/gcem/gcem.hpp"
 
 namespace zs {
 
@@ -142,6 +143,21 @@ namespace zs {
         return sqt;
       }
     }
+#if 0
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr T sqrtNewtonRaphson(T x, T curr = 1, T prev = 0) noexcept {
+      return curr == prev ? curr : sqrtNewtonRaphson(x, (T)0.5 * (curr + x / curr), curr);
+    }
+#else
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr T sqrtNewtonRaphson(T n, T relTol = (T)1e-6) noexcept {
+      T xn = (T)1;
+      T xnp1 = (T)0.5 * (xn + n / xn);
+      for (const auto tol = n * relTol; gcem::abs(xnp1 - xn) > tol; xnp1 = (T)0.5 * (xn + n / xn))
+        xn = xnp1;
+      return xnp1;
+    }
+#endif
   }  // namespace math
 
   template <typename... Args>

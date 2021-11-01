@@ -185,9 +185,6 @@ using vec =
       for (Tn i = 0; i != n; ++i) r(i, i) = (value_type)1;
       return r;
     }
-    constexpr void set(T val) noexcept {
-      for (Tn idx = 0; idx != extent; ++idx) _data[idx] = val;
-    }
     /// random access
     // ()
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
@@ -232,106 +229,10 @@ using vec =
       for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = _data[idx];
       return r;
     }
-    template <typename TT> constexpr operator vec_impl<TT, extents>() const noexcept {
+    template <typename TT> constexpr explicit operator vec_impl<TT, extents>() const noexcept {
       vec_impl<TT, extents> r{};
       for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = _data[idx];
       return r;
-    }
-    /// compare
-    template <typename TT>
-    constexpr bool operator==(const vec_impl<TT, extents> &o) const noexcept {
-      for (Tn i = 0; i != extent; ++i)
-        if (_data[i] != o.val(i)) return false;
-      return true;
-    }
-    template <typename TT>
-    constexpr bool operator!=(const vec_impl<TT, extents> &&o) const noexcept {
-      for (Tn i = 0; i != extent; ++i)
-        if (_data[i] == o.val(i)) return false;
-      return true;
-    }
-
-    /// linalg
-    template <typename TT> constexpr auto dot(vec_impl<TT, extents> const &o) const noexcept {
-      using R = math::op_result_t<T, TT>;
-      R res{0};
-      for (Tn i = 0; i != extent; ++i) res += _data[i] * o.val(i);
-      return res;
-    }
-    template <typename TT, std::size_t d = dim, std::size_t ext = extent,
-              enable_if_all<d == 1, ext == 3> = 0>
-    constexpr auto cross(const vec_impl<TT, extents> &o) const noexcept {
-      using R = math::op_result_t<T, TT>;
-      vec_impl<R, extents> res{0};
-      res.val(0) = _data[1] * o.val(2) - _data[2] * o.val(1);
-      res.val(1) = _data[2] * o.val(0) - _data[0] * o.val(2);
-      res.val(2) = _data[0] * o.val(1) - _data[1] * o.val(0);
-      return res;
-    }
-    template <std::size_t d = dim, std::size_t ext = extent, enable_if_all<d == 1, ext == 3> = 0>
-    constexpr vec_impl orthogonal() const noexcept {
-      T x = gcem::abs(do_val(0));
-      T y = gcem::abs(do_val(1));
-      T z = gcem::abs(do_val(2));
-      vec_impl other = x < y ? (x < z ? vec_impl{1, 0, 0} : vec_impl{0, 0, 1})
-                             : (y < z ? vec_impl{0, 1, 0} : vec_impl{0, 0, 1});
-      return cross(other);
-    }
-    template <std::size_t d = dim, enable_if_t<d == 2> = 0>
-    constexpr auto transpose() const noexcept {
-      constexpr auto N0 = select_indexed_value<0, Ns...>::value;
-      constexpr auto N1 = select_indexed_value<1, Ns...>::value;
-      using extentsT = std::integer_sequence<Tn, N1, N0>;
-      vec_impl<T, extentsT> r{};
-      for (Tn i = 0; i != N0; ++i)
-        for (Tn j = 0; j != N1; ++j) r(j, i) = (*this)(i, j);
-      return r;
-    }
-    constexpr T prod() const noexcept {
-      T res{1};
-      for (Tn i = 0; i != extent; ++i) res *= _data[i];
-      return res;
-    }
-    constexpr T sum() const noexcept {
-      T res{0};
-      for (Tn i = 0; i != extent; ++i) res += _data[i];
-      return res;
-    }
-    constexpr T l2NormSqr() const noexcept {
-      T res{0};
-      for (Tn i = 0; i != extent; ++i) res += _data[i] * _data[i];
-      return res;
-    }
-    constexpr T infNormSqr() const noexcept {
-      T res{0};
-      for (Tn i = 0; i != extent; ++i)
-        if (T sqr = _data[i] * _data[i]; sqr > res) res = sqr;
-      return res;
-    }
-    static constexpr T sqrtNewtonRaphson(T x, T curr, T prev) noexcept {
-      return curr == prev ? curr : sqrtNewtonRaphson(x, 0.5 * (curr + x / curr), curr);
-    }
-    constexpr T length() const noexcept {
-      T sqrNorm = l2NormSqr();
-      // return sqrtNewtonRaphson(sqrNorm, sqrNorm, (T)0);
-      return gcem::sqrt(sqrNorm);
-    }
-    constexpr T norm() const noexcept {
-      T sqrNorm = l2NormSqr();
-      // return sqrtNewtonRaphson(sqrNorm, sqrNorm, (T)0);
-      return gcem::sqrt(sqrNorm);
-    }
-    constexpr vec_impl normalized() const noexcept { return (*this) / length(); }
-    constexpr vec_impl abs() const noexcept {
-      vec_impl r{};
-      for (Tn i = 0; i != extent; ++i) r.val(i) = _data[i] > 0 ? _data[i] : -_data[i];
-      return r;
-    }
-    constexpr T max() const noexcept {
-      T res{_data[0]};
-      for (Tn i = 1; i != extent; ++i)
-        if (_data[i] > res) res = _data[i];
-      return res;
     }
   };
 

@@ -85,7 +85,9 @@ namespace zs {
     //   return select_indexed_value<I, Ns...>::value;
     // }
 
+    ///
     /// entry access
+    ///
     // ()
     template <typename VecT = Derived, typename... Tis,
               enable_if_all<sizeof...(Tis) <= VecT::dim, (std::is_integral_v<Tis> && ...)> = 0>
@@ -134,6 +136,10 @@ namespace zs {
     }
 
     ///
+    /// construction
+    ///
+
+    ///
     /// arithmetic operators
     /// ref: https://github.com/cemyuksel/cyCodeBase/blob/master/cyIVector.h
     ///
@@ -151,6 +157,109 @@ namespace zs {
       typename Derived::template variant_vec<bool, extents> r{};
       for (index_type i = 0; i != extent; ++i) r.val(i) = !static_cast<bool>(this->val(i));
       return r;
+    }
+    template <typename VecT = Derived, enable_if_t<VecT::dim == 2> = 0>
+    constexpr auto transpose() const noexcept {
+      DECLARE_ATTRIBUTES
+      constexpr auto M = select_value<0, vseq<extents>>::value;
+      constexpr auto N = select_value<1, vseq<extents>>::value;
+      using extentsT = std::integer_sequence<index_type, N, M>;
+      typename Derived::template variant_vec<value_type, extentsT> r{};
+      for (index_type i = 0; i != M; ++i)
+        for (index_type j = 0; j != N; ++j) r(j, i) = (*this)(i, j);
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto prod() const noexcept {
+      DECLARE_ATTRIBUTES
+      value_type res{1};
+      for (index_type i = 0; i != extent; ++i) res *= this->val(i);
+      return res;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto sum() const noexcept {
+      DECLARE_ATTRIBUTES
+      value_type res{0};
+      for (index_type i = 0; i != extent; ++i) res += this->val(i);
+      return res;
+      // return res.sum();
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto l2NormSqr() const noexcept {
+      DECLARE_ATTRIBUTES
+      value_type res{0};
+      for (index_type i = 0; i != extent; ++i) res += this->val(i) * this->val(i);
+      return res;
+      // return res.sum();
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto infNormSqr() const noexcept {
+      DECLARE_ATTRIBUTES
+      value_type res{0};
+      for (index_type i = 0; i != extent; ++i)
+        if (value_type sqr = this->val(i) * this->val(i); sqr > res) res = sqr;
+      return res;
+    }
+
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto length() const noexcept {
+      DECLARE_ATTRIBUTES
+      value_type sqrNorm = l2NormSqr();
+      using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+                              conditional_t<(sizeof(value_type) >= 8), double, float>>;
+      return math::sqrtNewtonRaphson(static_cast<T>(sqrNorm));
+      // return gcem::sqrt(sqrNorm);
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto norm() const noexcept {
+      return length();
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto normalized() const noexcept {
+      DECLARE_ATTRIBUTES
+      const auto len = length();
+      typename Derived::template variant_vec<RM_CVREF_T(len), extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i) / len;
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto abs() const noexcept {
+      DECLARE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i)
+        r.val(i) = this->val(i) > 0 ? this->val(i) : -this->val(i);
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto max() const noexcept {
+      DECLARE_ATTRIBUTES
+      value_type res{this->val(0)};
+      for (index_type i = 1; i != extent; ++i)
+        if (this->val(i) > res) res = this->val(i);
+      return res;
+    }
+    template <typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>, VecT::dim == 1,
+                            VecT::extent == 3> = 0>
+    constexpr auto orthogonal() noexcept {
+      DECLARE_ATTRIBUTES
+      using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+                              conditional_t<(sizeof(value_type) >= 8), double, float>>;
+      T x = gcem::abs(this->val(0));
+      T y = gcem::abs(this->val(1));
+      T z = gcem::abs(this->val(2));
+      using V = typename Derived::template variant_vec<value_type, extents>;
+      auto other = x < y ? (x < z ? V{1, 0, 0} : V{0, 0, 1}) : (y < z ? V{0, 1, 0} : V{0, 0, 1});
+      return cross(other);
     }
 
     //!@name Binary operators
@@ -324,6 +433,52 @@ namespace zs {
     DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(^)
     DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(>>)
     DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(<<)
+
+    ///
+    /// linalg
+    ///
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
+                            std::is_arithmetic_v<typename OtherVecT::value_type>> = 0>
+    friend constexpr auto dot(Derived const& lhs, VecInterface<OtherVecT> const& rhs) noexcept {
+      DECLARE_ATTRIBUTES
+      using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
+      R res{0};
+      for (index_type i = 0; i != extent; ++i) res += lhs.val(i) * rhs.val(i);
+      return res;
+    }
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
+                            std::is_arithmetic_v<typename OtherVecT::value_type>, VecT::dim == 1,
+                            OtherVecT::dim == 1, VecT::extent == 3, OtherVecT::extent == 3> = 0>
+    friend constexpr auto cross(Derived const& lhs, VecInterface<OtherVecT> const& rhs) noexcept {
+      DECLARE_ATTRIBUTES
+      using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
+      typename Derived::template variant_vec<R, extents> res{};  // extents type follows 'lhs'
+      res.val(0) = lhs.val(1) * rhs.val(2) - lhs.val(2) * rhs.val(1);
+      res.val(1) = lhs.val(2) * rhs.val(0) - lhs.val(0) * rhs.val(2);
+      res.val(2) = lhs.val(0) * rhs.val(1) - lhs.val(1) * rhs.val(0);
+      return res;
+    }
+
+    ///
+    /// compare
+    ///
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0>
+    friend constexpr bool operator==(Derived const& lhs,
+                                     VecInterface<OtherVecT> const& rhs) noexcept {
+      DECLARE_ATTRIBUTES
+      for (index_type i = 0; i != extent; ++i)
+        if (lhs.val(i) != rhs.val(i)) return false;
+      return true;
+    }
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0>
+    friend constexpr bool operator!=(Derived const& lhs,
+                                     VecInterface<OtherVecT> const& rhs) noexcept {
+      return !(lhs == rhs);
+    }
 
   protected:
     constexpr auto do_data() noexcept {

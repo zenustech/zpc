@@ -4,6 +4,91 @@
 
 namespace zs {
 
+  template <typename T = float> struct NeoHookean
+      : IsotropicConstitutiveModelInterface<NeoHookean<T>> {
+    using base_t = IsotropicConstitutiveModelInterface<NeoHookean<T>>;
+    using value_type = T;
+
+    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+
+    value_type mu, lam;
+
+    constexpr NeoHookean(value_type E, value_type nu) noexcept {
+      std::tie(mu, lam) = lame_parameters(E, nu);
+    }
+
+    // do_psi_sigma
+    template <typename VecT, enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
+                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr typename VecT::value_type do_psi_sigma(const VecInterface<VecT>& S) const noexcept {
+      using value_type = typename VecT::value_type;
+      constexpr auto dim = VecT::template range<0>();
+
+      auto S_prod_log = gcem::log(S.prod());
+      return (value_type)0.5 * mu * (S.l2NormSqr() - dim)
+             - (mu - (value_type)0.5 * lam * S_prod_log) * S_prod_log;
+    }
+    // do_dpsi_dsigma
+    template <typename VecT, enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
+                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto do_dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
+      using value_type = typename VecT::value_type;
+      constexpr auto dim = VecT::template range<0>();
+
+      auto S_prod_log = gcem::log(S.prod());
+      auto S_inv = (value_type)1 / S;
+      return mu * (S - S_inv) + lam * S_inv * S_prod_log;
+    }
+    // do_d2psi_dsigma2
+    template <typename VecT, enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
+                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto do_d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
+      using value_type = typename VecT::value_type;
+      constexpr auto dim = VecT::template range<0>();
+
+      auto S_prod_log = gcem::log(S.prod());
+      typename base_t::template mat_type<VecT> d2E_dsigma2{};
+      auto S2_inv = (value_type)1 / (S * S);
+      d2E_dsigma2(0, 0)
+          = mu * ((value_type)1 + S2_inv[0]) - lam * S2_inv[0] * (S_prod_log - (value_type)1);
+      if constexpr (dim > 1) {
+        d2E_dsigma2(1, 1)
+            = mu * ((value_type)1 + S2_inv[1]) - lam * S2_inv[1] * (S_prod_log - (value_type)1);
+        d2E_dsigma2(0, 1) = d2E_dsigma2(1, 0) = lam / (S[0] * S[1]);
+      }
+      if constexpr (dim > 2) {
+        d2E_dsigma2(2, 2)
+            = mu * ((value_type)1 + S2_inv[2]) - lam * S2_inv[2] * (S_prod_log - (value_type)1);
+        d2E_dsigma2(0, 2) = d2E_dsigma2(2, 0) = lam / (S[0] * S[2]);
+        d2E_dsigma2(1, 2) = d2E_dsigma2(2, 1) = lam / (S[1] * S[2]);
+      }
+      return d2E_dsigma2;
+    }
+    // do_Bij_neg_coeff
+    template <typename VecT,
+              enable_if_all<VecT::dim == 1,
+                            (VecT::template range<0>() == 2 || VecT::template range<0>() == 3),
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
+      using value_type = typename VecT::value_type;
+      constexpr auto dim = VecT::template range<0>();
+      using RetT = typename VecT::template variant_vec<
+          typename VecT::value_type,
+          integer_seq<typename VecT::index_type, (VecT::template range<0>() == 3 ? 3 : 1)>>;
+      RetT coeffs{};
+      const auto S_prod = S.prod();
+      if constexpr (dim == 2)
+        coeffs[0] = (mu + (mu - lam * gcem::log(S_prod)) / S_prod) * (value_type)0.5;
+      else if constexpr (dim == 3) {
+        const auto tmp = mu - lam * gcem::log(S_prod);
+        coeffs[0] = (mu + tmp / (S[0] * S[1])) * (value_type)0.5;
+        coeffs[1] = (mu + tmp / (S[1] * S[2])) * (value_type)0.5;
+        coeffs[2] = (mu + tmp / (S[2] * S[0])) * (value_type)0.5;
+      }
+      return coeffs;
+    }
+  };
+
   /**
    * @brief The traditional Neohookean model is formulated using Cauchy-Green Invarients, but this
    * set of invarients can not cover all the isotropic material, take Corated-linear model for
@@ -84,8 +169,7 @@ namespace zs {
   constexpr auto compute_psi_deriv_hessian(const vec_t<T0, Tn, (Tn)3, (Tn)3>& act,
                                            const vec_t<T1, Tn, (Tn)3>& weights,
                                            const vec_t<T1, Tn, (Tn)3, (Tn)3>& fiberDirection,
-                                           const T2 E, const T2 nu,
-                                           vec_t<T2, Tn, (Tn)3, (Tn)3> F) {
+                                           const T2 E, const T2 nu, vec_t<T2, Tn, (Tn)3, (Tn)3> F) {
     using R = math::op_result_t<T0, T1, T2>;
     using vec3 = vec_t<R, Tn, (Tn)3>;
     using vec9 = vec_t<R, Tn, (Tn)9>;

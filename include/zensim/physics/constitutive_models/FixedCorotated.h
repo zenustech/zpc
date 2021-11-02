@@ -41,7 +41,7 @@ namespace zs {
         S_prod_i[1] = S[0] * S[2];
         S_prod_i[2] = S[0] * S[1];
       }
-      return (value_type)2 * mu * (S - (value_type)1) + lam * (S.prod() - (value_type)1) * S_prod_i;
+      return (mu + mu) * (S - (value_type)1) + lam * (S.prod() - (value_type)1) * S_prod_i;
     }
     // do_d2psi_dsigma2
     template <typename VecT, enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),

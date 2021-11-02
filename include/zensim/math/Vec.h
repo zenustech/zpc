@@ -180,6 +180,7 @@ using vec =
       return r;
     }
     static constexpr vec_impl zeros() noexcept { return uniform(0); }
+    static constexpr vec_impl ones() noexcept { return uniform(1); }
     template <int d = dim, Tn n = select_indexed_value<0, Ns...>::value,
               enable_if_all<d == 2, n * n == extent> = 0>
     static constexpr vec_impl identity() noexcept {

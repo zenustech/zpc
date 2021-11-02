@@ -218,6 +218,7 @@ namespace zs {
            / (A(0, 0) * ret(0, 0) + A(1, 0) * ret(0, 1) + A(2, 0) * ret(0, 2)
               + A(3, 0) * ret(0, 3));
   }
+#if 0
   template <typename T0, typename T1, typename Tn, Tn Nr, Tn Nc>
   constexpr auto diag_mul(vec_impl<T0, std::integer_sequence<Tn, Nr, Nc>> const &A,
                           vec_impl<T1, std::integer_sequence<Tn, Nc>> const &diag) noexcept {
@@ -238,6 +239,30 @@ namespace zs {
       for (Tn j = 0; j != Nc; ++j) r(i, j) = A(i, j) * diag(i);
     return r;
   }
+#else
+  template <typename VecTM, typename VecTV,
+            enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                          VecTM::template range<1>() == VecTV::template range<0>()> = 0>
+  constexpr auto diag_mul(VecInterface<VecTM> const &A, VecInterface<VecTV> const &diag) noexcept {
+    using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
+    typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
+    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>(); ++i)
+      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>(); ++j)
+        r(i, j) = A(i, j) * diag(j);
+    return r;
+  }
+  template <typename VecTV, typename VecTM,
+            enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
+                          VecTM::template range<0>() == VecTV::template range<0>()> = 0>
+  constexpr auto diag_mul(VecInterface<VecTV> const &diag, VecInterface<VecTM> const &A) noexcept {
+    using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
+    typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
+    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>(); ++i)
+      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>(); ++j)
+        r(i, j) = A(i, j) * diag(i);
+    return r;
+  }
+#endif
   /// affine transform
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
   constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, N0, N1 + 1>> const &A,

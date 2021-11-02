@@ -136,9 +136,9 @@ namespace zs {
 
       if constexpr (is_same_v<typename VecT::dims, sindex_seq<3, 3>>) {
         auto B0 = ComputeBij(0) /*B12*/, B1 = ComputeBij(1) /*B23*/, B2 = ComputeBij(2) /*B13*/;
-        fmt::print("B0: [{}, {}], [{}, {}]\n", B0(0, 0), B0(0, 1), B0(1, 0), B0(1, 1));
-        fmt::print("B1: [{}, {}], [{}, {}]\n", B1(0, 0), B1(0, 1), B1(1, 0), B1(1, 1));
-        fmt::print("B2: [{}, {}], [{}, {}]\n", B2(0, 0), B2(0, 1), B2(1, 0), B2(1, 1));
+        // fmt::print("B0: [{}, {}], [{}, {}]\n", B0(0, 0), B0(0, 1), B0(1, 0), B0(1, 1));
+        // fmt::print("B1: [{}, {}], [{}, {}]\n", B1(0, 0), B1(0, 1), B1(1, 0), B1(1, 1));
+        // fmt::print("B2: [{}, {}], [{}, {}]\n", B2(0, 0), B2(0, 1), B2(1, 0), B2(1, 1));
         // [A_00, 0,      0] [0,      A_01, 0     ] [0,       0,      A_02]
         // [0,    B12_00, 0] [B12_01, 0,    0     ] [0,       0,      0   ]
         // [0,    0, B13_11] [0,      0,    0     ] [B13_10,  0,      0   ]
@@ -197,6 +197,8 @@ namespace zs {
                   + d2E_dsigma2(1, 1) * U(i, 1) * V(j, 1) * U(r, 1) * V(s, 1);
           }
         }
+      } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<1, 1>>) {
+        dPdF(0, 0) = d2E_dsigma2(0, 0);  // U = V = [1]
       }
       return dPdF;
     }

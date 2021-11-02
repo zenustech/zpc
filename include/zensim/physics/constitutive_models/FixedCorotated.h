@@ -53,7 +53,7 @@ namespace zs {
       typename base_t::template vec_type<VecT> S_prod_i{};
       typename base_t::template mat_type<VecT> d2E_dsigma2{};
       auto S_prod = S.prod();
-      auto _2mu = mu * (value_type)2;
+      auto _2mu = mu + mu;
       if constexpr (dim == 1) {
         d2E_dsigma2(0, 0) = (value_type)1;
       } else if constexpr (dim == 2) {

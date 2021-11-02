@@ -143,6 +143,32 @@ namespace zs {
         return sqt;
       }
     }
+
+    /**
+     * Robustly computing log(x+1)/x
+     */
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr T log_1px_over_x(const T x, const T eps = 1e-6) noexcept {
+      if (gcem::abs(x) < eps)
+        return (T)1 - x / (T)2 + x * x / (T)3 - x * x * x / (T)4;
+      else
+        return gcem::log1p(x) / x;
+    }
+    /**
+     * Robustly computing (logx-logy)/(x-y)
+     */
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr T diff_log_over_diff(const T x, const T y, const T eps = 1e-6) noexcept {
+      return log_1px_over_x(x / y - (T)1, eps) / y;
+    }
+    /**
+     * Robustly computing (x logy- y logx)/(x-y)
+     */
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr T diff_interlock_log_over_diff(const T x, const T y, const T logy,
+                                             const T eps = 1e-6) noexcept {
+      return logy - y * diff_log_over_diff(x, y, eps);
+    }
 #if 0
     template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
     constexpr T sqrtNewtonRaphson(T x, T curr = 1, T prev = 0) noexcept {

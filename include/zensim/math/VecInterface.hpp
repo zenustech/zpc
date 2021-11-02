@@ -238,15 +238,6 @@ namespace zs {
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
-    constexpr auto abs() const noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i)
-        r.val(i) = this->val(i) > 0 ? this->val(i) : -this->val(i);
-      return r;
-    }
-    template <typename VecT = Derived,
-              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
     constexpr auto max() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       value_type res{this->val(0)};
@@ -267,6 +258,49 @@ namespace zs {
       using V = typename Derived::template variant_vec<value_type, extents>;
       auto other = x < y ? (x < z ? V{1, 0, 0} : V{0, 0, 1}) : (y < z ? V{0, 1, 0} : V{0, 0, 1});
       return cross(other);
+    }
+    //!@name Coefficient-wise math funcs
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto abs() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i)
+        r.val(i) = this->val(i) > 0 ? this->val(i) : -this->val(i);
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto log() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = gcem::log(this->val(i));
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto log1p() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = gcem::log1p(this->val(i));
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto square() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i) * this->val(i);
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto cube() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i)
+        r.val(i) = this->val(i) * this->val(i) * this->val(i);
+      return r;
     }
 
     //!@name Binary operators

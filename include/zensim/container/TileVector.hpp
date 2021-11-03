@@ -420,14 +420,14 @@ namespace zs {
                               index_seq<Is...>) {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
-      return zs::forward_as_tuple(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <std::size_t... Is, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto stdtuple_impl(const channel_counter_type chnOffset, const size_type i,
                                  index_seq<Is...>) {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
-      return std::forward_as_tuple(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple(channel_counter_type chn, const size_type i) {
@@ -442,14 +442,14 @@ namespace zs {
                                                            index_seq<Is...>) const {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
-      return zs::forward_as_tuple(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <std::size_t... Is> constexpr auto stdtuple_impl(const channel_counter_type chnOffset,
                                                               const size_type i,
                                                               index_seq<Is...>) const {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
-      return std::forward_as_tuple(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <auto d> constexpr auto tuple(channel_counter_type chn, const size_type i) const {
       return tuple_impl(chn, i, std::make_index_sequence<d>{});

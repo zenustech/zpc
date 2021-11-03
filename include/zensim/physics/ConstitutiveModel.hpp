@@ -13,10 +13,20 @@ namespace zs {
     EquationOfState = 0,
     NeoHookean,
     FixedCorotated,
+    StvkWithHencky,
     VonMisesFixedCorotated,
     DruckerPrager,
     NACC,
     NumConstitutiveModels
+  };
+
+  enum struct plasticity_model_e : char {
+    NonAssociativeVonMises = 0,
+    NonAssociativeCamClay,
+    VonMisesStvkHencky,
+    DruckerPragerStvkHencky,
+    SnowPlascitity,
+    NumPlasticityModels
   };
 
   template <typename T> constexpr std::tuple<T, T> lame_parameters(T E, T nu) {
@@ -36,26 +46,23 @@ namespace zs {
     template <typename VecT> using mat_type = typename VecT::template variant_vec<
         typename VecT::value_type, integer_seq<typename VecT::index_type, VecT::template range<0>(),
                                                VecT::template range<0>()>>;
-    template <typename VecT> using Bij_mat_type =
-        typename VecT::template variant_vec<typename VecT::value_type,
-                                            integer_seq<typename VecT::index_type, 2, 2>>;
 
     // psi_sigma
     template <typename VecT, enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto psi_sigma(const VecInterface<VecT>& S) const noexcept {
+    constexpr decltype(auto) psi_sigma(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_psi_sigma(S);
     }
     // dpsi_dsigma
     template <typename VecT, enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
+    constexpr decltype(auto) dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_dpsi_dsigma(S);
     }
     // d2psi_dsigma2
     template <typename VecT, enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
+    constexpr decltype(auto) d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_d2psi_dsigma2(S);
     }
     // Bij_neg_coeff
@@ -63,7 +70,7 @@ namespace zs {
               enable_if_all<VecT::dim == 1,
                             (VecT::template range<0>() == 2 || VecT::template range<0>() == 3),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
+    constexpr decltype(auto) Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_Bij_neg_coeff(S);
     }
 
@@ -201,6 +208,40 @@ namespace zs {
         dPdF(0, 0) = d2E_dsigma2(0, 0);  // U = V = [1]
       }
       return dPdF;
+    }
+  };
+
+  template <typename Model> struct PlasticityModelInterface {
+    using model_type = Model;
+
+    // project_sigma
+    template <typename VecT, typename... Args,
+              enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr decltype(auto) project_sigma(VecInterface<VecT>& S, Args&&... args) const noexcept {
+      return static_cast<const Model*>(this)->do_project_sigma(S, FWD(args)...);
+    }
+    // project_strain
+    template <typename VecT, typename... Args,
+              enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
+                            VecT::template range<0>() == VecT::template range<1>(),
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr decltype(auto) project_strain(VecInterface<VecT>& F, Args&&... args) const noexcept {
+      return static_cast<const Model*>(this)->do_project_strain(F, FWD(args)...);
+    }
+
+    // details (default impls)
+    template <typename VecT, typename... Args>
+    constexpr auto do_project_sigma(const VecInterface<VecT>& S, Args&&... args) const noexcept {
+      typename VecT::template variant_vec<typename VecT::value_type, typename VecT::extents> r{};
+      for (typename VecT::index_type i = 0; i != VecT::extent; ++i) r.val(i) = S.val(i);
+      return r;
+    }
+    template <typename VecT, typename... Args>
+    constexpr auto do_project_strain(const VecInterface<VecT>& F, Args&&... args) const noexcept {
+      typename VecT::template variant_vec<typename VecT::value_type, typename VecT::extents> r{};
+      for (typename VecT::index_type i = 0; i != VecT::extent; ++i) r.val(i) = F.val(i);
+      return r;
     }
   };
 

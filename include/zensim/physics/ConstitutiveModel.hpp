@@ -22,9 +22,10 @@ namespace zs {
 
   enum struct plasticity_model_e : char {
     NonAssociativeVonMises = 0,
+    VonMisesCapped,  
     NonAssociativeCamClay,
-    VonMisesStvkHencky,
-    DruckerPragerStvkHencky,
+    NonAssociativeDruckerPrager,
+    DruckerPrager,
     SnowPlascitity,
     NumPlasticityModels
   };

@@ -179,7 +179,7 @@ namespace zs {
     constexpr T sqrtNewtonRaphson(T n, T relTol = (T)1e-6) noexcept {
       T xn = (T)1;
       T xnp1 = (T)0.5 * (xn + n / xn);
-      for (const auto tol = n * relTol; gcem::abs(xnp1 - xn) > tol; xnp1 = (T)0.5 * (xn + n / xn))
+      for (const auto tol = n * relTol; gcem::abs(xnp1 - xn) > tol && xnp1 > 0; xnp1 = (T)0.5 * (xn + n / xn))
         xn = xnp1;
       return xnp1;
     }

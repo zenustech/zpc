@@ -17,6 +17,7 @@ namespace zs {
   template <typename> struct tseq;
   template <typename> struct vseq;
   template <typename... Seqs> struct concat;
+  template <typename> struct VecInterface;
 
   template <typename> struct gen_seq_impl;
   template <std::size_t N> using gen_seq = gen_seq_impl<std::make_index_sequence<N>>;
@@ -242,16 +243,33 @@ template <std::size_t I, typename T> struct tuple_value {
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
     using typename tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>::tuple_types;
 
+    // vec
+    template <typename VecT>
+    constexpr std::enable_if_t<VecT::extent == sizeof...(Ts), tuple &> operator=(
+        const VecInterface<VecT> &v) noexcept {
+      assign_impl(v, std::index_sequence_for<Ts...>{});
+      return *this;
+    }
+    // std::array
+    template <typename TT, std::size_t dd> constexpr tuple &operator=(const std::array<TT, dd> &v) {
+      assign_impl(v, std::index_sequence_for<Ts...>{});
+      return *this;
+    }
+    // c-array
     template <typename Vec>
-    constexpr std::enable_if_t<is_vec<Vec>::value, tuple &> operator=(const Vec &v) {
+    constexpr std::enable_if_t<std::is_array_v<Vec>, tuple &> operator=(const Vec &v) {
       assign_impl(v, std::index_sequence_for<Ts...>{});
       return *this;
     }
 
   private:
+    template <typename VecT, std::size_t... Is>
+    constexpr void assign_impl(const VecInterface<VecT> &v, index_seq<Is...>) noexcept {
+      ((void)(this->template get<Is>() = v.val(Is)), ...);
+    }
     template <typename Vec, std::size_t... Is>
-    constexpr void assign_impl(const Vec &v, index_seq<Is...>) {
-      ((void)(this->template get<Is>() = v.data()[Is]), ...);
+    constexpr void assign_impl(const Vec &v, index_seq<Is...>) noexcept {
+      ((void)(this->template get<Is>() = v[Is]), ...);
     }
   };
 

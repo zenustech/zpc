@@ -363,6 +363,7 @@ namespace zs {
     using tile_vector_type = std::remove_const_t<TileVectorT>;
     using const_tile_vector_type = std::add_const_t<tile_vector_type>;
     using pointer = typename tile_vector_type::pointer;
+    using const_pointer = typename tile_vector_type::const_pointer;
     using value_type = typename tile_vector_type::value_type;
     using reference = typename tile_vector_type::reference;
     using const_reference = typename tile_vector_type::const_reference;
@@ -383,13 +384,14 @@ namespace zs {
         : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
 
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr reference operator()(channel_counter_type chn, const size_type i) {
+    constexpr reference operator()(channel_counter_type chn, const size_type i) noexcept {
       if constexpr (WithinTile)
         return *(_vector + chn * lane_width + i);
       else
         return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
     }
-    constexpr const_reference operator()(channel_counter_type chn, const size_type i) const {
+    constexpr const_reference operator()(channel_counter_type chn,
+                                         const size_type i) const noexcept {
       if constexpr (WithinTile)
         return *(_vector + chn * lane_width + i);
       else
@@ -397,16 +399,17 @@ namespace zs {
     }
 
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto tile(const size_type tileid) {
+    constexpr auto tile(const size_type tileid) noexcept {
       return TileVectorUnnamedView<Space, tile_vector_type, true>{
           _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
-    constexpr auto tile(const size_type tileid) const {
+    constexpr auto tile(const size_type tileid) const noexcept {
       return TileVectorUnnamedView<Space, const_tile_vector_type, true>{
           _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
 
-    template <auto... Ns> constexpr auto pack(channel_counter_type chn, const size_type i) const {
+    template <auto... Ns>
+    constexpr auto pack(channel_counter_type chn, const size_type i) const noexcept {
       using RetT = vec<value_type, Ns...>;
       RetT ret{};
       auto offset = (i / lane_width * _numChannels + chn) * lane_width + (i % lane_width);
@@ -417,51 +420,53 @@ namespace zs {
     /// tuple
     template <std::size_t... Is, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
-                              index_seq<Is...>) {
+                              index_seq<Is...>) noexcept {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
       return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <std::size_t... Is, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto stdtuple_impl(const channel_counter_type chnOffset, const size_type i,
-                                 index_seq<Is...>) {
+                                 index_seq<Is...>) noexcept {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
       return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto tuple(channel_counter_type chn, const size_type i) {
+    constexpr auto tuple(channel_counter_type chn, const size_type i) noexcept {
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto stdtuple(channel_counter_type chn, const size_type i) {
+    constexpr auto stdtuple(channel_counter_type chn, const size_type i) noexcept {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
     }
     template <std::size_t... Is> constexpr auto tuple_impl(const channel_counter_type chnOffset,
                                                            const size_type i,
-                                                           index_seq<Is...>) const {
+                                                           index_seq<Is...>) const noexcept {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
       return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <std::size_t... Is> constexpr auto stdtuple_impl(const channel_counter_type chnOffset,
                                                               const size_type i,
-                                                              index_seq<Is...>) const {
+                                                              index_seq<Is...>) const noexcept {
       const auto a = i / lane_width * _numChannels;
       const auto b = i % lane_width;
       return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
-    template <auto d> constexpr auto tuple(channel_counter_type chn, const size_type i) const {
+    template <auto d>
+    constexpr auto tuple(channel_counter_type chn, const size_type i) const noexcept {
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
     }
-    template <auto d> constexpr auto stdtuple(channel_counter_type chn, const size_type i) const {
+    template <auto d>
+    constexpr auto stdtuple(channel_counter_type chn, const size_type i) const noexcept {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
     }
 
     constexpr size_type size() const noexcept { return _vectorSize; }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
 
-    pointer _vector{nullptr};
+    conditional_t<is_const_structure, const_pointer, pointer> _vector{nullptr};
     size_type _vectorSize{0};
     channel_counter_type _numChannels{0};
   };
@@ -487,6 +492,7 @@ namespace zs {
     using const_tile_vector_type = typename base_t::const_tile_vector_type;
 
     using pointer = typename base_t::pointer;
+    using const_pointer = typename base_t::const_pointer;
     using value_type = typename base_t::value_type;
     using reference = typename base_t::reference;
     using const_reference = typename base_t::const_reference;
@@ -516,13 +522,13 @@ namespace zs {
           _tagSizes{tagSizes},
           _N{N} {}
 
-    constexpr auto propertyIndex(const SmallString &propName) const {
+    constexpr auto propertyIndex(const SmallString &propName) const noexcept {
       channel_counter_type i = 0;
       for (; i != _N; ++i)
         if (_tagNames[i] == propName) break;
       return i;
     }
-    constexpr bool hasProperty(const SmallString &propName) const {
+    constexpr bool hasProperty(const SmallString &propName) const noexcept {
       return propertyIndex(propName) != _N;
     }
 
@@ -532,22 +538,24 @@ namespace zs {
     using base_t::tuple;
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr reference operator()(const SmallString &propName, const channel_counter_type chn,
-                                   const size_type i) {
+                                   const size_type i) noexcept {
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
     constexpr const_reference operator()(const SmallString &propName,
-                                         const channel_counter_type chn, const size_type i) const {
+                                         const channel_counter_type chn,
+                                         const size_type i) const noexcept {
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr reference operator()(const SmallString &propName, const size_type i) {
+    constexpr reference operator()(const SmallString &propName, const size_type i) noexcept {
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
-    constexpr const_reference operator()(const SmallString &propName, const size_type i) const {
+    constexpr const_reference operator()(const SmallString &propName,
+                                         const size_type i) const noexcept {
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto tile(const size_type tileid) {
+    constexpr auto tile(const size_type tileid) noexcept {
       return TileVectorView<Space, tile_vector_type, true>{
           this->_vector + tileid * lane_width * this->_numChannels,
           lane_width,
@@ -557,7 +565,7 @@ namespace zs {
           _tagSizes,
           _N};
     }
-    constexpr auto tile(const size_type tileid) const {
+    constexpr auto tile(const size_type tileid) const noexcept {
       return TileVectorView<Space, const_tile_vector_type, true>{
           this->_vector + tileid * lane_width * this->_numChannels,
           lane_width,
@@ -569,26 +577,27 @@ namespace zs {
     }
 
     template <auto... Ns>
-    constexpr auto pack(const SmallString &propName, const size_type i) const {
+    constexpr auto pack(const SmallString &propName, const size_type i) const noexcept {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
           _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto tuple(const SmallString &propName, const size_type i) {
+    constexpr auto tuple(const SmallString &propName, const size_type i) noexcept {
       return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)],
                                                             i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto stdtuple(const SmallString &propName, const size_type i) {
+    constexpr auto stdtuple(const SmallString &propName, const size_type i) noexcept {
       return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)],
                                                                i);
     }
-    template <auto d> constexpr auto tuple(const SmallString &propName, const size_type i) const {
+    template <auto d>
+    constexpr auto tuple(const SmallString &propName, const size_type i) const noexcept {
       return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)],
                                                             i);
     }
     template <auto d>
-    constexpr auto stdtuple(const SmallString &propName, const size_type i) const {
+    constexpr auto stdtuple(const SmallString &propName, const size_type i) const noexcept {
       return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)],
                                                                i);
     }

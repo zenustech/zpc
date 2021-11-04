@@ -213,9 +213,7 @@ namespace zs {
       return *this;
     }
     TileVector clone(const allocator_type &allocator) const {
-      // capacity() is the count of tiles
-      // use size() that represents the number of elements!
-      TileVector ret{allocator, _tags, capacity()};
+      TileVector ret{allocator, _tags, size()};
       copy(MemoryEntity{allocator.location, (void *)ret.data()},
            MemoryEntity{memoryLocation(), (void *)data()},
            sizeof(value_type) * numChannels() * capacity());

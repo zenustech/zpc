@@ -320,7 +320,7 @@ struct std::tuple_element<I, tuple<Ts...>> {
   }
   /** tie */
   template <typename... Args> constexpr auto tie(Args &...args) {
-    return zs::tuple<Args &...>(args...);
+    return zs::tuple<Args &...>{args...};
   }
 
   /** forward_as_tuple */

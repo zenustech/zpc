@@ -37,7 +37,7 @@ namespace zs {
 
       auto eps = S.log();
       auto eps_trace = eps.sum();
-      auto dev_eps = (eps - eps_trace / (value_type)dim);
+      auto dev_eps = (eps - eps_trace / (value_type)dim);  // equivalent to eps.deviatoric()
       auto dev_eps_norm = dev_eps.norm();
       auto delta_gamma = dev_eps_norm - yieldStress / _2mu;
       if (delta_gamma > 0) {

@@ -271,6 +271,14 @@ namespace zs {
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto exp() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = gcem::exp(this->val(i));
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto log() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
@@ -300,6 +308,16 @@ namespace zs {
       typename Derived::template variant_vec<value_type, extents> r{};
       for (index_type i = 0; i != extent; ++i)
         r.val(i) = this->val(i) * this->val(i) * this->val(i);
+      return r;
+    }
+    template <
+        typename VecT = Derived,
+        enable_if_all<std::is_floating_point_v<typename VecT::value_type>, VecT::dim == 1> = 0>
+    constexpr auto deviatoric() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      auto rightTerm = -sum() / (value_type)extent;
+      for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i) + rightTerm;
       return r;
     }
 

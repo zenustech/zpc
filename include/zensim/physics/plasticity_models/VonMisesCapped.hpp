@@ -21,12 +21,10 @@ namespace zs {
         : k1Compress{k1Compress}, k1Stretch{k1Stretch}, yieldStress{k2} {}
 
     // project_strain
-    template <typename VecT, template <typename> class ModelInterface, typename Model,
-              enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
-                            VecT::template range<0>() == VecT::template range<1>(),
+    template <typename VecT, typename Model,
+              enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr void do_project_sigma(VecInterface<VecT>& S,
-                                    const ModelInterface<Model>& model) const noexcept {
+    constexpr void do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       using extents = typename VecT::extents;
@@ -51,14 +49,13 @@ namespace zs {
         S = S * gcem::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim);
     }
 
-    template <typename VecT, template <typename> class ModelInterface, typename Model,
+    template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
                             VecT::template range<0>() == VecT::template range<1>(),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr void do_project_strain(VecInterface<VecT>& F,
-                                     const ModelInterface<Model>& model) const noexcept {
+    constexpr void do_project_strain(VecInterface<VecT>& F, const Model& model) const noexcept {
       auto [U, S, V] = math::svd(F);
-      do_project_sigma(S);
+      do_project_sigma(S, model);
       F = diag_mul(U, S) * V.transpose();
     }
   };

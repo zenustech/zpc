@@ -184,7 +184,7 @@ namespace zs {
     }
 
     void resize(size_type numBlocks) { blocks.resize(numBlocks * (size_type)block_space()); }
-    bool hasProperty(const SmallString &str) const { return blocks.hasProperty(str); }
+    bool hasProperty(const SmallString &str) const noexcept { return blocks.hasProperty(str); }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       return blocks.getChannelOffset(str);
     }
@@ -247,8 +247,9 @@ namespace zs {
       return gridApply(_primaryGrid, [](auto &&grid) -> size_type { return grid.size(); });
     }
     constexpr const allocator_type &get_allocator() const {
-      return gridApply(_primaryGrid,
-                       [](auto &&grid) -> decltype(grid.get_allocator()) { return grid.get_allocator(); });
+      return gridApply(_primaryGrid, [](auto &&grid) -> decltype(grid.get_allocator()) {
+        return grid.get_allocator();
+      });
       throw std::runtime_error(
           fmt::format("primary grid \"{}\" not known", magic_enum::enum_name(_primaryGrid)));
     }
@@ -357,8 +358,10 @@ namespace zs {
 
       return ret;
     }
-    template <typename Ti>
-    static constexpr auto coord_to_cellid(const vec<Ti, dim> &coord) noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_integral_v<typename VecT::index_type>> = 0>
+    static constexpr auto coord_to_cellid(const VecInterface<VecT> &coord) noexcept {
+      using Ti = typename VecT::index_type;
       cell_index_type ret{0};
       if constexpr (is_power_of_two)
         for (int d = 0; d != dim; ++d) ret = (ret << num_cell_bits) | coord[d];
@@ -366,8 +369,10 @@ namespace zs {
         for (int d = 0; d != dim; ++d) ret = (ret * (Ti)side_length) + coord[d];
       return ret;
     }
-    template <typename Ti>
-    static constexpr auto global_coord_to_cellid(const vec<Ti, dim> &coord) noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_integral_v<typename VecT::index_type>> = 0>
+    static constexpr auto global_coord_to_cellid(const VecInterface<VecT> &coord) noexcept {
+      using Ti = typename VecT::index_type;
       cell_index_type ret{0};
       if constexpr (is_power_of_two)
         for (int d = 0; d != dim; ++d)

@@ -378,7 +378,13 @@ namespace zs {
         : _vector{tilevector.data()},
           _vectorSize{tilevector.size()},
           _numChannels{tilevector.numChannels()} {}
-    explicit constexpr TileVectorUnnamedView(pointer base, size_type s, channel_counter_type nchns)
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    explicit constexpr TileVectorUnnamedView(pointer base, const size_type s,
+                                             const channel_counter_type nchns)
+        : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
+    template <bool V = is_const_structure, enable_if_t<V> = 0>
+    explicit constexpr TileVectorUnnamedView(const_pointer base, const size_type s,
+                                             const channel_counter_type nchns)
         : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
 
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
@@ -461,12 +467,17 @@ namespace zs {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
     }
 
-    constexpr size_type size() const noexcept { return _vectorSize; }
+    constexpr size_type size() const noexcept {
+      if constexpr (WithinTile)
+        return lane_width;
+      else
+        return _vectorSize;
+    }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
 
-    conditional_t<is_const_structure, const_pointer, pointer> _vector{nullptr};
-    size_type _vectorSize{0};
-    channel_counter_type _numChannels{0};
+    conditional_t<is_const_structure, const_pointer, pointer> const _vector{nullptr};
+    const size_type _vectorSize{0};
+    const channel_counter_type _numChannels{0};
   };
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
@@ -488,7 +499,6 @@ namespace zs {
     static constexpr bool is_const_structure = base_t::is_const_structure;
     using tile_vector_type = typename base_t::tile_vector_type;
     using const_tile_vector_type = typename base_t::const_tile_vector_type;
-
     using pointer = typename base_t::pointer;
     using const_pointer = typename base_t::const_pointer;
     using value_type = typename base_t::value_type;
@@ -510,10 +520,23 @@ namespace zs {
           _tagOffsets{tilevector.tagOffsetHandle()},
           _tagSizes{tilevector.tagSizeHandle()},
           _N{static_cast<channel_counter_type>(tilevector.numProperties())} {}
-    explicit constexpr TileVectorView(pointer base, size_type s, channel_counter_type nchns,
-                                      const SmallString *tagNames,
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    explicit constexpr TileVectorView(pointer base, const size_type s,
+                                      const channel_counter_type nchns, const SmallString *tagNames,
                                       const channel_counter_type *tagOffsets,
-                                      const channel_counter_type *tagSizes, channel_counter_type N)
+                                      const channel_counter_type *tagSizes,
+                                      const channel_counter_type N)
+        : base_t{base, s, nchns},
+          _tagNames{tagNames},
+          _tagOffsets{tagOffsets},
+          _tagSizes{tagSizes},
+          _N{N} {}
+    template <bool V = is_const_structure, enable_if_t<V> = 0>
+    explicit constexpr TileVectorView(const_pointer base, const size_type s,
+                                      const channel_counter_type nchns, const SmallString *tagNames,
+                                      const channel_counter_type *tagOffsets,
+                                      const channel_counter_type *tagSizes,
+                                      const channel_counter_type N)
         : base_t{base, s, nchns},
           _tagNames{tagNames},
           _tagOffsets{tagOffsets},
@@ -554,7 +577,7 @@ namespace zs {
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
-      return TileVectorView<Space, tile_vector_type, true>{
+      return TileVectorView<Space, TileVectorT, true>{
           this->_vector + tileid * lane_width * this->_numChannels,
           lane_width,
           this->_numChannels,
@@ -591,19 +614,19 @@ namespace zs {
     }
     template <auto d>
     constexpr auto tuple(const SmallString &propName, const size_type i) const noexcept {
-      return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)],
-                                                            i);
+      return static_cast<const base_t &>(*this).template tuple<d>(
+          _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d>
     constexpr auto stdtuple(const SmallString &propName, const size_type i) const noexcept {
-      return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)],
-                                                               i);
+      return static_cast<const base_t &>(*this).template stdtuple<d>(
+          _tagOffsets[propertyIndex(propName)], i);
     }
 
     const SmallString *_tagNames{nullptr};
     const channel_counter_type *_tagOffsets{nullptr};
     const channel_counter_type *_tagSizes{nullptr};
-    channel_counter_type _N{0};
+    const channel_counter_type _N{0};
   };
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,

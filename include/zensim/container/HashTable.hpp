@@ -301,7 +301,7 @@ namespace zs {
 #if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_t<S == execspace_e::cuda && !V> = 0>
-    __forceinline__ __device__ value_t insert(const key_t &key) {
+    __forceinline__ __device__ value_t insert(const key_t &key) noexcept {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
@@ -346,7 +346,7 @@ namespace zs {
 #if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_t<S == execspace_e::cuda && !V> = 0>
-    __forceinline__ __device__ bool insert(const key_t &key, value_t id) {
+    __forceinline__ __device__ bool insert(const key_t &key, value_t id) noexcept {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
@@ -381,7 +381,7 @@ namespace zs {
     }
 
     /// make sure no one else is inserting in the same time!
-    constexpr value_t query(const key_t &key) const {
+    constexpr value_t query(const key_t &key) const noexcept {
       using namespace placeholders;
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       while (true) {
@@ -412,7 +412,7 @@ namespace zs {
     conditional_t<is_const_structure, const value_t *, value_t *> _cnt;
 
   protected:
-    constexpr value_t do_hash(const key_t &key) const {
+    constexpr value_t do_hash(const key_t &key) const noexcept {
       std::size_t ret = key[0];
       for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);
@@ -421,7 +421,7 @@ namespace zs {
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_t<S == execspace_e::cuda && !V> = 0>
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
-                                                  const key_t &val) {
+                                                  const key_t &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);

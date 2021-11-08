@@ -284,9 +284,9 @@ namespace zs {
     using unsigned_value_t = std::make_unsigned_t<value_t>;
     using status_t = typename hash_table_type::status_t;
     struct table_t {
-      key_t *keys;
-      value_t *indices;
-      status_t *status;
+      conditional_t<is_const_structure, const key_t *, key_t *> keys;
+      conditional_t<is_const_structure, const value_t *, value_t *> indices;
+      conditional_t<is_const_structure, const status_t *, status_t *> status;
     };
 
     constexpr HashTableView() = default;
@@ -407,9 +407,9 @@ namespace zs {
     }
 
     table_t _table;
-    key_t *_activeKeys;
+    conditional_t<is_const_structure, const key_t *, key_t *> _activeKeys;
     const value_t _tableSize;
-    value_t *_cnt;
+    conditional_t<is_const_structure, const value_t *, value_t *> _cnt;
 
   protected:
     constexpr value_t do_hash(const key_t &key) const {

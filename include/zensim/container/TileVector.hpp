@@ -216,7 +216,7 @@ namespace zs {
       TileVector ret{allocator, _tags, size()};
       copy(MemoryEntity{allocator.location, (void *)ret.data()},
            MemoryEntity{memoryLocation(), (void *)data()},
-           sizeof(value_type) * numChannels() * capacity());
+           sizeof(value_type) * numChannels() * (count_tiles(size()) * lane_width));
       return ret;
     }
     TileVector clone(const MemoryLocation &mloc) const {

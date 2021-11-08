@@ -14,8 +14,8 @@ namespace zs {
 
     value_type tauY, alpha, hardeningCoeff;
 
-    constexpr NonAssociativeVonMises(value_type tauY, value_type alpha,
-                                     value_type hardeningCoeff) noexcept
+    constexpr NonAssociativeVonMises(value_type tauY, value_type alpha = 0,
+                                     value_type hardeningCoeff = 0) noexcept
         : tauY{tauY}, alpha{alpha}, hardeningCoeff{hardeningCoeff} {}
 
     // project_strain
@@ -34,6 +34,7 @@ namespace zs {
       // Compute B hat trial based on the singular values from F^trial --> sigma^2
       // are the singular vals of be hat trial
       auto B_hat_trial = S * S;
+#if 1
       // mu * J^(-2/dim)
       auto scaledMu = static_cast<const Model&>(model).mu
                       * gcem::pow(S.prod(), -(value_type)2 / (value_type)dim);
@@ -42,20 +43,40 @@ namespace zs {
       // Compute s hat trial's L2 norm (since it appears in our expression for
       // y(tau)
       auto s_hat_trial_norm = s_hat_trial.norm();
+#else
+      // auto s_hat_trial = model.first_piola(S);
+      auto dE_dsigma = model.dpsi_dsigma(S);
+      auto s_hat_trial = dE_dsigma * S;
+      auto shifted = s_hat_trial;
+      if constexpr (dim == 2)
+        std::swap(shifted(0), shifted(1));
+      else if constexpr (dim == 3) {
+        shifted(0) = s_hat_trial(1);
+        shifted(1) = s_hat_trial(2);
+        shifted(2) = s_hat_trial(0);
+      }
+      auto s_hat_trial_norm
+          = math::sqrtNewtonRaphson((s_hat_trial - shifted).l2NormSqr() * (value_type)0.5);
+#endif
       // Compute y using sqrt(s:s) and scaledTauY
       auto y = s_hat_trial_norm - scaledTauY;
 
       if (y < 1e-4) return;  // within the yield surface
 
       auto z = y / scaledMu;
+      // auto z = y / B_hat_trial.deviatoric();
       // Compute new Bhat
       auto B_hat_new = B_hat_trial - ((z / s_hat_trial_norm) * s_hat_trial);
+
+      // printf("S (%f) (%f, %f, %f) -> %f, %f, %f\n", s_hat_trial_norm, S(0), S(1), S(2),
+      // B_hat_new(0), B_hat_new(1),
+      // B_hat_new(2));
       // Now compute new sigmas by taking sqrt of B hat new, then set strain to be
       // this new F^{n+1} value
       for (int i = 0; i != dim; ++i) S(i) = math::sqrtNewtonRaphson(B_hat_new(i));
     }
 
-    template <typename VecT, template <typename> class ModelInterface, typename Model,
+    template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
                             VecT::template range<0>() == VecT::template range<1>(),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>

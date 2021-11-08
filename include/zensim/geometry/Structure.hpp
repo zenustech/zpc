@@ -119,22 +119,23 @@ namespace zs {
     return GridBlocksView<ExecSpace, GridBlocks<GridBlock<V, d, chn_bits, domain_bits>>>{blocks};
   }
 
-  template <typename ValueT, int d_, auto SideLength, grid_e category> struct Grid;
-  template <typename ValueT, int d_, auto SideLength> struct Grids;
+  template <typename ValueT, int d_, auto SideLength, grid_e category, typename allocator>
+  struct Grid;
+  template <typename ValueT, int d_, auto SideLength, typename allocator> struct Grids;
 
   template <typename ValueT = f32, int d_ = 3, auto SideLength = 4,
-            grid_e category_ = grid_e::collocated>
+            grid_e category_ = grid_e::collocated, typename AllocatorT = ZSPmrAllocator<>>
   struct Grid {
     static_assert(d_ > 0, "dimension must be positive!");
     using value_type = ValueT;
-    using allocator_type = ZSPmrAllocator<>;
+    using allocator_type = AllocatorT;
     using domain_index_type = conditional_t<(sizeof(value_type) <= 4), i32, i64>;
     // using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
     using cell_index_type = domain_index_type;
     static constexpr auto category = category_;
     static constexpr int dim = d_;
     static constexpr cell_index_type side_length = SideLength;
-    using grids_t = Grids<value_type, dim, side_length>;
+    using grids_t = Grids<value_type, dim, side_length, allocator_type>;
     static constexpr cell_index_type block_space() noexcept {
       auto ret = side_length;
       for (int d = 1; d != dim; ++d) ret *= side_length;
@@ -145,7 +146,8 @@ namespace zs {
         = side_length > 0 && ((side_length & (side_length - 1)) == 0);
     static constexpr auto num_cell_bits = bit_count(side_length);
 
-    using grid_storage_t = TileVector<value_type, (std::size_t)block_space()>;
+    using grid_storage_t
+        = TileVector<value_type, (std::size_t)block_space(), unsigned char, allocator_type>;
     using size_type = typename grid_storage_t::size_type;
     using channel_counter_type = typename grid_storage_t::channel_counter_type;
 
@@ -158,6 +160,12 @@ namespace zs {
     constexpr ProcID devid() const noexcept { return blocks.devid(); }
     constexpr auto size() const noexcept { return blocks.size(); }
     decltype(auto) get_allocator() const noexcept { return blocks.get_allocator(); }
+    decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
+      if constexpr (is_virtual_zs_allocator<allocator_type>::value)
+        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+      else
+        return get_memory_source(mre, devid);
+    }
     constexpr decltype(auto) numBlocks() const noexcept { return blocks.numTiles(); }
     constexpr channel_counter_type numChannels() const noexcept { return blocks.numChannels(); }
 
@@ -166,12 +174,12 @@ namespace zs {
         : blocks{allocator, channelTags, count * block_space()}, dx{dx} {}
     Grid(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
          memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Grid{get_memory_source(mre, devid), channelTags, dx, count} {}
+        : Grid{get_default_allocator(mre, devid), channelTags, dx, count} {}
     Grid(channel_counter_type numChns, value_type dx, size_type count,
          memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Grid{get_memory_source(mre, devid), {{"unnamed", numChns}}, dx, count} {}
+        : Grid{get_default_allocator(mre, devid), {{"unnamed", numChns}}, dx, count} {}
     Grid(value_type dx = 1.f, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Grid{get_memory_source(mre, devid), {{"mass", 1}, {"vel", dim}}, dx, 0} {}
+        : Grid{get_default_allocator(mre, devid), {{"mass", 1}, {"vel", dim}}, dx, 0} {}
 
     Grid clone(const allocator_type &allocator) const {
       Grid ret{};
@@ -180,7 +188,7 @@ namespace zs {
       return ret;
     }
     Grid clone(const MemoryLocation &mloc) const {
-      return clone(get_memory_source(mloc.memspace(), mloc.devid()));
+      return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
 
     void resize(size_type numBlocks) { blocks.resize(numBlocks * (size_type)block_space()); }
@@ -192,9 +200,11 @@ namespace zs {
     grid_storage_t blocks;
     value_type dx;
   };
-  template <typename ValueT = f32, int d_ = 3, auto SideLength = 4> struct Grids {
+  template <typename ValueT = f32, int d_ = 3, auto SideLength = 4,
+            typename AllocatorT = ZSPmrAllocator<>>
+  struct Grids {
     template <grid_e category = grid_e::collocated> using grid_t
-        = Grid<ValueT, d_, SideLength, category>;
+        = Grid<ValueT, d_, SideLength, category, AllocatorT>;
     using collocated_grid_t = grid_t<grid_e::collocated>;
     using value_type = typename collocated_grid_t::value_type;
     using allocator_type = typename collocated_grid_t::allocator_type;
@@ -216,6 +226,13 @@ namespace zs {
     using CellIV = typename collocated_grid_t::CellIV;
     using IV = typename collocated_grid_t::IV;
     using TV = typename collocated_grid_t::TV;
+
+    decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
+      if constexpr (is_virtual_zs_allocator<allocator_type>::value)
+        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+      else
+        return get_memory_source(mre, devid);
+    }
 
     template <typename F> constexpr decltype(auto) gridApply(grid_e category, F &&f) {
       if (category == grid_e::collocated)
@@ -275,7 +292,7 @@ namespace zs {
     Grids(const std::vector<PropertyTag> &channelTags = {{"mass", 1}, {"vel", dim}},
           value_type dx = 1.f, size_type numBlocks = 0, memsrc_e mre = memsrc_e::host,
           ProcID devid = -1, grid_e ge = grid_e::collocated)
-        : Grids{get_memory_source(mre, devid), channelTags, dx, numBlocks, ge} {}
+        : Grids{get_default_allocator(mre, devid), channelTags, dx, numBlocks, ge} {}
 
     void align(grid_e targetGrid) {
       if (targetGrid == _primaryGrid) return;
@@ -634,23 +651,26 @@ namespace zs {
     value_type _dx;
   };
 
-  template <execspace_e space, typename V, int d, auto SideLength>
-  constexpr decltype(auto) proxy(Grids<V, d, SideLength> &grids) {
-    return GridsView<space, Grids<V, d, SideLength>>{grids};
+  template <execspace_e space, typename V, int d, auto SideLength, typename Allocator>
+  constexpr decltype(auto) proxy(Grids<V, d, SideLength, Allocator> &grids) {
+    return GridsView<space, Grids<V, d, SideLength, Allocator>>{grids};
   }
-  template <execspace_e space, typename V, int d, auto SideLength>
-  constexpr decltype(auto) proxy(const Grids<V, d, SideLength> &grids) {
-    return GridsView<space, const Grids<V, d, SideLength>>{grids};
+  template <execspace_e space, typename V, int d, auto SideLength, typename Allocator>
+  constexpr decltype(auto) proxy(const Grids<V, d, SideLength, Allocator> &grids) {
+    return GridsView<space, const Grids<V, d, SideLength, Allocator>>{grids};
   }
 
-  template <execspace_e space, typename V, int d, auto SideLength, grid_e category>
-  constexpr decltype(auto) proxy(Grid<V, d, SideLength, category> &grid) {
-    return typename GridsView<space, Grids<V, d, SideLength>>::template Grid<category>{
+  template <execspace_e space, typename V, int d, auto SideLength, grid_e category,
+            typename Allocator>
+  constexpr decltype(auto) proxy(Grid<V, d, SideLength, category, Allocator> &grid) {
+    return typename GridsView<space, Grids<V, d, SideLength, Allocator>>::template Grid<category>{
         proxy<space>({}, grid.blocks), grid.dx};
   }
-  template <execspace_e space, typename V, int d, auto SideLength, grid_e category>
-  constexpr decltype(auto) proxy(const Grid<V, d, SideLength, category> &grid) {
-    return typename GridsView<space, const Grids<V, d, SideLength>>::template Grid<category>{
+  template <execspace_e space, typename V, int d, auto SideLength, grid_e category,
+            typename Allocator>
+  constexpr decltype(auto) proxy(const Grid<V, d, SideLength, category, Allocator> &grid) {
+    return typename GridsView<space,
+                              const Grids<V, d, SideLength, Allocator>>::template Grid<category>{
         proxy<space>({}, grid.blocks), grid.dx};
   }
 

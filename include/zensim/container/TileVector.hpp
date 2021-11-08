@@ -371,6 +371,8 @@ namespace zs {
     using whole_view_type = TileVectorUnnamedView<Space, TileVectorT, false>;
     using tile_view_type = TileVectorUnnamedView<Space, TileVectorT, true>;
     static constexpr auto lane_width = tile_vector_type::lane_width;
+    static constexpr bool is_power_of_two = lane_width > 0 && (lane_width & (lane_width - 1)) == 0;
+    static constexpr auto num_lane_bits = bit_count(lane_width);
 
     constexpr TileVectorUnnamedView() = default;
     ~TileVectorUnnamedView() = default;
@@ -389,34 +391,56 @@ namespace zs {
 
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr reference operator()(channel_counter_type chn, const size_type i) noexcept {
-      if constexpr (WithinTile)
-        return *(_vector + chn * lane_width + i);
-      else
-        return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+      if constexpr (WithinTile) {
+        if constexpr (is_power_of_two)
+          return *(_vector + ((chn << num_lane_bits) | i));
+        else
+          return *(_vector + (chn * lane_width | i));
+      } else {
+        if constexpr (is_power_of_two)
+          return *(_vector
+                   + ((((i >> num_lane_bits) * _numChannels + chn) << num_lane_bits)
+                      | (i & (lane_width - 1))));
+        else
+          return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+      }
     }
     constexpr const_reference operator()(channel_counter_type chn,
                                          const size_type i) const noexcept {
       if constexpr (WithinTile)
-        return *(_vector + chn * lane_width + i);
+        return *(_vector + ((chn * lane_width) | i));
       else
         return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
     }
 
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
-      return TileVectorUnnamedView<Space, tile_vector_type, true>{
-          _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
+      if constexpr (is_power_of_two)
+        return TileVectorUnnamedView<Space, tile_vector_type, true>{
+            _vector + (tileid << num_lane_bits) * _numChannels, lane_width, _numChannels};
+      else
+        return TileVectorUnnamedView<Space, tile_vector_type, true>{
+            _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
     constexpr auto tile(const size_type tileid) const noexcept {
-      return TileVectorUnnamedView<Space, const_tile_vector_type, true>{
-          _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
+      if constexpr (is_power_of_two)
+        return TileVectorUnnamedView<Space, const_tile_vector_type, true>{
+            _vector + (tileid << num_lane_bits) * _numChannels, lane_width, _numChannels};
+      else
+        return TileVectorUnnamedView<Space, const_tile_vector_type, true>{
+            _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
 
     template <auto... Ns>
     constexpr auto pack(channel_counter_type chn, const size_type i) const noexcept {
       using RetT = vec<value_type, Ns...>;
       RetT ret{};
-      auto offset = (i / lane_width * _numChannels + chn) * lane_width + (i % lane_width);
+      size_type offset{};
+      if constexpr (is_power_of_two)
+        offset = ((((i >> num_lane_bits) * _numChannels) + chn) << num_lane_bits)
+                 | (i & (lane_width - 1));
+      else
+        offset = (i / lane_width * _numChannels + chn) * lane_width + (i % lane_width);
       for (channel_counter_type d = 0; d != RetT::extent; ++d, offset += lane_width)
         ret.val(d) = *(_vector + offset);
       return ret;
@@ -425,45 +449,81 @@ namespace zs {
     template <std::size_t... Is, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_seq<Is...>) noexcept {
-      const auto a = i / lane_width * _numChannels;
-      const auto b = i % lane_width;
-      return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      size_type a{}, b{};
+      if constexpr (is_power_of_two) {
+        a = (i >> num_lane_bits) * _numChannels;
+        b = i & (lane_width - 1);
+      } else {
+        a = i / lane_width * _numChannels;
+        b = i % lane_width;
+      }
+      if constexpr (is_power_of_two)
+        return zs::tie(*(_vector + (((a + (chnOffset + Is)) << num_lane_bits) | b))...);
+      else
+        return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <std::size_t... Is, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto stdtuple_impl(const channel_counter_type chnOffset, const size_type i,
                                  index_seq<Is...>) noexcept {
-      const auto a = i / lane_width * _numChannels;
-      const auto b = i % lane_width;
-      return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      size_type a{}, b{};
+      if constexpr (is_power_of_two) {
+        a = (i >> num_lane_bits) * _numChannels;
+        b = i & (lane_width - 1);
+      } else {
+        a = i / lane_width * _numChannels;
+        b = i % lane_width;
+      }
+      if constexpr (is_power_of_two)
+        return std::tie(*(_vector + (((a + (chnOffset + Is)) << num_lane_bits) | b))...);
+      else
+        return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto tuple(channel_counter_type chn, const size_type i) noexcept {
+    constexpr auto tuple(const channel_counter_type chn, const size_type i) noexcept {
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto stdtuple(channel_counter_type chn, const size_type i) noexcept {
+    constexpr auto stdtuple(const channel_counter_type chn, const size_type i) noexcept {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
     }
     template <std::size_t... Is> constexpr auto tuple_impl(const channel_counter_type chnOffset,
                                                            const size_type i,
                                                            index_seq<Is...>) const noexcept {
-      const auto a = i / lane_width * _numChannels;
-      const auto b = i % lane_width;
-      return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      size_type a{}, b{};
+      if constexpr (is_power_of_two) {
+        a = (i >> num_lane_bits) * _numChannels;
+        b = i & (lane_width - 1);
+      } else {
+        a = i / lane_width * _numChannels;
+        b = i % lane_width;
+      }
+      if constexpr (is_power_of_two)
+        return zs::tie(*(_vector + (((a + (chnOffset + Is)) << num_lane_bits) | b))...);
+      else
+        return zs::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <std::size_t... Is> constexpr auto stdtuple_impl(const channel_counter_type chnOffset,
                                                               const size_type i,
                                                               index_seq<Is...>) const noexcept {
-      const auto a = i / lane_width * _numChannels;
-      const auto b = i % lane_width;
-      return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+      size_type a{}, b{};
+      if constexpr (is_power_of_two) {
+        a = (i >> num_lane_bits) * _numChannels;
+        b = i & (lane_width - 1);
+      } else {
+        a = i / lane_width * _numChannels;
+        b = i % lane_width;
+      }
+      if constexpr (is_power_of_two)
+        return std::tie(*(_vector + (((a + (chnOffset + Is)) << num_lane_bits) | b))...);
+      else
+        return std::tie(*(_vector + (a + (chnOffset + Is)) * lane_width + b)...);
     }
     template <auto d>
-    constexpr auto tuple(channel_counter_type chn, const size_type i) const noexcept {
+    constexpr auto tuple(const channel_counter_type chn, const size_type i) const noexcept {
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
     }
     template <auto d>
-    constexpr auto stdtuple(channel_counter_type chn, const size_type i) const noexcept {
+    constexpr auto stdtuple(const channel_counter_type chn, const size_type i) const noexcept {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
     }
 

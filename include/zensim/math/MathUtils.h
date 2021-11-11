@@ -34,6 +34,22 @@ namespace zs {
   }  // namespace mathutil_impl
 
   namespace math {
+#if 0
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr T sqrtNewtonRaphson(T x, T curr = 1, T prev = 0) noexcept {
+      return curr == prev ? curr : sqrtNewtonRaphson(x, (T)0.5 * (curr + x / curr), curr);
+    }
+#else
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr T sqrtNewtonRaphson(T n, T relTol = (T)1e-6) noexcept {
+      T xn = (T)1;
+      T xnp1 = (T)0.5 * (xn + n / xn);
+      for (const auto tol = gcem::min(n * relTol, 1e-10); gcem::abs(xnp1 - xn) > tol && xnp1 > 0;
+           xnp1 = (T)0.5 * (xn + n / xn))
+        xn = xnp1;
+      return xnp1;
+    }
+#endif
     /// binary_op_result
     template <typename T0, typename T1> struct binary_op_result {
       static constexpr auto determine_type() noexcept {
@@ -169,21 +185,6 @@ namespace zs {
                                              const T eps = 1e-6) noexcept {
       return logy - y * diff_log_over_diff(x, y, eps);
     }
-#if 0
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-    constexpr T sqrtNewtonRaphson(T x, T curr = 1, T prev = 0) noexcept {
-      return curr == prev ? curr : sqrtNewtonRaphson(x, (T)0.5 * (curr + x / curr), curr);
-    }
-#else
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-    constexpr T sqrtNewtonRaphson(T n, T relTol = (T)1e-6) noexcept {
-      T xn = (T)1;
-      T xnp1 = (T)0.5 * (xn + n / xn);
-      for (const auto tol = n * relTol; gcem::abs(xnp1 - xn) > tol && xnp1 > 0; xnp1 = (T)0.5 * (xn + n / xn))
-        xn = xnp1;
-      return xnp1;
-    }
-#endif
   }  // namespace math
 
   template <typename... Args>

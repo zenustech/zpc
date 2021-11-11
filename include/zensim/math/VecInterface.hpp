@@ -216,16 +216,20 @@ namespace zs {
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
     constexpr auto length() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
-      value_type sqrNorm = l2NormSqr();
       using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
                               conditional_t<(sizeof(value_type) >= 8), double, float>>;
-      return math::sqrtNewtonRaphson(static_cast<T>(sqrNorm));
+      return math::sqrtNewtonRaphson((T)l2NormSqr());
       // return gcem::sqrt(sqrNorm);
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
     constexpr auto norm() const noexcept {
       return length();
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto infNorm() const noexcept {
+      return abs().max();
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>

@@ -59,12 +59,12 @@ namespace zs {
       F = diag_mul(U, S) * V.transpose();
     }
 
-    template <typename VecT, typename VecTV, typename Model,
+    template <typename VecT, typename Model, typename TT,
               enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
                             VecT::template range<0>() == VecT::template range<1>(),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr void project_strain(VecInterface<VecT>& F, const Model& model,
-                                  const VecInterface<VecTV>& Chat, int pi = -1) const noexcept {
+                                  typename VecT::value_type strainRate, int pi) const noexcept {
       auto [U, S, V] = math::svd(F);
 
       using value_type = typename VecT::value_type;
@@ -90,12 +90,11 @@ namespace zs {
       auto dev_eps_norm = dev_eps.norm();
 
       // Cowper-Symonds
-      auto P = (value_type)10;
-      auto C = (value_type)0.1;
-      auto coef = gcem::pow((Chat.sum() / (value_type)dim) / C, (value_type)1 / P);
+      auto P = (value_type)dim;
+      auto C = (value_type)1;
+      auto coef = gcem::pow((strainRate) / C, (value_type)1 / P);
 #if 1
-      auto ys
-          = yieldStress * (1 + gcem::pow((Chat.sum() / (value_type)dim) / C, (value_type)1 / P));
+      auto ys = yieldStress * (1 + gcem::pow((strainRate) / C, (value_type)1 / P));
 #else
       auto ys = yieldStress;
 #endif
@@ -109,6 +108,15 @@ namespace zs {
             "%f\n",
             pi, (float)yieldStress, (float)ys, (float)coef, (float)(_2mu * 0.5),
             (float)dev_eps_norm, (float)(ys / _2mu));
+      if (pi < 5)
+        printf(
+            "pi[%d]: ys(%f -> %f), CHat[%f, %f] (%f, %f, %f), mu: %f, coeff: %f, delta_gamma: %f, "
+            "left: %f, "
+            "right: %f\n",
+            pi, (float)yieldStress, (float)ys, (float)Chat.infNorm(),
+            (float)(Chat.sum() / (value_type)dim), (float)Chat(0), (float)Chat(1), (float)Chat(2),
+            (float)_2mu * 0.5f, (float)coef, (float)delta_gamma, (float)dev_eps_norm,
+            (float)(ys / _2mu));
 #endif
 
       if (delta_gamma > 0) {

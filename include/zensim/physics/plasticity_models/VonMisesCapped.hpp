@@ -59,7 +59,7 @@ namespace zs {
       F = diag_mul(U, S) * V.transpose();
     }
 
-    template <typename VecT, typename Model, typename TT,
+    template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
                             VecT::template range<0>() == VecT::template range<1>(),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>

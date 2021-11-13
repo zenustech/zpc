@@ -1,15 +1,18 @@
 #pragma once
 
 #include <functional>
+#include <limits>
 
 #include "Meta.h"
 #include "Relationship.h"
-#include "Sequence.h"
 #include "zensim/tpls/tl/function_ref.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Optional.h"
 
 namespace zs {
+
+  // gcem alike, shorter alias for std::numeric_limits
+  template <typename T> using limits = std::numeric_limits<T>;
 
   /// operator
 
@@ -67,14 +70,14 @@ namespace zs {
     }
   };
   template <typename T> struct monoid_op<getmax<T>> {
-    static constexpr T e{std::numeric_limits<T>::lowest()};
+    static constexpr T e{limits<T>::lowest()};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       T res{e};
       return ((res = res > args ? res : args), ...);
     }
   };
   template <typename T> struct monoid_op<getmin<T>> {
-    static constexpr T e{std::numeric_limits<T>::max()};
+    static constexpr T e{limits<T>::max()};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       T res{e};
       return ((res = res < args ? res : args), ...);

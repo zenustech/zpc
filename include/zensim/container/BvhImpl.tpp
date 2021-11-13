@@ -140,8 +140,8 @@ namespace zs {
           }
           const BV& leftBox = left(lc);
           const BV& rightBox = right(rc);
-          BV bv{/*TV::uniform(std::numeric_limits<T>().max()),
-                TV::uniform(std::numeric_limits<T>().lowest())*/};
+          BV bv{/*TV::uniform(limits<T>().max()),
+                TV::uniform(limits<T>().lowest())*/};
           for (int d = 0; d < dim; ++d) {
             bv._min[d] = leftBox._min[d] < rightBox._min[d] ? leftBox._min[d] : rightBox._min[d];
             bv._max[d] = leftBox._max[d] > rightBox._max[d] ? leftBox._max[d] : rightBox._max[d];
@@ -308,8 +308,8 @@ namespace zs {
 
     constexpr void operator()(int& flag, BV& bv) {
       flag = 0;
-      bv = BV{TV::uniform(std::numeric_limits<T>().max()),
-              TV::uniform(std::numeric_limits<T>().lowest())};
+      bv = BV{TV::uniform(limits<T>().max()),
+              TV::uniform(limits<T>().lowest())};
     }
   };
 

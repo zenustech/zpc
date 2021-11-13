@@ -80,9 +80,9 @@ namespace zs {
   // WakeByAddressSingle/All
   int Futex::wake(int count, u32 wakeMask) {
 #if defined(_WIN32)
-    if (count == std::numeric_limits<int>::max()) {
+    if (count == limits<int>::max()) {
       WakeByAddressAll((void *)this);
-      return std::numeric_limits<int>::max();
+      return limits<int>::max();
     } else {
       for (int i = 0; i < count; ++i) WakeByAddressSingle((void *)this);
       return count;

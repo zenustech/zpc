@@ -492,7 +492,7 @@ namespace zs {
     }
     template <bool Cond = all_random_access_iter, enable_if_t<Cond> = 0>
     constexpr difference_type distance_to(const zip_iterator &it) const {
-      difference_type dist = std::numeric_limits<difference_type>::max();
+      difference_type dist = limits<difference_type>::max();
       ((dist = dist < (std::get<Is>(it.iters) - std::get<Is>(iters))
                    ? dist
                    : (std::get<Is>(it.iters) - std::get<Is>(iters))),
@@ -535,7 +535,7 @@ namespace zs {
     auto begin = make_iterator<zip_iterator>(make_iterator<IndexIterator>((sint_t)0),
                                              std::begin(FWD(args))...);
     auto end = make_iterator<zip_iterator>(
-        make_iterator<IndexIterator>(std::numeric_limits<sint_t>::max()), std::end(FWD(args))...);
+        make_iterator<IndexIterator>(limits<sint_t>::max()), std::end(FWD(args))...);
     return detail::iter_range(std::move(begin), std::move(end));
   }
 

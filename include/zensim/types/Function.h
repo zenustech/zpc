@@ -2,8 +2,6 @@
 #include <functional>
 #include <tuple>
 
-#include "zensim/tpls/tl/function_ref.hpp"
-
 namespace zs {
 
   namespace detail {

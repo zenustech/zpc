@@ -44,8 +44,8 @@ namespace zs {
     constexpr auto numNodes() const noexcept { return auxIndices.size(); }
     constexpr auto numLeaves() const noexcept { return (numNodes() + 1) / 2; }
 
-    Box wholeBox{TV::uniform(std::numeric_limits<float>().max()),
-                 TV::uniform(std::numeric_limits<float>().min())};
+    Box wholeBox{TV::uniform(limits<float>().max()),
+                 TV::uniform(limits<float>().min())};
 
     bvs_t sortedBvs;  // bounding volumes
     tilevector_t tiledBvs;
@@ -119,8 +119,8 @@ namespace zs {
     {
       /// total bounding volume
       Vector<Box> tmp{1, memsrc_e::host, -1};
-      tmp[0] = Box{TV::uniform(std::numeric_limits<float_type>().max()),
-                   TV::uniform(std::numeric_limits<float_type>().lowest())};
+      tmp[0] = Box{TV::uniform(limits<float_type>().max()),
+                   TV::uniform(limits<float_type>().lowest())};
       Vector<Box> wholeBox = tmp.clone({memdst, devid});
       execPol(primBvs, ComputeBoundingVolume{execTag, wholeBox});
       lbvh.wholeBox = wholeBox.clone({memsrc_e::host, -1})[0];

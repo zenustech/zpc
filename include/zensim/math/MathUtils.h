@@ -41,10 +41,14 @@ namespace zs {
     }
 #else
     template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-    constexpr T sqrtNewtonRaphson(T n, T relTol = (T)1e-6) noexcept {
+    constexpr T sqrtNewtonRaphson(T n, T relTol = (T)(sizeof(T) > 4 ? 1e-9 : 1e-6)) noexcept {
+      constexpr auto eps = (T)100 * limits<T>::epsilon();  // this coeff from catch2
+      if (n < -eps) return (T)limits<T>::quiet_NaN();
+      if (n < (T)eps) return (T)0;
+
       T xn = (T)1;
       T xnp1 = (T)0.5 * (xn + n / xn);
-      for (const auto tol = gcem::min(n * relTol, 1e-10); gcem::abs(xnp1 - xn) > tol && xnp1 > 0;
+      for (const auto tol = gcem::max(n * relTol, eps); gcem::abs(xnp1 - xn) > tol;
            xnp1 = (T)0.5 * (xn + n / xn))
         xn = xnp1;
       return xnp1;

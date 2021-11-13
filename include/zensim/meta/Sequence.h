@@ -6,7 +6,6 @@
 #include "../TypeAlias.hpp"
 #include "Functional.h"
 #include "Meta.h"
-#include "zensim/Reflection.h"
 
 namespace zs {
 
@@ -82,7 +81,7 @@ namespace zs {
         std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::type;
 
     template <typename, typename = void> struct locator {
-      using index = integral_v<std::size_t, std::numeric_limits<std::size_t>::max()>;
+      using index = integral_v<std::size_t, limits<std::size_t>::max()>;
     };
     template <typename T> struct locator<T, std::enable_if_t<((int)is_same_v<T, Ts> + ...) == 1>> {
       using index

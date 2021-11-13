@@ -51,7 +51,7 @@ namespace zs {
     {
       const auto dx = this->target().simOptions.dx;
       const auto cfl = this->target().simOptions.cfl;
-      float defaultDt = std::numeric_limits<float>::max();
+      float defaultDt = limits<float>::max();
       for (auto&& [model, id] : this->target().models) {
         match([dx, cfl, &defaultDt](auto&& m) {
           if constexpr (!is_same_v<RM_CVREF_T(m), EquationOfStateConfig>) {

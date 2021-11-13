@@ -1,9 +1,9 @@
 #pragma once
 #include <any>
 #include <atomic>
-#include <limits>
 
 #include "zensim/TypeAlias.hpp"
+#include "zensim/meta/Functional.h"
 
 namespace zs {
 
@@ -21,7 +21,7 @@ namespace zs {
     result_t wait(u32 expected, u32 waitMask = ~(u32)0);
     result_t waitUntil(u32 expected, i64 deadline, u32 waitMask = ~(u32)0);
     // wake up the thread if (wakeMask & waitMask == true)
-    int wake(int count = std::numeric_limits<int>::max(), u32 wakeMask = ~(u32)0);
+    int wake(int count = limits<int>::max(), u32 wakeMask = ~(u32)0);
   };
 
 #if 0

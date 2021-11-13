@@ -62,7 +62,7 @@ namespace zs {
             && std::allocator_traits<allocator_type>::propagate_on_container_swap::value,
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
-    static constexpr Tn key_scalar_sentinel_v = std::numeric_limits<Tn>::max();
+    static constexpr Tn key_scalar_sentinel_v = limits<Tn>::max();
     static constexpr value_t sentinel_v{-1};  // this requires value_t to be signed type
     static constexpr status_t status_sentinel_v{-1};
     static constexpr std::size_t reserve_ratio_v = 16;

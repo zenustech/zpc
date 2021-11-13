@@ -34,6 +34,13 @@ namespace zs {
   }  // namespace mathutil_impl
 
   namespace math {
+
+    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    constexpr bool near_zero(T v) noexcept {
+      constexpr auto eps = (T)100 * limits<T>::epsilon();  // this coeff from catch2
+      return v >= -eps && v <= eps;
+    }
+
 #if 0
     template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
     constexpr T sqrtNewtonRaphson(T x, T curr = 1, T prev = 0) noexcept {

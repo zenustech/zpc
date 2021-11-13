@@ -4,25 +4,151 @@
 
 namespace zs {
 
+  constexpr auto pi = gcem::acos(-1);
+  constexpr auto half_pi = pi / 2;
+
+  enum euler_angle_convention_e { roe = 0, ypr };
+  constexpr auto roe_v = wrapv<euler_angle_convention_e::roe>{};
+  constexpr auto ypr_v = wrapv<euler_angle_convention_e::ypr>{};
+
+  enum angle_unit_e { radian = 0, degree };
+  constexpr auto radian_v = wrapv<angle_unit_e::radian>{};
+  constexpr auto degree_v = wrapv<angle_unit_e::degree>{};
   /**
      Imported from ZIRAN, wraps Eigen's Rotation2D (in 2D) and Quaternion (in 3D).
    */
-  template <typename T, int dim> struct Rotation : vec<T, dim, dim> {
+  template <typename T = float, int dim = 3> struct Rotation : vec<T, dim, dim> {
+    // 3d rotation can be viewed as a series of three successive rotations about coordinate axes
+    using value_type = T;
     using TV = vec<T, dim>;
     using TM = vec<T, dim, dim>;
 
     constexpr auto &self() noexcept { return static_cast<TM &>(*this); }
     constexpr const auto &self() const noexcept { return static_cast<const TM &>(*this); }
 
-    Rotation() noexcept = default;
-    static constexpr Rotation identity() noexcept {
-      Rotation ret{};
-      for (int i = 0; i != dim; ++i)
-        for (int j = 0; j != dim; ++j) 
-          ret(i, j) = (i == j ? (T)1 : (T)0);
-      return ret;
+    constexpr Rotation() noexcept : TM{TM::identity()} {}
+    constexpr Rotation(const TM &m) noexcept : TM{m} {}
+    constexpr Rotation &operator=(const TM &o) noexcept {
+      Rotation tmp{o};
+      std::swap(*this, tmp);
+      return *this;
     }
-    constexpr Rotation(const vec<T, 4> &q) noexcept : TM{} {
+    constexpr Rotation(const Rotation &) noexcept = default;
+    constexpr Rotation(Rotation &&) noexcept = default;
+    constexpr Rotation &operator=(const Rotation &) noexcept = default;
+    constexpr Rotation &operator=(Rotation &&) noexcept = default;
+
+    template <auto d = dim, enable_if_t<d == 2> = 0> constexpr Rotation(value_type theta) noexcept {
+      value_type sinTheta = gcem::sin(theta);
+      value_type cosTheta = gcem::cos(theta);
+      (*this)(0, 0) = cosTheta;
+      (*this)(0, 1) = -sinTheta;
+      (*this)(1, 0) = sinTheta;
+      (*this)(1, 1) = cosTheta;
+    }
+    template <auto unit = angle_unit_e::radian, auto convention = euler_angle_convention_e::roe,
+              auto d = dim, enable_if_t<d == 3> = 0>
+    constexpr Rotation(value_type psi, value_type theta, value_type phi, wrapv<unit> = {},
+                       wrapv<convention> = {}) noexcept {
+      if constexpr (unit == angle_unit_e::degree) {
+        psi *= ((value_type)pi / (value_type)180);
+        theta *= ((value_type)pi / (value_type)180);
+        phi *= ((value_type)pi / (value_type)180);
+      }
+      if constexpr (convention == euler_angle_convention_e::roe) {
+        // Roe convention (successive rotations)
+        // ref: https://www.continuummechanics.org/rotationmatrix.html
+        // [z] psi -> [y'] theta -> [z'] phi
+        value_type sinPsi = gcem::sin(psi);
+        value_type cosPsi = gcem::cos(psi);
+        value_type sinTheta = gcem::sin(theta);
+        value_type cosTheta = gcem::cos(theta);
+        value_type sinPhi = gcem::sin(phi);
+        value_type cosPhi = gcem::cos(phi);
+        auto cosPsi_cosTheta = cosPsi * cosTheta;
+        auto sinPsi_cosTheta = sinPsi * cosTheta;
+        (*this)(0, 0) = cosPsi_cosTheta * cosPhi - sinPsi * sinPhi;
+        (*this)(0, 1) = -cosPsi_cosTheta * sinPhi - sinPsi * cosPhi;
+        (*this)(0, 2) = cosPsi * sinTheta;
+        (*this)(1, 0) = sinPsi_cosTheta * cosPhi + cosPsi * sinPhi;
+        (*this)(1, 1) = -sinPsi_cosTheta * sinPhi + cosPsi * cosPhi;
+        (*this)(1, 2) = sinPsi * sinTheta;
+        (*this)(2, 0) = -sinTheta * cosPhi;
+        (*this)(2, 1) = sinTheta * sinPhi;
+        (*this)(2, 2) = cosTheta;
+      } else if constexpr (convention == euler_angle_convention_e::ypr) {
+        // navigation (yaw, pitch, roll)
+        // axis [x, y, z] = direction [north, east, down] = body [front, right, bottom]
+        // ref:
+        // http://personal.maths.surrey.ac.uk/T.Bridges/SLOSH/3-2-1-Eulerangles.pdf
+        // [z] psi -> [y'] theta -> [x'] phi
+        value_type sinPsi = gcem::sin(psi);
+        value_type cosPsi = gcem::cos(psi);
+        value_type sinTheta = gcem::sin(theta);
+        value_type cosTheta = gcem::cos(theta);
+        value_type sinPhi = gcem::sin(phi);
+        value_type cosPhi = gcem::cos(phi);
+        auto sinPhi_sinTheta = sinPhi * sinTheta;
+        auto cosPhi_sinTheta = cosPhi * sinTheta;
+        (*this)(0, 0) = cosTheta * cosPsi;
+        (*this)(0, 1) = cosTheta * sinPsi;
+        (*this)(0, 2) = -sinTheta;
+        (*this)(1, 0) = sinPhi_sinTheta * cosPsi - cosPhi * sinPsi;
+        (*this)(1, 1) = sinPhi_sinTheta * sinPsi + cosPhi * cosPsi;
+        (*this)(1, 2) = sinPhi * cosTheta;
+        (*this)(2, 0) = cosPhi_sinTheta * cosPsi + sinPhi * sinPsi;
+        (*this)(2, 1) = cosPhi_sinTheta * sinPsi - sinPhi * cosPsi;
+        (*this)(2, 2) = cosPhi * cosTheta;
+      }
+    }
+    // ref: http://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
+    template <auto unit = angle_unit_e::radian, auto convention = euler_angle_convention_e::roe,
+              auto d = dim, enable_if_t<d == 3> = 0>
+    constexpr auto extractAngles(wrapv<unit> = {}, wrapv<convention> = {}) const noexcept {
+      value_type psi{}, theta{}, phi{};
+      if constexpr (convention == euler_angle_convention_e::roe) {
+        const auto cosTheta = (*this)(2, 2);
+        if (math::near_zero(cosTheta - 1)) {
+          theta = 0;
+          psi = gcem::atan2((*this)(1, 0), (*this)(0, 0));
+          phi = (value_type)0;
+        } else if (math::near_zero(cosTheta + 1)) {
+          theta = pi;
+          psi = gcem::atan2(-(*this)(1, 0), -(*this)(0, 0));
+          phi = (value_type)0;
+        } else {
+          theta = gcem::acos(cosTheta);  // another solution (-theta)
+          /// theta [0, pi], thus (sinTheta > 0) always holds true
+          psi = gcem::atan2((*this)(1, 2), (*this)(0, 2));  // no need to divide sinTheta
+          phi = gcem::atan2((*this)(2, 1), -(*this)(2, 0));
+        }
+      } else if constexpr (convention == euler_angle_convention_e::ypr) {
+        const auto sinTheta = -(*this)(0, 2);
+        if (math::near_zero(sinTheta - 1)) {
+          theta = half_pi;
+          psi = gcem::atan2((*this)(2, 1), (*this)(2, 0));
+          phi = (value_type)0;
+        } else if (math::near_zero(sinTheta + 1)) {
+          theta = -half_pi;
+          psi = gcem::atan2(-(*this)(2, 1), -(*this)(2, 0));
+          phi = (value_type)0;
+        } else {
+          theta = gcem::asin(sinTheta);  // another solution: (pi - theta)
+          /// theta [-pi/2, pi/2], thus (cosTheta > 0) always holds true
+          psi = gcem::atan2((*this)(0, 1), (*this)(0, 0));  // no need to divide cosTheta
+          phi = gcem::atan2((*this)(1, 2), (*this)(2, 2));
+        }
+      }
+      if constexpr (unit == angle_unit_e::radian)
+        return std::make_tuple(psi, theta, phi);
+      else if constexpr (unit == angle_unit_e::degree)
+        return std::make_tuple(psi * (value_type)180 / (value_type)pi,
+                               theta * (value_type)180 / (value_type)pi,
+                               phi * (value_type)180 / (value_type)pi);
+    }
+    template <typename VecT, enable_if_all<std::is_convertible_v<typename VecT::value_type, T>,
+                                           VecT::dim == 1, (VecT::template range<0>() == 4)> = 0>
+    constexpr Rotation(const VecInterface<VecT> &q) noexcept : TM{} {
       if constexpr (dim == 2) {
         /// Construct a 2D counter clock wise rotation from the angle \a a in
         /// radian.

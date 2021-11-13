@@ -163,15 +163,20 @@ namespace zs {
         self() = quaternion2matrix(q);
       }
     }
-    constexpr Rotation(const TV &a, const TV &b) noexcept : TM{} {
-      if constexpr (dim == 2) {
+    template <typename VecTA, typename VecTB,
+              enable_if_all<std::is_convertible_v<typename VecTA::value_type, value_type>,
+                            std::is_convertible_v<typename VecTB::value_type, value_type>,
+                            VecTA::dim == 1, VecTB::dim == 1,
+                            VecTA::template range<0>() == VecTB::template range<0>()> = 0>
+    constexpr Rotation(const VecInterface<VecTA> &a, const VecInterface<VecTB> &b) noexcept : TM{} {
+      if constexpr (dim == 2 && VecTA::template range<0>() == 2) {
         TV aa = a.normalized();
         TV bb = b.normalized();
         (*this)(0, 0) = aa(0) * bb(0) + aa(1) * bb(1);
         (*this)(0, 1) = -(aa(0) * bb(1) - bb(0) * aa(1));
         (*this)(1, 0) = aa(0) * bb(1) - bb(0) * aa(1);
         (*this)(1, 1) = aa(0) * bb(0) + aa(1) * bb(1);
-      } else if constexpr (dim == 3) {
+      } else if constexpr (dim == 3 && VecTA::template range<0>() == 3) {
         T k_cos_theta = a.dot(b);
         T k = gcem::sqrt(a.l2NormSqr() * b.l2NormSqr());
         vec<T, 4> q{};
@@ -194,8 +199,10 @@ namespace zs {
       }
     }
 
-    template <int d = dim, enable_if_t<d == 3> = 0>
-    static constexpr vec<T, d, d> quaternion2matrix(const vec<T, 4> &q) noexcept {
+    template <typename VecT, int d = dim,
+              enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
+                            VecT::dim == 1, (VecT::template range<0>() == 4)> = 0>
+    static constexpr TM quaternion2matrix(const VecInterface<VecT> &q) noexcept {
       /// (0, 1, 2, 3)
       /// (x, y, z, w)
       const T tx = T(2) * q(0);
@@ -210,7 +217,7 @@ namespace zs {
       const T tyy = ty * q(1);
       const T tyz = tz * q(1);
       const T tzz = tz * q(2);
-      vec<T, d, d> rot{};
+      TM rot{};
       rot(0, 0) = T(1) - (tyy + tzz);
       rot(0, 1) = txy - twz;
       rot(0, 2) = txz + twy;

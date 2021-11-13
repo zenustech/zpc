@@ -94,8 +94,7 @@ namespace zs {
        Random rotation matrix
     */
     void randRotation(vec<T, 2, 2> &R) noexcept {
-      constexpr T pi = std::acos(-T(1));
-      T theta = randReal(0, 2 * pi);
+      T theta = randReal(0, 2 * g_pi);
       T c = std::cos(theta);
       T s = std::sin(theta);
       R(0, 0) = c, R(0, 1) = -s, R(1, 0) = s, R(1, 1) = c;

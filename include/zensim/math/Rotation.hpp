@@ -1,11 +1,12 @@
 #pragma once
 #include "Vec.h"
+#include "zensim/math/MathUtils.h"
 #include "zensim/tpls/gcem/gcem.hpp"
 
 namespace zs {
 
-  constexpr auto pi = gcem::acos(-1);
-  constexpr auto half_pi = pi / 2;
+  constexpr auto g_pi = gcem::acos(-1);
+  constexpr auto g_half_pi = g_pi / 2;
 
   enum euler_angle_convention_e { roe = 0, ypr };
   constexpr auto roe_v = wrapv<euler_angle_convention_e::roe>{};
@@ -27,16 +28,14 @@ namespace zs {
     constexpr const auto &self() const noexcept { return static_cast<const TM &>(*this); }
 
     constexpr Rotation() noexcept : TM{TM::identity()} {}
+
     constexpr Rotation(const TM &m) noexcept : TM{m} {}
+
     constexpr Rotation &operator=(const TM &o) noexcept {
       Rotation tmp{o};
       std::swap(*this, tmp);
       return *this;
     }
-    constexpr Rotation(const Rotation &) noexcept = default;
-    constexpr Rotation(Rotation &&) noexcept = default;
-    constexpr Rotation &operator=(const Rotation &) noexcept = default;
-    constexpr Rotation &operator=(Rotation &&) noexcept = default;
 
     template <auto d = dim, enable_if_t<d == 2> = 0> constexpr Rotation(value_type theta) noexcept {
       value_type sinTheta = gcem::sin(theta);
@@ -46,14 +45,56 @@ namespace zs {
       (*this)(1, 0) = sinTheta;
       (*this)(1, 1) = cosTheta;
     }
+    /// axis + rotation
+    template <typename VecT, auto unit = angle_unit_e::radian, auto d = dim,
+              enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
+                            VecT::dim == 1, (VecT::template range<0>() == 3)> = 0>
+    constexpr Rotation(const VecInterface<VecT> &p_, value_type alpha, wrapv<unit> = {}) noexcept {
+      if constexpr (unit == angle_unit_e::degree) alpha *= ((value_type)g_pi / (value_type)180);
+      auto p = p_.normalized();
+      TM P{0, p(2), -p(1), -p(2), 0, p(0), p(1), -p(0), 0};
+      auto cosAlpha = gcem::cos(alpha);
+      self()
+          = cosAlpha * TM::identity() + (1 - cosAlpha) * dyadic_prod(p, p) - gcem::sin(alpha) * P;
+    }
+    template <auto unit = angle_unit_e::radian, auto d = dim, enable_if_t<d == 3> = 0>
+    constexpr auto extractAxisRotation(wrapv<unit> = {}) const noexcept {
+      const auto cosAlpha = (value_type)0.5 * (trace(self()) - 1);
+      value_type alpha = gcem::acos(cosAlpha);
+      if (math::near_zero(cosAlpha - 1)) return std::make_tuple(TV{0, 1, 0}, (value_type)0);
+
+      TV p{};
+      if (math::near_zero(cosAlpha + 1)) {
+        p(0) = math::sqrtNewtonRaphson(((*this)(0, 0) + 1) * (value_type)0.5);
+        if (math::near_zero(p(0))) {
+          p(1) = math::sqrtNewtonRaphson(((*this)(1, 1) + 1) * (value_type)0.5);
+          p(2) = math::sqrtNewtonRaphson(((*this)(2, 2) + 1) * (value_type)0.5);
+          if ((*this)(1, 2) < (value_type)0) p(2) = -p(2);
+        } else {
+          p(1) = (*this)(0, 1) * (value_type)0.5 / p(0);
+          p(2) = (*this)(0, 2) * (value_type)0.5 / p(0);
+        }
+      } else {
+        const auto sinAlpha = math::sqrtNewtonRaphson((value_type)1 - cosAlpha * cosAlpha);
+        p(0) = ((*this)(2, 1) - (*this)(1, 2)) * (value_type)0.5 / sinAlpha;
+        p(1) = ((*this)(0, 2) - (*this)(2, 0)) * (value_type)0.5 / sinAlpha;
+        p(2) = ((*this)(1, 0) - (*this)(0, 1)) * (value_type)0.5 / sinAlpha;
+      }
+      if constexpr (unit == angle_unit_e::radian)
+        return std::make_tuple(p, alpha);
+      else if constexpr (unit == angle_unit_e::degree)
+        return std::make_tuple(p, alpha * (value_type)180 / (value_type)g_pi);
+    }
+
+    /// euler angles
     template <auto unit = angle_unit_e::radian, auto convention = euler_angle_convention_e::roe,
               auto d = dim, enable_if_t<d == 3> = 0>
     constexpr Rotation(value_type psi, value_type theta, value_type phi, wrapv<unit> = {},
                        wrapv<convention> = {}) noexcept {
       if constexpr (unit == angle_unit_e::degree) {
-        psi *= ((value_type)pi / (value_type)180);
-        theta *= ((value_type)pi / (value_type)180);
-        phi *= ((value_type)pi / (value_type)180);
+        psi *= ((value_type)g_pi / (value_type)180);
+        theta *= ((value_type)g_pi / (value_type)180);
+        phi *= ((value_type)g_pi / (value_type)180);
       }
       if constexpr (convention == euler_angle_convention_e::roe) {
         // Roe convention (successive rotations)
@@ -113,28 +154,28 @@ namespace zs {
           psi = gcem::atan2((*this)(1, 0), (*this)(0, 0));
           phi = (value_type)0;
         } else if (math::near_zero(cosTheta + 1)) {
-          theta = pi;
+          theta = g_pi;
           psi = gcem::atan2(-(*this)(1, 0), -(*this)(0, 0));
           phi = (value_type)0;
         } else {
           theta = gcem::acos(cosTheta);  // another solution (-theta)
-          /// theta [0, pi], thus (sinTheta > 0) always holds true
+          /// theta [0, g_pi], thus (sinTheta > 0) always holds true
           psi = gcem::atan2((*this)(1, 2), (*this)(0, 2));  // no need to divide sinTheta
           phi = gcem::atan2((*this)(2, 1), -(*this)(2, 0));
         }
       } else if constexpr (convention == euler_angle_convention_e::ypr) {
         const auto sinTheta = -(*this)(0, 2);
         if (math::near_zero(sinTheta - 1)) {
-          theta = half_pi;
+          theta = g_half_pi;
           psi = gcem::atan2((*this)(2, 1), (*this)(2, 0));
           phi = (value_type)0;
         } else if (math::near_zero(sinTheta + 1)) {
-          theta = -half_pi;
+          theta = -g_half_pi;
           psi = gcem::atan2(-(*this)(2, 1), -(*this)(2, 0));
           phi = (value_type)0;
         } else {
-          theta = gcem::asin(sinTheta);  // another solution: (pi - theta)
-          /// theta [-pi/2, pi/2], thus (cosTheta > 0) always holds true
+          theta = gcem::asin(sinTheta);  // another solution: (g_pi - theta)
+          /// theta [-g_pi/2, g_pi/2], thus (cosTheta > 0) always holds true
           psi = gcem::atan2((*this)(0, 1), (*this)(0, 0));  // no need to divide cosTheta
           phi = gcem::atan2((*this)(1, 2), (*this)(2, 2));
         }
@@ -142,9 +183,9 @@ namespace zs {
       if constexpr (unit == angle_unit_e::radian)
         return std::make_tuple(psi, theta, phi);
       else if constexpr (unit == angle_unit_e::degree)
-        return std::make_tuple(psi * (value_type)180 / (value_type)pi,
-                               theta * (value_type)180 / (value_type)pi,
-                               phi * (value_type)180 / (value_type)pi);
+        return std::make_tuple(psi * (value_type)180 / (value_type)g_pi,
+                               theta * (value_type)180 / (value_type)g_pi,
+                               phi * (value_type)180 / (value_type)g_pi);
     }
     template <typename VecT, enable_if_all<std::is_convertible_v<typename VecT::value_type, T>,
                                            VecT::dim == 1, (VecT::template range<0>() == 4)> = 0>

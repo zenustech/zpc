@@ -78,23 +78,15 @@ namespace zs {
       auto eps = S.log();
       auto eps_trace = eps.sum();
       auto dev_eps = eps - eps_trace / (value_type)dim;  // equivalent to eps.deviatoric()
-
-#if 0
-      if (pi < 0)
-        printf("pi[%d]: dev(eps) = %f, %f, %f; eps = %f, %f, %f; trace %f; normSqr %f; norm %f\n",
-               pi, (float)dev_eps(0), (float)dev_eps(1), (float)dev_eps(2), (float)eps(0),
-               (float)eps(1), (float)eps(2), (float)eps_trace, (float)dev_eps.l2NormSqr(),
-               math::sqrtNewtonRaphson((float)dev_eps.l2NormSqr()));
-#endif
-
       auto dev_eps_norm = dev_eps.norm();
 
       // Cowper-Symonds
-      auto P = (value_type)dim;
-      auto C = (value_type)1;
-      auto coef = gcem::pow((strainRate) / C, (value_type)1 / P);
+      auto P = (value_type)1;
+      auto C = (value_type)0.001;
 #if 1
-      auto ys = yieldStress * (1 + gcem::pow((strainRate) / C, (value_type)1 / P));
+      // auto coef = gcem::pow((strainRate) / C, (value_type)1 / P);
+      auto coeff = gcem::pow(strainRate / C, (value_type)dim);
+      auto ys = yieldStress * (1 + coeff);
 #else
       auto ys = yieldStress;
 #endif

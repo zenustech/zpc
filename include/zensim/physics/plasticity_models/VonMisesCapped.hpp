@@ -1,5 +1,6 @@
 #pragma once
 #include "../ConstitutiveModel.hpp"
+#include "zensim/math/MathUtils.h"
 
 namespace zs {
 
@@ -63,8 +64,9 @@ namespace zs {
               enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
                             VecT::template range<0>() == VecT::template range<1>(),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr void project_strain(VecInterface<VecT>& F, const Model& model,
-                                  typename VecT::value_type strainRate, int pi) const noexcept {
+    constexpr void project_strain(VecInterface<VecT>& F, Model& model,
+                                  typename VecT::value_type strainRate, typename VecT::value_type c,
+                                  typename VecT::value_type p, int pi) const noexcept {
       auto [U, S, V] = math::svd(F);
 
       using value_type = typename VecT::value_type;
@@ -75,24 +77,17 @@ namespace zs {
       const auto _2mu = (static_cast<const Model&>(model).mu + static_cast<const Model&>(model).mu);
       const auto dim_mul_lam = (value_type)dim * (value_type) static_cast<const Model&>(model).lam;
 
+      // vec<value_type, dim> eps{log(S(0)), log(S(1)), log(S(2))};
       auto eps = S.log();
       auto eps_trace = eps.sum();
       auto dev_eps = eps - eps_trace / (value_type)dim;  // equivalent to eps.deviatoric()
       auto dev_eps_norm = dev_eps.norm();
 
       // Cowper-Symonds
-      auto P = (value_type)1;
-      auto C = (value_type)0.001;
-#if 1
-      // auto coef = gcem::pow((strainRate) / C, (value_type)1 / P);
-      auto coeff = gcem::pow(strainRate / C, (value_type)dim);
+      auto coeff = (value_type)pow(strainRate / c, p);
       auto ys = yieldStress * (1 + coeff);
-#else
-      auto ys = yieldStress;
-#endif
 
       auto delta_gamma = dev_eps_norm - ys / _2mu;
-// printf("%f -> %f\n", yieldStress, ys);
 #if 0
       if (dev_eps_norm > 0.2f && pi < 10)
         printf(
@@ -112,7 +107,49 @@ namespace zs {
 #endif
 
       if (delta_gamma > 0) {
+        {
+#if 0
+          ///
+          // should subtract out hydrostatic stresses
+          auto dE_dsigma = model.dpsi_dsigma(S);
+          auto P = diag_mul(U, dE_dsigma);
+          auto VT = V.transpose();
+          auto PP = P * VT;
+          // auto P = diag_mul(U, dE_dsigma) * V.transpose();
+          // auto P = model.first_piola(F);
+          auto tau_ = diag_mul(P, S);
+          vec<value_type, dim> diffTau_{};
+          for (int d = 0; d != dim; ++d) {
+            int j = (d + 1) % dim;
+            diffTau_[j] = tau_(d, d) - tau_(j, j);
+          }
+#endif
+          if constexpr (true) {
+// uniaxial loading
+// shear
+#if 0
+            auto vm = math::sqrtNewtonRaphson(
+                gcem::abs((diffTau_.l2NormSqr()
+                           + (T)6
+                                 * (tau_(0, 1) * tau_(0, 1) + tau_(0, 2) * tau_(0, 2)
+                                    + tau_(1, 2) * tau_(1, 2)))
+                          * (T)0.5));
+#endif
+#if 0
+            printf(
+                " - yielding pi[%d], diffTauL2Sqr((%d x %d) * (%d x %d)) %f, %f; ys %f, hencky "
+                "%f\n",
+                (int)pi, (int)P.template range<0>(), (int)P.template range<1>(),
+                (int)VT.template range<0>(), (int)VT.template range<1>(), sum, sum1, (float)ys,
+                (float)dev_eps_norm * _2mu, (float)ys);
+#endif
+            // printf("yielding pi[%d], stress: %f, ys: %f, hencky(%f, %f)\n", (int)pi, (float)vm,
+            //        (float)ys, (float)dev_eps_norm * _2mu, (float)ys);
+          }
+        }
+        ///
         auto H = eps - (delta_gamma / dev_eps_norm) * dev_eps;
+        // for (int i = 0; i != dim; ++i) S(i) = exp(H(i));
         S = H.exp();
 #if 0
         if (dev_eps_norm > 0.2f)

@@ -275,6 +275,16 @@ namespace zs {
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto reciprocal() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i)
+        r.val(i) = math::near_zero(this->val(i)) ? limits<value_type>::infinity()
+                                                 : (value_type)1 / this->val(i);
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto exp() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};

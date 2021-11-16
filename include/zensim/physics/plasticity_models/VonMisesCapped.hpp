@@ -64,7 +64,7 @@ namespace zs {
               enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
                             VecT::template range<0>() == VecT::template range<1>(),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr void project_strain(VecInterface<VecT>& F, Model& model,
+    constexpr auto project_strain(VecInterface<VecT>& F, Model& model,
                                   typename VecT::value_type strainRate, typename VecT::value_type c,
                                   typename VecT::value_type p, int pi) const noexcept {
       auto [U, S, V] = math::svd(F);
@@ -167,6 +167,7 @@ namespace zs {
 #endif
 
       F = diag_mul(U, S) * V.transpose();
+      return S;
     }
   };
 

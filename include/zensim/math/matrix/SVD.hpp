@@ -24,7 +24,7 @@ namespace zs {
                                                 T& s33,  // output S
                                                 T& v11, T& v12, T& v13, T& v21, T& v22, T& v23,
                                                 T& v31, T& v32, T& v33  // output V
-    ) {
+                                                ) noexcept {
       constexpr auto gone = 1065353216;
       constexpr auto gsine_pi_over_eight = 1053028117;
       constexpr auto gcosine_pi_over_eight = 1064076127;

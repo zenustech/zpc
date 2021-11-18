@@ -413,7 +413,7 @@ namespace zs {
         return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
     }
 
-    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
       if constexpr (is_power_of_two)
         return TileVectorUnnamedView<Space, tile_vector_type, true>{
@@ -422,6 +422,7 @@ namespace zs {
         return TileVectorUnnamedView<Space, tile_vector_type, true>{
             _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
+    template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
     constexpr auto tile(const size_type tileid) const noexcept {
       if constexpr (is_power_of_two)
         return TileVectorUnnamedView<Space, const_tile_vector_type, true>{
@@ -617,6 +618,9 @@ namespace zs {
     using base_t::pack;
     using base_t::stdtuple;
     using base_t::tuple;
+    ///
+    /// have to make sure that char type (might be channel_counter_type) not fit into this overload
+    ///
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr reference operator()(const SmallString &propName, const channel_counter_type chn,
                                    const size_type i) noexcept {
@@ -635,7 +639,7 @@ namespace zs {
                                          const size_type i) const noexcept {
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
-    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
       return TileVectorView<Space, TileVectorT, true>{
           this->_vector + tileid * lane_width * this->_numChannels,
@@ -646,6 +650,7 @@ namespace zs {
           _tagSizes,
           _N};
     }
+    template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
     constexpr auto tile(const size_type tileid) const noexcept {
       return TileVectorView<Space, const_tile_vector_type, true>{
           this->_vector + tileid * lane_width * this->_numChannels,

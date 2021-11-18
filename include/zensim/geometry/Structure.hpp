@@ -338,6 +338,197 @@ namespace zs {
   using GeneralGrids
       = variant<Grids<f32, 3, 4>, Grids<f32, 3, 8>, Grids<f32, 2, 4>, Grids<f32, 2, 8>>;
 
+  /// GridT can be const decorated
+  template <typename GridT, typename = void> struct grid_traits {
+    static constexpr bool is_const_structure = std::is_const_v<GridT>;
+    using grid_t = std::remove_const_t<GridT>;
+    using value_type = typename grid_t::value_type;
+    using size_type = typename grid_t::size_type;  // basically std::size_t
+    using channel_counter_type = typename grid_t::channel_counter_type;
+    using coord_index_type = typename grid_t::coord_index_type;
+    using grid_storage_t
+        = remove_cvref_t<typename grid_t::grid_storage_t>;  // should be a tilevector
+
+    static_assert(std::is_signed_v<coord_index_type>,
+                  "coordinate index type should be a signed integer!");
+
+    static constexpr grid_e category = grid_t::category;
+    static constexpr int dim = grid_t::dim;
+    static constexpr auto side_length = grid_t::side_length;
+
+    /// deduced
+    // https://listengine.tuxfamily.org/lists.tuxfamily.org/eigen/2017/01/msg00126.html
+    using cell_index_type = std::make_signed_t<decltype(
+        side_length)>;  // this should be signed integer for indexing convenience
+    static constexpr auto block_size = gcem::pow(side_length, dim);
+    static constexpr bool is_power_of_two
+        = side_length > 0 && ((side_length & (side_length - 1)) == 0);
+    static constexpr auto num_cell_bits = bit_count(side_length);
+
+    template <execspace_e space, bool with_name = true> using grid_view_t = conditional_t<
+        with_name,
+        RM_CVREF_T(
+            proxy<space>({}, std::declval<conditional_t<is_const_structure, const grid_storage_t &,
+                                                        grid_storage_t &>>())),
+        RM_CVREF_T(proxy<space>(
+            std::declval<
+                conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()))>;
+    template <execspace_e space, bool with_name = true> using grid_block_view_t =
+        typename grid_view_t<space, with_name>::tile_view_type;  // tilevector view property
+
+    using coord_t = vec<coord_index_type, dim>;  // this is the default storage choice
+    using pos_t = vec<value_type, dim>;
+
+    static constexpr coord_t cellid_to_coord(cell_index_type cellid) noexcept {
+      coord_t ret{};
+      if constexpr (is_power_of_two)
+        for (auto d = dim - 1; d >= 0; --d, cellid >>= num_cell_bits)
+          ret[d] = (coord_index_type)(cellid & (side_length - 1));
+      else
+        for (auto d = dim - 1; d >= 0; --d, cellid /= side_length)
+          ret[d] = (coord_index_type)(cellid % side_length);
+      return ret;
+    }
+    template <typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    static constexpr auto coord_to_cellid(const VecInterface<VecT> &coord) noexcept {
+      using Ti = math::op_result_t<cell_index_type, typename VecT::index_type>;
+      Ti ret{0};
+      if constexpr (is_power_of_two)
+        for (int d = 0; d != dim; ++d) ret = (ret << (Ti)num_cell_bits) | (Ti)coord[d];
+      else
+        for (int d = 0; d != dim; ++d) ret = (ret * (Ti)side_length) + (Ti)coord[d];
+      return ret;
+    }
+    template <typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    static constexpr auto global_coord_to_cellid(const VecInterface<VecT> &coord) noexcept {
+      using Ti = math::op_result_t<cell_index_type, typename VecT::index_type>;
+      Ti ret{0};
+      if constexpr (is_power_of_two)
+        for (int d = 0; d != dim; ++d)
+          ret = (ret << (Ti)num_cell_bits) | ((Ti)coord[d] & (Ti)(side_length - 1));
+      else
+        for (int d = 0; d != dim; ++d)
+          ret = (ret * (Ti)side_length) + ((Ti)coord[d] % (Ti)side_length);
+      return ret;
+    }
+  };
+
+  template <execspace_e space, typename GridT, bool with_name = true, bool block_scope = false,
+            typename = void>
+  struct GridView {
+    using traits = grid_traits<GridT>;
+    using value_type = typename traits::value_type;
+    using channel_counter_type = typename traits::channel_counter_type;
+    using coord_index_type = typename traits::cell_index_type;
+    using cell_index_type = typename traits::cell_index_type;
+    using view_t
+        = conditional_t<block_scope, typename traits::template grid_block_view_t<space, with_name>,
+                        typename traits::template grid_view_t<space, with_name>>;
+    static constexpr auto is_const_structure = traits::is_const_structure;
+    static constexpr auto dim = traits::dim;
+
+    static constexpr auto block_space() noexcept { return traits::block_size; }
+    constexpr GridView(view_t g, value_type dx) noexcept : grid{g}, dx{dx} {}
+
+    template <auto V = with_name>
+    constexpr std::enable_if_t<V, bool> hasProperty(const SmallString &propName) const noexcept {
+      return grid.hasProperty(propName);
+    }
+    /// unnamed access
+    template <typename VecT, bool is_const = is_const_structure,
+              enable_if_all<!is_const, VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    constexpr auto &operator()(channel_counter_type c, const VecInterface<VecT> &loc) noexcept {
+      return grid(c, traits::coord_to_cellid(loc));
+    }
+    template <typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    constexpr auto operator()(channel_counter_type c,
+                              const VecInterface<VecT> &loc) const noexcept {
+      return grid(c, coord_to_cellid(loc));
+    }
+    template <bool is_const = is_const_structure, enable_if_t<!is_const> = 0>
+    constexpr auto &operator()(channel_counter_type chn, cell_index_type cellid) noexcept {
+      return grid(chn, cellid);
+    }
+    constexpr auto operator()(channel_counter_type chn, cell_index_type cellid) const noexcept {
+      return grid(chn, cellid);
+    }
+
+    /// named access
+    template <typename VecT, bool is_const = is_const_structure, bool has_name = with_name,
+              enable_if_all<!is_const, has_name, VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    constexpr auto &operator()(const SmallString &propName,
+                               const VecInterface<VecT> &loc) noexcept {
+      return grid(propName, coord_to_cellid(loc));
+    }
+    template <typename VecT, bool has_name = with_name,
+              enable_if_all<has_name, VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    constexpr auto operator()(const SmallString &propName,
+                              const VecInterface<VecT> &loc) const noexcept {
+      return grid(propName, coord_to_cellid(loc));
+    }
+    template <bool is_const = is_const_structure, bool has_name = with_name,
+              enable_if_all<!is_const, has_name> = 0>
+    constexpr auto &operator()(const SmallString &propName, cell_index_type cellid) noexcept {
+      return grid(propName, cellid);
+    }
+    template <bool has_name = with_name, enable_if_t<has_name> = 0>
+    constexpr auto operator()(const SmallString &propName, cell_index_type cellid) const noexcept {
+      return grid(propName, cellid);
+    }
+    template <bool is_const = is_const_structure, bool has_name = with_name,
+              enable_if_all<!is_const, has_name> = 0>
+    constexpr auto &operator()(const SmallString &propName, channel_counter_type chn,
+                               cell_index_type cellid) noexcept {
+      return grid(propName, chn, cellid);
+    }
+    template <bool has_name = with_name, enable_if_t<has_name> = 0>
+    constexpr auto operator()(const SmallString &propName, channel_counter_type chn,
+                              cell_index_type cellid) const noexcept {
+      return grid(propName, chn, cellid);
+    }
+
+    //
+    template <auto... Ns, typename Tn, enable_if_t<std::is_integral_v<Tn>> = 0>
+    constexpr auto pack(channel_counter_type chn, Tn cellid) const noexcept {
+      return grid.template pack<Ns...>(chn, cellid);
+    }
+    template <auto... Ns, typename Tn, auto has_name = with_name,
+              enable_if_all<std::is_integral_v<Tn>, has_name> = 0>
+    constexpr auto pack(const SmallString &propName, Tn cellid) const noexcept {
+      return grid.template pack<Ns...>(propName, cellid);
+    }
+    template <
+        typename VecT, bool is_const = is_const_structure,
+        enable_if_all<!is_const, std::is_convertible_v<typename VecT::value_type, value_type>> = 0>
+    constexpr void set(channel_counter_type chn, cell_index_type cellid,
+                       const VecInterface<VecT> &val) noexcept {
+      grid.template tuple<VecT::extent>(chn, cellid) = val;
+    }
+    template <typename VecT, bool is_const = is_const_structure, bool has_name = with_name,
+              enable_if_all<!is_const, has_name,
+                            std::is_convertible_v<typename VecT::value_type, value_type>> = 0>
+    constexpr void set(const SmallString &propName, cell_index_type cellid,
+                       const VecInterface<VecT> &val) noexcept {
+      grid.template tuple<VecT::extent>(propName, cellid) = val;
+    }
+
+    constexpr auto numCells() const noexcept { return grid.size(); }
+    constexpr auto numBlocks() const noexcept { return grid.numTiles(); }
+    constexpr auto numChannels() const noexcept { return grid.numChannels(); }
+
+    view_t grid;
+    value_type dx;
+  };
+
   template <execspace_e, typename GridsT, typename = void> struct GridsView;
   template <execspace_e space, typename GridsT> struct GridsView<space, GridsT> {
     static constexpr bool is_const_structure = std::is_const_v<GridsT>;

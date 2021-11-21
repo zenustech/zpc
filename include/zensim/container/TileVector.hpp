@@ -390,7 +390,7 @@ namespace zs {
         : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
 
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr reference operator()(channel_counter_type chn, const size_type i) noexcept {
+    constexpr reference operator()(const channel_counter_type chn, const size_type i) noexcept {
       if constexpr (WithinTile) {
         if constexpr (is_power_of_two)
           return *(_vector + ((chn << num_lane_bits) | i));
@@ -405,12 +405,21 @@ namespace zs {
           return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
       }
     }
-    constexpr const_reference operator()(channel_counter_type chn,
+    constexpr const_reference operator()(const channel_counter_type chn,
                                          const size_type i) const noexcept {
-      if constexpr (WithinTile)
-        return *(_vector + ((chn * lane_width) | i));
-      else
-        return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+      if constexpr (WithinTile) {
+        if constexpr (is_power_of_two)
+          return *(_vector + ((chn << num_lane_bits) | i));
+        else
+          return *(_vector + (chn * lane_width | i));
+      } else {
+        if constexpr (is_power_of_two)
+          return *(_vector
+                   + ((((i >> num_lane_bits) * _numChannels + chn) << num_lane_bits)
+                      | (i & (lane_width - 1))));
+        else
+          return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+      }
     }
 
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>

@@ -66,9 +66,7 @@ namespace zs {
     using size_type = typename SparseLevelSetT::size_type;
     using table_t = typename SparseLevelSetT::table_t;
     using grid_t = typename SparseLevelSetT::grid_t;
-    using grid_view_t =
-        typename GridsView<Space,
-                           typename grid_t::grids_t>::template Grid<SparseLevelSetT::category>;
+    using grid_view_t = RM_CVREF_T(proxy<Space>({}, std::declval<grid_t &>()));
     using T = typename SparseLevelSetT::value_type;
     using Ti = typename SparseLevelSetT::index_type;
     using TV = typename SparseLevelSetT::TV;

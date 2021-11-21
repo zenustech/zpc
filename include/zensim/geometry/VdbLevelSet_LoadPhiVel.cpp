@@ -149,9 +149,9 @@ namespace zs {
           // tiles.template tuple<3>("vel", blockno * ret._space + cellid)
           //    = TV{vel[0], vel[1], vel[2]};
           const auto offset = blockno * ret._space + cellid;
-          gridview("sdf", offset) = sdf;
+          gridview.voxel("sdf", offset) = sdf;
           gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
-          gridview("mask", offset) = sdfCell.isValueOn() ? 1 : 0;
+          gridview.voxel("mask", offset) = sdfCell.isValueOn() ? 1 : 0;
         }
       }
     }

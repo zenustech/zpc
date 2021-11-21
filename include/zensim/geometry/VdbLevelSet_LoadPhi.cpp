@@ -117,8 +117,8 @@ namespace zs {
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
           const auto offset = blockno * ret._space + cellid;
-          gridview("sdf", offset) = sdf;
-          gridview("mask", offset) = cell.isValueOn() ? 1 : 0;
+          gridview.voxel("sdf", offset) = sdf;
+          gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
 #if 0
           if (cell.isValueOn() && sdf < 0) {
             fmt::print("coord ({}, {}, {}) is on with sdf {}\n", cell.getCoord()[0],
@@ -156,7 +156,7 @@ namespace zs {
          zip(range(spls._grid.size() / spls._space), spls._table._activeKeys))
       for (int cid = 0; cid != spls._space; ++cid) {
         const auto offset = (int)blockno * (int)spls._space + cid;
-        const auto sdfVal = gridview("sdf", offset);
+        const auto sdfVal = gridview.voxel("sdf", offset);
         if (sdfVal == spls._backgroundValue) continue;
         const auto coord = blockid * (int)spls._sideLength + GridT::cellid_to_coord(cid);
         // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);

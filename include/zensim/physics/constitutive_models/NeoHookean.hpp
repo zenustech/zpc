@@ -13,6 +13,7 @@ namespace zs {
 
     value_type mu, lam;
 
+    constexpr NeoHookean() noexcept = default;
     constexpr NeoHookean(value_type E, value_type nu) noexcept {
       std::tie(mu, lam) = lame_parameters(E, nu);
     }

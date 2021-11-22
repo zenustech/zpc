@@ -12,8 +12,9 @@ namespace zs {
 
     value_type bulk, gamma;  // gamma is 7
 
-    constexpr EquationOfState(value_type bulk, value_type gamma = 7) noexcept
-        : bulk{bulk}, gamma{7} {}
+    constexpr EquationOfState() noexcept = default;
+    constexpr EquationOfState(value_type E, value_type nu, value_type gamma = 7) noexcept
+        : bulk{E / (3 - 6 * nu)}, gamma{7} {}
 
     // psi
     template <typename V> constexpr V psi(V J) const noexcept {

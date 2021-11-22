@@ -390,6 +390,7 @@ namespace zs {
     DEFINE_VEC_OP_SCALAR_INTEGRAL(^)
     DEFINE_VEC_OP_SCALAR_INTEGRAL(>>)
     DEFINE_VEC_OP_SCALAR_INTEGRAL(<<)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL(%)
 
     // vector
 #define DEFINE_VEC_OP_VECTOR(OP)                                                             \
@@ -439,6 +440,7 @@ namespace zs {
     DEFINE_VEC_OP_VECTOR_INTEGRAL(^)
     DEFINE_VEC_OP_VECTOR_INTEGRAL(>>)
     DEFINE_VEC_OP_VECTOR_INTEGRAL(<<)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL(%)
 
 //!@name Assignment operators
 // scalar
@@ -473,6 +475,7 @@ namespace zs {
     DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(^)
     DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(>>)
     DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(<<)
+    DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(%)
 
     // vector
 #define DEFINE_VEC_OP_VECTOR_ASSIGN(OP)                                                            \
@@ -506,6 +509,7 @@ namespace zs {
     DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(^)
     DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(>>)
     DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(<<)
+    DEFINE_VEC_OP_VECTOR_INTEGRAL_ASSIGN(%)
 
     ///
     /// linalg

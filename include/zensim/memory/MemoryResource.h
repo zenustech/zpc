@@ -154,8 +154,11 @@ namespace zs {
     }
     friend void swap(MemoryLocation& a, MemoryLocation& b) { a.swap(b); }
 
-    friend constexpr bool operator==(const MemoryLocation& a, const MemoryLocation& b) {
+    friend constexpr bool operator==(const MemoryLocation& a, const MemoryLocation& b) noexcept {
       return a._memsrc == b._memsrc && a._devid == b._devid;
+    }
+    friend constexpr bool operator!=(const MemoryLocation& a, const MemoryLocation& b) noexcept {
+      return !(a == b);
     }
 
     memsrc_e _memsrc{memsrc_e::host};  // memory source

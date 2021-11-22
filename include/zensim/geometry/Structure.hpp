@@ -459,7 +459,7 @@ namespace zs {
     }
     template <auto in_block = block_scope, enable_if_t<!in_block> = 0>
     constexpr auto block(const size_type i) const noexcept {
-      return GridView<space, GridT, with_name, true>{grid.tile(i), dx};
+      return GridView<space, std::add_const_t<GridT>, with_name, true>{grid.tile(i), dx};
     }
     template <auto in_block = block_scope, enable_if_t<!in_block> = 0>
     constexpr auto operator[](const size_type i) noexcept {
@@ -737,6 +737,50 @@ namespace zs {
               enable_if_all<std::is_integral_v<Tn>, has_name> = 0>
     constexpr auto pack(const SmallString &propName, Tn cellid) const noexcept {
       return grid.template pack<Ns...>(propName, cellid);
+    }
+    template <auto... Ns, auto in_block = block_scope, enable_if_all<!in_block> = 0>
+    constexpr auto pack(channel_counter_type chn, size_type blockno,
+                        const cell_index_type cellid) const noexcept {
+      if constexpr (is_power_of_two)
+        return grid.template pack<Ns...>(
+            chn, (blockno << (size_type)num_block_bits) | (size_type)cellid);
+      else
+        return grid.template pack<Ns...>(chn, blockno * (size_type)block_size + (size_type)cellid);
+    }
+    template <auto... Ns, auto has_name = with_name, auto in_block = block_scope,
+              enable_if_all<!in_block, has_name> = 0>
+    constexpr auto pack(const SmallString &propName, size_type blockno,
+                        const cell_index_type cellid) const noexcept {
+      if constexpr (is_power_of_two)
+        return grid.template pack<Ns...>(
+            propName, (blockno << (size_type)num_block_bits) | (size_type)cellid);
+      else
+        return grid.template pack<Ns...>(propName,
+                                         blockno * (size_type)block_size + (size_type)cellid);
+    }
+    template <auto... Ns, typename VecT, auto in_block = block_scope,
+              enable_if_all<!in_block, VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    constexpr auto pack(channel_counter_type chn, size_type blockno,
+                        const VecInterface<VecT> &loc) const noexcept {
+      if constexpr (is_power_of_two)
+        return grid.template pack<Ns...>(
+            chn, (blockno << (size_type)num_block_bits) | (size_type)coord_to_cellid(loc));
+      else
+        return grid.template pack<Ns...>(
+            chn, blockno * (size_type)block_size + (size_type)coord_to_cellid(loc));
+    }
+    template <auto... Ns, typename VecT, auto has_name = with_name, auto in_block = block_scope,
+              enable_if_all<!in_block, has_name, VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, coord_index_type>> = 0>
+    constexpr auto pack(const SmallString &propName, size_type blockno,
+                        const VecInterface<VecT> &loc) const noexcept {
+      if constexpr (is_power_of_two)
+        return grid.template pack<Ns...>(
+            propName, (blockno << (size_type)num_block_bits) | (size_type)coord_to_cellid(loc));
+      else
+        return grid.template pack<Ns...>(
+            propName, blockno * (size_type)block_size + (size_type)coord_to_cellid(loc));
     }
     template <
         typename VecT, bool is_const = is_const_structure,

@@ -145,6 +145,10 @@ namespace zs {
     ///
     /// construction
     ///
+    constexpr operator Derived&() noexcept { return static_cast<Derived&>(*this); }
+    constexpr operator const Derived&() const noexcept {
+      return static_cast<const Derived&>(*this);
+    }
 
     ///
     /// arithmetic operators

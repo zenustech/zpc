@@ -69,10 +69,14 @@ namespace zs {
     constexpr auto coord(const index_type bucketno) const noexcept {
       return table._activeKeys[bucketno];
     }
-    template <typename T> constexpr auto bucketCoord(const vec<T, dim> &pos) const {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto bucketCoord(const VecInterface<VecT> &pos) const noexcept {
       return world_to_index<typename table_t::Tn>(pos, 1.0 / dx, 0);
     }
-    constexpr auto bucketNo(const vec<typename table_t::Tn, dim> &coord) const {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_integral_v<typename VecT::value_type>> = 0>
+    constexpr auto bucketNo(const VecInterface<VecT> &coord) const noexcept {
       return table.query(coord);
     }
 

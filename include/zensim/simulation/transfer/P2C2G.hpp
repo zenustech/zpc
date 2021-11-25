@@ -370,7 +370,8 @@ namespace zs {
         };
         coord = coord - 1;  /// move to base coord
         for (auto&& iter : ndrange<dim>(3)) {
-          auto bucketno = buckets.bucketNo(coord + make_vec<typename partition_t::Tn>(iter));
+          auto bucketno
+              = buckets.bucketNo(coord + make_vec<typename RM_CVREF_T(coord)::value_type>(iter));
           if (bucketno >= 0) {
             for (int st = buckets.offsets(bucketno), ed = buckets.offsets(bucketno + 1); st != ed;
                  ++st) {

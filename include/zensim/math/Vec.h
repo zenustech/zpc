@@ -131,7 +131,6 @@ using vec =
                                             (std::is_convertible_v<Ts, value_type> && ...)> = 0>
     constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}
     /// https://github.com/kokkos/kokkos/issues/177
-    constexpr vec_impl &operator=(const vec_impl &o) = default;
 #if 0
     constexpr volatile vec_impl &operator=(const vec_impl &o) volatile {
       for (Tn i = 0; i != extent; ++i) data()[i] = o.data()[i];
@@ -283,10 +282,11 @@ using vec =
     return std::array<RetT, sizeof...(Args)>{FWD(args)...};
   }
 
-  template <typename Index, typename T, int dim>
-  constexpr auto world_to_index(const vec<T, dim> &pos, float dxinv, Index offset = 0) {
-    vec<Index, dim> coord{};
-    for (int d = 0; d < dim; ++d) coord[d] = lower_trunc(pos[d] * dxinv + 0.5f) + offset;
+  template <typename Index, typename VecT,
+            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+  constexpr auto world_to_index(const VecInterface<VecT> &pos, float dxinv, Index offset = 0) {
+    vec<Index, VecT::extent> coord{};
+    for (int d = 0; d != VecT::extent; ++d) coord[d] = lower_trunc(pos[d] * dxinv + 0.5f) + offset;
     return coord;
   }
 

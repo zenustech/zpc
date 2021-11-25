@@ -395,7 +395,7 @@ namespace zs {
         if constexpr (is_power_of_two)
           return *(_vector + ((chn << num_lane_bits) | i));
         else
-          return *(_vector + (chn * lane_width | i));
+          return *(_vector + (chn * lane_width + i));
       } else {
         if constexpr (is_power_of_two)
           return *(_vector
@@ -411,7 +411,7 @@ namespace zs {
         if constexpr (is_power_of_two)
           return *(_vector + ((chn << num_lane_bits) | i));
         else
-          return *(_vector + (chn * lane_width | i));
+          return *(_vector + (chn * lane_width + i));
       } else {
         if constexpr (is_power_of_two)
           return *(_vector

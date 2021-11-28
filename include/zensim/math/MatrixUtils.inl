@@ -62,41 +62,6 @@ namespace zs {
     return r;
   }
 
-  /// matrix-vector product
-  template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
-  constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A,
-                           vec_impl<T1, std::integer_sequence<Tn, N1>> const &x) noexcept {
-    using R = math::op_result_t<T0, T1>;
-    vec_impl<R, std::integer_sequence<Tn, N0>> r{};
-    for (Tn i = 0; i != N0; ++i) {
-      r(i) = 0;
-      for (Tn j = 0; j != N1; ++j) r(i) += A(i, j) * x(j);
-    }
-    return r;
-  }
-  template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
-  constexpr auto operator*(vec_impl<T1, std::integer_sequence<Tn, N0>> const &x,
-                           vec_impl<T0, std::integer_sequence<Tn, N0, N1>> const &A) noexcept {
-    using R = math::op_result_t<T0, T1>;
-    vec_impl<R, std::integer_sequence<Tn, N1>> r{};
-    for (Tn i = 0; i != N1; ++i) {
-      r(i) = 0;
-      for (Tn j = 0; j != N0; ++j) r(i) += A(j, i) * x(j);
-    }
-    return r;
-  }
-  template <typename T0, typename T1, typename Tn, Tn Ni, Tn Nk, Tn Nj>
-  constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, Ni, Nk>> const &A,
-                           vec_impl<T1, std::integer_sequence<Tn, Nk, Nj>> const &B) noexcept {
-    using R = math::op_result_t<T0, T1>;
-    vec_impl<R, std::integer_sequence<Tn, Ni, Nj>> r{};
-    for (Tn i = 0; i != Ni; ++i)
-      for (Tn j = 0; j != Nj; ++j) {
-        r(i, j) = 0;
-        for (Tn k = 0; k != Nk; ++k) r(i, j) += A(i, k) * B(k, j);
-      }
-    return r;
-  }
   template <int i0, int i1, typename T, typename Tn, Tn N0, Tn N1>
   constexpr T det2(vec_impl<T, std::integer_sequence<Tn, N0, N1>> const &A) noexcept {
     return A(i0, 0) * A(i1, 1) - A(i1, 0) * A(i0, 1);
@@ -218,32 +183,10 @@ namespace zs {
            / (A(0, 0) * ret(0, 0) + A(1, 0) * ret(0, 1) + A(2, 0) * ret(0, 2)
               + A(3, 0) * ret(0, 3));
   }
-#if 0
-  template <typename T0, typename T1, typename Tn, Tn Nr, Tn Nc>
-  constexpr auto diag_mul(vec_impl<T0, std::integer_sequence<Tn, Nr, Nc>> const &A,
-                          vec_impl<T1, std::integer_sequence<Tn, Nc>> const &diag) noexcept {
-    using R = math::op_result_t<T0, T1>;
-    using extentsT = std::integer_sequence<Tn, Nr, Nc>;
-    vec_impl<R, extentsT> r{};
-    for (Tn i = 0; i != Nr; ++i)
-      for (Tn j = 0; j != Nc; ++j) r(i, j) = A(i, j) * diag(j);
-    return r;
-  }
-  template <typename T0, typename T1, typename Tn, Tn Nr, Tn Nc>
-  constexpr auto diag_mul(vec_impl<T1, std::integer_sequence<Tn, Nr>> const &diag,
-                          vec_impl<T0, std::integer_sequence<Tn, Nr, Nc>> const &A) noexcept {
-    using R = math::op_result_t<T0, T1>;
-    using extentsT = std::integer_sequence<Tn, Nr, Nc>;
-    vec_impl<R, extentsT> r{};
-    for (Tn i = 0; i != Nr; ++i)
-      for (Tn j = 0; j != Nc; ++j) r(i, j) = A(i, j) * diag(i);
-    return r;
-  }
-#else
   template <typename VecTM, typename VecTV,
             enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                           VecTM::template range<1>() == VecTV::template range<0>()> = 0>
-  constexpr auto diag_mul(VecInterface<VecTM> const &A, VecInterface<VecTV> const &diag) noexcept {
+  constexpr auto diag_mul(const VecInterface<VecTM> &A, const VecInterface<VecTV> &diag) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
     for (typename VecTM::index_type i = 0; i != VecTM::template range<0>(); ++i)
@@ -254,7 +197,7 @@ namespace zs {
   template <typename VecTV, typename VecTM,
             enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
                           VecTM::template range<0>() == VecTV::template range<0>()> = 0>
-  constexpr auto diag_mul(VecInterface<VecTV> const &diag, VecInterface<VecTM> const &A) noexcept {
+  constexpr auto diag_mul(const VecInterface<VecTV> &diag, const VecInterface<VecTM> &A) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
     for (typename VecTM::index_type i = 0; i != VecTM::template range<0>(); ++i)
@@ -262,7 +205,6 @@ namespace zs {
         r(i, j) = A(i, j) * diag(i);
     return r;
   }
-#endif
   /// affine transform
   template <typename T0, typename T1, typename Tn, Tn N0, Tn N1>
   constexpr auto operator*(vec_impl<T0, std::integer_sequence<Tn, N0, N1 + 1>> const &A,

@@ -145,6 +145,15 @@ namespace zs {
     ///
     /// construction
     ///
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<OtherVecT::extent == VecT::extent,
+                            std::is_assignable_v<typename VecT::value_type,
+                                                 typename OtherVecT::value_type>> = 0>
+    constexpr Derived& operator=(const VecInterface<OtherVecT>& rhs) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);
+      return static_cast<Derived&>(*this);
+    }
     constexpr operator Derived&() noexcept { return static_cast<Derived&>(*this); }
     constexpr operator const Derived&() const noexcept {
       return static_cast<const Derived&>(*this);
@@ -174,8 +183,7 @@ namespace zs {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       constexpr auto M = select_value<0, vseq<extents>>::value;
       constexpr auto N = select_value<1, vseq<extents>>::value;
-      using extentsT = std::integer_sequence<index_type, N, M>;
-      typename Derived::template variant_vec<value_type, extentsT> r{};
+      typename Derived::template variant_vec<value_type, integer_seq<index_type, N, M>> r{};
       for (index_type i = 0; i != M; ++i)
         for (index_type j = 0; j != N; ++j) r(j, i) = (*this)(i, j);
       return r;
@@ -292,7 +300,11 @@ namespace zs {
     constexpr auto exp() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i) r.val(i) = gcem::exp(this->val(i));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      for (index_type i = 0; i != extent; ++i) r.val(i) = ::exp(this->val(i));
+#else
+      for (index_type i = 0; i != extent; ++i) r.val(i) = std::exp(this->val(i));
+#endif
       return r;
     }
     template <typename VecT = Derived,
@@ -300,7 +312,11 @@ namespace zs {
     constexpr auto log() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i) r.val(i) = gcem::log(this->val(i));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      for (index_type i = 0; i != extent; ++i) r.val(i) = ::log(this->val(i));
+#else
+      for (index_type i = 0; i != extent; ++i) r.val(i) = std::log(this->val(i));
+#endif
       return r;
     }
     template <typename VecT = Derived,
@@ -308,7 +324,11 @@ namespace zs {
     constexpr auto log1p() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i) r.val(i) = gcem::log1p(this->val(i));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      for (index_type i = 0; i != extent; ++i) r.val(i) = ::log1p(this->val(i));
+#else
+      for (index_type i = 0; i != extent; ++i) r.val(i) = std::log1p(this->val(i));
+#endif
       return r;
     }
     template <typename VecT = Derived,
@@ -397,47 +417,107 @@ namespace zs {
     DEFINE_VEC_OP_SCALAR_INTEGRAL(%)
 
     // vector
-#define DEFINE_VEC_OP_VECTOR(OP)                                                             \
-  template <typename OtherVecT, typename VecT = Derived,                                     \
-            enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0> \
-  friend constexpr auto operator OP(VecInterface const& lhs,                                 \
-                                    VecInterface<OtherVecT> const& rhs) noexcept {           \
-    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                         \
-    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;                 \
-    typename Derived::template variant_vec<R, extents> r{};                                  \
-    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i));     \
-    return r;                                                                                \
+#define DEFINE_VEC_OP_VECTOR(OP)                                                         \
+  template <typename OtherVecT, typename VecT = Derived,                                 \
+            enable_if_t<is_same_v<typename OtherVecT::dims, typename VecT::dims>> = 0>   \
+  friend constexpr auto operator OP(VecInterface const& lhs,                             \
+                                    VecInterface<OtherVecT> const& rhs) noexcept {       \
+    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                     \
+    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;             \
+    typename Derived::template variant_vec<R, extents> r{};                              \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i)); \
+    return r;                                                                            \
   }
     DEFINE_VEC_OP_VECTOR(+)
     DEFINE_VEC_OP_VECTOR(-)
     DEFINE_VEC_OP_VECTOR(/)
 
-#define DEFINE_VEC_OP_VECTOR_GENERAL(OP)                                                     \
-  template <typename OtherVecT, typename VecT = Derived,                                     \
-            enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0> \
-  friend constexpr auto operator OP(VecInterface const& lhs,                                 \
-                                    VecInterface<OtherVecT> const& rhs) noexcept {           \
-    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                         \
-    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;                 \
-    typename Derived::template variant_vec<R, extents> r{};                                  \
-    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i));     \
-    return r;                                                                                \
-  }
-    DEFINE_VEC_OP_VECTOR_GENERAL(*)
+    template <typename VecT1, typename VecT2>
+    static constexpr bool is_matrix_matrix_product() noexcept {
+      if constexpr (VecT1::dim == 2 && VecT2::dim == 2) {
+        if constexpr (VecT1::template range<1>() == VecT2::template range<0>())
+          return true;
+        else
+          return false;
+      } else
+        return false;
+    }
+    /// coeffwise product
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<is_same_v<typename OtherVecT::dims, typename VecT::dims>,
+                            !is_matrix_matrix_product<VecT, OtherVecT>()> = 0>
+    friend constexpr auto operator*(const VecInterface& lhs,
+                                    const VecInterface<OtherVecT>& rhs) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
+      typename Derived::template variant_vec<R, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) * ((R)rhs.val(i));
+      return r;
+    }
+    /// matrix-matrix product
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<is_matrix_matrix_product<VecT, OtherVecT>()> = 0>
+    friend constexpr auto operator*(const VecInterface& lhs,
+                                    const VecInterface<OtherVecT>& rhs) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      constexpr auto Ni = VecT::template range<0>();
+      constexpr auto Nj = OtherVecT::template range<1>();
+      constexpr auto Nk = VecT::template range<1>();
+      using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
+      typename Derived::template variant_vec<R, integer_seq<index_type, Ni, Nj>> r{};
+      for (index_type i = 0; i != Ni; ++i)
+        for (index_type j = 0; j != Nj; ++j) {
+          r(i, j) = 0;
+          for (index_type k = 0; k != Nk; ++k) r(i, j) += lhs(i, k) * rhs(k, j);
+        }
+      return r;
+    }
+    /// matrix-vector product
+    template <typename VecTV, typename VecTM = Derived,
+              enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                            VecTM::template range<1>() == VecTV::template range<0>()> = 0>
+    friend constexpr auto operator*(const VecInterface& A, const VecInterface<VecTV>& x) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      constexpr auto M = VecTM::template range<0>();
+      constexpr auto N = VecTM::template range<1>();
+      using R = math::op_result_t<value_type, typename VecTV::value_type>;
+      typename Derived::template variant_vec<R, integer_seq<index_type, M>> r{};
+      for (index_type i = 0; i != M; ++i) {
+        r(i) = 0;
+        for (index_type j = 0; j != N; ++j) r(i) += A(i, j) * x(j);
+      }
+      return r;
+    }
+    template <typename VecTM, typename VecTV = Derived,
+              enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                            VecTM::template range<1>() == VecTV::template range<0>()> = 0>
+    friend constexpr auto operator*(const VecInterface& x, const VecInterface<VecTM>& A) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      constexpr auto M = VecTM::template range<0>();
+      constexpr auto N = VecTM::template range<1>();
+      using R = math::op_result_t<value_type, typename VecTV::value_type>;
+      typename Derived::template variant_vec<R, integer_seq<index_type, N>> r{};
+      for (index_type j = 0; j != N; ++j) {
+        r(j) = 0;
+        for (index_type i = 0; i != M; ++i) r(j) += A(i, j) * x(i);
+      }
+      return r;
+    }
+    // DEFINE_VEC_OP_VECTOR_GENERAL(*)
 
     // vector integral
-#define DEFINE_VEC_OP_VECTOR_INTEGRAL(OP)                                                 \
-  template <typename OtherVecT, typename VecT = Derived,                                  \
-            enable_if_all<is_same_v<typename OtherVecT::extents, typename VecT::extents>, \
-                          std::is_integral_v<typename OtherVecT::value_type>,             \
-                          std::is_integral_v<typename VecT::value_type>> = 0>             \
-  friend constexpr auto operator OP(VecInterface const& lhs,                              \
-                                    VecInterface<OtherVecT> const& rhs) noexcept {        \
-    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                      \
-    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;              \
-    typename Derived::template variant_vec<R, extents> r{};                               \
-    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i));  \
-    return r;                                                                             \
+#define DEFINE_VEC_OP_VECTOR_INTEGRAL(OP)                                                \
+  template <typename OtherVecT, typename VecT = Derived,                                 \
+            enable_if_all<is_same_v<typename OtherVecT::dims, typename VecT::dims>,      \
+                          std::is_integral_v<typename OtherVecT::value_type>,            \
+                          std::is_integral_v<typename VecT::value_type>> = 0>            \
+  friend constexpr auto operator OP(VecInterface const& lhs,                             \
+                                    VecInterface<OtherVecT> const& rhs) noexcept {       \
+    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                     \
+    using R = math::op_result_t<value_type, typename OtherVecT::value_type>;             \
+    typename Derived::template variant_vec<R, extents> r{};                              \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)lhs.val(i) OP((R)rhs.val(i)); \
+    return r;                                                                            \
   }
     DEFINE_VEC_OP_VECTOR_INTEGRAL(&)
     DEFINE_VEC_OP_VECTOR_INTEGRAL(|)
@@ -563,7 +643,7 @@ namespace zs {
     /// compare
     ///
     template <typename OtherVecT, typename VecT = Derived,
-              enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0>
+              enable_if_t<is_same_v<typename OtherVecT::dims, typename VecT::dims>> = 0>
     friend constexpr bool operator==(VecInterface const& lhs,
                                      VecInterface<OtherVecT> const& rhs) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
@@ -572,7 +652,7 @@ namespace zs {
       return true;
     }
     template <typename OtherVecT, typename VecT = Derived,
-              enable_if_t<is_same_v<typename OtherVecT::extents, typename VecT::extents>> = 0>
+              enable_if_t<is_same_v<typename OtherVecT::dims, typename VecT::dims>> = 0>
     friend constexpr bool operator!=(VecInterface const& lhs,
                                      VecInterface<OtherVecT> const& rhs) noexcept {
       return !(lhs == rhs);

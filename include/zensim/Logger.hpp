@@ -20,11 +20,11 @@ namespace zs {
     }
   };
 
-///
+  ///
 
-#  define ZS_LOG(option, ...)                                                                 \
-    Logger::instance().log(loguru::Verbosity_##option, __FILE__, __FUNCTION__, (int)__LINE__, \
-                           __VA_ARGS__);
+#define ZS_LOG(option, ...)                                                                       \
+  ::zs::Logger::instance().log(loguru::Verbosity_##option, __FILE__, __FUNCTION__, (int)__LINE__, \
+                               __VA_ARGS__);
   // LOG_F(option, "[%s:%s@%d] %s", __FILE__, __FUNCTION__, (int)__LINE__, __VA_ARGS__)
 
 #define ZS_FATAL(...) ZS_LOG(FATAL, __VA_ARGS__)

@@ -37,7 +37,8 @@ namespace zs {
       return *this;
     }
 
-    template <auto d = dim, enable_if_t<d == 2> = 0> constexpr Rotation(value_type theta) noexcept {
+    template <auto d = dim, enable_if_t<d == 2> = 0> constexpr Rotation(value_type theta) noexcept
+        : TM{TM::identity()} {
       value_type sinTheta = gcem::sin(theta);
       value_type cosTheta = gcem::cos(theta);
       (*this)(0, 0) = cosTheta;
@@ -49,7 +50,8 @@ namespace zs {
     template <typename VecT, auto unit = angle_unit_e::radian, auto d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
                             VecT::dim == 1, (VecT::template range<0>() == 3)> = 0>
-    constexpr Rotation(const VecInterface<VecT> &p_, value_type alpha, wrapv<unit> = {}) noexcept {
+    constexpr Rotation(const VecInterface<VecT> &p_, value_type alpha, wrapv<unit> = {}) noexcept
+        : TM{} {
       if constexpr (unit == angle_unit_e::degree) alpha *= ((value_type)g_pi / (value_type)180);
       auto p = p_.normalized();
       TM P{0, p(2), -p(1), -p(2), 0, p(0), p(1), -p(0), 0};
@@ -90,7 +92,8 @@ namespace zs {
     template <auto unit = angle_unit_e::radian, auto convention = euler_angle_convention_e::roe,
               auto d = dim, enable_if_t<d == 3> = 0>
     constexpr Rotation(value_type psi, value_type theta, value_type phi, wrapv<unit> = {},
-                       wrapv<convention> = {}) noexcept {
+                       wrapv<convention> = {}) noexcept
+        : TM{} {
       if constexpr (unit == angle_unit_e::degree) {
         psi *= ((value_type)g_pi / (value_type)180);
         theta *= ((value_type)g_pi / (value_type)180);

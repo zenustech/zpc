@@ -154,6 +154,14 @@ namespace zs {
       for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);
       return static_cast<Derived&>(*this);
     }
+    template <
+        typename T, std::size_t N, typename VecT = Derived,
+        enable_if_all<std::is_assignable_v<typename VecT::value_type, T>, N == VecT::extent> = 0>
+    constexpr Derived& operator=(const std::array<T, N>& rhs) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      for (index_type i = 0; i != extent; ++i) this->val(i) = rhs[i];
+      return static_cast<Derived&>(*this);
+    }
     constexpr operator Derived&() noexcept { return static_cast<Derived&>(*this); }
     constexpr operator const Derived&() const noexcept {
       return static_cast<const Derived&>(*this);

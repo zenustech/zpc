@@ -38,7 +38,7 @@ namespace zs {
 
     template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
     constexpr bool near_zero(T v) noexcept {
-      constexpr auto eps = (T)100 * limits<T>::epsilon();  // this coeff from catch2
+      constexpr auto eps = (T)128 * limits<T>::epsilon();
       return v >= -eps && v <= eps;
     }
 
@@ -50,7 +50,7 @@ namespace zs {
 #else
     template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
     constexpr T sqrtNewtonRaphson(T n, T relTol = (T)(sizeof(T) > 4 ? 1e-9 : 1e-6)) noexcept {
-      constexpr auto eps = (T)100 * limits<T>::epsilon();  // this coeff from catch2
+      constexpr auto eps = (T)128 * limits<T>::epsilon();
       if (n < -eps) return (T)limits<T>::quiet_NaN();
       if (n < (T)eps) return (T)0;
 

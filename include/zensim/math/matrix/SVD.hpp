@@ -1,8 +1,8 @@
 #pragma once
 
+#include "QRSVD.hpp"
 #include "zensim/math/VecInterface.hpp"
 #include "zensim/math/matrix/Utility.h"
-#include "zensim/math/matrix/qr.hpp"
 #include "zensim/tpls/gcem/gcem.hpp"
 
 namespace zs {

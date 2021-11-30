@@ -186,6 +186,12 @@ namespace zs {
         r.val(gen_seq<VecT::dim>::template uniform_values<std::tuple>(i)) = 1;
       return r;
     }
+    constexpr auto clone() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i);
+      return r;
+    }
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<OtherVecT::extent == VecT::extent,
                             std::is_assignable_v<typename VecT::value_type,

@@ -109,7 +109,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/matrix/MatrixCtor.hpp
     math/matrix/Matrix.hpp
     math/matrix/Givens.hpp
-    math/matrix/qr.hpp
+    math/matrix/QRSVD.hpp
     math/matrix/SVD.hpp
     math/probability/Probability.h
     math/Hash.hpp

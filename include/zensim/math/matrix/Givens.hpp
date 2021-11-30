@@ -198,8 +198,8 @@ namespace zs {
        **/
       template <typename VecH, typename VecU, typename VecV,
                 enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
-      constexpr void zeroChase(VecInterface<VecH>& H, VecInterface<VecU>& U,
-                               VecInterface<VecV>& V) noexcept {
+      constexpr void zeroChasing(VecInterface<VecH>& H, VecInterface<VecU>& U,
+                                 VecInterface<VecV>& V) noexcept {
         /**
             Reduce H to of form
             x x +
@@ -255,8 +255,8 @@ namespace zs {
         */
       template <typename VecH, typename VecU, typename VecV,
                 enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
-      constexpr void makeUpperBidiag(VecInterface<VecH>& H, VecInterface<VecU>& U,
-                                     VecInterface<VecV>& V) noexcept {
+      constexpr void upperBidiagonalize(VecInterface<VecH>& H, VecInterface<VecU>& U,
+                                        VecInterface<VecV>& V) noexcept {
         U = U.identity();
         V = V.identity();
 
@@ -271,8 +271,8 @@ namespace zs {
         r.rowRotation(H);
         // r.rowRotation(u_transpose);
         r.columnRotation(U);
-        // zeroChase(H, u_transpose, V);
-        zeroChase(H, U, V);
+        // zeroChasing(H, u_transpose, V);
+        zeroChasing(H, U, V);
       }
 
       /**

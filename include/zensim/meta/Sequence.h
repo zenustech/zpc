@@ -70,7 +70,7 @@ namespace zs {
         = T<std::enable_if_t<Is >= 0, Arg>...>;
     template <template <typename...> typename T, typename Arg>
     static constexpr auto uniform_values(const Arg &arg) {
-      return uniform_types_t<T, Arg>{(Is, arg)...};
+      return uniform_types_t<T, Arg>{((void)Is, arg)...};
     }
     template <template <auto...> typename T, auto Arg> using uniform_values_t
         = T<(Is >= 0 ? Arg : 0)...>;

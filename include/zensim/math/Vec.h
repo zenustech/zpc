@@ -38,6 +38,7 @@ using vec =
   /// vec without lifetime managing
   template <typename T, typename Tn, Tn... Ns> struct vec_view<T, std::integer_sequence<Tn, Ns...>>
       : VecInterface<vec_view<T, std::integer_sequence<Tn, Ns...>>> {
+    using base_t = VecInterface<vec_view<T, std::integer_sequence<Tn, Ns...>>>;
     using indexer_type = indexer<Tn, Ns...>;
     static constexpr auto dim = sizeof...(Ns);
     static constexpr auto extent = (Ns * ...);
@@ -47,6 +48,11 @@ using vec =
     using dims = sindex_seq<Ns...>;
 
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
+
+    using base_t::identity;
+    using base_t::ones;
+    using base_t::uniform;
+    using base_t::zeros;
 
     constexpr vec_view() = delete;
     constexpr vec_view(const vec_view &) = delete;             // prevents accidental copy of view
@@ -107,6 +113,7 @@ using vec =
       : VecInterface<vec_impl<T, std::integer_sequence<Tn, Ns...>>> {
     // static_assert(std::is_trivial<T>::value,
     //              "Vec element type is not trivial!\n");
+    using base_t = VecInterface<vec_impl<T, std::integer_sequence<Tn, Ns...>>>;
     using indexer_type = indexer<Tn, Ns...>;
     static constexpr auto dim = sizeof...(Ns);
     static constexpr auto extent = (Ns * ...);
@@ -118,6 +125,11 @@ using vec =
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
     T _data[extent];
+
+    using base_t::identity;
+    using base_t::ones;
+    using base_t::uniform;
+    using base_t::zeros;
 
   public:
     /// expose internal
@@ -171,20 +183,6 @@ using vec =
     constexpr std::array<T, extent> to_array() const noexcept {
       std::array<T, extent> r{};
       for (Tn i = 0; i != extent; ++i) r[i] = _data[i];
-      return r;
-    }
-    static constexpr vec_impl uniform(T v) noexcept {
-      vec_impl r{};
-      for (Tn i = 0; i != extent; ++i) r.val(i) = v;
-      return r;
-    }
-    static constexpr vec_impl zeros() noexcept { return uniform(0); }
-    static constexpr vec_impl ones() noexcept { return uniform(1); }
-    template <int d = dim, Tn n = select_indexed_value<0, Ns...>::value,
-              enable_if_all<d == 2, n * n == extent> = 0>
-    static constexpr vec_impl identity() noexcept {
-      vec_impl r = zeros();
-      for (Tn i = 0; i != n; ++i) r(i, i) = (value_type)1;
       return r;
     }
     /// random access

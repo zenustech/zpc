@@ -4,6 +4,7 @@
 #include "MathUtils.h"
 #include "zensim/meta/Meta.h"
 #include "zensim/meta/Sequence.h"
+#include "zensim/types/Iterator.h"
 
 namespace zs {
 
@@ -92,6 +93,19 @@ namespace zs {
       return select_value<I, vseq<extents>>::value;
     }
 
+    struct details {
+      template <typename VecT, std::size_t... Is>
+      static constexpr bool all_the_same_dimension_extent(typename VecT::index_type v,
+                                                          index_seq<Is...>) noexcept {
+        return ((VecT::template range<Is>() == v) && ...);
+      }
+    };
+
+    template <typename VecT> static constexpr bool same_extent_each_dimension() noexcept {
+      return details::template all_the_same_dimension_extent<VecT>(
+          VecT::template range<0>(), std::make_index_sequence<VecT::dim>{});
+    }
+
     ///
     /// entry access
     ///
@@ -131,20 +145,47 @@ namespace zs {
     // tuple as index
     template <typename VecT = Derived, typename... Ts,
               enable_if_all<sizeof...(Ts) <= VecT::dim,
-                            (std::is_integral_v<remove_cvref_t<Ts>>, ...)> = 0>
-    constexpr decltype(auto) operator()(const std::tuple<Ts...>& is) noexcept {
+                            (std::is_integral_v<remove_cvref_t<Ts>> && ...)> = 0>
+    constexpr decltype(auto) val(const std::tuple<Ts...>& is) noexcept {
       return std::apply(static_cast<Derived&>(*this), is);
     }
     template <typename VecT = Derived, typename... Ts,
               enable_if_all<(sizeof...(Ts) <= VecT::dim),
-                            (std::is_integral_v<remove_cvref_t<Ts>>, ...)> = 0>
-    constexpr decltype(auto) operator()(const std::tuple<Ts...>& is) const noexcept {
+                            (std::is_integral_v<remove_cvref_t<Ts>> && ...)> = 0>
+    constexpr decltype(auto) val(const std::tuple<Ts...>& is) const noexcept {
       return std::apply(static_cast<const Derived&>(*this), is);
     }
 
     ///
     /// construction
     ///
+    template <typename T, typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<T, typename VecT::value_type>> = 0>
+    static constexpr auto uniform(const T& v) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = v;
+      return r;
+    }
+    template <typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<int, typename VecT::value_type>> = 0>
+    static constexpr auto zeros() noexcept {
+      return uniform(0);
+    }
+    template <typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<int, typename VecT::value_type>> = 0>
+    static constexpr auto ones() noexcept {
+      return uniform(1);
+    }
+    template <typename VecT = Derived, enable_if_all<same_extent_each_dimension<VecT>()> = 0>
+    static constexpr auto identity() noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      auto r = zeros();
+      constexpr auto N = VecT::template range<0>();
+      for (index_type i = 0; i != N; ++i)
+        r.val(gen_seq<VecT::dim>::template uniform_values<std::tuple>(i)) = 1;
+      return r;
+    }
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<OtherVecT::extent == VecT::extent,
                             std::is_assignable_v<typename VecT::value_type,
@@ -369,26 +410,26 @@ namespace zs {
 
     //!@name Binary operators
     // scalar
-#define DEFINE_VEC_OP_SCALAR(OP)                                                  \
-  template <typename TT, typename VecT = Derived,                                 \
-            enable_if_t<std::is_convertible<typename VecT::value_type, TT>::value \
-                        && std::is_fundamental_v<TT>> = 0>                        \
-  friend constexpr auto operator OP(VecInterface const& e, TT const v) noexcept { \
-    DECLARE_VEC_INTERFACE_ATTRIBUTES                                              \
-    using R = math::op_result_t<value_type, TT>;                                  \
-    typename Derived::template variant_vec<R, extents> r{};                       \
-    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);     \
-    return r;                                                                     \
-  }                                                                               \
-  template <typename TT, typename VecT = Derived,                                 \
-            enable_if_t<std::is_convertible<typename VecT::value_type, TT>::value \
-                        && std::is_fundamental_v<TT>> = 0>                        \
-  friend constexpr auto operator OP(TT const v, VecInterface const& e) noexcept { \
-    DECLARE_VEC_INTERFACE_ATTRIBUTES                                              \
-    using R = math::op_result_t<value_type, TT>;                                  \
-    typename Derived::template variant_vec<R, extents> r{};                       \
-    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));     \
-    return r;                                                                     \
+#define DEFINE_VEC_OP_SCALAR(OP)                                                              \
+  template <typename TT, typename VecT = Derived,                                             \
+            enable_if_t<std::is_convertible_v<                                                \
+                            TT, typename VecT::value_type> && std::is_fundamental_v<TT>> = 0> \
+  friend constexpr auto operator OP(VecInterface const& e, TT const v) noexcept {             \
+    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                          \
+    using R = math::op_result_t<value_type, TT>;                                              \
+    typename Derived::template variant_vec<R, extents> r{};                                   \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)e.val(i) OP((R)v);                 \
+    return r;                                                                                 \
+  }                                                                                           \
+  template <typename TT, typename VecT = Derived,                                             \
+            enable_if_t<std::is_convertible_v<                                                \
+                            TT, typename VecT::value_type> && std::is_fundamental_v<TT>> = 0> \
+  friend constexpr auto operator OP(TT const v, VecInterface const& e) noexcept {             \
+    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                          \
+    using R = math::op_result_t<value_type, TT>;                                              \
+    typename Derived::template variant_vec<R, extents> r{};                                   \
+    for (index_type i = 0; i != extent; ++i) r.val(i) = (R)v OP((R)e.val(i));                 \
+    return r;                                                                                 \
   }
     DEFINE_VEC_OP_SCALAR(+)
     DEFINE_VEC_OP_SCALAR(-)
@@ -538,7 +579,7 @@ namespace zs {
 // scalar
 #define DEFINE_VEC_OP_SCALAR_ASSIGN(OP)                                                     \
   template <typename TT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>, \
-            enable_if_all<std::is_convertible_v<typename VecT::value_type, TT>,             \
+            enable_if_all<std::is_convertible_v<TT, typename VecT::value_type>,             \
                           std::is_fundamental_v<TT>, IsAssignable> = 0>                     \
   constexpr Derived& operator OP##=(TT&& v) noexcept {                                      \
     DECLARE_VEC_INTERFACE_ATTRIBUTES                                                        \
@@ -573,7 +614,7 @@ namespace zs {
 #define DEFINE_VEC_OP_VECTOR_ASSIGN(OP)                                                            \
   template <typename OtherVecT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>, \
             enable_if_all<                                                                         \
-                std::is_convertible_v<typename VecT::value_type, typename OtherVecT::value_type>,  \
+                std::is_convertible_v<typename OtherVecT::value_type, typename VecT::value_type>,  \
                 IsAssignable> = 0>                                                                 \
   constexpr Derived& operator OP##=(VecInterface<OtherVecT> const& o) noexcept {                   \
     DECLARE_VEC_INTERFACE_ATTRIBUTES                                                               \

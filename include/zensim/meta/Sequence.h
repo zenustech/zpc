@@ -58,16 +58,20 @@ namespace zs {
   /******************************************************************/
   /// static uniform non-types
   template <std::size_t... Is> struct gen_seq_impl<index_seq<Is...>> {
-    using signed_size_t = std::make_signed_t<std::size_t>;
+    /// arithmetic sequences
     template <auto N0 = 0, auto Step = 1> using arithmetic = index_seq<static_cast<std::size_t>(
-        static_cast<signed_size_t>(N0)
-        + static_cast<signed_size_t>(Is) * static_cast<signed_size_t>(Step))...>;
+        static_cast<sint_t>(N0) + static_cast<sint_t>(Is) * static_cast<sint_t>(Step))...>;
     using ascend = arithmetic<0, 1>;
     using descend = arithmetic<sizeof...(Is) - 1, -1>;
     template <auto J> using uniform = integer_seq<decltype(J), (Is == Is ? J : J)...>;
     template <auto J> using uniform_vseq = vseq_t<(Is == Is ? J : J)...>;
+    /// types with uniform type/value params
     template <template <typename...> typename T, typename Arg> using uniform_types_t
         = T<std::enable_if_t<Is >= 0, Arg>...>;
+    template <template <typename...> typename T, typename Arg>
+    static constexpr auto uniform_values(const Arg &arg) {
+      return uniform_types_t<T, Arg>{(Is, arg)...};
+    }
     template <template <auto...> typename T, auto Arg> using uniform_values_t
         = T<(Is >= 0 ? Arg : 0)...>;
   };

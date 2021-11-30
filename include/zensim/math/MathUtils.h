@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <functional>
 #include <type_traits>
 #include <utility>
@@ -178,8 +179,19 @@ namespace zs {
     constexpr T log_1px_over_x(const T x, const T eps = 1e-6) noexcept {
       if (gcem::abs(x) < eps)
         return (T)1 - x / (T)2 + x * x / (T)3 - x * x * x / (T)4;
-      else
-        return gcem::log1p(x) / x;
+      else {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+        if constexpr (is_same_v<T, float>)
+          return ::log1pf(x) / x;
+        else
+          return ::log1p(x) / x;
+#else
+        if constexpr (is_same_v<T, float>)
+          return std::log1pf(x) / x;
+        else
+          return std::log1p(x) / x;
+#endif
+      }
     }
     /**
      * Robustly computing (logx-logy)/(x-y)
@@ -233,11 +245,11 @@ namespace zs {
 
   template <typename T, enable_if_t<is_same_v<T, double>> = 0>
   constexpr auto lower_trunc(T v) noexcept {
-    return v > 0 ? (i64)v : ((i64)v) - 1;
+    return v >= 0 ? (i64)v : ((i64)v) - 1;
   }
   template <typename T, enable_if_t<is_same_v<T, float>> = 0>
   constexpr auto lower_trunc(T v) noexcept {
-    return v > 0 ? (i32)v : ((i32)v) - 1;
+    return v >= 0 ? (i32)v : ((i32)v) - 1;
   }
 
 }  // namespace zs

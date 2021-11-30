@@ -39,8 +39,19 @@ namespace zs {
 
     template <auto d = dim, enable_if_t<d == 2> = 0> constexpr Rotation(value_type theta) noexcept
         : TM{TM::identity()} {
-      value_type sinTheta = gcem::sin(theta);
-      value_type cosTheta = gcem::cos(theta);
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      value_type sinTheta{}, cosTheta{};
+      if constexpr (is_same_v<value_type, float>) {
+        sinTheta = ::sinf(theta);
+        cosTheta = ::cosf(theta);
+      } else {
+        sinTheta = ::sin(theta);
+        cosTheta = ::cos(theta);
+      }
+#else
+      value_type sinTheta = std::sin(theta);
+      value_type cosTheta = std::cos(theta);
+#endif
       (*this)(0, 0) = cosTheta;
       (*this)(0, 1) = -sinTheta;
       (*this)(1, 0) = sinTheta;
@@ -55,14 +66,33 @@ namespace zs {
       if constexpr (unit == angle_unit_e::degree) alpha *= ((value_type)g_pi / (value_type)180);
       auto p = p_.normalized();
       TM P{0, p(2), -p(1), -p(2), 0, p(0), p(1), -p(0), 0};
-      auto cosAlpha = gcem::cos(alpha);
-      self()
-          = cosAlpha * TM::identity() + (1 - cosAlpha) * dyadic_prod(p, p) - gcem::sin(alpha) * P;
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      value_type sinAlpha{}, cosAlpha{};
+      if constexpr (is_same_v<value_type, float>) {
+        sinAlpha = ::sinf(alpha);
+        cosAlpha = ::cosf(alpha);
+      } else {
+        sinAlpha = ::sin(alpha);
+        cosAlpha = ::cos(alpha);
+      }
+#else
+      value_type sinAlpha = std::sin(alpha);
+      value_type cosAlpha = std::cos(alpha);
+#endif
+      self() = cosAlpha * TM::identity() + (1 - cosAlpha) * dyadic_prod(p, p) - sinAlpha * P;
     }
     template <auto unit = angle_unit_e::radian, auto d = dim, enable_if_t<d == 3> = 0>
     constexpr auto extractAxisRotation(wrapv<unit> = {}) const noexcept {
       const auto cosAlpha = (value_type)0.5 * (trace(self()) - 1);
-      value_type alpha = gcem::acos(cosAlpha);
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      value_type alpha{};
+      if constexpr (is_same_v<value_type, float>)
+        alpha = ::acosf(cosAlpha);
+      else
+        alpha = ::acos(cosAlpha);
+#else
+      value_type alpha = std::acos(cosAlpha);
+#endif
       if (math::near_zero(cosAlpha - 1)) return std::make_tuple(TV{0, 1, 0}, (value_type)0);
 
       TV p{};
@@ -99,16 +129,35 @@ namespace zs {
         theta *= ((value_type)g_pi / (value_type)180);
         phi *= ((value_type)g_pi / (value_type)180);
       }
+      value_type sinPsi{}, cosPsi{}, sinTheta{}, cosTheta{}, sinPhi{}, cosPhi{};
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<value_type, float>) {
+        sinPsi = ::sinf(psi);
+        cosPsi = ::cosf(psi);
+        sinTheta = ::sinf(theta);
+        cosTheta = ::cosf(theta);
+        sinPhi = ::sinf(phi);
+        cosPhi = ::cosf(phi);
+      } else {
+        sinPsi = ::sin(psi);
+        cosPsi = ::cos(psi);
+        sinTheta = ::sin(theta);
+        cosTheta = ::cos(theta);
+        sinPhi = ::sin(phi);
+        cosPhi = ::cos(phi);
+      }
+#else
+      sinPsi = std::sin(psi);
+      cosPsi = std::cos(psi);
+      sinTheta = std::sin(theta);
+      cosTheta = std::cos(theta);
+      sinPhi = std::sin(phi);
+      cosPhi = std::cos(phi);
+#endif
       if constexpr (convention == euler_angle_convention_e::roe) {
         // Roe convention (successive rotations)
         // ref: https://www.continuummechanics.org/rotationmatrix.html
         // [z] psi -> [y'] theta -> [z'] phi
-        value_type sinPsi = gcem::sin(psi);
-        value_type cosPsi = gcem::cos(psi);
-        value_type sinTheta = gcem::sin(theta);
-        value_type cosTheta = gcem::cos(theta);
-        value_type sinPhi = gcem::sin(phi);
-        value_type cosPhi = gcem::cos(phi);
         auto cosPsi_cosTheta = cosPsi * cosTheta;
         auto sinPsi_cosTheta = sinPsi * cosTheta;
         (*this)(0, 0) = cosPsi_cosTheta * cosPhi - sinPsi * sinPhi;
@@ -126,12 +175,6 @@ namespace zs {
         // ref:
         // http://personal.maths.surrey.ac.uk/T.Bridges/SLOSH/3-2-1-Eulerangles.pdf
         // [z] psi -> [y'] theta -> [x'] phi
-        value_type sinPsi = gcem::sin(psi);
-        value_type cosPsi = gcem::cos(psi);
-        value_type sinTheta = gcem::sin(theta);
-        value_type cosTheta = gcem::cos(theta);
-        value_type sinPhi = gcem::sin(phi);
-        value_type cosPhi = gcem::cos(phi);
         auto sinPhi_sinTheta = sinPhi * sinTheta;
         auto cosPhi_sinTheta = cosPhi * sinTheta;
         (*this)(0, 0) = cosTheta * cosPsi;
@@ -154,33 +197,85 @@ namespace zs {
         const auto cosTheta = (*this)(2, 2);
         if (math::near_zero(cosTheta - 1)) {
           theta = 0;
-          psi = gcem::atan2((*this)(1, 0), (*this)(0, 0));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+          if constexpr (is_same_v<value_type, float>)
+            psi = ::atan2f((*this)(1, 0), (*this)(0, 0));
+          else
+            psi = ::atan2((*this)(1, 0), (*this)(0, 0));
+#else
+          psi = std::atan2((*this)(1, 0), (*this)(0, 0));
+#endif
           phi = (value_type)0;
         } else if (math::near_zero(cosTheta + 1)) {
           theta = g_pi;
-          psi = gcem::atan2(-(*this)(1, 0), -(*this)(0, 0));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+          if constexpr (is_same_v<value_type, float>)
+            psi = ::atan2f(-(*this)(1, 0), -(*this)(0, 0));
+          else
+            psi = ::atan2(-(*this)(1, 0), -(*this)(0, 0));
+#else
+          psi = std::atan2(-(*this)(1, 0), -(*this)(0, 0));
+#endif
           phi = (value_type)0;
         } else {
-          theta = gcem::acos(cosTheta);  // another solution (-theta)
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+          if constexpr (is_same_v<value_type, float>) {
+            theta = ::acosf(cosTheta);
+            psi = ::atan2f((*this)(1, 2), (*this)(0, 2));
+            phi = ::atan2f((*this)(2, 1), -(*this)(2, 0));
+          } else {
+            theta = ::acos(cosTheta);
+            psi = ::atan2((*this)(1, 2), (*this)(0, 2));
+            phi = ::atan2((*this)(2, 1), -(*this)(2, 0));
+          }
+#else
+          theta = std::acos(cosTheta);  // another solution (-theta)
           /// theta [0, g_pi], thus (sinTheta > 0) always holds true
-          psi = gcem::atan2((*this)(1, 2), (*this)(0, 2));  // no need to divide sinTheta
-          phi = gcem::atan2((*this)(2, 1), -(*this)(2, 0));
+          psi = std::atan2((*this)(1, 2), (*this)(0, 2));  // no need to divide sinTheta
+          phi = std::atan2((*this)(2, 1), -(*this)(2, 0));
+#endif
         }
       } else if constexpr (convention == euler_angle_convention_e::ypr) {
         const auto sinTheta = -(*this)(0, 2);
         if (math::near_zero(sinTheta - 1)) {
           theta = g_half_pi;
-          psi = gcem::atan2((*this)(2, 1), (*this)(2, 0));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+          if constexpr (is_same_v<value_type, float>)
+            psi = ::atan2f((*this)(2, 1), (*this)(2, 0));
+          else
+            psi = ::atan2((*this)(2, 1), (*this)(2, 0));
+#else
+          psi = std::atan2((*this)(2, 1), (*this)(2, 0));
+#endif
           phi = (value_type)0;
         } else if (math::near_zero(sinTheta + 1)) {
           theta = -g_half_pi;
-          psi = gcem::atan2(-(*this)(2, 1), -(*this)(2, 0));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+          if constexpr (is_same_v<value_type, float>)
+            psi = ::atan2f(-(*this)(2, 1), -(*this)(2, 0));
+          else
+            psi = ::atan2(-(*this)(2, 1), -(*this)(2, 0));
+#else
+          psi = std::atan2(-(*this)(2, 1), -(*this)(2, 0));
+#endif
           phi = (value_type)0;
         } else {
-          theta = gcem::asin(sinTheta);  // another solution: (g_pi - theta)
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+          if constexpr (is_same_v<value_type, float>) {
+            theta = ::asinf(sinTheta);
+            psi = ::atan2f((*this)(0, 1), (*this)(0, 0));
+            phi = ::atan2f((*this)(1, 2), (*this)(2, 2));
+          } else {
+            theta = ::asin(sinTheta);
+            psi = ::atan2((*this)(0, 1), (*this)(0, 0));
+            phi = ::atan2((*this)(1, 2), (*this)(2, 2));
+          }
+#else
+          theta = std::asin(sinTheta);  // another solution: (g_pi - theta)
           /// theta [-g_pi/2, g_pi/2], thus (cosTheta > 0) always holds true
-          psi = gcem::atan2((*this)(0, 1), (*this)(0, 0));  // no need to divide cosTheta
-          phi = gcem::atan2((*this)(1, 2), (*this)(2, 2));
+          psi = std::atan2((*this)(0, 1), (*this)(0, 0));  // no need to divide cosTheta
+          phi = std::atan2((*this)(1, 2), (*this)(2, 2));
+#endif
         }
       }
       if constexpr (unit == angle_unit_e::radian)
@@ -196,7 +291,18 @@ namespace zs {
       if constexpr (dim == 2) {
         /// Construct a 2D counter clock wise rotation from the angle \a a in
         /// radian.
-        T sinA = gcem::sin(q(0)), cosA = gcem::cos(q(0));
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+        T sinA{}, cosA{};
+        if constexpr (is_same_v<value_type, float>) {
+          sinA = ::sinf(q(0));
+          cosA = ::cosf(q(0));
+        } else {
+          sinA = ::sin(q(0));
+          cosA = ::cos(q(0));
+        }
+#else
+        T sinA = std::sin(q(0)), cosA = std::cos(q(0));
+#endif
         (*this)(0, 0) = cosA;
         (*this)(0, 1) = -sinA;
         (*this)(1, 0) = sinA;
@@ -222,7 +328,16 @@ namespace zs {
         (*this)(1, 1) = aa(0) * bb(0) + aa(1) * bb(1);
       } else if constexpr (dim == 3 && VecTA::template range<0>() == 3) {
         T k_cos_theta = a.dot(b);
+
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+        T k{};
+        if constexpr (is_same_v<value_type, float>)
+          k = ::sqrtf(a.l2NormSqr() * b.l2NormSqr());
+        else
+          k = ::sqrt(a.l2NormSqr() * b.l2NormSqr());
+#else
         T k = gcem::sqrt(a.l2NormSqr() * b.l2NormSqr());
+#endif
         vec<T, 4> q{};
         if (k_cos_theta / k == -1) {
           // 180 degree rotation around any orthogonal vector

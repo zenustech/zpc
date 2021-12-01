@@ -163,163 +163,186 @@ namespace zs {
         r *= A;
         return r;
       }
-
-      template <typename VecT> static constexpr bool is_3_by_3() noexcept {
-        if constexpr (VecT::dim == 2)
-          return VecT::template range<0>() == 3 && VecT::template range<1>() == 3;
-        return false;
-      }
-      /**
-       * \brief zero chasing the 3X3 matrix to bidiagonal form
-       * original form of H:
-       * x x 0
-       * x x x
-       * 0 0 x
-       * after zero chase:
-       * x x 0
-       * 0 x x
-       * 0 0 x
-       **/
-      template <typename VecH, typename VecU, typename VecV,
-                enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
-      constexpr void zeroChasing(VecInterface<VecH>& H, VecInterface<VecU>& U,
-                                 VecInterface<VecV>& V) noexcept {
-        /**
-            Reduce H to of form
-            x x +
-            0 x x
-            0 0 x
-            */
-        GivensRotation<T> r1(H(0, 0), H(1, 0), 0, 1);
-        /**
-            Reduce H to of form
-            x x 0
-            0 x x
-            0 + x
-            Can calculate r2 without multiplying by r1 since both entries are in first two
-            rows thus no need to divide by sqrt(a^2+b^2)
-            */
-        GivensRotation<T> r2(1, 2);
-        if (H(1, 0) != 0)
-          r2.computeConventional(H(0, 0) * H(0, 1) + H(1, 0) * H(1, 1),
-                                 H(0, 0) * H(0, 2) + H(1, 0) * H(1, 2));
-        else
-          r2.computeConventional(H(0, 1), H(0, 2));
-
-        r1.rowRotation(H);
-
-        /* GivensRotation<T> r2(H(0, 1), H(0, 2), 1, 2); */
-        r2.columnRotation(H);
-        r2.columnRotation(V);
-
-        /**
-            Reduce H to of form
-            x x 0
-            0 x x
-            0 0 x
-            */
-        GivensRotation<T> r3(H(1, 1), H(2, 1), 1, 2);
-        r3.rowRotation(H);
-
-        // Save this till end for better cache coherency
-        // r1.rowRotation(u_transpose);
-        // r3.rowRotation(u_transpose);
-        r1.columnRotation(U);
-        r3.columnRotation(U);
-      }
-      /**
-           \brief make a 3X3 matrix to upper bidiagonal form
-           original form of H:   x x x
-                                 x x x
-                                 x x x
-           after zero chase:
-                                 x x 0
-                                 0 x x
-                                 0 0 x
-        */
-      template <typename VecH, typename VecU, typename VecV,
-                enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
-      constexpr void upperBidiagonalize(VecInterface<VecH>& H, VecInterface<VecU>& U,
-                                        VecInterface<VecV>& V) noexcept {
-        U = U.identity();
-        V = V.identity();
-
-        /**
-          Reduce H to of form
-                              x x x
-                              x x x
-                              0 x x
-        */
-
-        GivensRotation<T> r(H(1, 0), H(2, 0), 1, 2);
-        r.rowRotation(H);
-        // r.rowRotation(u_transpose);
-        r.columnRotation(U);
-        // zeroChasing(H, u_transpose, V);
-        zeroChasing(H, U, V);
-      }
-
-      /**
-           \brief make a 3X3 matrix to lambda shape
-           original form of H:   x x x
-           *                     x x x
-           *                     x x x
-           after :
-           *                     x 0 0
-           *                     x x 0
-           *                     x 0 x
-        */
-      template <typename VecH, typename VecU, typename VecV,
-                enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
-      constexpr void makeLambdaShape(VecInterface<VecH>& H, VecInterface<VecU>& U,
-                                     VecInterface<VecV>& V) noexcept {
-        U = U.identity();
-        V = V.identity();
-
-        /**
-          Reduce H to of form
-          *                    x x 0
-          *                    x x x
-          *                    x x x
-          */
-
-        GivensRotation<T> r1(H(0, 1), H(0, 2), 1, 2);
-        r1.columnRotation(H);
-        r1.columnRotation(V);
-
-        /**
-          Reduce H to of form
-          *                    x x 0
-          *                    x x 0
-          *                    x x x
-          */
-
-        r1.computeUnconventional(H(1, 2), H(2, 2));
-        r1.rowRotation(H);
-        r1.columnRotation(U);
-
-        /**
-          Reduce H to of form
-          *                    x x 0
-          *                    x x 0
-          *                    x 0 x
-          */
-
-        GivensRotation<T> r2(H(2, 0), H(2, 1), 0, 1);
-        r2.columnRotation(H);
-        r2.columnRotation(V);
-
-        /**
-          Reduce H to of form
-          *                    x 0 0
-          *                    x x 0
-          *                    x 0 x
-          */
-        r2.computeUnconventional(H(0, 1), H(1, 1));
-        r2.rowRotation(H);
-        r2.columnRotation(U);
-      }
     };
+
+    template <typename VecT> static constexpr bool is_3_by_3() noexcept {
+      if constexpr (VecT::dim == 2)
+        return VecT::template range<0>() == 3 && VecT::template range<1>() == 3;
+      return false;
+    }
+    /**
+     * \brief zero chasing the 3X3 matrix to bidiagonal form
+     * original form of H:
+     * x x 0
+     * x x x
+     * 0 0 x
+     * after zero chase:
+     * x x 0
+     * 0 x x
+     * 0 0 x
+     * \note don't follow algorithm 5 psudo code, use ziran2020 implementation
+     **/
+#if 1
+    template <typename VecH, typename VecU, typename VecV,
+              enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
+    constexpr void zero_chasing(VecInterface<VecH>& H, VecInterface<VecU>& U,
+                                VecInterface<VecV>& V) noexcept {
+      using T = typename VecH::value_type;
+      /**
+          Reduce H to of form
+          x x +
+          0 x x
+          0 0 x
+          */
+      GivensRotation<T> r1(H(0, 0), H(1, 0), 0, 1);
+      /**
+          Reduce H to of form
+          x x 0
+          0 x x
+          0 + x
+          Can calculate r2 without multiplying by r1 since both entries are in first two
+          rows thus no need to divide by sqrt(a^2+b^2)
+          */
+      GivensRotation<T> r2(1, 2);
+      if (H(1, 0) != 0)
+        r2.computeConventional(H(0, 0) * H(0, 1) + H(1, 0) * H(1, 1),
+                               H(0, 0) * H(0, 2) + H(1, 0) * H(1, 2));
+      else
+        r2.computeConventional(H(0, 1), H(0, 2));
+
+      r1.rowRotation(H);
+
+      /* GivensRotation<T> r2(H(0, 1), H(0, 2), 1, 2); */
+      r2.columnRotation(H);
+      r2.columnRotation(V);
+
+      /**
+          Reduce H to of form
+          x x 0
+          0 x x
+          0 0 x
+          */
+      GivensRotation<T> r3(H(1, 1), H(2, 1), 1, 2);
+      r3.rowRotation(H);
+
+      // Save this till end for better cache coherency
+      // r1.rowRotation(u_transpose);
+      // r3.rowRotation(u_transpose);
+      r1.columnRotation(U);
+      r3.columnRotation(U);
+    }
+#else
+    template <typename VecH, typename VecU, typename VecV,
+              enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
+    constexpr void zero_chasing(VecInterface<VecH>& H, VecInterface<VecU>& U,
+                                VecInterface<VecV>& V) noexcept {
+      using T = typename VecH::value_type;
+      {
+        GivensRotation<T> r{H(0, 1), H(0, 2), 1, 2};
+        r.columnRotation(H);
+        r.rowRotation(U);
+      }
+      {
+        GivensRotation<T> r{H(0, 1), H(0, 2), 1, 2};
+        r.rowRotation(H);
+        r.rowRotation(V);
+      }
+      {
+        GivensRotation<T> r{H(1, 1), H(2, 1), 1, 2};
+        r.rowRotation(H);
+        r.columnRotation(U);
+      }
+    }
+#endif
+    /**
+     *    \brief make a 3X3 matrix to upper bidiagonal form
+     *    original form of H:   x x x
+     *                          x x x
+     *                          x x x
+     *    after zero chase:
+     *                          x x 0
+     *                          0 x x
+     *                          0 0 x
+     **/
+    template <typename VecH, typename VecU, typename VecV>
+    constexpr void upper_bidiagonalize(VecInterface<VecH>& H, VecInterface<VecU>& U,
+                                       VecInterface<VecV>& V) {
+      U = U.identity();
+      V = V.identity();
+
+      /**
+       *  Reduce H to of form
+       *                        x x x
+       *                        x x x
+       *                        0 x x
+       **/
+      GivensRotation<typename VecH::value_type> r{H(1, 0), H(2, 0), 1, 2};
+      r.rowRotation(H);
+      r.columnRotation(U);
+      zero_chasing(H, U, V);
+    }
+
+    /**
+         \brief make a 3X3 matrix to lambda shape
+         original form of H:   x x x
+         *                     x x x
+         *                     x x x
+         after :
+         *                     x 0 0
+         *                     x x 0
+         *                     x 0 x
+      */
+    template <typename VecH, typename VecU, typename VecV,
+              enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
+    constexpr void make_lambda_shape(VecInterface<VecH>& H, VecInterface<VecU>& U,
+                                     VecInterface<VecV>& V) noexcept {
+      using T = typename VecH::value_type;
+      U = U.identity();
+      V = V.identity();
+
+      /**
+        Reduce H to of form
+        *                    x x 0
+        *                    x x x
+        *                    x x x
+        */
+
+      GivensRotation<T> r1(H(0, 1), H(0, 2), 1, 2);
+      r1.columnRotation(H);
+      r1.columnRotation(V);
+
+      /**
+        Reduce H to of form
+        *                    x x 0
+        *                    x x 0
+        *                    x x x
+        */
+
+      r1.computeUnconventional(H(1, 2), H(2, 2));
+      r1.rowRotation(H);
+      r1.columnRotation(U);
+
+      /**
+        Reduce H to of form
+        *                    x x 0
+        *                    x x 0
+        *                    x 0 x
+        */
+
+      GivensRotation<T> r2(H(2, 0), H(2, 1), 0, 1);
+      r2.columnRotation(H);
+      r2.columnRotation(V);
+
+      /**
+        Reduce H to of form
+        *                    x 0 0
+        *                    x x 0
+        *                    x 0 x
+        */
+      r2.computeUnconventional(H(0, 1), H(1, 1));
+      r2.rowRotation(H);
+      r2.columnRotation(U);
+    }
 
   }  // namespace math
 

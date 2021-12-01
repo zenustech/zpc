@@ -1,6 +1,7 @@
 #pragma once
 #include "Givens.hpp"
 #include "zensim/math/Vec.h"
+#include "zensim/tpls/fmt/core.h"
 
 namespace zs {
 
@@ -109,6 +110,8 @@ namespace zs {
         ;
     }
 
+    namespace detail {}  // namespace detail
+
     // Polar guarantees negative sign is on the small magnitude singular value.
     // S is guaranteed to be the closest one to identity.
     // R is guaranteed to be the closest rotation to A.
@@ -131,7 +134,27 @@ namespace zs {
         gv.fill(V);
         return std::make_tuple(U, S, V);
       } else if constexpr (N == 3) {
-        ;
+        auto B = A.clone();
+        U = U.identity();
+        V = V.identity();
+        upper_bidiagonalize(B, U, V);
+
+        if constexpr (false) {
+          auto printMat = [](auto&& mat, std::string msg = "") {
+            using Mat = RM_CVREF_T(mat);
+            if (!msg.empty()) fmt::print("## msg: {}\n", msg);
+            // if constexpr (Mat::extent == 9)
+            fmt::print("mat3[{}] ==\n{}, {}, {}\n{}, {}, {}\n{}, {}, {}\n", (void*)&mat, mat(0, 0),
+                       mat(0, 1), mat(0, 2), mat(1, 0), mat(1, 1), mat(1, 2), mat(2, 0), mat(2, 1),
+                       mat(2, 2));
+          };
+          printMat(A, "A");
+          printMat(U, "U");
+          printMat(B, "B");
+          printMat(V.transpose(), "V^T");
+          printMat(U * B * V.transpose(), "Achk (U B V^T)");
+        }
+        return std::make_tuple(U, A, V);  // wrong
       } else
         ;
     }

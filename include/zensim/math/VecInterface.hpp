@@ -66,8 +66,11 @@ namespace zs {
   using extents = typename Derived::extents; /*not necessarily same as indexer_type::extents*/ \
   using dims = typename Derived::dims;                                                         \
   using indexer_type = typename Derived::indexer_type;                                         \
-  constexpr index_type extent = indexer_type::extent;                                          \
+  constexpr index_type extent = indexer_type::extent; /*this should change*/                   \
   constexpr auto dim = indexer_type::dim;
+
+    // constexpr index_type extent = vseq<extents>::reduce<std::multiplies<index_type>>();
+    // //indexer_type::extent;
 
     using vec_type = Derived;
 

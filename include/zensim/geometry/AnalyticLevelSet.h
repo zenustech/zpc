@@ -119,19 +119,19 @@ namespace zs {
       vec<T, dim - 1> diffR{};
       for (int k = 0, i = 0; k != dim; ++k)
         if (k != _d) diffR[i++] = X[k] - _bottom[k];
-      auto disR = gcem::sqrt(diffR.l2NormSqr());
+      auto disR = zs::sqrt(diffR.l2NormSqr());
       bool outsideCircle = disR > _radius;
 
       if (X[_d] < _bottom[_d]) {
         T disL = _bottom[_d] - X[_d];
         if (outsideCircle)
-          return gcem::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
+          return zs::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
         else
           return disL;
       } else if (X[_d] > _bottom[_d] + _length) {
         T disL = X[_d] - (_bottom[_d] + _length);
         if (outsideCircle)
-          return gcem::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
+          return zs::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
         else
           return disL;
       } else {

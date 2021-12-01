@@ -2,32 +2,32 @@
 
 #include <cmath>
 
-#include "zensim/tpls/gcem/gcem.hpp"
+#include "zensim/math/MathUtils.h"
+#include "zensim/math/Rotation.hpp"
 
 namespace zs {
 
   double PDF(int lambda, int k) {
     double pdf = 1;
-    int i;
-    for (i = 1; i <= k; ++i) pdf *= (double)lambda / i;
-    return pdf * gcem::exp(-1.0 * lambda);
+    for (int i = 1; i <= k; ++i) pdf *= (double)lambda / i;
+    return pdf * zs::exp(-1.0 * lambda);
   }
 
   double PDF(double u, double o, int x) {
-    constexpr double co = 1. / gcem::sqrt(2 * GCEM_PI);
-    double index = -(x - u) * (x - u) / 2 / o / o;
-    return co / o * gcem::exp(index);
+    constexpr double co = 1. / zs::sqrt(2. * g_pi);
+    double index = -(x - u) * (x - u) / 2. / o / o;
+    return co / o * zs::exp(index);
   }
   double anti_normal_PDF(double u, double o, int x) {
-    constexpr double co = 1. / gcem::sqrt(2 * GCEM_PI);
-    double index = -(x - u) * (x - u) / 2 / o / o;
-    return 1 - co / o * gcem::exp(index);
+    constexpr double co = 1. / zs::sqrt(2. * g_pi);
+    double index = -(x - u) * (x - u) / 2. / o / o;
+    return 1 - co / o * zs::exp(index);
   }
 
   int rand_p(double lambda) {
     double u = (double)rand() / RAND_MAX;
     int x = 0;
-    double cdf = gcem::exp(-1.0 * lambda);
+    double cdf = zs::exp(-1.0 * lambda);
     while (u >= cdf) {
       x++;
       cdf += PDF(lambda, x);

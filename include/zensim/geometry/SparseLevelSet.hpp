@@ -155,8 +155,8 @@ namespace zs {
       IV loc{};
       TV X = x * _w2v;
       // TV X = x / _dx;
-      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor(X(d));
-      // for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
+      for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
+      // for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
       TV diff = X - loc;
       if constexpr (dim == 2) {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
@@ -203,8 +203,8 @@ namespace zs {
       IV loc{};
       TV X = x * _w2v;
       // TV X = x / _dx;
-      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor(X(d));
-      // for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
+      for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
+      // for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
       TV diff = X - loc;
       if constexpr (dim == 2) {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {

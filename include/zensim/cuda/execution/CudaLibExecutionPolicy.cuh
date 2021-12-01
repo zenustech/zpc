@@ -17,7 +17,7 @@ namespace zs {
     culib_cusolverdn = 0x8
   };
 
-  namespace details {
+  namespace detail {
     template <typename T> void check_culib_error(T result) {
       if (static_cast<int>(result) != 0) {
         fmt::print("culib execution of {} error: code [{}]\n", demangle<T>(),
@@ -29,38 +29,38 @@ namespace zs {
     template <> struct CudaLibStatusType<culib_cublas> { using type = cublasStatus_t; };
     template <> struct CudaLibStatusType<culib_cusolversp> { using type = cusolverStatus_t; };
     template <> struct CudaLibStatusType<culib_cusolverdn> { using type = cusolverStatus_t; };
-  }  // namespace details
+  }  // namespace detail
   template <CudaLibraryComponentFlagBit flagbit> using cudaLibStatus_t =
-      typename details::CudaLibStatusType<flagbit>::type;
+      typename detail::CudaLibStatusType<flagbit>::type;
 
   template <CudaLibraryComponentFlagBit flagbit> struct CudaLibHandle {};
 
   template <> struct CudaLibHandle<culib_cusparse> {
     cusparseHandle_t handle{nullptr};
     CudaLibHandle(CudaExecutionPolicy& cupol) {
-      details::check_culib_error(cusparseCreate(&handle));
-      details::check_culib_error(cusparseSetStream(
+      detail::check_culib_error(cusparseCreate(&handle));
+      detail::check_culib_error(cusparseSetStream(
           handle, (cudaStream_t)Cuda::context(cupol.getProcid()).streamSpare(cupol.getStreamid())));
     }
-    ~CudaLibHandle() { details::check_culib_error(cusparseDestroy(handle)); }
+    ~CudaLibHandle() { detail::check_culib_error(cusparseDestroy(handle)); }
   };
   template <> struct CudaLibHandle<culib_cublas> {
     cublasHandle_t handle{nullptr};
     CudaLibHandle(CudaExecutionPolicy& cupol) {
-      details::check_culib_error(cublasCreate(&handle));
-      details::check_culib_error(cublasSetStream(
+      detail::check_culib_error(cublasCreate(&handle));
+      detail::check_culib_error(cublasSetStream(
           handle, (cudaStream_t)Cuda::context(cupol.getProcid()).streamSpare(cupol.getStreamid())));
     }
-    ~CudaLibHandle() { details::check_culib_error(cublasDestroy(handle)); }
+    ~CudaLibHandle() { detail::check_culib_error(cublasDestroy(handle)); }
   };
   template <> struct CudaLibHandle<culib_cusolversp> {
     cusolverSpHandle_t handle{nullptr};
     CudaLibHandle(CudaExecutionPolicy& cupol) {
-      details::check_culib_error(cusolverSpCreate(&handle));
-      details::check_culib_error(cusolverSpSetStream(
+      detail::check_culib_error(cusolverSpCreate(&handle));
+      detail::check_culib_error(cusolverSpSetStream(
           handle, (cudaStream_t)Cuda::context(cupol.getProcid()).streamSpare(cupol.getStreamid())));
     }
-    ~CudaLibHandle() { details::check_culib_error(cusolverSpDestroy(handle)); }
+    ~CudaLibHandle() { detail::check_culib_error(cusolverSpDestroy(handle)); }
   };
 
   template <CudaLibraryComponentFlagBit flagbit> struct CudaLibComponentExecutionPolicy
@@ -71,9 +71,9 @@ namespace zs {
     call(Fn&& fn, Args&&... args) const {
       using fts = function_traits<Fn>;
       if constexpr (sizeof...(Args) == fts::arity)
-        details::check_culib_error(fn(FWD(args)...));
+        detail::check_culib_error(fn(FWD(args)...));
       else
-        details::check_culib_error(fn(CudaLibHandle<flagbit>::handle, FWD(args)...));
+        detail::check_culib_error(fn(CudaLibHandle<flagbit>::handle, FWD(args)...));
     }
 
     CudaLibComponentExecutionPolicy(CudaExecutionPolicy& cupol)

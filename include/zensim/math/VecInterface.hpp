@@ -93,7 +93,7 @@ namespace zs {
       return select_value<I, vseq<extents>>::value;
     }
 
-    struct details {
+    struct detail {
       template <typename VecT, std::size_t... Is>
       static constexpr bool all_the_same_dimension_extent(typename VecT::index_type v,
                                                           index_seq<Is...>) noexcept {
@@ -102,7 +102,7 @@ namespace zs {
     };
 
     template <typename VecT> static constexpr bool same_extent_each_dimension() noexcept {
-      return details::template all_the_same_dimension_extent<VecT>(
+      return detail::template all_the_same_dimension_extent<VecT>(
           VecT::template range<0>(), std::make_index_sequence<VecT::dim>{});
     }
 
@@ -295,8 +295,7 @@ namespace zs {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
                               conditional_t<(sizeof(value_type) >= 8), double, float>>;
-      return math::sqrtNewtonRaphson((T)l2NormSqr());
-      // return gcem::sqrt(sqrNorm);
+      return zs::sqrt((T)l2NormSqr());
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
@@ -333,9 +332,9 @@ namespace zs {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
                               conditional_t<(sizeof(value_type) >= 8), double, float>>;
-      T x = gcem::abs(this->val(0));
-      T y = gcem::abs(this->val(1));
-      T z = gcem::abs(this->val(2));
+      T x = math::abs(this->val(0));
+      T y = math::abs(this->val(1));
+      T z = math::abs(this->val(2));
       using V = typename Derived::template variant_vec<value_type, extents>;
       auto other = x < y ? (x < z ? V{1, 0, 0} : V{0, 0, 1}) : (y < z ? V{0, 1, 0} : V{0, 0, 1});
       return cross(other);

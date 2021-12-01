@@ -5,7 +5,6 @@
 #include "zensim/math/curve/InterpolationKernel.hpp"
 #include "zensim/math/matrix/SVD.hpp"
 #include "zensim/tpls/fmt/core.h"
-#include "zensim/tpls/gcem/gcem.hpp"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {
@@ -134,7 +133,7 @@ namespace zs {
                          Bij_left_coeffs = Bij_neg_coeff(S)](int i) -> MatB {  // i -> i, i + 1
         int j = (i + 1) % dim;
         T leftCoeff = Bij_left_coeffs[i];
-        T rightDenom = gcem::max(S[i] + S[j], (T)1e-6);  // prevents division instability
+        T rightDenom = math::max(S[i] + S[j], (T)1e-6);  // prevents division instability
         T rightCoeff = (dE_dsigma[i] + dE_dsigma[j]) / (rightDenom + rightDenom);
         return MatB{leftCoeff + rightCoeff, leftCoeff - rightCoeff, leftCoeff - rightCoeff,
                     leftCoeff + rightCoeff};
@@ -293,12 +292,12 @@ namespace zs {
     }
     constexpr float mohrColumbFriction() const noexcept {
       // 0.503599787772409
-      float sin_phi = gcem::sin(fa);
-      return gcem::sqrt(2.f / 3.f) * 2.f * sin_phi / (3.f - sin_phi);
+      float sin_phi = zs::sin(fa);
+      return zs::sqrt(2.f / 3.f) * 2.f * sin_phi / (3.f - sin_phi);
     }
     constexpr float M() const noexcept {
       // 1.850343771924453
-      return mohrColumbFriction() * dim / gcem::sqrt(2.f / (6.f - dim));
+      return mohrColumbFriction() * dim / zs::sqrt(2.f / (6.f - dim));
     }
     constexpr float Msqr() const noexcept {
       // 3.423772074299613

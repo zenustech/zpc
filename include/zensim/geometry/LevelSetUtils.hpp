@@ -197,7 +197,7 @@ namespace zs {
             auto neighborValue = neighborBlock("sdf", neighborCoord);
 
             for (int t = 0; t != dim; ++t)
-              if (auto v = gcem::abs(neighborValue); v < dis[t] && neighborValue != 0) {
+              if (auto v = zs::abs(neighborValue); v < dis[t] && neighborValue != 0) {
                 for (int tt = dim - 1; tt > t; --tt) {
                   dis[tt] = dis[tt - 1];
                   sign[tt] = sign[tt - 1];
@@ -214,7 +214,7 @@ namespace zs {
           if (d > dis[1]) {
             d = 0.5
                 * (dis[0] + dis[1]
-                   + gcem::sqrt(2 * ls._dx * ls._dx - (dis[1] - dis[0]) * (dis[1] - dis[0])));
+                   + zs::sqrt(2 * ls._dx * ls._dx - (dis[1] - dis[0]) * (dis[1] - dis[0])));
             if constexpr (dim == 3)
               if (d > dis[2]) {
                 value_type delta = dis[0] + dis[1] + dis[2];
@@ -222,7 +222,7 @@ namespace zs {
                     = delta * delta
                       - 3 * (dis[0] * dis[0] + dis[1] * dis[1] + dis[2] * dis[2] - ls._dx * ls._dx);
                 if (delta < 0) delta = 0;
-                d = 0.3333 * (dis[0] + dis[1] + dis[2] + gcem::sqrt(delta));
+                d = 0.3333 * (dis[0] + dis[1] + dis[2] + zs::sqrt(delta));
               }
           }
 

@@ -119,7 +119,7 @@ namespace zs {
     math::svd_3d(F[0], F[3], F[6], F[1], F[4], F[7], F[2], F[5], F[8], U[0], U[3], U[6], U[1], U[4],
                  U[7], U[2], U[5], U[8], S[0], S[1], S[2], V[0], V[3], V[6], V[1], V[4], V[7], V[2],
                  V[5], V[8]);
-    T p0 = bm * (T)0.00001 + gcem::sin((double)(xi * (-logJp > 0 ? -logJp : 0)));
+    T p0 = bm * (T)0.00001 + zs::sin((double)(xi * (-logJp > 0 ? -logJp : 0)));
     T p_min = -beta * p0;
 
     T Je_trial = S[0] * S[1] * S[2];
@@ -127,7 +127,7 @@ namespace zs {
     ///< 0). calculate YS
     T B_hat_trial[3] = {S[0] * S[0], S[1] * S[1], S[2] * S[2]};
     T trace_B_hat_trial_divdim = (B_hat_trial[0] + B_hat_trial[1] + B_hat_trial[2]) / 3.f;
-    T J_power_neg_2_d_mulmu = mu * gcem::pow(Je_trial, -2.f / 3.f);  ///< J^(-2/dim) * mu
+    T J_power_neg_2_d_mulmu = mu * zs::pow(Je_trial, -2.f / 3.f);  ///< J^(-2/dim) * mu
     T s_hat_trial[3] = {J_power_neg_2_d_mulmu * (B_hat_trial[0] - trace_B_hat_trial_divdim),
                         J_power_neg_2_d_mulmu * (B_hat_trial[1] - trace_B_hat_trial_divdim),
                         J_power_neg_2_d_mulmu * (B_hat_trial[2] - trace_B_hat_trial_divdim)};
@@ -145,23 +145,23 @@ namespace zs {
     ///< case 1, project to max tip of YS
     if (p_trial > p0) {
       T Je_new = math::sqrt(-2.f * p0 / bm + 1.f);  // sqrtf(-2.f * p0 / bm + 1.f);
-      S[0] = S[1] = S[2] = gcem::pow(Je_new, 1.f / 3.f);
+      S[0] = S[1] = S[2] = zs::pow(Je_new, 1.f / 3.f);
       T New_F[9] = {};
       matmul_mat_diag_matT_3D(New_F, U, S, V);
 #pragma unroll 9
       for (int i = 0; i < 9; i++) F[i] = New_F[i];
-      if (hardeningOn) logJp += gcem::log(Je_trial / Je_new);
+      if (hardeningOn) logJp += zs::log(Je_trial / Je_new);
     }  ///< case 1 -- end
 
     /// case 2, project to min tip of YS
     else if (p_trial < p_min) {
       T Je_new = math::sqrt(-2.f * p_min / bm + 1.f);
-      S[0] = S[1] = S[2] = gcem::pow(Je_new, 1.f / 3.f);
+      S[0] = S[1] = S[2] = zs::pow(Je_new, 1.f / 3.f);
       T New_F[9] = {};
       matmul_mat_diag_matT_3D(New_F, U, S, V);
 #pragma unroll 9
       for (int i = 0; i < 9; i++) F[i] = New_F[i];
-      if (hardeningOn) logJp += gcem::log(Je_trial / Je_new);
+      if (hardeningOn) logJp += zs::log(Je_trial / Je_new);
     }  ///< case 2 -- end
 
     /// case 3, keep or project to YS by hardening
@@ -169,7 +169,7 @@ namespace zs {
       ///< outside YS
       if (y >= 1e-4) {
         ////< yield surface projection
-        T B_s_coeff = gcem::pow(Je_trial, 2.f / 3.f) / mu * math::sqrt(-y_p_half / y_s_half_coeff)
+        T B_s_coeff = zs::pow(Je_trial, 2.f / 3.f) / mu * math::sqrt(-y_p_half / y_s_half_coeff)
                       / math::sqrt(s_hat_trial_sqrnorm);
 #pragma unroll 3
         for (int i = 0; i < 3; i++)
@@ -199,11 +199,11 @@ namespace zs {
           T p1 = p_center + l1 * direction[0];
           T p2 = p_center + l2 * direction[0];
 #else  /// solve in ziran - Compare_With_Physbam
-          T aa = Msqr * gcem::pow(p_trial - p_center, 2) / (y_s_half_coeff * s_hat_trial_sqrnorm);
+          T aa = Msqr * zs::pow(p_trial - p_center, 2) / (y_s_half_coeff * s_hat_trial_sqrnorm);
           T dd = 1 + aa;
           T ff = aa * beta * p0 - aa * p0 - 2 * p_center;
           T gg = (p_center * p_center) - aa * beta * (p0 * p0);
-          T zz = math::sqrt(gcem::abs(ff * ff - 4 * dd * gg));
+          T zz = math::sqrt(zs::abs(ff * ff - 4 * dd * gg));
           T p1 = (-ff + zz) / (2 * dd);
           T p2 = (-ff - zz) / (2 * dd);
 #endif
@@ -211,7 +211,7 @@ namespace zs {
           T p_fake = (p_trial - p_center) * (p1 - p_center) > 0 ? p1 : p2;
           T tmp_Je_sqr = (-2 * p_fake / bm + 1);
           T Je_new_fake = math::sqrt(tmp_Je_sqr > 0 ? tmp_Je_sqr : -tmp_Je_sqr);
-          if (Je_new_fake > 1e-4) logJp += gcem::log(Je_trial / Je_new_fake);
+          if (Je_new_fake > 1e-4) logJp += zs::log(Je_trial / Je_new_fake);
         }
       }  ///< outside YS -- end
     }    ///< case 3 --end
@@ -225,7 +225,7 @@ namespace zs {
     matrixDeviatoric3d(b, b_dev);
 
     ///< |f| = P * F^T * Volume
-    T dev_b_coeff = mu * gcem::pow(J, -2.f / 3.f);
+    T dev_b_coeff = mu * zs::pow(J, -2.f / 3.f);
     T i_coeff = bm * .5f * (J * J - 1.f);
     PF[0] = (dev_b_coeff * b_dev[0] + i_coeff) * volume;
     PF[1] = (dev_b_coeff * b_dev[1]) * volume;
@@ -254,7 +254,7 @@ namespace zs {
     for (int i = 0; i < 3; i++) {
       T abs_S = S[i] > 0 ? S[i] : -S[i];
       abs_S = abs_S > 1e-4 ? abs_S : 1e-4;
-      epsilon[i] = gcem::log(abs_S) - cohesion;
+      epsilon[i] = zs::log(abs_S) - cohesion;
     }
     T sum_epsilon = epsilon[0] + epsilon[1] + epsilon[2];
     T trace_epsilon = sum_epsilon + logJp;
@@ -269,7 +269,7 @@ namespace zs {
 
     /* Calculate Plasticiy */
     if (trace_epsilon >= (T)0) {  ///< case II: project to the cone tip
-      New_S[0] = New_S[1] = New_S[2] = gcem::exp(cohesion);
+      New_S[0] = New_S[1] = New_S[2] = zs::exp(cohesion);
       matmul_mat_diag_matT_3D(New_F, U, New_S, V);  // new F_e
                                                     /* Update F */
 #pragma unroll 9
@@ -291,7 +291,7 @@ namespace zs {
           H[i] = epsilon[i] - (delta_gamma / epsilon_hat_norm) * epsilon_hat[i] + cohesion;
       }
 #pragma unroll 3
-      for (int i = 0; i < 3; i++) New_S[i] = gcem::exp(H[i]);
+      for (int i = 0; i < 3; i++) New_S[i] = zs::exp(H[i]);
       matmul_mat_diag_matT_3D(New_F, U, New_S, V);  // new F_e
                                                     /* Update F */
 #pragma unroll 9
@@ -299,7 +299,7 @@ namespace zs {
     }
 
     /* Elasticity -- Calculate Coefficient */
-    T New_S_log[3] = {gcem::log(New_S[0]), gcem::log(New_S[1]), gcem::log(New_S[2])};
+    T New_S_log[3] = {zs::log(New_S[0]), zs::log(New_S[1]), zs::log(New_S[2])};
     T P_hat[3] = {};
 
     // T S_inverse[3] = {1.f/S[0], 1.f/S[1], 1.f/S[2]};  // TO CHECK

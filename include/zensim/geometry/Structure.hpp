@@ -6,7 +6,6 @@
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
-#include "zensim/tpls/gcem/gcem_incl/pow.hpp"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {
@@ -360,7 +359,7 @@ namespace zs {
     // https://listengine.tuxfamily.org/lists.tuxfamily.org/eigen/2017/01/msg00126.html
     using cell_index_type = std::make_signed_t<RM_CVREF_T(
         side_length)>;  // this should be signed integer for indexing convenience
-    static constexpr auto block_size = gcem::pow(side_length, dim);
+    static constexpr auto block_size = math::pow_integral(side_length, (unsigned)dim);
     static constexpr bool is_power_of_two
         = side_length > 0 && ((side_length & (side_length - 1)) == 0);
     static constexpr auto num_cell_bits = bit_count(side_length);

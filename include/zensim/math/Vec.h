@@ -11,7 +11,6 @@
 #include "zensim/meta/Meta.h"
 #include "zensim/meta/Relationship.h"
 #include "zensim/meta/Sequence.h"
-#include "zensim/tpls/gcem/gcem.hpp"
 #include "zensim/types/Tuple.h"
 
 namespace zs {

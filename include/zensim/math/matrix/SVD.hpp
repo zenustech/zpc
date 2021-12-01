@@ -3,7 +3,6 @@
 #include "QRSVD.hpp"
 #include "zensim/math/VecInterface.hpp"
 #include "zensim/math/matrix/Utility.h"
-#include "zensim/tpls/gcem/gcem.hpp"
 
 namespace zs {
   namespace math {
@@ -692,14 +691,14 @@ namespace zs {
 
       Stmp5.f = 0.f;
       Sch.f = (Stmp5.f - Sa11.f);
-      Sch.f = gcem::max(Sch.f, Sa11.f);
-      Sch.f = gcem::max(Sch.f, gsmall_number);
+      Sch.f = math::max(Sch.f, Sa11.f);
+      Sch.f = math::max(Sch.f, gsmall_number);
       Stmp5.ui = (Sa11.f >= Stmp5.f) ? 0xffffffff : 0;
 
       Stmp1.f = Sch.f * Sch.f;
       Stmp2.f = Ssh.f * Ssh.f;
       Stmp2.f = (Stmp1.f + Stmp2.f);
-      Stmp1.f = q_rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
+      Stmp1.f = zs::rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
 
       Stmp4.f = Stmp1.f * 0.5f;
       Stmp3.f = Stmp1.f * Stmp4.f;
@@ -797,8 +796,8 @@ namespace zs {
 
       Stmp5.f = 0.f;
       Sch.f = (Stmp5.f - Sa11.f);
-      Sch.f = gcem::max(Sch.f, Sa11.f);
-      Sch.f = gcem::max(Sch.f, gsmall_number);
+      Sch.f = math::max(Sch.f, Sa11.f);
+      Sch.f = math::max(Sch.f, gsmall_number);
       Stmp5.ui = (Sa11.f >= Stmp5.f) ? 0xffffffff : 0;
 
       Stmp1.f = Sch.f * Sch.f;
@@ -902,8 +901,8 @@ namespace zs {
 
       Stmp5.f = 0.f;
       Sch.f = (Stmp5.f - Sa22.f);
-      Sch.f = gcem::max(Sch.f, Sa22.f);
-      Sch.f = gcem::max(Sch.f, gsmall_number);
+      Sch.f = math::max(Sch.f, Sa22.f);
+      Sch.f = math::max(Sch.f, gsmall_number);
       Stmp5.ui = (Sa22.f >= Stmp5.f) ? 0xffffffff : 0;
 
       Stmp1.f = Sch.f * Sch.f;

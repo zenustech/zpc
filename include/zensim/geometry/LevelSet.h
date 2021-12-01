@@ -69,7 +69,7 @@ namespace zs {
       /// world to local
       Arena arena{};
       IV loc{};
-      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
+      for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
       TV diff = (X - _min) / _dx - loc;
       {
         for (Tn dx = 0; dx < 2; dx++)
@@ -252,7 +252,7 @@ namespace zs {
       /// world to local
       Arena arena{};
       IV loc{};
-      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
+      for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
       TV diff = (X - _min) / _dx - loc;
       if constexpr (dim == 2) {
         for (Ti dx = 0; dx < 2; dx++)
@@ -291,7 +291,7 @@ namespace zs {
       /// world to local
       VecArena arena{};
       IV loc{};
-      for (int d = 0; d < dim; ++d) loc(d) = gcem::floor((X(d) - _min(d)) / _dx);
+      for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
       TV diff = (X - _min) / _dx - loc;
       // printf("diff [%f, %f, %f]\n", diff(0), diff(1), diff(2));
       if constexpr (dim == 2) {

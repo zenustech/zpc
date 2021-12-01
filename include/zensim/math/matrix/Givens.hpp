@@ -65,15 +65,7 @@ namespace zs {
         c = 1;
         s = 0;
         if (d != 0) {
-          T t{};
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-          if constexpr (is_same_v<T, float>)
-            t = ::rsqrtf(d);
-          else
-            t = ::rsqrt(d);
-#else
-          t = (T)1. / std::sqrt(d);
-#endif
+          T t{zs::rsqrt(d)};
           c = a * t;
           s = -b * t;
         }
@@ -90,15 +82,7 @@ namespace zs {
         c = 0;
         s = 1;
         if (d != 0) {
-          T t{};
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-          if constexpr (is_same_v<T, float>)
-            t = ::rsqrtf(d);
-          else
-            t = ::rsqrt(d);
-#else
-          t = (T)1. / std::sqrt(d);
-#endif
+          T t{zs::rsqrt(d)};
           s = a * t;
           c = b * t;
         }

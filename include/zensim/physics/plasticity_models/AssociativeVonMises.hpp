@@ -59,11 +59,7 @@ namespace zs {
         mat3 P{2, -1, -1, -1, 2, -1, -1, -1, 2};
         auto getResidual = [&model, &P, &U, &V, this](const auto& S) noexcept {
           auto cauchy = model.dpsi_dsigma(S) * S / S.prod();
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-          auto vonMisesStress = ::sqrt(0.5 * cauchy.dot(P * cauchy));
-#else
-          auto vonMisesStress = std::sqrt(0.5 * cauchy.dot(P * cauchy));
-#endif
+          auto vonMisesStress = zs::sqrt(0.5 * cauchy.dot(P * cauchy));
           return vonMisesStress - initialStress;
         };
 
@@ -75,11 +71,7 @@ namespace zs {
         // d f_vm(stress) / d stress(lambda) = P stress / sqrt(2 * stress^T * P * stress)
         auto getDeriv = [&model, &P, &U, &V](const auto& S) noexcept {
           auto cauchy = model.dpsi_dsigma(S) * S / S.prod();
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-          return P * cauchy / ::sqrt(2 * cauchy.dot(P * cauchy));
-#else
-          return P * cauchy / std::sqrt(2 * cauchy.dot(P * cauchy));
-#endif
+          return P * cauchy / zs::sqrt(2 * cauchy.dot(P * cauchy));
         };
         vec3 Pflow = getDeriv(S);
 

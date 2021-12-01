@@ -88,6 +88,109 @@ namespace zs {
     template <typename... Args> using op_result_t = typename op_result<Args...>::type;
   }  // namespace math
 
+  // different from math::sqrt
+  template <typename T> constexpr T sqrt(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::sqrtf(v);
+    else
+      return ::sqrt(v);
+#else
+    return std::sqrt(v);
+#endif
+  }
+  template <typename T> constexpr T rsqrt(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::rsqrtf(v);
+    else
+      return ::rsqrt(v);
+#else
+    return (T)1 / (T)std::sqrt(v);
+#endif
+  }
+  template <typename T> constexpr T log(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::logf(v);
+    else
+      return ::log(v);
+#else
+    return std::log(v);
+#endif
+  }
+  template <typename T> constexpr T log1p(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::log1pf(v);
+    else
+      return ::log1p(v);
+#else
+    return std::log1p(v);
+#endif
+  }
+  template <typename T> constexpr T exp(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::expf(v);
+    else
+      return ::exp(v);
+#else
+    return std::exp(v);
+#endif
+  }
+
+  template <typename T> constexpr T sin(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::sinf(v);
+    else
+      return ::sin(v);
+#else
+    return std::sin(v);
+#endif
+  }
+  template <typename T> constexpr T asin(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::asinf(v);
+    else
+      return ::asin(v);
+#else
+    return std::asin(v);
+#endif
+  }
+  template <typename T> constexpr T cos(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::cosf(v);
+    else
+      return ::cos(v);
+#else
+    return std::cos(v);
+#endif
+  }
+  template <typename T> constexpr T acos(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::acosf(v);
+    else
+      return ::acos(v);
+#else
+    return std::acos(v);
+#endif
+  }
+  template <typename T> constexpr T atan2(T y, T x) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::atan2f(y, x);
+    else
+      return ::atan2(y, x);
+#else
+    return std::atan2(y, x);
+#endif
+  }
+
   namespace math {
     /// ref: http://www.lomont.org/papers/2003/InvSqrt.pdf
     /// ref: https://cs.uwaterloo.ca/~m32rober/rsqrt.pdf
@@ -118,18 +221,7 @@ namespace zs {
       y = y * (1.5 - (x2 * y * y));
       return y;
     }
-    constexpr float q_sqrt(float x) noexcept {
-#if 1
-      return 1.f / q_rsqrt(x);
-#else
-      uint32_t i = *(uint32_t *)&x;
-      // adjust bias
-      i += 127 << 23;
-      // approximation of square root
-      i >>= 1;
-      return *(float *)&i;
-#endif
-    }
+    constexpr float q_sqrt(float x) noexcept { return 1.f / q_rsqrt(x); }
     // best guess starting square
     constexpr double q_sqrt(double fp) noexcept { return 1.0 / q_rsqrt(fp); }
     /// ref:

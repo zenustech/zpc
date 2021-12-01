@@ -365,11 +365,7 @@ namespace zs {
     constexpr auto exp() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      for (index_type i = 0; i != extent; ++i) r.val(i) = ::exp(this->val(i));
-#else
-      for (index_type i = 0; i != extent; ++i) r.val(i) = std::exp(this->val(i));
-#endif
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::exp(this->val(i));
       return r;
     }
     template <typename VecT = Derived,
@@ -377,11 +373,7 @@ namespace zs {
     constexpr auto log() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      for (index_type i = 0; i != extent; ++i) r.val(i) = ::log(this->val(i));
-#else
-      for (index_type i = 0; i != extent; ++i) r.val(i) = std::log(this->val(i));
-#endif
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::log(this->val(i));
       return r;
     }
     template <typename VecT = Derived,
@@ -389,11 +381,7 @@ namespace zs {
     constexpr auto log1p() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      for (index_type i = 0; i != extent; ++i) r.val(i) = ::log1p(this->val(i));
-#else
-      for (index_type i = 0; i != extent; ++i) r.val(i) = std::log1p(this->val(i));
-#endif
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::log1p(this->val(i));
       return r;
     }
     template <typename VecT = Derived,

@@ -51,27 +51,12 @@ namespace zs {
         S(1) = z;
       } else {
         auto tau = (value_type)0.5 * (x - z);
-        value_type w{}, t{};
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-        if constexpr (is_same_v<value_type, float>)
-          w = ::sqrtf(tau * tau + y2);
-        else
-          w = ::sqrt(tau * tau + y2);
-#else
-        w = std::sqrt(tau * tau + y2);
-#endif
+        value_type w{zs::sqrt(tau * tau + y2)}, t{};
         if (tau > 0)  // tau + w > w > y > 0 ==> division is safe
           t = y / (tau + w);
         else  // tau - w < -w < -y < 0 ==> division is safe
           t = y / (tau - w);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-        if constexpr (is_same_v<value_type, float>)
-          cosine = ::rsqrtf(t * t + (value_type)1);
-        else
-          cosine = ::rsqrt(t * t + (value_type)1);
-#else
-        cosine = (value_type)1 / std::sqrt(t * t + (value_type)1);
-#endif
+        cosine = zs::rsqrt(t * t + (value_type)1);
         sine = -t * cosine;
         /*
           V = [cosine -sine; sine cosine]

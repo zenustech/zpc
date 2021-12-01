@@ -111,11 +111,7 @@ namespace zs {
         Stmp1.f = Ssh.f * Ssh.f;
         Stmp2.f = Sch.f * Sch.f;
         Stmp3.f = (Stmp1.f + Stmp2.f);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-        Stmp4.f = __frsqrt_rn(Stmp3.f);
-#else
-        Stmp4.f = 1.f / std::sqrt(Stmp3.f);
-#endif
+        Stmp4.f = zs::rsqrt(Stmp3.f);  // __frsqrt_rn(Stmp3.f);
 
         Ssh.f = Stmp4.f * Ssh.f;
         Sch.f = Stmp4.f * Sch.f;
@@ -205,11 +201,7 @@ namespace zs {
         Stmp1.f = Ssh.f * Ssh.f;
         Stmp2.f = Sch.f * Sch.f;
         Stmp3.f = (Stmp1.f + Stmp2.f);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-        Stmp4.f = __frsqrt_rn(Stmp3.f);
-#else
-        Stmp4.f = 1.f / std::sqrt(Stmp3.f);  // __frsqrt_rn(Stmp3.f);
-#endif
+        Stmp4.f = zs::rsqrt(Stmp3.f);  // __frsqrt_rn(Stmp3.f);
 
         Ssh.f = Stmp4.f * Ssh.f;
         Sch.f = Stmp4.f * Sch.f;
@@ -301,11 +293,7 @@ namespace zs {
         Stmp1.f = Ssh.f * Ssh.f;
         Stmp2.f = Sch.f * Sch.f;
         Stmp3.f = (Stmp1.f + Stmp2.f);
-#  if ZS_ENABLE_CUDA && defined(__CUDACC__)
-        Stmp4.f = __frsqrt_rn(Stmp3.f);
-#  else
-        Stmp4.f = 1.f / std::sqrt(Stmp3.f);  //__frsqrt_rn(Stmp3.f);
-#  endif
+        Stmp4.f = zs::rsqrt(Stmp3.f);  //__frsqrt_rn(Stmp3.f);
 
         Ssh.f = Stmp4.f * Ssh.f;
         Sch.f = Stmp4.f * Sch.f;
@@ -397,11 +385,7 @@ namespace zs {
       Stmp1.f = Sqvvz.f * Sqvvz.f;
       Stmp2.f = (Stmp1.f + Stmp2.f);
 
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      Stmp1.f = __frsqrt_rn(Stmp2.f);
-#else
-      Stmp1.f = 1.f / std::sqrt(Stmp2.f);    //__frsqrt_rn(Stmp2.f);
-#endif
+      Stmp1.f = zs::rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
       Stmp4.f = Stmp1.f * 0.5f;
       Stmp3.f = Stmp1.f * Stmp4.f;
       Stmp3.f = Stmp1.f * Stmp3.f;
@@ -737,11 +721,7 @@ namespace zs {
       Stmp1.f = Sch.f * Sch.f;
       Stmp2.f = Ssh.f * Ssh.f;
       Stmp2.f = (Stmp1.f + Stmp2.f);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      Stmp1.f = __frsqrt_rn(Stmp2.f);
-#else
-      Stmp1.f = 1.f / std::sqrt(Stmp2.f);    //__frsqrt_rn(Stmp2.f);
-#endif
+      Stmp1.f = zs::rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
 
       Stmp4.f = Stmp1.f * 0.5f;
       Stmp3.f = Stmp1.f * Stmp4.f;
@@ -824,11 +804,7 @@ namespace zs {
       Stmp1.f = Sch.f * Sch.f;
       Stmp2.f = Ssh.f * Ssh.f;
       Stmp2.f = (Stmp1.f + Stmp2.f);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      Stmp1.f = __frsqrt_rn(Stmp2.f);
-#else
-      Stmp1.f = 1.f / std::sqrt(Stmp2.f);    //__frsqrt_rn(Stmp2.f);
-#endif
+      Stmp1.f = zs::rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
 
       Stmp4.f = Stmp1.f * 0.5;
       Stmp3.f = Stmp1.f * Stmp4.f;
@@ -850,11 +826,7 @@ namespace zs {
       Stmp1.f = Sch.f * Sch.f;
       Stmp2.f = Ssh.f * Ssh.f;
       Stmp2.f = (Stmp1.f + Stmp2.f);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      Stmp1.f = __frsqrt_rn(Stmp2.f);
-#else
-      Stmp1.f = 1.f / std::sqrt(Stmp2.f);    //__frsqrt_rn(Stmp2.f);
-#endif
+      Stmp1.f = zs::rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
 
       Stmp4.f = Stmp1.f * 0.5f;
       Stmp3.f = Stmp1.f * Stmp4.f;
@@ -937,11 +909,7 @@ namespace zs {
       Stmp1.f = Sch.f * Sch.f;
       Stmp2.f = Ssh.f * Ssh.f;
       Stmp2.f = (Stmp1.f + Stmp2.f);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      Stmp1.f = __frsqrt_rn(Stmp2.f);
-#else
-      Stmp1.f = 1.f / std::sqrt(Stmp2.f);    //__frsqrt_rn(Stmp2.f);
-#endif
+      Stmp1.f = zs::rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
 
       Stmp4.f = Stmp1.f * 0.5f;
       Stmp3.f = Stmp1.f * Stmp4.f;
@@ -963,11 +931,7 @@ namespace zs {
       Stmp1.f = Sch.f * Sch.f;
       Stmp2.f = Ssh.f * Ssh.f;
       Stmp2.f = (Stmp1.f + Stmp2.f);
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      Stmp1.f = __frsqrt_rn(Stmp2.f);
-#else
-      Stmp1.f = 1.f / std::sqrt(Stmp2.f);    //__frsqrt_rn(Stmp2.f);
-#endif
+      Stmp1.f = zs::rsqrt(Stmp2.f);  //__frsqrt_rn(Stmp2.f);
 
       Stmp4.f = Stmp1.f * 0.5f;
       Stmp3.f = Stmp1.f * Stmp4.f;

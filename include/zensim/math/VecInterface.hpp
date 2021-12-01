@@ -192,19 +192,29 @@ namespace zs {
       for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i);
       return r;
     }
+    template <typename T, typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<T, typename VecT::value_type>> = 0>
+    constexpr Derived& operator=(const std::initializer_list<T>& rhs) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      index_type i = 0;
+      for (auto&& v : rhs) {
+        this->val(i++) = v;
+        if (i == extent) break;
+      }
+      return static_cast<Derived&>(*this);
+    }
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<OtherVecT::extent == VecT::extent,
-                            std::is_assignable_v<typename VecT::value_type,
-                                                 typename OtherVecT::value_type>> = 0>
+                            std::is_convertible_v<typename OtherVecT::value_type,
+                                                  typename VecT::value_type>> = 0>
     constexpr Derived& operator=(const VecInterface<OtherVecT>& rhs) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);
       return static_cast<Derived&>(*this);
     }
-    template <
-        typename T, std::size_t N, typename VecT = Derived,
-        enable_if_all<std::is_assignable_v<typename VecT::value_type, T>, N == VecT::extent> = 0>
-    constexpr Derived& operator=(const std::array<T, N>& rhs) noexcept {
+    template <typename T, typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<T, typename VecT::value_type>> = 0>
+    constexpr Derived& operator=(const std::array<T, VecT::extent>& rhs) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       for (index_type i = 0; i != extent; ++i) this->val(i) = rhs[i];
       return static_cast<Derived&>(*this);

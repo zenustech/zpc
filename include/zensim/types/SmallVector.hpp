@@ -14,13 +14,13 @@ namespace zs {
     }
     constexpr SmallString(const char tmp[]) : buf{} {
       size_type i = 0;
-      for (; i + 1u != nbytes && tmp[i]; ++i) buf[i] = tmp[i];
+      for (; i + (size_type)1 != nbytes && tmp[i]; ++i) buf[i] = tmp[i];
       buf[i] = '\0';
     }
-    SmallString(const std::string &str) {
+    SmallString(const std::string &str) noexcept {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;
       buf[n] = '\0';
-      for (; (--n) != 0;) buf[n] = str[n];
+      for (size_type i = 0; i != n; ++i) buf[i] = str[i];
     }
     constexpr SmallString(const SmallString &) noexcept = default;
     constexpr SmallString &operator=(const SmallString &) noexcept = default;
@@ -29,14 +29,14 @@ namespace zs {
 
     constexpr bool operator==(const SmallString &str) const noexcept {
       size_type i = 0;
-      for (; i != nbytes && buf[i] && str.buf[i]; ++i)
+      for (; buf[i] && str.buf[i]; ++i)
         if (buf[i] != str.buf[i]) return false;
       if (!(buf[i] || str.buf[i])) return true;
       return false;
     }
     constexpr bool operator==(const char str[]) const noexcept {
       size_type i = 0;
-      for (; i != nbytes && buf[i] && str[i]; ++i)
+      for (; buf[i] && str[i]; ++i)
         if (buf[i] != str[i]) return false;
       if (!(buf[i] || str[i])) return true;
       return false;
@@ -46,8 +46,8 @@ namespace zs {
     constexpr const char *asChars() const noexcept { return buf; }
     constexpr operator const char *() const noexcept { return buf; }
     constexpr size_type size() const noexcept {
-      size_type i{0};
-      for (; i != nbytes && buf[i]; ++i)
+      size_type i = 0;
+      for (; buf[i]; ++i)
         ;
       return i;
     }

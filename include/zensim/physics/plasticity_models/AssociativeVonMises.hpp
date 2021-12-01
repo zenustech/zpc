@@ -66,7 +66,7 @@ namespace zs {
         auto res = getResidual(S);
 
         if (res < 0) return S;
-        res = gcem::abs(res);
+        res = zs::abs(res);
 
         // d f_vm(stress) / d stress(lambda) = P stress / sqrt(2 * stress^T * P * stress)
         auto getDeriv = [&model, &P, &U, &V](const auto& S) noexcept {
@@ -103,7 +103,7 @@ namespace zs {
           printf("pi[%d] cur strain (%f, %f, %f), vms (%f) <--> ys (%f)\n", pi, SeHat(0), SeHat(1),
                  SeHat(2), getResidual(SeHat) + initialStress, initialStress);
 
-        for (; gcem::abs(res) > 1e-6 && cnt < 10; ++cnt) {
+        for (; zs::abs(res) > 1e-6 && cnt < 10; ++cnt) {
           auto oldRes = res;
           auto Jac = getJacobi(SeHat);
           lambda = lambda - res / Jac;  // Newton's Method

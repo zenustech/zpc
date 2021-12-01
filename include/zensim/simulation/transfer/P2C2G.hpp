@@ -71,7 +71,7 @@ namespace zs {
         auto posc = (coord + (value_type)0.5) * dx;
         auto checkInKernelRange = [&posc, dx](auto&& posp) -> bool {
           for (int d = 0; d != dim; ++d)
-            if (gcem::abs(posp[d] - posc[d]) > dx) return false;
+            if (zs::abs(posp[d] - posc[d]) > dx) return false;
           return true;
         };
         coord = coord - 1;  /// move to base coord
@@ -85,7 +85,7 @@ namespace zs {
               if (checkInKernelRange(posp)) {
                 TV Dinv{};
                 for (int d = 0; d != dim; ++d) {
-                  // Dinv[d] = gcem::fmod(posp[d], dx * (value_type)0.5);
+                  // Dinv[d] = zs::fmod(posp[d], dx * (value_type)0.5);
                   Dinv[d] = posp[d] - lower_trunc(posp[d] * dx_inv + (value_type)0.5) * dx;
                   Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
                 }
@@ -148,7 +148,7 @@ namespace zs {
                 auto xcxp = posc - posp;
                 value_type Wpc = 1.f;
                 auto diff = xcxp * dx_inv;
-                for (int d = 0; d != dim; ++d) Wpc *= ((value_type)1. - gcem::abs(diff[d]));
+                for (int d = 0; d != dim; ++d) Wpc *= ((value_type)1. - zs::abs(diff[d]));
 
                 m_c += mass * Wpc;
                 for (int d = 0; d != dim; ++d) {
@@ -206,7 +206,7 @@ namespace zs {
         vec3 Xrel{}, Dinv{};
         for (int d = 0; d != dim; ++d) {
           Xrel[d] = local_pos[d] - lower_trunc(local_pos[d] * dx_inv + (value_type)0.5) * dx;
-          // Xrel[d] = gcem::fmod(local_pos[d], dx * (value_type)0.5);
+          // Xrel[d] = zs::fmod(local_pos[d], dx * (value_type)0.5);
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Xrel[d] * Xrel[d]));
         }
         for (int d = 0; d != dim * dim; ++d) C[d] *= Dinv[d / dim];
@@ -365,7 +365,7 @@ namespace zs {
         auto posc = (coord + (value_type)0.5) * dx;
         auto checkInKernelRange = [&posc, dx](auto&& posp) -> bool {
           for (int d = 0; d != dim; ++d)
-            if (gcem::abs(posp[d] - posc[d]) > dx) return false;
+            if (zs::abs(posp[d] - posc[d]) > dx) return false;
           return true;
         };
         coord = coord - 1;  /// move to base coord
@@ -380,7 +380,7 @@ namespace zs {
               if (checkInKernelRange(posp)) {
                 TV Dinv{};
                 for (int d = 0; d != dim; ++d) {
-                  // Dinv[d] = gcem::fmod(posp[d], dx * (value_type)0.5);
+                  // Dinv[d] = zs::fmod(posp[d], dx * (value_type)0.5);
                   Dinv[d] = posp[d] - lower_trunc(posp[d] * dx_inv + (value_type)0.5) * dx;
                   Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
                 }
@@ -394,7 +394,7 @@ namespace zs {
                 value_type Wpc = 1.f;
                 auto diff = xcxp * dx_inv;
                 for (int d = 0; d != dim; ++d) {
-                  const auto xabs = gcem::abs(diff[d]);
+                  const auto xabs = zs::abs(diff[d]);
                   if (xabs <= 1)
                     Wpc *= ((value_type)1. - xabs);
                   else
@@ -456,7 +456,7 @@ namespace zs {
         vec3 Xrel{}, Dinv{};
         for (int d = 0; d != dim; ++d) {
           Xrel[d] = local_pos[d] - lower_trunc(local_pos[d] * dx_inv + (value_type)0.5) * dx;
-          // Xrel[d] = gcem::fmod(local_pos[d], dx * (value_type)0.5);
+          // Xrel[d] = zs::fmod(local_pos[d], dx * (value_type)0.5);
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Xrel[d] * Xrel[d]));
         }
         for (int d = 0; d != dim * dim; ++d) C[d] *= Dinv[d / dim];
@@ -564,7 +564,7 @@ namespace zs {
         auto posc = (coord + (value_type)0.5) * dx;
         auto checkInKernelRange = [&posc, dx](auto&& posp) -> bool {
           for (int d = 0; d != dim; ++d)
-            if (gcem::abs(posp[d] - posc[d]) > dx) return false;
+            if (zs::abs(posp[d] - posc[d]) > dx) return false;
           return true;
         };
         coord = coord - 1;  /// move to base coord
@@ -639,7 +639,7 @@ namespace zs {
                 value_type Wpc = 1.f;
                 auto diff = xcxp * dx_inv;
                 for (int d = 0; d != dim; ++d) {
-                  const auto xabs = gcem::abs(diff[d]);
+                  const auto xabs = zs::abs(diff[d]);
                   if (xabs <= 1)
                     Wpc *= ((value_type)1. - xabs);
                   else
@@ -695,7 +695,7 @@ namespace zs {
 
         vec3 Xrel{}, Dinv{};
         for (int d = 0; d != dim; ++d) {
-          // Xrel[d] = gcem::fmod(local_pos[d], dx * (value_type)0.5);
+          // Xrel[d] = zs::fmod(local_pos[d], dx * (value_type)0.5);
           Xrel[d] = local_pos[d] - lower_trunc(local_pos[d] * dx_inv + (value_type)0.5) * dx;
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Xrel[d] * Xrel[d]));
         }

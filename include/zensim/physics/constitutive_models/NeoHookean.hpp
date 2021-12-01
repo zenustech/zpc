@@ -25,7 +25,7 @@ namespace zs {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range<0>();
 
-      auto S_prod_log = gcem::log(S.prod());
+      auto S_prod_log = zs::log(S.prod());
       return (value_type)0.5 * mu * (S.l2NormSqr() - dim)
              - (mu - (value_type)0.5 * lam * S_prod_log) * S_prod_log;
     }
@@ -36,7 +36,7 @@ namespace zs {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range<0>();
 
-      auto S_prod_log = gcem::log(S.prod());
+      auto S_prod_log = zs::log(S.prod());
       auto S_inv = (value_type)1 / S;
       return mu * (S - S_inv) + lam * S_inv * S_prod_log;
     }
@@ -47,7 +47,7 @@ namespace zs {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range<0>();
 
-      auto S_prod_log = gcem::log(S.prod());
+      auto S_prod_log = zs::log(S.prod());
       typename base_t::template mat_type<VecT> d2E_dsigma2{};
       auto S2_inv = (value_type)1 / (S * S);
       d2E_dsigma2(0, 0)
@@ -79,9 +79,9 @@ namespace zs {
       RetT coeffs{};
       const auto S_prod = S.prod();
       if constexpr (dim == 2)
-        coeffs[0] = (mu + (mu - lam * gcem::log(S_prod)) / S_prod) * (value_type)0.5;
+        coeffs[0] = (mu + (mu - lam * zs::log(S_prod)) / S_prod) * (value_type)0.5;
       else if constexpr (dim == 3) {
-        const auto tmp = mu - lam * gcem::log(S_prod);
+        const auto tmp = mu - lam * zs::log(S_prod);
         coeffs[0] = (mu + tmp / (S[0] * S[1])) * (value_type)0.5;
         coeffs[1] = (mu + tmp / (S[1] * S[2])) * (value_type)0.5;
         coeffs[2] = (mu + tmp / (S[2] * S[0])) * (value_type)0.5;

@@ -45,9 +45,9 @@ namespace zs {
       }
 
       if (eps_trace > k1Stretch / (dim_mul_lam + _2mu))
-        S = S * gcem::exp(k1Stretch / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim);
+        S = S * zs::exp(k1Stretch / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim);
       else if (eps_trace < -k1Compress / (dim_mul_lam + _2mu))
-        S = S * gcem::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim);
+        S = S * zs::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim);
     }
 
     template <typename VecT, typename Model,
@@ -129,7 +129,7 @@ namespace zs {
 // shear
 #if 0
             auto vm = math::sqrtNewtonRaphson(
-                gcem::abs((diffTau_.l2NormSqr()
+                zs::abs((diffTau_.l2NormSqr()
                            + (T)6
                                  * (tau_(0, 1) * tau_(0, 1) + tau_(0, 2) * tau_(0, 2)
                                     + tau_(1, 2) * tau_(1, 2)))
@@ -161,9 +161,9 @@ namespace zs {
 
 #if 0
       if (eps_trace > k1Stretch / (dim_mul_lam + _2mu))
-        S = S * gcem::exp(k1Stretch / (dim * dim_mul_lam + dim * _2mu) - eps_trace / (value_type)dim);
+        S = S * zs::exp(k1Stretch / (dim * dim_mul_lam + dim * _2mu) - eps_trace / (value_type)dim);
       else if (eps_trace < -k1Compress / (dim_mul_lam + _2mu))
-        S = S * gcem::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / (value_type)dim);
+        S = S * zs::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / (value_type)dim);
 #endif
 
       F = diag_mul(U, S) * V.transpose();

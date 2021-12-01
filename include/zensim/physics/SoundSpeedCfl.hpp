@@ -1,11 +1,11 @@
 #pragma once
-#include "zensim/tpls/gcem/gcem.hpp"
+#include "zensim/math/MathUtils.h"
 
 namespace zs {
 
   template <class T>
   constexpr T evaluate_soundspeed_linear_elasticity(const T E, const T nu, const T rho) {
-    return gcem::sqrt(E * (1 - nu) / ((1 + nu) * (1 - 2 * nu) * rho));
+    return math::sqrtNewtonRaphson(E * (1 - nu) / ((1 + nu) * (1 - 2 * nu) * rho));
   }
 
   template <class T> constexpr T evaluate_timestep_linear_elasticity(const T E, const T nu,

@@ -79,8 +79,8 @@ namespace zs {
       const auto S_log = S.abs().log();
       constexpr value_type eps = 1e-6;
       if constexpr (dim == 2) {
-        auto q = gcem::max(S[0] / S[1] - 1, -1 + eps);
-        auto h = gcem::abs(q) < eps ? (value_type)1 : (gcem::log1p(q) / q);
+        auto q = zs::max(S[0] / S[1] - 1, -1 + eps);
+        auto h = zs::abs(q) < eps ? (value_type)1 : (zs::log1p(q) / q);
         auto t = h / S[1];
         auto z = S_log[1] - t * S[1];
         coeffs[0] = -(lam * (S_log[0] + S_log[1]) + (mu + mu) * z) / S.prod() * (value_type)0.5;
@@ -89,15 +89,15 @@ namespace zs {
         const auto _2mu = mu + mu;
         coeffs[0]
             = -(lam * S_log_trace
-                + _2mu * math::diff_interlock_log_over_diff(S(0), gcem::abs(S(1)), S_log(1), eps))
+                + _2mu * math::diff_interlock_log_over_diff(S(0), zs::abs(S(1)), S_log(1), eps))
               / (S[0] * S[1]) * (value_type)0.5;
         coeffs[1]
             = -(lam * S_log_trace
-                + _2mu * math::diff_interlock_log_over_diff(S(1), gcem::abs(S(2)), S_log(2), eps))
+                + _2mu * math::diff_interlock_log_over_diff(S(1), zs::abs(S(2)), S_log(2), eps))
               / (S[1] * S[2]) * (value_type)0.5;
         coeffs[2]
             = -(lam * S_log_trace
-                + _2mu * math::diff_interlock_log_over_diff(S(0), gcem::abs(S(2)), S_log(2), eps))
+                + _2mu * math::diff_interlock_log_over_diff(S(0), zs::abs(S(2)), S_log(2), eps))
               / (S[0] * S[2]) * (value_type)0.5;
       }
       return coeffs;

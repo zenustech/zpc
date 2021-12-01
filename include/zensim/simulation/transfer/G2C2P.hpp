@@ -94,7 +94,7 @@ namespace zs {
         auto posc = (coord + (value_type)0.5) * dx;
         auto checkInKernelRange = [&posc, dx](auto&& posp) -> bool {
           for (int d = 0; d != grids_t::dim; ++d)
-            if (gcem::abs(posp[d] - posc[d]) > dx) return false;
+            if (zs::abs(posp[d] - posc[d]) > dx) return false;
           return true;
         };
 
@@ -112,7 +112,7 @@ namespace zs {
                 value_type W = 1.f;
                 auto diff = xcxp * dx_inv;
                 for (int d = 0; d != dim; ++d) {
-                  const auto xabs = gcem::abs(diff[d]);
+                  const auto xabs = zs::abs(diff[d]);
                   if (xabs <= 1)
                     W *= ((value_type)1. - xabs);
                   else
@@ -146,7 +146,7 @@ namespace zs {
         TV pos{particles.pos(parid)};
         TV Xrel{}, Dinv{};
         for (int d = 0; d != dim; ++d) {
-          // Xrel[d] = gcem::fmod(pos[d], dx * (value_type)0.5);
+          // Xrel[d] = zs::fmod(pos[d], dx * (value_type)0.5);
           Xrel[d] = pos[d] - lower_trunc(pos[d] * dx_inv + (value_type)0.5) * dx;
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Xrel[d] * Xrel[d]));
         }
@@ -247,7 +247,7 @@ namespace zs {
         TV Dinv{};
 
         for (int d = 0; d != dim; ++d) {
-          // Dinv[d] = gcem::fmod(pos[d], dx * (value_type)0.5);
+          // Dinv[d] = zs::fmod(pos[d], dx * (value_type)0.5);
           Dinv[d] = pos[d] - lower_trunc(pos[d] * dx_inv + (value_type)0.5) * dx;
           Dinv[d] = ((value_type)2 / (dx * dx - 2 * Dinv[d] * Dinv[d]));
         }

@@ -47,6 +47,8 @@ using vec =
     static constexpr auto dim = base_t::get_dim();        // sizeof...(Ns)
     static constexpr auto extent = base_t::get_extent();  //(Ns * ...);
     using dims = decltype(base_t::get_dims());            // sindex_seq<Ns...>;
+    template <std::size_t I>
+    static constexpr auto range = base_t::template get_range<I>();
 
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
@@ -55,9 +57,6 @@ using vec =
     using base_t::uniform;
     using base_t::zeros;
 
-    using base_t::get_extent;
-    using base_t::range;
-
     constexpr vec_view() = delete;
     constexpr vec_view(const vec_view &) = delete;             // prevents accidental copy of view
     constexpr vec_view &operator=(const vec_view &) = delete;  // prevents accidental copy of view
@@ -65,7 +64,6 @@ using vec =
 
     constexpr explicit operator variant_vec<value_type, extents>() const noexcept {
       variant_vec<value_type, extents> r{};
-      constexpr auto extent = get_extent();
       for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i);
       return r;
     }
@@ -127,6 +125,8 @@ using vec =
     static constexpr auto dim = base_t::get_dim();        // sizeof...(Ns)
     static constexpr auto extent = base_t::get_extent();  //(Ns * ...);
     using dims = decltype(base_t::get_dims());            // sindex_seq<Ns...>;
+    template <std::size_t I>
+    static constexpr auto range = base_t::template get_range<I>();
 
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
@@ -134,9 +134,6 @@ using vec =
     using base_t::ones;
     using base_t::uniform;
     using base_t::zeros;
-
-    using base_t::get_extent;
-    using base_t::range;
 
     T _data[extent];
 

@@ -185,23 +185,23 @@ namespace zs {
   }
   template <typename VecTM, typename VecTV,
             enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                          VecTM::template range<1>() == VecTV::template range<0>()> = 0>
+                          VecTM::template range<1> == VecTV::template range<0>> = 0>
   constexpr auto diag_mul(const VecInterface<VecTM> &A, const VecInterface<VecTV> &diag) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
-    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>(); ++i)
-      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>(); ++j)
+    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>; ++i)
+      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>; ++j)
         r(i, j) = A(i, j) * diag(j);
     return r;
   }
   template <typename VecTV, typename VecTM,
             enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
-                          VecTM::template range<0>() == VecTV::template range<0>()> = 0>
+                          VecTM::template range<0> == VecTV::template range<0>> = 0>
   constexpr auto diag_mul(const VecInterface<VecTV> &diag, const VecInterface<VecTM> &A) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
-    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>(); ++i)
-      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>(); ++j)
+    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>; ++i)
+      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>; ++j)
         r(i, j) = A(i, j) * diag(i);
     return r;
   }

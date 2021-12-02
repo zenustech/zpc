@@ -50,7 +50,7 @@ namespace zs {
     /// axis + rotation
     template <typename VecT, auto unit = angle_unit_e::radian, auto d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
-                            VecT::dim == 1, (VecT::template range<0>() == 3)> = 0>
+                            VecT::dim == 1, VecT::template range<0> == 3> = 0>
     constexpr Rotation(const VecInterface<VecT> &p_, value_type alpha, wrapv<unit> = {}) noexcept
         : TM{} {
       if constexpr (unit == angle_unit_e::degree) alpha *= ((value_type)g_pi / (value_type)180);
@@ -186,7 +186,7 @@ namespace zs {
                                phi * (value_type)180 / (value_type)g_pi);
     }
     template <typename VecT, enable_if_all<std::is_convertible_v<typename VecT::value_type, T>,
-                                           VecT::dim == 1, (VecT::template range<0>() == 4)> = 0>
+                                           VecT::dim == 1, VecT::template range<0> == 4> = 0>
     constexpr Rotation(const VecInterface<VecT> &q) noexcept : TM{} {
       if constexpr (dim == 2) {
         /// Construct a 2D counter clock wise rotation from the angle \a a in
@@ -206,16 +206,16 @@ namespace zs {
               enable_if_all<std::is_convertible_v<typename VecTA::value_type, value_type>,
                             std::is_convertible_v<typename VecTB::value_type, value_type>,
                             VecTA::dim == 1, VecTB::dim == 1,
-                            VecTA::template range<0>() == VecTB::template range<0>()> = 0>
+                            VecTA::template range<0> == VecTB::template range<0>> = 0>
     constexpr Rotation(const VecInterface<VecTA> &a, const VecInterface<VecTB> &b) noexcept : TM{} {
-      if constexpr (dim == 2 && VecTA::template range<0>() == 2) {
+      if constexpr (dim == 2 && VecTA::template range<0> == 2) {
         TV aa = a.normalized();
         TV bb = b.normalized();
         (*this)(0, 0) = aa(0) * bb(0) + aa(1) * bb(1);
         (*this)(0, 1) = -(aa(0) * bb(1) - bb(0) * aa(1));
         (*this)(1, 0) = aa(0) * bb(1) - bb(0) * aa(1);
         (*this)(1, 1) = aa(0) * bb(0) + aa(1) * bb(1);
-      } else if constexpr (dim == 3 && VecTA::template range<0>() == 3) {
+      } else if constexpr (dim == 3 && VecTA::template range<0> == 3) {
         T k_cos_theta = a.dot(b);
         T k = zs::sqrt(a.l2NormSqr() * b.l2NormSqr());
         vec<T, 4> q{};
@@ -240,7 +240,7 @@ namespace zs {
 
     template <typename VecT, int d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
-                            VecT::dim == 1, (VecT::template range<0>() == 4)> = 0>
+                            VecT::dim == 1, VecT::template range<0> == 4> = 0>
     static constexpr TM quaternion2matrix(const VecInterface<VecT> &q) noexcept {
       /// (0, 1, 2, 3)
       /// (x, y, z, w)

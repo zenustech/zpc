@@ -20,13 +20,13 @@ namespace zs {
 
     // project_strain
     template <typename VecT, typename Model,
-              enable_if_all<VecT::dim == 1, (VecT::template range<0>() <= 3),
+              enable_if_all<VecT::dim == 1, VecT::template range<0> <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr void do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       using extents = typename VecT::extents;
-      constexpr int dim = VecT::template range<0>();
+      constexpr int dim = VecT::template range<0>;
 
       // Compute scaled tauY
       auto scaledTauY = math::sqrtNewtonRaphson((value_type)2 / ((value_type)6 - (value_type)dim))
@@ -77,8 +77,8 @@ namespace zs {
     }
 
     template <typename VecT, typename Model,
-              enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
-                            VecT::template range<0>() == VecT::template range<1>(),
+              enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
+                            VecT::template range<0> == VecT::template range<1>,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr void do_project_strain(VecInterface<VecT>& F, const Model& model) const noexcept {
       auto [U, S, V] = math::svd(F);
@@ -87,8 +87,8 @@ namespace zs {
     }
 
     template <typename VecT, typename VecTV, typename Model,
-              enable_if_all<VecT::dim == 2, (VecT::template range<0>() <= 3),
-                            VecT::template range<0>() == VecT::template range<1>(),
+              enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
+                            VecT::template range<0> == VecT::template range<1>,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto project_strain(VecInterface<VecT>& F, const Model& model,
                                   const VecInterface<VecTV>& oldS,
@@ -98,7 +98,7 @@ namespace zs {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       using extents = typename VecT::extents;
-      constexpr int dim = VecT::template range<0>();
+      constexpr int dim = VecT::template range<0>;
 
       // Compute scaled tauY
       // auto P = (value_type)0.33;

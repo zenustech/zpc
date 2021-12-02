@@ -43,7 +43,7 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
     resource/Resource.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES 
-  cuda/math/matrix/Matrix.cpp
+  # cuda/math/matrix/Matrix.cpp
   cuda/simulation/particle/Query.cpp
   cuda/simulation/sparsity/SparsityCompute.cpp
 )

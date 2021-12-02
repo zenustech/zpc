@@ -93,7 +93,7 @@ namespace zs {
        **/
       template <
           typename VecT,
-          enable_if_all<VecT::dim == 2, VecT::template range<0>() == VecT::template range<1>(),
+          enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
                         std::is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void fill(VecInterface<VecT>& A) const noexcept {
         A = A.identity();
@@ -112,11 +112,11 @@ namespace zs {
        **/
       template <
           typename VecT,
-          enable_if_all<VecT::dim == 2, VecT::template range<0>() == VecT::template range<1>(),
+          enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
                         std::is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void rowRotation(VecInterface<VecT>& A) const noexcept {
         using index_type = typename VecT::index_type;
-        constexpr auto ncols = VecT::template range<1>();
+        constexpr auto ncols = VecT::template range<1>;
         for (index_type j = 0; j != ncols; ++j) {
           auto tau1 = A(rowi, j);
           auto tau2 = A(rowk, j);
@@ -133,11 +133,11 @@ namespace zs {
        **/
       template <
           typename VecT,
-          enable_if_all<VecT::dim == 2, VecT::template range<0>() == VecT::template range<1>(),
+          enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
                         std::is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void columnRotation(VecInterface<VecT>& A) const noexcept {
         using index_type = typename VecT::index_type;
-        constexpr auto nrows = VecT::template range<0>();
+        constexpr auto nrows = VecT::template range<0>;
         for (index_type i = 0; i != nrows; ++i) {
           auto tau1 = A(i, rowi);
           auto tau2 = A(i, rowk);
@@ -167,7 +167,7 @@ namespace zs {
 
     template <typename VecT> static constexpr bool is_3_by_3() noexcept {
       if constexpr (VecT::dim == 2)
-        return VecT::template range<0>() == 3 && VecT::template range<1>() == 3;
+        return VecT::template range<0> == 3 && VecT::template range<1> == 3;
       return false;
     }
     /**

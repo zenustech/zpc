@@ -94,7 +94,7 @@ namespace zs {
       for (; *p; ++p, ++l)
         if (*p == lc) break;
       std::size_t r{l + 1}, cnt{1};
-      for (; *p; ++p, ++r) {
+      for (++p; *p; ++p, ++r) {
         if (*p == lc)
           cnt++;
         else if (*p == rc)
@@ -128,15 +128,15 @@ namespace zs {
 #if defined(_MSC_VER)
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');
     constexpr std::size_t head{pair.l + 1};
-    constexpr std::size_t length{pair.r - 2 - head};
+    constexpr std::size_t length{pair.r - head};
 #elif defined(__clang__)
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '[', ']');
     constexpr std::size_t head{pair.l + 5};
-    constexpr std::size_t length{pair.r - 2 - head};
+    constexpr std::size_t length{pair.r - head};
 #elif defined(__GNUC__)
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '[', ']');
     constexpr std::size_t head{pair.l + 10};
-    constexpr std::size_t length{pair.r - 2 - head};
+    constexpr std::size_t length{pair.r - head};
 #endif
 
     std::array<CharT, length> ret{};

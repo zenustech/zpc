@@ -64,13 +64,10 @@ namespace zs {
   using value_type = typename Derived::value_type;                                             \
   using index_type = typename Derived::index_type;                                             \
   using extents = typename Derived::extents; /*not necessarily same as indexer_type::extents*/ \
-  using dims = typename Derived::dims;                                                         \
   using indexer_type = typename Derived::indexer_type;                                         \
-  constexpr index_type extent = indexer_type::extent; /*this should change*/                   \
-  constexpr auto dim = indexer_type::dim;
-
-    // constexpr index_type extent = vseq<extents>::reduce<std::multiplies<index_type>>();
-    // //indexer_type::extent;
+  using dims = decltype(get_dims());                                                           \
+  constexpr index_type extent = get_extent();                                                  \
+  constexpr auto dim = get_dim();
 
     using vec_type = Derived;
 
@@ -92,8 +89,14 @@ namespace zs {
     /// property query
     template <std::size_t I, typename VecT = Derived, enable_if_t<(I < VecT::dim)> = 0>
     static constexpr typename VecT::index_type range() noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      return select_value<I, vseq<extents>>::value;
+      return select_value<I, vseq<typename Derived::extents>>::value;
+    }
+    static constexpr auto get_extent() noexcept {
+      return vseq<typename Derived::extents>::reduce(multiplies<typename Derived::index_type>{});
+    }
+    static constexpr auto get_dim() noexcept { return vseq<typename Derived::extents>::count; }
+    static constexpr auto get_dims() noexcept {
+      return wrapt<typename vseq<typename Derived::extents>::template to_iseq<sint_t>>{};
     }
 
     struct detail {

@@ -14,12 +14,12 @@ namespace zs {
   }
 
   double PDF(double u, double o, int x) {
-    constexpr double co = 1. / zs::sqrt(2. * g_pi);
+    const double co = 1. / zs::sqrt(2. * g_pi);
     double index = -(x - u) * (x - u) / 2. / o / o;
     return co / o * zs::exp(index);
   }
   double anti_normal_PDF(double u, double o, int x) {
-    constexpr double co = 1. / zs::sqrt(2. * g_pi);
+    const double co = 1. / zs::sqrt(2. * g_pi);
     double index = -(x - u) * (x - u) / 2. / o / o;
     return 1 - co / o * zs::exp(index);
   }

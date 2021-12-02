@@ -150,6 +150,7 @@ namespace zs {
     static constexpr auto count = sizeof...(Ns);
     using Tn = std::common_type_t<decltype(Ns)...>;
     using iseq = integer_seq<Tn, (Tn)Ns...>;
+    template <typename T> using to_iseq = integer_seq<T, (T)Ns...>;
     using vseq = zs::vseq_t<Ns...>;
   };
 
@@ -236,6 +237,7 @@ namespace zs {
     using vals = value_seq<Ns...>;
     using typename vals::iseq;
     using typename vals::Tn;
+    template <typename T> using to_iseq = typename vals::template to_iseq<T>;
     using vals::count;
     using op = vseqop<value_seq<Ns...>>;
     using op::compwise;

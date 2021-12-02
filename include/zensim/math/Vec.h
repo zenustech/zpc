@@ -38,13 +38,15 @@ using vec =
   template <typename T, typename Tn, Tn... Ns> struct vec_view<T, std::integer_sequence<Tn, Ns...>>
       : VecInterface<vec_view<T, std::integer_sequence<Tn, Ns...>>> {
     using base_t = VecInterface<vec_view<T, std::integer_sequence<Tn, Ns...>>>;
-    using indexer_type = indexer<Tn, Ns...>;
-    static constexpr auto dim = sizeof...(Ns);
-    static constexpr auto extent = (Ns * ...);
+    // essential defs for any VecInterface
     using value_type = T;
     using index_type = Tn;
+    using indexer_type = indexer<index_type, Ns...>;
     using extents = integer_seq<index_type, Ns...>;
-    using dims = sindex_seq<Ns...>;
+
+    static constexpr auto dim = base_t::get_dim();        // sizeof...(Ns)
+    static constexpr auto extent = base_t::get_extent();  //(Ns * ...);
+    using dims = decltype(base_t::get_dims());            // sindex_seq<Ns...>;
 
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
 
@@ -53,6 +55,9 @@ using vec =
     using base_t::uniform;
     using base_t::zeros;
 
+    using base_t::get_extent;
+    using base_t::range;
+
     constexpr vec_view() = delete;
     constexpr vec_view(const vec_view &) = delete;             // prevents accidental copy of view
     constexpr vec_view &operator=(const vec_view &) = delete;  // prevents accidental copy of view
@@ -60,6 +65,7 @@ using vec =
 
     constexpr explicit operator variant_vec<value_type, extents>() const noexcept {
       variant_vec<value_type, extents> r{};
+      constexpr auto extent = get_extent();
       for (index_type i = 0; i != extent; ++i) r.val(i) = this->val(i);
       return r;
     }
@@ -113,22 +119,26 @@ using vec =
     // static_assert(std::is_trivial<T>::value,
     //              "Vec element type is not trivial!\n");
     using base_t = VecInterface<vec_impl<T, std::integer_sequence<Tn, Ns...>>>;
-    using indexer_type = indexer<Tn, Ns...>;
-    static constexpr auto dim = sizeof...(Ns);
-    static constexpr auto extent = (Ns * ...);
     using value_type = T;
     using index_type = Tn;
+    using indexer_type = indexer<index_type, Ns...>;
     using extents = integer_seq<index_type, Ns...>;
-    using dims = sindex_seq<Ns...>;
+
+    static constexpr auto dim = base_t::get_dim();        // sizeof...(Ns)
+    static constexpr auto extent = base_t::get_extent();  //(Ns * ...);
+    using dims = decltype(base_t::get_dims());            // sindex_seq<Ns...>;
 
     template <typename OtherT, typename IndicesT> using variant_vec = vec_impl<OtherT, IndicesT>;
-
-    T _data[extent];
 
     using base_t::identity;
     using base_t::ones;
     using base_t::uniform;
     using base_t::zeros;
+
+    using base_t::get_extent;
+    using base_t::range;
+
+    T _data[extent];
 
   public:
     /// expose internal

@@ -143,10 +143,10 @@ namespace zs {
           auto printMat = [](auto&& mat, std::string msg = "") {
             using Mat = RM_CVREF_T(mat);
             if (!msg.empty()) fmt::print("## msg: {}\n", msg);
-            // if constexpr (Mat::extent == 9)
-            fmt::print("mat3[{}] ==\n{}, {}, {}\n{}, {}, {}\n{}, {}, {}\n", (void*)&mat, mat(0, 0),
-                       mat(0, 1), mat(0, 2), mat(1, 0), mat(1, 1), mat(1, 2), mat(2, 0), mat(2, 1),
-                       mat(2, 2));
+            if constexpr (Mat::get_extent() == 9)
+              fmt::print("mat3[{}] ==\n{}, {}, {}\n{}, {}, {}\n{}, {}, {}\n", (void*)&mat,
+                         mat(0, 0), mat(0, 1), mat(0, 2), mat(1, 0), mat(1, 1), mat(1, 2),
+                         mat(2, 0), mat(2, 1), mat(2, 2));
           };
           printMat(A, "A");
           printMat(U, "U");

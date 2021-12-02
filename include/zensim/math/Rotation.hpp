@@ -18,11 +18,12 @@ namespace zs {
   /**
      Imported from ZIRAN, wraps Eigen's Rotation2D (in 2D) and Quaternion (in 3D).
    */
-  template <typename T = float, int dim = 3> struct Rotation : vec<T, dim, dim> {
+  template <typename T = float, int dim_ = 3> struct Rotation : vec<T, dim_, dim_> {
     // 3d rotation can be viewed as a series of three successive rotations about coordinate axes
     using value_type = T;
-    using TV = vec<T, dim>;
-    using TM = vec<T, dim, dim>;
+    static constexpr int dim = dim_;  // do not let TM's dim fool you!
+    using TV = vec<value_type, dim>;
+    using TM = vec<value_type, dim, dim>;
 
     constexpr auto &self() noexcept { return static_cast<TM &>(*this); }
     constexpr const auto &self() const noexcept { return static_cast<const TM &>(*this); }

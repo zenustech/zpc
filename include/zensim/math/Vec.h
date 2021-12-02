@@ -147,7 +147,7 @@ using vec =
     constexpr auto data() const noexcept -> const T * { return _data; }
 
     /// think this does not break rule of five
-    constexpr vec_impl() = default;
+    constexpr vec_impl() noexcept = default;
     template <typename... Ts, enable_if_all<(sizeof...(Ts) <= extent),
                                             (std::is_convertible_v<Ts, value_type> && ...)> = 0>
     constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}

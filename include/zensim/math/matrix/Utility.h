@@ -15,8 +15,6 @@ namespace zs {
       *b = tmp;
     }
 
-    template <typename T> constexpr T abs(const T n) noexcept { return n > 0 ? n : -n; }
-
     template <typename T> constexpr void orthogonalVector(const T *input, T *output) noexcept {
       T abs_x = abs(input[0]), abs_y = abs(input[1]), abs_z = abs(input[2]);
       if (abs_x < abs_y) {

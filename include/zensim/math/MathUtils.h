@@ -379,27 +379,32 @@ namespace zs {
     }
 
     namespace detail {
-      template <typename T> constexpr T pow_integral_recursive(T base, T val, T exp) noexcept {
-        return exp > (T)1 ? ((exp & 1) ? pow_integral_recursive(base * base, val * base, exp / (T)2)
-                                       : pow_integral_recursive(base * base, val, exp / (T)2))
-                          : (exp == (T)1 ? val * base : val);
+      template <typename T, typename Tn, enable_if_t<std::is_integral_v<Tn>> = 0>
+      constexpr T pow_integral_recursive(T base, T val, Tn exp) noexcept {
+        return exp > (Tn)1
+                   ? ((exp & (Tn)1) ? pow_integral_recursive(base * base, val * base, exp / (Tn)2)
+                                    : pow_integral_recursive(base * base, val, exp / (Tn)2))
+                   : (exp == (Tn)1 ? val * base : val);
       }
     }  // namespace detail
-    template <
-        typename T0, typename T1,
-        enable_if_all<std::is_integral_v<T0>, std::is_integral_v<T1>, std::is_unsigned_v<T1>> = 0>
-    constexpr auto pow_integral(T0 base, T1 exp) noexcept {
-      using R = T0;  // math::op_result_t<T0, T1>;
-      return exp == (T1)3
+    template <typename T, typename Tn,
+              enable_if_all<std::is_arithmetic_v<T>, std::is_integral_v<Tn>> = 0>
+    constexpr auto pow_integral(T base, Tn exp) noexcept {
+      using R = T;  // math::op_result_t<T0, T1>;
+      return exp == (Tn)3
                  ? base * base * base
-                 : (exp == (T1)2
+                 : (exp == (Tn)2
                         ? base * base
-                        : (exp == (T1)1 ? base
-                                        : (exp == (T1)0 ? (R)1
-                                                        : (exp == limits<T1>::max()
-                                                               ? limits<R>::infinity()
-                                                               : detail::pow_integral_recursive(
-                                                                   (R)base, (R)1, (R)exp)))));
+                        : (exp == (Tn)1
+                               ? base
+                               : (exp == (Tn)0 ? (R)1
+                                               : (exp == limits<Tn>::max()
+                                                      ? limits<R>::infinity()
+                                                      // make signed to get rid of compiler warn
+                                                      : ((std::make_signed_t<Tn>)exp < 0
+                                                             ? (R)0
+                                                             : detail::pow_integral_recursive(
+                                                                 (R)base, (R)1, (Tn)exp))))));
     }
 
     /**

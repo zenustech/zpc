@@ -59,15 +59,35 @@ namespace zs {
 
   template <typename T, typename Dims> struct vec_impl;
 
+  /**
+   *    \note assume vec already defines base_t, value_type, index_type, extents and indexer_type
+   *
+   **/
+#define SUPPLEMENT_VEC_STATIC_ATTRIBUTES                                                         \
+  using dims = typename vseq<extents>::template to_iseq<sint_t>;                                 \
+  static constexpr index_type extent = vseq<extents>::template reduce(multiplies<index_type>{}); \
+  static constexpr int dim = vseq<extents>::count;                                               \
+  template <std::size_t I> static constexpr auto get_range() noexcept {                          \
+    if constexpr (I < dim)                                                                       \
+      return select_value<I, vseq<extents>>::value;                                              \
+    else                                                                                         \
+      return (index_type)0;                                                                      \
+  }                                                                                              \
+  template <std::size_t I> static constexpr index_type range = get_range<I>();                   \
+  using base_t::identity;                                                                        \
+  using base_t::ones;                                                                            \
+  using base_t::uniform;                                                                         \
+  using base_t::zeros;
+
   template <typename Derived> struct VecInterface {
 #define DECLARE_VEC_INTERFACE_ATTRIBUTES                                                       \
   using value_type = typename Derived::value_type;                                             \
   using index_type = typename Derived::index_type;                                             \
   using extents = typename Derived::extents; /*not necessarily same as indexer_type::extents*/ \
   using indexer_type = typename Derived::indexer_type;                                         \
-  using dims = decltype(get_dims());                                                           \
-  constexpr index_type extent = get_extent();                                                  \
-  constexpr auto dim = get_dim();
+  using dims = typename Derived::dims;                                                         \
+  constexpr index_type extent = Derived::extent;                                               \
+  constexpr int dim = Derived::dim;
 
     using vec_type = Derived;
 
@@ -87,22 +107,12 @@ namespace zs {
       return static_cast<const volatile Derived*>(this)->do_data();
     }
     /// property query
-    static constexpr auto get_extent() noexcept {
-      return vseq<typename Derived::extents>::reduce(multiplies<typename Derived::index_type>{});
+    static constexpr auto get_extent() noexcept { return Derived::extent; }
+    static constexpr auto get_dim() noexcept { return Derived::dim; }
+    static constexpr auto get_dims() noexcept { return wrapt<typename Derived::dims>{}; }
+    template <std::size_t I> static constexpr auto get_range() noexcept {
+      return Derived::template get_range<I>();
     }
-    static constexpr auto get_dim() noexcept { return vseq<typename Derived::extents>::count; }
-    static constexpr auto get_dims() noexcept {
-      return wrapt<typename vseq<typename Derived::extents>::template to_iseq<sint_t>>{};
-    }
-    template <std::size_t I>
-    static constexpr auto get_range() noexcept {
-      if constexpr (I < Derived::dim)
-        return select_value<I, vseq<typename Derived::extents>>::value;
-      else
-        return (typename Derived::index_type)0;
-    }
-    template <std::size_t I>
-    static constexpr auto range = get_range<I>();
 
     struct detail {
       template <typename VecT, std::size_t... Is>
@@ -192,7 +202,7 @@ namespace zs {
     static constexpr auto identity() noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       auto r = zeros();
-      constexpr index_type N = range<0>;
+      constexpr index_type N = get_range<0>();
       for (index_type i = 0; i != N; ++i)
         r.val(gen_seq<VecT::dim>::template uniform_values<std::tuple>(i)) = 1;
       return r;

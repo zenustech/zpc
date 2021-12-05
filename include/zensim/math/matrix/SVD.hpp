@@ -1037,18 +1037,23 @@ namespace zs {
           integer_seq<typename VecT::index_type, VecT::template range<0>>>
           S{};
       if constexpr (is_same_v<typename VecT::dims, sindex_seq<3, 3>>) {
-        svd_3d(F(0, 0), F(0, 1), F(0, 2), F(1, 0), F(1, 1), F(1, 2), F(2, 0), F(2, 1), F(2, 2),
-               U(0, 0), U(0, 1), U(0, 2), U(1, 0), U(1, 1), U(1, 2), U(2, 0), U(2, 1), U(2, 2),
-               S(0), S(1), S(2), V(0, 0), V(0, 1), V(0, 2), V(1, 0), V(1, 1), V(1, 2), V(2, 0),
-               V(2, 1), V(2, 2));
+        if constexpr (is_same_v<typename VecT::value_type, float>) {
+          svd_3d(F(0, 0), F(0, 1), F(0, 2), F(1, 0), F(1, 1), F(1, 2), F(2, 0), F(2, 1), F(2, 2),
+                 U(0, 0), U(0, 1), U(0, 2), U(1, 0), U(1, 1), U(1, 2), U(2, 0), U(2, 1), U(2, 2),
+                 S(0), S(1), S(2), V(0, 0), V(0, 1), V(0, 2), V(1, 0), V(1, 1), V(1, 2), V(2, 0),
+                 V(2, 1), V(2, 2));
+          return std::make_tuple(U, S, V);
+        } else
+          return qr_svd(F);
       } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<2, 2>>) {
-        throw std::runtime_error("2d svd not supported yet");
+        return qr_svd(F);
       } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<1, 1>>) {
         U(0, 0) = (typename VecT::value_type)1;
         V(0, 0) = (typename VecT::value_type)1;
         S(0) = F(0, 0);
-      }
-      return std::make_tuple(U, S, V);
+        return std::make_tuple(U, S, V);
+      } else
+        ;
     }
 
   }  // namespace math

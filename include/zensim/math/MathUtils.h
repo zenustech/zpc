@@ -71,6 +71,17 @@ namespace zs {
    *  math intrinsics (not constexpr at all! just cheating the compiler)
    */
   template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T copysign(T mag, T sgn) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::copysignf(mag, sgn);
+    else
+      return ::copysign(mag, sgn);
+#else
+    return std::copysign(mag, sgn);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
   constexpr T abs(T v) noexcept {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
     if constexpr (is_same_v<T, float>)

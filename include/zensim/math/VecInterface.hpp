@@ -761,4 +761,23 @@ namespace zs {
     }
   };
 
+  namespace detail {
+    template <typename VecT, std::size_t dim, sint_t... dims, std::size_t... Is>
+    constexpr bool vec_fits_shape(integer_seq<sint_t, dims...>, index_seq<Is...>) noexcept {
+      static_assert(sizeof...(dims) == sizeof...(Is), "count of indices and dims mismatch.");
+      if constexpr (dim == VecT::dim) {
+        if constexpr (sizeof...(dims) <= dim)
+          return ((VecT::template range<Is> == select_indexed_value<Is, dims...>::value)&&...);
+        else
+          return false;
+      } else
+        return false;
+    }
+  }  // namespace detail
+
+  template <typename VecT, std::size_t dim, sint_t... dims> constexpr bool vec_fits_shape() noexcept {
+    return detail::vec_fits_shape<VecT, dim>(integer_seq<sint_t, dims...>{},
+                                             std::make_index_sequence<sizeof...(dims)>{});
+  }
+
 }  // namespace zs

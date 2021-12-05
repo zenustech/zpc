@@ -1,16 +1,19 @@
-#pragma once
+﻿#pragma once
 #include "Givens.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/tpls/fmt/core.h"
+
+/// <summary>
+/// qrsvd
+///  ref: https://github.com/penn-graphics-research/ziran2020/blob/master/Lib/Ziran/Math/Linear/ImplicitQRSVD.h
+/// </summary>
 
 namespace zs {
 
   namespace math {
 
-    template <typename VecT,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
-                            VecT::template range<0> == 2,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT, enable_if_all<vec_fits_shape<VecT, 2, 2, 2>(),
+                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto polar_decomposition(const VecInterface<VecT>& A,
                                        GivensRotation<typename VecT::value_type>& R) noexcept {
       using value_type = typename VecT::value_type;
@@ -110,7 +113,168 @@ namespace zs {
         ;
     }
 
-    namespace detail {}  // namespace detail
+    namespace detail {
+      /**
+       *    \brief  compute wilkinsonShift of the block
+       *        a1     b1
+       *        b1     a2
+       *    based on the wilkinsonShift formula
+       *    mu = a2 + d - sign(d) \sqrt (d * d + b1 * b1), where d = (a1-a2)/2
+       *    \note   This shift gives average cubic convergence rate for reducing Tn,n−1 to zero
+       */
+      template <typename T>
+      constexpr T wilkinson_shift(const T a1, const T b1, const T a2) noexcept {
+        T d = (T)0.5 * (a1 - a2);
+        T bs = b1 * b1;
+
+        T mu = a2 - ::zs::copysign(bs / (::zs::abs(d) + ::zs::sqrt(d * d + bs)), d);
+        // T mu = a2 - bs / ( d + sign_d*sqrt (d*d + bs));
+        return mu;
+      }
+
+      template <typename VecTM, typename VecTV,
+                enable_if_all<vec_fits_shape<VecTM, 2, 3, 3>(), vec_fits_shape<VecTV, 1, 3>()> = 0>
+      constexpr void flip_sign(int j, VecInterface<VecTM>& U, VecInterface<VecTV>& S) noexcept {
+        S(j) = -S(j);
+        U(0, j) = -U(0, j);
+        U(1, j) = -U(1, j);
+        U(2, j) = -U(2, j);
+      }
+      template <int t, typename VecTU, typename VecTS, typename VecTV,
+                enable_if_all<vec_fits_shape<VecTU, 2, 3, 3>(), vec_fits_shape<VecTS, 1, 3>(),
+                              vec_fits_shape<VecTV, 2, 3, 3>()> = 0>
+      constexpr void sort_sigma(VecInterface<VecTU>& U, VecInterface<VecTS>& sigma,
+                                VecInterface<VecTV>& V) noexcept {
+        /// t == 0
+        if constexpr (t == 0) {
+          // Case: sigma(0) > |sigma(1)| >= |sigma(2)|
+          if (abs(sigma(1)) >= abs(sigma(2))) {
+            if (sigma(1) < 0) {
+              flip_sign(1, U, sigma);
+              flip_sign(2, U, sigma);
+            }
+            return;
+          }
+
+          // fix sign of sigma for both cases
+          if (sigma(2) < 0) {
+            flip_sign(1, U, sigma);
+            flip_sign(2, U, sigma);
+          }
+
+          // swap sigma(1) and sigma(2) for both cases
+          std::swap(sigma(1), sigma(2));
+          for (int d = 0; d != 3; ++d) {
+            std::swap(U(d, 1), U(d, 2));
+            std::swap(V(d, 1), V(d, 2));
+          }
+
+          // Case: |sigma(2)| >= sigma(0) > |simga(1)|
+          if (sigma(1) > sigma(0)) {
+            std::swap(sigma(0), sigma(1));
+            for (int d = 0; d != 3; ++d) {
+              std::swap(U(d, 0), U(d, 1));
+              std::swap(V(d, 0), V(d, 1));
+            }
+          }
+
+          // Case: sigma(0) >= |sigma(2)| > |simga(1)|
+          else {
+            for (int d = 0; d != 3; ++d) {
+              U(d, 2) = -U(d, 2);
+              V(d, 2) = -V(d, 2);
+            }
+          }
+        }
+        /// t == 1
+        else if constexpr (t == 1) {
+          // Case: |sigma(0)| >= sigma(1) > |sigma(2)|
+          if (abs(sigma(0)) >= sigma(1)) {
+            if (sigma(0) < 0) {
+              flip_sign(0, U, sigma);
+              flip_sign(2, U, sigma);
+            }
+            return;
+          }
+
+          // swap sigma(0) and sigma(1) for both cases
+          std::swap(sigma(0), sigma(1));
+          // U.col(0).swap(U.col(1));
+          // V.col(0).swap(V.col(1));
+          for (int d = 0; d != 3; ++d) {
+            std::swap(U(d, 0), U(d, 1));
+            std::swap(V(d, 0), V(d, 1));
+          }
+
+          // Case: sigma(1) > |sigma(2)| >= |sigma(0)|
+          if (fabs(sigma(1)) < fabs(sigma(2))) {
+            std::swap(sigma(1), sigma(2));
+            // U.col(1).swap(U.col(2));
+            // V.col(1).swap(V.col(2));
+            for (int d = 0; d != 3; ++d) {
+              std::swap(U(d, 1), U(d, 2));
+              std::swap(V(d, 1), V(d, 2));
+            }
+          }
+
+          // Case: sigma(1) >= |sigma(0)| > |sigma(2)|
+          else {
+            // U.col(1) = -U.col(1);
+            // V.col(1) = -V.col(1);
+            for (int d = 0; d != 3; ++d) {
+              U(d, 1) = -U(d, 1);
+              V(d, 1) = -V(d, 1);
+            }
+          }
+
+          // fix sign for both cases
+          if (sigma(1) < 0) {
+            flip_sign(1, U, sigma);
+            flip_sign(2, U, sigma);
+          }
+        }
+      }
+
+      template <int t, typename VecTB, typename VecTU, typename VecTS, typename VecTV,
+                enable_if_all<vec_fits_shape<VecTB, 2, 3, 3>(), vec_fits_shape<VecTU, 2, 3, 3>(),
+                              vec_fits_shape<VecTS, 1, 3>(), vec_fits_shape<VecTV, 2, 3, 3>()> = 0>
+      constexpr void process(VecInterface<VecTB>& B, VecInterface<VecTU>& U, VecInterface<VecTS>& S,
+                             VecInterface<VecTV>& V) noexcept {
+        static_assert(t == 0 || t == 1, "offset t here is not a valid one (0 or 1).");
+        using T = typename VecTB::value_type;
+        GivensRotation<T> u{0, 1};
+        GivensRotation<T> v{0, 1};
+        constexpr int other = (t == 1) ? 0 : 2;
+        S(other) = B(other, other);
+// this is slow (redundant copy) for the moment due to the lack of block view
+#if 1
+        using mat2 =
+            typename VecTB::template variant_vec<T, integer_seq<typename VecTB::index_type, 2, 2>>;
+        // using vec2 =
+        //     typename VecTB::template variant_vec<T, integer_seq<typename VecTB::index_type, 2>>;
+        mat2 B_{};
+        B_(0, 0) = B(t, t);
+        B_(0, 1) = B(t, t + 1);
+        B_(1, 0) = B(t + 1, t);
+        B_(1, 1) = B(t + 1, t + 1);
+        auto S_ = qr_svd(B_, u, v);  // 2d qrsvd
+        B(t, t) = B_(0, 0);
+        B(t, t + 1) = B_(0, 1);
+        B(t + 1, t) = B_(1, 0);
+        B(t + 1, t + 1) = B_(1, 1);
+        S(t) = S_(0);
+        S(t + 1) = S_(1);
+#else
+        qr_svd(B.template block<2, 2>(t, t), u, S.template block<2, 1>(t, 0), v);
+#endif
+        u.rowi += t;
+        u.rowk += t;
+        v.rowi += t;
+        v.rowk += t;
+        u.columnRotation(U);
+        v.columnRotation(V);
+      }
+    }  // namespace detail
 
     // Polar guarantees negative sign is on the small magnitude singular value.
     // S is guaranteed to be the closest one to identity.
@@ -134,16 +298,53 @@ namespace zs {
         gv.fill(V);
         return std::make_tuple(U, S, V);
       } else if constexpr (N == 3) {
+        typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{};
         auto B = A.clone();
         U = U.identity();
         V = V.identity();
         upper_bidiagonalize(B, U, V);
 
-        if constexpr (false) {
+        GivensRotation<value_type> r{0, 1};
+
+        value_type alpha[3] = {B(0, 0), B(1, 1), B(2, 2)};
+        value_type beta[2] = {B(0, 1), B(1, 2)};
+        // offdiagonal entries in tridiagonal B^T B
+        value_type gamma[2] = {alpha[0] * beta[0], alpha[1] * beta[1]};
+
+        // terminate once any of(α1 β1 α2 β2 α3) becomes smaller than a tolerance τ
+        constexpr auto eta = limits<value_type>::epsilon() * (value_type)128;
+        value_type tol
+            = eta
+              * math::max((value_type)0.5
+                              * sqrt(alpha[0] * alpha[0] + alpha[1] * alpha[1] + alpha[2] * alpha[2]
+                                     + beta[0] * beta[0] + beta[1] * beta[1]),
+                          (value_type)1);
+
+        // do implicit shift QR until A^T A is block diagonal
+        while (abs(alpha[0]) > tol && abs(alpha[1]) > tol && abs(alpha[2]) > tol
+               && abs(beta[0]) > tol && abs(beta[1]) > tol) {
+          auto mu = detail::wilkinson_shift(alpha[1] * alpha[1] + beta[0] * beta[0], gamma[1],
+                                            alpha[2] * alpha[2] + beta[1] * beta[1]);
+          r.computeConventional(alpha[0] * alpha[0] - mu, gamma[0]);
+          r.columnRotation(B);
+
+          r.columnRotation(V);
+          zero_chasing(B, U, V);
+
+          alpha[0] = B(0, 0);
+          alpha[1] = B(1, 1);
+          alpha[2] = B(2, 2);
+          beta[0] = B(0, 1);
+          beta[1] = B(1, 2);
+          gamma[0] = alpha[0] * beta[0];
+          gamma[1] = alpha[1] * beta[1];
+        }
+
+        if constexpr (true) {
           auto printMat = [](auto&& mat, std::string msg = "") {
             using Mat = RM_CVREF_T(mat);
             if (!msg.empty()) fmt::print("## msg: {}\n", msg);
-            if constexpr (Mat::extent == 9)
+            if constexpr (Mat::get_extent() == 9)
               fmt::print("mat3[{}] ==\n{}, {}, {}\n{}, {}, {}\n{}, {}, {}\n", (void*)&mat,
                          mat(0, 0), mat(0, 1), mat(0, 2), mat(1, 0), mat(1, 1), mat(1, 2),
                          mat(2, 0), mat(2, 1), mat(2, 2));
@@ -154,7 +355,114 @@ namespace zs {
           printMat(V.transpose(), "V^T");
           printMat(U * B * V.transpose(), "Achk (U B V^T)");
         }
-        return std::make_tuple(U, A, V);  // wrong
+        /**
+         *  Handle the cases of one of the alphas and betas being 0
+         *  Sorted by ease of handling and then frequency
+         *  of occurrence
+         *  If B is of form
+         *      x x 0
+         *      0 x 0
+         *      0 0 x
+         **/
+        if (abs(beta[1]) <= tol) {
+          detail::process<0>(B, U, S, V);
+          detail::sort_sigma<0>(U, S, V);
+        }
+        /**
+         *  If B is of form
+         *      x 0 0
+         *      0 x x
+         *      0 0 x
+         **/
+        else if (abs(beta[0]) <= tol) {
+          detail::process<1>(B, U, S, V);
+          detail::sort_sigma<1>(U, S, V);
+        }
+        /**
+         *  If B is of form
+         *      x x 0
+         *      0 0 x
+         *      0 0 x
+         **/
+        else if (abs(alpha[1]) <= tol) {
+          /**
+           *    Reduce B to
+           *        x x 0
+           *        0 0 0
+           *        0 0 x
+           **/
+          GivensRotation<value_type> r1(1, 2);
+          r1.computeUnconventional(B(1, 2), B(2, 2));
+          r1.rowRotation(B);
+          r1.columnRotation(U);
+
+          detail::process<0>(B, U, S, V);
+          detail::sort_sigma<0>(U, S, V);
+        }
+        /**
+         *  If B is of form
+         *      x x 0
+         *      0 x x
+         *      0 0 0
+         **/
+        else if (abs(alpha[2]) <= tol) {
+          /**
+           *    Reduce B to
+           *        x x +
+           *        0 x 0
+           *        0 0 0
+           **/
+          GivensRotation<value_type> r1(1, 2);
+          r1.computeConventional(B(1, 1), B(1, 2));
+          r1.columnRotation(B);
+          r1.columnRotation(V);
+          /**
+           *    Reduce B to
+           *        x x 0
+           *        + x 0
+           *        0 0 0
+           **/
+          GivensRotation<value_type> r2(0, 2);
+          r2.computeConventional(B(0, 0), B(0, 2));
+          r2.columnRotation(B);
+          r2.columnRotation(V);
+
+          detail::process<0>(B, U, S, V);
+          detail::sort_sigma<0>(U, S, V);
+        }
+        /**
+         *  If B is of form
+         *      0 x 0
+         *      0 x x
+         *      0 0 x
+         **/
+        else if (abs(alpha[0]) <= tol) {
+          /**
+           *    Reduce B to
+           *        0 0 +
+           *        0 x x
+           *        0 0 x
+           **/
+          GivensRotation<value_type> r1(0, 1);
+          r1.computeUnconventional(B(0, 1), B(1, 1));
+          r1.rowRotation(B);
+          r1.columnRotation(U);
+
+          /**
+           *    Reduce B to
+           *        0 0 0
+           *        0 x x
+           *        0 + x
+           **/
+          GivensRotation<value_type> r2(0, 2);
+          r2.computeUnconventional(B(0, 2), B(2, 2));
+          r2.rowRotation(B);
+          r2.columnRotation(U);
+
+          detail::process<1>(B, U, S, V);
+          detail::sort_sigma<1>(U, S, V);
+        }
+        return std::make_tuple(U, S, V);
       } else
         ;
     }

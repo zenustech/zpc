@@ -685,14 +685,24 @@ namespace zs {
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
                             std::is_arithmetic_v<typename OtherVecT::value_type>, VecT::dim == 1,
+                            OtherVecT::dim == 1, VecT::extent == 2, OtherVecT::extent == 2> = 0>
+    constexpr auto cross(VecInterface<OtherVecT> const& rhs) const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
+      return (R)this->val(0) * (R)rhs.val(1) - (R)this->val(1) * (R)rhs.val(0);
+    }
+
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
+                            std::is_arithmetic_v<typename OtherVecT::value_type>, VecT::dim == 1,
                             OtherVecT::dim == 1, VecT::extent == 3, OtherVecT::extent == 3> = 0>
     constexpr auto cross(VecInterface<OtherVecT> const& rhs) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
       typename Derived::template variant_vec<R, extents> res{};  // extents type follows 'lhs'
-      res.val(0) = this->val(1) * rhs.val(2) - this->val(2) * rhs.val(1);
-      res.val(1) = this->val(2) * rhs.val(0) - this->val(0) * rhs.val(2);
-      res.val(2) = this->val(0) * rhs.val(1) - this->val(1) * rhs.val(0);
+      res.val(0) = (R)this->val(1) * (R)rhs.val(2) - (R)this->val(2) * (R)rhs.val(1);
+      res.val(1) = (R)this->val(2) * (R)rhs.val(0) - (R)this->val(0) * (R)rhs.val(2);
+      res.val(2) = (R)this->val(0) * (R)rhs.val(1) - (R)this->val(1) * (R)rhs.val(0);
       return res;
     }
     // friend version
@@ -706,7 +716,8 @@ namespace zs {
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
                             std::is_arithmetic_v<typename OtherVecT::value_type>, VecT::dim == 1,
-                            OtherVecT::dim == 1, VecT::extent == 3, OtherVecT::extent == 3> = 0>
+                            OtherVecT::dim == 1, VecT::extent == OtherVecT::extent,
+                            (VecT::extent >= 2), (VecT::extent <= 3)> = 0>
     friend constexpr auto cross(VecInterface const& lhs,
                                 VecInterface<OtherVecT> const& rhs) noexcept {
       return lhs.cross(rhs);

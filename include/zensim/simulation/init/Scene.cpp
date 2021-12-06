@@ -232,7 +232,7 @@ namespace zs {
   ///
   BuilderForSceneBoundary &BuilderForSceneBoundary::addSparseLevelSet(std::string fn) {
     auto vdbGrid = zs::loadFloatGridFromVdbFile(fn);
-    sparseLevelSets.emplace_back(zs::convertFloatGridToSparseLevelSet(vdbGrid));
+    sparseLevelSets.emplace_back(zs::convert_floatgrid_to_sparse_levelset(vdbGrid));
     return *this;
   }
   BuilderForSceneBoundary &BuilderForSceneBoundary::addVdbLevelset(std::string fn, float dx) {

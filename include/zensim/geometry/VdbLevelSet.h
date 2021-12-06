@@ -30,16 +30,28 @@ namespace zs {
   OpenVDBStruct loadVec3fGridFromVdbFile(const std::string &fn);
   bool writeFloatGridToVdbFile(std::string_view fn, const OpenVDBStruct &grid);
 
+  /// floatgrid
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid);
   SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
                                                      const MemoryHandle mh);
   OpenVDBStruct convertSparseLevelSetToFloatGrid(const SparseLevelSet<3> &grid);
 
+  SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);
+  SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid,
+                                                         const MemoryHandle mh);
+
+  /// float3grid
+  SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid);
+  SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid,
+                                                         const MemoryHandle mh);
+
+  /// floatgrid + float3grid
   SparseLevelSet<3> convertLevelSetGridToSparseLevelSet(const OpenVDBStruct &sdf,
                                                         const OpenVDBStruct &vel);
   SparseLevelSet<3> convertLevelSetGridToSparseLevelSet(const OpenVDBStruct &sdf,
                                                         const OpenVDBStruct &vel,
                                                         const MemoryHandle mh);
+
   void checkFloatGrid(OpenVDBStruct &grid);
   OpenVDBStruct particleArrayToGrid(const std::vector<std::array<float, 3>> &);
   std::vector<std::array<float, 3>> particleGridToArray(const OpenVDBStruct &);

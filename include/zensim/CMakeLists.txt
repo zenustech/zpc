@@ -23,6 +23,7 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
     geometry/VdbLevelSet_Point.cpp
     geometry/VdbLevelSet_LoadPhi.cpp
     geometry/VdbLevelSet_LoadPhiVel.cpp
+    geometry/VdbLevelSet_Conversion.cpp
     geometry/VdbSampler_SampleFromLevelSet.cpp
     geometry/VdbSampler_MeshToLevelSet.cpp
     geometry/VdbSampler_FileToLevelSet.cpp

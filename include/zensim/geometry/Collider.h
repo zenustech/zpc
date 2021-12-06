@@ -108,6 +108,39 @@ namespace zs {
     TV dbdt{TV::zeros()};
   };
 
+  template <typename SdfLS, typename VelLS> struct SdfVelField
+      : LevelSetInterface<SdfVelField<SdfLS, VelLS>, typename SdfLS::T, SdfLS::dim> {
+    static_assert(SdfLS::dim == VelLS::dim, "dimension mismatch!");
+    static_assert(
+        std::is_floating_point_v<typename SdfLS::T> && std::is_floating_point_v<typename VelLS::T>,
+        "levelset not in floating point type!");
+
+    using T = typename SdfLS::T;
+    static constexpr int dim = SdfLS::dim;
+    using TV = vec<T, dim>;
+
+    constexpr SdfVelField(const SdfLS &sdf, const VelLS &vel) noexcept : _sdf(sdf), _vel(vel) {}
+
+    /// bounding volume interface
+    constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
+      return _sdf.getBoundingBox();
+    }
+    constexpr TV do_getBoxCenter() const noexcept { return _sdf.getBoxCenter(); }
+    constexpr TV do_getBoxSideLengths() const noexcept { return _sdf.getBoxSideLengths(); }
+    constexpr TV do_getUniformCoord(const TV &pos) const noexcept {
+      return _sdf.getUniformCoord(pos);
+    }
+    /// levelset interface
+    constexpr T getSignedDistance(const TV &X) const noexcept { return _sdf.getSignedDistance(X); }
+    constexpr TV getNormal(const TV &X) const noexcept { return _sdf.getNormal(X); }
+    constexpr TV getMaterialVelocity(const TV &X) const noexcept {
+      return _vel.getMaterialVelocity(X);  // this is special
+    }
+
+    SdfLS _sdf;
+    VelLS _vel;
+  };
+
   template <typename Ls, typename... Args> Collider(Ls, Args...) -> Collider<Ls>;
 
   template <typename T, int dim> using GenericCollider

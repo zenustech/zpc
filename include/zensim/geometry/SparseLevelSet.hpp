@@ -151,6 +151,7 @@ namespace zs {
       }
     }
     constexpr T getSignedDistance(const TV &x) const noexcept {
+      if (!_grid.hasProperty("sdf")) return limits<T>::max();
       /// world to local
       auto arena = Arena<T>::uniform(_backgroundValue);
       IV loc{};

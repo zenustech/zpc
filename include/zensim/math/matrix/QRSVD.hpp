@@ -93,7 +93,6 @@ namespace zs {
     // R is guaranteed to be the closest rotation to A.
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
-
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto polar_decomposition(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
@@ -108,7 +107,10 @@ namespace zs {
         r.fill(R);
         return std::make_tuple(R, S);
       } else if constexpr (N == 3) {
-        ;
+        auto [U, S, V] = qr_svd(A);
+        R = U * V.transpose();
+        auto Ssym = ::zs::diag_mul(V, S) * V.transpose();
+        return std::make_tuple(R, Ssym);
       } else
         ;
     }

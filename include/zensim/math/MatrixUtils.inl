@@ -214,12 +214,12 @@ namespace zs {
             enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                           VecTM::template range<1> == VecTV::template range<0> + 1> = 0>
   constexpr auto operator*(const VecInterface<VecTM> &A, const VecInterface<VecTV> &x) noexcept {
-    using R = math::op_result_t<typename VecTM::entry_value, typename VecTV::entry_value>;
+    using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     using index_type = typename VecTM::index_type;
     constexpr auto nrows_m_1 = VecTM::template range<0> - 1;
     constexpr auto ncols = VecTM::template range<1>;
     constexpr auto ncols_m_1 = ncols - 1;
-    typename VecTM::template variant_vec<R, nrows_m_1> r{};
+    typename VecTM::template variant_vec<R, integer_seq<index_type, nrows_m_1>> r{};
     for (index_type i = 0; i != nrows_m_1; ++i) {
       r(i) = (R)0;
       for (index_type j = 0; j != ncols; ++j) r(i) += (j == ncols_m_1 ? A(i, j) : A(i, j) * x(j));
@@ -230,12 +230,12 @@ namespace zs {
             enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
                           VecTM::template range<0> == VecTV::template range<0> + 1> = 0>
   constexpr auto operator*(const VecInterface<VecTV> &x, const VecInterface<VecTM> &A) noexcept {
-    using R = math::op_result_t<typename VecTM::entry_value, typename VecTV::entry_value>;
+    using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     using index_type = typename VecTV::index_type;
     constexpr auto nrows = VecTM::template range<0>;
     constexpr auto nrows_m_1 = nrows - 1;
     constexpr auto ncols_m_1 = VecTM::template range<1> - 1;
-    typename VecTV::template variant_vec<R, ncols_m_1> r{};
+    typename VecTV::template variant_vec<R, integer_seq<index_type, ncols_m_1>> r{};
     for (index_type j = 0; j != ncols_m_1; ++j) {
       r(j) = (R)0;
       for (index_type i = 0; i != nrows; ++i) r(j) += (i == nrows_m_1 ? A(i, j) : A(i, j) * x(i));

@@ -4,6 +4,7 @@
 #include "Structure.hpp"
 #include "zensim/container/HashTable.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
+#include "zensim/math/Vec.h"
 #include "zensim/tpls/fmt/color.h"
 
 namespace zs {

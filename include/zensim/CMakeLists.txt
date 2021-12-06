@@ -107,6 +107,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/matrix/Utility.h
     math/matrix/MatrixTransform.hpp
     math/matrix/MatrixCtor.hpp
+    math/matrix/Transform.hpp
     math/matrix/Matrix.hpp
     math/matrix/Givens.hpp
     math/matrix/QRSVD.hpp

@@ -1025,8 +1025,8 @@ namespace zs {
       s33 = Sa33.f;
     }
 
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
-                                           VecT::template range<0> == VecT::template range<1>,
+    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template get_range<0>() <= 3,
+                                           VecT::template get_range<0>() == VecT::template get_range<1>(),
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto svd(const VecInterface<VecT>& F) noexcept {
       // F = U S V^T
@@ -1034,7 +1034,7 @@ namespace zs {
           V{};
       typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_seq<typename VecT::index_type, VecT::template range<0>>>
+          integer_seq<typename VecT::index_type, VecT::template get_range<0>()>>
           S{};
       if constexpr (is_same_v<typename VecT::dims, sindex_seq<3, 3>>) {
         if constexpr (is_same_v<typename VecT::value_type, float>) {

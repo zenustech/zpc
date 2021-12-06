@@ -4,11 +4,11 @@
 namespace zs::math {
 
 template <typename VecTM,
-            enable_if_all<VecTM::dim == 2, (VecTM::template range<0> == VecTM::template range<1>) > = 0>
+            enable_if_all<VecTM::dim == 2, (VecTM::template get_range<0>() == VecTM::template get_range<1>()) > = 0>
   constexpr auto decompose_transform(const VecInterface<VecTM>& m,
                                      bool applyOnColumn = true) noexcept {
-    constexpr auto dim = VecTM::template range<0> - 1;
-  static_assert(VecTM::template range<0> <= 4 && (VecTM::template range<0> > 1),
+    constexpr auto dim = VecTM::template get_range<0>() - 1;
+  static_assert(VecTM::template get_range<0>() <= 4 && (VecTM::template get_range<0>() > 1),
                 "transformation should be of 2x2, 3x3 or 4x4 shape only.");
     using Mat = decltype(m.clone());
     using ValT = typename VecTM::value_type;

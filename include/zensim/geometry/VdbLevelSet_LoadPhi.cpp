@@ -60,8 +60,6 @@ namespace zs {
     gridPtr->tree().voxelizeActiveTiles();
     SpLs ret{};
     const auto leafCount = gridPtr->tree().leafCount();
-    ret._sideLength = SpLs::side_length;
-    ret._space = SpLs::grid_t::block_space();
     ret._dx = gridPtr->transform().voxelSize()[0];
     ret._backgroundValue = gridPtr->background();
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
@@ -109,13 +107,13 @@ namespace zs {
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
         auto blockid = coord;
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret._sideLength + 1 : 0);
-        blockid = blockid / ret._sideLength;
+          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
+        blockid = blockid / ret.side_length;
         auto blockno = table.insert(blockid);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
-          const auto offset = blockno * ret._space + cellid;
+          const auto offset = blockno * ret.block_size + cellid;
           gridview.voxel("sdf", offset) = sdf;
           gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
 #if 0
@@ -153,12 +151,12 @@ namespace zs {
     auto accessor = grid->getAccessor();
     using GridT = RM_CVREF_T(gridview);
     for (auto &&[blockno, blockid] :
-         zip(range(spls._grid.size() / spls._space), spls._table._activeKeys))
-      for (int cid = 0; cid != spls._space; ++cid) {
-        const auto offset = (int)blockno * (int)spls._space + cid;
+         zip(range(spls._grid.size() / spls.block_size), spls._table._activeKeys))
+      for (int cid = 0; cid != spls.block_size; ++cid) {
+        const auto offset = (int)blockno * (int)spls.block_size + cid;
         const auto sdfVal = gridview.voxel("sdf", offset);
         if (sdfVal == spls._backgroundValue) continue;
-        const auto coord = blockid * (int)spls._sideLength + GridT::cellid_to_coord(cid);
+        const auto coord = blockid * (int)spls.side_length + GridT::cellid_to_coord(cid);
         // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
         accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
       }

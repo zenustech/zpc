@@ -28,8 +28,6 @@ namespace zs {
     gridPtr->tree().voxelizeActiveTiles();
     SpLs ret{};
     const auto leafCount = gridPtr->tree().leafCount();
-    ret._sideLength = SpLs::side_length;
-    ret._space = SpLs::grid_t::block_space();
     ret._dx = gridPtr->transform().voxelSize()[0];
     ret._backgroundValue = gridPtr->background();
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
@@ -76,13 +74,13 @@ namespace zs {
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
         auto blockid = coord;
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret._sideLength + 1 : 0);
-        blockid = blockid / ret._sideLength;
+          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
+        blockid = blockid / ret.side_length;
         auto blockno = table.insert(blockid);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto sdf = cell.getValue();
-          const auto offset = blockno * ret._space + cellid;
+          const auto offset = blockno * ret.block_size + cellid;
           gridview.voxel("sdf", offset) = sdf;
         }
       }
@@ -111,8 +109,6 @@ namespace zs {
     gridPtr->tree().voxelizeActiveTiles();
     SpLs ret{};
     const auto leafCount = gridPtr->tree().leafCount();
-    ret._sideLength = SpLs::side_length;
-    ret._space = SpLs::grid_t::block_space();
     ret._dx = gridPtr->transform().voxelSize()[0];
     ret._backgroundValue = 0;
     {
@@ -186,13 +182,13 @@ namespace zs {
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
         auto blockid = coord;
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret._sideLength + 1 : 0);
-        blockid = blockid / ret._sideLength;
+          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
+        blockid = blockid / ret.side_length;
         auto blockno = table.insert(blockid);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto vel = cell.getValue();
-          const auto offset = blockno * ret._space + cellid;
+          const auto offset = blockno * ret.block_size + cellid;
           gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
           // gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
         }

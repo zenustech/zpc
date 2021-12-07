@@ -68,8 +68,6 @@ namespace zs {
     velGridPtr->tree().voxelizeActiveTiles();
     SpLs ret{};
     const auto leafCount = sdfGridPtr->tree().leafCount();
-    ret._sideLength = SpLs::side_length;
-    ret._space = SpLs::grid_t::block_space();
     ret._dx = sdfGridPtr->transform().voxelSize()[0];
     ret._backgroundValue = sdfGridPtr->background();
     {
@@ -77,8 +75,6 @@ namespace zs {
       ret._backgroundVecValue = TV{v[0], v[1], v[2]};
     }
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
-    // ret._tiles = typename SparseLevelSet<3>::tiles_t{
-    //    {{"sdf", 1}, {"vel", 3}}, leafCount * ret._space, memsrc_e::host, -1};
     ret._grid = typename SpLs::grid_t{
         {{"sdf", 1}, {"vel", 3}, {"mask", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
     {
@@ -134,8 +130,8 @@ namespace zs {
 
         auto blockid = coord;
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret._sideLength + 1 : 0);
-        blockid = blockid / ret._sideLength;
+          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
+        blockid = blockid / ret.side_length;
         auto blockno = table.insert(blockid);
 
         RM_CVREF_T(blockno) cellid = 0;
@@ -144,10 +140,7 @@ namespace zs {
         for (; sdfCell && velCell; ++sdfCell, ++velCell, ++cellid) {
           auto sdf = sdfCell.getValue();
           auto vel = velCell.getValue();
-          // tiles("sdf", blockno * ret._space + cellid) = sdf;
-          // tiles.template tuple<3>("vel", blockno * ret._space + cellid)
-          //    = TV{vel[0], vel[1], vel[2]};
-          const auto offset = blockno * ret._space + cellid;
+          const auto offset = blockno * ret.block_size + cellid;
           gridview.voxel("sdf", offset) = sdf;
           gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
           gridview.voxel("mask", offset) = sdfCell.isValueOn() ? 1 : 0;

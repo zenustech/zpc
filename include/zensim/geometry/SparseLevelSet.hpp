@@ -23,13 +23,12 @@ namespace zs {
     using table_t = HashTable<index_type, dim, i64>;
     using grid_t = Grid<value_type, dim, side_length, category>;
     using size_type = typename grid_t::size_type;
+    static constexpr auto block_size = grid_traits<grid_t>::block_size;
 
     constexpr SparseLevelSet() = default;
 
     SparseLevelSet clone(const MemoryHandle mh) const {
       SparseLevelSet ret{};
-      ret._sideLength = _sideLength;
-      ret._space = _space;
       ret._dx = _dx;
       ret._backgroundValue = _backgroundValue;
       ret._backgroundVecValue = _backgroundVecValue;
@@ -95,8 +94,6 @@ namespace zs {
     }
     void scale(const value_type s) { scale(s * TM::identity()); }
 
-    int _sideLength{8};  // tile side length
-    int _space{512};     // voxels per tile
     value_type _dx{1};
     value_type _backgroundValue{0};
     TV _backgroundVecValue{TV::zeros()};
@@ -132,6 +129,7 @@ namespace zs {
     using Affine = typename SparseLevelSetT::Affine;
     static constexpr int dim = SparseLevelSetT::dim;
     static constexpr auto side_length = SparseLevelSetT::side_length;
+    static constexpr auto block_size = SparseLevelSetT::block_size;
 
     template <typename Val, std::size_t... Is>
     static constexpr auto arena_type_impl(index_seq<Is...>) {
@@ -146,9 +144,7 @@ namespace zs {
     constexpr SparseLevelSetView() = default;
     ~SparseLevelSetView() = default;
     constexpr SparseLevelSetView(SparseLevelSetT &ls)
-        : _sideLength{ls._sideLength},
-          _space{ls._space},
-          _dx{ls._dx},
+        : _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
           _backgroundVecValue{ls._backgroundVecValue},
           _table{proxy<Space>(ls._table)},
@@ -221,22 +217,22 @@ namespace zs {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
-          blockid = blockid / _sideLength;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
+          blockid = blockid / side_length;
           auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = _grid("sdf", blockno, coord - blockid * _sideLength);
+            arena(dx, dy) = _grid("sdf", blockno, coord - blockid * side_length);
           }
         }
       } else if constexpr (dim == 3) {
         for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
-          blockid = blockid / _sideLength;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
+          blockid = blockid / side_length;
           auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy, dz) = _grid("sdf", blockno, coord - blockid * _sideLength);
+            arena(dx, dy, dz) = _grid("sdf", blockno, coord - blockid * side_length);
           }
         }
       }
@@ -267,23 +263,23 @@ namespace zs {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
-          blockid = blockid / _sideLength;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
+          blockid = blockid / side_length;
           auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = _grid.template pack<dim>("vel", blockno, coord - blockid * _sideLength);
+            arena(dx, dy) = _grid.template pack<dim>("vel", blockno, coord - blockid * side_length);
           }
         }
       } else if constexpr (dim == 3) {
         for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -_sideLength + 1 : 0);
-          blockid = blockid / _sideLength;
+          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
+          blockid = blockid / side_length;
           auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
             arena(dx, dy, dz)
-                = _grid.template pack<dim>("vel", blockno, coord - blockid * _sideLength);
+                = _grid.template pack<dim>("vel", blockno, coord - blockid * side_length);
           }
         }
       }
@@ -301,8 +297,6 @@ namespace zs {
                             trilinear_interop<d + 1>(diff, arena[1]));
     }
 
-    int _sideLength;  // tile side length
-    int _space;       // voxels per tile
     T _dx;
     T _backgroundValue;
     TV _backgroundVecValue;

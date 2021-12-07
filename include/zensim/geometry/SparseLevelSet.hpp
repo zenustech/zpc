@@ -5,6 +5,7 @@
 #include "zensim/container/HashTable.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
 #include "zensim/math/Vec.h"
+#include "zensim/math/matrix/Transform.hpp"
 #include "zensim/tpls/fmt/color.h"
 
 namespace zs {
@@ -15,16 +16,13 @@ namespace zs {
     static constexpr auto category = category_;
     using value_type = f32;
     using index_type = i32;
-    using TV = vec<value_type, dim>;
     using IV = vec<index_type, dim>;
+    using TV = vec<value_type, dim>;
+    using TM = vec<value_type, dim, dim>;
     using Affine = vec<value_type, dim + 1, dim + 1>;
     using table_t = HashTable<index_type, dim, i64>;
     using grid_t = Grid<value_type, dim, side_length, category>;
     using size_type = typename grid_t::size_type;
-#if 0
-    static_assert(is_same_v<typename grid_t::size_type, typename table_t::size_type>,
-                  "table & grid size_type not match!");
-#endif
 
     constexpr SparseLevelSet() = default;
 
@@ -39,9 +37,63 @@ namespace zs {
       ret._grid = _grid.clone(mh);
       ret._min = _min;
       ret._max = _max;
-      ret._w2v = _w2v;
+      ret._i2wSinv = _i2wSinv;
+      ret._i2wRinv = _i2wRinv;
+      ret._i2wT = _i2wT;
+      ret._i2wShat = _i2wShat;
+      ret._i2wRhat = _i2wRhat;
       return ret;
     }
+
+    template <typename VecTM,
+              enable_if_all<VecTM::dim == 2, VecTM::template get_range<0>() == dim + 1,
+                            VecTM::template get_range<1>() == dim + 1,
+                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+    void resetTransformation(const VecInterface<VecTM> &i2w) {
+      math::decompose_transform(i2w, _i2wSinv, _i2wRinv, _i2wT, 0);
+      _i2wSinv = inverse(_i2wSinv);
+      _i2wRinv = _i2wRinv.transpose();  // equal to inverse
+      _i2wShat = TM::identity();
+      _i2wRhat = TM::identity();
+    }
+    auto getIndexToWorldTransformation() const {
+      Affine ret{Affine::identity()};
+      {
+        auto S = inverse(_i2wSinv);
+        for (int i = 0; i != dim; ++i)
+          for (int j = 0; j != dim; ++j) ret(i, j) = S(i, j);
+      }
+      {
+        Affine tmp{Affine::identity()};
+        auto R = _i2wRinv.transpose();
+        for (int i = 0; i != dim; ++i)
+          for (int j = 0; j != dim; ++j) tmp(i, j) = R(i, j);
+        ret = ret * tmp;
+      }
+      {
+        Affine tmp{Affine::identity()};
+        for (int j = 0; j != dim; ++j) tmp(dim, j) = _i2wT[j];
+        ret = ret * tmp;
+      }
+      return ret;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    void translate(const VecInterface<VecT> &t) noexcept {
+      _i2wT += t;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template get_range<0>() == dim,
+                                           VecT::template get_range<1>() == dim> = 0>
+    void rotate(const VecInterface<VecT> &r) noexcept {
+      _i2wRhat = _i2wRhat * r;
+      _i2wRinv = r.transpose() * _i2wRinv;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template get_range<0>() == dim,
+                                           VecT::template get_range<1>() == dim> = 0>
+    void scale(const VecInterface<VecT> &s) {
+      _i2wShat = _i2wShat * s;
+      _i2wSinv = inverse(s) * _i2wSinv;
+    }
+    void scale(const value_type s) { scale(s * TM::identity()); }
 
     int _sideLength{8};  // tile side length
     int _space{512};     // voxels per tile
@@ -51,7 +103,11 @@ namespace zs {
     table_t _table{};
     grid_t _grid{};
     TV _min{}, _max{};
-    Affine _w2v{};
+    // initial index-to-world affine transformation
+    TM _i2wSinv{TM::identity()}, _i2wRinv{TM::identity()};
+    TV _i2wT{TV::zeros()};
+    // additional
+    TM _i2wShat{TM::identity()}, _i2wRhat{TM::identity()};
   };
 
   using GeneralSparseLevelSet
@@ -71,6 +127,7 @@ namespace zs {
     using T = typename SparseLevelSetT::value_type;
     using Ti = typename SparseLevelSetT::index_type;
     using TV = typename SparseLevelSetT::TV;
+    using TM = typename SparseLevelSetT::TM;
     using IV = typename SparseLevelSetT::IV;
     using Affine = typename SparseLevelSetT::Affine;
     static constexpr int dim = SparseLevelSetT::dim;
@@ -98,15 +155,12 @@ namespace zs {
           _grid{proxy<Space>(ls._grid)},
           _min{ls._min},
           _max{ls._max},
-          _w2v{ls._w2v} {}
+          _i2wT{ls._i2wT},
+          _i2wRinv{ls._i2wRinv},
+          _i2wSinv{ls._i2wSinv},
+          _i2wRhat{ls._i2wRhat},
+          _i2wShat{ls._i2wShat} {}
 
-    constexpr T getNodeValue(const IV &c, const SmallString &str = "sdf") const noexcept {
-      auto bc = c;
-      for (int d = 0; d != dim; ++d) bc[d] += (c[d] < 0 ? -side_length + 1 : 0);
-      bc /= side_length;
-      if (auto no = _table.query(bc); no >= 0) return _grid(str, no, c - bc * side_length);
-      return _backgroundValue;
-    }
     void print() {
       if constexpr (dim == 2) {
         auto blockCnt = *_table._cnt;
@@ -150,15 +204,18 @@ namespace zs {
         }
       }
     }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto getReferencePosition(const VecInterface<VecT> &x) const noexcept {
+      // world-to-view: minus trans, div rotation, div scale
+      return (x - _i2wT) * _i2wRinv * _i2wSinv;
+    }
     constexpr T getSignedDistance(const TV &x) const noexcept {
       if (!_grid.hasProperty("sdf")) return limits<T>::max();
       /// world to local
       auto arena = Arena<T>::uniform(_backgroundValue);
       IV loc{};
-      TV X = x * _w2v;
-      // TV X = x / _dx;
+      TV X = getReferencePosition(x);
       for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
-      // for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
       TV diff = X - loc;
       if constexpr (dim == 2) {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
@@ -203,10 +260,8 @@ namespace zs {
       /// world to local
       auto arena = Arena<TV>::uniform(_backgroundVecValue);
       IV loc{};
-      TV X = x * _w2v;
-      // TV X = x / _dx;
+      TV X = getReferencePosition(x);
       for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
-      // for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
       TV diff = X - loc;
       if constexpr (dim == 2) {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
@@ -232,7 +287,7 @@ namespace zs {
           }
         }
       }
-      return trilinear_interop<0>(diff, arena);
+      return trilinear_interop<0>(diff, arena) * _i2wShat * _i2wRhat;
     }
     constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
@@ -254,7 +309,10 @@ namespace zs {
     HashTableView<Space, table_t> _table;
     grid_view_t _grid;
     TV _min, _max;
-    Affine _w2v;
+
+    TV _i2wT;
+    TM _i2wRinv, _i2wSinv;
+    TM _i2wRhat, _i2wShat;
   };
 
   template <execspace_e ExecSpace, int dim>

@@ -108,10 +108,9 @@ namespace zs {
                ret._backgroundValue, ret._dx, ret._min[0], ret._min[1], ret._min[2], ret._max[0],
                ret._max[1], ret._max[2]);
 
-    auto w2v = v2w.inverse();
-    vec<float, 4, 4> transform;
-    for (auto &&[r, c] : ndrange<2>(4)) transform(r, c) = w2v[r][c];  /// use [] for access
-    ret._w2v = transform;
+    vec<float, 4, 4> lsv2w;
+    for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
+    ret.resetTransformation(lsv2w);
 
     auto table = proxy<execspace_e::host>(ret._table);
     // auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);

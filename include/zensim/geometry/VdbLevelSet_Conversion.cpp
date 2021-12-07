@@ -61,10 +61,9 @@ namespace zs {
                leafCount, ret._backgroundValue, ret._dx, ret._min[0], ret._min[1], ret._min[2],
                ret._max[0], ret._max[1], ret._max[2]);
 
-    auto w2v = v2w.inverse();
-    vec<float, 4, 4> transform;
-    for (auto &&[r, c] : ndrange<2>(4)) transform(r, c) = w2v[r][c];  /// use [] for access
-    ret._w2v = transform;
+    vec<float, 4, 4> lsv2w;
+    for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
+    ret.resetTransformation(lsv2w);
 
     auto table = proxy<execspace_e::host>(ret._table);
     auto gridview = proxy<execspace_e::host>(ret._grid);
@@ -149,10 +148,32 @@ namespace zs {
                leafCount, ret._backgroundValue, ret._dx, ret._min[0], ret._min[1], ret._min[2],
                ret._max[0], ret._max[1], ret._max[2]);
 
-    auto w2v = v2w.inverse();
-    vec<float, 4, 4> transform;
-    for (auto &&[r, c] : ndrange<2>(4)) transform(r, c) = w2v[r][c];  /// use [] for access
-    ret._w2v = transform;
+    vec<float, 4, 4> lsv2w;
+    for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
+    ret.resetTransformation(lsv2w);
+
+#if 0
+    vec<float, 3, 3> scale;
+    Rotation<float, 3> rot;
+    vec<float, 3> trans;
+
+    math::decompose_transform(lsv2w, scale, rot, trans, 0);
+    fmt::print("scale: [{}, {}, {}; {}, {}, {}; {}, {}, {}]\n", scale(0, 0), scale(0, 1),
+               scale(0, 2), scale(1, 0), scale(1, 1), scale(1, 2), scale(2, 0), scale(2, 1),
+               scale(2, 2));
+    fmt::print("rotation: [{}, {}, {}; {}, {}, {}; {}, {}, {}]\n", rot(0, 0), rot(0, 1), rot(0, 2),
+               rot(1, 0), rot(1, 1), rot(1, 2), rot(2, 0), rot(2, 1), rot(2, 2));
+    fmt::print("translation: [{}, {}, {}]\n", trans(0), trans(1), trans(2));
+    {
+      auto [ST, RT, TT] = math::decompose_transform(lsv2w, 0);
+      auto V2W = ST * RT * TT;
+      fmt::print(
+          "recomposed v2w: [{}, {}, {}, {}; {}, {}, {}, {}; {}, {}, {}, {}; {}, {}, {}, {}]\n",
+          V2W(0, 0), V2W(0, 1), V2W(0, 2), V2W(0, 3), V2W(1, 0), V2W(1, 1), V2W(1, 2), V2W(1, 3),
+          V2W(2, 0), V2W(2, 1), V2W(2, 2), V2W(2, 3), V2W(3, 0), V2W(3, 1), V2W(3, 2), V2W(3, 3));
+    }
+    getchar();
+#endif
 
     auto table = proxy<execspace_e::host>(ret._table);
     auto gridview = proxy<execspace_e::host>(ret._grid);

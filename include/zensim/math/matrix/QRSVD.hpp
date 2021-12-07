@@ -5,7 +5,8 @@
 
 /// <summary>
 /// qrsvd
-///  ref: https://github.com/penn-graphics-research/ziran2020/blob/master/Lib/Ziran/Math/Linear/ImplicitQRSVD.h
+///  ref:
+///  https://github.com/penn-graphics-research/ziran2020/blob/master/Lib/Ziran/Math/Linear/ImplicitQRSVD.h
 /// </summary>
 
 namespace zs {
@@ -33,7 +34,8 @@ namespace zs {
     }
 
     template <typename VecT,
-              enable_if_all<VecT::dim == 2, VecT::template get_range<0>() == VecT::template get_range<1>(),
+              enable_if_all<VecT::dim == 2,
+                            VecT::template get_range<0>() == VecT::template get_range<1>(),
                             VecT::template get_range<0>() == 2,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A, GivensRotation<typename VecT::value_type>& U,
@@ -86,33 +88,6 @@ namespace zs {
       }
       U *= V;
       return S;
-    }
-
-    // Polar guarantees negative sign is on the small magnitude singular value.
-    // S is guaranteed to be the closest one to identity.
-    // R is guaranteed to be the closest rotation to A.
-    template <typename VecT,
-              enable_if_all<VecT::dim == 2, VecT::template get_range<0>() == VecT::template get_range<1>(),
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto polar_decomposition(const VecInterface<VecT>& A) noexcept {
-      using value_type = typename VecT::value_type;
-      constexpr auto N = VecT::template get_range<0>();
-      typename VecT::template variant_vec<value_type, typename VecT::extents> R{};
-      if constexpr (N == 1) {
-        R(0, 0) = 1;
-        return std::make_tuple(R, A.clone());
-      } else if constexpr (N == 2) {
-        GivensRotation<value_type> r{0, 1};
-        auto S = polar_decomposition(A, r);
-        r.fill(R);
-        return std::make_tuple(R, S);
-      } else if constexpr (N == 3) {
-        auto [U, S, V] = qr_svd(A);
-        R = U * V.transpose();
-        auto Ssym = ::zs::diag_mul(V, S) * V.transpose();
-        return std::make_tuple(R, Ssym);
-      } else
-        ;
     }
 
     namespace detail {
@@ -282,7 +257,8 @@ namespace zs {
     // S is guaranteed to be the closest one to identity.
     // R is guaranteed to be the closest rotation to A.
     template <typename VecT,
-              enable_if_all<VecT::dim == 2, VecT::template get_range<0>() == VecT::template get_range<1>(),
+              enable_if_all<VecT::dim == 2,
+                            VecT::template get_range<0>() == VecT::template get_range<1>(),
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
@@ -342,7 +318,7 @@ namespace zs {
           gamma[1] = alpha[1] * beta[1];
         }
 
-        if constexpr (true) {
+        if constexpr (false) {
           auto printMat = [](auto&& mat, std::string msg = "") {
             using Mat = RM_CVREF_T(mat);
             if (!msg.empty()) fmt::print("## msg: {}\n", msg);
@@ -465,6 +441,34 @@ namespace zs {
           detail::sort_sigma<1>(U, S, V);
         }
         return std::make_tuple(U, S, V);
+      } else
+        ;
+    }
+
+    // Polar guarantees negative sign is on the small magnitude singular value.
+    // S is guaranteed to be the closest one to identity.
+    // R is guaranteed to be the closest rotation to A.
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2,
+                            VecT::template get_range<0>() == VecT::template get_range<1>(),
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto polar_decomposition(const VecInterface<VecT>& A) noexcept {
+      using value_type = typename VecT::value_type;
+      constexpr auto N = VecT::template get_range<0>();
+      typename VecT::template variant_vec<value_type, typename VecT::extents> R{};
+      if constexpr (N == 1) {
+        R(0, 0) = 1;
+        return std::make_tuple(R, A.clone());
+      } else if constexpr (N == 2) {
+        GivensRotation<value_type> r{0, 1};
+        auto S = polar_decomposition(A, r);
+        r.fill(R);
+        return std::make_tuple(R, S);
+      } else if constexpr (N == 3) {
+        auto [U, S, V] = qr_svd(A);
+        R = U * V.transpose();
+        auto Ssym = ::zs::diag_mul(V, S) * V.transpose();
+        return std::make_tuple(R, Ssym);
       } else
         ;
     }

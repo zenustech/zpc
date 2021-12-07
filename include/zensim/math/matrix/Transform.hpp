@@ -3,13 +3,13 @@
 
 namespace zs::math {
 
-template <typename VecTM,
-            enable_if_all<VecTM::dim == 2, (VecTM::template get_range<0>() == VecTM::template get_range<1>()) > = 0>
-  constexpr auto decompose_transform(const VecInterface<VecTM>& m,
+  template <typename VecTM, enable_if_all<VecTM::dim == 2, (VecTM::template get_range<0>()
+                                                            == VecTM::template get_range<1>())> = 0>
+  constexpr auto decompose_transform(const VecInterface<VecTM> &m,
                                      bool applyOnColumn = true) noexcept {
     constexpr auto dim = VecTM::template get_range<0>() - 1;
-  static_assert(VecTM::template get_range<0>() <= 4 && (VecTM::template get_range<0>() > 1),
-                "transformation should be of 2x2, 3x3 or 4x4 shape only.");
+    static_assert(VecTM::template get_range<0>() <= 4 && (VecTM::template get_range<0>() > 1),
+                  "transformation should be of 2x2, 3x3 or 4x4 shape only.");
     using Mat = decltype(m.clone());
     using ValT = typename VecTM::value_type;
     using Tn = typename VecTM::index_type;
@@ -33,7 +33,47 @@ template <typename VecTM,
         S(i, j) = S_(i, j);
       }
     R(dim, dim) = S(dim, dim) = (ValT)1;
-    return std::make_tuple(T, R, S);
+    if (applyOnColumn) return std::make_tuple(T, R, S);
+    return std::make_tuple(S.transpose(), R.transpose(), T.transpose());
   }
 
-}
+  template <
+      typename VecTM, typename VecTS, typename VecTR, typename VecTT,
+      enable_if_all<
+          VecTM::dim == 2, VecTM::template get_range<0>() == VecTM::template get_range<1>(),
+          VecTS::dim == 2, VecTS::template get_range<0>() + 1 == VecTM::template get_range<0>(),
+          VecTS::template get_range<1>() + 1 == VecTM::template get_range<0>(), VecTR::dim == 2,
+          VecTR::template get_range<0>() + 1 == VecTM::template get_range<0>(),
+          VecTR::template get_range<1>() + 1 == VecTM::template get_range<0>(), VecTT::dim == 1,
+          VecTT::template get_range<0>() + 1 == VecTM::template get_range<0>(),
+          std::is_floating_point_v<typename VecTM::value_type>,
+          std::is_floating_point_v<typename VecTS::value_type>,
+          std::is_floating_point_v<typename VecTR::value_type>,
+          std::is_floating_point_v<typename VecTT::value_type>> = 0>
+  constexpr void decompose_transform(const VecInterface<VecTM> &m, VecInterface<VecTS> &s,
+                                     VecInterface<VecTR> &r, VecInterface<VecTT> &t,
+                                     bool applyOnColumn = true) noexcept {
+    constexpr auto dim = VecTM::template get_range<0>() - 1;
+    static_assert(VecTM::template get_range<0>() <= 4 && (VecTM::template get_range<0>() > 1),
+                  "transformation should be of 2x2, 3x3 or 4x4 shape only.");
+    using Mat = decltype(m.clone());
+    using ValT = typename VecTM::value_type;
+    using Tn = typename VecTM::index_type;
+    auto H = m.clone();
+    if (!applyOnColumn) H = H.transpose();
+    // T
+    for (Tn i = 0; i != dim; ++i) t(i) = H(i, dim);
+    // RS
+    typename VecTM::template variant_vec<ValT, integer_seq<Tn, dim, dim>> L{};
+    for (Tn i = 0; i != dim; ++i)
+      for (Tn j = 0; j != dim; ++j) L(i, j) = H(i, j);
+    auto [R_, S_] = polar_decomposition(L);
+
+    for (Tn i = 0; i != dim; ++i)
+      for (Tn j = 0; j != dim; ++j) {
+        r(i, j) = R_(i, j);
+        s(i, j) = S_(i, j);
+      }
+  }
+
+}  // namespace zs::math

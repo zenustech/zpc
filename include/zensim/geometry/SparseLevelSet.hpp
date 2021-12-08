@@ -166,7 +166,7 @@ namespace zs {
           _i2wRhat{ls._i2wRhat},
           _i2wShat{ls._i2wShat} {}
 
-    void print() {
+    template <auto S = Space, enable_if_t<S == execspace_e::host> = 0> void print() {
       if constexpr (dim == 2) {
         auto blockCnt = *_table._cnt;
         using Ti = RM_CVREF_T(blockCnt);
@@ -226,26 +226,22 @@ namespace zs {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
-          blockid = blockid / side_length;
+          for (int d = 0; d != dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
           auto blockno = _table.query(blockid);
-          if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = _grid("sdf", blockno, coord - blockid * side_length);
-          }
+          if (blockno != table_t::sentinel_v)
+            arena(dx, dy) = _grid("sdf", blockno, coord - blockid);
         }
       } else if constexpr (dim == 3) {
         for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
-          blockid = blockid / side_length;
+          for (int d = 0; d != dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
           auto blockno = _table.query(blockid);
-          if (blockno != table_t::sentinel_v) {
-            arena(dx, dy, dz) = _grid("sdf", blockno, coord - blockid * side_length);
-          }
+          if (blockno != table_t::sentinel_v)
+            arena(dx, dy, dz) = _grid("sdf", blockno, coord - blockid);
         }
       }
-      return trilinear_interop<0>(diff, arena);
+      return xlerp<0>(diff, arena);
     }
     constexpr TV getNormal(const TV &X) const noexcept {
       TV diff{}, v1{}, v2{};
@@ -272,38 +268,33 @@ namespace zs {
         for (auto &&[dx, dy] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
-          blockid = blockid / side_length;
+          for (int d = 0; d < dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
           auto blockno = _table.query(blockid);
           if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = _grid.template pack<dim>("vel", blockno, coord - blockid * side_length);
+            arena(dx, dy) = _grid.template pack<dim>("vel", blockno, coord - blockid);
           }
         }
       } else if constexpr (dim == 3) {
         for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
           IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
           auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] += (coord[d] < 0 ? -side_length + 1 : 0);
-          blockid = blockid / side_length;
+          for (int d = 0; d != dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
           auto blockno = _table.query(blockid);
-          if (blockno != table_t::sentinel_v) {
-            arena(dx, dy, dz)
-                = _grid.template pack<dim>("vel", blockno, coord - blockid * side_length);
-          }
+          if (blockno != table_t::sentinel_v)
+            arena(dx, dy, dz) = _grid.template pack<dim>("vel", blockno, coord - blockid);
         }
       }
-      return trilinear_interop<0>(diff, arena) * _i2wShat * _i2wRhat;
+      return xlerp<0>(diff, arena) * _i2wShat * _i2wRhat;
     }
     constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
     template <std::size_t d, typename Field, enable_if_t<(d == dim - 1)> = 0>
-    constexpr auto trilinear_interop(const TV &diff, const Field &arena) const noexcept {
+    constexpr auto xlerp(const TV &diff, const Field &arena) const noexcept {
       return linear_interop(diff(d), arena(0), arena(1));
     }
     template <std::size_t d, typename Field, enable_if_t<(d != dim - 1)> = 0>
-    constexpr auto trilinear_interop(const TV &diff, const Field &arena) const noexcept {
-      return linear_interop(diff(d), trilinear_interop<d + 1>(diff, arena[0]),
-                            trilinear_interop<d + 1>(diff, arena[1]));
+    constexpr auto xlerp(const TV &diff, const Field &arena) const noexcept {
+      return linear_interop(diff(d), xlerp<d + 1>(diff, arena[0]), xlerp<d + 1>(diff, arena[1]));
     }
 
     T _dx;

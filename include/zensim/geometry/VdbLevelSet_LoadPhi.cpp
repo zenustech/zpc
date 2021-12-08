@@ -107,8 +107,7 @@ namespace zs {
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
         auto blockid = coord;
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
-        blockid = blockid / ret.side_length;
+          blockid[d] -= (coord[d] & (ret.side_length - 1));
         auto blockno = table.insert(blockid);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
@@ -156,7 +155,7 @@ namespace zs {
         const auto offset = (int)blockno * (int)spls.block_size + cid;
         const auto sdfVal = gridview.voxel("sdf", offset);
         if (sdfVal == spls._backgroundValue) continue;
-        const auto coord = blockid * (int)spls.side_length + GridT::cellid_to_coord(cid);
+        const auto coord = blockid + GridT::cellid_to_coord(cid);
         // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
         accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
       }

@@ -71,11 +71,10 @@ namespace zs {
       if (node.onVoxelCount() > 0) {
         auto cell = node.beginValueOn();
         IV coord{};
-        for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
+        for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
         auto blockid = coord;
-        for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
-        blockid = blockid / ret.side_length;
+        for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d)
+          blockid[d] -= (coord[d] & (ret.side_length - 1));
         auto blockno = table.insert(blockid);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
@@ -179,11 +178,10 @@ namespace zs {
       if (node.onVoxelCount() > 0) {
         auto cell = node.beginValueOn();
         IV coord{};
-        for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
+        for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
         auto blockid = coord;
-        for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
-        blockid = blockid / ret.side_length;
+        for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d)
+          blockid[d] -= (coord[d] & (ret.side_length - 1));
         auto blockno = table.insert(blockid);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {

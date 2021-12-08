@@ -44,8 +44,8 @@ namespace zs {
     constexpr void operator()(size_type cellid) noexcept {
       size_type blockid = cellid / grid_view_t::block_space();
       cellid %= grid_view_t::block_space();
-      auto coord = ls._table._activeKeys[blockid] * side_length
-                   + ls._grid.cellid_to_coord(cellid).template cast<int>();
+      auto coord
+          = ls._table._activeKeys[blockid] + ls._grid.cellid_to_coord(cellid).template cast<int>();
 
       auto block = ls._grid.block(blockid);
 
@@ -62,8 +62,7 @@ namespace zs {
 
             auto neighborBlockid = neighborCoord;
             for (int d = 0; d != dim; ++d)
-              neighborBlockid[d] += (neighborCoord[d] < 0 ? -side_length + 1 : 0);
-            neighborBlockid = neighborBlockid / side_length;
+              neighborBlockid[d] -= (neighborCoord[d] & (side_length - 1));
 
             auto neighborNo = ls._table.query(neighborBlockid);
             if (neighborNo < 0) {
@@ -99,8 +98,8 @@ namespace zs {
     constexpr void operator()(size_type cellid) noexcept {
       size_type blockid = cellid / grid_view_t::block_space();
       cellid %= grid_view_t::block_space();
-      auto coord = ls._table._activeKeys[blockid] * side_length
-                   + ls._grid.cellid_to_coord(cellid).template cast<int>();
+      auto coord
+          = ls._table._activeKeys[blockid] + ls._grid.cellid_to_coord(cellid).template cast<int>();
 
       auto block = ls._grid.block(blockid);
 
@@ -117,8 +116,7 @@ namespace zs {
 
             auto neighborBlockid = neighborCoord;
             for (int d = 0; d != dim; ++d)
-              neighborBlockid[d] += (neighborCoord[d] < 0 ? -side_length + 1 : 0);
-            neighborBlockid = neighborBlockid / side_length;
+              neighborBlockid[d] -= (neighborCoord[d] & (side_length - 1));
 
             auto neighborNo = ls._table.query(neighborBlockid);
 #if 0
@@ -128,7 +126,7 @@ namespace zs {
                      (int)neighborNo);
 #endif
 
-            neighborCoord -= neighborBlockid * side_length;
+            neighborCoord -= neighborBlockid;
             auto neighborBlock = ls._grid.block(neighborNo);
             if (neighborBlock("mask", neighborCoord) == 0) {
               neighborBlock("tagmask", neighborCoord) = 1;
@@ -164,8 +162,8 @@ namespace zs {
       size_type cellid = seeds[id];
       size_type blockid = cellid / grid_view_t::block_space();
       cellid %= grid_view_t::block_space();
-      auto coord = ls._table._activeKeys[blockid] * side_length
-                   + ls._grid.cellid_to_coord(cellid).template cast<int>();
+      auto coord
+          = ls._table._activeKeys[blockid] + ls._grid.cellid_to_coord(cellid).template cast<int>();
       auto block = ls._grid.block(blockid);
 
       if (block("mask", cellid) == 1) return;
@@ -182,15 +180,14 @@ namespace zs {
 
             auto neighborBlockid = neighborCoord;
             for (int d = 0; d != dim; ++d)
-              neighborBlockid[d] += (neighborCoord[d] < 0 ? -side_length + 1 : 0);
-            neighborBlockid = neighborBlockid / side_length;
+              neighborBlockid[d] -= (neighborCoord[d] & (side_length - 1));
             auto neighborNo = ls._table.query(neighborBlockid);
             if (neighborNo < 0) {
               continue;  // neighbor not found
             }
             auto neighborBlock = ls._grid.block(neighborNo);
 
-            neighborCoord -= neighborBlockid * side_length;
+            neighborCoord -= neighborBlockid;
             if (neighborBlock("tagmask", neighborCoord) == 0
                 || neighborBlock("tag", neighborCoord) == 0)
               continue;  // neighbor sdf not yet computed

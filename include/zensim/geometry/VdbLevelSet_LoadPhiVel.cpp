@@ -75,8 +75,8 @@ namespace zs {
       ret._backgroundVecValue = TV{v[0], v[1], v[2]};
     }
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
-    ret._grid = typename SpLs::grid_t{
-        {{"sdf", 1}, {"vel", 3}, {"mask", 1}}, ret._dx, leafCount, memsrc_e::host, -1};
+    ret._grid =
+        typename SpLs::grid_t{{{"sdf", 1}, {"vel", 3}}, ret._dx, leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = sdfGridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -130,8 +130,7 @@ namespace zs {
 
         auto blockid = coord;
         for (int d = 0; d < SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] += (coord[d] < 0 ? -ret.side_length + 1 : 0);
-        blockid = blockid / ret.side_length;
+          blockid[d] -= (coord[d] & (ret.side_length - 1));
         auto blockno = table.insert(blockid);
 
         RM_CVREF_T(blockno) cellid = 0;
@@ -143,7 +142,6 @@ namespace zs {
           const auto offset = blockno * ret.block_size + cellid;
           gridview.voxel("sdf", offset) = sdf;
           gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
-          gridview.voxel("mask", offset) = sdfCell.isValueOn() ? 1 : 0;
         }
       }
     }

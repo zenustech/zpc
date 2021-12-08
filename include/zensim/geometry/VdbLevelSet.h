@@ -31,10 +31,7 @@ namespace zs {
   bool writeFloatGridToVdbFile(std::string_view fn, const OpenVDBStruct &grid);
 
   /// floatgrid
-  SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid);
-  SparseLevelSet<3> convertFloatGridToSparseLevelSet(const OpenVDBStruct &grid,
-                                                     const MemoryHandle mh);
-  OpenVDBStruct convertSparseLevelSetToFloatGrid(const SparseLevelSet<3> &grid);
+  OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SparseLevelSet<3> &grid);
 
   SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);
   SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid,

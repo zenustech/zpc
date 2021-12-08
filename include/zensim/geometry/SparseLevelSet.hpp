@@ -20,9 +20,9 @@ namespace zs {
     using TV = vec<value_type, dim>;
     using TM = vec<value_type, dim, dim>;
     using Affine = vec<value_type, dim + 1, dim + 1>;
-    using table_t = HashTable<index_type, dim, i64>;
     using grid_t = Grid<value_type, dim, side_length, category>;
     using size_type = typename grid_t::size_type;
+    using table_t = HashTable<index_type, dim, size_type>;
     static constexpr auto block_size = grid_traits<grid_t>::block_size;
 
     constexpr SparseLevelSet() = default;
@@ -116,20 +116,29 @@ namespace zs {
   struct SparseLevelSetView<Space, SparseLevelSetT>
       : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>,
                           typename SparseLevelSetT::value_type, SparseLevelSetT::dim> {
-    using value_type = typename SparseLevelSetT::value_type;
-    using size_type = typename SparseLevelSetT::size_type;
-    using table_t = typename SparseLevelSetT::table_t;
-    using grid_t = typename SparseLevelSetT::grid_t;
-    using grid_view_t = RM_CVREF_T(proxy<Space>({}, std::declval<grid_t &>()));
-    using T = typename SparseLevelSetT::value_type;
-    using Ti = typename SparseLevelSetT::index_type;
-    using TV = typename SparseLevelSetT::TV;
-    using TM = typename SparseLevelSetT::TM;
-    using IV = typename SparseLevelSetT::IV;
-    using Affine = typename SparseLevelSetT::Affine;
-    static constexpr int dim = SparseLevelSetT::dim;
-    static constexpr auto side_length = SparseLevelSetT::side_length;
-    static constexpr auto block_size = SparseLevelSetT::block_size;
+    static constexpr bool is_const_structure = std::is_const_v<SparseLevelSetT>;
+    using ls_t = std::remove_const_t<SparseLevelSetT>;
+    using value_type = typename ls_t::value_type;
+    using size_type = typename ls_t::size_type;
+    using table_t = typename ls_t::table_t;
+    using table_view_t = RM_CVREF_T(proxy<Space>(
+        std::declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
+    using grid_t = typename ls_t::grid_t;
+    using grid_view_t = RM_CVREF_T(proxy<Space>(
+        {}, std::declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
+
+    using T = typename ls_t::value_type;
+    using Ti = typename ls_t::index_type;
+    using TV = typename ls_t::TV;
+    using TM = typename ls_t::TM;
+    using IV = typename ls_t::IV;
+    using Affine = typename ls_t::Affine;
+
+    static constexpr grid_e category = grid_t::category;
+    static constexpr int dim = ls_t::dim;
+    static constexpr auto side_length = ls_t::side_length;
+    static constexpr auto block_size = ls_t::block_size;
+    static_assert(grid_t::is_power_of_two, "block_size should be power of 2");
 
     template <typename Val, std::size_t... Is>
     static constexpr auto arena_type_impl(index_seq<Is...>) {
@@ -148,7 +157,7 @@ namespace zs {
           _backgroundValue{ls._backgroundValue},
           _backgroundVecValue{ls._backgroundVecValue},
           _table{proxy<Space>(ls._table)},
-          _grid{proxy<Space>(ls._grid)},
+          _grid{proxy<Space>({}, ls._grid)},
           _min{ls._min},
           _max{ls._max},
           _i2wT{ls._i2wT},
@@ -300,7 +309,7 @@ namespace zs {
     T _dx;
     T _backgroundValue;
     TV _backgroundVecValue;
-    HashTableView<Space, table_t> _table;
+    table_view_t _table;
     grid_view_t _grid;
     TV _min, _max;
 
@@ -318,6 +327,10 @@ namespace zs {
   template <execspace_e ExecSpace, int dim>
   constexpr decltype(auto) proxy(SparseLevelSet<dim> &levelset) {
     return SparseLevelSetView<ExecSpace, SparseLevelSet<dim>>{levelset};
+  }
+  template <execspace_e ExecSpace, int dim>
+  constexpr decltype(auto) proxy(const SparseLevelSet<dim> &levelset) {
+    return SparseLevelSetView<ExecSpace, const SparseLevelSet<dim>>{levelset};
   }
 
 }  // namespace zs

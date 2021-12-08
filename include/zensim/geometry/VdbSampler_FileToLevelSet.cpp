@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <numeric>
 
-#include "LevelSet.h"
+#include "VdbLevelSet.h"
 #include "VdbSampler.h"
 #include "zensim/Logger.hpp"
 

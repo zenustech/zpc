@@ -7,9 +7,10 @@
 #include <openvdb/tools/MeshToVolume.h>
 
 #include <algorithm>
+#include <fstream>
 #include <numeric>
 
-#include "LevelSet.h"
+#include "VdbLevelSet.h"
 #include "VdbSampler.h"
 #include "zensim/Logger.hpp"
 

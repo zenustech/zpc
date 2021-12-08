@@ -1,13 +1,14 @@
 #pragma once
 #include <type_traits>
 
-#include "LevelSet.h"
 #include "LevelSetInterface.h"
 #include "SparseLevelSet.hpp"
+#include "VdbLevelSet.h"
 #include "zensim/container/RingBuffer.hpp"
 
 namespace zs {
 
+#if 0
   template <int WindowSize, typename DataType, int dim_, typename Tn = int> struct LevelSetSequence
       : RingBuffer<LevelSet<DataType, dim_, Tn>, WindowSize> {
     static constexpr int dim = dim_;
@@ -52,6 +53,7 @@ namespace zs {
   protected:
     T dt, alpha;  ///< [0, 1]
   };
+#endif
 
   template <typename LS> struct LevelSetWindow {
     using ls_t = LS;

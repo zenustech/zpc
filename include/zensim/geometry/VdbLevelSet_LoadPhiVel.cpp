@@ -11,7 +11,7 @@
 
 namespace zs {
 
-  OpenVDBStruct loadVec3fGridFromVdbFile(const std::string &fn) {
+  OpenVDBStruct load_vec3fgrid_from_vdb_file(const std::string &fn) {
     using GridType = openvdb::Vec3fGrid;
     openvdb::io::File file(fn);
     file.open();

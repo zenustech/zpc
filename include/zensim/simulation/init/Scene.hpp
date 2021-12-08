@@ -1,8 +1,8 @@
 #pragma once
 #include "zensim/geometry/Collider.h"
-#include "zensim/geometry/LevelSet.h"
 #include "zensim/geometry/Structure.hpp"
 #include "zensim/geometry/Structurefree.hpp"
+#include "zensim/geometry/VdbLevelSet.h"
 #include "zensim/math/Vec.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
 #include "zensim/tpls/magic_enum/magic_enum.hpp"
@@ -123,7 +123,7 @@ namespace zs {
     std::vector<AnalyticLevelSet<analytic_geometry_e::Plane, float, 3>> planes;
     std::vector<AnalyticLevelSet<analytic_geometry_e::Cuboid, float, 3>> cuboids;
     std::vector<AnalyticLevelSet<analytic_geometry_e::Sphere, float, 3>> spheres;
-    std::vector<LevelSet<float, 3>> vdbLevelsets;
+    // std::vector<LevelSet<float, 3>> vdbLevelsets;
     std::vector<SparseLevelSet<3>> sparseLevelSets;
     collider_e boundaryType{collider_e::Sticky};
   };

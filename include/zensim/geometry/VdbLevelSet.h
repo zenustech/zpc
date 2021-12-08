@@ -26,8 +26,8 @@ namespace zs {
     std::any object;
   };
 
-  OpenVDBStruct loadFloatGridFromVdbFile(const std::string &fn);
-  OpenVDBStruct loadVec3fGridFromVdbFile(const std::string &fn);
+  OpenVDBStruct load_floatgrid_from_vdb_file(const std::string &fn);
+  OpenVDBStruct load_vec3fgrid_from_vdb_file(const std::string &fn);
   bool writeFloatGridToVdbFile(std::string_view fn, const OpenVDBStruct &grid);
 
   /// floatgrid

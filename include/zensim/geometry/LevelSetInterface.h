@@ -8,12 +8,12 @@ namespace zs {
     using base_t = BoundingVolumeInterface<Derived, T, dim>;
     using TV = typename base_t::TV;
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {
-      return selfPtr()->getSignedDistance(X);
+    constexpr T getSignedDistance(const TV &x) const noexcept {
+      return selfPtr()->getSignedDistance(x);
     }
-    constexpr TV getNormal(const TV &X) const noexcept { return selfPtr()->getNormal(X); }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept {
-      return selfPtr()->getMaterialVelocity(X);
+    constexpr TV getNormal(const TV &x) const noexcept { return selfPtr()->getNormal(x); }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
+      return selfPtr()->getMaterialVelocity(x);
     }
     using base_t::getBoundingBox;
     using base_t::getBoxCenter;

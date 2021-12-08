@@ -40,9 +40,9 @@ namespace zs {
       }
       return TV{1};
     }
-    IV worldToIndexSpace(const TV &X, T h) const {
+    IV worldToIndexSpace(const TV &x, T h) const {
       IV idx{};
-      for (int d = 0; d < dim; ++d) idx[d] = std::floor((X[d] - minCorner[d]) / h);
+      for (int d = 0; d < dim; ++d) idx[d] = std::floor((x[d] - minCorner[d]) / h);
       return idx;
     }
     /**

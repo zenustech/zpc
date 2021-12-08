@@ -232,15 +232,15 @@ namespace zs {
       }
       return xlerp<0>(diff, arena);
     }
-    constexpr TV getNormal(const TV &X) const noexcept {
+    constexpr TV getNormal(const TV &x) const noexcept {
       TV diff{}, v1{}, v2{};
       T eps = (T)1e-6;
       /// compute a local partial derivative
       for (int i = 0; i != dim; i++) {
-        v1 = X;
-        v2 = X;
-        v1(i) = X(i) + eps;
-        v2(i) = X(i) - eps;
+        v1 = x;
+        v2 = x;
+        v1(i) = x(i) + eps;
+        v2(i) = x(i) - eps;
         diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
       }
       return diff.normalized();

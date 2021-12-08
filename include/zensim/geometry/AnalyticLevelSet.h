@@ -21,9 +21,9 @@ namespace zs {
     constexpr AnalyticLevelSet(TV origin, TV normal)
         : _origin{origin}, _normal{normal.normalized()} {}
 
-    constexpr T getSignedDistance(const TV &X) const noexcept { return _normal.dot(X - _origin); }
-    constexpr TV getNormal(const TV &X) const noexcept { return _normal; }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr T getSignedDistance(const TV &x) const noexcept { return _normal.dot(x - _origin); }
+    constexpr TV getNormal(const TV &x) const noexcept { return _normal; }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_origin, _origin);
     }
@@ -44,28 +44,28 @@ namespace zs {
     constexpr AnalyticLevelSet(TV center, T len)
         : _min{center - (len / 2)}, _max{center + (len / 2)} {}
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {
+    constexpr T getSignedDistance(const TV &x) const noexcept {
       TV center = (_min + _max) / 2;
-      TV point = (X - center).abs() - (_max - _min) / 2;
+      TV point = (x - center).abs() - (_max - _min) / 2;
       T max = point.max();
       for (int i = 0; i < dim; ++i)
         if (point(i) < 0) point(i) = 0;  ///< inside the box
       return (max < 0 ? max : 0) + point.length();
     }
-    constexpr TV getNormal(const TV &X) const noexcept {
+    constexpr TV getNormal(const TV &x) const noexcept {
       TV diff{}, v1{}, v2{};
       T eps = (T)1e-6;
       /// compute a local partial derivative
       for (int i = 0; i < dim; i++) {
-        v1 = X;
-        v2 = X;
-        v1(i) = X(i) + eps;
-        v2(i) = X(i) - eps;
+        v1 = x;
+        v2 = x;
+        v1(i) = x(i) + eps;
+        v2(i) = x(i) - eps;
         diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
       }
       return diff.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_min, _max);
     }
@@ -84,15 +84,15 @@ namespace zs {
     ~AnalyticLevelSet() = default;
     constexpr AnalyticLevelSet(TV center, T radius) : _center{center}, _radius{radius} {}
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {
-      return (X - _center).length() - _radius;
+    constexpr T getSignedDistance(const TV &x) const noexcept {
+      return (x - _center).length() - _radius;
     }
-    constexpr TV getNormal(const TV &X) const noexcept {
-      TV outward_normal = X - _center;
+    constexpr TV getNormal(const TV &x) const noexcept {
+      TV outward_normal = x - _center;
       if (outward_normal.l2NormSqr() < (T)1e-7) return TV::zeros();
       return outward_normal.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_center - _radius, _center + _radius);
     }
@@ -115,21 +115,21 @@ namespace zs {
     constexpr AnalyticLevelSet(TV bottom, T radius, T length, int ori)
         : _bottom{bottom}, _radius{radius}, _length{length}, _d{ori} {}
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {
+    constexpr T getSignedDistance(const TV &x) const noexcept {
       vec<T, dim - 1> diffR{};
       for (int k = 0, i = 0; k != dim; ++k)
-        if (k != _d) diffR[i++] = X[k] - _bottom[k];
+        if (k != _d) diffR[i++] = x[k] - _bottom[k];
       auto disR = zs::sqrt(diffR.l2NormSqr());
       bool outsideCircle = disR > _radius;
 
-      if (X[_d] < _bottom[_d]) {
-        T disL = _bottom[_d] - X[_d];
+      if (x[_d] < _bottom[_d]) {
+        T disL = _bottom[_d] - x[_d];
         if (outsideCircle)
           return zs::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
         else
           return disL;
-      } else if (X[_d] > _bottom[_d] + _length) {
-        T disL = X[_d] - (_bottom[_d] + _length);
+      } else if (x[_d] > _bottom[_d] + _length) {
+        T disL = x[_d] - (_bottom[_d] + _length);
         if (outsideCircle)
           return zs::sqrt((disR - _radius) * (disR - _radius) + disL * disL);
         else
@@ -138,25 +138,25 @@ namespace zs {
         if (outsideCircle)
           return disR - _radius;
         else {
-          T disL = std::min(_bottom[_d] + _length - X[_d], X[_d] - _bottom[_d]);
+          T disL = std::min(_bottom[_d] + _length - x[_d], x[_d] - _bottom[_d]);
           return -std::min(disL, _radius - disR);
         }
       }
     }
-    constexpr TV getNormal(const TV &X) const noexcept {
+    constexpr TV getNormal(const TV &x) const noexcept {
       TV diff{}, v1{}, v2{};
       T eps = (T)1e-6;
       /// compute a local partial derivative
       for (int i = 0; i < dim; i++) {
-        v1 = X;
-        v2 = X;
-        v1(i) = X(i) + eps;
-        v2(i) = X(i) - eps;
+        v1 = x;
+        v2 = x;
+        v1(i) = x(i) + eps;
+        v2(i) = x(i) - eps;
         diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
       }
       return diff.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       auto diffR = TV::uniform(_radius);
       diffR[_d] = (T)0;

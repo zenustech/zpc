@@ -65,12 +65,12 @@ namespace zs {
       return (T)1;
     }
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {
+    constexpr T getSignedDistance(const TV &x) const noexcept {
       /// world to local
       Arena arena{};
       IV loc{};
-      for (int d = 0; d < dim; ++d) loc(d) = zs::floor((X(d) - _min(d)) / _dx);
-      TV diff = (X - _min) / _dx - loc;
+      for (int d = 0; d < dim; ++d) loc(d) = zs::floor((x(d) - _min(d)) / _dx);
+      TV diff = (x - _min) / _dx - loc;
       {
         for (Tn dx = 0; dx < 2; dx++)
           for (Tn dy = 0; dy < 2; dy++)
@@ -84,8 +84,8 @@ namespace zs {
       }
       return trilinear_interop<0>(diff, arena);
     }
-    constexpr TV getNormal(const TV &X) const noexcept { return TV{0, 1, 0}; }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept { return TV::zeros(); }
+    constexpr TV getNormal(const TV &x) const noexcept { return TV{0, 1, 0}; }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
     constexpr decltype(auto) getBoundingBox() const noexcept {
       return std::make_tuple(_min, _min + _extent * _dx);
     }
@@ -96,6 +96,85 @@ namespace zs {
   private:
     T *_field;
     TV _min;
+  };
+
+  ///
+  /// special purpose levelset views
+  ///
+  template <typename SdfLsView, typename VelLsView> struct SdfVelField
+      : LevelSetInterface<SdfVelField<SdfLsView, VelLsView>, typename SdfLsView::T,
+                          SdfLsView::dim> {
+    static_assert(SdfLsView::dim == VelLsView::dim, "dimension mismatch!");
+    static_assert(std::is_floating_point_v<
+                      typename SdfLsView::T> && std::is_floating_point_v<typename VelLsView::T>,
+                  "levelset not in floating point type!");
+
+    using T = typename SdfLsView::T;
+    static constexpr int dim = SdfLsView::dim;
+    using TV = vec<T, dim>;
+
+    constexpr SdfVelField(const SdfLsView &sdf, const VelLsView &vel) noexcept
+        : _sdf(sdf), _vel(vel) {}
+
+    /// bounding volume interface
+    constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
+      return _sdf.getBoundingBox();
+    }
+    constexpr TV do_getBoxCenter() const noexcept { return _sdf.getBoxCenter(); }
+    constexpr TV do_getBoxSideLengths() const noexcept { return _sdf.getBoxSideLengths(); }
+    constexpr TV do_getUniformCoord(const TV &pos) const noexcept {
+      return _sdf.getUniformCoord(pos);
+    }
+    /// levelset interface
+    constexpr T getSignedDistance(const TV &x) const noexcept { return _sdf.getSignedDistance(x); }
+    constexpr TV getNormal(const TV &x) const noexcept { return _sdf.getNormal(x); }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
+      return _vel.getMaterialVelocity(x);  // this is special
+    }
+
+    SdfLsView _sdf;
+    VelLsView _vel;
+  };
+
+  template <typename LsView> struct TransitionLevelSet
+      : LevelSetInterface<TransitionLevelSet<LsView>, typename LsView::T, LsView::dim> {
+    static_assert(std::is_floating_point_v<typename LsView::T>,
+                  "levelset not in floating point type!");
+
+    using T = typename LsView::T;
+    static constexpr int dim = LsView::dim;
+    using TV = vec<T, dim>;
+
+    constexpr TransitionLevelSet(const LsView &lsvSrc, const LsView &lsvDst, const T stepDt,
+                                 const T alpha = (T)0) noexcept
+        : _lsvSrc{lsvSrc}, _lsvDst{lsvDst}, _stepDt{stepDt}, _alpha{alpha} {}
+
+    /// bounding volume interface
+    constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
+      return _lsvSrc.getBoundingBox();
+    }
+    constexpr TV do_getBoxCenter() const noexcept { return _lsvSrc.getBoxCenter(); }
+    constexpr TV do_getBoxSideLengths() const noexcept { return _lsvSrc.getBoxSideLengths(); }
+    constexpr TV do_getUniformCoord(const TV &pos) const noexcept {
+      return _lsvSrc.getUniformCoord(pos);
+    }
+    /// levelset interface
+    constexpr T getSignedDistance(const TV &x) const noexcept {
+      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) / 2;
+      TV x0 = x - _alpha * _stepDt * v, x1 = x + (1 - _alpha) * _stepDt * v;
+      return ((T)1 - _alpha) * _lsvSrc.getSignedDistance(x0)
+             + _alpha * _lsvDst.getSignedDistance(x1);
+    }
+    constexpr TV getNormal(const TV &x) const noexcept { return _lsvSrc.getNormal(x); }
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
+      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) / 2;
+      TV x0 = x - _alpha * _stepDt * v, x1 = x + (1 - _alpha) * _stepDt * v;
+      return ((T)1 - _alpha) * _lsvSrc.getMaterialVelocity(x0)
+             + _alpha * _lsvDst.getMaterialVelocity(x1);
+    }
+
+    LsView _lsvSrc, _lsvDst;
+    T _stepDt, _alpha;
   };
 
 }  // namespace zs

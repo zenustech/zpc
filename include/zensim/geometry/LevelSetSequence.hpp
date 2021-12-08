@@ -33,17 +33,17 @@ namespace zs {
 
     constexpr void setDt(T dtIn) noexcept { dt = dtIn; }
     constexpr void setAlpha(T ratio) noexcept { alpha = ratio; }
-    constexpr T getSignedDistance(const TV &X) const noexcept {
+    constexpr T getSignedDistance(const TV &x) const noexcept {
       TV v = (ls(0).getMaterialVelocity(X) + ls(1).getMaterialVelocity(X)) / 2;
       TV X0 = X - alpha * dt * v, X1 = X + (1 - alpha) * dt * v;
       return (1 - alpha) * ls(0).getSignedDistance(X0) + alpha * ls(1).getSignedDistance(X1);
     }
-    constexpr TV getNormal(const TV &X) const noexcept {
+    constexpr TV getNormal(const TV &x) const noexcept {
       TV v = (ls(0).getMaterialVelocity(X) + ls(1).getMaterialVelocity(X)) / 2;
       TV X0 = X - alpha * dt * v, X1 = X + (1 - alpha) * dt * v;
       return (1 - alpha) * ls(0).getNormal(X0) + alpha * ls(1).getNormal(X1);
     }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept {
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
       TV v = (ls(0).getMaterialVelocity(X) + ls(1).getMaterialVelocity(X)) / 2;
       TV X0 = X - alpha * dt * v, X1 = X + (1 - alpha) * dt * v;
       return (1 - alpha) * ls(0).getMaterialVelocity(X0) + alpha * ls(1).getMaterialVelocity(X1);
@@ -97,20 +97,20 @@ namespace zs {
     explicit constexpr LevelSetWindowView(LevelSetWindowT &ls)
         : st{ls.st.self()}, ed{ls.ed.self()}, stepDt{ls.stepDt}, alpha{ls.alpha} {}
 
-    constexpr T getSignedDistance(const TV &X) const noexcept {
-      TV v = (st.getMaterialVelocity(X) + ed.getMaterialVelocity(X)) / 2;
-      TV X0 = X - alpha * stepDt * v, X1 = X + (1 - alpha) * stepDt * v;
-      return (1 - alpha) * st.getSignedDistance(X0) + alpha * ed.getSignedDistance(X1);
+    constexpr T getSignedDistance(const TV &x) const noexcept {
+      TV v = (st.getMaterialVelocity(x) + ed.getMaterialVelocity(x)) / 2;
+      TV x0 = x - alpha * stepDt * v, x1 = x + (1 - alpha) * stepDt * v;
+      return (1 - alpha) * st.getSignedDistance(x0) + alpha * ed.getSignedDistance(x1);
     }
-    constexpr TV getNormal(const TV &X) const noexcept {
-      TV v = (st.getMaterialVelocity(X) + ed.getMaterialVelocity(X)) / 2;
-      TV X0 = X - alpha * stepDt * v, X1 = X + (1 - alpha) * stepDt * v;
-      return (1 - alpha) * st.getNormal(X0) + alpha * ed.getNormal(X1);
+    constexpr TV getNormal(const TV &x) const noexcept {
+      TV v = (st.getMaterialVelocity(x) + ed.getMaterialVelocity(x)) / 2;
+      TV x0 = x - alpha * stepDt * v, x1 = x + (1 - alpha) * stepDt * v;
+      return (1 - alpha) * st.getNormal(x0) + alpha * ed.getNormal(x1);
     }
-    constexpr TV getMaterialVelocity(const TV &X) const noexcept {
-      TV v = (st.getMaterialVelocity(X) + ed.getMaterialVelocity(X)) / 2;
-      TV X0 = X - alpha * stepDt * v, X1 = X + (1 - alpha) * stepDt * v;
-      return (1 - alpha) * st.getMaterialVelocity(X0) + alpha * ed.getMaterialVelocity(X1);
+    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
+      TV v = (st.getMaterialVelocity(x) + ed.getMaterialVelocity(x)) / 2;
+      TV x0 = x - alpha * stepDt * v, x1 = x + (1 - alpha) * stepDt * v;
+      return (1 - alpha) * st.getMaterialVelocity(x0) + alpha * ed.getMaterialVelocity(x1);
     }
     constexpr decltype(auto) getBoundingBox() const noexcept { return st.getBoundingBox(); }
 

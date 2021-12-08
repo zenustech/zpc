@@ -120,6 +120,7 @@ namespace zs {
     using ls_t = std::remove_const_t<SparseLevelSetT>;
     using value_type = typename ls_t::value_type;
     using size_type = typename ls_t::size_type;
+    using index_type = typename ls_t::index_type;
     using table_t = typename ls_t::table_t;
     using table_view_t = RM_CVREF_T(proxy<Space>(
         std::declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
@@ -220,26 +221,14 @@ namespace zs {
       auto arena = Arena<T>::uniform(_backgroundValue);
       IV loc{};
       TV X = getReferencePosition(x);
-      for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
+      for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
       TV diff = X - loc;
-      if constexpr (dim == 2) {
-        for (auto &&[dx, dy] : ndrange<dim>(2)) {
-          IV coord{loc(0) + dx, loc(1) + dy};
-          auto blockid = coord;
-          for (int d = 0; d != dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
-          auto blockno = _table.query(blockid);
-          if (blockno != table_t::sentinel_v)
-            arena(dx, dy) = _grid("sdf", blockno, coord - blockid);
-        }
-      } else if constexpr (dim == 3) {
-        for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
-          IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
-          auto blockid = coord;
-          for (int d = 0; d != dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
-          auto blockno = _table.query(blockid);
-          if (blockno != table_t::sentinel_v)
-            arena(dx, dy, dz) = _grid("sdf", blockno, coord - blockid);
-        }
+      for (auto &&offset : ndrange<dim>(2)) {
+        auto coord = loc + make_vec<index_type>(offset);
+        auto blockid = coord - (coord & (side_length - 1));
+        auto blockno = _table.query(blockid);
+        if (blockno != table_t::sentinel_v)
+          arena.val(offset) = _grid("sdf", blockno, coord - blockid);
       }
       return xlerp<0>(diff, arena);
     }
@@ -247,7 +236,7 @@ namespace zs {
       TV diff{}, v1{}, v2{};
       T eps = (T)1e-6;
       /// compute a local partial derivative
-      for (int i = 0; i < dim; i++) {
+      for (int i = 0; i != dim; i++) {
         v1 = X;
         v2 = X;
         v1(i) = X(i) + eps;
@@ -264,25 +253,12 @@ namespace zs {
       TV X = getReferencePosition(x);
       for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
       TV diff = X - loc;
-      if constexpr (dim == 2) {
-        for (auto &&[dx, dy] : ndrange<dim>(2)) {
-          IV coord{loc(0) + dx, loc(1) + dy};
-          auto blockid = coord;
-          for (int d = 0; d < dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
-          auto blockno = _table.query(blockid);
-          if (blockno != table_t::sentinel_v) {
-            arena(dx, dy) = _grid.template pack<dim>("vel", blockno, coord - blockid);
-          }
-        }
-      } else if constexpr (dim == 3) {
-        for (auto &&[dx, dy, dz] : ndrange<dim>(2)) {
-          IV coord{loc(0) + dx, loc(1) + dy, loc(2) + dz};
-          auto blockid = coord;
-          for (int d = 0; d != dim; ++d) blockid[d] -= (coord[d] & (side_length - 1));
-          auto blockno = _table.query(blockid);
-          if (blockno != table_t::sentinel_v)
-            arena(dx, dy, dz) = _grid.template pack<dim>("vel", blockno, coord - blockid);
-        }
+      for (auto &&offset : ndrange<dim>(2)) {
+        auto coord = loc + make_vec<index_type>(offset);
+        auto blockid = coord - (coord & (side_length - 1));
+        auto blockno = _table.query(blockid);
+        if (blockno != table_t::sentinel_v)
+          arena.val(offset) = _grid.template pack<dim>("vel", blockno, coord - blockid);
       }
       return xlerp<0>(diff, arena) * _i2wShat * _i2wRhat;
     }
@@ -309,19 +285,24 @@ namespace zs {
     TM _i2wRhat, _i2wShat;
   };
 
-  template <execspace_e ExecSpace, int dim>
+  template <execspace_e ExecSpace, int dim, grid_e category>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 SparseLevelSet<dim> &levelset) {
-    return SparseLevelSetView<ExecSpace, SparseLevelSet<dim>>{tagNames, levelset};
+                                 SparseLevelSet<dim, category> &levelset) {
+    return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{levelset};
+  }
+  template <execspace_e ExecSpace, int dim, grid_e category>
+  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                                 const SparseLevelSet<dim, category> &levelset) {
+    return SparseLevelSetView<ExecSpace, const SparseLevelSet<dim, category>>{levelset};
   }
 
-  template <execspace_e ExecSpace, int dim>
-  constexpr decltype(auto) proxy(SparseLevelSet<dim> &levelset) {
-    return SparseLevelSetView<ExecSpace, SparseLevelSet<dim>>{levelset};
+  template <execspace_e ExecSpace, int dim, grid_e category>
+  constexpr decltype(auto) proxy(SparseLevelSet<dim, category> &levelset) {
+    return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{levelset};
   }
-  template <execspace_e ExecSpace, int dim>
-  constexpr decltype(auto) proxy(const SparseLevelSet<dim> &levelset) {
-    return SparseLevelSetView<ExecSpace, const SparseLevelSet<dim>>{levelset};
+  template <execspace_e ExecSpace, int dim, grid_e category>
+  constexpr decltype(auto) proxy(const SparseLevelSet<dim, category> &levelset) {
+    return SparseLevelSetView<ExecSpace, const SparseLevelSet<dim, category>>{levelset};
   }
 
 }  // namespace zs

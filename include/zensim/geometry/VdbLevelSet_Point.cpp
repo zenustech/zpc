@@ -8,7 +8,7 @@
 
 namespace zs {
 
-  OpenVDBStruct particleArrayToGrid(const std::vector<std::array<float, 3>> &particles) {
+  OpenVDBStruct particlearray_to_pointdatagrid(const std::vector<std::array<float, 3>> &particles) {
     std::vector<openvdb::Vec3R> positions(particles.size());
     for (auto &&[dst, src] : zip(positions, particles))
       for (int d = 0; d < 3; ++d) dst[d] = src[d];
@@ -41,7 +41,7 @@ namespace zs {
     ret.as<PDGPtr>()->setName("Points");
     return ret;
   }
-  std::vector<std::array<float, 3>> particleGridToArray(const OpenVDBStruct &pdg) {
+  std::vector<std::array<float, 3>> pointdatagrid_to_particlearray(const OpenVDBStruct &pdg) {
     using namespace openvdb::tools::local_util;
     using PDGPtr = openvdb::points::PointDataGrid::Ptr;
     std::vector<std::array<float, 3>> ret{};
@@ -77,7 +77,7 @@ namespace zs {
     return ret;
   }
 
-  bool writeGridToFile(const OpenVDBStruct &grid, std::string fn) {
+  bool write_pointdatagrid_to_file(const OpenVDBStruct &grid, std::string fn) {
     using PDGPtr = openvdb::points::PointDataGrid::Ptr;
     if (!grid.is<PDGPtr>()) return false;
     // Create a VDB file object and write out the grid.

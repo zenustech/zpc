@@ -11,6 +11,9 @@
 
 namespace zs {
 
+  ///
+  /// vdb levelset -> zpc levelset
+  ///
   SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;
@@ -197,6 +200,40 @@ namespace zs {
   SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid,
                                                          const MemoryHandle mh) {
     return convert_vec3fgrid_to_sparse_levelset(grid).clone(mh);
+  }
+
+  ///
+  /// zpc levelset -> vdb levelset
+  ///
+  OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SparseLevelSet<3> &splsIn) {
+    auto spls = splsIn.clone(MemoryHandle{memsrc_e::host, -1});
+    openvdb::FloatGrid::Ptr grid
+        = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
+    // meta
+    grid->insertMeta("zpctag", openvdb::FloatMetadata(0.f));
+    grid->setGridClass(openvdb::GRID_LEVEL_SET);
+    grid->setName("ZpcLevelSet");
+    // transform
+    openvdb::Mat4R v2w{};
+    auto lsv2w = spls.getIndexToWorldTransformation();
+    for (auto &&[r, c] : ndrange<2>(4)) v2w[r][c] = lsv2w[r][c];
+    grid->setTransform(openvdb::math::Transform::createLinearTransform(v2w));
+    // tree
+    auto table = proxy<execspace_e::host>(spls._table);
+    auto gridview = proxy<execspace_e::host>(spls._grid);
+    auto accessor = grid->getAccessor();
+    using GridT = RM_CVREF_T(gridview);
+    for (auto &&[blockno, blockid] :
+         zip(range(spls._grid.size() / spls.block_size), spls._table._activeKeys))
+      for (int cid = 0; cid != spls.block_size; ++cid) {
+        const auto offset = (int)blockno * (int)spls.block_size + cid;
+        const auto sdfVal = gridview.voxel("sdf", offset);
+        if (sdfVal == spls._backgroundValue) continue;
+        const auto coord = blockid + GridT::cellid_to_coord(cid);
+        // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
+        accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
+      }
+    return OpenVDBStruct{grid};
   }
 
 }  // namespace zs

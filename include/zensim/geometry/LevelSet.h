@@ -122,8 +122,9 @@ namespace zs {
     }
     constexpr TV do_getBoxCenter() const noexcept { return _sdf.getBoxCenter(); }
     constexpr TV do_getBoxSideLengths() const noexcept { return _sdf.getBoxSideLengths(); }
-    constexpr TV do_getUniformCoord(const TV &pos) const noexcept {
-      return _sdf.getUniformCoord(pos);
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getUniformCoord(const VecInterface<VecT> &x) const noexcept {
+      return _sdf.getUniformCoord(x);
     }
     /// levelset interface
     constexpr T getSignedDistance(const TV &x) const noexcept { return _sdf.getSignedDistance(x); }

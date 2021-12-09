@@ -24,9 +24,7 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
     geometry/VdbLevelSet_LoadPhi.cpp
     geometry/VdbLevelSet_LoadPhiVel.cpp
     geometry/VdbLevelSet_Conversion.cpp
-    geometry/VdbSampler_SampleFromLevelSet.cpp
-    geometry/VdbSampler_MeshToLevelSet.cpp
-    geometry/VdbSampler_FileToLevelSet.cpp
+    geometry/VdbSampler.cpp
 )
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/Cuda.cu

@@ -4,7 +4,10 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/GridOperators.h>
 #include <openvdb/tools/Interpolation.h>
+#include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h>
+
+#include <fstream>
 
 #include "VdbLevelSet.h"
 #include "zensim/Logger.hpp"
@@ -15,6 +18,54 @@
 namespace zs {
 
   void initialize_openvdb() { openvdb::initialize(); }
+
+  OpenVDBStruct load_floatgrid_from_mesh_file(const std::string &filename, float h) {
+    using Vec3ui = openvdb::math::Vec3ui;
+    std::vector<openvdb::Vec3f> vertList;
+    std::vector<Vec3ui> faceList;
+    std::ifstream infile(filename);
+    if (!infile) {
+      std::cerr << "Failed to open. Terminating.\n";
+      exit(-1);
+    }
+
+    int ignored_lines = 0;
+    std::string line;
+
+    while (!infile.eof()) {
+      std::getline(infile, line);
+      auto ed = line.find_first_of(" ");
+      if (line.substr(0, ed) == std::string("v")) {
+        std::stringstream data(line);
+        char c;
+        openvdb::Vec3f point;
+        data >> c >> point[0] >> point[1] >> point[2];
+        vertList.push_back(point);
+      } else if (line.substr(0, ed) == std::string("f")) {
+        std::stringstream data(line);
+        char c;
+        int v0, v1, v2;
+        data >> c >> v0 >> v1 >> v2;
+        faceList.push_back(Vec3ui(v0 - 1, v1 - 1, v2 - 1));
+      } else {
+        ++ignored_lines;
+      }
+    }
+    infile.close();
+    std::vector<openvdb::Vec3s> points;
+    std::vector<openvdb::Vec3I> triangles;
+    points.resize(vertList.size());
+    triangles.resize(faceList.size());
+    tbb::parallel_for(0, (int)vertList.size(), 1, [&](int p) {
+      points[p] = openvdb::Vec3s(vertList[p][0], vertList[p][1], vertList[p][2]);
+    });
+    tbb::parallel_for(0, (int)faceList.size(), 1, [&](int p) {
+      triangles[p] = openvdb::Vec3I(faceList[p][0], faceList[p][1], faceList[p][2]);
+    });
+    openvdb::FloatGrid::Ptr grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(
+        *openvdb::math::Transform::createLinearTransform(h), points, triangles, 3.0);
+    return OpenVDBStruct{grid};
+  }
 
   OpenVDBStruct load_floatgrid_from_vdb_file(const std::string &fn) {
     using GridType = openvdb::FloatGrid;
@@ -43,37 +94,7 @@ namespace zs {
     return OpenVDBStruct{grid};
   }
 
-  OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SparseLevelSet<3> &splsIn) {
-    auto spls = splsIn.clone(MemoryHandle{memsrc_e::host, -1});
-    openvdb::FloatGrid::Ptr grid
-        = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
-    // meta
-    grid->insertMeta("zpctag", openvdb::FloatMetadata(0.f));
-    grid->setGridClass(openvdb::GRID_LEVEL_SET);
-    grid->setName("ZpcLevelSet");
-    // transform
-    openvdb::Mat4R v2w{};
-    auto lsv2w = spls.getIndexToWorldTransformation();
-    for (auto &&[r, c] : ndrange<2>(4)) v2w[r][c] = lsv2w[r][c];
-    grid->setTransform(openvdb::math::Transform::createLinearTransform(v2w));
-    // tree
-    auto table = proxy<execspace_e::host>(spls._table);
-    auto gridview = proxy<execspace_e::host>(spls._grid);
-    auto accessor = grid->getAccessor();
-    using GridT = RM_CVREF_T(gridview);
-    for (auto &&[blockno, blockid] :
-         zip(range(spls._grid.size() / spls.block_size), spls._table._activeKeys))
-      for (int cid = 0; cid != spls.block_size; ++cid) {
-        const auto offset = (int)blockno * (int)spls.block_size + cid;
-        const auto sdfVal = gridview.voxel("sdf", offset);
-        if (sdfVal == spls._backgroundValue) continue;
-        const auto coord = blockid + GridT::cellid_to_coord(cid);
-        // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
-        accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
-      }
-    return OpenVDBStruct{grid};
-  }
-  bool writeFloatGridToVdbFile(std::string_view fn, const OpenVDBStruct &grid) {
+  bool write_floatgrid_to_vdb_file(std::string_view fn, const OpenVDBStruct &grid) {
     openvdb::io::File file(fn.data());
     // if (!file.isOpen()) return false;
     openvdb::GridPtrVec grids{};
@@ -84,7 +105,7 @@ namespace zs {
     return true;
   }
 
-  void checkFloatGrid(OpenVDBStruct &grid) {
+  void check_floatgrid(OpenVDBStruct &grid) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;
     using RootType = TreeType::RootNodeType;  // level 3 RootNode
@@ -269,98 +290,6 @@ namespace zs {
     }
     fmt::print("check grid: leaf count {}\n", leafCount);
 #endif
-  }
-
-  // https://www.openvdb.org/documentation/doxygen/codeExamples.html#sGettingMetadata
-  tuple<DenseGrid<float, int, 3>, vec<float, 3>, vec<float, 3>> readPhiFromVdbFile(
-      const std::string &fn, float dx) {
-    constexpr int dim = 3;
-    using TV = vec<float, dim>;
-    using IV = vec<int, dim>;
-    using TreeT = typename openvdb::FloatGrid::TreeType;
-    using VelTreeT = typename openvdb::Vec3fGrid::TreeType;
-
-    openvdb::io::File file(fn);
-    file.open();
-    openvdb::GridPtrVecPtr my_grids = file.getGrids();
-    file.close();
-    int count = 0;
-    typename openvdb::FloatGrid::Ptr grid;
-    for (openvdb::GridPtrVec::iterator iter = my_grids->begin(); iter != my_grids->end(); ++iter) {
-      openvdb::GridBase::Ptr it = *iter;
-      if ((*iter)->isType<openvdb::FloatGrid>()) {
-        grid = openvdb::gridPtrCast<openvdb::FloatGrid>(*iter);
-        count++;
-        /// display meta data
-        for (openvdb::MetaMap::MetaIterator it = grid->beginMeta(); it != grid->endMeta(); ++it) {
-          const std::string &name = it->first;
-          openvdb::Metadata::Ptr value = it->second;
-          std::string valueAsString = value->str();
-          std::cout << name << " = " << valueAsString << std::endl;
-        }
-      } else if ((*iter)->isType<openvdb::Vec3fGrid>()) {
-        auto velgrid = openvdb::gridPtrCast<openvdb::Vec3fGrid>((*iter));
-        for (openvdb::MetaMap::MetaIterator it = velgrid->beginMeta(); it != velgrid->endMeta();
-             ++it) {
-          const std::string &name = it->first;
-          openvdb::Metadata::Ptr value = it->second;
-          std::string valueAsString = value->str();
-          std::cout << name << " = " << valueAsString << std::endl;
-        }
-      }
-    }
-    ZS_WARN_IF(count != 1, "Vdb file to load should only contain one levelset.");
-
-    /// bounding box
-    TV bmin, bmax;
-    {
-      openvdb::CoordBBox box = grid->evalActiveVoxelBoundingBox();
-      auto corner = box.min();
-      auto length = box.max() - box.min();
-      auto world_min = grid->indexToWorld(box.min());
-      auto world_max = grid->indexToWorld(box.max());
-      for (size_t d = 0; d < 3; d++) {
-        bmin(d) = world_min[d];
-        bmax(d) = world_max[d];
-      }
-      for (auto &&[dx, dy, dz] : ndrange<3>(2)) {
-        auto coord
-            = corner + decltype(length){dx ? length[0] : 0, dy ? length[1] : 0, dz ? length[2] : 0};
-        auto pos = grid->indexToWorld(coord);
-        for (int d = 0; d < 3; d++) {
-          bmin(d) = pos[d] < bmin(d) ? pos[d] : bmin(d);
-          bmax(d) = pos[d] > bmax(d) ? pos[d] : bmax(d);
-        }
-      }
-    }
-
-    vec<int, 3> extents = ((bmax - bmin) / dx).cast<int>() + 1;
-
-    /// phi
-    auto sample = [&grid](const TV &X_input) -> float {
-      TV X = X_input;
-      openvdb::tools::GridSampler<TreeT, openvdb::tools::BoxSampler> interpolator(
-          grid->constTree(), grid->transform());
-      openvdb::math::Vec3<float> P(X(0), X(1), X(2));
-      float phi = interpolator.wsSample(P);  // ws denotes world space
-      return (float)phi;
-    };
-    printf(
-        "Vdb file domain [%f, %f, %f] - [%f, %f, %f]; resolution {%d, %d, "
-        "%d}\n",
-        bmin(0), bmin(1), bmin(2), bmax(0), bmax(1), bmax(2), extents(0), extents(1), extents(2));
-    DenseGrid<float, int, 3> phi(extents, 2 * dx);
-#if defined(_OPENMP)
-#  pragma omp parallel for
-#endif
-    for (int x = 0; x < extents(0); ++x)
-      for (int y = 0; y < extents(1); ++y)
-        for (int z = 0; z < extents(2); ++z) {
-          IV X = vec<int, 3>{x, y, z};
-          TV x = X * dx + bmin;
-          phi(X) = sample(x);
-        }
-    return zs::make_tuple(phi, bmin, bmax);
   }
 
 }  // namespace zs

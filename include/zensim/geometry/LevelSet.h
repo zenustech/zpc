@@ -7,7 +7,6 @@
 // #include "zensim/execution/Concurrency.h"
 #include "zensim/math/Vec.h"
 #include "zensim/memory/Allocator.h"
-#include "zensim/types/RuntimeStructurals.hpp"
 
 namespace zs {
 
@@ -23,7 +22,8 @@ namespace zs {
       : LevelSetInterface<SdfVelField<SdfLsView, VelLsView>> {
     static_assert(SdfLsView::dim == VelLsView::dim, "dimension mismatch!");
     static_assert(std::is_floating_point_v<
-                      typename SdfLsView::T> && std::is_floating_point_v<typename VelLsView::T>,
+                      typename SdfLsView::
+                          value_type> && std::is_floating_point_v<typename VelLsView::value_type>,
                   "levelset not in floating point type!");
 
     using value_type = typename SdfLsView::value_type;

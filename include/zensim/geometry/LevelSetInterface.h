@@ -3,21 +3,44 @@
 
 namespace zs {
 
-  template <typename Derived, typename T, int dim> struct LevelSetInterface
-      : BoundingVolumeInterface<Derived, T, dim> {
-    using base_t = BoundingVolumeInterface<Derived, T, dim>;
-    using TV = typename base_t::TV;
+  template <typename Derived> struct LevelSetInterface : BoundingVolumeInterface<Derived> {
+    template <typename VecT, typename LS = Derived,
+              enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
+    constexpr auto getSignedDistance(const VecInterface<VecT> &x) const noexcept ->
+        typename LS::value_type {
+      return static_cast<const Derived *>(this)->do_getSignedDistance(x);
+    }
+    template <typename VecT, typename LS = Derived,
+              enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
+    constexpr auto getNormal(const VecInterface<VecT> &x) const noexcept ->
+        typename VecT::template variant_vec<typename LS::value_type, typename VecT::extents> {
+      return static_cast<const Derived *>(this)->do_getNormal(x);
+    }
+    template <typename VecT, typename LS = Derived,
+              enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
+    constexpr auto getMaterialVelocity(const VecInterface<VecT> &x) const noexcept ->
+        typename VecT::template variant_vec<typename LS::value_type, typename VecT::extents> {
+      return static_cast<const Derived *>(this)->do_getMaterialVelocity(x);
+    }
 
-    constexpr T getSignedDistance(const TV &x) const noexcept {
-      return selfPtr()->getSignedDistance(x);
+  protected:
+    template <typename VecT, typename LS = Derived,
+              enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
+    constexpr auto do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      return limits<typename Derived::value_type>::max();
     }
-    constexpr TV getNormal(const TV &x) const noexcept { return selfPtr()->getNormal(x); }
-    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
-      return selfPtr()->getMaterialVelocity(x);
+    template <typename VecT, typename LS = Derived,
+              enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
+    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
+      return typename VecT::template variant_vec<typename Derived::value_type,
+                                                 typename VecT::extents>::uniform(0);
     }
-    using base_t::getBoundingBox;
-    using base_t::getBoxCenter;
-    using base_t::selfPtr;
+    template <typename VecT, typename LS = Derived,
+              enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
+    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      return typename VecT::template variant_vec<typename Derived::value_type,
+                                                 typename VecT::extents>::uniform(0);
+    }
   };
 
 }  // namespace zs

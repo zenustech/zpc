@@ -1,6 +1,6 @@
 #pragma once
-#  if defined(_OPENMP)
-#include <omp.h>
+#if defined(_OPENMP)
+#  include <omp.h>
 #endif
 #include <algorithm>
 #include <fstream>
@@ -295,7 +295,7 @@ namespace zs {
   };
 
   template <typename LS> decltype(auto) sample_from_levelset(const LS &ls, float dx, float ppc) {
-    using T = typename LS::T;
+    using T = typename LS::value_type;
     static constexpr int dim = LS::dim;
     auto [minCorner, maxCorner] = ls.getBoundingBox();
 

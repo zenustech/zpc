@@ -8,7 +8,7 @@ namespace zs {
   enum class collider_e { Sticky, Slip, Separate };
 
   template <typename LS> struct Collider {
-    using T = typename LS::T;
+    using T = typename LS::value_type;
     static constexpr int dim = LS::dim;
     using TV = vec<T, dim>;
 
@@ -108,15 +108,13 @@ namespace zs {
     TV dbdt{TV::zeros()};
   };
 
-
   template <typename Ls, typename... Args> Collider(Ls, Args...) -> Collider<Ls>;
 
   template <typename T, int dim> using GenericCollider
       = variant<Collider<AnalyticLevelSet<analytic_geometry_e::Plane, T, dim>>,
                 Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, T, dim>>,
                 Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>>,
-                Collider<AnalyticLevelSet<analytic_geometry_e::Cylinder, T, dim>>,
-                Collider<HeightField<T>>>;
+                Collider<AnalyticLevelSet<analytic_geometry_e::Cylinder, T, dim>>>;
 
   template <typename LS> struct LevelSetBoundary {
     using T = typename LS::value_type;
@@ -164,7 +162,6 @@ namespace zs {
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Cylinder, f32, 3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Cuboid, f32, 2>>,
-                                  Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 2>>,
-                                  Collider<HeightField<f32>>>;
+                                  Collider<AnalyticLevelSet<analytic_geometry_e::Sphere, f32, 2>>>;
 
 }  // namespace zs

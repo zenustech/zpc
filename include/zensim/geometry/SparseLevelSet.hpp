@@ -114,8 +114,7 @@ namespace zs {
 
   template <execspace_e Space, typename SparseLevelSetT>
   struct SparseLevelSetView<Space, SparseLevelSetT>
-      : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>,
-                          typename SparseLevelSetT::value_type, SparseLevelSetT::dim> {
+      : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>> {
     static constexpr bool is_const_structure = std::is_const_v<SparseLevelSetT>;
     using ls_t = std::remove_const_t<SparseLevelSetT>;
     using value_type = typename ls_t::value_type;

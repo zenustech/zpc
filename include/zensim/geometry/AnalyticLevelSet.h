@@ -9,21 +9,35 @@ namespace zs {
 
   template <analytic_geometry_e geomT, typename DataType, int d> struct AnalyticLevelSet;
 
-  template <typename DataType, int d>
-  struct AnalyticLevelSet<analytic_geometry_e::Plane, DataType, d>
-      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Plane, DataType, d>, DataType, d> {
-    using T = DataType;
+  template <typename T, int d> struct AnalyticLevelSet<analytic_geometry_e::Plane, T, d>
+      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Plane, T, d>> {
+    using value_type = T;
     static constexpr int dim = d;
-    using TV = vec<T, dim>;
+    using TV = vec<value_type, dim>;
 
-    AnalyticLevelSet() = default;
-    ~AnalyticLevelSet() = default;
-    constexpr AnalyticLevelSet(TV origin, TV normal)
-        : _origin{origin}, _normal{normal.normalized()} {}
+    constexpr AnalyticLevelSet() noexcept = default;
+    template <typename VecTA, typename VecTB,
+              enable_if_all<VecTA::dim == 1, VecTA::extent == dim, VecTB::dim == 1,
+                            VecTB::extent == dim> = 0>
+    constexpr AnalyticLevelSet(const VecInterface<VecTA> &origin,
+                               const VecInterface<VecTB> &normal) noexcept
+        : _origin{}, _normal{} {
+      _origin = origin;
+      _normal = normal;
+    }
 
-    constexpr T getSignedDistance(const TV &x) const noexcept { return _normal.dot(x - _origin); }
-    constexpr TV getNormal(const TV &x) const noexcept { return _normal; }
-    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr T do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      return _normal.dot(x - _origin);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getNormal(const VecInterface<VecT> &x) const noexcept {
+      return _normal;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      return TV::zeros();
+    }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_origin, _origin);
     }
@@ -31,32 +45,41 @@ namespace zs {
     TV _origin{}, _normal{};
   };
 
-  template <typename DataType, int d>
-  struct AnalyticLevelSet<analytic_geometry_e::Cuboid, DataType, d>
-      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Cuboid, DataType, d>, DataType, d> {
-    using T = DataType;
+  template <typename T, int d> struct AnalyticLevelSet<analytic_geometry_e::Cuboid, T, d>
+      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Cuboid, T, d>> {
+    using value_type = T;
     static constexpr int dim = d;
     using TV = vec<T, dim>;
 
-    AnalyticLevelSet() = default;
-    ~AnalyticLevelSet() = default;
-    constexpr AnalyticLevelSet(TV min, TV max) : _min{min}, _max{max} {}
-    constexpr AnalyticLevelSet(TV center, T len)
-        : _min{center - (len / 2)}, _max{center + (len / 2)} {}
+    constexpr AnalyticLevelSet() noexcept = default;
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr AnalyticLevelSet(const VecInterface<VecT> &min,
+                               const VecInterface<VecT> &max) noexcept
+        : _min{}, _max{} {
+      _min = min;
+      _max = max;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr AnalyticLevelSet(const VecInterface<VecT> &center, T len) : _min{}, _max{} {
+      _min = center - (len / 2);
+      _max = center + (len / 2);
+    }
 
-    constexpr T getSignedDistance(const TV &x) const noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr T do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
       TV center = (_min + _max) / 2;
       TV point = (x - center).abs() - (_max - _min) / 2;
       T max = point.max();
-      for (int i = 0; i < dim; ++i)
+      for (int i = 0; i != dim; ++i)
         if (point(i) < 0) point(i) = 0;  ///< inside the box
       return (max < 0 ? max : 0) + point.length();
     }
-    constexpr TV getNormal(const TV &x) const noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getNormal(const VecInterface<VecT> &x) const noexcept {
       TV diff{}, v1{}, v2{};
       T eps = (T)1e-6;
       /// compute a local partial derivative
-      for (int i = 0; i < dim; i++) {
+      for (int i = 0; i != dim; i++) {
         v1 = x;
         v2 = x;
         v1(i) = x(i) + eps;
@@ -65,7 +88,10 @@ namespace zs {
       }
       return diff.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      return TV::zeros();
+    }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_min, _max);
     }
@@ -73,26 +99,33 @@ namespace zs {
     TV _min{}, _max{};
   };
 
-  template <typename DataType, int d>
-  struct AnalyticLevelSet<analytic_geometry_e::Sphere, DataType, d>
-      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Sphere, DataType, d>, DataType, d> {
-    using T = DataType;
+  template <typename T, int d> struct AnalyticLevelSet<analytic_geometry_e::Sphere, T, d>
+      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Sphere, T, d>> {
+    using value_type = T;
     static constexpr int dim = d;
     using TV = vec<T, dim>;
 
-    AnalyticLevelSet() = default;
-    ~AnalyticLevelSet() = default;
-    constexpr AnalyticLevelSet(TV center, T radius) : _center{center}, _radius{radius} {}
+    constexpr AnalyticLevelSet() noexcept = default;
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr AnalyticLevelSet(const VecInterface<VecT> &center, T radius) noexcept
+        : _center{}, _radius{radius} {
+      _center = center;
+    }
 
-    constexpr T getSignedDistance(const TV &x) const noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr T do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
       return (x - _center).length() - _radius;
     }
-    constexpr TV getNormal(const TV &x) const noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getNormal(const VecInterface<VecT> &x) const noexcept {
       TV outward_normal = x - _center;
       if (outward_normal.l2NormSqr() < (T)1e-7) return TV::zeros();
       return outward_normal.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      return TV::zeros();
+    }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       return std::make_tuple(_center - _radius, _center + _radius);
     }
@@ -101,21 +134,23 @@ namespace zs {
     T _radius{};
   };
 
-  template <typename DataType, int d>
-  struct AnalyticLevelSet<analytic_geometry_e::Cylinder, DataType, d>
-      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Cylinder, DataType, d>, DataType,
-                          d> {
+  template <typename T, int d> struct AnalyticLevelSet<analytic_geometry_e::Cylinder, T, d>
+      : LevelSetInterface<AnalyticLevelSet<analytic_geometry_e::Cylinder, T, d>> {
     static_assert(d == 3, "dimension of cylinder must be 3");
-    using T = DataType;
+    using value_type = T;
     static constexpr int dim = d;
     using TV = vec<T, dim>;
 
-    AnalyticLevelSet() = default;
-    ~AnalyticLevelSet() = default;
-    constexpr AnalyticLevelSet(TV bottom, T radius, T length, int ori)
-        : _bottom{bottom}, _radius{radius}, _length{length}, _d{ori} {}
+    constexpr AnalyticLevelSet() noexcept = default;
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr AnalyticLevelSet(const VecInterface<VecT> &bottom, T radius, T length,
+                               int ori) noexcept
+        : _bottom{}, _radius{radius}, _length{length}, _d{ori} {
+      _bottom = bottom;
+    }
 
-    constexpr T getSignedDistance(const TV &x) const noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr T do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
       vec<T, dim - 1> diffR{};
       for (int k = 0, i = 0; k != dim; ++k)
         if (k != _d) diffR[i++] = x[k] - _bottom[k];
@@ -143,11 +178,12 @@ namespace zs {
         }
       }
     }
-    constexpr TV getNormal(const TV &x) const noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getNormal(const VecInterface<VecT> &x) const noexcept {
       TV diff{}, v1{}, v2{};
       T eps = (T)1e-6;
       /// compute a local partial derivative
-      for (int i = 0; i < dim; i++) {
+      for (int i = 0; i != dim; i++) {
         v1 = x;
         v2 = x;
         v1(i) = x(i) + eps;
@@ -156,7 +192,10 @@ namespace zs {
       }
       return diff.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &x) const noexcept { return TV::zeros(); }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      return TV::zeros();
+    }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
       auto diffR = TV::uniform(_radius);
       diffR[_d] = (T)0;

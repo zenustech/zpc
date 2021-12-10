@@ -85,8 +85,7 @@ namespace zs {
 
   template <execspace_e Space, typename LevelSetWindowT>
   struct LevelSetWindowView<Space, LevelSetWindowT>
-      : LevelSetInterface<LevelSetWindowView<Space, LevelSetWindowT>, typename LevelSetWindowT::T,
-                          LevelSetWindowT::dim> {
+      : LevelSetInterface<LevelSetWindowView<Space, LevelSetWindowT>> {
     using ls_t = typename LevelSetWindowT::ls_t;
     static constexpr int dim = LevelSetWindowT::dim;
     using T = typename LevelSetWindowT::T;
@@ -97,22 +96,22 @@ namespace zs {
     explicit constexpr LevelSetWindowView(LevelSetWindowT &ls)
         : st{ls.st.self()}, ed{ls.ed.self()}, stepDt{ls.stepDt}, alpha{ls.alpha} {}
 
-    constexpr T getSignedDistance(const TV &x) const noexcept {
+    constexpr T do_getSignedDistance(const TV &x) const noexcept {
       TV v = (st.getMaterialVelocity(x) + ed.getMaterialVelocity(x)) / 2;
       TV x0 = x - alpha * stepDt * v, x1 = x + (1 - alpha) * stepDt * v;
       return (1 - alpha) * st.getSignedDistance(x0) + alpha * ed.getSignedDistance(x1);
     }
-    constexpr TV getNormal(const TV &x) const noexcept {
+    constexpr TV do_getNormal(const TV &x) const noexcept {
       TV v = (st.getMaterialVelocity(x) + ed.getMaterialVelocity(x)) / 2;
       TV x0 = x - alpha * stepDt * v, x1 = x + (1 - alpha) * stepDt * v;
       return (1 - alpha) * st.getNormal(x0) + alpha * ed.getNormal(x1);
     }
-    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
+    constexpr TV do_getMaterialVelocity(const TV &x) const noexcept {
       TV v = (st.getMaterialVelocity(x) + ed.getMaterialVelocity(x)) / 2;
       TV x0 = x - alpha * stepDt * v, x1 = x + (1 - alpha) * stepDt * v;
       return (1 - alpha) * st.getMaterialVelocity(x0) + alpha * ed.getMaterialVelocity(x1);
     }
-    constexpr decltype(auto) getBoundingBox() const noexcept { return st.getBoundingBox(); }
+    constexpr decltype(auto) do_getBoundingBox() const noexcept { return st.getBoundingBox(); }
 
     SparseLevelSetView<Space, ls_t> st, ed;
     T stepDt, alpha;

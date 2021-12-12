@@ -120,7 +120,7 @@ namespace zs {
     }
   }  // namespace detail
 
-  template <typename T> constexpr auto get_var_type_substr(T &&v) noexcept {
+  template <typename T> constexpr auto get_var_type(T &&v) noexcept {
     constexpr auto typestr = detail::get_type_str_helper<T>();
     using CharT = std::remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
     constexpr auto typelength = detail::get_type_len_helper(typestr);
@@ -142,6 +142,11 @@ namespace zs {
     std::array<CharT, length> ret{};
     for (std::size_t i = 0; i != length; ++i) ret[i] = typestr[i + head];
     return ret;
+  }
+
+  template <typename CharT, std::size_t N>
+  auto convert_char_array_to_string(const std::array<CharT, N> &str) noexcept {
+    return std::basic_string<CharT>{std::begin(str), std::end(str)};
   }
 
 }  // namespace zs

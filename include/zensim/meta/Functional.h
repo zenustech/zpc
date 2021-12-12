@@ -15,6 +15,15 @@ namespace zs {
   template <typename T> using limits = std::numeric_limits<T>;
 
   /// operator
+  template <typename Oprand, template <class> class Operator> struct map {
+    using type = Operator<Oprand>;
+  };
+  template <template <class...> class Functor, typename... Args, template <class> class Op>
+  struct map<Functor<Args...>, Op> {
+    using type = Functor<Op<Args>...>;
+  };
+  template <typename Oprand, template <class> class Operator> using map_t =
+      typename map<Oprand, Operator>::type;
 
   /// binary operation
   template <typename T = void> using plus = std::plus<T>;

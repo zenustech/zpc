@@ -251,6 +251,19 @@ namespace zs {
   template <typename Tn, Tn... Ns> struct vseq<integer_seq<Tn, Ns...>> : vseq<value_seq<Ns...>> {};
 
   /** utilities */
+  template <typename T> struct get_ttal;  // extract type template parameter list
+  template <template <class...> class T, typename... Args> struct get_ttal<T<Args...>> {
+    using type = type_seq<Args...>;
+  };
+  template <typename T>
+  using get_ttal_t = typename get_ttal<T>::type;
+
+  template <typename T> struct get_nttal;  // extract type template parameter list
+  template <template <auto...> class T, auto... Args> struct get_nttal<T<Args...>> {
+    using type = value_seq<Args...>;
+  };
+  template <typename T>
+  using get_nttal_t = typename get_nttal<T>::type;
 
   /// concat
   template <typename... Seqs> struct concat {

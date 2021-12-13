@@ -18,7 +18,7 @@ namespace zs {
     constexpr auto polar_decomposition(const VecInterface<VecT>& A,
                                        GivensRotation<typename VecT::value_type>& R) noexcept {
       using value_type = typename VecT::value_type;
-      constexpr auto N = VecT::template get_range<0>();
+      constexpr auto N = VecT::template range<0>;
       typename VecT::template variant_vec<value_type, typename VecT::extents> S = A;
       vec<value_type, 2> x{A(0, 0) + A(1, 1), A(1, 0) - A(0, 1)};
       auto d = x.norm();
@@ -34,15 +34,14 @@ namespace zs {
     }
 
     template <typename VecT,
-              enable_if_all<VecT::dim == 2,
-                            VecT::template get_range<0>() == VecT::template get_range<1>(),
-                            VecT::template get_range<0>() == 2,
+              enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
+                            VecT::template range<0> == 2,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A, GivensRotation<typename VecT::value_type>& U,
                           GivensRotation<typename VecT::value_type>& V) noexcept {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
-      constexpr auto N = VecT::template get_range<0>();
+      constexpr auto N = VecT::template range<0>;
       typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{};
 
       auto S_sym = polar_decomposition(A, U);
@@ -257,13 +256,12 @@ namespace zs {
     // S is guaranteed to be the closest one to identity.
     // R is guaranteed to be the closest rotation to A.
     template <typename VecT,
-              enable_if_all<VecT::dim == 2,
-                            VecT::template get_range<0>() == VecT::template get_range<1>(),
+              enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
-      constexpr auto N = VecT::template get_range<0>();
+      constexpr auto N = VecT::template range<0>;
       typename VecT::template variant_vec<value_type, typename VecT::extents> U{}, V{};
       if constexpr (N == 1) {
         typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{A(0, 0)};
@@ -449,12 +447,11 @@ namespace zs {
     // S is guaranteed to be the closest one to identity.
     // R is guaranteed to be the closest rotation to A.
     template <typename VecT,
-              enable_if_all<VecT::dim == 2,
-                            VecT::template get_range<0>() == VecT::template get_range<1>(),
+              enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto polar_decomposition(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
-      constexpr auto N = VecT::template get_range<0>();
+      constexpr auto N = VecT::template range<0>;
       typename VecT::template variant_vec<value_type, typename VecT::extents> R{};
       if constexpr (N == 1) {
         R(0, 0) = 1;

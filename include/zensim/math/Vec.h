@@ -18,26 +18,14 @@ namespace zs {
   /// declarations
   template <typename T, typename Extents> struct vec_view;
   template <typename T, typename Extents> struct vec_impl;
-#if 0
-template <typename T, auto... Ns>
-using vec =
-    vec_impl<T,
-             std::integer_sequence<std::common_type_t<decltype(Ns)...>, Ns...>>;
-#else
-  template <typename T, auto... Ns> using vec = vec_impl<T, std::integer_sequence<int, Ns...>>;
-#endif
-  template <typename T, typename Tn, Tn... Ns> using vec_t
-      = vec_impl<T, std::integer_sequence<Tn, Ns...>>;
 
-  template <typename T> struct is_vec : std::false_type {};
-  template <typename T, auto... Ns> struct is_vec<vec<T, Ns...>> : std::true_type {};
-  template <typename... Ts> struct is_vec<vec_view<Ts...>> : std::true_type {};
-  template <typename... Ts> struct is_vec<vec_impl<Ts...>> : std::true_type {};
+  template <typename T, auto... Ns> using vec = vec_impl<T, integer_seq<int, Ns...>>;
+  template <typename T, typename Tn, Tn... Ns> using vec_t = vec_impl<T, integer_seq<Tn, Ns...>>;
 
   /// vec without lifetime managing
-  template <typename T, typename Tn, Tn... Ns> struct vec_view<T, std::integer_sequence<Tn, Ns...>>
-      : VecInterface<vec_view<T, std::integer_sequence<Tn, Ns...>>> {
-    using base_t = VecInterface<vec_view<T, std::integer_sequence<Tn, Ns...>>>;
+  template <typename T, typename Tn, Tn... Ns> struct vec_view<T, integer_seq<Tn, Ns...>>
+      : VecInterface<vec_view<T, integer_seq<Tn, Ns...>>> {
+    using base_t = VecInterface<vec_view<T, integer_seq<Tn, Ns...>>>;
     // essential defs for any VecInterface
     using value_type = T;
     using index_type = Tn;
@@ -212,11 +200,6 @@ using vec =
       return _data[index];
     }
     ///
-    template <typename TT> constexpr auto cast() const noexcept {
-      vec_impl<TT, extents> r{};
-      for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = _data[idx];
-      return r;
-    }
     template <typename TT> constexpr explicit operator vec_impl<TT, extents>() const noexcept {
       vec_impl<TT, extents> r{};
       for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = _data[idx];
@@ -248,14 +231,6 @@ using vec =
   }
   template <typename T, typename... Ts> constexpr auto make_vec(const tuple<Ts...> &tup) noexcept {
     return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
-  }
-
-  template <typename T, typename Tn, Tn... Ns>
-  constexpr auto vectorize(const vec_impl<T, std::integer_sequence<Tn, Ns...>> &v) noexcept {
-    constexpr Tn s = (Ns * ...);
-    vec_impl<T, std::integer_sequence<Tn, s>> ret{};
-    for (Tn i = 0; i != s; ++i) ret(i) = v(i);
-    return ret;
   }
 
   /// affine map = linear map + translation matrix+(0, 0, 1) point(vec+{1})

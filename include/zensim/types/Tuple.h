@@ -238,7 +238,6 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr operator tuple<Ts...>() const noexcept { return *this; }
   };
 
-  template <typename T> struct is_vec;
   template <typename... Ts> struct tuple
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
     using typename tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>::tuple_types;

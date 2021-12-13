@@ -45,8 +45,8 @@ namespace zs {
     }
 
     template <typename VecTM,
-              enable_if_all<VecTM::dim == 2, VecTM::template get_range<0>() == dim + 1,
-                            VecTM::template get_range<1>() == dim + 1,
+              enable_if_all<VecTM::dim == 2, VecTM::template range<0> == dim + 1,
+                            VecTM::template range<1> == dim + 1,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     void resetTransformation(const VecInterface<VecTM> &i2w) {
       math::decompose_transform(i2w, _i2wSinv, _i2wRinv, _i2wT, 0);
@@ -80,14 +80,14 @@ namespace zs {
     void translate(const VecInterface<VecT> &t) noexcept {
       _i2wT += t;
     }
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template get_range<0>() == dim,
-                                           VecT::template get_range<1>() == dim> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == dim,
+                                           VecT::template range<1> == dim> = 0>
     void rotate(const VecInterface<VecT> &r) noexcept {
       _i2wRhat = _i2wRhat * r;
       _i2wRinv = r.transpose() * _i2wRinv;
     }
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template get_range<0>() == dim,
-                                           VecT::template get_range<1>() == dim> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == dim,
+                                           VecT::template range<1> == dim> = 0>
     void scale(const VecInterface<VecT> &s) {
       _i2wShat = _i2wShat * s;
       _i2wSinv = inverse(s) * _i2wSinv;

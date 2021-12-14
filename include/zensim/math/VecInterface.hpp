@@ -234,7 +234,7 @@ namespace zs {
               enable_if_t<std::is_convertible_v<typename VecT::value_type, T>> = 0>
     constexpr operator typename VecT::template variant_vec<T, typename VecT::extents>()
         const noexcept {
-      return derivedPtr()->cast<T>();
+      return derivedPtr()->template cast<T>();
     }
 
     template <typename T, typename VecT = Derived,

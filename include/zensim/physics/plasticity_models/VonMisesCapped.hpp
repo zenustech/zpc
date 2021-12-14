@@ -23,13 +23,13 @@ namespace zs {
 
     // project_strain
     template <typename VecT, typename Model,
-              enable_if_all<VecT::dim == 1, VecT::template range<0> <= 3,
+              enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr void do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       using extents = typename VecT::extents;
-      constexpr int dim = VecT::template range<0>;
+      constexpr int dim = VecT::template range_t<0>::value;
 
       const auto _2mu = (static_cast<const Model&>(model).mu + static_cast<const Model&>(model).mu);
       const auto dim_mul_lam = (value_type)dim * (value_type) static_cast<const Model&>(model).lam;
@@ -51,8 +51,8 @@ namespace zs {
     }
 
     template <typename VecT, typename Model,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
-                            VecT::template range<0> == VecT::template range<1>,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr void do_project_strain(VecInterface<VecT>& F, const Model& model) const noexcept {
       auto [U, S, V] = math::svd(F);
@@ -61,8 +61,8 @@ namespace zs {
     }
 
     template <typename VecT, typename Model,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
-                            VecT::template range<0> == VecT::template range<1>,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto project_strain(VecInterface<VecT>& F, Model& model,
                                   typename VecT::value_type strainRate, typename VecT::value_type c,
@@ -72,7 +72,7 @@ namespace zs {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       using extents = typename VecT::extents;
-      constexpr int dim = VecT::template range<0>;
+      constexpr int dim = VecT::template range_t<0>::value;
 
       const auto _2mu = (static_cast<const Model&>(model).mu + static_cast<const Model&>(model).mu);
       const auto dim_mul_lam = (value_type)dim * (value_type) static_cast<const Model&>(model).lam;

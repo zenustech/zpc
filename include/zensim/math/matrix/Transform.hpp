@@ -3,13 +3,13 @@
 
 namespace zs::math {
 
-  template <
-      typename VecTM,
-      enable_if_all<VecTM::dim == 2, (VecTM::template range<0> == VecTM::template range<1>)> = 0>
+  template <typename VecTM,
+            enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value
+                                               == VecTM::template range_t<1>::value> = 0>
   constexpr auto decompose_transform(const VecInterface<VecTM> &m,
                                      bool applyOnColumn = true) noexcept {
-    constexpr auto dim = VecTM::template range<0> - 1;
-    static_assert(VecTM::template range<0> <= 4 && (VecTM::template range<0> > 1),
+    constexpr auto dim = VecTM::template range_t<0>::value - 1;
+    static_assert(VecTM::template range_t<0>::value <= 4 && (VecTM::template range_t<0>::value > 1),
                   "transformation should be of 2x2, 3x3 or 4x4 shape only.");
     using Mat = decltype(m.clone());
     using ValT = typename VecTM::value_type;
@@ -38,22 +38,27 @@ namespace zs::math {
     return std::make_tuple(S.transpose(), R.transpose(), T.transpose());
   }
 
-  template <typename VecTM, typename VecTS, typename VecTR, typename VecTT,
-            enable_if_all<VecTM::dim == 2, VecTM::template range<0> == VecTM::template range<1>,
-                          VecTS::dim == 2, VecTS::template range<0> + 1 == VecTM::template range<0>,
-                          VecTS::template range<1> + 1 == VecTM::template range<0>, VecTR::dim == 2,
-                          VecTR::template range<0> + 1 == VecTM::template range<0>,
-                          VecTR::template range<1> + 1 == VecTM::template range<0>, VecTT::dim == 1,
-                          VecTT::template range<0> + 1 == VecTM::template range<0>,
-                          std::is_floating_point_v<typename VecTM::value_type>,
-                          std::is_floating_point_v<typename VecTS::value_type>,
-                          std::is_floating_point_v<typename VecTR::value_type>,
-                          std::is_floating_point_v<typename VecTT::value_type>> = 0>
+  template <
+      typename VecTM, typename VecTS, typename VecTR, typename VecTT,
+      enable_if_all<VecTM::dim == 2,
+                    VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
+                    VecTS::dim == 2,
+                    VecTS::template range_t<0>::value + 1 == VecTM::template range_t<0>::value,
+                    VecTS::template range_t<1>::value + 1 == VecTM::template range_t<0>::value,
+                    VecTR::dim == 2,
+                    VecTR::template range_t<0>::value + 1 == VecTM::template range_t<0>::value,
+                    VecTR::template range_t<1>::value + 1 == VecTM::template range_t<0>::value,
+                    VecTT::dim == 1,
+                    VecTT::template range_t<0>::value + 1 == VecTM::template range_t<0>::value,
+                    std::is_floating_point_v<typename VecTM::value_type>,
+                    std::is_floating_point_v<typename VecTS::value_type>,
+                    std::is_floating_point_v<typename VecTR::value_type>,
+                    std::is_floating_point_v<typename VecTT::value_type>> = 0>
   constexpr void decompose_transform(const VecInterface<VecTM> &m, VecInterface<VecTS> &s,
                                      VecInterface<VecTR> &r, VecInterface<VecTT> &t,
                                      bool applyOnColumn = true) noexcept {
-    constexpr auto dim = VecTM::template range<0> - 1;
-    static_assert(VecTM::template range<0> <= 4 && (VecTM::template range<0> > 1),
+    constexpr auto dim = VecTM::template range_t<0>::value - 1;
+    static_assert(VecTM::template range_t<0>::value <= 4 && (VecTM::template range_t<0>::value > 1),
                   "transformation should be of 2x2, 3x3 or 4x4 shape only.");
     using Mat = decltype(m.clone());
     using ValT = typename VecTM::value_type;

@@ -67,12 +67,9 @@ namespace zs {
   using dims = typename vseq<extents>::template to_iseq<sint_t>;                                 \
   static constexpr index_type extent = vseq<extents>::template reduce(multiplies<index_type>{}); \
   static constexpr int dim = vseq<extents>::count;                                               \
-  template <std::size_t I, enable_if_t<(I < dim)> = 0>                                           \
-  constexpr static auto get_range() noexcept {                                                   \
-    return select_value<I, vseq<extents>>::value;                                                \
-  }                                                                                              \
-  template <std::size_t I> constexpr static std::enable_if_t<(I < dim), index_type> range        \
-      = get_range<I>();                                                                          \
+  template <std::size_t I, enable_if_t<(I < dim)> = 0> using range_t                             \
+      = integral_t<index_type, select_value<I, vseq<extents>>::value>;                           \
+  template <std::size_t I> static constexpr index_type range = range_t<I>::value;                \
   using base_t::identity;                                                                        \
   using base_t::ones;                                                                            \
   using base_t::uniform;                                                                         \
@@ -119,22 +116,18 @@ namespace zs {
     static constexpr auto get_extent() noexcept { return Derived::extent; }
     static constexpr auto get_dim() noexcept { return Derived::dim; }
     static constexpr auto get_dims() noexcept { return wrapt<typename Derived::dims>{}; }
-    template <std::size_t I, typename VecT = Derived> constexpr static auto get_range() noexcept
-        -> decltype(VecT::template get_range<I>()) {
-      return Derived::template get_range<I>();
-    }
 
     struct detail {
       template <typename VecT, std::size_t... Is>
       static constexpr bool all_the_same_dimension_extent(typename VecT::index_type v,
                                                           index_seq<Is...>) noexcept {
-        return ((VecT::template get_range<Is>() == v) && ...);
+        return ((VecT::template range<Is> == v) && ...);
       }
     };
 
     template <typename VecT> static constexpr bool same_extent_each_dimension() noexcept {
       return detail::template all_the_same_dimension_extent<VecT>(
-          VecT::template range<0>, std::make_index_sequence<VecT::dim>{});
+          VecT::template range_t<0>::value, std::make_index_sequence<VecT::dim>{});
     }
 
     ///
@@ -211,7 +204,7 @@ namespace zs {
     static constexpr auto identity() noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       auto r = zeros();
-      constexpr index_type N = VecT::template range<0>;
+      constexpr index_type N = VecT::template range_t<0>::value;
       for (index_type i = 0; i != N; ++i)
         r.val(gen_seq<VecT::dim>::template uniform_values<std::tuple>(i)) = 1;
       return r;
@@ -538,7 +531,7 @@ namespace zs {
     template <typename VecTA, typename VecTB>
     static constexpr bool is_matrix_matrix_product() noexcept {
       if constexpr (VecTA::dim == 2 && VecTB::dim == 2) {
-        if constexpr (VecTA::template range<1> == VecTB::template range<0>)
+        if constexpr (VecTA::template range_t<1>::value == VecTB::template range_t<0>::value)
           return true;
         else
           return false;
@@ -563,9 +556,9 @@ namespace zs {
     friend constexpr auto operator*(const VecInterface& lhs,
                                     const VecInterface<OtherVecT>& rhs) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
-      constexpr auto Ni = VecT::template range<0>;
-      constexpr auto Nj = OtherVecT::template range<1>;
-      constexpr auto Nk = VecT::template range<1>;
+      constexpr auto Ni = VecT::template range_t<0>::value;
+      constexpr auto Nj = OtherVecT::template range_t<1>::value;
+      constexpr auto Nk = VecT::template range_t<1>::value;
       using R = math::op_result_t<value_type, typename OtherVecT::value_type>;
       typename Derived::template variant_vec<R, integer_seq<index_type, Ni, Nj>> r{};
       for (index_type i = 0; i != Ni; ++i)
@@ -576,13 +569,14 @@ namespace zs {
       return r;
     }
     /// matrix-vector product
-    template <typename VecTV, typename VecTM = Derived,
-              enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                            VecTM::template range<1> == VecTV::template range<0>> = 0>
+    template <
+        typename VecTV, typename VecTM = Derived,
+        enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                      VecTM::template range_t<1>::value == VecTV::template range_t<0>::value> = 0>
     friend constexpr auto operator*(const VecInterface& A, const VecInterface<VecTV>& x) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
-      constexpr auto M = VecTM::template range<0>;
-      constexpr auto N = VecTM::template range<1>;
+      constexpr auto M = VecTM::template range_t<0>::value;
+      constexpr auto N = VecTM::template range_t<1>::value;
       using R = math::op_result_t<value_type, typename VecTV::value_type>;
       typename Derived::template variant_vec<R, integer_seq<index_type, M>> r{};
       for (index_type i = 0; i != M; ++i) {
@@ -591,13 +585,14 @@ namespace zs {
       }
       return r;
     }
-    template <typename VecTM, typename VecTV = Derived,
-              enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                            VecTM::template range<1> == VecTV::template range<0>> = 0>
+    template <
+        typename VecTM, typename VecTV = Derived,
+        enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                      VecTM::template range_t<1>::value == VecTV::template range_t<0>::value> = 0>
     friend constexpr auto operator*(const VecInterface& x, const VecInterface<VecTM>& A) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
-      constexpr auto M = VecTM::template range<0>;
-      constexpr auto N = VecTM::template range<1>;
+      constexpr auto M = VecTM::template range_t<0>::value;
+      constexpr auto N = VecTM::template range_t<1>::value;
       using R = math::op_result_t<value_type, typename VecTV::value_type>;
       typename Derived::template variant_vec<R, integer_seq<index_type, N>> r{};
       for (index_type j = 0; j != N; ++j) {
@@ -804,8 +799,7 @@ namespace zs {
       static_assert(sizeof...(dims) == sizeof...(Is), "count of indices and dims mismatch.");
       if constexpr (dim == VecT::dim) {
         if constexpr (sizeof...(dims) <= dim)
-          return ((VecT::template get_range<Is>() == select_indexed_value<Is, dims...>::value)
-                  && ...);
+          return ((VecT::template range<Is> == select_indexed_value<Is, dims...>::value) && ...);
         else
           return false;
       } else

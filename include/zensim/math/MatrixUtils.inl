@@ -18,7 +18,7 @@ namespace zs {
 
   template <typename VecTM, enable_if_all<VecTM::dim == 2> = 0>
   constexpr auto row(const VecInterface<VecTM> &m, typename VecTM::index_type i) noexcept {
-    constexpr auto ncols = VecTM::template range<1>;
+    constexpr auto ncols = VecTM::template range_t<1>::value;
     typename VecTM::template variant_vec<typename VecTM::value_type,
                                          integer_seq<typename VecTM::index_type, ncols>>
         r{};
@@ -27,7 +27,7 @@ namespace zs {
   }
   template <typename VecTM, enable_if_all<VecTM::dim == 2> = 0>
   constexpr auto col(const VecInterface<VecTM> &m, typename VecTM::index_type j) noexcept {
-    constexpr auto nrows = VecTM::template range<0>;
+    constexpr auto nrows = VecTM::template range_t<0>::value;
     typename VecTM::template variant_vec<typename VecTM::value_type,
                                          integer_seq<typename VecTM::index_type, nrows>>
         c{};
@@ -35,10 +35,11 @@ namespace zs {
     return c;
   }
 
-  template <typename VecTM, enable_if_all<VecTM::dim == 2,
-                                          VecTM::template range<0> == VecTM::template range<1>> = 0>
+  template <typename VecTM,
+            enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value
+                                               == VecTM::template range_t<1>::value> = 0>
   constexpr auto trace(const VecInterface<VecTM> &m) noexcept {
-    constexpr auto n = VecTM::template range<0>;
+    constexpr auto n = VecTM::template range_t<0>::value;
     typename VecTM::value_type r{};
     for (typename VecTM::index_type i = 0; i != n; ++i) r += m(i, i);
     return r;
@@ -64,15 +65,15 @@ namespace zs {
       return A(i0, 0) * A(i1, 1) - A(i1, 0) * A(i0, 1);
     }
     template <int i0, int i1, int i2, typename VecT, typename T,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> == 4,
-                            VecT::template range<1> == 4> = 0>
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 4,
+                            VecT::template range_t<1>::value == 4> = 0>
     constexpr auto det3(const VecInterface<VecT> &A, const T &d0, const T &d1,
                         const T &d2) noexcept {
       return A(i0, 2) * d0 + (-A(i1, 2) * d1 + A(i2, 2) * d2);
     }
     template <int i, int j, typename VecT,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> == 3,
-                            VecT::template range<1> == 3> = 0>
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
+                            VecT::template range_t<1>::value == 3> = 0>
     constexpr typename VecT::value_type cofactor(const VecInterface<VecT> &A) noexcept {
       constexpr int i1 = (i + 1) % 3;
       constexpr int i2 = (i + 2) % 3;
@@ -81,14 +82,14 @@ namespace zs {
       return A(i1, j1) * A(i2, j2) - A(i1, j2) * A(i2, j1);
     }
     template <int i1, int i2, int i3, int j1, int j2, int j3, typename VecT,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> == 4,
-                            VecT::template range<1> == 4> = 0>
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 4,
+                            VecT::template range_t<1>::value == 4> = 0>
     constexpr typename VecT::value_type det3(const VecInterface<VecT> &A) noexcept {
       return A(i1, j1) * (A(i2, j2) * A(i3, j3) - A(i2, j3) * A(i3, j2));
     }
     template <int i, int j, typename VecT,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> == 4,
-                            VecT::template range<1> == 4> = 0>
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 4,
+                            VecT::template range_t<1>::value == 4> = 0>
     constexpr typename VecT::value_type cofactor(const VecInterface<VecT> &A) noexcept {
       constexpr int i1 = (i + 1) % 4;
       constexpr int i2 = (i + 2) % 4;
@@ -101,25 +102,25 @@ namespace zs {
     }
   }  // namespace detail
 
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 1,
-                                         VecT::template range<1> == 1> = 0>
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 1,
+                                         VecT::template range_t<1>::value == 1> = 0>
   constexpr auto determinant(const VecInterface<VecT> &A) noexcept {
     return A(0, 0);
   }
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 2,
-                                         VecT::template range<1> == 2> = 0>
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 2,
+                                         VecT::template range_t<1>::value == 2> = 0>
   constexpr auto determinant(const VecInterface<VecT> &A) noexcept {
     return A(0, 0) * A(1, 1) - A(1, 0) * A(0, 1);
   }
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 3,
-                                         VecT::template range<1> == 3> = 0>
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
+                                         VecT::template range_t<1>::value == 3> = 0>
   constexpr auto determinant(const VecInterface<VecT> &A) noexcept {
     return A(0, 0) * (A(1, 1) * A(2, 2) - A(1, 2) * A(2, 1))
            - A(0, 1) * (A(1, 0) * A(2, 2) - A(1, 2) * A(2, 0))
            + A(0, 2) * (A(1, 0) * A(2, 1) - A(1, 1) * A(2, 0));
   }
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 4,
-                                         VecT::template range<1> == 4> = 0>
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 4,
+                                         VecT::template range_t<1>::value == 4> = 0>
   constexpr auto determinant(const VecInterface<VecT> &A) noexcept {
     auto d2_01 = detail::det2<0, 1>(A);
     auto d2_02 = detail::det2<0, 2>(A);
@@ -134,8 +135,8 @@ namespace zs {
     return -A(0, 3) * d3_0 + A(1, 3) * d3_1 + -A(2, 3) * d3_2 + A(3, 3) * d3_3;
   }
 
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 1,
-                                         VecT::template range<1> == 1,
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 1,
+                                         VecT::template range_t<1>::value == 1,
                                          std::is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     using T = typename VecT::value_type;
@@ -143,8 +144,8 @@ namespace zs {
     ret(0, 0) = (T)1 / A(0, 0);
     return ret;
   }
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 2,
-                                         VecT::template range<1> == 2,
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 2,
+                                         VecT::template range_t<1>::value == 2,
                                          std::is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     using T = typename VecT::value_type;
@@ -156,8 +157,8 @@ namespace zs {
     ret(1, 1) = A(0, 0) * invdet;
     return ret;
   }
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 3,
-                                         VecT::template range<1> == 3,
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
+                                         VecT::template range_t<1>::value == 3,
                                          std::is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     using T = typename VecT::value_type;
@@ -180,8 +181,8 @@ namespace zs {
     ret(0, 2) *= invdet;
     return ret;
   }
-  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> == 4,
-                                         VecT::template range<1> == 4,
+  template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 4,
+                                         VecT::template range_t<1>::value == 4,
                                          std::is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     using T = typename VecT::value_type;
@@ -210,38 +211,41 @@ namespace zs {
     return ret;
   }
 
-  template <typename VecTM, typename VecTV,
-            enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                          VecTM::template range<1> == VecTV::template range<0>> = 0>
+  template <
+      typename VecTM, typename VecTV,
+      enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                    VecTM::template range_t<1>::value == VecTV::template range_t<0>::value> = 0>
   constexpr auto diag_mul(const VecInterface<VecTM> &A, const VecInterface<VecTV> &diag) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
-    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>; ++i)
-      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>; ++j)
+    for (typename VecTM::index_type i = 0; i != VecTM::template range_t<0>::value; ++i)
+      for (typename VecTM::index_type j = 0; j != VecTM::template range_t<1>::value; ++j)
         r(i, j) = A(i, j) * diag(j);
     return r;
   }
-  template <typename VecTV, typename VecTM,
-            enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
-                          VecTM::template range<0> == VecTV::template range<0>> = 0>
+  template <
+      typename VecTV, typename VecTM,
+      enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
+                    VecTM::template range_t<0>::value == VecTV::template range_t<0>::value> = 0>
   constexpr auto diag_mul(const VecInterface<VecTV> &diag, const VecInterface<VecTM> &A) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     typename VecTM::template variant_vec<R, typename VecTM::extents> r{};
-    for (typename VecTM::index_type i = 0; i != VecTM::template range<0>; ++i)
-      for (typename VecTM::index_type j = 0; j != VecTM::template range<1>; ++j)
+    for (typename VecTM::index_type i = 0; i != VecTM::template range_t<0>::value; ++i)
+      for (typename VecTM::index_type j = 0; j != VecTM::template range_t<1>::value; ++j)
         r(i, j) = A(i, j) * diag(i);
     return r;
   }
 
   /// affine transform
-  template <typename VecTM, typename VecTV,
-            enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                          VecTM::template range<1> == VecTV::template range<0> + 1> = 0>
+  template <
+      typename VecTM, typename VecTV,
+      enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                    VecTM::template range_t<1>::value == VecTV::template range_t<0>::value + 1> = 0>
   constexpr auto operator*(const VecInterface<VecTM> &A, const VecInterface<VecTV> &x) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     using index_type = typename VecTM::index_type;
-    constexpr auto nrows_m_1 = VecTM::template range<0> - 1;
-    constexpr auto ncols = VecTM::template range<1>;
+    constexpr auto nrows_m_1 = VecTM::template range_t<0>::value - 1;
+    constexpr auto ncols = VecTM::template range_t<1>::value;
     constexpr auto ncols_m_1 = ncols - 1;
     typename VecTM::template variant_vec<R, integer_seq<index_type, nrows_m_1>> r{};
     for (index_type i = 0; i != nrows_m_1; ++i) {
@@ -250,15 +254,16 @@ namespace zs {
     }
     return r;
   }
-  template <typename VecTV, typename VecTM,
-            enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
-                          VecTM::template range<0> == VecTV::template range<0> + 1> = 0>
+  template <
+      typename VecTV, typename VecTM,
+      enable_if_all<VecTV::dim == 1, VecTM::dim == 2,
+                    VecTM::template range_t<0>::value == VecTV::template range_t<0>::value + 1> = 0>
   constexpr auto operator*(const VecInterface<VecTV> &x, const VecInterface<VecTM> &A) noexcept {
     using R = math::op_result_t<typename VecTM::value_type, typename VecTV::value_type>;
     using index_type = typename VecTV::index_type;
-    constexpr auto nrows = VecTM::template range<0>;
+    constexpr auto nrows = VecTM::template range_t<0>::value;
     constexpr auto nrows_m_1 = nrows - 1;
-    constexpr auto ncols_m_1 = VecTM::template range<1> - 1;
+    constexpr auto ncols_m_1 = VecTM::template range_t<1>::value - 1;
     typename VecTV::template variant_vec<R, integer_seq<index_type, ncols_m_1>> r{};
     for (index_type j = 0; j != ncols_m_1; ++j) {
       r(j) = (R)0;

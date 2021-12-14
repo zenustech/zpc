@@ -92,7 +92,8 @@ namespace zs {
        *    Fill the R with the entries of this rotation
        **/
       template <typename VecT,
-                enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
+                enable_if_all<VecT::dim == 2,
+                              VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                               std::is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void fill(VecInterface<VecT>& A) const noexcept {
         A = A.identity();
@@ -110,11 +111,12 @@ namespace zs {
        *    It only affects row i and row k of A.
        **/
       template <typename VecT,
-                enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
+                enable_if_all<VecT::dim == 2,
+                              VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                               std::is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void rowRotation(VecInterface<VecT>& A) const noexcept {
         using index_type = typename VecT::index_type;
-        constexpr auto ncols = VecT::template range<1>;
+        constexpr auto ncols = VecT::template range_t<1>::value;
         for (index_type j = 0; j != ncols; ++j) {
           auto tau1 = A(rowi, j);
           auto tau2 = A(rowk, j);
@@ -130,11 +132,12 @@ namespace zs {
        *    It only affects column i and column k of A.
        **/
       template <typename VecT,
-                enable_if_all<VecT::dim == 2, VecT::template range<0> == VecT::template range<1>,
+                enable_if_all<VecT::dim == 2,
+                              VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                               std::is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void columnRotation(VecInterface<VecT>& A) const noexcept {
         using index_type = typename VecT::index_type;
-        constexpr auto nrows = VecT::template range<0>;
+        constexpr auto nrows = VecT::template range_t<0>::value;
         for (index_type i = 0; i != nrows; ++i) {
           auto tau1 = A(i, rowi);
           auto tau2 = A(i, rowk);
@@ -164,7 +167,7 @@ namespace zs {
 
     template <typename VecT> static constexpr bool is_3_by_3() noexcept {
       if constexpr (VecT::dim == 2)
-        return VecT::template range<0> == 3 && VecT::template range<1> == 3;
+        return VecT::template range_t<0>::value == 3 && VecT::template range_t<1>::value == 3;
       return false;
     }
     /**

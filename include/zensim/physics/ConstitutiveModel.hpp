@@ -42,34 +42,36 @@ namespace zs {
 
     using model_type = Model;
     template <typename VecT> using vec_type = typename VecT::template variant_vec<
-        typename VecT::value_type, integer_seq<typename VecT::index_type, VecT::template range<0>>>;
+        typename VecT::value_type,
+        integer_seq<typename VecT::index_type, VecT::template range_t<0>::value>>;
     template <typename VecT> using mat_type = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, VecT::template range<0>, VecT::template range<0>>>;
+        integer_seq<typename VecT::index_type, VecT::template range_t<0>::value,
+                    VecT::template range_t<0>::value>>;
 
     // psi_sigma
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range<0> <= 3,
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) psi_sigma(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_psi_sigma(S);
     }
     // dpsi_dsigma
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range<0> <= 3,
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_dpsi_dsigma(S);
     }
     // d2psi_dsigma2
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range<0> <= 3,
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_d2psi_dsigma2(S);
     }
     // Bij_neg_coeff
-    template <
-        typename VecT,
-        enable_if_all<VecT::dim == 1, VecT::template range<0> == 2 || VecT::template range<0> == 3,
-                      std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1,
+                                           VecT::template range_t<0>::value == 2
+                                               || VecT::template range_t<0>::value == 3,
+                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_Bij_neg_coeff(S);
     }
@@ -91,36 +93,39 @@ namespace zs {
     constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       using RetT = typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_seq<typename VecT::index_type, (VecT::template range<0> == 3 ? 3 : 1)>>;
+          integer_seq<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
       return RetT::zeros();
     }
 
     // psi
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
-                                           VecT::template range<0> == VecT::template range<1>,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto psi(const VecInterface<VecT>& F) const noexcept {
       auto [U, S, V] = math::svd(F);
       return static_cast<const Model*>(this)->psi_sigma(S);
     }
     // first piola
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
-                                           VecT::template range<0> == VecT::template range<1>,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto first_piola(const VecInterface<VecT>& F) const noexcept {
       auto [U, S, V] = math::svd(F);
       auto dE_dsigma = static_cast<const Model*>(this)->dpsi_dsigma(S);
       return diag_mul(U, dE_dsigma) * V.transpose();
     }
     // first piola derivative
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
-                                           VecT::template range<0> == VecT::template range<1>,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto first_piola_derivative(const VecInterface<VecT>& F) const noexcept {
       using T = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       using extents = typename VecT::extents;
-      constexpr int dim = VecT::template range<0>;
+      constexpr int dim = VecT::template range_t<0>::value;
 
       auto [U, S, V] = math::svd(F);
       auto dE_dsigma = static_cast<const Model*>(this)->dpsi_dsigma(S);
@@ -216,15 +221,15 @@ namespace zs {
 
     // project_sigma
     template <typename VecT, typename... Args,
-              enable_if_all<VecT::dim == 1, VecT::template range<0> <= 3,
+              enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) project_sigma(VecInterface<VecT>& S, Args&&... args) const noexcept {
       return static_cast<const Model*>(this)->do_project_sigma(S, FWD(args)...);
     }
     // project_strain
     template <typename VecT, typename... Args,
-              enable_if_all<VecT::dim == 2, VecT::template range<0> <= 3,
-                            VecT::template range<0> == VecT::template range<1>,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) project_strain(VecInterface<VecT>& F, Args&&... args) const noexcept {
       return static_cast<const Model*>(this)->do_project_strain(F, FWD(args)...);

@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "../TypeAlias.hpp"
+#include "ControlFlow.h"
 #include "Functional.h"
 #include "Meta.h"
 
@@ -53,6 +54,10 @@ namespace zs {
   template <typename... Seqs> struct concat;
   template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;
 
+  template <typename> struct is_type_seq : std::false_type {};
+  template <typename... Ts> struct is_type_seq<type_seq<Ts...>> : std::true_type {};
+  template <typename SeqT> static constexpr bool is_type_seq_v = is_type_seq<SeqT>::value;
+
   /******************************************************************/
   /** definition: monoid_op, type_seq, value_seq, gen_seq, gather */
   /******************************************************************/
@@ -85,11 +90,17 @@ namespace zs {
         std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::type;
 
     template <typename, typename = void> struct locator {
-      using index = integral_v<std::size_t, limits<std::size_t>::max()>;
+      using index = integral_t<std::size_t, limits<std::size_t>::max()>;
     };
-    template <typename T> struct locator<T, std::enable_if_t<((int)is_same_v<T, Ts> + ...) == 1>> {
+    template <typename T> static constexpr std::size_t count_occurencies() noexcept {
+      if constexpr (sizeof...(Ts) == 0)
+        return 0;
+      else
+        return (static_cast<std::size_t>(is_same_v<T, Ts>) + ...);
+    }
+    template <typename T> struct locator<T, std::enable_if_t<count_occurencies<T>() == 1>> {
       using index
-          = integral_v<std::size_t,
+          = integral_t<std::size_t,
                        decltype(type_impl::extract_index<T>(
                            std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::value>;
     };
@@ -251,19 +262,116 @@ namespace zs {
   template <typename Tn, Tn... Ns> struct vseq<integer_seq<Tn, Ns...>> : vseq<value_seq<Ns...>> {};
 
   /** utilities */
+  // extract template argument list
   template <typename T> struct get_ttal;  // extract type template parameter list
   template <template <class...> class T, typename... Args> struct get_ttal<T<Args...>> {
     using type = type_seq<Args...>;
   };
-  template <typename T>
-  using get_ttal_t = typename get_ttal<T>::type;
+  template <typename T> using get_ttal_t = typename get_ttal<T>::type;
 
   template <typename T> struct get_nttal;  // extract type template parameter list
   template <template <auto...> class T, auto... Args> struct get_nttal<T<Args...>> {
     using type = value_seq<Args...>;
   };
-  template <typename T>
-  using get_nttal_t = typename get_nttal<T>::type;
+  template <typename T> using get_nttal_t = typename get_nttal<T>::type;
+
+  // assemble template argument list
+  template <template <class...> class T, typename... Args> struct assemble {
+    using type = T<Args...>;
+  };
+  template <template <class...> class T, typename... Args> struct assemble<T, type_seq<Args...>>
+      : assemble<T, Args...> {};
+  template <template <class...> class T, typename... Args> using assemble_t =
+      typename assemble<T, Args...>::type;
+
+  template <typename...> struct alternative;
+  template <template <class...> class T, typename... Ts, typename... Args>
+  struct alternative<T<Ts...>, type_seq<Args...>> {
+    using type = T<Args...>;
+  };
+  template <template <class...> class T, typename... Ts, typename... Args>
+  struct alternative<T<Ts...>, Args...> {
+    using type = T<Args...>;
+  };
+  template <typename TTAT, typename... Args> using alternative_t =
+      typename alternative<TTAT, Args...>::type;
+
+  // concatenation
+  namespace detail {
+    struct concatenation_op {
+      template <typename... As, typename... Bs>
+      constexpr auto operator()(type_seq<As...>, type_seq<Bs...>) const noexcept {
+        return type_seq<As..., Bs...>{};
+      }
+      template <typename... SeqT> constexpr auto operator()(type_seq<SeqT...>) const noexcept {
+        constexpr auto seq_lambda = [](auto I_) noexcept {
+          using T = select_indexed_type<decltype(I_)::value, SeqT...>;
+          return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+        };
+        constexpr std::size_t N = sizeof...(SeqT);
+
+        if constexpr (N == 0)
+          return type_seq<>{};
+        else if constexpr (N == 1)
+          return seq_lambda(index_v<0>);
+        else if constexpr (N == 2)
+          return (*this)(seq_lambda(index_v<0>), seq_lambda(index_v<1>));
+        else {
+          constexpr std::size_t halfN = N / 2;
+          return (*this)((*this)(gather_t<typename gen_seq<halfN>::ascend, type_seq<SeqT...>>{}),
+                         (*this)(gather_t<typename gen_seq<N - halfN>::template arithmetic<halfN>,
+                                          type_seq<SeqT...>>{}));
+        }
+      }
+    };
+  }  // namespace detail
+  template <typename... TSeqs> using concatenation_t
+      = decltype(detail::concatenation_op{}(type_seq<TSeqs...>{}));
+
+  // permutation / combination
+  namespace detail {
+    struct compose_op {
+      // merger
+      template <typename... As, typename... Bs, std::size_t... Is>
+      constexpr auto get_seq(type_seq<As...>, type_seq<Bs...>, index_seq<Is...>) const noexcept {
+        constexpr auto Nb = sizeof...(Bs);
+        return type_seq<concatenation_t<select_indexed_type<Is / Nb, As...>,
+                                        select_indexed_type<Is % Nb, Bs...>>...>{};
+      }
+      template <typename... As, typename... Bs>
+      constexpr auto operator()(type_seq<As...>, type_seq<Bs...>) const noexcept {
+        constexpr auto N = (sizeof...(As)) * (sizeof...(Bs));
+        return conditional_t<N == 0, type_seq<>,
+                             decltype(get_seq(type_seq<As...>{}, type_seq<Bs...>{},
+                                              std::make_index_sequence<N>{}))>{};
+      }
+
+      /// more general case
+      template <typename... SeqT> constexpr auto operator()(type_seq<SeqT...>) const noexcept {
+        constexpr auto seq_lambda = [](auto I_) noexcept {
+          using T = select_indexed_type<decltype(I_)::value, SeqT...>;
+          return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+        };
+        constexpr std::size_t N = sizeof...(SeqT);
+        if constexpr (N == 0)
+          return type_seq<>{};
+        else if constexpr (N == 1)
+          return map_t<type_seq, decltype(seq_lambda(index_v<0>))>{};
+        else if constexpr (N == 2)
+          return (*this)(seq_lambda(index_v<0>), seq_lambda(index_v<1>));
+        else if constexpr (N > 2) {
+          constexpr std::size_t halfN = N / 2;
+          return (*this)((*this)(gather_t<typename gen_seq<halfN>::ascend, type_seq<SeqT...>>{}),
+                         (*this)(gather_t<typename gen_seq<N - halfN>::template arithmetic<halfN>,
+                                          type_seq<SeqT...>>{}));
+        }
+      }
+    };
+  }  // namespace detail
+  template <typename... TSeqs> using compose_t
+      = decltype(detail::compose_op{}(type_seq<TSeqs...>{}));
+
+  // join
 
   /// concat
   template <typename... Seqs> struct concat {
@@ -287,6 +395,10 @@ namespace zs {
   /// non uniform value sequence
   template <std::size_t... Is, auto... Ns> struct gather<index_seq<Is...>, value_seq<Ns...>> {
     using type = value_seq<(select_value<Is, value_seq<Ns...>>::value)...>;
+  };
+  template <std::size_t... Is, typename... Args>
+  struct gather<index_seq<Is...>, type_seq<Args...>> {
+    using type = type_seq<select_type<Is, type_seq<Args...>>...>;
   };
 
   /** type identification */
@@ -323,7 +435,7 @@ namespace zs {
   /** placeholder */
 
   namespace placeholders {
-    using placeholder_type = unsigned;
+    using placeholder_type = std::size_t;
     constexpr auto _0 = std::integral_constant<placeholder_type, 0>{};
     constexpr auto _1 = std::integral_constant<placeholder_type, 1>{};
     constexpr auto _2 = std::integral_constant<placeholder_type, 2>{};

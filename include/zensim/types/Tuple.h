@@ -276,15 +276,29 @@ template <std::size_t I, typename T> struct tuple_value {
 
   template <typename> struct is_tuple : std::false_type {};
   template <typename... Ts> struct is_tuple<tuple<Ts...>> : std::true_type {};
+  template <typename T> static constexpr bool is_tuple_v = is_tuple<T>::value;
+
   template <typename> struct is_std_tuple : std::false_type {};
   template <typename... Ts> struct is_std_tuple<std::tuple<Ts...>> : std::true_type {};
+  template <typename T> static constexpr bool is_std_tuple_v = is_std_tuple<T>::value;
 
   /** tuple_size */
-  template <typename T> using tuple_size = std::integral_constant<std::size_t, T::tuple_size>;
+  template <typename T> struct tuple_size;
+  template <typename... Ts> struct tuple_size<tuple<Ts...>>
+      : std::integral_constant<std::size_t, sizeof...(Ts)> {};
+  template <typename Tup>
+  static constexpr std::enable_if_t<is_tuple_v<Tup>, std::size_t> tuple_size_v
+      = tuple_size<Tup>::value;
 
   /** tuple_element */
-  template <std::size_t I, typename Tuple> using tuple_element_t
-      = select_type<I, typename Tuple::tuple_types>;
+  template <std::size_t I, typename T, typename = void> struct tuple_element;
+  template <std::size_t I, typename... Ts>
+  struct tuple_element<I, tuple<Ts...>, std::enable_if_t<(I < sizeof...(Ts))>> {
+    using type = select_type<I, typename tuple<Ts...>::tuple_types>;
+  };
+  template <std::size_t I, typename Tup> using tuple_element_t
+      = std::enable_if_t<is_tuple_v<Tup>, std::enable_if_t<(I < (tuple_size_v<Tup>)),
+                                                           typename tuple_element<I, Tup>::type>>;
 
   /** get */
   template <std::size_t I, typename... Ts>
@@ -320,12 +334,29 @@ struct std::tuple_element<I, tuple<Ts...>> {
 #endif
 
   /** operations */
+  namespace detail {
+    template <class F, class Tuple, std::size_t... Is,
+              enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
+    constexpr decltype(auto) apply_impl(F &&f, Tuple &&t, index_seq<Is...>) {
+      // should use constexpr zs::invoke
+      FWD(f)(get<Is>(FWD(t))...);
+    }
+  }  // namespace detail
+  template <class F, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
+  constexpr decltype(auto) apply(F &&f, Tuple &&t) {
+    return detail::apply_impl(FWD(f), FWD(t), std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
+  }
+  template <template <class...> class F, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
+  constexpr decltype(auto) apply(assemble_t<F, get_ttal_t<remove_cvref_t<Tuple>>> &&f, Tuple &&t) {
+    return detail::apply_impl(FWD(f), FWD(t), std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
+  }
+
   template <std::size_t... Is, typename... Ts>
-  constexpr auto shuffle(std::index_sequence<Is...>, const std::tuple<Ts...> &tup) {
+  constexpr auto shuffle(index_seq<Is...>, const std::tuple<Ts...> &tup) {
     return std::make_tuple(std::get<Is>(tup)...);
   }
   template <std::size_t... Is, typename... Ts>
-  constexpr auto shuffle(std::index_sequence<Is...>, const zs::tuple<Ts...> &tup) {
+  constexpr auto shuffle(index_seq<Is...>, const zs::tuple<Ts...> &tup) {
     return zs::make_tuple(zs::get<Is>(tup)...);
   }
 
@@ -333,7 +364,7 @@ struct std::tuple_element<I, tuple<Ts...>> {
 
   /** make_tuple */
   template <typename... Args> constexpr auto make_tuple(Args &&...args) {
-    return zs::tuple<special_decay_t<Args>...>{std::forward<Args>(args)...};
+    return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
   }
   /** tie */
   template <typename... Args> constexpr auto tie(Args &...args) {
@@ -342,7 +373,7 @@ struct std::tuple_element<I, tuple<Ts...>> {
 
   /** forward_as_tuple */
   template <typename... Ts> constexpr auto forward_as_tuple(Ts &&...ts) noexcept {
-    return zs::tuple<Ts &&...>{std::forward<Ts>(ts)...};
+    return zs::tuple<Ts &&...>{FWD(ts)...};
   }
 
   /** make_from_tuple */
@@ -353,7 +384,8 @@ struct std::tuple_element<I, tuple<Ts...>> {
     }
   }  // namespace tuple_detail_impl
 
-  template <class T, class Tuple> constexpr T make_from_tuple(Tuple &&t) {
+  template <class T, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
+  constexpr T make_from_tuple(Tuple &&t) {
     return tuple_detail_impl::make_from_tuple_impl<T>(
         FWD(t),
         std::make_index_sequence<std::declval<std::remove_reference_t<Tuple>>().tuple_size>{});
@@ -367,7 +399,8 @@ struct std::tuple_element<I, tuple<Ts...>> {
       return R{tup.template get<Os>().template get<Is>()...};
     }
   }  // namespace tuple_detail_impl
-  template <typename... Ts> constexpr auto tuple_cat(Ts &&...tuples) {
+  template <typename... Ts /*, enable_if_t<(is_tuple<remove_cvref_t<Ts>>::value && ...)> = 0*/>
+  constexpr auto tuple_cat(Ts &&...tuples) {
     using Tuple = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
     return tuple_detail_impl::tuple_cat_impl<
         tuple_base<typename Tuple::indices, typename Tuple::type::types>>(

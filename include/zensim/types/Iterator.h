@@ -369,8 +369,8 @@ namespace zs {
     T base;
     DiffT stride;
   };
-  template <typename Data, sint_t Stride> struct IndexIterator<Data, integral_v<sint_t, Stride>>
-      : IteratorInterface<IndexIterator<Data, integral_v<sint_t, Stride>>> {
+  template <typename Data, sint_t Stride> struct IndexIterator<Data, integral_t<sint_t, Stride>>
+      : IteratorInterface<IndexIterator<Data, integral_t<sint_t, Stride>>> {
     using T = std::make_signed_t<Data>;
     static_assert(std::is_integral_v<T>, "Index type must be integral");
     static_assert(std::is_convertible_v<sint_t, T>,
@@ -385,12 +385,12 @@ namespace zs {
 
     T base;
   };
-  template <typename BaseT, typename DiffT, enable_if_t<!is_integral_constant<DiffT>::value> = 0>
+  template <typename BaseT, typename DiffT, enable_if_t<!is_integral<DiffT>::value> = 0>
   IndexIterator(BaseT, DiffT) -> IndexIterator<BaseT, DiffT>;
   template <typename BaseT> IndexIterator(BaseT)
-      -> IndexIterator<BaseT, integral_v<sint_t, (sint_t)1>>;
-  template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral_v<sint_t, Diff>)
-      -> IndexIterator<BaseT, integral_v<sint_t, Diff>>;
+      -> IndexIterator<BaseT, integral_t<sint_t, (sint_t)1>>;
+  template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral_t<sint_t, Diff>)
+      -> IndexIterator<BaseT, integral_t<sint_t, Diff>>;
 
   // collapse iterator
   template <typename Ts, typename Indices> struct Collapse;

@@ -14,16 +14,17 @@ namespace zs {
   // gcem alike, shorter alias for std::numeric_limits
   template <typename T> using limits = std::numeric_limits<T>;
 
-  /// operator
-  template <typename Oprand, template <class> class Operator> struct map {
-    using type = Operator<Oprand>;
+  /// WIP: supplement
+  template <template <class> class Function, typename Oprand> struct map { using type = Function<Oprand>; };
+  template <template <class> class Function, template <class...> class Functor, typename... Args>
+  struct map<Function, Functor<Args...>> {
+    using type = Functor<Function<Args>...>;
   };
-  template <template <class...> class Functor, typename... Args, template <class> class Op>
-  struct map<Functor<Args...>, Op> {
-    using type = Functor<Op<Args>...>;
-  };
-  template <typename Oprand, template <class> class Operator> using map_t =
-      typename map<Oprand, Operator>::type;
+  template <template <class> class Function, typename Functor> using map_t =
+      typename map<Function, Functor>::type;
+
+  // applicative functor: pure, apply
+  // either, apply, join, bind, mcombine, fold
 
   /// binary operation
   template <typename T = void> using plus = std::plus<T>;

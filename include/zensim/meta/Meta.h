@@ -13,7 +13,7 @@ namespace zs {
 
   /// SFINAE
   template <bool B> struct enable_if;
-  template <> struct enable_if<true> { using type = char; };
+  template <> struct enable_if<true> { using type = int; };
   template <bool B> using enable_if_t = typename enable_if<B>::type;
   template <bool... Bs> using enable_if_all = typename enable_if<(Bs && ...)>::type;
   template <bool... Bs> using enable_if_any = typename enable_if<(Bs || ...)>::type;
@@ -47,12 +47,17 @@ namespace zs {
   template <typename T> struct wrapt { using type = T; };
   /// wrap at most 1 layer
   template <typename T> struct wrapt<wrapt<T>> { using type = T; };
-  template <auto N> using wrapv = std::integral_constant<decltype(N), N>;
+  template <typename T> constexpr wrapt<T> wrapt_v{};
 
-  template <typename Tn, Tn N> using integral_v = std::integral_constant<Tn, N>;
-  template <typename> struct is_integral_constant : std::false_type {};
-  template <typename T, T v> struct is_integral_constant<integral_v<T, v>> : std::true_type {};
-  template <std::size_t N> using index_v = std::integral_constant<std::size_t, N>;
+  template <typename Tn, Tn N> using integral_t = std::integral_constant<Tn, N>;
+  template <typename> struct is_integral : std::false_type {};
+  template <typename T, T v> struct is_integral<integral_t<T, v>> : std::true_type {};
+
+  template <auto N> using wrapv = integral_t<decltype(N), N>;
+  template <auto N> constexpr wrapv<N> wrapv_v{};
+
+  template <std::size_t N> using index_t = integral_t<std::size_t, N>;
+  template <std::size_t N> constexpr index_t<N> index_v{};
 
   constexpr std::true_type true_v{};
   constexpr std::false_type false_v{};

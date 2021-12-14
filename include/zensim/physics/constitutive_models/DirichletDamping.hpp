@@ -16,7 +16,7 @@ namespace zs {
     Ret ret{};
 
     std::get<0>(ret) = L.l2NormSqr() * (R)coeff * (T1)0.5;
-    if constexpr (Opt > 1) std::get<1>(ret) = coeff * vectorize(L);
+    if constexpr (Opt > 1) std::get<1>(ret) = coeff * L.vectorize();
     if constexpr (Opt > 2) std::get<2>(ret) = coeff * mat9::identity();
     return ret;
   }

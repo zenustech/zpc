@@ -188,7 +188,7 @@ namespace zs {
     auto pack = compute_anisotrpic_invariant_deriv_hesssian<Opt>(fiberDirection, weights, F);
 
     auto I1_d = eval_I1_delta(weights, fiberDirection, F);                      // scalar
-    auto I1_d_deriv = vectorize(eval_I1_delta_deriv(weights, fiberDirection));  // vec9
+    auto I1_d_deriv = eval_I1_delta_deriv(weights, fiberDirection).vectorize();  // vec9
     // chain-rule
     auto dFact_dF = eval_dFact_dF(actInv);  // mat9
 

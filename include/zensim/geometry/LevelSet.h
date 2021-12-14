@@ -2,24 +2,69 @@
 #include <fstream>
 #include <type_traits>
 
+#include "AnalyticLevelSet.h"
 #include "LevelSetInterface.h"
-#include "VdbLevelSet.h"
+#include "SparseLevelSet.hpp"
 // #include "zensim/execution/Concurrency.h"
 #include "zensim/math/Vec.h"
 #include "zensim/memory/Allocator.h"
 
 namespace zs {
 
-  ///
-  /// special purpose levelsets
-  ///
-  // WIP
+///
+/// special purpose levelsets
+///
+#if 0
+  template <typename T, int d> struct LevelSetRefs {
+    using value_type = T;
+    static constexpr int dim = d;
+    using ls_t = variant<AnalyticLevelSet<analytic_geometry_e::Plane, value_type, dim> *,
+                         AnalyticLevelSet<analytic_geometry_e::Cuboid, value_type, dim> *,
+                         AnalyticLevelSet<analytic_geometry_e::Sphere, value_type, dim> *,
+                         AnalyticLevelSet<analytic_geometry_e::Cylinder, value_type, dim> *,
+                         SparseLevelSet<dim, grid_e::collocated> *>;
+
+    ls_t _ls{};
+  };
+  template <typename T, int d> struct SdfVelField {
+    using value_type = T;
+    static constexpr int dim = d;
+    using TV = vec<value_type, dim>;
+
+    template <typename SdfField, typename VelField>
+    constexpr SdfVelField(SdfField &sdf, VelField &vel) noexcept : _sdfPtr{&sdf}, _velPtr{&vel} {}
+
+    LevelSetRefs<T, d> _sdfPtr{nullptr};
+    LevelSetRefs<T, d> _velPtr{nullptr};
+  };
+
+  template <typename Ls> struct TransitionLevelSet {
+    using ls_t = remove_cvref_t<Ls>;
+    using value_type = typename ls_t::value_type;
+    static constexpr int dim = ls_t::dim;
+    using TV = vec<value_type, dim>;
+
+    void setStepDt(const value_type dt) noexcept { _stepDt = dt; }
+    void push(Ls *ls) noexcept {
+      if (_lsPtrs[0] == nullptr)
+        _lsPtrs[0] = ls;
+      else if (_lsPtrs[1] == nullptr)
+        _lsPtrs[1] = ls;
+      else
+        _lsPtrs[0] = _lsPtrs[1];
+      _alpha = 0;
+    }
+
+    std::array<Ls *, 2> _lsPtrs{nullptr, nullptr};
+    value_type _stepDt{0}, _alpha{0};
+  };
+#endif
 
   ///
   /// special purpose levelset views
   ///
-  template <typename SdfLsView, typename VelLsView> struct SdfVelField
-      : LevelSetInterface<SdfVelField<SdfLsView, VelLsView>> {
+  template <typename SdfLsView, typename VelLsView> struct SdfVelFieldView
+      : LevelSetInterface<SdfVelFieldView<SdfLsView, VelLsView>> {
     static_assert(SdfLsView::dim == VelLsView::dim, "dimension mismatch!");
     static_assert(std::is_floating_point_v<
                       typename SdfLsView::
@@ -30,7 +75,7 @@ namespace zs {
     static constexpr int dim = SdfLsView::dim;
     using TV = vec<value_type, dim>;
 
-    constexpr SdfVelField(const SdfLsView &sdf, const VelLsView &vel) noexcept
+    constexpr SdfVelFieldView(const SdfLsView &sdf, const VelLsView &vel) noexcept
         : _sdf(sdf), _vel(vel) {}
 
     /// bounding volume interface
@@ -61,8 +106,8 @@ namespace zs {
     VelLsView _vel;
   };
 
-  template <typename LsView> struct TransitionLevelSet
-      : LevelSetInterface<TransitionLevelSet<LsView>> {
+  template <typename LsView> struct TransitionLevelSetView
+      : LevelSetInterface<TransitionLevelSetView<LsView>> {
     static_assert(std::is_floating_point_v<typename LsView::T>,
                   "levelset not in floating point type!");
 
@@ -70,9 +115,9 @@ namespace zs {
     static constexpr int dim = LsView::dim;
     using TV = vec<value_type, dim>;
 
-    constexpr TransitionLevelSet(const LsView &lsvSrc, const LsView &lsvDst,
-                                 const value_type stepDt,
-                                 const value_type alpha = (value_type)0) noexcept
+    constexpr TransitionLevelSetView(const LsView &lsvSrc, const LsView &lsvDst,
+                                     const value_type stepDt,
+                                     const value_type alpha = (value_type)0) noexcept
         : _lsvSrc{lsvSrc}, _lsvDst{lsvDst}, _stepDt{stepDt}, _alpha{alpha} {}
 
     /// bounding volume interface

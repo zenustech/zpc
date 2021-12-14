@@ -14,7 +14,7 @@ namespace zs {
     else {
       auto dyadicAa = dyadic_prod(a, a);
       if constexpr (Opt == 2)
-        return std::make_tuple((F * a).l2NormSqr(), 2 * vectorize(F * dyadicAa));
+        return std::make_tuple((F * a).l2NormSqr(), 2 * (F * dyadicAa).vectorize());
       else {
         using R = math::op_result_t<T0, T1>;
         auto H = vec_t<R, Tn, dim * dim, dim * dim>::zeros();
@@ -38,7 +38,7 @@ namespace zs {
       auto dyadicA12 = dyadic_prod(a1, a2);
       dyadicA12 = (dyadicA12 + dyadicA12.transpose());
       if constexpr (Opt == 2)
-        return std::make_tuple((F * a1).dot(F * a2), vectorize(F * dyadicA12));
+        return std::make_tuple((F * a1).dot(F * a2), (F * dyadicA12).vectorize());
       else {
         using R = math::op_result_t<T0, T1, T2>;
         auto H = vec_t<R, Tn, dim * dim, dim * dim>::zeros();
@@ -47,7 +47,7 @@ namespace zs {
             const auto v = dyadicA12(i, j);
             for (Tn d = 0, bj = j * dim; d != dim; ++d) H(bi + d, bj + d) = v;
           }
-        return std::make_tuple((F * a1).dot(F * a2), vectorize(F * dyadicA12), H);
+        return std::make_tuple((F * a1).dot(F * a2), (F * dyadicA12).vectorize(), H);
       }
     }
   }

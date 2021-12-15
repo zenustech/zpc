@@ -283,6 +283,9 @@ namespace zs {
 
     constexpr size_type size() const noexcept { return _vectorSize; }
 
+    constexpr pointer data() noexcept { return _vector; }
+    constexpr typename vector_type::const_pointer data() const noexcept { return _vector; }
+
     pointer _vector{nullptr};
     size_type _vectorSize{0};
   };

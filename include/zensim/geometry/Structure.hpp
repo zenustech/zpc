@@ -155,8 +155,8 @@ namespace zs {
     using TV = vec<value_type, dim>;
 
     constexpr MemoryLocation memoryLocation() const noexcept { return blocks.memoryLocation(); }
-    constexpr memsrc_e space() const noexcept { return blocks.memspace(); }
     constexpr ProcID devid() const noexcept { return blocks.devid(); }
+    constexpr memsrc_e memspace() const noexcept { return blocks.memspace(); }
     constexpr auto size() const noexcept { return blocks.size(); }
     decltype(auto) get_allocator() const noexcept { return blocks.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {

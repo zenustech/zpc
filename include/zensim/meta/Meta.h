@@ -3,6 +3,8 @@
 #include <initializer_list>
 #include <type_traits>
 
+#include "../TypeAlias.hpp"
+
 namespace zs {
 
   /// pre C++14 impl, https://zh.cppreference.com/w/cpp/types/void_t
@@ -61,6 +63,20 @@ namespace zs {
 
   constexpr std::true_type true_v{};
   constexpr std::false_type false_v{};
+
+  /// arithmetic type
+  constexpr wrapt<u8> u8_v{};
+  constexpr wrapt<uint> uint_v{};
+  constexpr wrapt<i16> i16_v{};
+  constexpr wrapt<i32> i32_v{};
+  constexpr wrapt<i64> i64_v{};
+  constexpr wrapt<u16> u16_v{};
+  constexpr wrapt<u32> u32_v{};
+  constexpr wrapt<u64> u64_v{};
+  constexpr wrapt<f32> f32_v{};
+  constexpr wrapt<f64> f64_v{};
+  template <typename T> 
+  constexpr wrapt<std::enable_if_t<std::is_arithmetic_v<T>, T>> number_v{};
 
   ///
   /// detection

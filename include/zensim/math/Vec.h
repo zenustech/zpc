@@ -243,14 +243,6 @@ namespace zs {
     return std::array<RetT, sizeof...(Args)>{FWD(args)...};
   }
 
-  template <typename Index, typename VecT,
-            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
-  constexpr auto world_to_index(const VecInterface<VecT> &pos, float dxinv, Index offset = 0) {
-    vec<Index, VecT::extent> coord{};
-    for (int d = 0; d != VecT::extent; ++d) coord[d] = lower_trunc(pos[d] * dxinv + 0.5f) + offset;
-    return coord;
-  }
-
   template <typename Tn, int dim>
   constexpr auto unpack_coord(const vec<Tn, dim> &id, Tn side_length) {
     using T = std::make_signed_t<Tn>;

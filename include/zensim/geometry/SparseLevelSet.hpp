@@ -116,6 +116,7 @@ namespace zs {
   struct SparseLevelSetView<Space, SparseLevelSetT>
       : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>> {
     static constexpr bool is_const_structure = std::is_const_v<SparseLevelSetT>;
+    static constexpr auto space = Space;
     using ls_t = std::remove_const_t<SparseLevelSetT>;
     using value_type = typename ls_t::value_type;
     using size_type = typename ls_t::size_type;

@@ -3,65 +3,77 @@
 #include <string_view>
 #include <vector>
 
+#include "zensim/math/bit/Bits.h"
 #include "zensim/types/Property.h"
 
 namespace zs {
 
   struct AccessorAoSoA {
+    using size_type = std::size_t;
     AccessorAoSoA() = default;
     /// aos
     constexpr AccessorAoSoA(wrapv<layout_e::aos>, void* ptr, unsigned short bytes,
                             unsigned short chnCnt, unsigned short aux) noexcept
-        : base{ptr}, tileStride{1}, chnCnt{chnCnt}, unitBytes{bytes}, aux{aux} {}
+        : base{ptr},
+          numTileBits{0},
+          tileMask{0},
+          chnCnt{chnCnt},
+          numUnitSizeBits{bit_count(bytes)},
+          aux{aux} {}
     constexpr AccessorAoSoA(wrapv<layout_e::aos>, void* ptr, unsigned short bytes,
                             unsigned short chnCnt, unsigned short chnNo,
                             unsigned short aux) noexcept
         : base{(char*)ptr + chnNo * bytes},
-          tileStride{1},
+          numTileBits{0},
+          tileMask{0},
           chnCnt{chnCnt},
-          unitBytes{bytes},
+          numUnitSizeBits{bit_count(bytes)},
           aux{aux} {}
-    /// soa
-    constexpr AccessorAoSoA(wrapv<layout_e::soa>, void* ptr, unsigned short bytes,
-                            std::size_t elementCnt, unsigned short aux) noexcept
-        : base{ptr}, tileStride{elementCnt}, chnCnt{1}, unitBytes{bytes}, aux{aux} {}
-    constexpr AccessorAoSoA(wrapv<layout_e::soa>, void* ptr, unsigned short bytes,
-                            std::size_t elementCnt, unsigned short chnNo,
-                            unsigned short aux) noexcept
-        : base{(char*)ptr + (chnNo * elementCnt) * bytes},
-          tileStride{elementCnt},
-          chnCnt{1},
-          unitBytes{bytes},
-          aux{aux} {}
-    /// aosoa
+/// aosoa
+#if 0
     constexpr AccessorAoSoA(wrapv<layout_e::aosoa>, void* ptr, unsigned short bytes,
-                            std::size_t tileStride, unsigned short chnCnt,
+                            unsigned short tileSize, unsigned short chnCnt,
                             unsigned short aux) noexcept
-        : base{ptr}, tileStride{tileStride}, chnCnt{1}, unitBytes{bytes}, aux{aux} {}
-    constexpr AccessorAoSoA(wrapv<layout_e::aosoa>, void* ptr, unsigned short bytes,
-                            std::size_t tileStride, unsigned short chnCnt, unsigned short chnNo,
-                            unsigned short aux) noexcept
-        : base{(char*)ptr + (chnNo * tileStride) * bytes},
-          tileStride{tileStride},
-          chnCnt{1},
-          unitBytes{bytes},
-          aux{aux} {}
-
-    /// access
-    constexpr std::intptr_t operator()(unsigned short chnNo, std::size_t i) const {
-      return (std::intptr_t)(
-          (char*)base
-          + ((i / tileStride) * tileStride * chnCnt + chnNo * tileStride + i % tileStride)
-                * unitBytes);
+        : base{ptr},
+          numTileBits{bit_count(tileSize)},
+          tileMask{tileSize - 1},
+          chnCnt{chnCnt},
+          numUnitSizeBits{bit_count(bytes)},
+          aux{aux} {
+      if (tileSize & (tileSize - 1))
+        throw std::runtime_error("does not support non power-of-two tile size");
     }
-    constexpr std::intptr_t operator()(std::size_t i) const {
-      return (std::intptr_t)(
-          (char*)base + ((i / tileStride) * tileStride * chnCnt + i % tileStride) * unitBytes);
+#endif
+    constexpr AccessorAoSoA(wrapv<layout_e::aosoa>, void* ptr, unsigned short bytes,
+                            unsigned short tileSize, unsigned short chnCnt, unsigned short chnNo,
+                            unsigned short aux) noexcept
+        : base{(char*)ptr + chnNo * tileSize * bytes},
+          numTileBits{bit_count(tileSize)},
+          tileMask{tileSize - 1},
+          chnCnt{chnCnt},
+          numUnitSizeBits{bit_count(bytes)},
+          aux{aux} {
+      if (tileSize & (tileSize - 1))
+        throw std::runtime_error("does not support non power-of-two tile size");
+    }
+
+/// access
+#if 0
+    constexpr std::intptr_t operator()(unsigned short chnNo, std::size_t i) const noexcept {
+      return (std::intptr_t)((char*)base
+                             + (((((i >> numTileBits) * chnCnt + chnNo) << numTileBits)
+                                 | (i & tileMask))
+                                << numUnitSizeBits));
+    }
+#endif
+    constexpr std::intptr_t operator()(std::size_t i) const noexcept {
+      return (std::intptr_t)((char*)base
+                             + (((((i >> numTileBits) * chnCnt) << numTileBits) | (i & tileMask))
+                                << numUnitSizeBits));
     }
 
     void* base;
-    std::size_t tileStride;
-    unsigned short chnCnt, unitBytes, aux;
+    unsigned short numTileBits, tileMask, chnCnt, numUnitSizeBits, aux;
   };
 
 }  // namespace zs

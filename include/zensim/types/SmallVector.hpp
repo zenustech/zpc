@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <string_view>
 
 #include "zensim/meta/Meta.h"
 
@@ -37,6 +38,13 @@ namespace zs {
     constexpr bool operator==(const char str[]) const noexcept {
       size_type i = 0;
       for (; buf[i] && str[i]; ++i)
+        if (buf[i] != str[i]) return false;
+      if (!(buf[i] || str[i])) return true;
+      return false;
+    }
+    constexpr bool operator==(const std::string_view str) const noexcept {
+      size_type i = 0;
+      for (; buf[i] && i != str.size(); ++i)
         if (buf[i] != str[i]) return false;
       if (!(buf[i] || str[i])) return true;
       return false;

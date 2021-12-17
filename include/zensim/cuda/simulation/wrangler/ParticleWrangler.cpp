@@ -148,3 +148,31 @@ extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
   for (int i = 0; i < nchns; ++i)
     if (!accessors[i].aux) *(T *)accessors[i](pi) = globals[i];
 }
+
+extern "C" __global__ void zpc_particle_particle_wrangler_kernel(std::size_t npars,
+                                                                 std::size_t nNeighborPars,
+                                                                 zs::f32 const *params, int nchns,
+                                                                 zs::AccessorAoSoA *accessors) {
+  auto pi = blockIdx.x * blockDim.x + threadIdx.x;
+  if (pi >= npars) return;
+
+  using T = zs::f32;
+  static_assert(zs::is_same_v<T, float>, "wtf");
+  T globals[64];
+
+  /// assign target particle channels
+  for (int i = 0; i < nchns; ++i)
+    if (!accessors[i].aux) globals[i] = *(T *)accessors[i](pi);
+
+  /// assign neighbor particle channels
+  for (size_t pj = 0; pj != nNeighborPars; ++pj) {
+    for (int i = 0; i != nchns; ++i)
+      if (accessors[i].aux) globals[i] = *(T *)accessors[i](pj);
+    zfx_wrangle_func((float *)globals, (float const *)params);
+  }
+
+  /// write back
+  /// assign target particle channels
+  for (int i = 0; i < nchns; ++i)
+    if (!accessors[i].aux) *(T *)accessors[i](pi) = globals[i];
+}

@@ -151,8 +151,8 @@ namespace zs {
 
     template <typename Val> using Arena = decltype(arena_type<Val, dim>());
 
-    constexpr SparseLevelSetView() = default;
-    ~SparseLevelSetView() = default;
+    SparseLevelSetView() noexcept = default;
+    ~SparseLevelSetView() noexcept = default;
     constexpr SparseLevelSetView(SparseLevelSetT &ls)
         : _dx{ls._dx},
           _backgroundValue{ls._backgroundValue},
@@ -273,16 +273,16 @@ namespace zs {
       return linear_interop(diff(d), xlerp<d + 1>(diff, arena[0]), xlerp<d + 1>(diff, arena[1]));
     }
 
-    T _dx;
-    T _backgroundValue;
-    TV _backgroundVecValue;
-    table_view_t _table;
-    grid_view_t _grid;
-    TV _min, _max;
+    T _dx{0};
+    T _backgroundValue{limits<T>::max()};
+    TV _backgroundVecValue{TV::uniform(limits<T>::max())};
+    table_view_t _table{};
+    grid_view_t _grid{};
+    TV _min{TV::uniform(limits<T>::max())}, _max{TV::uniform(limits<T>::lowest())};
 
-    TV _i2wT;
-    TM _i2wRinv, _i2wSinv;
-    TM _i2wRhat, _i2wShat;
+    TV _i2wT{TV::zeros()};
+    TM _i2wRinv{TM::identity()}, _i2wSinv{TM::identity()};
+    TM _i2wRhat{TM::identity()}, _i2wShat{TM::identity()};
   };
 
   template <execspace_e ExecSpace, int dim, grid_e category>

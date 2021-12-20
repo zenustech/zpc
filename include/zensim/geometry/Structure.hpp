@@ -444,6 +444,8 @@ namespace zs {
     static constexpr auto dim = traits::dim;
 
     static constexpr auto block_space() noexcept { return traits::block_size; }
+    GridView() noexcept = default;
+    ~GridView() noexcept = default;
     constexpr GridView(view_t g, value_type dx) noexcept : grid{g}, dx{dx} {}
 
     template <auto V = with_name>

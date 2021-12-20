@@ -284,13 +284,13 @@ namespace zs {
     using unsigned_value_t = std::make_unsigned_t<value_t>;
     using status_t = typename hash_table_type::status_t;
     struct table_t {
-      conditional_t<is_const_structure, const key_t *, key_t *> keys;
-      conditional_t<is_const_structure, const value_t *, value_t *> indices;
-      conditional_t<is_const_structure, const status_t *, status_t *> status;
+      conditional_t<is_const_structure, const key_t *, key_t *> keys{nullptr};
+      conditional_t<is_const_structure, const value_t *, value_t *> indices{nullptr};
+      conditional_t<is_const_structure, const status_t *, status_t *> status{nullptr};
     };
 
-    constexpr HashTableView() = default;
-    ~HashTableView() = default;
+    HashTableView() noexcept = default;
+    ~HashTableView() noexcept = default;
 
     explicit constexpr HashTableView(HashTableT &table)
         : _table{table.self().keys.data(), table.self().indices.data(), table.self().status.data()},
@@ -413,10 +413,10 @@ namespace zs {
       }
     }
 
-    table_t _table;
-    conditional_t<is_const_structure, const key_t *, key_t *> _activeKeys;
-    const value_t _tableSize;
-    conditional_t<is_const_structure, const value_t *, value_t *> _cnt;
+    table_t _table{};
+    conditional_t<is_const_structure, const key_t *, key_t *> _activeKeys{nullptr};
+    const value_t _tableSize{0};
+    conditional_t<is_const_structure, const value_t *, value_t *> _cnt{nullptr};
 
   protected:
     template <typename VecT,

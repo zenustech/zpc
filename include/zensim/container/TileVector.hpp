@@ -374,8 +374,8 @@ namespace zs {
     static constexpr bool is_power_of_two = lane_width > 0 && (lane_width & (lane_width - 1)) == 0;
     static constexpr auto num_lane_bits = bit_count(lane_width);
 
-    constexpr TileVectorUnnamedView() = default;
-    ~TileVectorUnnamedView() = default;
+    TileVectorUnnamedView() noexcept = default;
+    ~TileVectorUnnamedView() noexcept = default;
     explicit constexpr TileVectorUnnamedView(TileVectorT &tilevector)
         : _vector{tilevector.data()},
           _vectorSize{tilevector.size()},
@@ -581,8 +581,8 @@ namespace zs {
     using tile_view_type = TileVectorView<Space, TileVectorT, true>;
     static constexpr auto lane_width = base_t::lane_width;
 
-    constexpr TileVectorView() = default;
-    ~TileVectorView() = default;
+    TileVectorView() noexcept = default;
+    ~TileVectorView() noexcept = default;
     explicit constexpr TileVectorView(const std::vector<SmallString> &tagNames,
                                       TileVectorT &tilevector)
         : base_t{tilevector},

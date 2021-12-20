@@ -83,8 +83,8 @@ namespace zs {
     static constexpr auto coord_offset
         = category == grid_e::collocated ? (value_type)0.5 : (value_type)0;
 
-    constexpr IndexBucketsView() = default;
-    ~IndexBucketsView() = default;
+    IndexBucketsView() noexcept = default;
+    ~IndexBucketsView() noexcept = default;
     constexpr IndexBucketsView(IndexBucketsT &ibs)
         : table{proxy<Space>(ibs._table)},
           indices{proxy<Space>(ibs._indices)},
@@ -110,9 +110,9 @@ namespace zs {
       return table.query(coord);
     }
 
-    table_view_t table;  // activekeys, table
-    vector_view_t indices, offsets, counts;
-    value_type dx;
+    table_view_t table{};  // activekeys, table
+    vector_view_t indices{}, offsets{}, counts{};
+    value_type dx{0};
   };
 
   template <execspace_e ExecSpace, int dim, typename Index, typename Tn, grid_e category,

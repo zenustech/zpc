@@ -264,8 +264,8 @@ namespace zs {
     using size_type = typename vector_type::size_type;
     using difference_type = typename vector_type::difference_type;
 
-    constexpr VectorView() = default;
-    ~VectorView() = default;
+    VectorView() noexcept = default;
+    ~VectorView() noexcept = default;
     explicit constexpr VectorView(VectorT &vector)
         : _vector{vector.data()}, _vectorSize{vector.size()} {}
 

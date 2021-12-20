@@ -11,32 +11,76 @@
 
 namespace zs {
 
-///
-/// special purpose levelsets
-///
-#if 0
-  template <typename T, int d> struct LevelSetRefs {
+  ///
+  /// special purpose levelsets
+  ///
+  template <typename T, int d> struct BasicLevelSet {
     using value_type = T;
     static constexpr int dim = d;
-    using ls_t = variant<AnalyticLevelSet<analytic_geometry_e::Plane, value_type, dim> *,
-                         AnalyticLevelSet<analytic_geometry_e::Cuboid, value_type, dim> *,
-                         AnalyticLevelSet<analytic_geometry_e::Sphere, value_type, dim> *,
-                         AnalyticLevelSet<analytic_geometry_e::Cylinder, value_type, dim> *,
-                         SparseLevelSet<dim, grid_e::collocated> *>;
+    using basic_ls_t
+        = variant<std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Plane, value_type, dim>>,
+                  std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Cuboid, value_type, dim>>,
+                  std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Sphere, value_type, dim>>,
+                  std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Cylinder, value_type, dim>>,
+                  std::shared_ptr<SparseLevelSet<dim, grid_e::collocated>>>;
 
-    ls_t _ls{};
+    template <execspace_e space, typename LsT>
+    static constexpr auto get_level_set_view(std::shared_ptr<LsT> lsPtr) noexcept {
+      if constexpr (is_same_v<LsT, SparseLevelSet<dim, grid_e::collocated>>)
+        return proxy<space>(*lsPtr);
+      else
+        return LsT{*lsPtr};
+    }
+
+    basic_ls_t _ls{};
   };
+
   template <typename T, int d> struct SdfVelField {
     using value_type = T;
     static constexpr int dim = d;
-    using TV = vec<value_type, dim>;
+    using basic_level_set_t = BasicLevelSet<value_type, dim>;
+    using basic_ls_t = typename basic_level_set_t::basic_ls_t;
+
+    template <execspace_e space, typename LsSharedPtr> using to_ls
+        = decltype(basic_level_set_t::template get_level_set_view<space>(
+            std::declval<LsSharedPtr>()));
+
+    // template <typename> struct is_shptr : std::false_type {};
+    // template <typename T_> struct is_shptr<std::shared_ptr<T_>> : std::true_type {};
+    template <execspace_e space> struct ls_view_helper {
+      template <typename LsSharedPtr> constexpr auto operator()(LsSharedPtr) noexcept {
+        // static_assert(is_shptr<LsSharedPtr>::value, "what???");
+        return decltype(basic_level_set_t::template get_level_set_view<space>(
+            std::declval<LsSharedPtr &>())){};
+      }
+    };
+    template <typename TSeq> using tseq_to_variant = assemble_t<std::tuple, TSeq>;
+    template <execspace_e space> using sdf_vel_ls_view_t = assemble_t<
+        variant,
+        map_t<tseq_to_variant, compose_t<map_op_t<ls_view_helper<space>, get_ttal_t<basic_ls_t>>,
+                                         map_op_t<ls_view_helper<space>, get_ttal_t<basic_ls_t>>>>>;
+
+#if 0
+    template <typename SdfField, typename VelField>
+    constexpr SdfVelField(std::shared_ptr<SdfField> sdf, std::shared_ptr<VelField> &vel) noexcept
+        : _sdfVelLs{std::make_tuple(sdf, vel)} {}
 
     template <typename SdfField, typename VelField>
-    constexpr SdfVelField(SdfField &sdf, VelField &vel) noexcept : _sdfPtr{&sdf}, _velPtr{&vel} {}
+    constexpr SdfVelField(SdfField *sdf, VelField *vel) noexcept
+        : _sdfVelLs{std::make_tuple(std::shared_ptr(sdf, [](...) {}), vel)} {}
+#endif
 
-    LevelSetRefs<T, d> _sdfPtr{nullptr};
-    LevelSetRefs<T, d> _velPtr{nullptr};
+    template <execspace_e space> constexpr sdf_vel_ls_view_t<space> get_view() noexcept {
+      auto &&[sdfPtr, velPtr] = _sdfVelLs;
+      return match([](auto &&sdfPtr, auto &&velPtr) noexcept {
+        return std::make_tuple(basic_level_set_t::template get_level_set_view<space>(sdfPtr),
+                               basic_level_set_t::template get_level_set_view<space>(velPtr));
+      })(sdfPtr, velPtr);
+    }
+
+    std::tuple<basic_ls_t, basic_ls_t> _sdfVelLs{};
   };
+#if 0
 
   template <typename Ls> struct TransitionLevelSet {
     using ls_t = remove_cvref_t<Ls>;

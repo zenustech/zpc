@@ -15,13 +15,25 @@ namespace zs {
   template <typename T> using limits = std::numeric_limits<T>;
 
   /// WIP: supplement
-  template <template <class> class Function, typename Oprand> struct map { using type = Function<Oprand>; };
+  template <template <class> class Function, typename Oprand> struct map {
+    using type = Function<Oprand>;
+  };
   template <template <class> class Function, template <class...> class Functor, typename... Args>
   struct map<Function, Functor<Args...>> {
     using type = Functor<Function<Args>...>;
   };
   template <template <class> class Function, typename Functor> using map_t =
       typename map<Function, Functor>::type;
+
+  template <typename MapperF, typename Oprand, bool recursive = true> struct map_op {
+    using type = decltype(std::declval<MapperF &>()(std::declval<Oprand>()));
+  };
+  template <typename MapperF, template <class...> class Functor, typename... Args>
+  struct map_op<MapperF, Functor<Args...>, true> {
+    using type = Functor<typename map_op<MapperF, Args, false>::type...>;
+  };
+  template <typename MapperF, typename Functor> using map_op_t =
+      typename map_op<MapperF, Functor>::type;
 
   // applicative functor: pure, apply
   // either, apply, join, bind, mcombine, fold

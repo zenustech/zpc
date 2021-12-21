@@ -375,7 +375,6 @@ namespace zs {
     static constexpr auto num_lane_bits = bit_count(lane_width);
 
     TileVectorUnnamedView() noexcept = default;
-    ~TileVectorUnnamedView() noexcept = default;
     explicit constexpr TileVectorUnnamedView(TileVectorT &tilevector)
         : _vector{tilevector.data()},
           _vectorSize{tilevector.size()},
@@ -545,9 +544,9 @@ namespace zs {
     }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
 
-    conditional_t<is_const_structure, const_pointer, pointer> const _vector{nullptr};
-    const size_type _vectorSize{0};
-    const channel_counter_type _numChannels{0};
+    conditional_t<is_const_structure, const_pointer, pointer> _vector{nullptr};
+    size_type _vectorSize{0};
+    channel_counter_type _numChannels{0};
   };
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
@@ -582,7 +581,6 @@ namespace zs {
     static constexpr auto lane_width = base_t::lane_width;
 
     TileVectorView() noexcept = default;
-    ~TileVectorView() noexcept = default;
     explicit constexpr TileVectorView(const std::vector<SmallString> &tagNames,
                                       TileVectorT &tilevector)
         : base_t{tilevector},
@@ -700,7 +698,7 @@ namespace zs {
     const SmallString *_tagNames{nullptr};
     const channel_counter_type *_tagOffsets{nullptr};
     const channel_counter_type *_tagSizes{nullptr};
-    const channel_counter_type _N{0};
+    channel_counter_type _N{0};
   };
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,

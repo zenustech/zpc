@@ -290,8 +290,6 @@ namespace zs {
     };
 
     HashTableView() noexcept = default;
-    ~HashTableView() noexcept = default;
-
     explicit constexpr HashTableView(HashTableT &table)
         : _table{table.self().keys.data(), table.self().indices.data(), table.self().status.data()},
           _activeKeys{table._activeKeys.data()},
@@ -415,7 +413,7 @@ namespace zs {
 
     table_t _table{};
     conditional_t<is_const_structure, const key_t *, key_t *> _activeKeys{nullptr};
-    const value_t _tableSize{0};
+    value_t _tableSize{0};  // constness makes non-trivial
     conditional_t<is_const_structure, const value_t *, value_t *> _cnt{nullptr};
 
   protected:

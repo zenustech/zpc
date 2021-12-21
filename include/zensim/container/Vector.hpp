@@ -265,7 +265,6 @@ namespace zs {
     using difference_type = typename vector_type::difference_type;
 
     VectorView() noexcept = default;
-    ~VectorView() noexcept = default;
     explicit constexpr VectorView(VectorT &vector)
         : _vector{vector.data()}, _vectorSize{vector.size()} {}
 
@@ -291,11 +290,11 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(Vector<T, Allocator> &vec) {  // currently ignore constness
+  constexpr decltype(auto) proxy(Vector<T, Allocator> &vec) {
     return VectorView<ExecSpace, Vector<T, Allocator>>{vec};
   }
   template <execspace_e ExecSpace, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const Vector<T, Allocator> &vec) {  // currently ignore constness
+  constexpr decltype(auto) proxy(const Vector<T, Allocator> &vec) {
     return VectorView<ExecSpace, const Vector<T, Allocator>>{vec};
   }
 

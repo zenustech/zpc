@@ -262,7 +262,7 @@ namespace zs {
   template <typename Tn, Tn... Ns> struct vseq<integer_seq<Tn, Ns...>> : vseq<value_seq<Ns...>> {};
 
   /** utilities */
-  // extract template argument list
+  // extract (type / non-type) template argument list
   template <typename T> struct get_ttal;  // extract type template parameter list
   template <template <class...> class T, typename... Args> struct get_ttal<T<Args...>> {
     using type = type_seq<Args...>;
@@ -275,7 +275,8 @@ namespace zs {
   };
   template <typename T> using get_nttal_t = typename get_nttal<T>::type;
 
-  // assemble template argument list
+  /// assemble functor given template argument list
+  /// note: recursively unwrap type_seq iff typelist size is one
   template <template <class...> class T, typename... Args> struct assemble {
     using type = T<Args...>;
   };
@@ -284,6 +285,7 @@ namespace zs {
   template <template <class...> class T, typename... Args> using assemble_t =
       typename assemble<T, Args...>::type;
 
+  /// same functor with a different template argument list
   template <typename...> struct alternative;
   template <template <class...> class T, typename... Ts, typename... Args>
   struct alternative<T<Ts...>, type_seq<Args...>> {
@@ -296,7 +298,7 @@ namespace zs {
   template <typename TTAT, typename... Args> using alternative_t =
       typename alternative<TTAT, Args...>::type;
 
-  // concatenation
+  /// concatenation
   namespace detail {
     struct concatenation_op {
       template <typename... As, typename... Bs>
@@ -328,7 +330,7 @@ namespace zs {
   template <typename... TSeqs> using concatenation_t
       = decltype(detail::concatenation_op{}(type_seq<TSeqs...>{}));
 
-  // permutation / combination
+  /// permutation / combination
   namespace detail {
     struct compose_op {
       // merger
@@ -371,7 +373,7 @@ namespace zs {
   template <typename... TSeqs> using compose_t
       = decltype(detail::compose_op{}(type_seq<TSeqs...>{}));
 
-  // join
+  /// join
 
   /// concat
   template <typename... Seqs> struct concat {

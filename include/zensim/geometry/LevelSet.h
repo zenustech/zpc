@@ -1,108 +1,158 @@
 #pragma once
+#include <deque>
 #include <fstream>
 #include <type_traits>
 
 #include "AnalyticLevelSet.h"
 #include "LevelSetInterface.h"
 #include "SparseLevelSet.hpp"
-// #include "zensim/execution/Concurrency.h"
 #include "zensim/math/Vec.h"
-#include "zensim/memory/Allocator.h"
 
 namespace zs {
+
+  template <execspace_e space, typename LsT>
+  constexpr auto get_level_set_view(std::shared_ptr<LsT> lsPtr) noexcept {
+    using ls_t = remove_cvref_t<LsT>;
+    if constexpr (is_same_v<ls_t, SparseLevelSet<ls_t::dim, grid_e::collocated>>)
+      return proxy<space>(*lsPtr);  // const & non-const view
+    else
+      return ls_t{*lsPtr};
+  }
 
   ///
   /// special purpose levelsets
   ///
+  namespace detail {
+    template <execspace_e space> struct ls_view_helper {
+      template <typename LsSharedPtr> constexpr auto operator()(LsSharedPtr) noexcept {
+        return decltype(get_level_set_view<space>(std::declval<LsSharedPtr>())){};
+      }
+    };
+  }  // namespace detail
+  template <typename T, int d> struct DummyLevelSet : LevelSetInterface<DummyLevelSet<T, d>> {
+    using value_type = T;
+    static constexpr int dim = d;
+  };
+
   template <typename T, int d> struct BasicLevelSet {
     using value_type = T;
     static constexpr int dim = d;
-    using basic_ls_t
-        = variant<std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Plane, value_type, dim>>,
-                  std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Cuboid, value_type, dim>>,
-                  std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Sphere, value_type, dim>>,
-                  std::shared_ptr<AnalyticLevelSet<analytic_geometry_e::Cylinder, value_type, dim>>,
-                  std::shared_ptr<SparseLevelSet<dim, grid_e::collocated>>>;
+    using dummy_ls_t = DummyLevelSet<T, d>;
+    /// raw levelset type list
+    using raw_ls_tl
+        = type_seq<dummy_ls_t, AnalyticLevelSet<analytic_geometry_e::Plane, value_type, dim>,
+                   AnalyticLevelSet<analytic_geometry_e::Cuboid, value_type, dim>,
+                   AnalyticLevelSet<analytic_geometry_e::Sphere, value_type, dim>,
+                   AnalyticLevelSet<analytic_geometry_e::Cylinder, value_type, dim>,
+                   SparseLevelSet<dim, grid_e::collocated>>;
 
-    template <execspace_e space, typename LsT>
-    static constexpr auto get_level_set_view(std::shared_ptr<LsT> lsPtr) noexcept {
-      if constexpr (is_same_v<LsT, SparseLevelSet<dim, grid_e::collocated>>)
-        return proxy<space>(*lsPtr);
-      else
-        return LsT{*lsPtr};
-    }
+    /// shared_ptr of const raw levelsets
+    using basic_ls_ptr_t = assemble_t<variant, map_t<std::shared_ptr, raw_ls_tl>>;
+    using const_basic_ls_ptr_t
+        = assemble_t<variant, map_t<std::shared_ptr, map_t<std::add_const_t, raw_ls_tl>>>;
 
-    basic_ls_t _ls{};
+    BasicLevelSet() noexcept = default;
+
+    template <typename Ls,
+              enable_if_t<raw_ls_tl::template count_occurencies<remove_cvref_t<Ls>>() == 1> = 0>
+    BasicLevelSet(Ls &&ls) : _ls{std::make_shared<remove_cvref_t<Ls>>(FWD(ls))} {}
+
+    template <typename Ls, enable_if_t<raw_ls_tl::template count_occurencies<Ls>() == 1> = 0>
+    BasicLevelSet(const std::shared_ptr<Ls> &ls) : _ls{ls} {}
+
+    basic_ls_ptr_t _ls{};
   };
 
-  template <typename T, int d> struct SdfVelField {
+  template <typename T, int d> struct ConstSdfVelFieldPtr {
     using value_type = T;
     static constexpr int dim = d;
+    using dummy_ls_t = DummyLevelSet<T, d>;
     using basic_level_set_t = BasicLevelSet<value_type, dim>;
-    using basic_ls_t = typename basic_level_set_t::basic_ls_t;
+    using const_basic_ls_ptr_t = typename basic_level_set_t::const_basic_ls_ptr_t;
 
-    template <execspace_e space, typename LsSharedPtr> using to_ls
-        = decltype(basic_level_set_t::template get_level_set_view<space>(
-            std::declval<LsSharedPtr>()));
+    template <typename TSeq> using tseq_to_tuple = assemble_t<std::tuple, TSeq>;
+    template <execspace_e space> using sdf_ls_view_tl
+        = map_op_t<detail::ls_view_helper<space>, get_ttal_t<const_basic_ls_ptr_t>>;
+    template <execspace_e space> using vel_ls_view_tl
+        = map_op_t<detail::ls_view_helper<space>, get_ttal_t<const_basic_ls_ptr_t>>;
+    template <execspace_e space> using sdf_vel_ls_view_t
+        = assemble_t<variant,
+                     map_t<tseq_to_tuple, compose_t<sdf_ls_view_tl<space>, vel_ls_view_tl<space>>>>;
 
-    // template <typename> struct is_shptr : std::false_type {};
-    // template <typename T_> struct is_shptr<std::shared_ptr<T_>> : std::true_type {};
-    template <execspace_e space> struct ls_view_helper {
-      template <typename LsSharedPtr> constexpr auto operator()(LsSharedPtr) noexcept {
-        // static_assert(is_shptr<LsSharedPtr>::value, "what???");
-        return decltype(basic_level_set_t::template get_level_set_view<space>(
-            std::declval<LsSharedPtr &>())){};
-      }
-    };
-    template <typename TSeq> using tseq_to_variant = assemble_t<std::tuple, TSeq>;
-    template <execspace_e space> using sdf_vel_ls_view_t = assemble_t<
-        variant,
-        map_t<tseq_to_variant, compose_t<map_op_t<ls_view_helper<space>, get_ttal_t<basic_ls_t>>,
-                                         map_op_t<ls_view_helper<space>, get_ttal_t<basic_ls_t>>>>>;
+    /// ctor
+    template <typename SdfField = DummyLevelSet<T, d>, typename VelField = DummyLevelSet<T, d>>
+    constexpr ConstSdfVelFieldPtr(std::shared_ptr<const SdfField> sdf = {},
+                                  std::shared_ptr<const VelField> vel = {}) noexcept
+        : _sdfConstPtr{sdf}, _velConstPtr{vel} {}
 
-#if 0
-    template <typename SdfField, typename VelField>
-    constexpr SdfVelField(std::shared_ptr<SdfField> sdf, std::shared_ptr<VelField> &vel) noexcept
-        : _sdfVelLs{std::make_tuple(sdf, vel)} {}
+    template <typename SdfField = DummyLevelSet<T, d>, typename VelField = DummyLevelSet<T, d>>
+    constexpr ConstSdfVelFieldPtr(const SdfField *sdf, const VelField *vel = nullptr) noexcept
+        : _sdfConstPtr{std::shared_ptr(sdf, [](...) {})},
+          _velConstPtr{std::shared_ptr(vel, [](...) {})} {}
 
-    template <typename SdfField, typename VelField>
-    constexpr SdfVelField(SdfField *sdf, VelField *vel) noexcept
-        : _sdfVelLs{std::make_tuple(std::shared_ptr(sdf, [](...) {}), vel)} {}
-#endif
-
-    template <execspace_e space> constexpr sdf_vel_ls_view_t<space> get_view() noexcept {
-      auto &&[sdfPtr, velPtr] = _sdfVelLs;
-      return match([](auto &&sdfPtr, auto &&velPtr) noexcept {
-        return std::make_tuple(basic_level_set_t::template get_level_set_view<space>(sdfPtr),
-                               basic_level_set_t::template get_level_set_view<space>(velPtr));
-      })(sdfPtr, velPtr);
+    constexpr ConstSdfVelFieldPtr(const basic_level_set_t &sdf,
+                                  const basic_level_set_t &vel = dummy_ls_t{}) noexcept
+        : _sdfConstPtr{}, _velConstPtr{} {
+      match([this](const auto &sdfPtr, const auto &velPtr) {
+        _sdfConstPtr = sdfPtr;
+        _velConstPtr = velPtr;
+      })(sdf._ls, vel._ls);
     }
 
-    std::tuple<basic_ls_t, basic_ls_t> _sdfVelLs{};
-  };
-#if 0
+    /// view
+    template <execspace_e space = execspace_e::host>
+    constexpr sdf_vel_ls_view_t<space> getView(wrapv<space> = {}) const noexcept {
+      return match([](const auto &sdfPtr, const auto &velPtr) noexcept -> sdf_vel_ls_view_t<space> {
+        return std::make_tuple(get_level_set_view<space>(sdfPtr),
+                               get_level_set_view<space>(velPtr));
+      })(_sdfConstPtr, _velConstPtr);
+    }
 
-  template <typename Ls> struct TransitionLevelSet {
-    using ls_t = remove_cvref_t<Ls>;
-    using value_type = typename ls_t::value_type;
-    static constexpr int dim = ls_t::dim;
-    using TV = vec<value_type, dim>;
+    const_basic_ls_ptr_t _sdfConstPtr{};
+    const_basic_ls_ptr_t _velConstPtr{};
+  };
+
+  template <typename T, int d> struct ConstTransitionLevelSetPtr {
+    using value_type = T;
+    static constexpr int dim = d;
+    using ls_t = ConstSdfVelFieldPtr<value_type, dim>;
+
+    template <execspace_e space> using sdf_vel_ls_view_t =
+        typename ls_t::template sdf_vel_ls_view_t<space>;
 
     void setStepDt(const value_type dt) noexcept { _stepDt = dt; }
-    void push(Ls *ls) noexcept {
-      if (_lsPtrs[0] == nullptr)
-        _lsPtrs[0] = ls;
-      else if (_lsPtrs[1] == nullptr)
-        _lsPtrs[1] = ls;
-      else
-        _lsPtrs[0] = _lsPtrs[1];
+    void advance(const value_type ratio) noexcept {
+      _alpha += ratio;
+      while (_alpha > 1) {
+        _alpha -= 1;
+        if (_fields.size()) pop();
+      }
+    }
+    void push(const ls_t ls) {
+      _fields.push_back(ls);
       _alpha = 0;
     }
+    void pop() { _fields.pop_front(); }
 
-    std::array<Ls *, 2> _lsPtrs{nullptr, nullptr};
+    /// view
+    template <execspace_e space = execspace_e::host>
+    constexpr auto getView(wrapv<space> = {}) const {
+      std::tuple<sdf_vel_ls_view_t<space>, sdf_vel_ls_view_t<space>> ret{};
+      if (_fields.size() > 0) {
+        std::get<0>(ret) = _fields[0].template getView<space>();
+        if (_fields.size() > 1)
+          std::get<1>(ret) = _fields[1].template getView<space>();
+        else
+          std::get<1>(ret) = std::get<0>(ret);
+      } else
+        throw std::runtime_error("the levelset transition queue is empty.");
+      return ret;
+    }
+
+    // better use custom circular (rolling) array
+    std::deque<ls_t> _fields{};  // tuple<Plane, Plane> by default
     value_type _stepDt{0}, _alpha{0};
   };
-#endif
 
   ///
   /// special purpose levelset views
@@ -119,8 +169,12 @@ namespace zs {
     static constexpr int dim = SdfLsView::dim;
     using TV = vec<value_type, dim>;
 
+    SdfVelFieldView() noexcept = default;
+    ~SdfVelFieldView() noexcept = default;
     constexpr SdfVelFieldView(const SdfLsView &sdf, const VelLsView &vel) noexcept
         : _sdf(sdf), _vel(vel) {}
+    constexpr SdfVelFieldView(const std::tuple<SdfLsView, VelLsView> &field) noexcept
+        : _sdf(std::get<0>(field)), _vel(std::get<1>(field)) {}
 
     /// bounding volume interface
     constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
@@ -143,24 +197,29 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
-      return _vel.getMaterialVelocity(x);  // this is the motive
+      // if vel ls is dummy, use sdf ls instead
+      if constexpr (is_same_v<VelLsView, DummyLevelSet<value_type, dim>>)
+        return _sdf.getMaterialVelocity(x);
+      else
+        return _vel.getMaterialVelocity(x);  // this is the motive
     }
 
-    SdfLsView _sdf;
-    VelLsView _vel;
+    SdfLsView _sdf{};
+    VelLsView _vel{};
   };
 
-  template <typename LsView> struct TransitionLevelSetView
-      : LevelSetInterface<TransitionLevelSetView<LsView>> {
-    static_assert(std::is_floating_point_v<typename LsView::T>,
-                  "levelset not in floating point type!");
-
-    using value_type = typename LsView::value_type;
-    static constexpr int dim = LsView::dim;
+  template <typename SdfLsView, typename VelLsView> struct TransitionLevelSetView
+      : LevelSetInterface<TransitionLevelSetView<SdfLsView, VelLsView>> {
+    using ls_t = SdfVelFieldView<SdfLsView, VelLsView>;
+    using value_type = typename ls_t::value_type;
+    static constexpr int dim = ls_t::dim;
     using TV = vec<value_type, dim>;
 
-    constexpr TransitionLevelSetView(const LsView &lsvSrc, const LsView &lsvDst,
-                                     const value_type stepDt,
+    TransitionLevelSetView() noexcept = default;
+    ~TransitionLevelSetView() noexcept = default;
+
+    constexpr TransitionLevelSetView(const ls_t &lsvSrc, const ls_t &lsvDst,
+                                     const value_type stepDt = (value_type)0,
                                      const value_type alpha = (value_type)0) noexcept
         : _lsvSrc{lsvSrc}, _lsvDst{lsvDst}, _stepDt{stepDt}, _alpha{alpha} {}
 
@@ -177,27 +236,27 @@ namespace zs {
     /// levelset interface
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
-      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) / (value_type)2;
+      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
       TV x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
       return ((value_type)1 - _alpha) * _lsvSrc.getSignedDistance(x0)
              + _alpha * _lsvDst.getSignedDistance(x1);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr TV do_getNormal(const VecInterface<VecT> &x) const noexcept {
-      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) / (value_type)2;
+      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
       TV x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
       return ((value_type)1 - _alpha) * _lsvSrc.getNormal(x0) + _alpha * _lsvDst.getNormal(x1);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
-      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) / (value_type)2;
+      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
       TV x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
       return ((value_type)1 - _alpha) * _lsvSrc.getMaterialVelocity(x0)
              + _alpha * _lsvDst.getMaterialVelocity(x1);
     }
 
-    LsView _lsvSrc, _lsvDst;
-    value_type _stepDt, _alpha;
+    ls_t _lsvSrc{}, _lsvDst{};
+    value_type _stepDt{0}, _alpha{0};
   };
 
 }  // namespace zs

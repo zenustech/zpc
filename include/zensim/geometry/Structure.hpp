@@ -445,7 +445,6 @@ namespace zs {
 
     static constexpr auto block_space() noexcept { return traits::block_size; }
     GridView() noexcept = default;
-    ~GridView() noexcept = default;
     constexpr GridView(view_t g, value_type dx) noexcept : grid{g}, dx{dx} {}
 
     template <auto V = with_name>
@@ -802,8 +801,8 @@ namespace zs {
     constexpr auto numBlocks() const noexcept { return grid.numTiles(); }
     constexpr auto numChannels() const noexcept { return grid.numChannels(); }
 
-    view_t grid;
-    value_type dx;
+    view_t grid{};
+    value_type dx{0};
   };
 
   template <execspace_e, typename GridsT, typename = void> struct GridsView;

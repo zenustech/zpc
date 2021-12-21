@@ -148,5 +148,8 @@ namespace zs {
   auto convert_char_array_to_string(const std::array<CharT, N> &str) noexcept {
     return std::basic_string<CharT>{std::begin(str), std::end(str)};
   }
+  template <typename T> auto get_var_type_str(T &&v) noexcept {
+    return convert_char_array_to_string(get_var_type(FWD(v)));
+  }
 
 }  // namespace zs

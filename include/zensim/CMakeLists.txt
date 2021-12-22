@@ -349,7 +349,7 @@ target_link_libraries(zpccuda PUBLIC zpccore zpc_cuda_deps) # cuda_runtime cuda 
 target_compile_options(zpccuda 
   PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
 # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
-  PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe --diag_suppress=implicit_return_from_non_void_function>
+  PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=554">
 )
 target_link_options(zpccuda 
   PRIVATE       $<DEVICE_LINK:-dlto>

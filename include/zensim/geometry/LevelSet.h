@@ -11,7 +11,7 @@
 namespace zs {
 
   template <execspace_e space, typename LsT>
-  constexpr auto get_level_set_view(std::shared_ptr<LsT> lsPtr) noexcept {
+  constexpr auto get_level_set_view(const std::shared_ptr<LsT> lsPtr) noexcept {
     using ls_t = remove_cvref_t<LsT>;
     if constexpr (is_same_v<ls_t, SparseLevelSet<ls_t::dim, grid_e::collocated>>)
       return proxy<space>(*lsPtr);  // const & non-const view
@@ -29,7 +29,8 @@ namespace zs {
       }
     };
   }  // namespace detail
-  template <typename T, int d> struct DummyLevelSet : LevelSetInterface<DummyLevelSet<T, d>> {
+  template <typename T, int d> struct DummyLevelSet
+      : public LevelSetInterface<DummyLevelSet<T, d>> {
     using value_type = T;
     static constexpr int dim = d;
   };
@@ -38,13 +39,14 @@ namespace zs {
     using value_type = T;
     static constexpr int dim = d;
     using dummy_ls_t = DummyLevelSet<T, d>;
+    using spls_t = SparseLevelSet<dim, grid_e::collocated>;
+    template <analytic_geometry_e type = analytic_geometry_e::Plane> using analytic_ls_t
+        = AnalyticLevelSet<type, value_type, dim>;
     /// raw levelset type list
-    using raw_ls_tl
-        = type_seq<dummy_ls_t, AnalyticLevelSet<analytic_geometry_e::Plane, value_type, dim>,
-                   AnalyticLevelSet<analytic_geometry_e::Cuboid, value_type, dim>,
-                   AnalyticLevelSet<analytic_geometry_e::Sphere, value_type, dim>,
-                   AnalyticLevelSet<analytic_geometry_e::Cylinder, value_type, dim>,
-                   SparseLevelSet<dim, grid_e::collocated>>;
+    using raw_ls_tl = type_seq<dummy_ls_t, spls_t, analytic_ls_t<analytic_geometry_e::Plane>,
+                               analytic_ls_t<analytic_geometry_e::Cuboid>,
+                               analytic_ls_t<analytic_geometry_e::Sphere>,
+                               analytic_ls_t<analytic_geometry_e::Cylinder>>;
 
     /// shared_ptr of const raw levelsets
     using basic_ls_ptr_t = assemble_t<variant, map_t<std::shared_ptr, raw_ls_tl>>;
@@ -59,6 +61,16 @@ namespace zs {
 
     template <typename Ls, enable_if_t<raw_ls_tl::template count_occurencies<Ls>() == 1> = 0>
     BasicLevelSet(const std::shared_ptr<Ls> &ls) : _ls{ls} {}
+
+    template <typename LsT> bool holdsLevelSet() const noexcept {
+      return std::holds_alternative<std::shared_ptr<LsT>>(_ls);
+    }
+    template <typename LsT> decltype(auto) getLevelSet() const noexcept {
+      return *std::get<std::shared_ptr<LsT>>(_ls);
+    }
+    template <typename LsT> decltype(auto) getLevelSet() noexcept {
+      return *std::get<std::shared_ptr<LsT>>(_ls);
+    }
 
     basic_ls_ptr_t _ls{};
   };
@@ -115,10 +127,10 @@ namespace zs {
   template <typename T, int d> struct ConstTransitionLevelSetPtr {
     using value_type = T;
     static constexpr int dim = d;
-    using ls_t = ConstSdfVelFieldPtr<value_type, dim>;
+    using sdf_vel_ls_t = ConstSdfVelFieldPtr<value_type, dim>;
 
     template <execspace_e space> using sdf_vel_ls_view_t =
-        typename ls_t::template sdf_vel_ls_view_t<space>;
+        typename sdf_vel_ls_t::template sdf_vel_ls_view_t<space>;
 
     void setStepDt(const value_type dt) noexcept { _stepDt = dt; }
     void advance(const value_type ratio) noexcept {
@@ -128,7 +140,7 @@ namespace zs {
         if (_fields.size()) pop();
       }
     }
-    void push(const ls_t ls) {
+    void push(const sdf_vel_ls_t ls) {
       _fields.push_back(ls);
       _alpha = 0;
     }
@@ -150,7 +162,7 @@ namespace zs {
     }
 
     // better use custom circular (rolling) array
-    std::deque<ls_t> _fields{};  // tuple<Plane, Plane> by default
+    std::deque<sdf_vel_ls_t> _fields{};  // tuple<Plane, Plane> by default
     value_type _stepDt{0}, _alpha{0};
   };
 
@@ -208,8 +220,10 @@ namespace zs {
     VelLsView _vel{};
   };
 
-  template <typename SdfLsView, typename VelLsView> struct TransitionLevelSetView
-      : LevelSetInterface<TransitionLevelSetView<SdfLsView, VelLsView>> {
+  template <typename FieldView, typename = void> struct TransitionLevelSetView;
+  template <typename SdfLsView, typename VelLsView>
+  struct TransitionLevelSetView<SdfVelFieldView<SdfLsView, VelLsView>>
+      : LevelSetInterface<TransitionLevelSetView<SdfVelFieldView<SdfLsView, VelLsView>>> {
     using ls_t = SdfVelFieldView<SdfLsView, VelLsView>;
     using value_type = typename ls_t::value_type;
     static constexpr int dim = ls_t::dim;
@@ -258,5 +272,9 @@ namespace zs {
     ls_t _lsvSrc{}, _lsvDst{};
     value_type _stepDt{0}, _alpha{0};
   };
+  template <typename SdfLsView, typename VelLsView, typename... Args>
+  TransitionLevelSetView(SdfVelFieldView<SdfLsView, VelLsView>,
+                         SdfVelFieldView<SdfLsView, VelLsView>, Args...)
+      -> TransitionLevelSetView<SdfVelFieldView<SdfLsView, VelLsView>>;
 
 }  // namespace zs

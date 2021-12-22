@@ -15,8 +15,8 @@ namespace zs {
     constexpr AccessorAoSoA(wrapv<layout_e::aos>, void* ptr, unsigned short bytes,
                             unsigned short chnCnt, unsigned short aux) noexcept
         : base{ptr},
-          numTileBits{0},
-          tileMask{0},
+          numTileBits{(unsigned short)0},
+          tileMask{(unsigned short)0},
           chnCnt{chnCnt},
           numUnitSizeBits{bit_count(bytes)},
           aux{aux} {}
@@ -24,8 +24,8 @@ namespace zs {
                             unsigned short chnCnt, unsigned short chnNo,
                             unsigned short aux) noexcept
         : base{(char*)ptr + chnNo * bytes},
-          numTileBits{0},
-          tileMask{0},
+          numTileBits{(unsigned short)0},
+          tileMask{(unsigned short)0},
           chnCnt{chnCnt},
           numUnitSizeBits{bit_count(bytes)},
           aux{aux} {}
@@ -49,11 +49,11 @@ namespace zs {
                             unsigned short aux) noexcept
         : base{(char*)ptr + chnNo * tileSize * bytes},
           numTileBits{bit_count(tileSize)},
-          tileMask{tileSize - 1},
+          tileMask{tileSize - (unsigned short)1},
           chnCnt{chnCnt},
           numUnitSizeBits{bit_count(bytes)},
           aux{aux} {
-      if (tileSize & (tileSize - 1))
+      if (tileSize & (tileSize - (unsigned short)1))
         throw std::runtime_error("does not support non power-of-two tile size");
     }
 

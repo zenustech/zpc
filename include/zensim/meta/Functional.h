@@ -15,14 +15,14 @@ namespace zs {
   template <typename T> using limits = std::numeric_limits<T>;
 
   /// WIP: supplement
-  template <template <class> class Function, typename Oprand> struct map {
+  template <template <class...> class Function, typename Oprand> struct map {
     using type = Function<Oprand>;
   };
-  template <template <class> class Function, template <class...> class Functor, typename... Args>
+  template <template <class...> class Function, template <class...> class Functor, typename... Args>
   struct map<Function, Functor<Args...>> {
     using type = Functor<Function<Args>...>;
   };
-  template <template <class> class Function, typename Functor> using map_t =
+  template <template <class...> class Function, typename Functor> using map_t =
       typename map<Function, Functor>::type;
 
   template <typename MapperF, typename Oprand, bool recursive = true> struct map_op {

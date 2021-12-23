@@ -142,7 +142,6 @@ namespace zs {
     }
     void push(const sdf_vel_ls_t ls) {
       _fields.push_back(ls);
-      _alpha = 0;
     }
     void pop() { _fields.pop_front(); }
 

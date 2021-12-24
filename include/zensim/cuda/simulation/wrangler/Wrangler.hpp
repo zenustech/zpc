@@ -49,12 +49,11 @@ namespace zs {
                             unsigned short aux) noexcept
         : base{(char*)ptr + chnNo * tileSize * bytes},
           numTileBits{bit_count(tileSize)},
-          tileMask{tileSize - (unsigned short)1},
+          tileMask{(unsigned short)((int)tileSize - 1)},
           chnCnt{chnCnt},
           numUnitSizeBits{bit_count(bytes)},
           aux{aux} {
-      if (tileSize & (tileSize - (unsigned short)1))
-        throw std::runtime_error("does not support non power-of-two tile size");
+      // (tileSize & (tileSize - (unsigned short)1))
     }
 
 /// access

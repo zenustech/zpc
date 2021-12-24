@@ -128,20 +128,19 @@ namespace zs {
     return morton_2d<T>(coord[0], coord[1]);
   }
 #endif
-  template <typename Integer> constexpr Integer round_down(Integer n, Integer alignment) noexcept {
-    return n & (~(alignment - 1));
+  template <typename Tn> constexpr Tn round_down(Tn n, Tn alignment) noexcept {
+    return n & (~(alignment - (Tn)1));
   }
-  template <typename Integer> constexpr Integer round_up(Integer n, Integer alignment) noexcept {
-    return (n + alignment - 1) & (~(alignment - 1));
+  template <typename Tn> constexpr Tn round_up(Tn n, Tn alignment) noexcept {
+    return (n + alignment - (Tn)1) & (~(alignment - (Tn)1));
   }
   /**
    */
-  template <typename Integer> constexpr Integer interleaved_bit_mask(int dim) noexcept {
-    constexpr Integer unit{1};
-    auto totalBits = sizeof(Integer) << 3;
-    Integer mask = 0;
-    for (decltype(totalBits) curBit = 0; curBit < totalBits; curBit += dim)
-      mask |= (unit << curBit);
+  template <typename Tn = std::size_t> constexpr Tn interleaved_bit_mask(int dim) noexcept {
+    constexpr Tn totalBits = sizeof(Tn) << (Tn)3;
+    Tn mask = 0;
+    for (Tn curBit = 0; curBit < totalBits; curBit += (Tn)dim)
+      mask |= ((Tn)1 << curBit);
     return mask;
   }
   /**
@@ -149,26 +148,26 @@ namespace zs {
    *	\brief compute the count of significant digits of a number
    *	\param N the number
    */
-  template <typename Integer> constexpr Integer bit_length(Integer N) noexcept {
-    if (N > 0)
-      return bit_length(N >> 1) + static_cast<Integer>(1);
+  template <typename Tn> constexpr Tn bit_length(Tn N) noexcept {
+    if (N > (Tn)0)
+      return bit_length(N >> (Tn)1) + (Tn)1;
     else
-      return 0;
+      return (Tn)0;
   }
   /**
    *	\fn uint32_t bit_count(uint32_t N)
    *	\brief compute the count of digits required to express integers in [0, N)
    *  \param N the maximum of the range
    */
-  template <typename Integer> constexpr Integer bit_count(Integer N) noexcept {
-    if (N > 0)
-      return bit_length(N - 1);
+  template <typename Tn> constexpr Tn bit_count(Tn N) noexcept {
+    if (N > (Tn)0)
+      return bit_length(N - (Tn)1);
     else
-      return Integer{0};
+      return (Tn)0;
   }
 
-  template <typename Integer> constexpr Integer next_2pow(Integer n) noexcept {
-    return 1 << bit_count(n);
+  template <typename Tn> constexpr Tn next_2pow(Tn n) noexcept {
+    return (Tn)1 << bit_count(n);
   }
   /**
    *	\fn uint32_t next_power_of_two(uint32_t i)

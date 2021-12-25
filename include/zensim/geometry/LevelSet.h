@@ -219,7 +219,7 @@ namespace zs {
     VelLsView _vel{};
   };
 
-  template <typename FieldView, typename = void> struct TransitionLevelSetView;
+  template <typename FieldView> struct TransitionLevelSetView;
   template <typename SdfLsView, typename VelLsView>
   struct TransitionLevelSetView<SdfVelFieldView<SdfLsView, VelLsView>>
       : LevelSetInterface<TransitionLevelSetView<SdfVelFieldView<SdfLsView, VelLsView>>> {

@@ -5,7 +5,7 @@
 namespace zs {
 
   template <typename T = float> struct NeoHookean
-      : IsotropicConstitutiveModelInterface<NeoHookean<T>> {
+      : IsotropicConstitutiveModelInterface<NeoHookean<T>> {  // BW08, P80
     using base_t = IsotropicConstitutiveModelInterface<NeoHookean<T>>;
     using value_type = T;
 
@@ -87,6 +87,45 @@ namespace zs {
         coeffs[2] = (mu + tmp / (S[2] * S[0])) * (value_type)0.5;
       }
       return coeffs;
+    }
+  };
+
+  template <typename T = float> struct NeoHookeanInvariant
+      : InvariantConstitutiveModelInterface<NeoHookeanInvariant<T>> {
+    using base_t = InvariantConstitutiveModelInterface<NeoHookean<T>>;
+    using value_type = T;
+
+    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+
+    value_type mu, lam;
+
+    constexpr NeoHookeanInvariant() noexcept = default;
+    constexpr NeoHookeanInvariant(value_type E, value_type nu) noexcept {
+      std::tie(mu, lam) = lame_parameters(E, nu);
+    }
+
+    // details (default impls)
+    template <typename VecT>
+    constexpr typename VecT::value_type do_psi_I(const VecInterface<VecT>& Is) const noexcept {
+      constexpr auto dim = VecT::template range_t<0>::value;
+      auto logI3 = zs::log(Is[2]); // logI3
+      return (value_type)0.5 * mu * (Is[1] - dim) - (mu - (value_type)0.5 * lam * logI3) * logI3;
+    }
+    template <int I, typename VecT>
+    constexpr typename VecT::value_type do_dpsi_dI(const VecInterface<VecT>& Is) const noexcept {
+      if constexpr (I == 1)
+        return mu * (typename VecT::value_type)0.5;
+      else if constexpr (I == 2)
+        return (lam * zs::log(Is[2]) - mu) / Is[2];
+      else
+        return (typename VecT::value_type)0;
+    }
+    template <int I, typename VecT>
+    constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
+      if constexpr (I == 2)
+        return (lam - lam * zs::log(Is[2]) - mu) / (Is[2] * Is[2]);
+      else
+        return (typename VecT::value_type)0;
     }
   };
 

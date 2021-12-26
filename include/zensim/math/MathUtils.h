@@ -33,6 +33,11 @@ namespace zs {
     }
   }  // namespace mathutil_impl
 
+  /// copied from gcem_options.hpp
+  constexpr auto g_pi = 3.1415926535897932384626433832795028841972L;
+  constexpr auto g_half_pi = 1.5707963267948966192313216916397514420986L;
+  constexpr auto g_sqrt2 = 1.4142135623730950488016887242096980785697L;
+
   namespace math {
 
     template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>

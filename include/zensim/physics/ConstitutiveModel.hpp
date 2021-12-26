@@ -135,6 +135,7 @@ namespace zs {
       using MatB = typename VecT::template variant_vec<T, integer_seq<Ti, 2, 2>>;
       auto ComputeBij = [&dE_dsigma, &S = S,
                          Bij_left_coeffs = Bij_neg_coeff(S)](int i) -> MatB {  // i -> i, i + 1
+        constexpr int dim = VecT::template range_t<0>::value;
         int j = (i + 1) % dim;
         T leftCoeff = Bij_left_coeffs[i];
         T rightDenom = math::max(S[i] + S[j], (T)1e-6);  // prevents division instability
@@ -143,7 +144,6 @@ namespace zs {
                     leftCoeff + rightCoeff};
       };
       using MatH = typename VecT::template variant_vec<T, integer_seq<Ti, dim * dim, dim * dim>>;
-      auto M = MatH::zeros();
       MatH dPdF{};
 
       if constexpr (is_same_v<typename VecT::dims, sindex_seq<3, 3>>) {
@@ -212,6 +212,242 @@ namespace zs {
       } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<1, 1>>) {
         dPdF(0, 0) = d2E_dsigma2(0, 0);  // U = V = [1]
       }
+      return dPdF;
+    }
+  };
+
+  template <typename Model> struct InvariantConstitutiveModelInterface {
+#define DECLARE_INVARIANT_CONSTITUTIVE_MODEL_INTERFACE_ATTRIBUTES \
+  using value_type = typename Model::value_type;
+
+    using model_type = Model;
+
+    template <typename VecT> static constexpr auto dim_v = VecT::template range_t<0>::value;
+    template <typename VecT> using vec_type =
+        typename VecT::template variant_vec<typename VecT::value_type,
+                                            integer_seq<typename VecT::index_type, dim_v<VecT>>>;
+    template <typename VecT> using mat_type = typename VecT::template variant_vec<
+        typename VecT::value_type,
+        integer_seq<typename VecT::index_type, dim_v<VecT>, dim_v<VecT>>>;
+
+    template <typename VecT> using gradient_t = typename VecT::template variant_vec<
+        typename VecT::value_type,
+        integer_seq<typename VecT::index_type, dim_v<VecT> * dim_v<VecT>>>;
+    template <typename VecT> using hessian_t = typename VecT::template variant_vec<
+        typename VecT::value_type, integer_seq<typename VecT::index_type, dim_v<VecT> * dim_v<VecT>,
+                                               dim_v<VecT> * dim_v<VecT>>>;
+    template <typename VecT, int deriv_order = 0> using pack_t = conditional_t<
+        deriv_order == 0, std::tuple<typename VecT::value_type>,
+        conditional_t<deriv_order == 1, std::tuple<typename VecT::value_type, gradient_t<VecT>>,
+                      std::tuple<typename VecT::value_type, gradient_t<VecT>, hessian_t<VecT>>>>;
+
+    // invariants
+    // I_1 = tr(S)
+    // I_2 = tr(F^T F)
+    // I_3 = det(F)
+    // I_i(F)
+    template <int I, int deriv_order = 0, typename VecT,
+              enable_if_all<VecT::dim == 2,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            VecT::template range_t<0>::value <= 3,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto I_wrt_F(const VecInterface<VecT>& F) const noexcept {
+      constexpr auto dim = VecT::template range_t<0>::value;
+      using ScalarT = typename VecT::value_type;
+      using GradientT = gradient_t<VecT>;
+      using HessianT = hessian_t<VecT>;
+      using RetT = pack_t<VecT, deriv_order>;
+
+      using MatT = vec<ScalarT, dim, dim>;
+      ///  I1 (length)
+      if constexpr (I == 0) {
+        if constexpr (deriv_order == 0) {
+          auto [R, S] = math::polar_decomposition(F);
+          return RetT{trace(S)};
+        } else if constexpr (deriv_order == 1) {
+          auto [R, S] = math::polar_decomposition(F);
+          return RetT{trace(S), vectorize(R)};
+        } else if constexpr (deriv_order == 2) {
+          auto [U, S, V] = math::qr_svd(F);
+          auto R = U * V.transpose();
+          // auto Ssym = diag_mul(V, S) * V.transpose();
+          auto dRdF = HessianT::zeros();
+          constexpr auto sqrt2Inv = (ScalarT)1 / g_sqrt2;
+          if constexpr (dim == 2) {
+            constexpr MatT T0{0, -1, 1, 0};
+            const auto vecQ0 = vectorize(sqrt2Inv * U * T0 * V.transpose());
+            dRdF += (ScalarT)2 / (S(0) + S(1)) * dyadic_prod(vecQ0, vecQ0);
+          } else if constexpr (dim == 3) {
+            constexpr MatT Ti[3] = {{0, -1, 0, 1, 0, 0, 0, 0, 0},
+                                    {0, 0, 0, 0, 0, 1, 0, -1, 0},
+                                    {0, 0, 1, 0, 0, 0, -1, 0, 0}};
+            for (int d = 0; d != 3; ++d) {
+              const auto vecQi = vectorize(sqrt2Inv * U * Ti[d] * V.transpose());
+              dRdF += ((ScalarT)2 / (S(d) + S(d + 1 == 3 ? 0 : d + 1)) * dyadic_prod(vecQi, vecQi));
+            }
+          }
+          return RetT{S.sum(), vectorize(R), dRdF};
+        }
+      }
+      ///  I2 (area)
+      else if constexpr (I == 1) {
+        if constexpr (deriv_order == 0) {
+          return RetT{trace(F.transpose() * F)};
+        } else if constexpr (deriv_order == 1) {
+          return RetT{trace(F.transpose() * F), (F + F).vectorize()};
+        } else if constexpr (deriv_order == 2) {
+          return RetT{trace(F.transpose() * F), (F + F).vectorize(),
+                      HessianT::identity() + HessianT::identity()};
+        }
+      }
+      ///  I3 (volume)
+      else if constexpr (I == 2) {
+        RetT ret{};
+        std::get<0>(ret) = determinant(F);
+        auto f0 = col(F, 0);
+        auto f1 = col(F, 1);
+        auto f2 = col(F, 2);
+        // gradient
+        if constexpr (deriv_order > 1) {
+          if constexpr (dim == 1)
+            std::get<1>(ret) = GradienT{1};
+          else if constexpr (dim == 2)
+            std::get<1>(ret) = GradientT{F(1, 1), -F(0, 1), -F(1, 0), F(0, 0)};
+          else if constexpr (dim == 3) {
+            const auto f1f2 = cross(f1, f2);
+            const auto f2f0 = cross(f2, f0);
+            const auto f0f1 = cross(f0, f1);
+            std::get<1>(ret) = GradientT{f1f2(0), f1f2(1), f1f2(2), f2f0(0), f2f0(1),
+                                         f2f0(2), f0f1(0), f0f1(1), f0f1(2)};
+          }
+        }
+        // hessian
+        if constexpr (deriv_order > 2) {
+          if constexpr (dim == 1)
+            std::get<2>(ret) = HessianT{0};
+          else if constexpr (dim == 2)
+            std::get<2>(ret) = HessianT{0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, 1, 0, 0, 0};
+          else if constexpr (dim == 3) {
+            auto& H = std::get<2>(ret);
+            H = HessianT::zeros();
+            auto asym = asymmetric(f0);
+            for (index_type i = 0; i != 3; ++i)
+              for (index_type j = 0; j != 3; ++j) {
+                H(6 + i, 3 + j) = asym(i, j);
+                H(3 + i, 6 + j) = -asym(i, j);
+              }
+            asym = asymmetric(f1);
+            for (index_type i = 0; i != 3; ++i)
+              for (index_type j = 0; j != 3; ++j) {
+                H(6 + i, j) = -asym(i, j);
+                H(i, 6 + j) = asym(i, j);
+              }
+            asym = asymmetric(f2);
+            for (index_type i = 0; i != 3; ++i)
+              for (index_type j = 0; j != 3; ++j) {
+                H(3 + i, j) = asym(i, j);
+                H(i, 3 + j) = -asym(i, j);
+              }
+          }
+        }
+        return ret;
+      }
+    }
+
+    // psi_I
+    template <typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr decltype(auto) psi_I(const VecInterface<VecT>& Is) const noexcept {
+      return static_cast<const Model*>(this)->do_psi_I(Is);
+    }
+    // dpsi_dI
+    template <int I, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr decltype(auto) dpsi_dI(const VecInterface<VecT>& Is) const noexcept {
+      return static_cast<const Model*>(this)->do_dpsi_dI<I>(Is);
+    }
+    // d2psi_dI2 -> dim [dimxdim] matrices
+    template <int I, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr decltype(auto) d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
+      return static_cast<const Model*>(this)->do_d2psi_dI2<I>(Is);
+    }
+
+    // details (default impls)
+    template <typename VecT>
+    constexpr typename VecT::value_type do_psi_I(const VecInterface<VecT>&) const noexcept {
+      return (typename VecT::value_type)0;
+    }
+    template <int I, typename VecT>
+    constexpr typename VecT::value_type do_dpsi_dI(const VecInterface<VecT>&) const noexcept {
+      return (typename VecT::value_type)0;
+    }
+    template <int I, typename VecT>
+    constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>&) const noexcept {
+      return (typename VecT::value_type)0;
+    }
+
+    // psi
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto psi(const VecInterface<VecT>& F) const noexcept {
+      typename VecT::template variant_vec<typename VecT::value_type,
+                                          integer_seq<typename VecT::index_type, 3>>
+          Is{};
+      Is[0] = std::get<0>(I_wrt_F<0, 0>(F));
+      Is[1] = std::get<0>(I_wrt_F<1, 0>(F));
+      Is[2] = std::get<0>(I_wrt_F<2, 0>(F));
+      return psi_I(Is);
+    }
+    // first piola
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto first_piola(const VecInterface<VecT>& F) const noexcept {
+      // sum_i ((dPsi / dI_i) g_i)
+      typename VecT::template variant_vec<typename VecT::value_type,
+                                          integer_seq<typename VecT::index_type, 3>>
+          Is{};
+      gradient_t<VecT> gi[3]{};
+      std::tie(Is[0], gi[0]) = I_wrt_F<0, 1>(F);
+      std::tie(Is[1], gi[1]) = I_wrt_F<1, 1>(F);
+      std::tie(Is[2], gi[2]) = I_wrt_F<2, 1>(F);
+      auto res = gradient_t<VecT>::zeros();
+      res += dpsi_dI<0>(Is) * gi[0];
+      res += dpsi_dI<1>(Is) * gi[1];
+      res += dpsi_dI<2>(Is) * gi[2];
+      constexpr auto dim = dim_v<VecT>;
+      auto m = vec<typename VecT::value_type, dim, dim>::zeros();
+      // gradient convention order: column-major
+      for (typename VecT::index_type j = 0, no = 0; j != dim; ++j)
+        for (typename VecT::index_type i = 0; i != dim; ++i) m(i, j) = res(no++);
+      return m;
+    }
+    // first piola derivative
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto first_piola_derivative(const VecInterface<VecT>& F) const noexcept {
+      // sum_i ((d2Psi / dI_i2) g_i g_i^T + ((dPsi / dI_i) H_i))
+      typename VecT::template variant_vec<typename VecT::value_type,
+                                          integer_seq<typename VecT::index_type, 3>>
+          Is{};
+      gradient_t<VecT> gi[3]{};
+      hessian_t<VecT> Hi[3]{};
+      std::tie(Is[0], gi[0], Hi[0]) = I_wrt_F<0, 2>(F);
+      std::tie(Is[1], gi[1], Hi[1]) = I_wrt_F<1, 2>(F);
+      std::tie(Is[2], gi[2], Hi[2]) = I_wrt_F<2, 2>(F);
+      auto dPdF = hessian_t<VecT>::zeros();
+      dPdF += d2psi_dI2<0>(Is) * dyadic_prod(gi[0], gi[0]) + dpsi_dI<0>(Is) * Hi[0];
+      dPdF += d2psi_dI2<1>(Is) * dyadic_prod(gi[1], gi[1]) + dpsi_dI<1>(Is) * Hi[1];
+      dPdF += d2psi_dI2<2>(Is) * dyadic_prod(gi[2], gi[2]) + dpsi_dI<2>(Is) * Hi[2];
       return dPdF;
     }
   };

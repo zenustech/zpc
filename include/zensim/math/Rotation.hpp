@@ -4,10 +4,6 @@
 
 namespace zs {
 
-  /// copied from gcem_options.hpp
-  constexpr auto g_pi = 3.1415926535897932384626433832795028841972L;
-  constexpr auto g_half_pi = 1.5707963267948966192313216916397514420986L;
-
   enum euler_angle_convention_e { roe = 0, ypr };
   constexpr auto roe_v = wrapv<euler_angle_convention_e::roe>{};
   constexpr auto ypr_v = wrapv<euler_angle_convention_e::ypr>{};

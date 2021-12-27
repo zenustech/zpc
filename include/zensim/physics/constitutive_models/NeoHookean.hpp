@@ -123,7 +123,7 @@ namespace zs {
     template <int I, typename VecT>
     constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
       if constexpr (I == 2)
-        return (lam - lam * zs::log(Is[2]) - mu) / (Is[2] * Is[2]);
+        return (lam * ((typename VecT::value_type)1 - zs::log(Is[2])) + mu) / (Is[2] * Is[2]);
       else
         return (typename VecT::value_type)0;
     }

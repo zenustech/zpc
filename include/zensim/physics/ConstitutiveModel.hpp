@@ -295,9 +295,9 @@ namespace zs {
         if constexpr (deriv_order == 0) {
           return RetT{trace(F.transpose() * F)};
         } else if constexpr (deriv_order == 1) {
-          return RetT{trace(F.transpose() * F), (F + F).vectorize()};
+          return RetT{trace(F.transpose() * F), vectorize(F + F)};
         } else if constexpr (deriv_order == 2) {
-          return RetT{trace(F.transpose() * F), (F + F).vectorize(),
+          return RetT{trace(F.transpose() * F), vectorize(F + F),
                       HessianT::identity() + HessianT::identity()};
         }
       }

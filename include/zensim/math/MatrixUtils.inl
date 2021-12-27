@@ -2,7 +2,7 @@
 namespace zs {
 
   template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == 3> = 0>
-  constexpr auto asymmetric(const VecInterface<VecT> &v) noexcept {
+  constexpr auto cross_matrix(const VecInterface<VecT> &v) noexcept {
     // skew_symmetric matrix
     // cross-product matrix
     typename VecT::template variant_vec<typename VecT::value_type,

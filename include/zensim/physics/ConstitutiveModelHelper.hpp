@@ -70,19 +70,19 @@ namespace zs {
                                             f01(1), f01(2)});
       } else {
         auto H = vec_t<T, Tn, 9, 9>::zeros();
-        auto asym = asymmetric(f0);
+        auto asym = cross_matrix(f0);
         for (Tn i = 0; i != 3; ++i)
           for (Tn j = 0; j != 3; ++j) {
             H(6 + i, 3 + j) = asym(i, j);
             H(3 + i, 6 + j) = -asym(i, j);
           }
-        asym = asymmetric(f1);
+        asym = cross_matrix(f1);
         for (Tn i = 0; i != 3; ++i)
           for (Tn j = 0; j != 3; ++j) {
             H(6 + i, j) = -asym(i, j);
             H(i, 6 + j) = asym(i, j);
           }
-        asym = asymmetric(f2);
+        asym = cross_matrix(f2);
         for (Tn i = 0; i != 3; ++i)
           for (Tn j = 0; j != 3; ++j) {
             H(3 + i, j) = asym(i, j);

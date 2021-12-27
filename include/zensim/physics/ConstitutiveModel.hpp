@@ -331,19 +331,19 @@ namespace zs {
           else if constexpr (dim == 3) {
             auto& H = std::get<2>(ret);
             H = HessianT::zeros();
-            auto asym = asymmetric(f0);
+            auto asym = cross_matrix(f0);
             for (index_type i = 0; i != 3; ++i)
               for (index_type j = 0; j != 3; ++j) {
                 H(6 + i, 3 + j) = asym(i, j);
                 H(3 + i, 6 + j) = -asym(i, j);
               }
-            asym = asymmetric(f1);
+            asym = cross_matrix(f1);
             for (index_type i = 0; i != 3; ++i)
               for (index_type j = 0; j != 3; ++j) {
                 H(6 + i, j) = -asym(i, j);
                 H(i, 6 + j) = asym(i, j);
               }
-            asym = asymmetric(f2);
+            asym = cross_matrix(f2);
             for (index_type i = 0; i != 3; ++i)
               for (index_type j = 0; j != 3; ++j) {
                 H(3 + i, j) = asym(i, j);

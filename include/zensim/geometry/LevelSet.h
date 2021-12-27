@@ -43,10 +43,13 @@ namespace zs {
     template <analytic_geometry_e type = analytic_geometry_e::Plane> using analytic_ls_t
         = AnalyticLevelSet<type, value_type, dim>;
     /// raw levelset type list
-    using raw_ls_tl = type_seq<dummy_ls_t, spls_t, analytic_ls_t<analytic_geometry_e::Plane>,
-                               analytic_ls_t<analytic_geometry_e::Cuboid>,
+    using raw_ls_tl = type_seq<dummy_ls_t, spls_t, analytic_ls_t<analytic_geometry_e::Plane>
+#if 0
+                               ,analytic_ls_t<analytic_geometry_e::Cuboid>,
                                analytic_ls_t<analytic_geometry_e::Sphere>,
-                               analytic_ls_t<analytic_geometry_e::Cylinder>>;
+                               analytic_ls_t<analytic_geometry_e::Cylinder>
+#endif
+                               >;
 
     /// shared_ptr of const raw levelsets
     using basic_ls_ptr_t = assemble_t<variant, map_t<std::shared_ptr, raw_ls_tl>>;
@@ -56,10 +59,10 @@ namespace zs {
     BasicLevelSet() noexcept = default;
 
     template <typename Ls,
-              enable_if_t<raw_ls_tl::template count_occurencies<remove_cvref_t<Ls>>() == 1> = 0>
+              enable_if_t<raw_ls_tl::template occurencies_t<remove_cvref_t<Ls>>::value == 1> = 0>
     BasicLevelSet(Ls &&ls) : _ls{std::make_shared<remove_cvref_t<Ls>>(FWD(ls))} {}
-
-    template <typename Ls, enable_if_t<raw_ls_tl::template count_occurencies<Ls>() == 1> = 0>
+    template <typename Ls,
+              enable_if_t<raw_ls_tl::template occurencies_t<remove_cvref_t<Ls>>::value == 1> = 0>
     BasicLevelSet(const std::shared_ptr<Ls> &ls) : _ls{ls} {}
 
     template <typename LsT> bool holdsLevelSet() const noexcept {
@@ -140,9 +143,7 @@ namespace zs {
         if (_fields.size()) pop();
       }
     }
-    void push(const sdf_vel_ls_t ls) {
-      _fields.push_back(ls);
-    }
+    void push(const sdf_vel_ls_t ls) { _fields.push_back(ls); }
     void pop() { _fields.pop_front(); }
 
     /// view

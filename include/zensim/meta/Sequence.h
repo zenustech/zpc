@@ -98,6 +98,7 @@ namespace zs {
       else
         return (static_cast<std::size_t>(is_same_v<T, Ts>) + ...);
     }
+    template <typename T> using occurencies_t = wrapv<count_occurencies<T>()>;
     template <typename T> struct locator<T, std::enable_if_t<count_occurencies<T>() == 1>> {
       using index
           = integral_t<std::size_t,

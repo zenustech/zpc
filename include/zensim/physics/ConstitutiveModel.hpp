@@ -222,20 +222,20 @@ namespace zs {
 
     using model_type = Model;
 
-    template <typename VecT> static constexpr auto dim_v = VecT::template range_t<0>::value;
-    template <typename VecT> using vec_type =
-        typename VecT::template variant_vec<typename VecT::value_type,
-                                            integer_seq<typename VecT::index_type, dim_v<VecT>>>;
+    template <typename VecT> using dim_t = typename VecT::template range_t<0>;
+    template <typename VecT> using vec_type = typename VecT::template variant_vec<
+        typename VecT::value_type, integer_seq<typename VecT::index_type, dim_t<VecT>::value>>;
     template <typename VecT> using mat_type = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, dim_v<VecT>, dim_v<VecT>>>;
+        integer_seq<typename VecT::index_type, dim_t<VecT>::value, dim_t<VecT>::value>>;
 
     template <typename VecT> using gradient_t = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, dim_v<VecT> * dim_v<VecT>>>;
+        integer_seq<typename VecT::index_type, dim_t<VecT>::value * dim_t<VecT>::value>>;
     template <typename VecT> using hessian_t = typename VecT::template variant_vec<
-        typename VecT::value_type, integer_seq<typename VecT::index_type, dim_v<VecT> * dim_v<VecT>,
-                                               dim_v<VecT> * dim_v<VecT>>>;
+        typename VecT::value_type,
+        integer_seq<typename VecT::index_type, dim_t<VecT>::value * dim_t<VecT>::value,
+                    dim_t<VecT>::value * dim_t<VecT>::value>>;
     template <typename VecT, int deriv_order = 0> using pack_t = conditional_t<
         deriv_order == 0, std::tuple<typename VecT::value_type>,
         conditional_t<deriv_order == 1, std::tuple<typename VecT::value_type, gradient_t<VecT>>,
@@ -252,8 +252,9 @@ namespace zs {
                             VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto I_wrt_F(const VecInterface<VecT>& F) const noexcept {
-      constexpr auto dim = VecT::template range_t<0>::value;
+      constexpr auto dim = dim_t<VecT>::value;
       using ScalarT = typename VecT::value_type;
+      using index_type = typename VecT::index_type;
       using GradientT = gradient_t<VecT>;
       using HessianT = hessian_t<VecT>;
       using RetT = pack_t<VecT, deriv_order>;
@@ -308,9 +309,9 @@ namespace zs {
         auto f1 = col(F, 1);
         auto f2 = col(F, 2);
         // gradient
-        if constexpr (deriv_order > 1) {
+        if constexpr (deriv_order > 0) {
           if constexpr (dim == 1)
-            std::get<1>(ret) = GradienT{1};
+            std::get<1>(ret) = GradientT{1};
           else if constexpr (dim == 2)
             std::get<1>(ret) = GradientT{F(1, 1), -F(0, 1), -F(1, 0), F(0, 0)};
           else if constexpr (dim == 3) {
@@ -322,7 +323,7 @@ namespace zs {
           }
         }
         // hessian
-        if constexpr (deriv_order > 2) {
+        if constexpr (deriv_order > 1) {
           if constexpr (dim == 1)
             std::get<2>(ret) = HessianT{0};
           else if constexpr (dim == 2)
@@ -355,9 +356,8 @@ namespace zs {
     }
 
     // psi_I
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
+                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) psi_I(const VecInterface<VecT>& Is) const noexcept {
       return static_cast<const Model*>(this)->do_psi_I(Is);
     }
@@ -422,7 +422,7 @@ namespace zs {
       res += dpsi_dI<0>(Is) * gi[0];
       res += dpsi_dI<1>(Is) * gi[1];
       res += dpsi_dI<2>(Is) * gi[2];
-      constexpr auto dim = dim_v<VecT>;
+      constexpr auto dim = dim_t<VecT>::value;
       auto m = vec<typename VecT::value_type, dim, dim>::zeros();
       // gradient convention order: column-major
       for (typename VecT::index_type j = 0, no = 0; j != dim; ++j)

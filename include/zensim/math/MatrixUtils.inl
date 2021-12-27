@@ -18,6 +18,23 @@ namespace zs {
     return m;
   }
 
+  template <typename VecTM, bool ColMajorOrder = true, enable_if_all<VecTM::dim == 2> = 0>
+  constexpr auto vectorize(const VecInterface<VecTM> &m, wrapv<ColMajorOrder> = {}) noexcept {
+    constexpr auto nrows = VecTM::template range_t<0>::value;
+    constexpr auto ncols = VecTM::template range_t<1>::value;
+    typename VecTM::template variant_vec<typename VecTM::value_type,
+                                         integer_seq<typename VecTM::index_type, nrows * ncols>>
+        r{};
+    if constexpr (ColMajorOrder) {
+      for (typename VecTM::index_type j = 0, no = 0; j != ncols; ++j)
+        for (typename VecTM::index_type i = 0; i != nrows; ++i) r(no++) = m(i, j);
+    } else {
+      for (typename VecTM::index_type i = 0, no = 0; i != nrows; ++i)
+        for (typename VecTM::index_type j = 0; j != ncols; ++j) r(no++) = m(i, j);
+    }
+    return r;
+  }
+
   template <typename VecTM, enable_if_all<VecTM::dim == 2> = 0>
   constexpr auto row(const VecInterface<VecTM> &m, typename VecTM::index_type i) noexcept {
     constexpr auto ncols = VecTM::template range_t<1>::value;

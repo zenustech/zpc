@@ -151,6 +151,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     Singleton.h
     TypeAlias.hpp
     # simulation
+    physics/constitutive_models/AnisotropicArap.hpp
     physics/constitutive_models/EquationOfState.hpp
     physics/constitutive_models/StvkWithHencky.hpp
     physics/constitutive_models/FixedCorotated.h

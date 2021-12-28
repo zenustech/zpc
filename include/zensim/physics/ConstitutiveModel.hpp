@@ -364,7 +364,7 @@ namespace zs {
     template <int I, int deriv_order = 0, typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto I_wrt_F_a(const VecInterface<VecTM>& F,
@@ -380,7 +380,7 @@ namespace zs {
       ///  I4 = a^T S a
       if constexpr (I == 4) {
         auto [R, S] = math::polar_decomposition(F);
-        std::get<0>(ret) = dot(a.transpose(), S * a);
+        std::get<0>(ret) = dot(a, S * a);
         static_assert(
             !(I == 4 && deriv_order > 0),
             "the author haven\'t figure it out yet how to compute derivative and hessian of I4.");
@@ -400,7 +400,7 @@ namespace zs {
       ///  I5 = a^T S^T S a
       if constexpr (I == 5) {
         const auto Fa = F * a;  // equal to (Sa)^T Sa
-        std::get<0>(ret) = Fa.transpose() * Fa;
+        std::get<0>(ret) = dot(Fa, Fa);
         if constexpr (deriv_order > 0) {
           const auto A = dyadic_prod(a, a);
           auto FA = F * A;
@@ -524,7 +524,7 @@ namespace zs {
     template <typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto psi(const VecInterface<VecTM>& F, const VecInterface<VecTV>& a) const noexcept {
@@ -538,7 +538,7 @@ namespace zs {
     template <typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto first_piola(const VecInterface<VecTM>& F,
@@ -556,7 +556,7 @@ namespace zs {
     template <typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto first_piola_derivative(const VecInterface<VecTM>& F,

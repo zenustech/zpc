@@ -21,7 +21,7 @@ namespace zs {
     template <typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto I4_sign(const VecInterface<VecTM>& F,
@@ -32,31 +32,32 @@ namespace zs {
     template <typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_psi(const VecInterface<VecTM>& F,
                           const VecInterface<VecTV>& a) const noexcept {
-      const auto v = zs::sqrt(I_wrt_F_a<5, 0>(F, a)) - I4_sign(F, a);
+      const auto v = zs::sqrt(std::get<0>(I_wrt_F_a<5, 0>(F, a))) - I4_sign(F, a);
       return (value_type)0.5 * mu * v * v;
     }
     template <typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_first_piola(const VecInterface<VecTM>& F,
                                   const VecInterface<VecTV>& a) const noexcept {
       const auto A = dyadic_prod(a, a);
-      const auto coeff = (value_type)0.5 * mu
-                         * ((value_type)1 - I4_sign(F, a) / zs::sqrt(I_wrt_F_a<5, 0>(F, a)));
+      const auto coeff
+          = (value_type)0.5 * mu
+            * ((value_type)1 - I4_sign(F, a) / zs::sqrt(std::get<0>(I_wrt_F_a<5, 0>(F, a))));
       return coeff * F * A;
     }
     template <typename VecTM, typename VecTV,
               enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                            VecTM::template range_t<0>::value = VecTV::template range_t<0>::value,
+                            VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_first_piola_derivative(const VecInterface<VecTM>& F,

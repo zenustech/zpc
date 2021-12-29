@@ -13,9 +13,10 @@ namespace zs {
     value_type mu;
 
     AnisotropicArap() noexcept = default;
-    constexpr AnisotropicArap(value_type E, value_type nu) noexcept {
+    constexpr AnisotropicArap(value_type E, value_type nu, value_type fiberStrength = 10) noexcept {
       value_type lam{};
       std::tie(mu, lam) = lame_parameters(E, nu);
+      mu *= fiberStrength;
     }
 
     template <typename VecTM, typename VecTV,

@@ -15,7 +15,7 @@ namespace zs {
 
     NeoHookean() noexcept = default;
     constexpr NeoHookean(value_type E, value_type nu) noexcept {
-      std::tie(mu, lam) = lame_parameters(E, nu);
+      zs::tie(mu, lam) = lame_parameters(E, nu);
     }
 
     // do_psi_sigma
@@ -101,7 +101,7 @@ namespace zs {
 
     NeoHookeanInvariant() noexcept = default;
     constexpr NeoHookeanInvariant(value_type E, value_type nu) noexcept {
-      std::tie(mu, lam) = lame_parameters(E, nu);
+      zs::tie(mu, lam) = lame_parameters(E, nu);
     }
 
     // details (default impls)

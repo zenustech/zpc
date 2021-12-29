@@ -15,7 +15,7 @@ namespace zs {
     AnisotropicArap() noexcept = default;
     constexpr AnisotropicArap(value_type E, value_type nu, value_type fiberStrength = 10) noexcept {
       value_type lam{};
-      std::tie(mu, lam) = lame_parameters(E, nu);
+      zs::tie(mu, lam) = lame_parameters(E, nu);
       mu *= fiberStrength;
     }
 
@@ -66,7 +66,7 @@ namespace zs {
       typename VecT::value_type I5{};
       typename base_t::template gradient_t<VecTM> g5{};
       typename base_t::template hessian_t<VecTM> H5{};
-      std::tie(I5, g5, H5) = I_wrt_F_a<5, 2>(F, a);
+      zs::tie(I5, g5, H5) = I_wrt_F_a<5, 2>(F, a);
       const auto S_I4 = I4_sign(F, a);
       const auto Sqrt_I5 = zs::sqrt(I5);
       return mu

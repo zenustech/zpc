@@ -14,7 +14,7 @@ namespace zs {
 
     constexpr StvkWithHencky() noexcept = default;
     constexpr StvkWithHencky(value_type E, value_type nu) noexcept {
-      std::tie(mu, lam) = lame_parameters(E, nu);
+      zs::tie(mu, lam) = lame_parameters(E, nu);
     }
 
     // do_psi_sigma

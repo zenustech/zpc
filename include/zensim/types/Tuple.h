@@ -238,6 +238,8 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr operator tuple<Ts...>() const noexcept { return *this; }
   };
 
+  template <class... Types> class tuple;
+
   template <typename... Ts> struct tuple
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
     using typename tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>::tuple_types;
@@ -260,6 +262,11 @@ template <std::size_t I, typename T> struct tuple_value {
       assign_impl(v, std::index_sequence_for<Ts...>{});
       return *this;
     }
+    // std::tuple
+    template <typename... Args> constexpr tuple &operator=(const std::tuple<Args...> &tup) {
+      assign_impl(FWD(tup), std::make_index_sequence<math::min(sizeof...(Ts), sizeof...(Args))>{});
+      return *this;
+    }
 
   private:
     template <typename VecT, std::size_t... Is>
@@ -267,8 +274,12 @@ template <std::size_t I, typename T> struct tuple_value {
       ((void)(this->template get<Is>() = v.val(Is)), ...);
     }
     template <typename Vec, std::size_t... Is>
-    constexpr void assign_impl(const Vec &v, index_seq<Is...>) noexcept {
+    constexpr auto assign_impl(const Vec &v, index_seq<Is...>) noexcept -> decltype(v[0], void()) {
       ((void)(this->template get<Is>() = v[Is]), ...);
+    }
+    template <typename... Args, std::size_t... Is>
+    constexpr void assign_impl(const std::tuple<Args...> &tup, index_seq<Is...>) noexcept {
+      ((void)(this->template get<Is>() = std::get<Is>(tup)), ...);
     }
   };
 
@@ -344,11 +355,14 @@ struct std::tuple_element<I, tuple<Ts...>> {
   }  // namespace detail
   template <class F, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr decltype(auto) apply(F &&f, Tuple &&t) {
-    return detail::apply_impl(FWD(f), FWD(t), std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
+    return detail::apply_impl(FWD(f), FWD(t),
+                              std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
   }
-  template <template <class...> class F, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
+  template <template <class...> class F, class Tuple,
+            enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr decltype(auto) apply(assemble_t<F, get_ttal_t<remove_cvref_t<Tuple>>> &&f, Tuple &&t) {
-    return detail::apply_impl(FWD(f), FWD(t), std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
+    return detail::apply_impl(FWD(f), FWD(t),
+                              std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
   }
 
   template <std::size_t... Is, typename... Ts>

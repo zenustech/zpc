@@ -260,19 +260,24 @@ namespace zs {
       using RetT = pack_t<VecT, deriv_order>;
 
       using MatT = vec<ScalarT, dim, dim>;
+      RetT ret{};
       ///  I1 (length)
       if constexpr (I == 0) {
         if constexpr (deriv_order == 0) {
           auto [R, S] = math::polar_decomposition(F);
-          return RetT{trace(S)};
+          std::get<0>(ret) = trace(S);
         } else if constexpr (deriv_order == 1) {
           auto [R, S] = math::polar_decomposition(F);
-          return RetT{trace(S), vectorize(R)};
+          std::get<0>(ret) = trace(S);
+          std::get<1>(ret) = vectorize(R);
         } else if constexpr (deriv_order == 2) {
           auto [U, S, V] = math::qr_svd(F);
+          std::get<0>(ret) = S.sum();
           auto R = U * V.transpose();
+          std::get<1>(ret) = vectorize(R);
           // auto Ssym = diag_mul(V, S) * V.transpose();
-          auto dRdF = HessianT::zeros();
+          auto& dRdF = std::get<2>(ret);
+          dRdF = HessianT::zeros();
           constexpr auto sqrt2Inv = (ScalarT)1 / g_sqrt2;
           if constexpr (dim == 2) {
             constexpr MatT T0{0, -1, 1, 0};
@@ -289,23 +294,21 @@ namespace zs {
                        * dyadic_prod(vecQi, vecQi));
             }
           }
-          return RetT{S.sum(), vectorize(R), dRdF};
         }
       }
       ///  I2 (area)
       else if constexpr (I == 1) {
-        if constexpr (deriv_order == 0) {
-          return RetT{trace(F.transpose() * F)};
-        } else if constexpr (deriv_order == 1) {
-          return RetT{trace(F.transpose() * F), vectorize(F + F)};
-        } else if constexpr (deriv_order == 2) {
-          return RetT{trace(F.transpose() * F), vectorize(F + F),
-                      HessianT::identity() + HessianT::identity()};
+        std::get<0>(ret) = trace(F.transpose() * F);
+        if constexpr (deriv_order > 0) {
+          std::get<1>(ret) = vectorize(F + F);
+          if constexpr (deriv_order > 1) {
+            constexpr auto I9x9 = HessianT::identity();
+            std::get<2>(ret) = I9x9 + I9x9;
+          }
         }
       }
       ///  I3 (volume)
       else if constexpr (I == 2) {
-        RetT ret{};
         std::get<0>(ret) = determinant(F);
         auto f0 = col(F, 0);
         auto f1 = col(F, 1);
@@ -351,10 +354,10 @@ namespace zs {
                   H(i, 3 + j) = -asym(i, j);
                 }
             }
-          }
-        }
-        return ret;
+          }  // hessian
+        }    // gradient
       }
+      return ret;
     }
 
     // anisotropic invariants
@@ -481,9 +484,9 @@ namespace zs {
                                           integer_seq<typename VecT::index_type, 3>>
           Is{};
       gradient_t<VecT> gi[3]{};
-      std::tie(Is[0], gi[0]) = I_wrt_F<0, 1>(F);
-      std::tie(Is[1], gi[1]) = I_wrt_F<1, 1>(F);
-      std::tie(Is[2], gi[2]) = I_wrt_F<2, 1>(F);
+      zs::tie(Is(0), gi[0]) = I_wrt_F<0, 1>(F);
+      zs::tie(Is[1], gi[1]) = I_wrt_F<1, 1>(F);
+      zs::tie(Is[2], gi[2]) = I_wrt_F<2, 1>(F);
       auto res = gradient_t<VecT>::zeros();
       res += dpsi_dI<0>(Is) * gi[0];
       res += dpsi_dI<1>(Is) * gi[1];
@@ -509,9 +512,9 @@ namespace zs {
           Is{};
       gradient_t<VecT> gi[3]{};
       hessian_t<VecT> Hi[3]{};
-      std::tie(Is[0], gi[0], Hi[0]) = I_wrt_F<0, 2>(F);
-      std::tie(Is[1], gi[1], Hi[1]) = I_wrt_F<1, 2>(F);
-      std::tie(Is[2], gi[2], Hi[2]) = I_wrt_F<2, 2>(F);
+      zs::tie(Is[0], gi[0], Hi[0]) = I_wrt_F<0, 2>(F);
+      zs::tie(Is[1], gi[1], Hi[1]) = I_wrt_F<1, 2>(F);
+      zs::tie(Is[2], gi[2], Hi[2]) = I_wrt_F<2, 2>(F);
       auto dPdF = hessian_t<VecT>::zeros();
       dPdF += d2psi_dI2<0>(Is) * dyadic_prod(gi[0], gi[0]) + dpsi_dI<0>(Is) * Hi[0];
       dPdF += d2psi_dI2<1>(Is) * dyadic_prod(gi[1], gi[1]) + dpsi_dI<1>(Is) * Hi[1];

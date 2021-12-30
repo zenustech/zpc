@@ -23,6 +23,13 @@ namespace zs {
                                           value_type h2 = 0.2, value_type h3 = 10) noexcept
         : h0{h0}, h1{h1}, h2{h2}, h3{h3} {}
 
+    constexpr value_type yieldSurface(value_type q) const noexcept {
+      constexpr value_type coeff = math::sqrtNewtonRaphson((value_type)2 / (value_type)3);
+      const auto frictionAngle = h0 + (h1 * q - h3) * zs::exp(-h2 * q);
+      const auto sinFa = zs::sin(frictionAngle);
+      return coeff * (sinFa + sinFa) / ((value_type)3 - sinFa);
+    }
+
     template <typename VecT, typename Model, typename T,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
@@ -35,7 +42,7 @@ namespace zs {
       const auto dev_eps_norm = dev_eps.norm();
       if (math::near_zero(dev_eps_norm) || eps_trace > 0) {  // Case II (all stress removed)
         S = S.ones();
-        return eps.l2Norm();
+        return eps.norm();
       }
       const auto _2mu = model.mu + model.mu;
       const auto delta_gamma = dev_eps_norm + (dim * model.lam + _2mu) / _2mu * eps_trace * alpha;

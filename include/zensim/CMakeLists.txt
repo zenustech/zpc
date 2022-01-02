@@ -157,6 +157,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     physics/constitutive_models/FixedCorotated.h
     physics/constitutive_models/NeoHookean.hpp
     physics/constitutive_models/DirichletDamping.hpp
+    physics/plasticity_models/SnowPlasticity.hpp
     physics/plasticity_models/VonMisesCapped.hpp
     physics/plasticity_models/NonAssociativeDruckerPrager.hpp
     physics/ConstitutiveModelHelper.hpp

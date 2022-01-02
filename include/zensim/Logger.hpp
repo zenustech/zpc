@@ -2,8 +2,10 @@
 #pragma once
 
 #include "zensim/Singleton.h"
-#include "zensim/tpls/fmt/core.h"
-#include "zensim/tpls/loguru/loguru.hpp"
+#include "zensim/tpls/fmt/format.h"
+// #include "zensim/tpls/loguru/loguru.hpp"
+#include "zensim/tpls/plog/Log.h"
+#include "plog/Initializers/RollingFileInitializer.h"
 
 namespace zs {
 
@@ -11,28 +13,25 @@ namespace zs {
   // https://blog.kowalczyk.info/article/j/guide-to-predefined-macros-in-c-compilers-gcc-clang-msvc-etc..html
 
   struct Logger : Singleton<Logger> {
-    Logger() {
-      loguru::add_file("zensim_logs.log", loguru::Append, loguru::NamedVerbosity::Verbosity_MAX);
-    }
+    Logger() { plog::init(plog::info, "zensim_logs.log"); }
     void log(const int level, const char* fileName, const char* funcName, int line,
              std::string_view msg) {
-      VLOG_F(level, "[%s:%s@%d] %s", fileName, funcName, line, msg.data());
+      PLOG(static_cast<plog::Severity>(level)) << fmt::format("{}:{}{} {}\n", fileName, funcName, line, msg);
     }
   };
 
   ///
 
-#define ZS_LOG(option, ...)                                                                       \
-  ::zs::Logger::instance().log(loguru::Verbosity_##option, __FILE__, __FUNCTION__, (int)__LINE__, \
+#define ZS_LOG(option, ...)                                                                   \
+  ::zs::Logger::instance().log(plog::Severity::option, __FILE__, __FUNCTION__, (int)__LINE__, \
                                __VA_ARGS__);
-  // LOG_F(option, "[%s:%s@%d] %s", __FILE__, __FUNCTION__, (int)__LINE__, __VA_ARGS__)
 
-#define ZS_FATAL(...) ZS_LOG(FATAL, __VA_ARGS__)
-#define ZS_INFO(...) ZS_LOG(INFO, __VA_ARGS__)
-#define ZS_WARN(...) ZS_LOG(WARNING, __VA_ARGS__)
+#define ZS_FATAL(...) ZS_LOG(fatal, __VA_ARGS__)
+#define ZS_INFO(...) ZS_LOG(info, __VA_ARGS__)
+#define ZS_WARN(...) ZS_LOG(warning, __VA_ARGS__)
 #define ZS_ERROR(...)           \
   {                             \
-    ZS_LOG(ERROR, __VA_ARGS__); \
+    ZS_LOG(error, __VA_ARGS__); \
     ZS_UNREACHABLE;             \
   }
 

@@ -28,7 +28,7 @@ namespace zs {
       return levelset.getSignedDistance(X) < 0;
     }
     template <typename VecT>
-    constexpr bool resolveCollision(const TV &x, TV &v, VecInterface<VecT> &normal, T erosion = 0) const noexcept {
+    constexpr bool resolveCollisionWithNormal(const TV &x, TV &v, VecInterface<VecT> &normal, T erosion = 0) const noexcept {
       /** derivation:
           x = \phi(X,t) = R(t)s(t)X+b(t)
           X = \phi^{-1}(x,t) = (1/s) R^{-1} (x-b)

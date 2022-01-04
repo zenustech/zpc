@@ -179,7 +179,6 @@ namespace zs {
 
     using value_type = typename SdfLsView::value_type;
     static constexpr int dim = SdfLsView::dim;
-    using TV = vec<value_type, dim>;
 
     SdfVelFieldView() noexcept = default;
     ~SdfVelFieldView() noexcept = default;
@@ -189,26 +188,26 @@ namespace zs {
         : _sdf(std::get<0>(field)), _vel(std::get<1>(field)) {}
 
     /// bounding volume interface
-    constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
+    constexpr auto do_getBoundingBox() const noexcept {
       return _sdf.getBoundingBox();
     }
-    constexpr TV do_getBoxCenter() const noexcept { return _sdf.getBoxCenter(); }
-    constexpr TV do_getBoxSideLengths() const noexcept { return _sdf.getBoxSideLengths(); }
+    constexpr auto do_getBoxCenter() const noexcept { return _sdf.getBoxCenter(); }
+    constexpr auto do_getBoxSideLengths() const noexcept { return _sdf.getBoxSideLengths(); }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr TV do_getUniformCoord(const VecInterface<VecT> &x) const noexcept {
+    constexpr auto do_getUniformCoord(const VecInterface<VecT> &x) const noexcept {
       return _sdf.getUniformCoord(x);
     }
     /// levelset interface
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+    constexpr auto do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
       return _sdf.getSignedDistance(x);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr TV do_getNormal(const VecInterface<VecT> &x) const noexcept {
+    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
       return _sdf.getNormal(x);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
       // if vel ls is dummy, use sdf ls instead
       if constexpr (is_same_v<VelLsView, DummyLevelSet<value_type, dim>>)
         return _sdf.getMaterialVelocity(x);
@@ -227,7 +226,6 @@ namespace zs {
     using ls_t = SdfVelFieldView<SdfLsView, VelLsView>;
     using value_type = typename ls_t::value_type;
     static constexpr int dim = ls_t::dim;
-    using TV = vec<value_type, dim>;
 
     TransitionLevelSetView() noexcept = default;
     ~TransitionLevelSetView() noexcept = default;

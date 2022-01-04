@@ -23,10 +23,11 @@ namespace zs {
       tau0 = coeff * (sinFa + sinFa) / ((value_type)3 - sinFa);
     }
 
-    template <typename VecT, typename Model, 
+    template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr typename VecT::value_type do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
+    constexpr typename VecT::value_type do_project_sigma(VecInterface<VecT>& S,
+                                                         const Model& model) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
       auto eps = S.log();
       auto eps_trace = eps.sum();

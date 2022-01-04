@@ -246,6 +246,13 @@ namespace zs {
     }
 
     template <typename T, typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<remove_cvref_t<T>, typename VecT::value_type>> = 0>
+    constexpr Derived& operator=(T&& v) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = v;
+      return static_cast<Derived&>(*this);
+    }
+    template <typename T, typename VecT = Derived,
               enable_if_all<std::is_convertible_v<T, typename VecT::value_type>> = 0>
     constexpr Derived& operator=(const std::initializer_list<T>& rhs) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES

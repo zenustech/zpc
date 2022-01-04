@@ -29,14 +29,14 @@ namespace zs {
       constexpr int dim = VecT::template range_t<0>::value;
 
       // Compute scaled tauY
-      constexpr auto coeff = math::sqrtNewtonRaphson((value_type)2 / ((value_type)6 - (value_type)dim));
+      constexpr auto coeff
+          = math::sqrtNewtonRaphson((value_type)2 / ((value_type)6 - (value_type)dim));
       auto scaledTauY = coeff * (tauY + hardeningCoeff * alpha);
       // Compute B hat trial based on the singular values from F^trial --> sigma^2
       // are the singular vals of be hat trial
       auto B_hat_trial = S * S;
       // mu * J^(-2/dim)
-      auto scaledMu = static_cast<const Model&>(model).mu
-                      * zs::pow(S.prod(), -(value_type)2 / (value_type)dim);
+      auto scaledMu = model.mu * zs::pow(S.prod(), -(value_type)2 / (value_type)dim);
       // Compute s hat trial using b hat trial
       auto s_hat_trial = scaledMu * B_hat_trial.deviatoric();
       // Compute s hat trial's L2 norm (since it appears in our expression for
@@ -52,14 +52,9 @@ namespace zs {
       // Compute new Bhat
       auto B_hat_new = B_hat_trial - ((z / s_hat_trial_norm) * s_hat_trial);
 
-      // printf("S (%f) (%f, %f, %f) -> %f, %f, %f\n", s_hat_trial_norm, S(0), S(1), S(2),
-      // B_hat_new(0), B_hat_new(1),
-      // B_hat_new(2));
       // Now compute new sigmas by taking sqrt of B hat new, then set strain to be
       // this new F^{n+1} value
-      auto SS = B_hat_new.sqrt();
-      for (int i = 0; i != dim; ++i) S(i) = SS(i);
-      // S = SS;
+      S.assign(B_hat_new.sqrt());   // S = SS is not correct, since S is a VecInterface object.
     }
   };
 

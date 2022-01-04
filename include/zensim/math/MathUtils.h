@@ -234,6 +234,17 @@ namespace zs {
   }
 
   template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T sinh(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::sinhf(v);
+    else
+      return ::sinh(v);
+#else
+    return std::sinh(v);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
   constexpr T sin(T v) noexcept {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
     if constexpr (is_same_v<T, float>)
@@ -242,6 +253,17 @@ namespace zs {
       return ::sin(v);
 #else
     return std::sin(v);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T asinh(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::asinhf(v);
+    else
+      return ::asinh(v);
+#else
+    return std::asinh(v);
 #endif
   }
   template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
@@ -256,6 +278,17 @@ namespace zs {
 #endif
   }
   template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T cosh(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::coshf(v);
+    else
+      return ::cosh(v);
+#else
+    return std::cosh(v);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
   constexpr T cos(T v) noexcept {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
     if constexpr (is_same_v<T, float>)
@@ -264,6 +297,17 @@ namespace zs {
       return ::cos(v);
 #else
     return std::cos(v);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T acosh(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::acoshf(v);
+    else
+      return ::acosh(v);
+#else
+    return std::acosh(v);
 #endif
   }
   template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>

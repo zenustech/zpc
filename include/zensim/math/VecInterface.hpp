@@ -63,24 +63,23 @@ namespace zs {
    *    \note assume vec already defines base_t, value_type, index_type, extents and indexer_type
    *
    **/
-#define SUPPLEMENT_VEC_STATIC_ATTRIBUTES                                                         \
-  using dims = typename vseq<extents>::template to_iseq<sint_t>;                                 \
-  static constexpr index_type extent = vseq<extents>::template reduce(multiplies<index_type>{}); \
-  static constexpr int dim = vseq<extents>::count;                                               \
-  template <std::size_t I, enable_if_t<(I < dim)> = 0> using range_t                             \
-      = integral_t<index_type, select_value<I, vseq<extents>>::value>;                           \
-  template <std::size_t I> static constexpr index_type range = range_t<I>::value;                \
-  using base_t::identity;                                                                        \
-  using base_t::ones;                                                                            \
-  using base_t::uniform;                                                                         \
-  using base_t::zeros;                                                                           \
-  template <typename OtherVecT,                                                                  \
-            enable_if_all<                                                                       \
-                OtherVecT::extent == extent,                                                     \
-                std::is_convertible_v<typename OtherVecT::value_type, typename value_type>> = 0> \
-  constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs) noexcept {              \
-    for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);                          \
-    return *this;                                                                                \
+#define SUPPLEMENT_VEC_STATIC_ATTRIBUTES                                                          \
+  using dims = typename vseq<extents>::template to_iseq<sint_t>;                                  \
+  static constexpr index_type extent = vseq<extents>::template reduce(multiplies<index_type>{});  \
+  static constexpr int dim = vseq<extents>::count;                                                \
+  template <std::size_t I, enable_if_t<(I < dim)> = 0> using range_t                              \
+      = integral_t<index_type, select_value<I, vseq<extents>>::value>;                            \
+  template <std::size_t I> static constexpr index_type range = range_t<I>::value;                 \
+  using base_t::identity;                                                                         \
+  using base_t::ones;                                                                             \
+  using base_t::uniform;                                                                          \
+  using base_t::zeros;                                                                            \
+  template <typename OtherVecT,                                                                   \
+            enable_if_all<OtherVecT::extent == extent,                                            \
+                          std::is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
+  constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs) noexcept {               \
+    for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);                           \
+    return *this;                                                                                 \
   }
 
   ///
@@ -245,8 +244,9 @@ namespace zs {
       return derivedPtr()->template cast<T>();
     }
 
-    template <typename T, typename VecT = Derived,
-              enable_if_all<std::is_convertible_v<remove_cvref_t<T>, typename VecT::value_type>> = 0>
+    template <
+        typename T, typename VecT = Derived,
+        enable_if_all<std::is_convertible_v<remove_cvref_t<T>, typename VecT::value_type>> = 0>
     constexpr Derived& operator=(T&& v) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = v;

@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "zensim/Reflection.h"
+#include "zensim/math/MathUtils.h"
 #include "zensim/meta/ControlFlow.h"
 #include "zensim/meta/Meta.h"
 #include "zensim/meta/Relationship.h"
@@ -264,7 +265,8 @@ template <std::size_t I, typename T> struct tuple_value {
     }
     // std::tuple
     template <typename... Args> constexpr tuple &operator=(const std::tuple<Args...> &tup) {
-      assign_impl(FWD(tup), std::make_index_sequence<math::min(sizeof...(Ts), sizeof...(Args))>{});
+      assign_impl(FWD(tup),
+                  std::make_index_sequence<zs::math::min(sizeof...(Ts), sizeof...(Args))>{});
       return *this;
     }
 

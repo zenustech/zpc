@@ -238,33 +238,31 @@ namespace zs {
         : _lsvSrc{lsvSrc}, _lsvDst{lsvDst}, _stepDt{stepDt}, _alpha{alpha} {}
 
     /// bounding volume interface
-    constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
-      return _lsvSrc.getBoundingBox();
-    }
-    constexpr TV do_getBoxCenter() const noexcept { return _lsvSrc.getBoxCenter(); }
-    constexpr TV do_getBoxSideLengths() const noexcept { return _lsvSrc.getBoxSideLengths(); }
+    constexpr auto do_getBoundingBox() const noexcept { return _lsvSrc.getBoundingBox(); }
+    constexpr auto do_getBoxCenter() const noexcept { return _lsvSrc.getBoxCenter(); }
+    constexpr auto do_getBoxSideLengths() const noexcept { return _lsvSrc.getBoxSideLengths(); }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr TV do_getUniformCoord(const VecInterface<VecT> &pos) const noexcept {
+    constexpr auto do_getUniformCoord(const VecInterface<VecT> &pos) const noexcept {
       return _lsvSrc.getUniformCoord(pos);
     }
     /// levelset interface
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
-      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
-      TV x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
+    constexpr auto do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      auto v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
+      auto x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
       return ((value_type)1 - _alpha) * _lsvSrc.getSignedDistance(x0)
              + _alpha * _lsvDst.getSignedDistance(x1);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr TV do_getNormal(const VecInterface<VecT> &x) const noexcept {
-      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
-      TV x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
+    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
+      auto v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
+      auto x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
       return ((value_type)1 - _alpha) * _lsvSrc.getNormal(x0) + _alpha * _lsvDst.getNormal(x1);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr TV do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
-      TV v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
-      TV x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
+    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      auto v = (_lsvSrc.getMaterialVelocity(x) + _lsvDst.getMaterialVelocity(x)) * (value_type)0.5;
+      auto x0 = x - _alpha * _stepDt * v, x1 = x + ((value_type)1 - _alpha) * _stepDt * v;
       return ((value_type)1 - _alpha) * _lsvSrc.getMaterialVelocity(x0)
              + _alpha * _lsvDst.getMaterialVelocity(x1);
     }

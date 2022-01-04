@@ -225,9 +225,9 @@ namespace zs {
     ret(1, 3) = detail::cofactor<3, 1>(A);
     ret(2, 3) = -detail::cofactor<3, 2>(A);
     ret(3, 3) = detail::cofactor<3, 3>(A);
-    ret = ret
-          / (A(0, 0) * ret(0, 0) + A(1, 0) * ret(0, 1) + A(2, 0) * ret(0, 2) + A(3, 0) * ret(0, 3));
-    return ret;
+    return ret
+           / (A(0, 0) * ret(0, 0) + A(1, 0) * ret(0, 1) + A(2, 0) * ret(0, 2)
+              + A(3, 0) * ret(0, 3));
   }
 
   template <

@@ -595,11 +595,12 @@ namespace zs {
     // details (default impls)
     // return delta_gamma (projection distance)
     template <typename VecT, typename... Args>
-    constexpr typename VecT::value_type do_project_sigma(VecInterface<VecT>& S, Args&&... args) const noexcept {
-      return 0;
+    constexpr bool do_project_sigma(VecInterface<VecT>& S, Args&&... args) const noexcept {
+      return false;
     }
     template <typename VecT, typename... Args>
-    constexpr decltype(auto) do_project_strain(VecInterface<VecT>& F, Args&&... args) const noexcept {
+    constexpr decltype(auto) do_project_strain(VecInterface<VecT>& F,
+                                               Args&&... args) const noexcept {
       auto [U, S, V] = math::svd(F);
       using result_t = decltype(static_cast<const Model*>(this)->project_sigma(S, FWD(args)...));
       if constexpr (!is_same_v<result_t, void>) {

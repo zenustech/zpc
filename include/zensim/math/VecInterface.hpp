@@ -73,7 +73,15 @@ namespace zs {
   using base_t::identity;                                                                        \
   using base_t::ones;                                                                            \
   using base_t::uniform;                                                                         \
-  using base_t::zeros;
+  using base_t::zeros;                                                                           \
+  template <typename OtherVecT,                                                                  \
+            enable_if_all<                                                                       \
+                OtherVecT::extent == extent,                                                     \
+                std::is_convertible_v<typename OtherVecT::value_type, typename value_type>> = 0> \
+  constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs) noexcept {              \
+    for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);                          \
+    return *this;                                                                                \
+  }
 
   ///
   /// VecInterface
@@ -237,27 +245,6 @@ namespace zs {
       return derivedPtr()->template cast<T>();
     }
 
-#if 0
-    VecInterface() noexcept = default;
-    constexpr VecInterface(VecInterface&& rhs) noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = rhs.val(i);
-    }
-    constexpr VecInterface(const VecInterface& rhs) noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = rhs.val(i);
-    }
-    constexpr decltype(auto) operator=(VecInterface&& rhs) noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = rhs.val(i);
-      return static_cast<Derived&>(*this);
-    }
-    constexpr decltype(auto) operator=(const VecInterface& rhs) noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = rhs.val(i);
-      return static_cast<Derived&>(*this);
-    }
-#endif
     template <typename T, typename VecT = Derived,
               enable_if_all<std::is_convertible_v<T, typename VecT::value_type>> = 0>
     constexpr Derived& operator=(const std::initializer_list<T>& rhs) noexcept {
@@ -272,7 +259,7 @@ namespace zs {
     template <typename OtherVecT, typename VecT = Derived,
               enable_if_all<OtherVecT::extent == VecT::extent,
                             // otherwise triggers copy-assign ctor
-                            !is_same_v<OtherVecT, VecT>,  
+                            !is_same_v<OtherVecT, VecT>,
                             std::is_convertible_v<typename OtherVecT::value_type,
                                                   typename VecT::value_type>> = 0>
     constexpr Derived& operator=(const VecInterface<OtherVecT>& rhs) noexcept {
@@ -397,7 +384,7 @@ namespace zs {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       value_type res{derivedPtr()->val(0)};
       for (index_type i = 1; i != extent; ++i)
-        if (const auto &v = derivedPtr()->val(i); v > res) res = v;
+        if (const auto& v = derivedPtr()->val(i); v > res) res = v;
       return res;
     }
     template <typename VecT = Derived,
@@ -431,7 +418,7 @@ namespace zs {
       typename Derived::template variant_vec<value_type, extents> r{};
       for (index_type i = 0; i != extent; ++i)
         r.val(i) = math::near_zero(derivedPtr()->val(i)) ? limits<value_type>::infinity()
-                                                 : (value_type)1 / derivedPtr()->val(i);
+                                                         : (value_type)1 / derivedPtr()->val(i);
       return r;
     }
     template <typename VecT = Derived,
@@ -463,8 +450,7 @@ namespace zs {
     constexpr auto sqrt() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i)
-        r.val(i) = zs::sqrt(derivedPtr()->val(i));
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::sqrt(derivedPtr()->val(i));
       return r;
     }
     template <typename VecT = Derived,

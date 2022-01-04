@@ -27,8 +27,8 @@ namespace zs {
       TV X = R.transpose() * x_minus_b * one_over_s;  // material space
       return levelset.getSignedDistance(X) < 0;
     }
-    template <typename VecT>
-    constexpr bool resolveCollisionWithNormal(const TV &x, TV &v, VecInterface<VecT> &normal, T erosion = 0) const noexcept {
+    template <typename VecT0, typename VecT1, typename VecT2>
+    constexpr bool resolveCollisionWithNormal(const VecInterface<VecT0> &x, VecInterface<VecT1> &v, VecInterface<VecT2> &normal, T erosion = 0) const noexcept {
       /** derivation:
           x = \phi(X,t) = R(t)s(t)X+b(t)
           X = \phi^{-1}(x,t) = (1/s) R^{-1} (x-b)
@@ -43,11 +43,11 @@ namespace zs {
       T one_over_s = 1 / s;
       TV X = R.transpose() * x_minus_b * one_over_s;  // material space
       if (levelset.getSignedDistance(X) < -erosion) {
-        normal = R * levelset.getNormal(X);
+        normal.assign(R * levelset.getNormal(X));
         TV v_object = omega.cross(x_minus_b) + (dsdt * one_over_s) * x_minus_b
                       + R * s * levelset.getMaterialVelocity(X) + dbdt;
         if (type == collider_e::Sticky)
-          v = v_object;
+          v.assign(v_object);
         else {
           v -= v_object;
           T proj = normal.dot(v);
@@ -58,7 +58,8 @@ namespace zs {
       }
       return false;
     }
-    constexpr bool resolveCollision(const TV &x, TV &v, T erosion = 0) const noexcept {
+    template <typename VecT0, typename VecT1>
+    constexpr bool resolveCollision(const VecInterface<VecT0> &x, VecInterface<VecT1> &v, T erosion = 0) const noexcept {
       /** derivation:
           x = \phi(X,t) = R(t)s(t)X+b(t)
           X = \phi^{-1}(x,t) = (1/s) R^{-1} (x-b)
@@ -76,7 +77,7 @@ namespace zs {
         TV v_object = omega.cross(x_minus_b) + (dsdt * one_over_s) * x_minus_b
                       + R * s * levelset.getMaterialVelocity(X) + dbdt;
         if (type == collider_e::Sticky)
-          v = v_object;
+          v.assign(v_object);
         else {
           v -= v_object;
           TV n = R * levelset.getNormal(X);
@@ -88,7 +89,39 @@ namespace zs {
       }
       return false;
     }
-    constexpr bool resolveCollision(const TV &x, TV &v, const TV &vOverride,
+    template <typename VecT0, typename VecT1, typename VecT2, typename VecT3>
+    constexpr bool resolveCollisionWithNormal(const VecInterface<VecT0> &x, VecInterface<VecT1> &v, const VecInterface<VecT2> &V, VecInterface<VecT3> &normal, T erosion = 0) const noexcept {
+      /** derivation:
+          x = \phi(X,t) = R(t)s(t)X+b(t)
+          X = \phi^{-1}(x,t) = (1/s) R^{-1} (x-b)
+          V(X,t) = \frac{\partial \phi}{\partial t}
+                = R'sX + Rs'X + RsX' + b'
+          v(x,t) = V(\phi^{-1}(x,t),t)
+                = R'R^{-1}(x-b) + (s'/s)(x-b) + RsX' + b'
+                = omega \cross (x-b) + (s'/s)(x-b) +b'
+      */
+      /// collision
+      TV x_minus_b = x - b;
+      T one_over_s = 1 / s;
+      TV X = R.transpose() * x_minus_b * one_over_s;  // material space
+      if (levelset.getSignedDistance(X) < -erosion) {
+        normal.assign(R * levelset.getNormal(X));
+        TV v_object = omega.cross(x_minus_b) + (dsdt * one_over_s) * x_minus_b
+                      + R * s * V + dbdt;
+        if (type == collider_e::Sticky)
+          v.assign(v_object);
+        else {
+          v -= v_object;
+          T proj = normal.dot(v);
+          if ((type == collider_e::Separate && proj < 0) || type == collider_e::Slip) v -= proj * n;
+          v += v_object;
+        }
+        return true;
+      }
+      return false;
+    }
+    template <typename VecT0, typename VecT1, typename VecT2>
+    constexpr bool resolveCollision(const VecInterface<VecT0> &x, VecInterface<VecT1> &v, const VecInterface<VecT2> &V,
                                     T erosion = 0) const noexcept {
       /** derivation:
           x = \phi(X,t) = R(t)s(t)X+b(t)
@@ -105,9 +138,9 @@ namespace zs {
       TV X = R.transpose() * x_minus_b * one_over_s;  // material space
       if (levelset.getSignedDistance(X) < -erosion) {
         TV v_object
-            = omega.cross(x_minus_b) + (dsdt * one_over_s) * x_minus_b + R * s * vOverride + dbdt;
+            = omega.cross(x_minus_b) + (dsdt * one_over_s) * x_minus_b + R * s * V + dbdt;
         if (type == collider_e::Sticky)
-          v = v_object;
+          v.assign(v_object);
         else {
           v -= v_object;
           TV n = R * levelset.getNormal(X);
@@ -120,7 +153,7 @@ namespace zs {
       return false;
     }
 
-    Collider() = default;
+    Collider() noexcept = default;
     constexpr Collider(LS &&ls, collider_e t = collider_e::Sticky)
         : levelset{std::move(ls)}, type{t} {}
     constexpr Collider(const LS &ls, collider_e t = collider_e::Sticky) : levelset{ls}, type{t} {}

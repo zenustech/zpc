@@ -207,8 +207,8 @@ namespace zs {
                       VecTA::template range_t<0>::value == VecTB::template range_t<0>::value> = 0>
     constexpr Rotation(const VecInterface<VecTA> &a, const VecInterface<VecTB> &b) noexcept : TM{} {
       if constexpr (dim == 2 && VecTA::template range_t<0>::value == 2) {
-        TV aa = a.normalized();
-        TV bb = b.normalized();
+        auto aa = a.normalized();
+        auto bb = b.normalized();
         (*this)(0, 0) = aa(0) * bb(0) + aa(1) * bb(1);
         (*this)(0, 1) = -(aa(0) * bb(1) - bb(0) * aa(1));
         (*this)(1, 0) = aa(0) * bb(1) - bb(0) * aa(1);

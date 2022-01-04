@@ -182,7 +182,6 @@ namespace zs {
      * 0 0 x
      * \note don't follow algorithm 5 psudo code, use ziran2020 implementation
      **/
-#if 1
     template <typename VecH, typename VecU, typename VecV,
               enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
     constexpr void zero_chasing(VecInterface<VecH>& H, VecInterface<VecU>& U,
@@ -231,29 +230,6 @@ namespace zs {
       r1.columnRotation(U);
       r3.columnRotation(U);
     }
-#else
-    template <typename VecH, typename VecU, typename VecV,
-              enable_if_all<is_3_by_3<VecH>(), is_3_by_3<VecU>(), is_3_by_3<VecV>()> = 0>
-    constexpr void zero_chasing(VecInterface<VecH>& H, VecInterface<VecU>& U,
-                                VecInterface<VecV>& V) noexcept {
-      using T = typename VecH::value_type;
-      {
-        GivensRotation<T> r{H(0, 1), H(0, 2), 1, 2};
-        r.columnRotation(H);
-        r.rowRotation(U);
-      }
-      {
-        GivensRotation<T> r{H(0, 1), H(0, 2), 1, 2};
-        r.rowRotation(H);
-        r.rowRotation(V);
-      }
-      {
-        GivensRotation<T> r{H(1, 1), H(2, 1), 1, 2};
-        r.rowRotation(H);
-        r.columnRotation(U);
-      }
-    }
-#endif
     /**
      *    \brief make a 3X3 matrix to upper bidiagonal form
      *    original form of H:   x x x
@@ -267,8 +243,8 @@ namespace zs {
     template <typename VecH, typename VecU, typename VecV>
     constexpr void upper_bidiagonalize(VecInterface<VecH>& H, VecInterface<VecU>& U,
                                        VecInterface<VecV>& V) {
-      U = U.identity();
-      V = V.identity();
+      U.assign(U.identity());
+      V.assign(V.identity());
 
       /**
        *  Reduce H to of form
@@ -297,8 +273,8 @@ namespace zs {
     constexpr void make_lambda_shape(VecInterface<VecH>& H, VecInterface<VecU>& U,
                                      VecInterface<VecV>& V) noexcept {
       using T = typename VecH::value_type;
-      U = U.identity();
-      V = V.identity();
+      U.assign(U.identity());
+      V.assign(V.identity());
 
       /**
         Reduce H to of form

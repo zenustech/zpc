@@ -599,11 +599,18 @@ namespace zs {
       return 0;
     }
     template <typename VecT, typename... Args>
-    constexpr typename VecT::value_type do_project_strain(VecInterface<VecT>& F, Args&&... args) const noexcept {
+    constexpr decltype(auto) do_project_strain(VecInterface<VecT>& F, Args&&... args) const noexcept {
       auto [U, S, V] = math::svd(F);
-      const auto deltaGamma = static_cast<const Model*>(this)->project_sigma(S, FWD(args)...);
-      F = diag_mul(U, S) * V.transpose();
-      return deltaGamma;
+      using result_t = decltype(static_cast<const Model*>(this)->project_sigma(S, FWD(args)...));
+      if constexpr (!is_same_v<result_t, void>) {
+        decltype(auto) res = static_cast<const Model*>(this)->project_sigma(S, FWD(args)...);
+        F.assign(diag_mul(U, S) * V.transpose());
+        return res;
+      } else {
+        static_cast<const Model*>(this)->project_sigma(S, FWD(args)...);
+        F.assign(diag_mul(U, S) * V.transpose());
+        return;
+      }
     }
   };
 

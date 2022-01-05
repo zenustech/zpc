@@ -200,7 +200,7 @@ namespace zs {
 
     execPol(zip(leafLca, leafDepths, leafOffsets),
             ComputeTrunkOrder{execTag, trunkLc, trunkDst, levels, parents});
-    execPol(zip(trunkDst, trunkBvs, trunkL, trunkR),
+    execPol(zip(trunkDst, trunkBvs, trunkR),
             ReorderTrunk{execTag, numLeaves, trunkDst, leafLca, leafOffsets, sortedBvs, auxIndices,
                          parents});
     execPol(enumerate(leafBvs, leafOffsets, leafDepths),

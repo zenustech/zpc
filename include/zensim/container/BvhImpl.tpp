@@ -12,7 +12,7 @@ namespace zs {
     ComputeBoundingVolume() = default;
     constexpr ComputeBoundingVolume(wrapv<space>, Vector<BV>& v) noexcept : box{proxy<space>(v)} {}
     constexpr void operator()(const BV& bv) {
-      for (int d = 0; d < dim; ++d) {
+      for (int d = 0; d != dim; ++d) {
         atomic_min(wrapv<space>{}, &box(0)._min[d], bv._min[d]);
         atomic_max(wrapv<space>{}, &box(0)._max[d], bv._max[d]);
       }
@@ -123,23 +123,11 @@ namespace zs {
       while (atomic_add(wrapv<space>{}, &flags(cur), 1) == 1) {
         {  // refit
           int lc = trunkLc(cur), rc = trunkRc(cur);
-          bv_t left{}, right{};
-          switch (marks(cur) & 3) {
-            case 0:
-              left = trunkBvs, right = trunkBvs;
-              break;
-            case 1:
-              left = leafBvs, right = trunkBvs;
-              break;
-            case 2:
-              left = trunkBvs, right = leafBvs;
-              break;
-            case 3:
-              left = leafBvs, right = leafBvs;
-              break;
-          }
-          const BV& leftBox = left(lc);
-          const BV& rightBox = right(rc);
+          const auto childMask = marks(cur) & 3;
+          const auto& leftBox = (childMask & 1) ? leafBvs(lc) : trunkBvs(lc);
+          const auto& rightBox = (childMask & 2) ? leafBvs(rc) : trunkBvs(rc);
+          Box bv{};
+
           BV bv{/*TV::uniform(limits<T>().max()),
                 TV::uniform(limits<T>().lowest())*/};
           for (int d = 0; d < dim; ++d) {
@@ -233,14 +221,14 @@ namespace zs {
           parents{proxy<space>(parents)},
           numLeaves{static_cast<Index>(numLeaves)} {}
 
-    constexpr void operator()(Index dst, const BV& bv, Index l, Index r) {
+    constexpr void operator()(Index dst, const BV& bv, Index r) {
       sortedBvs(dst) = bv;
       const auto rb = r + 1;
       if (rb < numLeaves) {
         auto lca = leafLca(rb);  // rb must be in left-branch
         auto brother = (lca != -1 ? trunkDst(lca) : leafOffsets(rb));
         escapeIndices(dst) = brother;
-        if (dst > 0 && parents(dst) == dst - 1)  // most likely
+        if (/*dst > 0 && */parents(dst) == dst - 1)  // most likely
           parents(brother) = dst - 1;            // setup right-branch brother's parent
 #if 0
         if (dst < 20 || escapeIndices(dst) >= numLeaves * 2 - 1)
@@ -376,8 +364,9 @@ namespace zs {
       while (node != -1 && node != numNodes) {
         Index level = levels(node);
         // internal node traversal
-        for (; level && overlaps(collider, bvhBvs(node)); --level, ++node)
-          ;
+        for (; level; --level, ++node)
+          if (!overlaps(collider, bvhBvs(node)))
+            break;
         // leaf node check
         if (level == 0) {
           if (overlaps(collider, bvhBvs(node))) {

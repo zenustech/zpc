@@ -434,14 +434,14 @@ namespace zs {
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) dpsi_dI(const VecInterface<VecT>& Is) const noexcept {
-      return static_cast<const Model*>(this)->do_dpsi_dI<I>(Is);
+      return static_cast<const Model*>(this)->template do_dpsi_dI<I>(Is);
     }
     // d2psi_dI2 -> dim [dimxdim] matrices
     template <int I, typename VecT,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
-      return static_cast<const Model*>(this)->do_d2psi_dI2<I>(Is);
+      return static_cast<const Model*>(this)->template do_d2psi_dI2<I>(Is);
     }
 
     // details (default impls)
@@ -492,8 +492,9 @@ namespace zs {
       res += dpsi_dI<1>(Is) * gi[1];
       res += dpsi_dI<2>(Is) * gi[2];
       constexpr auto dim = dim_t<VecT>::value;
-      auto m = typename VecT::template variant_vec<
-          typename VecT::value_type, integer_seq<typename VecT::index_type, dim, dim>>::zeros();
+      auto m
+          = VecT::template variant_vec<typename VecT::value_type,
+                                       integer_seq<typename VecT::index_type, dim, dim>>::zeros();
       // auto m = vec<typename VecT::value_type, dim, dim>::zeros();
       // gradient convention order: column-major
       for (typename VecT::index_type j = 0, no = 0; j != dim; ++j)

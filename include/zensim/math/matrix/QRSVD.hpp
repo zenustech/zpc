@@ -253,6 +253,66 @@ namespace zs {
       }
     }  // namespace detail
 
+    // QR decomposition
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto qr(const VecInterface<VecT>& A) noexcept {
+      using value_type = typename VecT::value_type;
+      using index_type = typename VecT::index_type;
+      constexpr auto N = VecT::template range_t<0>::value;
+      if constexpr (N == 1) {
+        typename VecT::template variant_vec<value_type, typename VecT::extents> Q{}, R{};
+        const auto a = A(0, 0);
+        R(0, 0) = zs::abs(a);
+        Q(0, 0) = a > 0 ? 1 : -1;
+        return std::make_tuple(Q, R);
+      } else if constexpr (N == 2) {
+        GivensRotation<value_type> gq{0, 1};
+        gq.computeConventional(A(0, 0), A(1, 0));
+        auto Q = VecT::identity();
+        auto R = A.clone();
+        if (!math::near_zero(R(1, 0))) gq.rowRotation(R);
+        gq.fill(Q);
+        //
+        auto flip_sign = [&Q, &R](int j) {
+          if (const auto rjj = R(j, j); rjj < 0) {
+            R(j, j) = -rjj;
+            Q(0, j) = -Q(0, j);
+            Q(1, j) = -Q(1, j);
+          }
+        };
+        flip_sign(0);
+        flip_sign(1);
+        return std::make_tuple(Q, R);
+      } else {
+        auto Q = VecT::identity();
+        auto R = A.clone();
+        auto zero_chase = [&Q, &R](GivensRotation<value_type> gq) {
+          gq.rowRotation(R);
+          auto G = VecT::identity();
+          gq.fill(G);
+          Q = Q * G;
+        };
+        for (int j = 0; j != N; ++j)
+          for (int i = N - 1; i != j; --i) {
+            if (const auto entry = R(i, j); !math::near_zero(entry))
+              zero_chase({R(i - 1, j), entry, i - 1, i});
+          }
+        //
+        auto flip_sign = [&Q, &R](int j) {
+          if (const auto rjj = R(j, j); rjj < 0) {
+            R(j, j) = -rjj;
+            for (int i = 0; i != N; ++i)
+              Q(i, j) = -Q(i, j);
+          }
+        };
+        for (int j = 0; j != N; ++j) flip_sign(j);
+        return std::make_tuple(Q, R);
+      }
+    }
+
     // Polar guarantees negative sign is on the small magnitude singular value.
     // S is guaranteed to be the closest one to identity.
     // R is guaranteed to be the closest rotation to A.

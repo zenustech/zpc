@@ -2,22 +2,16 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     math/probability/Probability.cpp
     math/matrix/MatrixTransform.cpp
     math/matrix/MatrixCtor.cpp
-    math/matrix/Matrix.cpp
+    memory/MemOps.cpp
     memory/Allocator.cpp
     profile/CppTimers.cpp
     execution/Stacktrace.cpp
     execution/ExecutionPolicy.cpp
-    execution/ConcurrencyPrimitive.cpp
+    # execution/ConcurrencyPrimitive.cpp
     # simulation
-    simulation/mpm/Simulator.cpp
-    simulation/particle/Query.cpp
-    simulation/sparsity/SparsityCompute.cpp
-    memory/MemOps.cpp
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
     io/IO.cpp
-    # simulation
-    simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
     geometry/VdbLevelSet_Point.cpp
@@ -25,6 +19,8 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
     geometry/VdbLevelSet_LoadPhiVel.cpp
     geometry/VdbLevelSet_Conversion.cpp
     geometry/VdbSampler.cpp
+    # simulation
+    simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/Cuda.cu
@@ -39,6 +35,10 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/execution/ExecutionPolicy.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
+    math/matrix/Matrix.cpp
+    simulation/mpm/Simulator.cpp
+    simulation/particle/Query.cpp
+    simulation/sparsity/SparsityCompute.cpp
     resource/Resource.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES 
@@ -456,7 +456,7 @@ target_sources(zpctool
     ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
-  target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
+  target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
 target_link_libraries(zpctool PUBLIC zpc zspartio)
@@ -466,6 +466,9 @@ set_target_properties(zpctool
 # set_property(TARGET zpctool APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}")
 
 if (ZS_ENABLE_OPENVDB)
+  if (ENABLE_PCH)
+    target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES})
+  endif(ENABLE_PCH)
 
   target_link_libraries(zpctool PRIVATE zsopenvdb)
   target_sources(zpctool

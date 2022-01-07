@@ -27,7 +27,7 @@ namespace zs {
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto I4_sign(const VecInterface<VecTM>& F,
                            const VecInterface<VecTV>& a) const noexcept {
-      const auto I4 = std::get<0>(I_wrt_F_a<4, 0>(F, a));
+      const auto I4 = std::get<0>(base_t::I_wrt_F_a<4, 0>(F, a));
       return math::near_zero(I4) ? (value_type)0 : (I4 > 0 ? (value_type)1 : (value_type)-1);
     }
     template <typename VecTM, typename VecTV,
@@ -38,7 +38,7 @@ namespace zs {
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_psi(const VecInterface<VecTM>& F,
                           const VecInterface<VecTV>& a) const noexcept {
-      const auto v = zs::sqrt(std::get<0>(I_wrt_F_a<5, 0>(F, a))) - I4_sign(F, a);
+      const auto v = zs::sqrt(std::get<0>(base_t::I_wrt_F_a<5, 0>(F, a))) - I4_sign(F, a);
       return (value_type)0.5 * mu * v * v;
     }
     template <typename VecTM, typename VecTV,
@@ -52,7 +52,7 @@ namespace zs {
       const auto A = dyadic_prod(a, a);
       const auto coeff
           = (value_type)0.5 * mu
-            * ((value_type)1 - I4_sign(F, a) / zs::sqrt(std::get<0>(I_wrt_F_a<5, 0>(F, a))));
+            * ((value_type)1 - I4_sign(F, a) / zs::sqrt(std::get<0>(base_t::I_wrt_F_a<5, 0>(F, a))));
       return coeff * F * A;
     }
     template <typename VecTM, typename VecTV,
@@ -63,10 +63,10 @@ namespace zs {
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_first_piola_derivative(const VecInterface<VecTM>& F,
                                              const VecInterface<VecTV>& a) const noexcept {
-      typename VecT::value_type I5{};
+      typename VecTM::value_type I5{};
       typename base_t::template gradient_t<VecTM> g5{};
       typename base_t::template hessian_t<VecTM> H5{};
-      zs::tie(I5, g5, H5) = I_wrt_F_a<5, 2>(F, a);
+      zs::tie(I5, g5, H5) = base_t::I_wrt_F_a<5, 2>(F, a);
       const auto S_I4 = I4_sign(F, a);
       const auto Sqrt_I5 = zs::sqrt(I5);
       return mu

@@ -19,8 +19,8 @@ namespace zs {
     bool hardeningOn;
     // use qhard
 
-    NonAssociativeCamClay(value_type frictionAngle = 35, value_type beta = 2,
-                          value_type xi = 3, int dim = 3, bool hardeningOn = true)
+    NonAssociativeCamClay(value_type frictionAngle = 35, value_type beta = 2, value_type xi = 3,
+                          int dim = 3, bool hardeningOn = true)
         : beta{beta}, xi{xi}, hardeningOn{hardeningOn} {
       constexpr value_type coeff = math::sqrtNewtonRaphson((value_type)2 / (value_type)3);
       const auto sinFa = std::sin(frictionAngle / (value_type)180 * g_pi);
@@ -28,11 +28,11 @@ namespace zs {
       M = mohr_columb_friction * (value_type)dim / std::sqrt((value_type)2 / (value_type)(6 - dim));
     }
 
-    template <typename VecT, typename Model, typename T, 
+    template <typename VecT, typename Model, typename T,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr typename VecT::value_type do_project_sigma(VecInterface<VecT>& S,
-                                                         const Model& model, T &logJp) const noexcept {
+    constexpr bool do_project_sigma(VecInterface<VecT>& S, const Model& model,
+                                    T& logJp) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
       const auto kappa = model.lam + model.mu * (value_type)2 / (value_type)3;
 
@@ -72,8 +72,8 @@ namespace zs {
       // Case 3b (Outside YS)
       // project to yield surface
       auto s_hat_trial_norm = s_hat_trial.norm();
-      auto B_hat_new = side_len_sqr / model.mu
-                     * zs::sqrt(-y_p_half / y_s_half_coeff) * s_hat_trial / s_hat_trial_norm;
+      auto B_hat_new = side_len_sqr / model.mu * zs::sqrt(-y_p_half / y_s_half_coeff) * s_hat_trial
+                       / s_hat_trial_norm;
       B_hat_new += (value_type)1 / (value_type)dim * B_hat_trial.sum();
       S.assign(B_hat_new.sqrt());
 
@@ -111,22 +111,19 @@ namespace zs {
         auto qNPlus
             = zs::sqrt(M * M * (p_trial + pMin) * (pMax - p_trial) / ((value_type)1 + beta + beta));
         // Jtrial
-        auto zTrial = zs::sqrt(
-            (q_trial * side_len_sqr / (model.mu * sqrt_3_m_half_dim)) + 1);
-        auto zNPlus = zs::sqrt(
-            (qNPlus * side_len_sqr / (model.mu * sqrt_3_m_half_dim)) + 1);
+        auto zTrial = zs::sqrt((q_trial * side_len_sqr / (model.mu * sqrt_3_m_half_dim)) + 1);
+        auto zNPlus = zs::sqrt((qNPlus * side_len_sqr / (model.mu * sqrt_3_m_half_dim)) + 1);
 
-
-      // value_type dAlpha{};  // change in logJp, or the change in volumetric plastic strain
-      value_type dOmega{};  // change in logJp from q hardening (only for q hardening)
+        // value_type dAlpha{};  // change in logJp, or the change in volumetric plastic strain
+        value_type dOmega{};  // change in logJp from q hardening (only for q hardening)
         if (p_trial > p_fake) {
           dOmega = (value_type)-1 * zs::log(zTrial / zNPlus);
-        } else 
+        } else
           dOmega = zs::log(zTrial / zNPlus);
 
-        if (hardeningOn) 
-            // if (Je_new_fake > 1e-4) logJp += dAlpha;
-            if (zNPlus > 1e-4) logJp += dOmega;
+        if (hardeningOn)
+          // if (Je_new_fake > 1e-4) logJp += dAlpha;
+          if (zNPlus > 1e-4) logJp += dOmega;
       }
       return true;
     }

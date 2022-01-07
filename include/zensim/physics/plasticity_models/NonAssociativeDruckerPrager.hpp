@@ -26,8 +26,7 @@ namespace zs {
     template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr typename VecT::value_type do_project_sigma(VecInterface<VecT>& S,
-                                                         const Model& model) const noexcept {
+    constexpr bool do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
       auto eps = S.log();
       auto eps_trace = eps.sum();
@@ -35,17 +34,20 @@ namespace zs {
       const auto dev_eps_norm = dev_eps.norm();
       if (math::near_zero(dev_eps_norm) || eps_trace > 0) {  // Case II (all stress removed)
         S.assign(S.ones());
-        return eps.norm();
+        return true;
+        // return eps.norm();
       }
       const auto _2mu = model.mu + model.mu;
       const auto delta_gamma = dev_eps_norm + (dim * model.lam + _2mu) / _2mu * eps_trace * tau0;
       if (delta_gamma <= 0)  // Case I (already within yield surface)
-        return 0;
+        return false;
+      // return 0;
       auto H
           = eps
             - delta_gamma / dev_eps_norm * dev_eps;  // Case III (project to cone, preserve volume)
       S.assign(H.exp());
-      return delta_gamma;
+      return true;
+      // return delta_gamma;
     }
   };
 

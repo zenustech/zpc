@@ -22,7 +22,7 @@ namespace zs {
     template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr void do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
+    constexpr bool do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       using extents = typename VecT::extents;
@@ -45,7 +45,7 @@ namespace zs {
       // Compute y using sqrt(s:s) and scaledTauY
       auto y = s_hat_trial_norm - scaledTauY;
 
-      if (y < 1e-4) return;  // within the yield surface
+      if (y < 1e-4) return false;  // within the yield surface
 
       auto z = y / scaledMu;
       // auto z = y / B_hat_trial.deviatoric();
@@ -54,7 +54,8 @@ namespace zs {
 
       // Now compute new sigmas by taking sqrt of B hat new, then set strain to be
       // this new F^{n+1} value
-      S.assign(B_hat_new.sqrt());   // S = SS is not correct, since S is a VecInterface object.
+      S.assign(B_hat_new.sqrt());  // S = SS is not correct, since S is a VecInterface object.
+      return true;
     }
   };
 

@@ -12,6 +12,7 @@ namespace zs {
   void initialize_openvdb();
 
   struct OpenVDBStruct {
+    OpenVDBStruct() noexcept = default;
     template <typename T> constexpr OpenVDBStruct(T &&obj) : object{FWD(obj)} {}
     template <typename T> T &as() { return std::any_cast<T &>(object); }
     template <typename T> const T &as() const { return std::any_cast<const T &>(object); }

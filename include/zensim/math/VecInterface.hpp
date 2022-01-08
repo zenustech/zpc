@@ -788,6 +788,20 @@ namespace zs {
                                 VecInterface<OtherVecT> const& rhs) noexcept {
       return lhs.cross(rhs);
     }
+    template <typename OtherVecT, typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>,
+                            std::is_arithmetic_v<typename OtherVecT::value_type>, VecT::dim == 1,
+                            OtherVecT::dim == 1, VecT::extent == OtherVecT::extent,
+                            (VecT::extent >= 2), (VecT::extent <= 3)> = 0>
+    friend constexpr bool parallel(VecInterface const& lhs,
+                                   VecInterface<OtherVecT> const& rhs) noexcept {
+      constexpr auto dim = Derived::dim;
+      using index_type = typename Derived::index_type;
+      const auto c = lhs.cross(rhs);
+      for (index_type d = 0; d != dim; ++d)
+        if (math::near_zero(c[d])) return true;
+      return false;
+    }
 
     ///
     /// compare

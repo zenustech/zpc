@@ -454,6 +454,20 @@ namespace zs {
         ret.val(d) = *(_vector + offset);
       return ret;
     }
+    template <channel_counter_type N>
+    constexpr auto array(channel_counter_type chn, const size_type i) const noexcept {
+      using RetT = std::array<value_type, (std::size_t)N>;
+      RetT ret{};
+      size_type offset{};
+      if constexpr (is_power_of_two)
+        offset = ((((i >> num_lane_bits) * _numChannels) + chn) << num_lane_bits)
+                 | (i & (lane_width - 1));
+      else
+        offset = (i / lane_width * _numChannels + chn) * lane_width + (i % lane_width);
+      for (channel_counter_type d = 0; d != N; ++d, offset += lane_width)
+        ret[d] = *(_vector + offset);
+      return ret;
+    }
     /// tuple
     template <std::size_t... Is, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
@@ -672,6 +686,11 @@ namespace zs {
     template <auto... Ns>
     constexpr auto pack(const SmallString &propName, const size_type i) const noexcept {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
+          _tagOffsets[propertyIndex(propName)], i);
+    }
+    template <channel_counter_type N>
+    constexpr auto array(const SmallString &propName, const size_type i) const noexcept {
+      return static_cast<const base_t &>(*this).template array<N>(
           _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>

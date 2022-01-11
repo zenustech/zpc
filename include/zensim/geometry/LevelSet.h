@@ -34,27 +34,52 @@ namespace zs {
     using value_type = T;
     static constexpr int dim = d;
   };
+  template <typename T, int d> struct UniformVelocityLevelSet
+      : public LevelSetInterface<UniformVelocityLevelSet<T, d>> {
+    using value_type = T;
+    static constexpr int dim = d;
+    constexpr UniformVelocityLevelSet() noexcept : vel{vec<T, d>::zeros()} {}
+    template <typename VecT> constexpr UniformVelocityLevelSet(const VecInterface<VecT> &v) noexcept
+        : vel{} {
+      vel = v;
+    }
+    template <typename V, enable_if_t<std::is_floating_point_v<V>> = 0>
+    constexpr UniformVelocityLevelSet(V v) noexcept : vel{vec<T, d>::uniform(v)} {}
+
+    constexpr auto do_getMaterialVelocity(...) const noexcept { return vel; }
+
+    vec<T, d> vel;
+  };
 
   template <typename T, int d> struct BasicLevelSet {
     using value_type = T;
     static constexpr int dim = d;
     using dummy_ls_t = DummyLevelSet<T, d>;
+    using uniform_vel_ls_t = UniformVelocityLevelSet<T, d>;
     using spls_t = SparseLevelSet<dim, grid_e::collocated>;
     template <analytic_geometry_e type = analytic_geometry_e::Plane> using analytic_ls_t
         = AnalyticLevelSet<type, value_type, dim>;
     /// raw levelset type list
-    using raw_ls_tl = type_seq<dummy_ls_t, spls_t, analytic_ls_t<analytic_geometry_e::Plane>
+    using raw_sdf_ls_tl = type_seq<spls_t, analytic_ls_t<analytic_geometry_e::Plane>
 #if 0
                                ,analytic_ls_t<analytic_geometry_e::Cuboid>,
                                analytic_ls_t<analytic_geometry_e::Sphere>,
                                analytic_ls_t<analytic_geometry_e::Cylinder>
 #endif
-                               >;
-
+                                   >;
+    using raw_vel_ls_tl = type_seq<dummy_ls_t, spls_t, uniform_vel_ls_t>;
+    // should automatically compute from the above two typelists
+    using raw_ls_tl
+        = type_seq<dummy_ls_t, spls_t, analytic_ls_t<analytic_geometry_e::Plane>, uniform_vel_ls_t>;
     /// shared_ptr of const raw levelsets
     using basic_ls_ptr_t = assemble_t<variant, map_t<std::shared_ptr, raw_ls_tl>>;
     using const_basic_ls_ptr_t
         = assemble_t<variant, map_t<std::shared_ptr, map_t<std::add_const_t, raw_ls_tl>>>;
+
+    using const_sdf_ls_ptr_t
+        = assemble_t<variant, map_t<std::shared_ptr, map_t<std::add_const_t, raw_sdf_ls_tl>>>;
+    using const_vel_ls_ptr_t
+        = assemble_t<variant, map_t<std::shared_ptr, map_t<std::add_const_t, raw_vel_ls_tl>>>;
 
     BasicLevelSet() noexcept = default;
 
@@ -81,26 +106,37 @@ namespace zs {
   template <typename T, int d> struct ConstSdfVelFieldPtr {
     using value_type = T;
     static constexpr int dim = d;
-    using dummy_ls_t = DummyLevelSet<T, d>;
     using basic_level_set_t = BasicLevelSet<value_type, dim>;
-    using const_basic_ls_ptr_t = typename basic_level_set_t::const_basic_ls_ptr_t;
+
+    using dummy_ls_t = typename basic_level_set_t::dummy_ls_t;
+    using uniform_vel_ls_t = typename basic_level_set_t::uniform_vel_ls_t;
+    using spls_t = typename basic_level_set_t::spls_t;
+
+    using const_sdf_ls_ptr_t = typename basic_level_set_t::const_sdf_ls_ptr_t;
+    using const_vel_ls_ptr_t = typename basic_level_set_t::const_vel_ls_ptr_t;
 
     template <typename TSeq> using tseq_to_tuple = assemble_t<std::tuple, TSeq>;
-    template <execspace_e space> using sdf_ls_view_tl
-        = map_op_t<detail::ls_view_helper<space>, get_ttal_t<const_basic_ls_ptr_t>>;
-    template <execspace_e space> using vel_ls_view_tl
-        = map_op_t<detail::ls_view_helper<space>, get_ttal_t<const_basic_ls_ptr_t>>;
-    template <execspace_e space> using sdf_vel_ls_view_t
-        = assemble_t<variant,
-                     map_t<tseq_to_tuple, compose_t<sdf_ls_view_tl<space>, vel_ls_view_tl<space>>>>;
+    template <execspace_e space> using const_sdf_ls_view_tl
+        = map_op_t<detail::ls_view_helper<space>, get_ttal_t<const_sdf_ls_ptr_t>>;
+    template <execspace_e space> using const_vel_ls_view_tl
+        = map_op_t<detail::ls_view_helper<space>, get_ttal_t<const_vel_ls_ptr_t>>;
+
+    // for levelset sequence view
+    template <execspace_e space> using field_view_tl
+        = map_t<tseq_to_tuple, compose_t<const_sdf_ls_view_tl<space>, const_vel_ls_view_tl<space>>>;
+    template <execspace_e space> using const_field_view_t
+        = assemble_t<variant, field_view_tl<space>>;
+
+    template <typename TT> using duplicate_t = std::tuple<TT, TT>;
+    template <execspace_e space> using const_field_seq_view_t
+        = assemble_t<variant, map_t<duplicate_t, field_view_tl<space>>>;
 
     /// ctor
-    template <typename SdfField = DummyLevelSet<T, d>, typename VelField = DummyLevelSet<T, d>>
+    template <typename SdfField = spls_t, typename VelField = DummyLevelSet<T, d>>
     constexpr ConstSdfVelFieldPtr(std::shared_ptr<const SdfField> sdf = {},
                                   std::shared_ptr<const VelField> vel = {}) noexcept
         : _sdfConstPtr{sdf}, _velConstPtr{vel} {}
-
-    template <typename SdfField = DummyLevelSet<T, d>, typename VelField = DummyLevelSet<T, d>>
+    template <typename SdfField = spls_t, typename VelField = DummyLevelSet<T, d>>
     constexpr ConstSdfVelFieldPtr(const SdfField *sdf, const VelField *vel = nullptr) noexcept
         : _sdfConstPtr{std::shared_ptr(sdf, [](...) {})},
           _velConstPtr{std::shared_ptr(vel, [](...) {})} {}
@@ -108,32 +144,37 @@ namespace zs {
     constexpr ConstSdfVelFieldPtr(const basic_level_set_t &sdf,
                                   const basic_level_set_t &vel = dummy_ls_t{}) noexcept
         : _sdfConstPtr{}, _velConstPtr{} {
-      match([this](const auto &sdfPtr, const auto &velPtr) {
-        _sdfConstPtr = sdfPtr;
-        _velConstPtr = velPtr;
-      })(sdf._ls, vel._ls);
+      match(
+          [this](const auto &sdfPtr, const auto &velPtr) -> decltype(_sdfConstPtr = sdfPtr,
+                                                                     _velConstPtr = velPtr,
+                                                                     void()) {
+            _sdfConstPtr = sdfPtr;
+            _velConstPtr = velPtr;
+          },
+          [this](...) {})(sdf._ls, vel._ls);
     }
 
     /// view
     template <execspace_e space = execspace_e::host>
-    constexpr sdf_vel_ls_view_t<space> getView(wrapv<space> = {}) const noexcept {
-      return match([](const auto &sdfPtr, const auto &velPtr) noexcept -> sdf_vel_ls_view_t<space> {
-        return std::make_tuple(get_level_set_view<space>(sdfPtr),
-                               get_level_set_view<space>(velPtr));
-      })(_sdfConstPtr, _velConstPtr);
+    constexpr const_field_view_t<space> getView(wrapv<space> = {}) const noexcept {
+      return match(
+          [](const auto &sdfPtr, const auto &velPtr) noexcept -> const_field_view_t<space> {
+            return std::make_tuple(get_level_set_view<space>(sdfPtr),
+                                   get_level_set_view<space>(velPtr));
+          })(_sdfConstPtr, _velConstPtr);
     }
-
-    const_basic_ls_ptr_t _sdfConstPtr{};
-    const_basic_ls_ptr_t _velConstPtr{};
+    const_sdf_ls_ptr_t _sdfConstPtr{};
+    const_vel_ls_ptr_t _velConstPtr{};
   };
 
   template <typename T, int d> struct ConstTransitionLevelSetPtr {
     using value_type = T;
     static constexpr int dim = d;
-    using sdf_vel_ls_t = ConstSdfVelFieldPtr<value_type, dim>;
-
-    template <execspace_e space> using sdf_vel_ls_view_t =
-        typename sdf_vel_ls_t::template sdf_vel_ls_view_t<space>;
+    using const_sdf_vel_ls_t = ConstSdfVelFieldPtr<value_type, dim>;
+    template <execspace_e space> using const_field_view_t =
+        typename const_sdf_vel_ls_t::template const_field_view_t<space>;
+    template <execspace_e space> using const_field_seq_view_t =
+        typename const_sdf_vel_ls_t::template const_field_seq_view_t<space>;
 
     void setStepDt(const value_type dt) noexcept { _stepDt = dt; }
     void advance(const value_type ratio) noexcept {
@@ -143,26 +184,35 @@ namespace zs {
         if (_fields.size()) pop();
       }
     }
-    void push(const sdf_vel_ls_t ls) { _fields.push_back(ls); }
+    void push(const const_sdf_vel_ls_t ls) { _fields.push_back(ls); }
     void pop() { _fields.pop_front(); }
 
     /// view
     template <execspace_e space = execspace_e::host>
-    constexpr auto getView(wrapv<space> = {}) const {
-      std::tuple<sdf_vel_ls_view_t<space>, sdf_vel_ls_view_t<space>> ret{};
+    constexpr const_field_seq_view_t<space> getView(wrapv<space> = {}) const {
+      const_field_seq_view_t<space> ret{};
+      const_field_view_t<space> ls0{}, ls1{};
       if (_fields.size() > 0) {
-        std::get<0>(ret) = _fields[0].template getView<space>();
+        ls0 = _fields[0].template getView<space>();
         if (_fields.size() > 1)
-          std::get<1>(ret) = _fields[1].template getView<space>();
+          ls1 = _fields[1].template getView<space>();
         else
-          std::get<1>(ret) = std::get<0>(ret);
+          ls1 = ls0;
       } else
         throw std::runtime_error("the levelset transition queue is empty.");
+      // only allows a pair of the same type of levelsets
+      match(
+          [&ret](auto &&src, auto &&dst) mutable
+          -> std::enable_if_t<is_same_v<RM_CVREF_T(src), RM_CVREF_T(dst)>> {
+            ret = std::make_tuple(std::move(src), std::move(dst));
+          },
+          [](...) { throw std::runtime_error("the levelset transition queue is empty."); })(
+          std::move(ls0), std::move(ls1));
       return ret;
     }
 
     // better use custom circular (rolling) array
-    std::deque<sdf_vel_ls_t> _fields{};  // tuple<Plane, Plane> by default
+    std::deque<const_sdf_vel_ls_t> _fields{};  // tuple<Plane, Plane> by default
     value_type _stepDt{0}, _alpha{0};
   };
 
@@ -188,9 +238,7 @@ namespace zs {
         : _sdf(std::get<0>(field)), _vel(std::get<1>(field)) {}
 
     /// bounding volume interface
-    constexpr auto do_getBoundingBox() const noexcept {
-      return _sdf.getBoundingBox();
-    }
+    constexpr auto do_getBoundingBox() const noexcept { return _sdf.getBoundingBox(); }
     constexpr auto do_getBoxCenter() const noexcept { return _sdf.getBoxCenter(); }
     constexpr auto do_getBoxSideLengths() const noexcept { return _sdf.getBoxSideLengths(); }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>

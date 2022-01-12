@@ -202,8 +202,8 @@ namespace zs {
         throw std::runtime_error("the levelset transition queue is empty.");
       // only allows a pair of the same type of levelsets
       match(
-          [&ret](auto &&src, auto &&dst) mutable
-          -> std::enable_if_t<is_same_v<RM_CVREF_T(src), RM_CVREF_T(dst)>> {
+          [&ret](auto &&src,
+                 auto &&dst) -> std::enable_if_t<is_same_v<RM_CVREF_T(src), RM_CVREF_T(dst)>> {
             ret = std::make_tuple(std::move(src), std::move(dst));
           },
           [](...) { throw std::runtime_error("the levelset transition queue is empty."); })(

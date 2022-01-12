@@ -58,6 +58,10 @@ namespace zs {
     using VelPtr = typename VelGridType::Ptr;
     const SDFPtr &sdfGridPtr = sdf.as<SDFPtr>();
     const VelPtr &velGridPtr = vel.as<VelPtr>();
+    auto velAccessor = velGridPtr->getConstAccessor();
+    openvdb::tools::GridSampler<VelGridType::ConstAccessor, openvdb::tools::BoxSampler> velSampler{
+        velAccessor, velGridPtr->transform()};
+    auto sdfTransform = sdfGridPtr->transform();
 
     using SpLs = SparseLevelSet<3, grid_e::collocated>;
 
@@ -114,13 +118,13 @@ namespace zs {
     table.clear();
 
     SDFTreeType::LeafCIter sdfIter = sdfGridPtr->tree().cbeginLeaf();
-    VelTreeType::LeafCIter velIter = velGridPtr->tree().cbeginLeaf();
-    for (; sdfIter && velIter; ++sdfIter, ++velIter) {
+    // VelTreeType::LeafCIter velIter = velGridPtr->tree().cbeginLeaf();
+    for (; sdfIter; ++sdfIter) {
       const SDFTreeType::LeafNodeType &sdfNode = *sdfIter;
-      const VelTreeType::LeafNodeType &velNode = *velIter;
-      if (sdfNode.onVoxelCount() != velNode.onVoxelCount()) {
-        fmt::print("sdf grid and vel grid structure not consistent!\n");
-      }
+      // const VelTreeType::LeafNodeType &velNode = *velIter;
+      // if (sdfNode.onVoxelCount() != velNode.onVoxelCount()) {
+      //   fmt::print("sdf grid and vel grid structure not consistent!\n");
+      // }
       if (sdfNode.onVoxelCount() > 0) {
         IV coord{};
         {
@@ -135,17 +139,17 @@ namespace zs {
 
         RM_CVREF_T(blockno) cellid = 0;
         auto sdfCell = sdfNode.beginValueAll();
-        auto velCell = velNode.beginValueAll();
-        for (; sdfCell && velCell; ++sdfCell, ++velCell, ++cellid) {
+        // auto velCell = velNode.beginValueAll();
+        for (; sdfCell; ++sdfCell, ++cellid) {
           auto sdf = sdfCell.getValue();
-          auto vel = velCell.getValue();
+          // auto vel = velCell.getValue();
+          auto vel = velSampler.wsSample(sdfTransform.indexToWorld(sdfCell.getCoord()));
           const auto offset = blockno * ret.block_size + cellid;
           gridview.voxel("sdf", offset) = sdf;
           gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
         }
       }
     }
-    if (sdfIter || velIter) fmt::print("sdf grid and vel grid structure not consistent!\n");
     return ret;
   }
   SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,

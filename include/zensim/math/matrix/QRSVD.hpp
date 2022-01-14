@@ -262,6 +262,19 @@ namespace zs {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
       constexpr auto N = VecT::template range_t<0>::value;
+#if 1
+      auto Q = VecT::identity();
+      auto R = A.clone();
+
+      for (index_type j = 0; j < N; ++j)
+        for (index_type i = N - 1; i > j; --i) {
+          GivensRotation<value_type> gq{R(i - 1, j), R(i, j), i - 1, i};
+          gq.rowRotation(R);
+          gq.rowRotation(Q);
+        }
+      Q = Q.transpose();
+      return std::make_tuple(Q, R);
+#else
       if constexpr (N == 1) {
         typename VecT::template variant_vec<value_type, typename VecT::extents> Q{}, R{};
         const auto a = A(0, 0);
@@ -304,13 +317,13 @@ namespace zs {
         auto flip_sign = [&Q, &R](int j) {
           if (const auto rjj = R(j, j); rjj < 0) {
             R(j, j) = -rjj;
-            for (int i = 0; i != N; ++i)
-              Q(i, j) = -Q(i, j);
+            for (int i = 0; i != N; ++i) Q(i, j) = -Q(i, j);
           }
         };
         for (int j = 0; j != N; ++j) flip_sign(j);
         return std::make_tuple(Q, R);
       }
+#endif
     }
 
     // Polar guarantees negative sign is on the small magnitude singular value.

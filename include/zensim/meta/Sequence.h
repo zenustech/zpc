@@ -129,8 +129,9 @@ namespace zs {
       using type = tseq_t<Unary<Js, Ts>...>;
     };
     template <template <std::size_t, typename> typename Unary, std::size_t... Js>
-    struct shuffle_convert_impl<Unary, index_seq<Js...>>
-        : shuffle_convert_impl<Unary, vseq_t<Js...>> {};
+    struct shuffle_convert_impl<Unary, index_seq<Js...>> {
+      using type = tseq_t<Unary<Js, Ts>...>;
+    };
     template <template <std::size_t, typename> typename Unary, typename Indices>
     using shuffle_convert = typename shuffle_convert_impl<Unary, Indices>::type;
     /// shuffle
@@ -138,8 +139,9 @@ namespace zs {
     template <auto... Js> struct shuffle_impl<vseq_t<Js...>> {
       using type = tseq_t<typename type_seq<Ts...>::template type<Js>...>;
     };
-    template <std::size_t... Js> struct shuffle_impl<index_seq<Js...>>
-        : shuffle_impl<vseq_t<Js...>> {};
+    template <std::size_t... Js> struct shuffle_impl<index_seq<Js...>> {
+      using type = tseq_t<typename type_seq<Ts...>::template type<Js>...>;
+    };
     template <typename Indices> using shuffle = typename shuffle_impl<Indices>::type;
   };
 
@@ -208,8 +210,9 @@ namespace zs {
     template <auto... Js> struct shuffle_impl<vseq_t<Js...>> {
       using type = vseq_t<(value_seq<Ns...>::template type<Js>::value)...>;
     };
-    template <std::size_t... Js> struct shuffle_impl<index_seq<Js...>>
-        : shuffle_impl<vseq_t<Js...>> {};
+    template <std::size_t... Js> struct shuffle_impl<index_seq<Js...>> {
+      using type = vseq_t<(value_seq<Ns...>::template type<Js>::value)...>;
+    };
     template <typename Indices> using shuffle = typename shuffle_impl<Indices>::type;
     /// transform
     template <typename UnaryOp> using transform = vseq_t<UnaryOp{}(Ns)...>;

@@ -15,7 +15,6 @@ namespace zs {
   template <typename... Ts> struct type_seq;
   template <typename... Ts> struct type_seq;
   template <auto... Ns> struct value_seq;
-  template <typename> struct tseq;
   template <typename> struct vseq;
   template <typename... Seqs> struct concat;
   template <typename> struct VecInterface;
@@ -83,7 +82,7 @@ template <std::size_t I, typename T> struct tuple_value {
 
   template <std::size_t... Is, typename... Ts>
   struct tuple_base<std::index_sequence<Is...>, type_seq<Ts...>> : tuple_value<Is, Ts>... {
-    using tuple_types = tseq<type_seq<Ts...>>;
+    using tuple_types = type_seq<Ts...>;
     static constexpr std::size_t tuple_size = sizeof...(Ts);
 
     using tuple_value<Is, Ts>::get...;
@@ -417,10 +416,10 @@ struct std::tuple_element<I, tuple<Ts...>> {
   }  // namespace tuple_detail_impl
   template <typename... Ts /*, enable_if_t<(is_tuple<remove_cvref_t<Ts>>::value && ...)> = 0*/>
   constexpr auto tuple_cat(Ts &&...tuples) {
-    using Tuple = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
+    using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
     return tuple_detail_impl::tuple_cat_impl<
-        tuple_base<typename Tuple::indices, typename Tuple::type::types>>(
-        typename Tuple::outer{}, typename Tuple::inner{}, zs::forward_as_tuple(tuples...));
+        tuple_base<typename helper::indices, typename helper::types>>(
+        typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
   }
 
   // need this because zs::tuple's rvalue deduction not finished

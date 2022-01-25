@@ -108,8 +108,11 @@ namespace zs {
 
   /// map operation
   struct count_leq {  ///< count less and equal
-    template <typename... Tn> constexpr auto operator()(std::size_t M, Tn... Ns) {
-      return ((Ns <= M ? 1 : 0) + ...);
+    template <typename... Tn> constexpr auto operator()(std::size_t M, Tn... Ns) const noexcept {
+      if constexpr (sizeof...(Tn) > 0)
+        return ((Ns <= M ? 1 : 0) + ...);
+      else
+        return 0;
     }
   };
 

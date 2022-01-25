@@ -34,11 +34,6 @@ namespace zs {
   /** declaration: monoid_op, gen_seq, gather */
   /******************************************************************/
 
-  /// sequence manipulation declaration
-  template <typename, typename> struct gather;
-  template <typename Indices, typename ValueSeq> using gather_t =
-      typename gather<Indices, ValueSeq>::type;
-
   /// generate index sequence declaration
   template <typename> struct gen_seq_impl;
   template <std::size_t N> using gen_seq = gen_seq_impl<std::make_index_sequence<N>>;
@@ -46,8 +41,6 @@ namespace zs {
   /// seq + op
   template <typename... Ts> struct type_seq;
   template <auto... Ns> struct value_seq;
-  template <typename> struct vseq {};
-  template <auto... Ns> using vseq_t = vseq<value_seq<Ns...>>;
 
   template <typename... Seqs> struct concat;
   template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;
@@ -67,7 +60,7 @@ namespace zs {
     using ascend = arithmetic<0, 1>;
     using descend = arithmetic<sizeof...(Is) - 1, -1>;
     template <auto J> using uniform = integer_seq<decltype(J), (Is == Is ? J : J)...>;
-    template <auto J> using uniform_vseq = vseq_t<(Is == Is ? J : J)...>;
+    template <auto J> using uniform_vseq = value_seq<(Is == Is ? J : J)...>;
     /// types with uniform type/value params
     template <template <typename...> typename T, typename Arg> using uniform_types_t
         = T<std::enable_if_t<Is >= 0, Arg>...>;
@@ -81,11 +74,23 @@ namespace zs {
 
   /// type_seq
   template <typename... Ts> struct type_seq {
+    static constexpr bool is_value_sequence() noexcept {
+      if constexpr (sizeof...(Ts) == 0)
+        return true;
+      else
+        return (is_value_wrapper_v<Ts> && ...);
+    }
+    static constexpr bool all_values = is_value_sequence();
+
     using indices = std::index_sequence_for<Ts...>;
+
     static constexpr auto count = sizeof...(Ts);
+
+    // type
     template <std::size_t I> using type = typename decltype(type_impl::extract_type<I>(
         std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::type;
 
+    // index
     template <typename, typename = void> struct locator {
       using index = integral_t<std::size_t, limits<std::size_t>::max()>;
     };
@@ -106,15 +111,27 @@ namespace zs {
     ///
     /// operations
     ///
-    template <typename Ti, Ti... Is>
-    constexpr auto shuffle(integer_seq<Ti, Is...>) const noexcept {
+    template <auto I = 0> constexpr auto get_type(wrapv<I> = {}) const noexcept {
+      return wrapt<type<I>>{};
+    }
+    template <typename T = void> constexpr auto get_index(wrapt<T> = {}) const noexcept {
+      return index<T>{};
+    }
+    template <auto... Is> constexpr auto shuffle(value_seq<Is...>) const noexcept {
       return type_seq<typename type_seq<Ts...>::template type<Is>...>{};
+    }
+    template <typename Ti, Ti... Is> constexpr auto shuffle(integer_seq<Ti, Is...>) const noexcept {
+      return shuffle(value_seq<Is...>{});
+    }
+    template <auto... Is> constexpr auto shuffle_join(value_seq<Is...>) const noexcept {
+      return type_seq<typename Ts::template type<Is>...>{};
     }
     template <typename Ti, Ti... Is>
     constexpr auto shuffle_join(integer_seq<Ti, Is...>) const noexcept {
-      return type_seq<typename Ts::template type<Is>...>{};
+      return shuffle_join(value_seq<Is...>{});
     }
   };
+  template <typename... Ts> struct type_seq<type_seq<Ts...>> : type_seq<Ts...> {};
   template <typename T> struct is_tseq : std::false_type {};
   template <typename... Ts> struct is_tseq<type_seq<Ts...>> : std::true_type {};
 
@@ -123,115 +140,122 @@ namespace zs {
   template <std::size_t I, typename... Ts> using select_indexed_type
       = select_type<I, type_seq<Ts...>>;
 
-  template <typename TypeSeq, typename Indices>
-  using shuffle_t = decltype(std::declval<TypeSeq>().shuffle(std::declval<Indices>()));
-  template <typename TypeSeq, typename Indices>
-  using shuffle_join_t = decltype(std::declval<TypeSeq>().shuffle_join(std::declval<Indices>()));
+  template <typename TypeSeq, typename Indices> using shuffle_t
+      = decltype(INST_(TypeSeq).shuffle(INST_(Indices)));
+  template <typename TypeSeq, typename Indices> using shuffle_join_t
+      = decltype(INST_(TypeSeq).shuffle_join(INST_(Indices)));
 
-  /// vseq
+  /// value_seq
   template <auto... Ns> struct value_seq : type_seq<std::integral_constant<decltype(Ns), Ns>...> {
-    static constexpr auto count = sizeof...(Ns);
-    using Tn = std::common_type_t<decltype(Ns)...>;
+    using base_t = type_seq<std::integral_constant<decltype(Ns), Ns>...>;
+    using indices = typename base_t::indices;
+    static constexpr auto count = base_t::count;
+    static constexpr auto get_common_type() noexcept {
+      if constexpr (count == 0)
+        return wrapt<std::size_t>{};
+      else
+        return wrapt<std::common_type_t<decltype(Ns)...>>{};
+    }
+    using Tn = typename decltype(get_common_type())::type;
     using iseq = integer_seq<Tn, (Tn)Ns...>;
     template <typename T> using to_iseq = integer_seq<T, (T)Ns...>;
-    using vseq = zs::vseq_t<Ns...>;
+
+    template <std::size_t I> static constexpr auto value = base_t::template type<I>::value;
+
+    value_seq() noexcept = default;
+    template <typename Ti, auto cnt = count, enable_if_t<(cnt > 0)> = 0>
+    constexpr value_seq(integer_seq<Ti, Ns...>) noexcept {}
+    template <auto cnt = count, enable_if_t<(cnt > 0)> = 0>
+    constexpr value_seq(wrapv<Ns>...) noexcept {}
+    ///
+    /// operations
+    ///
+    template <auto I = 0> constexpr auto get_value(wrapv<I> = {}) const noexcept {
+      return typename base_t::template type<I>{};
+    }
+    template <typename Ti = Tn> constexpr auto get_iseq(wrapt<Ti> = {}) const noexcept {
+      return integer_seq<Ti, (Ti)Ns...>{};
+    }
+    template <typename BinaryOp> constexpr auto reduce(BinaryOp) const noexcept {
+      return wrapv<monoid_op<BinaryOp>{}(Ns...)>{};
+    }
+    template <typename UnaryOp, typename BinaryOp>
+    constexpr auto reduce(UnaryOp, BinaryOp) const noexcept {
+      return wrapv<monoid_op<BinaryOp>{}(UnaryOp{}(Ns)...)>{};
+    }
+    template <typename UnaryOp, typename BinaryOp, std::size_t... Is>
+    constexpr auto map_reduce(UnaryOp, BinaryOp, index_seq<Is...> = indices{}) noexcept {
+      return wrapv<monoid_op<BinaryOp>{}(UnaryOp{}(Is, Ns)...)>{};
+    }
+    template <typename BinaryOp, auto... Ms>
+    constexpr auto compwise(BinaryOp, value_seq<Ms...>) const noexcept {
+      return value_seq<BinaryOp{}(Ns, Ms)...>{};
+    }
+    /// map (Op(i), index_sequence)
+    template <typename MapOp, auto... Js>
+    constexpr auto map(MapOp, value_seq<Js...>) const noexcept {
+      return value_seq<MapOp{}(Js, Ns...)...>{};
+    }
+    template <typename MapOp, typename Ti, Ti... Js>
+    constexpr auto map(MapOp &&op, integer_seq<Ti, Js...>) const noexcept {
+      return map(FWD(op), value_seq<Js...>{});
+    }
+    template <typename MapOp, auto N> constexpr auto map(MapOp &&op, wrapv<N> = {}) const noexcept {
+      return map(FWD(op), std::make_index_sequence<N>{});
+    }
+    /// shuffle
+    constexpr auto shuffle(value_seq<>) const noexcept { return value_seq<>{}; }
+    template <auto... Is> constexpr auto shuffle(value_seq<Is...>) const noexcept {
+      return value_seq<base_t::template type<Is>::type::value...>{};
+    }
+    template <typename Ti, Ti... Is> constexpr auto shuffle(integer_seq<Ti, Is...>) const noexcept {
+      return shuffle(value_seq<Is...>{});
+    }
+    /// transform
+    template <typename UnaryOp> constexpr auto transform(UnaryOp) const noexcept {
+      return value_seq<UnaryOp{}(Ns)...>{};
+    }
+    /// for_each
+    template <typename F> constexpr void for_each(F &&f) const noexcept { (f(Ns), ...); }
+    /// scan
+    template <auto Cate, typename BinaryOp, std::size_t... Is>
+    constexpr auto scan_impl(BinaryOp bop, index_seq<Is...>) const noexcept {
+      constexpr auto get_sum = [](auto I_) noexcept {
+        constexpr auto I = decltype(I_)::value;
+        if constexpr (Cate == 0)
+          return wrapv<monoid_op<BinaryOp>{}((Is < I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+        else if constexpr (Cate == 1)
+          return wrapv<monoid_op<BinaryOp>{}((Is <= I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+        else if constexpr (Cate == 2)
+          return wrapv<monoid_op<BinaryOp>{}((Is > I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+        else
+          return wrapv<monoid_op<BinaryOp>{}((Is >= I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+      };
+      return value_seq<RM_CVREF_T(get_sum(wrapv<Is>{}))::value...>{};
+    }
+    template <auto Cate, typename BinaryOp = std::plus<Tn>>
+    constexpr auto scan(BinaryOp bop = {}) const noexcept {
+      return scan_impl<Cate>(bop, indices{});
+    }
   };
+  template <typename Ti, Ti... Ns> value_seq(integer_seq<Ti, Ns...>) -> value_seq<Ns...>;
+  template <auto... Ns> value_seq(wrapv<Ns>...) -> value_seq<Ns...>;
+
+  template <typename T> struct is_vseq : std::false_type {};
+  template <auto... Ns> struct is_vseq<value_seq<Ns...>> : std::true_type {};
+
+  template <typename> struct vseq;
+  template <auto... Ns> struct vseq<value_seq<Ns...>> { using type = value_seq<Ns...>; };
+  template <typename Ti, Ti... Ns> struct vseq<integer_seq<Ti, Ns...>> {
+    using type = value_seq<Ns...>;
+  };
+  template <typename Seq> using vseq_t = typename vseq<Seq>::type;
 
   /// select (constant integral) value (integral_constant<T, N>) by index
   template <std::size_t I, typename ValueSeq> using select_value =
       typename ValueSeq::template type<I>;
   template <std::size_t I, auto... Ns> using select_indexed_value
       = select_value<I, value_seq<Ns...>>;
-
-  /** sequence transformations */
-  template <typename, typename> struct vseqop_impl;
-  template <std::size_t... Is, auto... Ns> struct vseqop_impl<index_seq<Is...>, value_seq<Ns...>> {
-    using indices = std::make_index_sequence<sizeof...(Ns)>;
-    /// monoid calculation
-    template <typename BinaryOp> static constexpr auto reduce(BinaryOp &&) noexcept {
-      return monoid_op<BinaryOp>{}(Ns...);
-    }
-    template <typename UnaryOp, typename BinaryOp>
-    static constexpr auto reduce(const UnaryOp &uop, BinaryOp &&) noexcept {
-      return monoid_op<BinaryOp>{}(uop(Ns)...);
-    }
-    template <typename UnaryOp, typename BinaryOp>
-    static constexpr auto map_reduce(const UnaryOp &uop, BinaryOp &&) noexcept {
-      return monoid_op<BinaryOp>{}(uop(Is, Ns)...);
-    }
-    /// component wise operation
-    template <typename BinaryOp, typename Seq> struct component_wise_impl;
-    template <typename BinaryOp, auto... Ms> struct component_wise_impl<BinaryOp, vseq_t<Ms...>> {
-      using type = vseq_t<(BinaryOp{}(Ns, Ms))...>;
-    };
-    template <typename BinaryOp, typename Seq> using compwise =
-        typename component_wise_impl<BinaryOp, Seq>::type;
-    /// map (Op(i), index_sequence)
-    template <typename MonoidOp, typename Js> struct map_impl;
-    template <typename MapOp, std::size_t... Js> struct map_impl<MapOp, index_seq<Js...>> {
-      /// gather-style mapping
-      using type = vseq_t<MapOp{}(Js, Ns...)...>;  ///< J is the target index
-    };
-    template <typename MapOp, std::size_t N> using map =
-        typename map_impl<MapOp, std::make_index_sequence<N>>::type;
-    /// shuffle
-    template <typename> struct shuffle_impl;
-    template <auto... Js> struct shuffle_impl<vseq_t<Js...>> {
-      using type = vseq_t<(value_seq<Ns...>::template type<Js>::value)...>;
-    };
-    template <std::size_t... Js> struct shuffle_impl<index_seq<Js...>>
-        : shuffle_impl<vseq_t<Js...>> {};
-    template <typename Indices> using shuffle = typename shuffle_impl<Indices>::type;
-    /// transform
-    template <typename UnaryOp> using transform = vseq_t<UnaryOp{}(Ns)...>;
-    /// for_each
-    template <typename UnaryOp> static constexpr auto for_each(UnaryOp &&op) {
-      return (op(Ns), ...);
-    }
-    /// scan
-    template <std::size_t, typename, typename> struct scan_element;
-    template <std::size_t J, typename BinaryOp, std::size_t... Js>
-    struct scan_element<J, BinaryOp, index_seq<Js...>> {
-      using T = decltype(monoid_op<BinaryOp>::e);
-      // excl/incl prefix/suffix
-      static constexpr T value(std::size_t I) noexcept {
-        constexpr T values[]
-            = {vseq_t<(Js < J ? Ns : monoid_op<BinaryOp>::e)...>::reduce(BinaryOp{}),
-               vseq_t<(Js <= J ? Ns : monoid_op<BinaryOp>::e)...>::reduce(BinaryOp{}),
-               vseq_t<(Js > J ? Ns : monoid_op<BinaryOp>::e)...>::reduce(BinaryOp{}),
-               vseq_t<(Js >= J ? Ns : monoid_op<BinaryOp>::e)...>::reduce(BinaryOp{})};
-        return values[I];
-      }
-    };
-    template <typename BinaryOp, std::size_t Cate = 0> using scan
-        = vseq_t<scan_element<Is, BinaryOp, indices>::value(Cate)...>;
-  };
-  template <std::size_t... Is, typename Tn, Tn... Ns>
-  struct vseqop_impl<index_seq<Is...>, integer_seq<Tn, Ns...>>
-      : vseqop_impl<index_seq<Is...>, value_seq<Ns...>> {};
-
-  template <typename> struct vseqop;
-  template <auto... Ns> struct vseqop<value_seq<Ns...>>
-      : vseqop_impl<std::make_index_sequence<sizeof...(Ns)>, value_seq<Ns...>> {};
-  template <typename Tn, Tn... Ns> struct vseqop<integer_seq<Tn, Ns...>>
-      : vseqop_impl<std::make_index_sequence<sizeof...(Ns)>, integer_seq<Tn, Ns...>> {};
-
-  template <auto... Ns> struct vseq<value_seq<Ns...>> : value_seq<Ns...>, vseqop<value_seq<Ns...>> {
-    using vals = value_seq<Ns...>;
-    using typename vals::iseq;
-    using typename vals::Tn;
-    template <typename T> using to_iseq = typename vals::template to_iseq<T>;
-    using vals::count;
-    using op = vseqop<value_seq<Ns...>>;
-    using op::compwise;
-    using op::for_each;
-    using op::map;
-    using op::reduce;
-    using op::scan;
-    using op::shuffle;
-    using op::transform;
-  };
-  template <typename Tn, Tn... Ns> struct vseq<integer_seq<Tn, Ns...>> : vseq<value_seq<Ns...>> {};
 
   /** utilities */
   // extract (type / non-type) template argument list
@@ -292,9 +316,9 @@ namespace zs {
           return (*this)(seq_lambda(index_v<0>), seq_lambda(index_v<1>));
         else {
           constexpr std::size_t halfN = N / 2;
-          return (*this)((*this)(gather_t<typename gen_seq<halfN>::ascend, type_seq<SeqT...>>{}),
-                         (*this)(gather_t<typename gen_seq<N - halfN>::template arithmetic<halfN>,
-                                          type_seq<SeqT...>>{}));
+          return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
+                         (*this)(type_seq<SeqT...>{}.shuffle(
+                             typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
         }
       }
     };
@@ -335,9 +359,9 @@ namespace zs {
           return (*this)(seq_lambda(index_v<0>), seq_lambda(index_v<1>));
         else if constexpr (N > 2) {
           constexpr std::size_t halfN = N / 2;
-          return (*this)((*this)(gather_t<typename gen_seq<halfN>::ascend, type_seq<SeqT...>>{}),
-                         (*this)(gather_t<typename gen_seq<N - halfN>::template arithmetic<halfN>,
-                                          type_seq<SeqT...>>{}));
+          return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
+                         (*this)(type_seq<SeqT...>{}.shuffle(
+                             typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
         }
       }
     };
@@ -351,30 +375,25 @@ namespace zs {
   template <typename... Seqs> struct concat {
     static constexpr auto length = (... + Seqs::count);
     using indices = typename gen_seq<length>::ascend;
-    using counts = vseq_t<Seqs::count...>;
-    using outer =
-        typename counts::template scan<plus<std::size_t>, 1>::template map<count_leq, length>;
-    using inner = typename vseq<indices>::template compwise<
-        minus<std::size_t>,
-        typename counts::template scan<plus<std::size_t>, 0>::template shuffle<outer>>;
-    using types = decltype(type_seq<Seqs...>{}.shuffle(typename outer::iseq{}).shuffle_join(typename inner::iseq{}));
+    using counts = value_seq<Seqs::count...>;
+    using outer
+        = decltype(counts{}.template scan<1, std::plus<std::size_t>>().map(count_leq{},
+                                                                           wrapv<length>{}));
+    using inner = decltype(value_seq{
+        indices{}}.compwise(minus<std::size_t>{},
+                            counts{}.template scan<0, plus<std::size_t>>().shuffle(outer{})));
+    using types = decltype(type_seq<Seqs...>{}.shuffle(outer{}).shuffle_join(inner{}));
   };
 
+  /// sequence manipulation declaration
+  template <typename, typename> struct gather;
   /// uniform value sequence
   template <std::size_t... Is, typename T, T... Ns>
   struct gather<index_seq<Is...>, integer_seq<T, Ns...>> {
     using type = integer_seq<T, select_indexed_value<Is, Ns...>{}...>;
   };
-  /// non uniform value sequence
-  template <std::size_t... Is, auto... Ns> struct gather<index_seq<Is...>, value_seq<Ns...>> {
-    using type = value_seq<(select_value<Is, value_seq<Ns...>>::value)...>;
-  };
-  template <std::size_t... Is, typename... Args>
-  struct gather<index_seq<Is...>, type_seq<Args...>> {
-    using type = type_seq<select_type<Is, type_seq<Args...>>...>;
-  };
-
-  /** type identification */
+  template <typename Indices, typename ValueSeq> using gather_t =
+      typename gather<Indices, ValueSeq>::type;
 
   /// variadic type template parameters
   template <typename T, template <typename...> class Ref> struct is_type_specialized
@@ -387,14 +406,6 @@ namespace zs {
       : std::false_type {};
   template <template <auto...> class Ref, auto... Args>
   struct is_value_specialized<Ref<Args...>, Ref> : std::true_type {};
-
-  /// static sequence identification
-  template <typename T> struct is_vseq : std::false_type {};
-  template <auto... Ns> struct is_vseq<vseq_t<Ns...>> : std::true_type {};
-  template <typename T> struct is_type_wrapper : std::false_type {};
-  template <typename T> struct is_type_wrapper<wrapt<T>> : std::true_type {};
-  template <typename T> struct is_value_wrapper : std::false_type {};
-  template <auto N> struct is_value_wrapper<wrapv<N>> : std::true_type {};
 
   /** direct operations on sequences */
   template <typename> struct seq_tail { using type = index_seq<>; };

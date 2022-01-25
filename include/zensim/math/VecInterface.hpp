@@ -64,11 +64,11 @@ namespace zs {
    *
    **/
 #define SUPPLEMENT_VEC_STATIC_ATTRIBUTES                                                          \
-  using dims = typename vseq<extents>::template to_iseq<sint_t>;                                  \
-  static constexpr index_type extent = vseq<extents>::template reduce(multiplies<index_type>{});  \
-  static constexpr int dim = vseq<extents>::count;                                                \
+  using dims = typename vseq_t<extents>::template to_iseq<sint_t>;                                \
+  static constexpr index_type extent = vseq_t<extents>{}.reduce(multiplies<index_type>{});        \
+  static constexpr int dim = vseq_t<extents>::count;                                              \
   template <std::size_t I, enable_if_t<(I < dim)> = 0> using range_t                              \
-      = integral_t<index_type, select_value<I, vseq<extents>>::value>;                            \
+      = integral_t<index_type, select_value<I, vseq_t<extents>>::value>;                          \
   template <std::size_t I> static constexpr index_type range = range_t<I>::value;                 \
   using base_t::identity;                                                                         \
   using base_t::ones;                                                                             \
@@ -315,8 +315,8 @@ namespace zs {
     template <typename VecT = Derived, enable_if_t<VecT::dim == 2> = 0>
     constexpr auto transpose() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
-      constexpr auto M = select_value<0, vseq<extents>>::value;
-      constexpr auto N = select_value<1, vseq<extents>>::value;
+      constexpr auto M = select_value<0, vseq_t<extents>>::value;
+      constexpr auto N = select_value<1, vseq_t<extents>>::value;
       typename Derived::template variant_vec<value_type, integer_seq<index_type, N, M>> r{};
       for (index_type i = 0; i != M; ++i)
         for (index_type j = 0; j != N; ++j) r(j, i) = (*this)(i, j);

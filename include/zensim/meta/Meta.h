@@ -51,6 +51,10 @@ namespace zs {
   template <typename T> struct wrapt<wrapt<T>> { using type = T; };
   template <typename T> constexpr wrapt<T> wrapt_v{};
 
+  template <typename T> struct is_type_wrapper : std::false_type {};
+  template <typename T> struct is_type_wrapper<wrapt<T>> : std::true_type {};
+  template <typename T> constexpr bool is_type_wrapper_v = is_type_wrapper<T>::value;
+
   template <typename Tn, Tn N> using integral_t = std::integral_constant<Tn, N>;
   template <typename> struct is_integral : std::false_type {};
   template <typename T, T v> struct is_integral<integral_t<T, v>> : std::true_type {};
@@ -58,8 +62,14 @@ namespace zs {
   template <auto N> using wrapv = integral_t<decltype(N), N>;
   template <auto N> constexpr wrapv<N> wrapv_v{};
 
+  template <typename T> struct is_value_wrapper : std::false_type {};
+  template <auto N> struct is_value_wrapper<wrapv<N>> : std::true_type {};
+  template <typename T> constexpr bool is_value_wrapper_v = is_value_wrapper<T>::value;
+
   template <std::size_t N> using index_t = integral_t<std::size_t, N>;
   template <std::size_t N> constexpr index_t<N> index_v{};
+
+#define INST_(T) std::declval<T>()
 
   constexpr std::true_type true_v{};
   constexpr std::false_type false_v{};
@@ -75,8 +85,7 @@ namespace zs {
   constexpr wrapt<u64> u64_v{};
   constexpr wrapt<f32> f32_v{};
   constexpr wrapt<f64> f64_v{};
-  template <typename T> 
-  constexpr wrapt<std::enable_if_t<std::is_arithmetic_v<T>, T>> number_v{};
+  template <typename T> constexpr wrapt<std::enable_if_t<std::is_arithmetic_v<T>, T>> number_v{};
 
   ///
   /// detection

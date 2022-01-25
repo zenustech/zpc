@@ -13,9 +13,7 @@ namespace zs {
 
   template <typename T> struct wrapt;
   template <typename... Ts> struct type_seq;
-  template <typename... Ts> struct type_seq;
   template <auto... Ns> struct value_seq;
-  template <typename> struct vseq;
   template <typename... Seqs> struct concat;
   template <typename> struct VecInterface;
 
@@ -115,7 +113,7 @@ template <std::size_t I, typename T> struct tuple_value {
       return zs::make_tuple(op(get<Is>(), t.template get<Is>())...);
     }
     template <typename BinaryOp, auto... Ns>
-    constexpr auto compwise(BinaryOp &&op, vseq<value_seq<Ns...>>) const noexcept {
+    constexpr auto compwise(BinaryOp &&op, value_seq<Ns...>) const noexcept {
       return zs::make_tuple(op(get<Is>(), Ns)...);
     }
     /// for_each
@@ -144,7 +142,7 @@ template <std::size_t I, typename T> struct tuple_value {
       return mop(uop(get<Is>())...);
     }
     template <typename BinaryOp, typename MonoidOp, auto... Ns>
-    constexpr auto reduce(BinaryOp &&bop, MonoidOp &&mop, vseq<value_seq<Ns...>>) const noexcept {
+    constexpr auto reduce(BinaryOp &&bop, MonoidOp &&mop, value_seq<Ns...>) const noexcept {
       return mop(bop(get<Is>(), Ns)...);
     }
     template <typename BinaryOp, typename MonoidOp, typename... TTs> constexpr auto reduce(
@@ -211,7 +209,7 @@ template <std::size_t I, typename T> struct tuple_value {
     template <typename BinaryOp, typename T, auto tupsize = tuple_size,
               enable_if_t<(tupsize > 1)> = 0>
     constexpr auto excl_suffix_scan(BinaryOp &&op, T &&e) const noexcept {
-      return suffix_scan_impl<tuple_size - 2, true>(std::forward<BinaryOp>(op), zs::make_tuple(e));
+      return suffix_scan_impl<tuple_size - 2, true>(FWD(op), zs::make_tuple(e));
     }
     template <typename BinaryOp, typename T, auto tupsize = tuple_size,
               enable_if_t<(tupsize == 1)> = 0>
@@ -220,9 +218,9 @@ template <std::size_t I, typename T> struct tuple_value {
     }
     /// shuffle
     template <typename... Args> constexpr auto shuffle(Args &&...args) const noexcept {
-      return zs::make_tuple(get<std::forward<Args>(args)>()...);
+      return zs::make_tuple(get<FWD(args)>()...);
     }
-    template <auto... Js> constexpr auto shuffle(vseq<value_seq<Js...>>) const noexcept {
+    template <auto... Js> constexpr auto shuffle(value_seq<Js...>) const noexcept {
       return zs::make_tuple(get<Js>()...);
     }
     template <std::size_t... Js> constexpr auto shuffle(std::index_sequence<Js...>) const noexcept {
@@ -409,8 +407,7 @@ struct std::tuple_element<I, tuple<Ts...>> {
   /** tuple_cat */
   namespace tuple_detail_impl {
     template <typename R, auto... Os, auto... Is, typename Tuple>
-    constexpr decltype(auto) tuple_cat_impl(vseq<value_seq<Os...>>, vseq<value_seq<Is...>>,
-                                            Tuple &&tup) {
+    constexpr decltype(auto) tuple_cat_impl(value_seq<Os...>, value_seq<Is...>, Tuple &&tup) {
       return R{tup.template get<Os>().template get<Is>()...};
     }
   }  // namespace tuple_detail_impl

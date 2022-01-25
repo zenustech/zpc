@@ -139,7 +139,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     types/Optional.h
     types/Polymorphism.h
     types/Property.h
-    types/RuntimeStructurals.hpp
     types/Tuple.h
     types/BuilderBase.hpp
     types/SmallVector.hpp

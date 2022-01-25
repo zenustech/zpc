@@ -53,7 +53,6 @@ namespace zs {
 
   protected:
     constexpr int offset(const IV &loc) const noexcept {
-      // using Seq = typename gen_seq<d>::template uniform_values_t<vseq_t, (1 << domain_bits)>;
       size_type ret{0};
       for (int d = 0; d < dim; ++d) ret = (ret << domain_bits) + loc[d];
       return ret;

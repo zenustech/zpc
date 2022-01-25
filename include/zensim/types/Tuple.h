@@ -72,14 +72,57 @@ template <std::size_t I, typename T> struct tuple_value {
   template <typename, typename> struct tuple_base;
   template <typename... Ts> struct tuple;
 
-  template <class T, class Tuple> constexpr T make_from_tuple(Tuple &&t);
-  template <typename... Ts> constexpr auto forward_as_tuple(Ts &&...ts) noexcept;
-  template <typename... Ts> constexpr auto tuple_cat(Ts &&...tuples);
-  template <typename... Args> constexpr auto make_tuple(Args &&...args);
-  template <typename... Ts> constexpr auto tie(Ts &&...ts) noexcept;
+  template <typename> struct is_tuple : std::false_type {};
+  template <typename... Ts> struct is_tuple<tuple<Ts...>> : std::true_type {};
+  template <typename T> static constexpr bool is_tuple_v = is_tuple<T>::value;
 
-  template <std::size_t... Is, typename... Ts>
-  struct tuple_base<std::index_sequence<Is...>, type_seq<Ts...>> : tuple_value<Is, Ts>... {
+  /** tuple_size */
+  template <typename T> struct tuple_size;
+  template <typename... Ts> struct tuple_size<tuple<Ts...>>
+      : std::integral_constant<std::size_t, sizeof...(Ts)> {};
+  template <typename Tup> constexpr std::enable_if_t<is_tuple_v<Tup>, std::size_t> tuple_size_v
+      = tuple_size<Tup>::value;
+
+  /** make_tuple */
+  template <typename... Args> constexpr auto make_tuple(Args &&...args) {
+    return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
+  }
+
+  /** forward_as_tuple */
+  template <typename... Ts> constexpr auto forward_as_tuple(Ts &&...ts) noexcept {
+    return zs::tuple<Ts &&...>{FWD(ts)...};
+  }
+
+  /** tuple_cat */
+  namespace tuple_detail_impl {
+    template <typename R, auto... Os, auto... Is, typename Tuple>
+    constexpr decltype(auto) tuple_cat_impl(value_seq<Os...>, value_seq<Is...>, Tuple &&tup) {
+      return R{tup.template get<Os>().template get<Is>()...};
+    }
+  }  // namespace tuple_detail_impl
+  template <auto... Is, typename... Ts> constexpr auto tuple_cat(value_seq<Is...>, Ts &&...tuples) {
+    decltype(auto) tup = zs::forward_as_tuple(tuples...);
+    return tuple_cat(tup.template get<Is>()...);
+  }
+  template <typename... Ts> constexpr auto tuple_cat(Ts &&...tuples) {
+    constexpr auto marks = value_seq<(remove_cvref_t<Ts>::tuple_size > 0 ? 1 : 0)...>{};
+    if constexpr (marks.reduce(logical_and<bool>{})) {
+      using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
+      return tuple_detail_impl::tuple_cat_impl<
+          tuple_base<typename helper::indices, typename helper::types>>(
+          typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
+    } else {
+      constexpr auto N = marks.reduce(plus<int>{});
+      constexpr auto offsets = marks.scan();  // exclusive scan
+      constexpr auto tags = marks.pair(offsets);
+      constexpr auto seq
+          = tags.filter(typename vseq_t<typename gen_seq<N>::ascend>::template to_iseq<int>{});
+      return tuple_cat(seq, FWD(tuples)...);
+    }
+  }
+
+  template <std::size_t... Is, typename... Ts> struct tuple_base<index_seq<Is...>, type_seq<Ts...>>
+      : tuple_value<Is, Ts>... {
     using tuple_types = type_seq<Ts...>;
     static constexpr std::size_t tuple_size = sizeof...(Ts);
 
@@ -284,21 +327,9 @@ template <std::size_t I, typename T> struct tuple_value {
 
   template <typename... Args> tuple(Args...) -> tuple<Args...>;
 
-  template <typename> struct is_tuple : std::false_type {};
-  template <typename... Ts> struct is_tuple<tuple<Ts...>> : std::true_type {};
-  template <typename T> static constexpr bool is_tuple_v = is_tuple<T>::value;
-
   template <typename> struct is_std_tuple : std::false_type {};
   template <typename... Ts> struct is_std_tuple<std::tuple<Ts...>> : std::true_type {};
   template <typename T> static constexpr bool is_std_tuple_v = is_std_tuple<T>::value;
-
-  /** tuple_size */
-  template <typename T> struct tuple_size;
-  template <typename... Ts> struct tuple_size<tuple<Ts...>>
-      : std::integral_constant<std::size_t, sizeof...(Ts)> {};
-  template <typename Tup>
-  static constexpr std::enable_if_t<is_tuple_v<Tup>, std::size_t> tuple_size_v
-      = tuple_size<Tup>::value;
 
   /** tuple_element */
   template <std::size_t I, typename T, typename = void> struct tuple_element;
@@ -373,20 +404,9 @@ struct std::tuple_element<I, tuple<Ts...>> {
     return zs::make_tuple(zs::get<Is>(tup)...);
   }
 
-  /** for_each */
-
-  /** make_tuple */
-  template <typename... Args> constexpr auto make_tuple(Args &&...args) {
-    return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
-  }
   /** tie */
   template <typename... Args> constexpr auto tie(Args &...args) {
     return zs::tuple<Args &...>{args...};
-  }
-
-  /** forward_as_tuple */
-  template <typename... Ts> constexpr auto forward_as_tuple(Ts &&...ts) noexcept {
-    return zs::tuple<Ts &&...>{FWD(ts)...};
   }
 
   /** make_from_tuple */
@@ -404,20 +424,7 @@ struct std::tuple_element<I, tuple<Ts...>> {
         std::make_index_sequence<std::declval<std::remove_reference_t<Tuple>>().tuple_size>{});
   }
 
-  /** tuple_cat */
-  namespace tuple_detail_impl {
-    template <typename R, auto... Os, auto... Is, typename Tuple>
-    constexpr decltype(auto) tuple_cat_impl(value_seq<Os...>, value_seq<Is...>, Tuple &&tup) {
-      return R{tup.template get<Os>().template get<Is>()...};
-    }
-  }  // namespace tuple_detail_impl
-  template <typename... Ts /*, enable_if_t<(is_tuple<remove_cvref_t<Ts>>::value && ...)> = 0*/>
-  constexpr auto tuple_cat(Ts &&...tuples) {
-    using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
-    return tuple_detail_impl::tuple_cat_impl<
-        tuple_base<typename helper::indices, typename helper::types>>(
-        typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
-  }
+  constexpr auto tuple_cat() noexcept { return tuple<>{}; }
 
   // need this because zs::tuple's rvalue deduction not finished
   template <typename T> using capture_t

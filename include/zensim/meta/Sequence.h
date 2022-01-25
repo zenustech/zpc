@@ -73,6 +73,14 @@ namespace zs {
   };
 
   /// type_seq
+  template <typename... Ts> struct type_seq;
+
+  namespace detail {
+    struct concatenation_op;
+  }
+  template <typename... TSeqs> using concatenation_t
+      = decltype(std::declval<detail::concatenation_op>()(type_seq<TSeqs...>{}));
+
   template <typename... Ts> struct type_seq {
     static constexpr bool is_value_sequence() noexcept {
       if constexpr (sizeof...(Ts) == 0)
@@ -117,6 +125,13 @@ namespace zs {
     template <typename T = void> constexpr auto get_index(wrapt<T> = {}) const noexcept {
       return index<T>{};
     }
+    template <typename Ti, Ti... Is>
+    constexpr auto filter(integer_seq<Ti, Is...>) const noexcept {  // for tuple_cat
+      return value_seq{get_index<type_seq<integral_t<Ti, 1>, integral_t<Ti, Is>>>()...};
+    }
+    template <typename... Args> constexpr auto pair(type_seq<Args...>) const noexcept {
+      return type_seq<concatenation_t<Ts, Args>...>{};
+    }
     template <auto... Is> constexpr auto shuffle(value_seq<Is...>) const noexcept {
       return type_seq<typename type_seq<Ts...>::template type<Is>...>{};
     }
@@ -146,8 +161,8 @@ namespace zs {
       = decltype(INST_(TypeSeq).shuffle_join(INST_(Indices)));
 
   /// value_seq
-  template <auto... Ns> struct value_seq : type_seq<std::integral_constant<decltype(Ns), Ns>...> {
-    using base_t = type_seq<std::integral_constant<decltype(Ns), Ns>...>;
+  template <auto... Ns> struct value_seq : type_seq<integral_t<decltype(Ns), Ns>...> {
+    using base_t = type_seq<integral_t<decltype(Ns), Ns>...>;
     using indices = typename base_t::indices;
     static constexpr auto count = base_t::count;
     static constexpr auto get_common_type() noexcept {
@@ -233,7 +248,7 @@ namespace zs {
       };
       return value_seq<RM_CVREF_T(get_sum(wrapv<Is>{}))::value...>{};
     }
-    template <auto Cate, typename BinaryOp = std::plus<Tn>>
+    template <auto Cate = 0, typename BinaryOp = plus<Tn>>
     constexpr auto scan(BinaryOp bop = {}) const noexcept {
       return scan_impl<Cate>(bop, indices{});
     }
@@ -323,8 +338,6 @@ namespace zs {
       }
     };
   }  // namespace detail
-  template <typename... TSeqs> using concatenation_t
-      = decltype(detail::concatenation_op{}(type_seq<TSeqs...>{}));
 
   /// permutation / combination
   namespace detail {
@@ -418,38 +431,38 @@ namespace zs {
 
   namespace placeholders {
     using placeholder_type = std::size_t;
-    constexpr auto _0 = std::integral_constant<placeholder_type, 0>{};
-    constexpr auto _1 = std::integral_constant<placeholder_type, 1>{};
-    constexpr auto _2 = std::integral_constant<placeholder_type, 2>{};
-    constexpr auto _3 = std::integral_constant<placeholder_type, 3>{};
-    constexpr auto _4 = std::integral_constant<placeholder_type, 4>{};
-    constexpr auto _5 = std::integral_constant<placeholder_type, 5>{};
-    constexpr auto _6 = std::integral_constant<placeholder_type, 6>{};
-    constexpr auto _7 = std::integral_constant<placeholder_type, 7>{};
-    constexpr auto _8 = std::integral_constant<placeholder_type, 8>{};
-    constexpr auto _9 = std::integral_constant<placeholder_type, 9>{};
-    constexpr auto _10 = std::integral_constant<placeholder_type, 10>{};
-    constexpr auto _11 = std::integral_constant<placeholder_type, 11>{};
-    constexpr auto _12 = std::integral_constant<placeholder_type, 12>{};
-    constexpr auto _13 = std::integral_constant<placeholder_type, 13>{};
-    constexpr auto _14 = std::integral_constant<placeholder_type, 14>{};
-    constexpr auto _15 = std::integral_constant<placeholder_type, 15>{};
-    constexpr auto _16 = std::integral_constant<placeholder_type, 16>{};
-    constexpr auto _17 = std::integral_constant<placeholder_type, 17>{};
-    constexpr auto _18 = std::integral_constant<placeholder_type, 18>{};
-    constexpr auto _19 = std::integral_constant<placeholder_type, 19>{};
-    constexpr auto _20 = std::integral_constant<placeholder_type, 20>{};
-    constexpr auto _21 = std::integral_constant<placeholder_type, 21>{};
-    constexpr auto _22 = std::integral_constant<placeholder_type, 22>{};
-    constexpr auto _23 = std::integral_constant<placeholder_type, 23>{};
-    constexpr auto _24 = std::integral_constant<placeholder_type, 24>{};
-    constexpr auto _25 = std::integral_constant<placeholder_type, 25>{};
-    constexpr auto _26 = std::integral_constant<placeholder_type, 26>{};
-    constexpr auto _27 = std::integral_constant<placeholder_type, 27>{};
-    constexpr auto _28 = std::integral_constant<placeholder_type, 28>{};
-    constexpr auto _29 = std::integral_constant<placeholder_type, 29>{};
-    constexpr auto _30 = std::integral_constant<placeholder_type, 30>{};
-    constexpr auto _31 = std::integral_constant<placeholder_type, 31>{};
+    constexpr auto _0 = integral_t<placeholder_type, 0>{};
+    constexpr auto _1 = integral_t<placeholder_type, 1>{};
+    constexpr auto _2 = integral_t<placeholder_type, 2>{};
+    constexpr auto _3 = integral_t<placeholder_type, 3>{};
+    constexpr auto _4 = integral_t<placeholder_type, 4>{};
+    constexpr auto _5 = integral_t<placeholder_type, 5>{};
+    constexpr auto _6 = integral_t<placeholder_type, 6>{};
+    constexpr auto _7 = integral_t<placeholder_type, 7>{};
+    constexpr auto _8 = integral_t<placeholder_type, 8>{};
+    constexpr auto _9 = integral_t<placeholder_type, 9>{};
+    constexpr auto _10 = integral_t<placeholder_type, 10>{};
+    constexpr auto _11 = integral_t<placeholder_type, 11>{};
+    constexpr auto _12 = integral_t<placeholder_type, 12>{};
+    constexpr auto _13 = integral_t<placeholder_type, 13>{};
+    constexpr auto _14 = integral_t<placeholder_type, 14>{};
+    constexpr auto _15 = integral_t<placeholder_type, 15>{};
+    constexpr auto _16 = integral_t<placeholder_type, 16>{};
+    constexpr auto _17 = integral_t<placeholder_type, 17>{};
+    constexpr auto _18 = integral_t<placeholder_type, 18>{};
+    constexpr auto _19 = integral_t<placeholder_type, 19>{};
+    constexpr auto _20 = integral_t<placeholder_type, 20>{};
+    constexpr auto _21 = integral_t<placeholder_type, 21>{};
+    constexpr auto _22 = integral_t<placeholder_type, 22>{};
+    constexpr auto _23 = integral_t<placeholder_type, 23>{};
+    constexpr auto _24 = integral_t<placeholder_type, 24>{};
+    constexpr auto _25 = integral_t<placeholder_type, 25>{};
+    constexpr auto _26 = integral_t<placeholder_type, 26>{};
+    constexpr auto _27 = integral_t<placeholder_type, 27>{};
+    constexpr auto _28 = integral_t<placeholder_type, 28>{};
+    constexpr auto _29 = integral_t<placeholder_type, 29>{};
+    constexpr auto _30 = integral_t<placeholder_type, 30>{};
+    constexpr auto _31 = integral_t<placeholder_type, 31>{};
   }  // namespace placeholders
   using place_id = placeholders::placeholder_type;
 

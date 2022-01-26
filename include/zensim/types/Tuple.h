@@ -83,6 +83,28 @@ template <std::size_t I, typename T> struct tuple_value {
   template <typename Tup> constexpr std::enable_if_t<is_tuple_v<Tup>, std::size_t> tuple_size_v
       = tuple_size<Tup>::value;
 
+  /** get */
+  template <std::size_t I, typename... Ts>
+  constexpr auto const &get(const tuple<Ts...> &t) noexcept {
+    return t.template get<I>();
+  }
+  template <std::size_t I, typename... Ts> constexpr auto &get(tuple<Ts...> &t) noexcept {
+    return t.template get<I>();
+  }
+  template <std::size_t I, typename... Ts> constexpr auto &&get(tuple<Ts...> &&t) noexcept {
+    return std::move(t).template get<I>();
+  }
+
+  template <typename T, typename... Ts> constexpr T const &get(const tuple<Ts...> &t) noexcept {
+    return t.template get<T>();
+  }
+  template <typename T, typename... Ts> constexpr T &get(tuple<Ts...> &t) noexcept {
+    return t.template get<T>();
+  }
+  template <typename T, typename... Ts> constexpr T &&get(tuple<Ts...> &&t) noexcept {
+    return std::move(t).template get<T>();
+  }
+
   /** make_tuple */
   template <typename... Args> constexpr auto make_tuple(Args &&...args) {
     return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
@@ -108,8 +130,7 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr auto marks = value_seq<(remove_cvref_t<Ts>::tuple_size > 0 ? 1 : 0)...>{};
     if constexpr (marks.reduce(logical_and<bool>{})) {
       using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
-      return tuple_detail_impl::tuple_cat_impl<
-          tuple_base<typename helper::indices, typename helper::types>>(
+      return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
           typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
     } else {
       constexpr auto N = marks.reduce(plus<int>{});
@@ -128,31 +149,26 @@ template <std::size_t I, typename T> struct tuple_value {
 
     using tuple_value<Is, Ts>::get...;
     template <std::size_t I> constexpr auto &get() noexcept {
-      return get(std::integral_constant<std::size_t, I>{});
+      return get(integral_t<std::size_t, I>{});
     }
     template <std::size_t I> constexpr auto const &get() const noexcept {
-      return get(std::integral_constant<std::size_t, I>{});
+      return get(integral_t<std::size_t, I>{});
     }
     template <typename T> constexpr auto &get() noexcept { return get(wrapt<T>{}); }
     template <typename T> constexpr auto const &get() const noexcept { return get(wrapt<T>{}); }
     /// custom
-    constexpr auto &head() noexcept { return get(std::integral_constant<std::size_t, 0>{}); }
-    constexpr auto const &head() const noexcept {
-      return get(std::integral_constant<std::size_t, 0>{});
-    }
-    constexpr auto &tail() noexcept {
-      return get(std::integral_constant<std::size_t, tuple_size - 1>{});
-    }
+    constexpr auto &head() noexcept { return get(integral_t<std::size_t, 0>{}); }
+    constexpr auto const &head() const noexcept { return get(integral_t<std::size_t, 0>{}); }
+    constexpr auto &tail() noexcept { return get(integral_t<std::size_t, tuple_size - 1>{}); }
     constexpr auto const &tail() const noexcept {
-      return get(std::integral_constant<std::size_t, tuple_size - 1>{});
+      return get(integral_t<std::size_t, tuple_size - 1>{});
     }
     constexpr decltype(auto) std() const noexcept { return std::forward_as_tuple(get<Is>()...); }
     constexpr decltype(auto) std() noexcept { return std::forward_as_tuple(get<Is>()...); }
     /// iterator
     /// compwise
-    template <typename BinaryOp, typename... TTs> constexpr auto compwise(
-        BinaryOp &&op,
-        const tuple_base<std::index_sequence<Is...>, type_seq<TTs...>> &t) const noexcept {
+    template <typename BinaryOp, typename... TTs>
+    constexpr auto compwise(BinaryOp &&op, const tuple<TTs...> &t) const noexcept {
       return zs::make_tuple(op(get<Is>(), t.template get<Is>())...);
     }
     template <typename BinaryOp, auto... Ns>
@@ -283,7 +299,8 @@ template <std::size_t I, typename T> struct tuple_value {
 
   template <typename... Ts> struct tuple
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
-    using typename tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>::tuple_types;
+    using base_t = tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>;
+    using tuple_types = typename base_t::tuple_types;
 
     // vec
     template <typename VecT>
@@ -341,39 +358,6 @@ template <std::size_t I, typename T> struct tuple_value {
       = std::enable_if_t<is_tuple_v<Tup>, std::enable_if_t<(I < (tuple_size_v<Tup>)),
                                                            typename tuple_element<I, Tup>::type>>;
 
-  /** get */
-  template <std::size_t I, typename... Ts>
-  constexpr auto const &get(const tuple<Ts...> &t) noexcept {
-    return t.template get<I>();
-  }
-  template <std::size_t I, typename... Ts> constexpr auto &get(tuple<Ts...> &t) noexcept {
-    return t.template get<I>();
-  }
-  template <std::size_t I, typename... Ts> constexpr auto &&get(tuple<Ts...> &&t) noexcept {
-    return std::move(t).template get<I>();
-  }
-
-  template <typename T, typename... Ts> constexpr T const &get(const tuple<Ts...> &t) noexcept {
-    return t.template get<T>();
-  }
-  template <typename T, typename... Ts> constexpr T &get(tuple<Ts...> &t) noexcept {
-    return t.template get<T>();
-  }
-  template <typename T, typename... Ts> constexpr T &&get(tuple<Ts...> &&t) noexcept {
-    return std::move(t).template get<T>();
-  }
-
-#if 0
-template <typename... Ts>
-struct std::tuple_size<tuple<Ts...>>
-    : std::integral_constant<std::size_t, sizeof...(Ts)> {};
-
-template <std::size_t I, typename... Ts>
-struct std::tuple_element<I, tuple<Ts...>> {
-  using type = decltype(std::declval<tuple<Ts...>>().template get<I>());
-};
-#endif
-
   /** operations */
   namespace detail {
     template <class F, class Tuple, std::size_t... Is,
@@ -424,6 +408,7 @@ struct std::tuple_element<I, tuple<Ts...>> {
         std::make_index_sequence<std::declval<std::remove_reference_t<Tuple>>().tuple_size>{});
   }
 
+  /** tuple_cat (auxiliary) */
   constexpr auto tuple_cat() noexcept { return tuple<>{}; }
 
   // need this because zs::tuple's rvalue deduction not finished

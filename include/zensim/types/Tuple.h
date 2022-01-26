@@ -421,3 +421,11 @@ template <std::size_t I, typename T> struct tuple_value {
 #define FWD_CAPTURE(...) ::zs::fwd_capture(FWD(__VA_ARGS__))
 
 }  // namespace zs
+
+namespace std {
+  template <typename... Ts> struct tuple_size<zs::tuple<Ts...>>
+      : std::integral_constant<std::size_t, zs::tuple_size_v<zs::tuple<Ts...>>> {};
+  template <std::size_t I, typename... Ts> struct tuple_element<I, zs::tuple<Ts...>> {
+    using type = zs::tuple_element_t<I, zs::tuple<Ts...>>;
+  };
+}  // namespace std

@@ -127,7 +127,7 @@ namespace zs {
     }
     template <typename Ti, Ti... Is>
     constexpr auto filter(integer_seq<Ti, Is...>) const noexcept {  // for tuple_cat
-      return value_seq{get_index<type_seq<integral_t<Ti, 1>, integral_t<Ti, Is>>>()...};
+      return value_seq<index<type_seq<integral_t<Ti, 1>, integral_t<Ti, Is>>>::value...>{};
     }
     template <typename... Args> constexpr auto pair(type_seq<Args...>) const noexcept {
       return type_seq<concatenation_t<Ts, Args>...>{};
@@ -166,7 +166,7 @@ namespace zs {
     using indices = typename base_t::indices;
     static constexpr auto count = base_t::count;
     static constexpr auto get_common_type() noexcept {
-      if constexpr (count == 0)
+      if constexpr (base_t::count == 0)
         return wrapt<std::size_t>{};
       else
         return wrapt<std::common_type_t<decltype(Ns)...>>{};
@@ -264,6 +264,7 @@ namespace zs {
   template <typename Ti, Ti... Ns> struct vseq<integer_seq<Ti, Ns...>> {
     using type = value_seq<Ns...>;
   };
+  template <typename Ti, Ti N> struct vseq<integral_t<Ti, N>> { using type = value_seq<N>; };
   template <typename Seq> using vseq_t = typename vseq<Seq>::type;
 
   /// select (constant integral) value (integral_constant<T, N>) by index
@@ -392,9 +393,9 @@ namespace zs {
     using outer
         = decltype(counts{}.template scan<1, std::plus<std::size_t>>().map(count_leq{},
                                                                            wrapv<length>{}));
-    using inner = decltype(value_seq{
-        indices{}}.compwise(minus<std::size_t>{},
-                            counts{}.template scan<0, plus<std::size_t>>().shuffle(outer{})));
+    using inner = decltype(vseq_t<indices>{}.compwise(
+        std::minus<std::size_t>{},
+        counts{}.template scan<0, std::plus<std::size_t>>().shuffle(outer{})));
     using types = decltype(type_seq<Seqs...>{}.shuffle(outer{}).shuffle_join(inner{}));
   };
 

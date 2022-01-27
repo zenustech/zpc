@@ -17,9 +17,6 @@ namespace zs {
   template <typename... Seqs> struct concat;
   template <typename> struct VecInterface;
 
-  template <typename> struct gen_seq_impl;
-  template <std::size_t N> using gen_seq = gen_seq_impl<std::make_index_sequence<N>>;
-
   template <std::size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
   template <std::size_t I, typename... Ts> using select_indexed_type
       = select_type<I, type_seq<Ts...>>;
@@ -133,7 +130,7 @@ template <std::size_t I, typename T> struct tuple_value {
       return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
           typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
     } else {
-      constexpr auto N = marks.reduce(plus<int>{});
+      constexpr auto N = marks.reduce(plus<int>{}).value;
       constexpr auto offsets = marks.scan();  // exclusive scan
       constexpr auto tags = marks.pair(offsets);
       constexpr auto seq

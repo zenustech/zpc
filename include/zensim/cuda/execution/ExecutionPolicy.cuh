@@ -37,7 +37,7 @@ namespace zs {
       else if constexpr (func_traits::arity == 2
                          && std::is_pointer_v<
                              std::tuple_element_t<0, typename func_traits::arguments_t>>)
-        f(shmem, id);
+        f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem), id);
     }
   }
   template <typename F> __global__ void block_thread_launch(F f) {
@@ -49,7 +49,8 @@ namespace zs {
     else if constexpr (func_traits::arity == 3
                        && std::is_pointer_v<
                            std::tuple_element_t<0, typename func_traits::arguments_t>>)
-      f(shmem, blockIdx.x, threadIdx.x);
+      f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
+        blockIdx.x, threadIdx.x);
   }
   namespace detail {
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
@@ -66,10 +67,12 @@ namespace zs {
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i,
                                                   F &&f, ZipIter &&iter, index_seq<Is...>) {
       (std::get<Is>(iter.iters).advance(i), ...);
+      using func_traits = function_traits<remove_cvref_t<F>>;
+      using shmem_ptr_t = std::tuple_element_t<0, typename func_traits::arguments_t>;
       if constexpr (withIndex)
-        f(shmem, i, *std::get<Is>(iter.iters)...);
+        f(reinterpret_cast<shmem_ptr_t>(shmem), i, *std::get<Is>(iter.iters)...);
       else
-        f(shmem, *std::get<Is>(iter.iters)...);
+        f(reinterpret_cast<shmem_ptr_t>(shmem), *std::get<Is>(iter.iters)...);
     }
   }  // namespace detail
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
@@ -93,11 +96,17 @@ namespace zs {
           detail::range_foreach(std::true_type{}, id, f, iter, indices);
         else if constexpr (std::is_pointer_v<
                                std::tuple_element_t<0, typename func_traits::arguments_t>>)
-          detail::range_foreach(std::false_type{}, shmem, id, f, iter, indices);
+          detail::range_foreach(
+              std::false_type{},
+              reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
+              id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 2
                            && std::is_pointer_v<
                                std::tuple_element_t<0, typename func_traits::arguments_t>>)
-        detail::range_foreach(std::true_type{}, shmem, id, f, iter, indices);
+        detail::range_foreach(
+            std::true_type{},
+            reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem), id,
+            f, iter, indices);
     }
   }
   namespace cg = cooperative_groups;
@@ -112,7 +121,8 @@ namespace zs {
     else if constexpr (func_traits::arity == 4
                        && std::is_pointer_v<
                            std::tuple_element_t<0, typename func_traits::arguments_t>>)
-      f(shmem, blockIdx.x, block.thread_rank() / tileSize, tile.thread_rank());
+      f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
+        blockIdx.x, block.thread_rank() / tileSize, tile.thread_rank());
   }
 
   namespace detail {

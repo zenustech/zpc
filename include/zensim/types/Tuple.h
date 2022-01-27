@@ -73,71 +73,12 @@ template <std::size_t I, typename T> struct tuple_value {
   template <typename... Ts> struct is_tuple<tuple<Ts...>> : std::true_type {};
   template <typename T> static constexpr bool is_tuple_v = is_tuple<T>::value;
 
-  /** tuple_size */
+  template <typename... Args> constexpr auto make_tuple(Args &&...args);
   template <typename T> struct tuple_size;
   template <typename... Ts> struct tuple_size<tuple<Ts...>>
       : std::integral_constant<std::size_t, sizeof...(Ts)> {};
   template <typename Tup> constexpr std::enable_if_t<is_tuple_v<Tup>, std::size_t> tuple_size_v
       = tuple_size<Tup>::value;
-
-  /** get */
-  template <std::size_t I, typename... Ts>
-  constexpr auto const &get(const tuple<Ts...> &t) noexcept {
-    return t.template get<I>();
-  }
-  template <std::size_t I, typename... Ts> constexpr auto &get(tuple<Ts...> &t) noexcept {
-    return t.template get<I>();
-  }
-  template <std::size_t I, typename... Ts> constexpr auto &&get(tuple<Ts...> &&t) noexcept {
-    return std::move(t).template get<I>();
-  }
-
-  template <typename T, typename... Ts> constexpr T const &get(const tuple<Ts...> &t) noexcept {
-    return t.template get<T>();
-  }
-  template <typename T, typename... Ts> constexpr T &get(tuple<Ts...> &t) noexcept {
-    return t.template get<T>();
-  }
-  template <typename T, typename... Ts> constexpr T &&get(tuple<Ts...> &&t) noexcept {
-    return std::move(t).template get<T>();
-  }
-
-  /** make_tuple */
-  template <typename... Args> constexpr auto make_tuple(Args &&...args) {
-    return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
-  }
-
-  /** forward_as_tuple */
-  template <typename... Ts> constexpr auto forward_as_tuple(Ts &&...ts) noexcept {
-    return zs::tuple<Ts &&...>{FWD(ts)...};
-  }
-
-  /** tuple_cat */
-  namespace tuple_detail_impl {
-    template <typename R, auto... Os, auto... Is, typename Tuple>
-    constexpr decltype(auto) tuple_cat_impl(value_seq<Os...>, value_seq<Is...>, Tuple &&tup) {
-      return R{tup.template get<Os>().template get<Is>()...};
-    }
-  }  // namespace tuple_detail_impl
-  template <auto... Is, typename... Ts> constexpr auto tuple_cat(value_seq<Is...>, Ts &&...tuples) {
-    decltype(auto) tup = zs::forward_as_tuple(tuples...);
-    return tuple_cat(tup.template get<Is>()...);
-  }
-  template <typename... Ts> constexpr auto tuple_cat(Ts &&...tuples) {
-    constexpr auto marks = value_seq<(remove_cvref_t<Ts>::tuple_size > 0 ? 1 : 0)...>{};
-    if constexpr (marks.reduce(logical_and<bool>{})) {
-      using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
-      return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
-          typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
-    } else {
-      constexpr auto N = marks.reduce(plus<int>{}).value;
-      constexpr auto offsets = marks.scan();  // exclusive scan
-      constexpr auto tags = marks.pair(offsets);
-      constexpr auto seq
-          = tags.filter(typename vseq_t<typename gen_seq<N>::ascend>::template to_iseq<int>{});
-      return tuple_cat(seq, FWD(tuples)...);
-    }
-  }
 
   template <std::size_t... Is, typename... Ts> struct tuple_base<index_seq<Is...>, type_seq<Ts...>>
       : tuple_value<Is, Ts>... {
@@ -205,72 +146,6 @@ template <std::size_t I, typename T> struct tuple_value {
         BinaryOp &&bop, MonoidOp &&mop,
         const tuple_base<std::index_sequence<Is...>, type_seq<TTs...>> &t) const noexcept {
       return mop(bop(get<Is>(), t.template get<Is>())...);
-    }
-    /// scan
-    template <std::size_t I, bool Exclusive, typename BinaryOp, typename Tuple,
-              enable_if_t<(I + 1 < tuple_size)> = 0>
-    constexpr decltype(auto) prefix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
-      return prefix_scan_impl<I + 1, Exclusive>(
-          std::forward<BinaryOp>(op),
-          zs::tuple_cat(std::move(tup), zs::make_tuple(op(tup.tail(), get<I - Exclusive>()))));
-    }
-    template <std::size_t I, bool Exclusive, typename BinaryOp, typename Tuple,
-              enable_if_t<(I + 1 >= tuple_size)> = 0>
-    constexpr decltype(auto) prefix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
-      return zs::tuple_cat(std::move(tup), zs::make_tuple(op(tup.tail(), get<I - Exclusive>())));
-    }
-    template <std::size_t I, bool Exclusive, typename BinaryOp, typename Tuple,
-              enable_if_t<I != 0> = 0>
-    constexpr decltype(auto) suffix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
-      return suffix_scan_impl<I - 1, Exclusive>(
-          std::forward<BinaryOp>(op),
-          zs::tuple_cat(zs::make_tuple(op(get<I + Exclusive>(), tup.head())), std::move(tup)));
-    }
-    template <std::size_t I, bool Exclusive, typename BinaryOp, typename Tuple,
-              enable_if_t<I == 0> = 0>
-    constexpr decltype(auto) suffix_scan_impl(BinaryOp &&op, Tuple &&tup) const noexcept {
-      return zs::tuple_cat(zs::make_tuple(op(get<I + Exclusive>(), tup.head())), std::move(tup));
-    }
-
-    template <typename BinaryOp, auto tupsize = tuple_size, enable_if_t<(tupsize > 1)> = 0>
-    constexpr auto incl_prefix_scan(BinaryOp &&op) const noexcept {
-      return prefix_scan_impl<1, false>(std::forward<BinaryOp>(op), zs::make_tuple(this->get<0>()));
-    }
-    template <typename BinaryOp, auto tupsize = tuple_size, enable_if_t<(tupsize == 1)> = 0>
-    constexpr auto incl_prefix_scan(BinaryOp &&op) const noexcept {
-      return zs::make_tuple(this->get<0>());
-    }
-
-    template <typename BinaryOp, typename T, auto tupsize = tuple_size,
-              enable_if_t<(tupsize > 1)> = 0>
-    constexpr auto excl_prefix_scan(BinaryOp &&op, T &&e) const noexcept {
-      return prefix_scan_impl<1, true>(std::forward<BinaryOp>(op), zs::make_tuple(e));
-    }
-    template <typename BinaryOp, typename T, auto tupsize = tuple_size,
-              enable_if_t<(tupsize == 1)> = 0>
-    constexpr auto excl_prefix_scan(BinaryOp &&op, T &&e) const noexcept {
-      return zs::make_tuple(e);
-    }
-
-    template <typename BinaryOp, auto tupsize = tuple_size, enable_if_t<(tupsize > 1)> = 0>
-    constexpr auto incl_suffix_scan(BinaryOp &&op) const noexcept {
-      return suffix_scan_impl<tuple_size - 2, false>(std::forward<BinaryOp>(op),
-                                                     zs::make_tuple(get<tuple_size - 1>()));
-    }
-    template <typename BinaryOp, auto tupsize = tuple_size, enable_if_t<(tupsize == 1)> = 0>
-    constexpr auto incl_suffix_scan(BinaryOp &&op) const noexcept {
-      return zs::make_tuple(get<tuple_size - 1>());
-    }
-
-    template <typename BinaryOp, typename T, auto tupsize = tuple_size,
-              enable_if_t<(tupsize > 1)> = 0>
-    constexpr auto excl_suffix_scan(BinaryOp &&op, T &&e) const noexcept {
-      return suffix_scan_impl<tuple_size - 2, true>(FWD(op), zs::make_tuple(e));
-    }
-    template <typename BinaryOp, typename T, auto tupsize = tuple_size,
-              enable_if_t<(tupsize == 1)> = 0>
-    constexpr auto excl_suffix_scan(BinaryOp &&op, T &&e) const noexcept {
-      return zs::make_tuple(e);
     }
     /// shuffle
     template <typename... Args> constexpr auto shuffle(Args &&...args) const noexcept {
@@ -356,6 +231,70 @@ template <std::size_t I, typename T> struct tuple_value {
                                                            typename tuple_element<I, Tup>::type>>;
 
   /** operations */
+
+  /** get */
+  template <std::size_t I, typename... Ts>
+  constexpr auto const &get(const tuple<Ts...> &t) noexcept {
+    return t.template get<I>();
+  }
+  template <std::size_t I, typename... Ts> constexpr auto &get(tuple<Ts...> &t) noexcept {
+    return t.template get<I>();
+  }
+  template <std::size_t I, typename... Ts> constexpr auto &&get(tuple<Ts...> &&t) noexcept {
+    return std::move(t).template get<I>();
+  }
+
+  template <typename T, typename... Ts> constexpr T const &get(const tuple<Ts...> &t) noexcept {
+    return t.template get<T>();
+  }
+  template <typename T, typename... Ts> constexpr T &get(tuple<Ts...> &t) noexcept {
+    return t.template get<T>();
+  }
+  template <typename T, typename... Ts> constexpr T &&get(tuple<Ts...> &&t) noexcept {
+    return std::move(t).template get<T>();
+  }
+
+  /** make_tuple */
+  template <typename... Args> constexpr auto make_tuple(Args &&...args) {
+    return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
+  }
+
+  /** forward_as_tuple */
+  template <typename... Ts> constexpr auto forward_as_tuple(Ts &&...ts) noexcept {
+    return zs::tuple<Ts &&...>{FWD(ts)...};
+  }
+
+  /** tuple_cat */
+  namespace tuple_detail_impl {
+    template <typename R, auto... Os, auto... Is, typename Tuple>
+    constexpr decltype(auto) tuple_cat_impl(value_seq<Os...>, value_seq<Is...>, Tuple &&tup) {
+      return R{tup.template get<Os>().template get<Is>()...};
+    }
+  }  // namespace tuple_detail_impl
+
+  constexpr auto tuple_cat() noexcept { return tuple<>{}; }
+
+  template <auto... Is, typename... Ts> constexpr auto tuple_cat(value_seq<Is...>, Ts &&...tuples) {
+    decltype(auto) tup = zs::forward_as_tuple(tuples...);
+    return tuple_cat(tup.template get<Is>()...);
+  }
+  template <typename... Ts> constexpr auto tuple_cat(Ts &&...tuples) {
+    constexpr auto marks = value_seq<(remove_cvref_t<Ts>::tuple_size > 0 ? 1 : 0)...>{};
+    if constexpr (marks.reduce(logical_and<bool>{})) {
+      using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
+      return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
+          typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
+    } else {
+      constexpr auto N = marks.reduce(plus<int>{}).value;
+      constexpr auto offsets = marks.scan();  // exclusive scan
+      constexpr auto tags = marks.pair(offsets);
+      constexpr auto seq
+          = tags.filter(typename vseq_t<typename gen_seq<N>::ascend>::template to_iseq<int>{});
+      return tuple_cat(seq, FWD(tuples)...);
+    }
+  }
+
+  /** apply */
   namespace detail {
     template <class F, class Tuple, std::size_t... Is,
               enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
@@ -404,9 +343,6 @@ template <std::size_t I, typename T> struct tuple_value {
         FWD(t),
         std::make_index_sequence<std::declval<std::remove_reference_t<Tuple>>().tuple_size>{});
   }
-
-  /** tuple_cat (auxiliary) */
-  constexpr auto tuple_cat() noexcept { return tuple<>{}; }
 
   // need this because zs::tuple's rvalue deduction not finished
   template <typename T> using capture_t

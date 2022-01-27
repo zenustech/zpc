@@ -73,14 +73,6 @@ namespace zs {
   };
 
   /// type_seq
-  template <typename... Ts> struct type_seq;
-
-  namespace detail {
-    struct concatenation_op;
-  }
-  template <typename... TSeqs> using concatenation_t
-      = decltype(std::declval<detail::concatenation_op>()(type_seq<TSeqs...>{}));
-
   template <typename... Ts> struct type_seq {
     static constexpr bool is_value_sequence() noexcept {
       if constexpr (sizeof...(Ts) == 0)
@@ -129,9 +121,7 @@ namespace zs {
     constexpr auto filter(integer_seq<Ti, Is...>) const noexcept {  // for tuple_cat
       return value_seq<index<type_seq<integral_t<Ti, 1>, integral_t<Ti, Is>>>::value...>{};
     }
-    template <typename... Args> constexpr auto pair(type_seq<Args...>) const noexcept {
-      return type_seq<concatenation_t<Ts, Args>...>{};
-    }
+    template <typename... Args> constexpr auto pair(type_seq<Args...>) const noexcept;
     template <auto... Is> constexpr auto shuffle(value_seq<Is...>) const noexcept {
       return type_seq<typename type_seq<Ts...>::template type<Is>...>{};
     }
@@ -339,6 +329,13 @@ namespace zs {
       }
     };
   }  // namespace detail
+  template <typename... TSeqs> using concatenation_t
+      = decltype(std::declval<detail::concatenation_op>()(type_seq<TSeqs...>{}));
+
+  template <typename... Ts> template <typename... Args>
+  constexpr auto type_seq<Ts...>::pair(type_seq<Args...>) const noexcept {
+    return type_seq<concatenation_t<Ts, Args>...>{};
+  }
 
   /// permutation / combination
   namespace detail {

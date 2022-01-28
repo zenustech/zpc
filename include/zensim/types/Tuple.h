@@ -279,18 +279,28 @@ template <std::size_t I, typename T> struct tuple_value {
     return tuple_cat(tup.template get<Is>()...);
   }
   template <typename... Ts> constexpr auto tuple_cat(Ts &&...tuples) {
-    constexpr auto marks = value_seq<(remove_cvref_t<Ts>::tuple_size > 0 ? 1 : 0)...>{};
-    if constexpr (marks.reduce(logical_and<bool>{})) {
-      using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
-      return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
-          typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
+    if constexpr ((!zs::is_tuple_v<remove_cvref_t<Ts>> || ...)) {
+      constexpr auto trans = [](auto &&param) {
+        if constexpr (zs::is_tuple_v<RM_CVREF_T(param)>)
+          return FWD(param);
+        else
+          return zs::make_tuple<RM_CVREF_T(param)>(FWD(param));
+      };
+      return tuple_cat(trans(FWD(tuples))...);
     } else {
-      constexpr auto N = marks.reduce(plus<int>{}).value;
-      constexpr auto offsets = marks.scan();  // exclusive scan
-      constexpr auto tags = marks.pair(offsets);
-      constexpr auto seq
-          = tags.filter(typename vseq_t<typename gen_seq<N>::ascend>::template to_iseq<int>{});
-      return tuple_cat(seq, FWD(tuples)...);
+      constexpr auto marks = value_seq<(remove_cvref_t<Ts>::tuple_size > 0 ? 1 : 0)...>{};
+      if constexpr (marks.reduce(logical_and<bool>{})) {
+        using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
+        return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
+            typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(tuples...));
+      } else {
+        constexpr auto N = marks.reduce(plus<int>{}).value;
+        constexpr auto offsets = marks.scan();  // exclusive scan
+        constexpr auto tags = marks.pair(offsets);
+        constexpr auto seq
+            = tags.filter(typename vseq_t<typename gen_seq<N>::ascend>::template to_iseq<int>{});
+        return tuple_cat(seq, FWD(tuples)...);
+      }
     }
   }
 

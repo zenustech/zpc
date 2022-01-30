@@ -118,6 +118,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     math/Rotation.hpp
     math/VecInterface.hpp
     math/Vec.h
+    math/Tensor.hpp
     # memory
     memory/MemOps.hpp
     memory/Allocator.h

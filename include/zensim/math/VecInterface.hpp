@@ -19,7 +19,7 @@ namespace zs {
     using index_type = Tn;
     static constexpr index_type extent = (Ns * ...);
     using extents = integer_seq<Tn, Ns...>;
-    using storage_orders = value_seq<select_indexed_value<Is, StorageOrders...>::value...>;
+    using storage_orders = value_seq<StorageOrders...>;
     using lookup_orders = value_seq<storage_orders::template index<wrapv<Is>>::value...>;
 
     using storage_extents_impl
@@ -37,9 +37,6 @@ namespace zs {
       return select_indexed_value<I, Ns...>::value;
     }
 
-    static constexpr index_type offset(std::enable_if_t<Is == Is, index_type>... is) noexcept {
-      return ((is * lookup_bases::template type<Is>::value) + ...);
-    }
     template <std::size_t... Js, typename... Args>
     static constexpr index_type offset_impl(index_seq<Js...>, Args&&... args) noexcept {
       return (... + ((index_type)args * lookup_bases::template type<Js>::value));
@@ -47,6 +44,10 @@ namespace zs {
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     static constexpr index_type offset(Args&&... args) noexcept {
       return offset_impl(std::index_sequence_for<Args...>{}, FWD(args)...);
+    }
+    template <typename... Args, enable_if_t<sizeof...(Args) == dim> = 0>
+    static constexpr index_type offset(tuple<Args...> args) noexcept {
+      return (... + ((index_type)get<Is>(args) * lookup_bases::template type<Is>::value));
     }
   };
 

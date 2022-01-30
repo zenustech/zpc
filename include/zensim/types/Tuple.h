@@ -258,6 +258,33 @@ template <std::size_t I, typename T> struct tuple_value {
   template <typename... Args> constexpr auto make_tuple(Args &&...args) {
     return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
   }
+  template <typename T, std::size_t... Is>
+  constexpr auto make_uniform_tuple(T &&v, index_seq<Is...>) noexcept {
+    return make_tuple((Is, v)...);
+  }
+  template <std::size_t N, typename T> constexpr auto make_uniform_tuple(T &&v) noexcept {
+    return make_uniform_tuple(FWD(v), std::make_index_sequence<N>{});
+  }
+
+  /** linear_to_multi */
+  template <auto... Ns, std::size_t... Is, enable_if_all<(Ns > 0)...> = 0>
+  constexpr auto index_to_coord(std::size_t I, value_seq<Ns...> vs, index_seq<Is...>) {
+    constexpr auto N = sizeof...(Ns);
+    using Tn = typename value_seq<Ns...>::value_type;
+    using RetT = typename gen_seq<N>::template uniform_types_t<tuple, Tn>;
+    constexpr auto exsuf = vs.template scan<2>(multiplies<std::size_t>{});
+    Tn bases[N]{exsuf.get_value(wrapv<Is>()).value...};
+    Tn cs[N]{};
+    for (std::size_t i = 0; i != N; ++i) {
+      cs[i] = I / bases[i];
+      I -= bases[i] * cs[i];
+    }
+    return zs::make_tuple(cs[Is]...);
+  }
+  template <auto... Ns, enable_if_all<(Ns > 0)...> = 0>
+  constexpr auto index_to_coord(std::size_t I, value_seq<Ns...> vs) {
+    return index_to_coord(I, vs, std::make_index_sequence<sizeof...(Ns)>{});
+  }
 
   /** forward_as_tuple */
   template <typename... Ts> constexpr auto forward_as_tuple(Ts &&...ts) noexcept {
@@ -350,8 +377,7 @@ template <std::size_t I, typename T> struct tuple_value {
   template <class T, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr T make_from_tuple(Tuple &&t) {
     return tuple_detail_impl::make_from_tuple_impl<T>(
-        FWD(t),
-        std::make_index_sequence<std::declval<std::remove_reference_t<Tuple>>().tuple_size>{});
+        FWD(t), std::make_index_sequence<tuple_size_v<std::remove_reference_t<Tuple>>>{});
   }
 
   // need this because zs::tuple's rvalue deduction not finished

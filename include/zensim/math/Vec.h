@@ -58,35 +58,30 @@ namespace zs {
       return _data[indexer_type::offset(std::forward<Args>(args)...)];
     }
     // []
-    template <typename Index,
-              typename R
-              = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
-              Tn d = dim, enable_if_t<(d > 1)> = 0>
-    constexpr R operator[](Index index) noexcept {
-      return R{_data + indexer_type::offset(index)};
+    template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
+    constexpr decltype(auto) operator[](Index index) noexcept {
+      if constexpr (dim == 1) {
+        return _data[index];
+      } else {
+        using R = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
+        return R{_data + indexer_type::offset(index)};
+      }
     }
-    template <typename Index,
-              typename R
-              = vec_view<std::add_const_t<T>,
-                         gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
-              Tn d = dim, enable_if_t<(d > 1)> = 0>
-    constexpr R operator[](Index index) const noexcept {
-      return R{_data + indexer_type::offset(index)};
-    }
-    template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
-    constexpr T &operator[](Index index) noexcept {
-      return _data[index];
-    }
-    template <typename Index, Tn d = dim, enable_if_t<d == 1> = 0>
-    constexpr const T &operator[](Index index) const noexcept {
-      return _data[index];
+    template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
+    constexpr decltype(auto) operator[](Index index) const noexcept {
+      if constexpr (dim == 1) {
+        return _data[index];
+      } else {
+        using R = vec_view<std::add_const_t<T>,
+                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
+        return R{_data + indexer_type::offset(index)};
+      }
     }
     template <typename Index> constexpr T &do_val(Index index) noexcept { return _data[index]; }
     template <typename Index> constexpr const T &do_val(Index index) const noexcept {
       return _data[index];
     }
 
-  private:
     T *_data;
   };
 
@@ -115,8 +110,9 @@ namespace zs {
 
     /// think this does not break rule of five
     constexpr vec_impl() noexcept = default;
-    template <typename... Ts, enable_if_all<(sizeof...(Ts) <= extent),
-                                            (std::is_convertible_v<Ts, value_type> && ...)> = 0>
+    template <typename... Ts,
+              enable_if_all<(sizeof...(Ts) <= extent),
+                            (std::is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)> = 0>
     constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}
     /// https://github.com/kokkos/kokkos/issues/177
 #if 0

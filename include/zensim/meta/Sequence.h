@@ -161,8 +161,8 @@ namespace zs {
       else
         return wrapt<std::common_type_t<decltype(Ns)...>>{};
     }
-    using Tn = typename decltype(get_common_type())::type;
-    using iseq = integer_seq<Tn, (Tn)Ns...>;
+    using value_type = typename decltype(get_common_type())::type;
+    using iseq = integer_seq<value_type, (value_type)Ns...>;
     template <typename T> using to_iseq = integer_seq<T, (T)Ns...>;
 
     template <std::size_t I> static constexpr auto value = base_t::template type<I>::value;
@@ -178,7 +178,7 @@ namespace zs {
     template <auto I = 0> constexpr auto get_value(wrapv<I> = {}) const noexcept {
       return typename base_t::template type<I>{};
     }
-    template <typename Ti = Tn> constexpr auto get_iseq(wrapt<Ti> = {}) const noexcept {
+    template <typename Ti = value_type> constexpr auto get_iseq(wrapt<Ti> = {}) const noexcept {
       return integer_seq<Ti, (Ti)Ns...>{};
     }
     template <typename BinaryOp> constexpr auto reduce(BinaryOp) const noexcept {
@@ -238,7 +238,7 @@ namespace zs {
       };
       return value_seq<RM_CVREF_T(get_sum(wrapv<Is>{}))::value...>{};
     }
-    template <auto Cate = 0, typename BinaryOp = plus<Tn>>
+    template <auto Cate = 0, typename BinaryOp = plus<value_type>>
     constexpr auto scan(BinaryOp bop = {}) const noexcept {
       return scan_impl<Cate>(bop, indices{});
     }

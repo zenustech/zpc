@@ -60,8 +60,8 @@ namespace zs {
       if constexpr (dim == 1)
         return _tensorPtr->val(getTensorCoord(make_tuple(index), indices{}));
       else
-        return tensor_view{
-            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, getTensorCoord(make_tuple(index), index_seq<0>{}),
+        return tensor_view<Tensor, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
+            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, tuple_cat(_prefix, make_tuple((index_type)index + get<0>(_base))),
             _base.shuffle(typename gen_seq<dim - 1>::template arithmetic<1>{})};
     }
     template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
@@ -69,8 +69,8 @@ namespace zs {
       if constexpr (dim == 1)
         return _tensorPtr->val(getTensorCoord(make_tuple(index), indices{}));
       else
-        return tensor_view{
-            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, getTensorCoord(make_tuple(index), index_seq<0>{}),
+        return tensor_view<std::add_const_t<Tensor>, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
+            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, tuple_cat(_prefix, make_tuple((index_type)index + get<0>(_base))),
             _base.shuffle(typename gen_seq<dim - 1>::template arithmetic<1>{})};
     }
     // val

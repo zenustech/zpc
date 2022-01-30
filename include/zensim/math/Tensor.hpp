@@ -33,6 +33,9 @@ namespace zs {
         typename tensor_type::template variant_vec<OtherT, ExtentsT>;
 
     tensor_view() noexcept = default;
+    constexpr tensor_view(Tensor &tensor, extents) noexcept : _tensorPtr{&tensor}, _prefix{make_uniform_tuple<prefix_dim>(0)}, _base{make_uniform_tuple<dim>(0)} {}
+    template <typename... Ps, typename... Bs>
+    constexpr tensor_view(Tensor &tensor, extents, const tuple<Ps...>& prefix, const tuple<Bs...>&base) noexcept : _tensorPtr{&tensor}, _prefix{make_from_tuple<prefix_type>(prefix)}, _base{make_from_tuple<base_type>(base)} {}
 
     /// helper
     using indices = std::make_index_sequence<dim>;
@@ -43,11 +46,11 @@ namespace zs {
 
     /// random access
     // ()
-    template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
+    template <typename... Args, enable_if_t<sizeof...(Args) <= dim && (std::is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
     constexpr decltype(auto) operator()(Args &&...args) noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
-    template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
+    template <typename... Args, enable_if_t<sizeof...(Args) <= dim && (std::is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
     constexpr decltype(auto) operator()(Args &&...args) const noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
@@ -57,9 +60,8 @@ namespace zs {
       if constexpr (dim == 1)
         return _tensorPtr->val(getTensorCoord(make_tuple(index), indices{}));
       else
-        return tensor_view<Tensor,
-                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
-            *_tensorPtr, getTensorCoord(make_tuple(index), index_seq<0>{}),
+        return tensor_view{
+            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, getTensorCoord(make_tuple(index), index_seq<0>{}),
             _base.shuffle(typename gen_seq<dim - 1>::template arithmetic<1>{})};
     }
     template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
@@ -67,15 +69,15 @@ namespace zs {
       if constexpr (dim == 1)
         return _tensorPtr->val(getTensorCoord(make_tuple(index), indices{}));
       else
-        return tensor_view<std::add_const_t<Tensor>,
-                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
-            *_tensorPtr, getTensorCoord(make_tuple(index), index_seq<0>{}),
+        return tensor_view{
+            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, getTensorCoord(make_tuple(index), index_seq<0>{}),
             _base.shuffle(typename gen_seq<dim - 1>::template arithmetic<1>{})};
     }
     // val
     template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
     constexpr decltype(auto) do_val(Index index) noexcept {
       return _tensorPtr->val(getTensorCoord(index_to_coord(index, vseq_t<extents>{}), indices{}));
+      // return zs::apply((*_tensorPtr), getTensorCoord(index_to_coord(index, vseq_t<extents>{}), indices{}));
     }
     template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
     constexpr decltype(auto) do_val(Index index) const noexcept {
@@ -86,6 +88,8 @@ namespace zs {
     prefix_type _prefix{};
     base_type _base{};
   };
+  template <typename Tensor, typename Extents, typename... Args>
+  tensor_view(Tensor &, Extents, Args...) -> tensor_view<Tensor, Extents>;
 
   template <typename T, typename Tn, Tn... Ns, typename Tm, Tm... Ms, std::size_t... Is,
             std::size_t... Js>
@@ -152,18 +156,16 @@ namespace zs {
       if constexpr (dim == 1)
         return _data[indexer_type::offset(index)];
       else
-        return tensor_view<self_t,
-                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
-            this, make_tuple(index), make_uniform_tuple<dim - 1>((index_type)0)};
+        return tensor_view{
+            *this, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, make_tuple((index_type)index), make_uniform_tuple<dim - 1>((index_type)0)};
     }
     template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
     constexpr decltype(auto) operator[](Index index) const noexcept {
       if constexpr (dim == 1)
         return _data[indexer_type::offset(index)];
       else
-        return tensor_view<std::add_const_t<self_t>,
-                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
-            this, make_tuple(index), make_uniform_tuple<dim - 1>((index_type)0)};
+        return tensor_view{
+            *this, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{}, make_tuple((index_type)index), make_uniform_tuple<dim - 1>((index_type)0)};
     }
     // val (in ascending access order rather than memory storage order)
     template <typename Index> constexpr T &do_val(Index index) noexcept {

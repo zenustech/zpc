@@ -260,7 +260,7 @@ template <std::size_t I, typename T> struct tuple_value {
   }
   template <typename T, std::size_t... Is>
   constexpr auto make_uniform_tuple(T &&v, index_seq<Is...>) noexcept {
-    return make_tuple((Is, v)...);
+    return make_tuple((Is ? v : v)...);
   }
   template <std::size_t N, typename T> constexpr auto make_uniform_tuple(T &&v) noexcept {
     return make_uniform_tuple(FWD(v), std::make_index_sequence<N>{});
@@ -337,7 +337,7 @@ template <std::size_t I, typename T> struct tuple_value {
               enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
     constexpr decltype(auto) apply_impl(F &&f, Tuple &&t, index_seq<Is...>) {
       // should use constexpr zs::invoke
-      FWD(f)(get<Is>(FWD(t))...);
+      return f(get<Is>(t)...);
     }
   }  // namespace detail
   template <class F, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
@@ -368,16 +368,16 @@ template <std::size_t I, typename T> struct tuple_value {
 
   /** make_from_tuple */
   namespace tuple_detail_impl {
-    template <class T, class Tuple, std::size_t... I>
-    constexpr T make_from_tuple_impl(Tuple &&t, std::index_sequence<I...>) {
-      return T(zs::get<I>(FWD(t))...);
+    template <class T, class Tuple, std::size_t... Is>
+    constexpr T make_from_tuple_impl(Tuple &&t, index_seq<Is...>) {
+      return T{get<Is>(t)...};
     }
   }  // namespace tuple_detail_impl
 
   template <class T, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr T make_from_tuple(Tuple &&t) {
     return tuple_detail_impl::make_from_tuple_impl<T>(
-        FWD(t), std::make_index_sequence<tuple_size_v<std::remove_reference_t<Tuple>>>{});
+        FWD(t), std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
   }
 
   // need this because zs::tuple's rvalue deduction not finished

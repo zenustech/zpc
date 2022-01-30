@@ -58,7 +58,7 @@ namespace zs {
   template <typename Orders, typename Tn, Tn... Ns> using ordered_indexer
       = indexer_impl<integer_seq<Tn, Ns...>, Orders, std::make_index_sequence<sizeof...(Ns)>>;
 
-  template <typename T, typename Dims> struct vec_impl;
+  template <typename Tensor, typename Extents> struct tensor_view;
 
   /**
    *    \note assume vec already defines base_t, value_type, index_type, extents and indexer_type
@@ -185,6 +185,19 @@ namespace zs {
                             (std::is_integral_v<remove_cvref_t<Ts>> && ...)> = 0>
     constexpr decltype(auto) val(const std::tuple<Ts...>& is) const noexcept {
       return std::apply(static_cast<const Derived&>(*this), is);
+    }
+    // tuple as index
+    template <typename VecT = Derived, typename... Ts,
+              enable_if_all<sizeof...(Ts) <= VecT::dim,
+                            (std::is_integral_v<remove_cvref_t<Ts>> && ...)> = 0>
+    constexpr decltype(auto) val(const zs::tuple<Ts...>& is) noexcept {
+      return zs::apply(static_cast<Derived&>(*this), is);
+    }
+    template <typename VecT = Derived, typename... Ts,
+              enable_if_all<(sizeof...(Ts) <= VecT::dim),
+                            (std::is_integral_v<remove_cvref_t<Ts>> && ...)> = 0>
+    constexpr decltype(auto) val(const zs::tuple<Ts...>& is) const noexcept {
+      return zs::apply(static_cast<const Derived&>(*this), is);
     }
 
     ///

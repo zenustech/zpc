@@ -119,11 +119,22 @@ namespace zs {
 
     SUPPLEMENT_VEC_STATIC_ATTRIBUTES
 
+    template <typename Extents>
+    using deduce_indexer_type = conditional_t<is_same_v<extents, Extents>, indexer_type, 
+      conditional_t<(vseq_t<Extents>::count <= dim), 
+                     //
+                     indexer_impl<Extents,
+                     typename decltype(truncate_storage_orders<vseq_t<Extents>::count>())::iseq,
+                     std::make_index_sequence<vseq_t<Extents>::count>>, 
+                     // 
+                     indexer_impl<Extents, 
+                     decltype(value_seq<Is...>{}.concat(typename gen_seq<vseq_t<Extents>::count - dim>::template arithmetic<dim>{})),
+                     std::make_index_sequence<vseq_t<Extents>::count>>
+      >
+    >;
+
     template <typename OtherT, typename ExtentsT> using variant_vec = tensor_impl<
-        OtherT, ExtentsT,
-        indexer_impl<ExtentsT,
-                     typename decltype(truncate_storage_orders<vseq_t<ExtentsT>::count>())::iseq,
-                     std::make_index_sequence<vseq_t<ExtentsT>::count>>>;
+        OtherT, ExtentsT, deduce_indexer_type<ExtentsT>>;
 
     /// random access
     // ()
@@ -161,6 +172,12 @@ namespace zs {
     template <typename Index> constexpr const T &do_val(Index index) const noexcept {
       return _data[indexer_type::offset(index_to_coord(index, vseq_t<extents>{}))];
     }
+#if 0
+    static void print() {
+      printf("indexer_type: %s\n", get_type_str<indexer_type>().data());
+      printf("tensor size check: %d\n", (int)indexer_type::extent);
+    }
+#endif
 
     T _data[indexer_type::extent];
   };

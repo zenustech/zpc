@@ -208,6 +208,15 @@ namespace zs {
     template <typename MapOp, auto N> constexpr auto map(MapOp &&op, wrapv<N> = {}) const noexcept {
       return map(FWD(op), std::make_index_sequence<N>{});
     }
+    /// cat
+    template <auto... Is>
+    constexpr auto concat(value_seq<Is...>) const noexcept {
+      return value_seq<Ns..., Is...>{};
+    }
+    template <typename Ti, Ti... Is>
+    constexpr auto concat(integer_seq<Ti, Is...>) const noexcept {
+      return value_seq<Ns..., Is...>{};
+    }
     /// shuffle
     constexpr auto shuffle(value_seq<>) const noexcept { return value_seq<>{}; }
     template <auto... Is> constexpr auto shuffle(value_seq<Is...>) const noexcept {

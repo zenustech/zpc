@@ -144,19 +144,19 @@ namespace zs {
 
     template <typename F> constexpr decltype(auto) gridApply(grid_e category, F &&f) {
       if (category == grid_e::collocated)
-        return std::invoke(f, grid(collocated_v));
+        return std::invoke(f, grid(collocated_c));
       else if (category == grid_e::cellcentered)
-        return std::invoke(f, grid(cellcentered_v));
+        return std::invoke(f, grid(cellcentered_c));
       else
-        return std::invoke(f, grid(staggered_v));
+        return std::invoke(f, grid(staggered_c));
     }
     template <typename F> constexpr decltype(auto) gridApply(grid_e category, F &&f) const {
       if (category == grid_e::collocated)
-        return std::invoke(f, grid(collocated_v));
+        return std::invoke(f, grid(collocated_c));
       else if (category == grid_e::cellcentered)
-        return std::invoke(f, grid(cellcentered_v));
+        return std::invoke(f, grid(cellcentered_c));
       else
-        return std::invoke(f, grid(staggered_v));
+        return std::invoke(f, grid(staggered_c));
     }
     constexpr MemoryLocation memoryLocation() const noexcept {
       return gridApply(_primaryGrid,
@@ -778,9 +778,9 @@ namespace zs {
     constexpr GridsView() = default;
     ~GridsView() = default;
     explicit GridsView(GridsT &grids)
-        : _collocatedGrid{proxy<space>({}, grids.grid(collocated_v).blocks)},
-          _cellcenteredGrid{proxy<space>({}, grids.grid(cellcentered_v).blocks)},
-          _staggeredGrid{proxy<space>({}, grids.grid(staggered_v).blocks)},
+        : _collocatedGrid{proxy<space>({}, grids.grid(collocated_c).blocks)},
+          _cellcenteredGrid{proxy<space>({}, grids.grid(cellcentered_c).blocks)},
+          _staggeredGrid{proxy<space>({}, grids.grid(staggered_c).blocks)},
           _dx{grids._dx} {}
 
     template <grid_e category = grid_e::collocated> struct Block {

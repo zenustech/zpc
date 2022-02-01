@@ -43,10 +43,10 @@ namespace zs {
   using attrib_vector_tag = wrapv<attrib_e::vector>;
   using attrib_matrix_tag = wrapv<attrib_e::matrix>;
   using attrib_affine_matrix_tag = wrapv<attrib_e::affine>;
-  constexpr auto scalar_v = attrib_scalar_tag{};
-  constexpr auto vector_v = attrib_vector_tag{};
-  constexpr auto matrix_v = attrib_matrix_tag{};
-  constexpr auto affine_matrix_v = attrib_affine_matrix_tag{};
+  constexpr auto scalar_c = attrib_scalar_tag{};
+  constexpr auto vector_c = attrib_vector_tag{};
+  constexpr auto matrix_c = attrib_matrix_tag{};
+  constexpr auto affine_matrix_c = attrib_affine_matrix_tag{};
 
   template <typename Tag> constexpr bool is_attribute_tag(Tag = {}) noexcept {
     return (
@@ -59,9 +59,9 @@ namespace zs {
   using layout_aos_tag = wrapv<layout_e::aos>;
   using layout_soa_tag = wrapv<layout_e::soa>;
   using layout_aosoa_tag = wrapv<layout_e::aosoa>;
-  constexpr auto aos_v = layout_aos_tag{};
-  constexpr auto soa_v = layout_soa_tag{};
-  constexpr auto aosoa_v = layout_aosoa_tag{};
+  constexpr auto aos_c = layout_aos_tag{};
+  constexpr auto soa_c = layout_soa_tag{};
+  constexpr auto aosoa_c = layout_aosoa_tag{};
 
   template <typename Tag> constexpr bool is_layout_tag(Tag = {}) noexcept {
     return (
@@ -74,9 +74,9 @@ namespace zs {
   using kernel_linear_tag = wrapv<kernel_e::linear>;
   using kernel_quadratic_tag = wrapv<kernel_e::quadratic>;
   using kernel_cubic_tag = wrapv<kernel_e::cubic>;
-  constexpr auto kernel_linear = kernel_linear_tag{};
-  constexpr auto kernel_quad = kernel_quadratic_tag{};
-  constexpr auto kernel_cubic = kernel_cubic_tag{};
+  constexpr auto kernel_linear_c = kernel_linear_tag{};
+  constexpr auto kernel_quad_c = kernel_quadratic_tag{};
+  constexpr auto kernel_cubic_c = kernel_cubic_tag{};
 
   template <typename Tag> constexpr bool is_kernel_tag(Tag = {}) noexcept {
     return (
@@ -89,9 +89,9 @@ namespace zs {
   using grid_collocated_tag = wrapv<grid_e::collocated>;
   using grid_cellcentered_tag = wrapv<grid_e::cellcentered>;
   using grid_staggered_tag = wrapv<grid_e::staggered>;
-  static constexpr auto collocated_v = grid_collocated_tag{};
-  static constexpr auto cellcentered_v = grid_cellcentered_tag{};
-  static constexpr auto staggered_v = grid_staggered_tag{};
+  static constexpr auto collocated_c = grid_collocated_tag{};
+  static constexpr auto cellcentered_c = grid_cellcentered_tag{};
+  static constexpr auto staggered_c = grid_staggered_tag{};
 
   template <typename Tag> constexpr bool is_grid_tag(Tag = {}) noexcept {
     return (

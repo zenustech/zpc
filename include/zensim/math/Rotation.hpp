@@ -5,12 +5,12 @@
 namespace zs {
 
   enum euler_angle_convention_e { roe = 0, ypr };
-  constexpr auto roe_v = wrapv<euler_angle_convention_e::roe>{};
-  constexpr auto ypr_v = wrapv<euler_angle_convention_e::ypr>{};
+  constexpr auto roe_c = wrapv<euler_angle_convention_e::roe>{};
+  constexpr auto ypr_c = wrapv<euler_angle_convention_e::ypr>{};
 
   enum angle_unit_e { radian = 0, degree };
-  constexpr auto radian_v = wrapv<angle_unit_e::radian>{};
-  constexpr auto degree_v = wrapv<angle_unit_e::degree>{};
+  constexpr auto radian_c = wrapv<angle_unit_e::radian>{};
+  constexpr auto degree_c = wrapv<angle_unit_e::degree>{};
   /**
      Imported from ZIRAN, wraps Eigen's Rotation2D (in 2D) and Quaternion (in 3D).
    */

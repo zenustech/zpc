@@ -210,15 +210,15 @@ namespace zs {
       match(
           [&tmp, &dst, hasF, hasPlasticity, this](Particles<f32, 3> &pars) {
             pars.attr("pos") = tmp.X.clone(dst);
-            pars.addAttr("mass", scalar_v) = tmp.M.clone(dst);
-            pars.addAttr("vel", vector_v) = tmp.V.clone(dst);
-            pars.addAttr("Dinv", vector_v) = tmp.V.clone(dst);
+            pars.addAttr("mass", scalar_c) = tmp.M.clone(dst);
+            pars.addAttr("vel", vector_c) = tmp.V.clone(dst);
+            pars.addAttr("Dinv", vector_c) = tmp.V.clone(dst);
             if (hasF)
-              pars.addAttr("F", matrix_v) = tmp.F.clone(dst);
+              pars.addAttr("F", matrix_c) = tmp.F.clone(dst);
             else
-              pars.addAttr("J", scalar_v) = tmp.J.clone(dst);
-            pars.addAttr("C", matrix_v) = tmp.C.clone(dst);
-            if (hasPlasticity) pars.addAttr("logJp", scalar_v) = tmp.logJp0.clone(dst);
+              pars.addAttr("J", scalar_c) = tmp.J.clone(dst);
+            pars.addAttr("C", matrix_c) = tmp.C.clone(dst);
+            if (hasPlasticity) pars.addAttr("logJp", scalar_c) = tmp.logJp0.clone(dst);
             fmt::print("moving {} paticles [{}, {}]\n", pars.attrVector("pos").size(),
                        magic_enum::enum_name(pars.attrVector("pos").memspace()),
                        static_cast<int>(pars.attrVector("pos").devid()));

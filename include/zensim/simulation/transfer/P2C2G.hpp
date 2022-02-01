@@ -164,7 +164,7 @@ namespace zs {
         }  // iterate buckets within neighbor
 
         /// stage 2 (c -> i)
-        auto grid = grids.grid(collocated_v);
+        auto grid = grids.grid(collocated_c);
         coord = coord + 1;  /// move to base coord
         for (auto&& iter : ndrange<dim>(2)) {
           const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);
@@ -414,7 +414,7 @@ namespace zs {
         }  // iterate buckets within neighbor
 
         /// stage 2 (c -> i)
-        auto grid = grids.grid(collocated_v);
+        auto grid = grids.grid(collocated_c);
         coord = coord + 1;  /// move to base coord
         for (auto&& iter : ndrange<dim>(2)) {
           const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);
@@ -656,7 +656,7 @@ namespace zs {
         }  // iterate buckets within neighbor
 
         /// stage 2 (c -> i)
-        auto grid = grids.grid(collocated_v);
+        auto grid = grids.grid(collocated_c);
         coord = coord + 1;  /// move to base coord
         for (auto&& iter : ndrange<dim>(2)) {
           const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);

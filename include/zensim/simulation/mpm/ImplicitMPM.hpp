@@ -21,7 +21,7 @@ namespace zs {
 
       constexpr void operator()(Index i) {
         if (auto mass = m.get(i / dim); mass > 0)
-          Ax.set(i, (f.get(i, scalar_v) * dt * dt + mass) * dv.get(i, scalar_v));
+          Ax.set(i, (f.get(i, scalar_c) * dt * dt + mass) * dv.get(i, scalar_c));
       }
       DofA f;
       DofB m;
@@ -74,7 +74,7 @@ namespace zs {
 
         if (grid[blockid](0, cellid) > 0) {
           // auto vel = block.pack<GridDofView::dim>(1, cellid);
-          auto vel = dof.get(nodei, vector_v);
+          auto vel = dof.get(nodei, vector_c);
           auto pos = (blockkey * (value_type)grid_t::side_length + grid_t::cellid_to_coord(cellid))
                      * grid.dx;
 
@@ -83,7 +83,7 @@ namespace zs {
           dof.set(nodei, vel);
           // block.set(1, cellid, vel);
         } else {  // clear non-dof nodes as well
-          using V = decltype(dof.get(0, vector_v));
+          using V = decltype(dof.get(0, vector_c));
           dof.set(nodei, V::zeros());
         }
       }
@@ -129,7 +129,7 @@ namespace zs {
       DivPernodeMass(DofA a, DofB b, DofC c) : a{a}, b{b}, c{c} {}
 
       constexpr void operator()(Index i) {
-        if (auto mass = b.get(i / dim); mass > 0) c.set(i, a.get(i, scalar_v) / mass);
+        if (auto mass = b.get(i / dim); mass > 0) c.set(i, a.get(i, scalar_c) / mass);
       }
       DofA a;
       DofB b;

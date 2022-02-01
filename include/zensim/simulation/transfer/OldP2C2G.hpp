@@ -59,7 +59,7 @@ namespace zs {
         using TV = vec<value_type, dim>;
 
         /// stage 1 (p -> c)
-        auto grid = grids.grid(cellcentered_v);
+        auto grid = grids.grid(cellcentered_c);
         auto block = grid.block(blockid);
         auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
                      + grids_t::cellid_to_coord(cellid).template cast<typename partition_t::Tn>();
@@ -170,7 +170,7 @@ namespace zs {
       if constexpr (grids_t::dim == 3) {
         float const D_inv = 4.f * dx_inv * dx_inv;
         using value_type = typename GridsT::value_type;
-        auto grid = grids.grid(cellcentered_v);
+        auto grid = grids.grid(cellcentered_c);
         auto coord = partition._activeKeys[blockid] * (typename partition_t::Tn)grids_t::side_length
                      + grids_t::cellid_to_coord(cellid).template cast<typename partition_t::Tn>();
         auto posi = (coord + (value_type)0.5) * dx;
@@ -337,7 +337,7 @@ namespace zs {
           auto arena = make_local_arena<grid_e::cellcentered>(dx, local_pos);
           for (auto loc : arena.range()) {
             auto [grid_block, local_index] = unpack_coord_in_grid(
-                arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_v));
+                arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_c));
             auto xixp = arena.diff(loc);
             VT W = arena.weight(loc);
             const auto cellid = grids_t::coord_to_cellid(local_index);
@@ -419,7 +419,7 @@ namespace zs {
         auto arena = make_local_arena<grid_e::cellcentered>(dx, local_pos);
         for (auto loc : arena.range()) {
           auto [grid_block, local_index] = unpack_coord_in_grid(
-              arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_v));
+              arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_c));
           auto xixp = arena.diff(loc);
           VT W = arena.weight(loc);
           const auto cellid = grids_t::coord_to_cellid(local_index);

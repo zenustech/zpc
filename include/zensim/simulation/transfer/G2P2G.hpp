@@ -68,7 +68,7 @@ namespace zs {
           auto xixp = arena.diff(loc);
           float W = arena.weight(loc);
 
-          vec3 vi = gridv.get(blockno * grid_view_t::block_space() + cellid, vector_v);
+          vec3 vi = gridv.get(blockno * grid_view_t::block_space() + cellid, vector_c);
           // vec3 vi = grid_block.pack<particles_t::dim>(1,
           // grid_view_t::coord_to_cellid(local_index));
           for (int d = 0; d < 9; ++d)

@@ -71,7 +71,7 @@ namespace zs {
         TV v_c{TV::zeros()};
         TM v_cross_x_c{TM::zeros()};
 
-        auto grid = grids.grid(collocated_v);
+        auto grid = grids.grid(collocated_c);
         for (auto&& iter : ndrange<grids_t::dim>(2)) {
           const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);
           const auto posi = coordi * dx;

@@ -49,7 +49,7 @@ namespace zs {
                                       typename DofViewC::size_type>;
       ComputeOp(DofViewA a, DofViewB b, DofViewC c, Op op) : va{a}, vb{b}, vc{c}, op{op} {}
       constexpr void operator()(Index i) {
-        vc.set(i, op(va.get(i, scalar_v), vb.get(i, scalar_v)));
+        vc.set(i, op(va.get(i, scalar_c), vb.get(i, scalar_c)));
       }
 
       DofViewA va;
@@ -76,7 +76,7 @@ namespace zs {
     template <typename DofViewA, typename DofViewB> struct ComputeOp {
       using Index = std::common_type_t<typename DofViewA::size_type, typename DofViewB::size_type>;
       ComputeOp(DofViewA a, DofViewB b, Op<void> op, T v) : va{a}, vb{b}, op{op}, v{v} {}
-      constexpr void operator()(Index i) { vb.set(i, op(va.get(i, scalar_v), v)); }
+      constexpr void operator()(Index i) { vb.set(i, op(va.get(i, scalar_c), v)); }
 
       DofViewA va;
       DofViewB vb;
@@ -104,7 +104,7 @@ namespace zs {
     template <typename DofViewA, typename DofViewB, typename Op> struct ComputeOp {
       using Index = std::common_type_t<typename DofViewA::size_type, typename DofViewB::size_type>;
       ComputeOp(DofViewA a, DofViewB b, Op op) : va{a}, vb{b}, op{op} {}
-      constexpr void operator()(Index i) { vb.set(i, op(va.get(i, scalar_v))); }
+      constexpr void operator()(Index i) { vb.set(i, op(va.get(i, scalar_c))); }
 
       DofViewA va;
       DofViewB vb;

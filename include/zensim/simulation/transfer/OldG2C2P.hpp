@@ -71,7 +71,7 @@ namespace zs {
         TV v_c{TV::zeros()};
         TM v_cross_x_c{TM::zeros()};
 
-        auto grid = grids.grid(collocated_v);
+        auto grid = grids.grid(collocated_c);
         for (auto&& iter : ndrange<grids_t::dim>(2)) {
           const auto coordi = coord + make_vec<typename partition_t::Tn>(iter);
           const auto posi = coordi * dx;
@@ -146,7 +146,7 @@ namespace zs {
       if constexpr (grids_t::dim == 3) {
         float const D_inv = 4.f * dx_inv * dx_inv;
         using value_type = typename GridsT::value_type;
-        auto grid = grids.grid(cellcentered_v);
+        auto grid = grids.grid(cellcentered_c);
         if (bucketno == 0 || buckets.offsets(bucketno + 1) == particles.size()
             || bucketno == buckets.counts.size() - 1)
           printf("bucket %d [%d, %d)\n", bucketno, (int)buckets.offsets(bucketno),
@@ -164,7 +164,7 @@ namespace zs {
           auto arena = make_local_arena<grid_e::cellcentered>(dx, pos);
           for (auto loc : arena.range()) {
             auto [grid_block, local_index] = unpack_coord_in_grid(
-                arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_v));
+                arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_c));
             auto xixp = arena.diff(loc);
             float W = arena.weight(loc);
 
@@ -195,7 +195,7 @@ namespace zs {
         auto arena = make_local_arena<grid_e::cellcentered>(dx, pos);
         for (auto loc : arena.range()) {
           auto [grid_block, local_index] = unpack_coord_in_grid(
-              arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_v));
+              arena.coord(loc), grids_t::side_length, partition, grids.grid(cellcentered_c));
           auto xixp = arena.diff(loc);
           float W = arena.weight(loc);
 

@@ -391,20 +391,6 @@ namespace zs {
 
   /// join
 
-  /// concat
-  template <typename... Seqs> struct concat {
-    static constexpr auto length = (... + Seqs::count);
-    using indices = typename gen_seq<length>::ascend;
-    using counts = value_seq<Seqs::count...>;
-    using outer
-        = decltype(counts{}.template scan<1, std::plus<std::size_t>>().map(count_leq{},
-                                                                           wrapv<length>{}));
-    using inner = decltype(vseq_t<indices>{}.compwise(
-        std::minus<std::size_t>{},
-        counts{}.template scan<0, std::plus<std::size_t>>().shuffle(outer{})));
-    using types = decltype(type_seq<Seqs...>{}.shuffle(outer{}).shuffle_join(inner{}));
-  };
-
   /// sequence manipulation declaration
   template <typename, typename> struct gather;
   /// uniform value sequence

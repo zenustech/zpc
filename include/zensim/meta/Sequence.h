@@ -136,7 +136,7 @@ namespace zs {
       return shuffle_join(value_seq<Is...>{});
     }
   };
-  template <typename... Ts> struct type_seq<type_seq<Ts...>> : type_seq<Ts...> {};
+  // template <typename... Ts> struct type_seq<type_seq<Ts...>> : type_seq<Ts...> {};
   template <typename T> struct is_tseq : std::false_type {};
   template <typename... Ts> struct is_tseq<type_seq<Ts...>> : std::true_type {};
 

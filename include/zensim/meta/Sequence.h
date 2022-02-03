@@ -209,12 +209,10 @@ namespace zs {
       return map(FWD(op), std::make_index_sequence<N>{});
     }
     /// cat
-    template <auto... Is>
-    constexpr auto concat(value_seq<Is...>) const noexcept {
+    template <auto... Is> constexpr auto concat(value_seq<Is...>) const noexcept {
       return value_seq<Ns..., Is...>{};
     }
-    template <typename Ti, Ti... Is>
-    constexpr auto concat(integer_seq<Ti, Is...>) const noexcept {
+    template <typename Ti, Ti... Is> constexpr auto concat(integer_seq<Ti, Is...>) const noexcept {
       return value_seq<Ns..., Is...>{};
     }
     /// shuffle
@@ -326,9 +324,9 @@ namespace zs {
         if constexpr (N == 0)
           return type_seq<>{};
         else if constexpr (N == 1)
-          return seq_lambda(index_v<0>);
+          return seq_lambda(index_c<0>);
         else if constexpr (N == 2)
-          return (*this)(seq_lambda(index_v<0>), seq_lambda(index_v<1>));
+          return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
         else {
           constexpr std::size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
@@ -374,9 +372,9 @@ namespace zs {
         if constexpr (N == 0)
           return type_seq<>{};
         else if constexpr (N == 1)
-          return map_t<type_seq, decltype(seq_lambda(index_v<0>))>{};
+          return map_t<type_seq, decltype(seq_lambda(index_c<0>))>{};
         else if constexpr (N == 2)
-          return (*this)(seq_lambda(index_v<0>), seq_lambda(index_v<1>));
+          return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
         else if constexpr (N > 2) {
           constexpr std::size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
@@ -421,6 +419,27 @@ namespace zs {
   template <typename Seq> using seq_tail_t = typename seq_tail<Seq>::type;
 
   /** placeholder */
+  namespace index_literals {
+    // ref: numeric UDL
+    // Embracing User Defined Literals Safely for Types that Behave as though Built-in
+    // Pablo Halpern
+    template <auto partial> constexpr auto index_impl() noexcept { return partial; }
+    template <auto partial, char c0, char... c> constexpr auto index_impl() noexcept {
+      if constexpr (c0 == '\'')
+        return index_impl<partial, c...>();
+      else {
+        using Tn = decltype(partial);
+        static_assert(c0 >= '0' && c0 <= '9', "Invalid non-numeric character");
+        static_assert(partial <= (limits<Tn>::max() - (c0 - '0')) / 10, "numeric literal overflow");
+        return index_impl<partial *(Tn)10 + (Tn)(c0 - '0'), c...>();
+      }
+    }
+
+    template <char... c> constexpr auto operator""_th() noexcept {
+      constexpr auto id = index_impl<(std::size_t)0, c...>();
+      return index_c<id>;
+    }
+  }  // namespace index_literals
 
   namespace placeholders {
     using placeholder_type = std::size_t;

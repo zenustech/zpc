@@ -67,7 +67,7 @@ namespace zs {
   template <typename T> constexpr bool is_value_wrapper_v = is_value_wrapper<T>::value;
 
   template <std::size_t N> using index_t = integral_t<std::size_t, N>;
-  template <std::size_t N> constexpr index_t<N> index_v{};
+  template <std::size_t N> constexpr index_t<N> index_c{};
 
 #define INST_(T) std::declval<T>()
 

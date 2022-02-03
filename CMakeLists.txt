@@ -47,6 +47,7 @@ set(CMAKE_INSTALL_RPATH $ORIGIN $ORIGIN/${relDir})
 option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
 
 option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
+option(ZS_ENABLE_TEST "Enable Tests" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 set(ZS_ENABLE_SYCL_COMPUTECPP On CACHE BOOL "Enable SYCL[ComputeCpp] backend")
 set(ZS_ENABLE_SYCL_DPCPP Off CACHE BOOL "Enable SYCL[Intel-DPC++] backend")
@@ -144,6 +145,14 @@ message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
 message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}")
+
+
+# ----  Tests  ----
+# =================
+if (ZS_ENABLE_TEST)
+enable_testing()
+add_subdirectory(test)
+endif(ZS_ENABLE_TEST)
 
 # ---- Install ----
 # =================

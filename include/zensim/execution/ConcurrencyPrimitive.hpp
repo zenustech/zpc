@@ -30,19 +30,24 @@ namespace zs {
   void await_equal(std::atomic<i32> &v, i32 desired);
 
   // process-local mutex
-  struct Mutex {
+  struct Mutex : std::atomic<i32> {
     // 0: unlocked
     // 1: locked
-    // 2: locked and contended
+    // 257: locked and contended (...0001 | 00000001)
     void lock();
     void unlock();
     bool trylock();
-
-    std::atomic<i32> m{0};
   };
 
-  struct ConditionVariable {
-    ;
+// 8 bytes alignment for rollover issue
+// https://docs.ntpsec.org/latest/rollover.html
+  struct alignas(16) ConditionVariable {
+    void notify_one();
+    void notify_all();
+    bool wait(Mutex &mut);
+
+    Mutex *m{nullptr}; // 4 bytes, the cv belongs to this mutex
+    std::atomic<i32> seq{0}; // 4 bytes, sequence lock for concurrent wakes and sleeps
   };
 
 #if 0

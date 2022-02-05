@@ -110,54 +110,119 @@ namespace zs {
 #endif
   }
 
-  /// https://locklessinc-com.translate.goog/articles/mutex_cv_futex/?_x_tr_sl=en&_x_tr_tl=en&_x_tr_hl=en-US&_x_tr_pto=op,sc
+  // ref
+  // https://locklessinc-com.translate.goog/articles/mutex_cv_futex/
   void Mutex::lock() {
+#if 0
     int c;
     /* Spin and try to take lock */
     for (int i = 0; i != 128; ++i) {
       c = 0;
-      if (m.compare_exchange_strong(c, 1)) return;
+      if (this->compare_exchange_strong(c, 1, std::memory_order_acq_rel)) return;
       pause_cpu();
     }
 
     /* The lock is now contended */
     if (c == 1) {
-      c = m.exchange(2);
+      c = this->exchange(2, std::memory_order_acq_rel);
     }
 
     while (c) {
       /* Wait in the kernel */
-      Futex::wait(&m, 2);
-      c = m.exchange(2);
+      Futex::wait(this, 2);
+      c = this->exchange(2, std::memory_order_acq_rel);
     }
+#else
+    for (int i = 0; i != 128; ++i) {
+      if ((this->fetch_or(1, std::memory_order_acq_rel) & 1) == 0) return;
+      pause_cpu();
+    }
+
+    while ((this->exchange(257) & 1) == 1)
+      Futex::wait(this, 257);
+#endif
   }
 
   void Mutex::unlock() {
+#if 0
     /* Unlock, and if not contended then exit. */
-    if (m.load() == 2) {
-      m.store(0);
-    } else if (m.exchange(0) == 1)
+    if (this->load(std::memory_order_consume) == 2) {
+      this->store(0, std::memory_order_release);
+    } else if (this->exchange(0, std::memory_order_acq_rel) == 1)
       return;
 
     /* Spin and hope someone takes the lock */
     for (int i = 0; i != 128; ++i) {
-      if (m.load()) { /* Need to set to state 2 because there may be waiters */
+      if (this->load(std::memory_order_consume)) { /* Need to set to state 2 because there may be waiters */
         i32 c = 1; 
-        bool switched = m.compare_exchange_strong(c, 2);
+        bool switched = this->compare_exchange_strong(c, 2, std::memory_order_acq_rel);
         if (switched || c > 0) return;
       }
       pause_cpu();
     }
 
     /* We need to wake someone up */
-    Futex::wake(&m, 1);
+    Futex::wake(this, 1);
     return;
+#else
+    /* Locked and not contended */
+    if (this->load(std::memory_order_consume) == 1) {
+      i32 c = 1;
+      if (this->compare_exchange_strong(c, 0)) 
+        return;
+    }
+    /* Unlock */
+    this->fetch_and(~1, std::memory_order_acq_rel);  // bit-wise not
+    std::atomic_thread_fence(std::memory_order_seq_cst);  // https://stackoverflow.com/questions/19965076/gcc-memory-barrier-sync-synchronize-vs-asm-volatile-memory
+
+    /* Spin and hope someone takes the lock */
+    for (int i = 0; i != 128; ++i) {
+      if ((this->load(std::memory_order_consume) & 1) == 1)
+        return;
+      pause_cpu();
+    }
+
+    /* We need to wake someone up */
+    this->fetch_and(~256, std::memory_order_acq_rel);
+    Futex::wake(this, 1);
+#endif
   }
 
   bool Mutex::trylock() {
     i32 c = 0; 
-    if (m.compare_exchange_strong(c, 1)) return true;
-	  return false;
+    if (this->compare_exchange_strong(c, 1, std::memory_order_acq_rel)) return true;
+	  return false; // resource busy or locked
+  }
+
+  void ConditionVariable::notify_one() {
+    seq.fetch_add(1, std::memory_order_acq_rel);
+    Futex::wake(&seq, 1);
+  }
+
+  void ConditionVariable::notify_all() {
+    if (m == nullptr) return;
+    seq.fetch_add(1, std::memory_order_acq_rel);
+#if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    // cannot find win32 alternative for FUTEX_REQUEUE
+    WakeByAddressAll((void *)&seq);
+#elif defined(__clang__) || defined(__GNUC__)
+    syscall(SYS_futex, reinterpret_cast<i32 *>(&seq), FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1, limits<i32>::max(), m, 0);
+#endif
+  }
+
+  bool ConditionVariable::wait(Mutex &mut) {
+    // https://www.cnblogs.com/bbqzsl/p/6808176.html
+    if (m != &mut) {
+      if (m != nullptr) return false; // invalid argument
+      atomic_cas(exec_seq, (void **)&m, (void *)nullptr, (void *)&mut);
+      if (m != &mut) return false; // invalid argument
+    }
+    m->unlock();
+    Futex::wait(&seq, seq.load(std::memory_order_consume));
+    // value (257) is coupled with mutex internal representation
+    while (m->exchange(257, std::memory_order_acq_rel) & 1)
+      Futex::wait(m, 257);
+    return true;
   }
 
 }  // namespace zs

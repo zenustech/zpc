@@ -268,7 +268,7 @@ if (ENABLE_PCH)
 endif()
 target_link_libraries(zpccore PUBLIC zpc_cxx_deps)
 target_compile_options(zpccore
-  PUBLIC        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2, -O3 $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
+  PUBLIC        $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /EHsc, -O3 $<IF:$<CXX_COMPILER_ID:Clang>, , > >># -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi 
 )
 target_link_options(zpccore
   PUBLIC        $<HOST_LINK:

@@ -8,8 +8,9 @@
 namespace zs {
 
   /// shared within a single process
-  struct Futex : std::atomic<u32> {
-    enum struct result_t {
+  /// blocking construct in the context of shared-memory synchronization
+  struct Futex {
+    enum result_t {
       value_changed,  // when expected != atomic value
       awoken,         // awoken from 'wake' (success state)
       interrupted,    //
@@ -18,10 +19,30 @@ namespace zs {
     // put the current thread to sleep if the expected value matches the value in the atomic
     // waitmask will be saved and compared to the wakemask later in the wake call
     // to check if you wanna wake up this thread or keep it sleeping
-    result_t wait(u32 expected, u32 waitMask = ~(u32)0);
-    result_t waitUntil(u32 expected, i64 deadline, u32 waitMask = ~(u32)0);
+    static result_t wait(std::atomic<i32> *v, i32 expected, i32 waitMask = 0xffffffff);
+    static result_t waitUntil(std::atomic<i32> *v, i32 expected, i64 deadline,
+                              i32 waitMask = 0xffffffff);
     // wake up the thread if (wakeMask & waitMask == true)
-    int wake(int count = limits<int>::max(), u32 wakeMask = ~(u32)0);
+    static int wake(std::atomic<i32> *v, int count = limits<int>::max(), i32 wakeMask = 0xffffffff);
+  };
+
+  void await_change(std::atomic<i32> &v, i32 cur);
+  void await_equal(std::atomic<i32> &v, i32 desired);
+
+  // process-local mutex
+  struct Mutex {
+    // 0: unlocked
+    // 1: locked
+    // 2: locked and contended
+    void lock();
+    void unlock();
+    bool trylock();
+
+    std::atomic<i32> m{0};
+  };
+
+  struct ConditionVariable {
+    ;
   };
 
 #if 0

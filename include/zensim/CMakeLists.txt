@@ -7,7 +7,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     profile/CppTimers.cpp
     execution/Stacktrace.cpp
     execution/ExecutionPolicy.cpp
-    # execution/ConcurrencyPrimitive.cpp
+    execution/ConcurrencyPrimitive.cpp
     # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES

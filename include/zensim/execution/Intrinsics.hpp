@@ -14,6 +14,14 @@
 #if defined(_WIN32)
 #  include <intrin.h>
 #  include <stdlib.h>
+// #  include <windows.h>
+// #  include <synchapi.h>
+
+#elif defined(__linux__)
+#  include <immintrin.h>
+#  include <linux/futex.h>
+#  include <sys/syscall.h> /* Definition of SYS_* constants */
+#  include <unistd.h>
 #endif
 
 namespace zs {
@@ -37,6 +45,17 @@ namespace zs {
 
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
   inline void thread_fence(ExecTag) noexcept {}
+
+  // pause
+  template <typename ExecTag = host_exec_tag,
+            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+  inline void pause_cpu(ExecTag = {}) {
+#if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    YieldProcessor();
+#elif defined(__clang__) || defined(__GNUC__)
+    _mm_pause();
+#endif
+  }
 
   // __activemask
 #if defined(__CUDACC__)
@@ -72,8 +91,9 @@ namespace zs {
     return -1;
   }
 #endif
-  
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+
+  template <typename ExecTag, typename T,
+            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
   inline int count_lz(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return nbytes * 8;
@@ -112,7 +132,8 @@ namespace zs {
   }
 #endif
 
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+  template <typename ExecTag, typename T,
+            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
   inline T reverse_bits(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return 0;

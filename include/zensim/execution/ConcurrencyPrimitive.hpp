@@ -39,15 +39,15 @@ namespace zs {
     bool trylock();
   };
 
-// 8 bytes alignment for rollover issue
-// https://docs.ntpsec.org/latest/rollover.html
+  // 8 bytes alignment for rollover issue
+  // https://docs.ntpsec.org/latest/rollover.html
   struct alignas(16) ConditionVariable {
     void notify_one();
     void notify_all();
     bool wait(Mutex &mut);
 
-    Mutex *m{nullptr}; // 4 bytes, the cv belongs to this mutex
-    std::atomic<i32> seq{0}; // 4 bytes, sequence lock for concurrent wakes and sleeps
+    Mutex *m{nullptr};        // 4 bytes, the cv belongs to this mutex
+    std::atomic<i32> seq{0};  // 4 bytes, sequence lock for concurrent wakes and sleeps
   };
 
 #if 0

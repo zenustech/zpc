@@ -22,7 +22,6 @@ namespace zs {
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_project_sigma(VecInterface<VecT>& S, Tp mu0, Tp lam0) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
-      using T = typename VecT::value_type;
       using Ti = typename VecT::index_type;
 
       auto J = S.prod();

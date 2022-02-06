@@ -138,8 +138,7 @@ namespace zs {
       pause_cpu();
     }
 
-    while ((this->exchange(257) & 1) == 1)
-      Futex::wait(this, 257);
+    while ((this->exchange(257) & 1) == 1) Futex::wait(this, 257);
 #endif
   }
 
@@ -168,17 +167,17 @@ namespace zs {
     /* Locked and not contended */
     if (this->load(std::memory_order_consume) == 1) {
       i32 c = 1;
-      if (this->compare_exchange_strong(c, 0)) 
-        return;
+      if (this->compare_exchange_strong(c, 0)) return;
     }
     /* Unlock */
     this->fetch_and(~1, std::memory_order_acq_rel);  // bit-wise not
-    std::atomic_thread_fence(std::memory_order_seq_cst);  // https://stackoverflow.com/questions/19965076/gcc-memory-barrier-sync-synchronize-vs-asm-volatile-memory
+    std::atomic_thread_fence(
+        std::
+            memory_order_seq_cst);  // https://stackoverflow.com/questions/19965076/gcc-memory-barrier-sync-synchronize-vs-asm-volatile-memory
 
     /* Spin and hope someone takes the lock */
     for (int i = 0; i != 128; ++i) {
-      if ((this->load(std::memory_order_consume) & 1) == 1)
-        return;
+      if ((this->load(std::memory_order_consume) & 1) == 1) return;
       pause_cpu();
     }
 
@@ -189,9 +188,9 @@ namespace zs {
   }
 
   bool Mutex::trylock() {
-    i32 c = 0; 
+    i32 c = 0;
     if (this->compare_exchange_strong(c, 1, std::memory_order_acq_rel)) return true;
-	  return false; // resource busy or locked
+    return false;  // resource busy or locked
   }
 
   void ConditionVariable::notify_one() {
@@ -206,22 +205,22 @@ namespace zs {
     // cannot find win32 alternative for FUTEX_REQUEUE
     WakeByAddressAll((void *)&seq);
 #elif defined(__clang__) || defined(__GNUC__)
-    syscall(SYS_futex, reinterpret_cast<i32 *>(&seq), FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1, limits<i32>::max(), m, 0);
+    syscall(SYS_futex, reinterpret_cast<i32 *>(&seq), FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1,
+            limits<i32>::max(), m, 0);
 #endif
   }
 
   bool ConditionVariable::wait(Mutex &mut) {
     // https://www.cnblogs.com/bbqzsl/p/6808176.html
     if (m != &mut) {
-      if (m != nullptr) return false; // invalid argument
+      if (m != nullptr) return false;  // invalid argument
       atomic_cas(exec_seq, (void **)&m, (void *)nullptr, (void *)&mut);
-      if (m != &mut) return false; // invalid argument
+      if (m != &mut) return false;  // invalid argument
     }
     m->unlock();
     Futex::wait(&seq, seq.load(std::memory_order_consume));
     // value (257) is coupled with mutex internal representation
-    while (m->exchange(257, std::memory_order_acq_rel) & 1)
-      Futex::wait(m, 257);
+    while (m->exchange(257, std::memory_order_acq_rel) & 1) Futex::wait(m, 257);
     return true;
   }
 

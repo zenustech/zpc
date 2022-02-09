@@ -171,7 +171,7 @@ namespace zs {
   };
 
   template <grid_e gt = grid_e::collocated, kernel_e kt = kernel_e::quadratic, int deriv_order = 0,
-            typename T = f32, int dim = 3, typename Ti = int, typename TT = T>
+            typename Ti = int, typename T = f32, int dim = 3, typename TT = T>
   constexpr LocalArena<gt, kt, deriv_order, T, dim, Ti> make_local_arena(TT dx,
                                                                          const vec<T, dim> &pos) {
     LocalArena<gt, kt, deriv_order, T, dim, Ti> ret{};

@@ -43,6 +43,7 @@ namespace zs {
     static constexpr auto category = category_;
     static constexpr int dim = d_;
     static constexpr cell_index_type side_length = SideLength;
+    static constexpr auto block_size = math::pow_integral(side_length, (unsigned)dim);
     using grids_t = Grids<value_type, dim, side_length, allocator_type>;
     static constexpr cell_index_type block_space() noexcept {
       auto ret = side_length;
@@ -438,7 +439,6 @@ namespace zs {
       return grid(chn, id);
     }
 
-    /// named access
     // block
     template <typename VecT, bool is_const = is_const_structure, bool has_name = with_name,
               auto in_block = block_scope,

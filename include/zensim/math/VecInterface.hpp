@@ -211,6 +211,16 @@ namespace zs {
       for (index_type i = 0; i != extent; ++i) r.val(i) = v;
       return r;
     }
+    template <typename F, typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<
+                  decltype(std::declval<F>()(std::declval<typename VecT::index_type>())),
+                  typename VecT::value_type>> = 0>
+    static constexpr auto init(const F& f) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i) r.val(i) = f(i);
+      return r;
+    }
     template <typename VecT = Derived,
               enable_if_all<std::is_convertible_v<int, typename VecT::value_type>> = 0>
     static constexpr auto zeros() noexcept {
@@ -880,5 +890,14 @@ namespace zs {
   template <typename VecT>
   struct is_vec<VecT, std::enable_if_t<std::is_base_of_v<VecInterface<VecT>, VecT>>>
       : std::true_type {};
+
+  template <std::size_t d = 0, typename VecTV, typename VecTM,
+            enable_if_all<VecTV::dim == 1, VecTM::dim + d == VecTV::extent> = 0>
+  constexpr auto xlerp(const VecInterface<VecTV>& diff, const VecInterface<VecTM>& arena) noexcept {
+    if constexpr (VecTM::dim > 1)
+      return linear_interop(diff(d), xlerp<d + 1>(diff, arena[0]), xlerp<d + 1>(diff, arena[1]));
+    else
+      return linear_interop(diff(d), arena(0), arena(1));
+  }
 
 }  // namespace zs

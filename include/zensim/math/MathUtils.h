@@ -534,8 +534,8 @@ namespace zs {
     return excl_suffix_mul(I, Ns...);
   }
 
-  template <typename T, typename Data>
-  constexpr auto linear_interop(T &&alpha, Data &&a, Data &&b) noexcept {
+  template <typename T, typename Data, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr auto linear_interop(T alpha, Data &&a, Data &&b) noexcept {
     return a + (b - a) * alpha;
   }
 

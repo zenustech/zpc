@@ -10,6 +10,7 @@
 
 namespace zs {
 
+#if 0
   template <typename V = f32, typename I = i32, int d = 3> struct MeshObject {
     using ElemT = I[d + 1];
     using TV = V[d];
@@ -26,6 +27,7 @@ namespace zs {
       = variant<MeshObject<f32, i32, 2>, MeshObject<f32, i64, 2>, MeshObject<f32, i32, 3>,
                 MeshObject<f32, i64, 3>, MeshObject<f64, i32, 2>, MeshObject<f64, i64, 2>,
                 MeshObject<f64, i32, 3>, MeshObject<f64, i64, 3>>;
+#endif
 
   template <typename ValueT, int d_, auto SideLength, grid_e category, typename allocator>
   struct Grid;

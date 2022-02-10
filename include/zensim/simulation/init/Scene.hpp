@@ -19,7 +19,7 @@ namespace zs {
 
     // std::vector<GeneralLevelSet> levelsets;
     std::vector<GeneralParticles> particles;
-    std::vector<GeneralMesh> meshes;
+    // std::vector<GeneralMesh> meshes;
     std::vector<GeneralBoundary> boundaries;
     /// (constitutive model [elasticity, plasticity], geometry type, local model index)
     std::vector<std::tuple<ConstitutiveModelConfig, model_e, std::size_t>> models;

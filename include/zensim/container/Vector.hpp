@@ -68,6 +68,17 @@ namespace zs {
                               std::alignment_of_v<value_type>);
     }
 
+    inline value_type getVal(index_type i = 0) const {
+      value_type res[1];
+      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
+           MemoryEntity{memoryLocation(), (void *)(data() + i)}, sizeof(value_type));
+      return res[0];
+    }
+    inline void setVal(value_type v, index_type i = 0) const {
+      copy(MemoryEntity{memoryLocation(), (void *)(data() + i)},
+           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v}, sizeof(value_type));
+    }
+
     struct iterator_impl : IteratorInterface<iterator_impl> {
       template <typename Ti> constexpr iterator_impl(pointer base, Ti &&idx)
           : _base{base}, _idx{static_cast<size_type>(idx)} {}

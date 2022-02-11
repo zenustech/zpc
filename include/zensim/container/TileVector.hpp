@@ -283,7 +283,8 @@ namespace zs {
             swap(tmp);
           }
           return;
-        }
+        } else 
+          _size = newSize;
       }
     }
     constexpr size_type geometric_size_growth(size_type newSize) noexcept {

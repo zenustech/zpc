@@ -226,7 +226,8 @@ namespace zs {
             swap(tmp);
           }
           return;
-        }
+        } else
+          _size = newSize;
       }
     }
 

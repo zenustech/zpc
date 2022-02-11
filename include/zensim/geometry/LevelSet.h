@@ -239,12 +239,6 @@ namespace zs {
 
     /// bounding volume interface
     constexpr auto do_getBoundingBox() const noexcept { return _sdf.getBoundingBox(); }
-    constexpr auto do_getBoxCenter() const noexcept { return _sdf.getBoxCenter(); }
-    constexpr auto do_getBoxSideLengths() const noexcept { return _sdf.getBoxSideLengths(); }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto do_getUniformCoord(const VecInterface<VecT> &x) const noexcept {
-      return _sdf.getUniformCoord(x);
-    }
     /// levelset interface
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
@@ -284,12 +278,18 @@ namespace zs {
         : _lsvSrc{lsvSrc}, _lsvDst{lsvDst}, _stepDt{stepDt}, _alpha{alpha} {}
 
     /// bounding volume interface
-    constexpr auto do_getBoundingBox() const noexcept { return _lsvSrc.getBoundingBox(); }
-    constexpr auto do_getBoxCenter() const noexcept { return _lsvSrc.getBoxCenter(); }
-    constexpr auto do_getBoxSideLengths() const noexcept { return _lsvSrc.getBoxSideLengths(); }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto do_getUniformCoord(const VecInterface<VecT> &pos) const noexcept {
-      return _lsvSrc.getUniformCoord(pos);
+    constexpr auto do_getBoundingBox() const noexcept {
+      auto srcBvp = _lsvSrc.getBoundingBox();
+      auto dstBvp = _lsvDst.getBoundingBox();
+      using TV = RM_CVREF_T(get<0>(srcBvp));  // ADL
+      using Ti = typename TV::index_type;
+      return std::make_tuple(
+          TV::init([&](Ti i) {
+            return get<0>(srcBvp)[i] < get<0>(dstBvp)[i] ? get<0>(srcBvp)[i] : get<0>(dstBvp)[i];
+          }),
+          TV::init([&](Ti i) {
+            return get<1>(srcBvp)[i] > get<1>(dstBvp)[i] ? get<1>(srcBvp)[i] : get<1>(dstBvp)[i];
+          }));
     }
     /// levelset interface
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>

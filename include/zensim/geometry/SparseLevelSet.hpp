@@ -29,7 +29,6 @@ namespace zs {
 
     SparseLevelSet clone(const MemoryHandle mh) const {
       SparseLevelSet ret{};
-      ret._dx = _dx;
       ret._backgroundValue = _backgroundValue;
       ret._backgroundVecValue = _backgroundVecValue;
       ret._table = _table.clone(mh);
@@ -94,7 +93,6 @@ namespace zs {
     }
     void scale(const value_type s) { scale(s * TM::identity()); }
 
-    value_type _dx{1};
     value_type _backgroundValue{0};
     TV _backgroundVecValue{TV::zeros()};
     table_t _table{};
@@ -154,11 +152,10 @@ namespace zs {
     SparseLevelSetView() noexcept = default;
     ~SparseLevelSetView() noexcept = default;
     constexpr SparseLevelSetView(SparseLevelSetT &ls)
-        : _dx{ls._dx},
+        : _table{proxy<Space>(ls._table)},
+          _grid{proxy<Space>({}, ls._grid)},
           _backgroundValue{ls._backgroundValue},
           _backgroundVecValue{ls._backgroundVecValue},
-          _table{proxy<Space>(ls._table)},
-          _grid{proxy<Space>({}, ls._grid)},
           _min{ls._min},
           _max{ls._max},
           _i2wT{ls._i2wT},
@@ -210,15 +207,19 @@ namespace zs {
         }
       }
     }
+
+    constexpr auto do_getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
+
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto getReferencePosition(const VecInterface<VecT> &x) const noexcept {
       // world-to-view: minus trans, div rotation, div scale
       return (x - _i2wT) * _i2wRinv * _i2wSinv;
     }
-    constexpr T getSignedDistance(const TV &x) const noexcept {
-      if (!_grid.hasProperty("sdf")) return limits<T>::max();
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      if (!_grid.hasProperty("sdf")) return limits<value_type>::max();
       /// world to local
-      auto arena = Arena<T>::uniform(_backgroundValue);
+      auto arena = Arena<value_type>::uniform(_backgroundValue);
       IV loc{};
       TV X = getReferencePosition(x);
       for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
@@ -232,9 +233,11 @@ namespace zs {
       }
       return xlerp<0>(diff, arena);
     }
-    constexpr TV getNormal(const TV &x) const noexcept {
-      TV diff{}, v1{}, v2{};
-      T eps = (T)1e-6;
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
+      typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
+      // TV diff{}, v1{}, v2{};
+      value_type eps = (value_type)1e-6;
       /// compute a local partial derivative
       for (int i = 0; i != dim; i++) {
         v1 = x;
@@ -245,14 +248,16 @@ namespace zs {
       }
       return diff.normalized();
     }
-    constexpr TV getMaterialVelocity(const TV &x) const noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
       if (!_grid.hasProperty("vel")) return TV::zeros();
       /// world to local
+      using TV = typename VecT::template variant_vec<value_type, typename VecT::extents>;
       auto arena = Arena<TV>::uniform(_backgroundVecValue);
       IV loc{};
       TV X = getReferencePosition(x);
       for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
-      TV diff = X - loc;
+      auto diff = X - loc;
       for (auto &&offset : ndrange<dim>(2)) {
         auto coord = loc + make_vec<index_type>(offset);
         auto blockid = coord - (coord & (side_length - 1));
@@ -262,7 +267,6 @@ namespace zs {
       }
       return xlerp<0>(diff, arena) * _i2wShat * _i2wRhat;
     }
-    constexpr decltype(auto) getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
     template <std::size_t d, typename Field, enable_if_t<(d == dim - 1)> = 0>
     constexpr auto xlerp(const TV &diff, const Field &arena) const noexcept {
@@ -273,11 +277,10 @@ namespace zs {
       return linear_interop(diff(d), xlerp<d + 1>(diff, arena[0]), xlerp<d + 1>(diff, arena[1]));
     }
 
-    T _dx{0};
-    T _backgroundValue{limits<T>::max()};
-    TV _backgroundVecValue{TV::uniform(limits<T>::max())};
     table_view_t _table{};
     grid_view_t _grid{};
+    T _backgroundValue{limits<T>::max()};
+    TV _backgroundVecValue{TV::uniform(limits<T>::max())};
     TV _min{TV::uniform(limits<T>::max())}, _max{TV::uniform(limits<T>::lowest())};
 
     TV _i2wT{TV::zeros()};

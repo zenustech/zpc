@@ -206,18 +206,20 @@ namespace zs {
           }
 
         // not yet ready
-        value_type d = dis[0] + ls._dx;
+        value_type d = dis[0] + ls._grid._dx;
         if constexpr (dim == 2)
           if (d > dis[1]) {
             d = 0.5
                 * (dis[0] + dis[1]
-                   + zs::sqrt(2 * ls._dx * ls._dx - (dis[1] - dis[0]) * (dis[1] - dis[0])));
+                   + zs::sqrt(2 * ls._grid._dx * ls._grid._dx
+                              - (dis[1] - dis[0]) * (dis[1] - dis[0])));
             if constexpr (dim == 3)
               if (d > dis[2]) {
                 value_type delta = dis[0] + dis[1] + dis[2];
-                delta
-                    = delta * delta
-                      - 3 * (dis[0] * dis[0] + dis[1] * dis[1] + dis[2] * dis[2] - ls._dx * ls._dx);
+                delta = delta * delta
+                        - 3
+                              * (dis[0] * dis[0] + dis[1] * dis[1] + dis[2] * dis[2]
+                                 - ls._grid._dx * ls._grid._dx);
                 if (delta < 0) delta = 0;
                 d = 0.3333 * (dis[0] + dis[1] + dis[2] + zs::sqrt(delta));
               }

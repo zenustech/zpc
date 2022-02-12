@@ -34,7 +34,7 @@ namespace zs {
     ret._backgroundValue = gridPtr->background();
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
     ret._grid = typename SpLs::grid_t{
-        {{"sdf", 1}}, gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
+        {{"sdf", 1}}, (float)gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -59,8 +59,8 @@ namespace zs {
 
     gridPtr->transform().print();
     fmt::print("leaf count: {}. background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
-               leafCount, ret._backgroundValue, ret._grid.dx, ret._min[0], ret._min[1],
-               ret._min[2], ret._max[0], ret._max[1], ret._max[2]);
+               leafCount, ret._backgroundValue, ret._grid.dx, ret._min[0], ret._min[1], ret._min[2],
+               ret._max[0], ret._max[1], ret._max[2]);
 
     vec<float, 4, 4> lsv2w;
     for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
@@ -118,7 +118,7 @@ namespace zs {
     }
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
     ret._grid = typename SpLs::grid_t{
-        {{"vel", 3}}, gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
+        {{"vel", 3}}, (float)gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto corner = box.min();
@@ -143,8 +143,8 @@ namespace zs {
 
     gridPtr->transform().print();
     fmt::print("leaf count: {}. background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
-               leafCount, ret._backgroundValue, ret._grid.dx, ret._min[0], ret._min[1],
-               ret._min[2], ret._max[0], ret._max[1], ret._max[2]);
+               leafCount, ret._backgroundValue, ret._grid.dx, ret._min[0], ret._min[1], ret._min[2],
+               ret._max[0], ret._max[1], ret._max[2]);
 
     vec<float, 4, 4> lsv2w;
     for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];

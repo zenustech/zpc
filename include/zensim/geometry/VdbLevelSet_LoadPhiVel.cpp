@@ -79,7 +79,7 @@ namespace zs {
     }
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
     ret._grid = typename SpLs::grid_t{{{"sdf", 1}, {"vel", 3}},
-                                      sdfGridPtr->transform().voxelSize()[0],
+                                      (float)sdfGridPtr->transform().voxelSize()[0],
                                       leafCount,
                                       memsrc_e::host,
                                       -1};

@@ -294,7 +294,8 @@ namespace zs {
   protected:
   };
 
-  template <typename LS> decltype(auto) sample_from_levelset(const LS &ls, float dx, float ppc) {
+  template <typename LS>
+  inline decltype(auto) sample_from_levelset(const LevelSetInterface<LS> &ls, float dx, float ppc) {
     using T = typename LS::value_type;
     static constexpr int dim = LS::dim;
     auto [minCorner, maxCorner] = ls.getBoundingBox();

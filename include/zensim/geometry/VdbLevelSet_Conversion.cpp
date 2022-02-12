@@ -72,18 +72,18 @@ namespace zs {
     for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
       const TreeType::LeafNodeType &node = *iter;
       if (node.onVoxelCount() > 0) {
-        auto cell = node.beginValueOn();
+        auto cell = node.beginValueAll();
         IV coord{};
         for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
-        auto blockid = coord;
-        for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] -= (coord[d] & (ret.side_length - 1));
+        auto blockid = coord - (coord & (ret.side_length - 1));
         auto blockno = table.insert(blockid);
+        auto block = gridview.block(blockno);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
-          auto sdf = cell.getValue();
-          const auto offset = blockno * ret.block_size + cellid;
-          gridview.voxel("sdf", offset) = sdf;
+          block("sdf", cellid) = cell.getValue();
+          // auto sdf = cell.getValue();
+          // const auto offset = blockno * ret.block_size + cellid;
+          // gridview.voxel("sdf", offset) = sdf;
         }
       }
     }

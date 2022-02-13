@@ -26,6 +26,8 @@ namespace zs {
     using value_t = std::make_signed_t<Index>;
     using status_t = int;
 
+    using index_type = Tn;
+
     using value_type = key_t;
     using allocator_type = AllocatorT;
     using size_type = std::make_unsigned_t<value_t>;

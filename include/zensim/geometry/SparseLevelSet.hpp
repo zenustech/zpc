@@ -27,12 +27,12 @@ namespace zs {
 
     constexpr SparseLevelSet() = default;
 
-    SparseLevelSet clone(const MemoryHandle mh) const {
+    SparseLevelSet clone(const MemoryLocation &mloc) const {
       SparseLevelSet ret{};
       ret._backgroundValue = _backgroundValue;
       ret._backgroundVecValue = _backgroundVecValue;
-      ret._table = _table.clone(mh);
-      ret._grid = _grid.clone(mh);
+      ret._table = _table.clone(mloc);
+      ret._grid = _grid.clone(mloc);
       ret._min = _min;
       ret._max = _max;
       ret._i2wSinv = _i2wSinv;
@@ -211,9 +211,14 @@ namespace zs {
     constexpr auto do_getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto getReferencePosition(const VecInterface<VecT> &x) const noexcept {
+    constexpr auto worldToIndex(const VecInterface<VecT> &x) const noexcept {
       // world-to-view: minus trans, div rotation, div scale
       return (x - _i2wT) * _i2wRinv * _i2wSinv;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
+      // view-to-index: scale, rotate, trans
+      return X * inverse(_i2wSinv) * inverse(_i2wRinv) + _i2wT;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
@@ -221,7 +226,7 @@ namespace zs {
       /// world to local
       auto arena = Arena<value_type>::uniform(_backgroundValue);
       IV loc{};
-      TV X = getReferencePosition(x);
+      TV X = worldToIndex(x);
       for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
       TV diff = X - loc;
       for (auto &&offset : ndrange<dim>(2)) {
@@ -255,7 +260,7 @@ namespace zs {
       using TV = typename VecT::template variant_vec<value_type, typename VecT::extents>;
       auto arena = Arena<TV>::uniform(_backgroundVecValue);
       IV loc{};
-      TV X = getReferencePosition(x);
+      TV X = worldToIndex(x);
       for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
       auto diff = X - loc;
       for (auto &&offset : ndrange<dim>(2)) {
@@ -268,15 +273,6 @@ namespace zs {
       return xlerp<0>(diff, arena) * _i2wShat * _i2wRhat;
     }
 
-    template <std::size_t d, typename Field, enable_if_t<(d == dim - 1)> = 0>
-    constexpr auto xlerp(const TV &diff, const Field &arena) const noexcept {
-      return linear_interop(diff(d), arena(0), arena(1));
-    }
-    template <std::size_t d, typename Field, enable_if_t<(d != dim - 1)> = 0>
-    constexpr auto xlerp(const TV &diff, const Field &arena) const noexcept {
-      return linear_interop(diff(d), xlerp<d + 1>(diff, arena[0]), xlerp<d + 1>(diff, arena[1]));
-    }
-
     table_view_t _table{};
     grid_view_t _grid{};
     T _backgroundValue{limits<T>::max()};
@@ -287,6 +283,123 @@ namespace zs {
     TM _i2wRinv{TM::identity()}, _i2wSinv{TM::identity()};
     TM _i2wRhat{TM::identity()}, _i2wShat{TM::identity()};
   };
+
+#if 0
+  template <execspace_e Space, typename TableT, typename GridT>
+  struct SparseLevelSetView<Space, type_seq<TableT, GridT>>
+      : LevelSetInterface<SparseLevelSetView<Space, type_seq<TableT, GridT>>> {
+    static constexpr bool is_const_structure = std::is_const_v<GridT>;
+    static constexpr auto space = Space;
+    using table_t = remove_cvref_t<TableT>;
+    using table_view_t = RM_CVREF_T(proxy<Space>(std::declval<const table_t &>()));
+    using grid_t = remove_cvref_t<GridT>;
+    using grid_view_t = RM_CVREF_T(proxy<Space>(
+        {}, std::declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
+    static_assert(table_t::dim == grid_t::dim, "dimension mismatch!");
+
+    using value_type = typename grid_t::value_type;
+    using size_type = typename table_t::size_type;
+    using index_type = typename table_t::index_type;
+
+    static constexpr grid_e category = grid_t::category;
+    static constexpr int dim = grid_t::dim;
+    static constexpr auto side_length = grid_t::side_length;
+    static constexpr auto block_size = grid_t::block_size;
+    static_assert(grid_t::is_power_of_two, "block_size should be power of 2");
+
+    using T = value_type;
+    using Ti = index_type;
+    using TV = vec<value_type, dim>;
+    using TM = vec<value_type, dim, dim>;
+    using IV = typename table_t::key_t;
+    using Affine = vec<value_type, dim + 1, dim + 1>;
+
+    template <typename Val, std::size_t... Is>
+    static constexpr auto arena_type_impl(index_seq<Is...>) {
+      return vec<Val, (Is + 1 > 0 ? 2 : 2)...>{};
+    }
+    template <typename Val, int d> static constexpr auto arena_type() {
+      return arena_type_impl<Val>(std::make_index_sequence<d>{});
+    }
+
+    template <typename Val> using Arena = decltype(arena_type<Val, dim>());
+
+    SparseLevelSetView() noexcept = default;
+    ~SparseLevelSetView() noexcept = default;
+    constexpr SparseLevelSetView(TableT &table, GridT &grid)
+        : _table{proxy<Space>(table)}, _grid{proxy<Space>({}, _grid)} {}
+
+    constexpr auto do_getBoundingBox() const noexcept {
+      return std::make_tuple(limits<value_type>::max(), limits<value_type>::lowest());
+    }
+
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto worldToIndex(const VecInterface<VecT> &x) const noexcept {
+      // world-to-view: minus trans, div rotation, div scale
+      return x / _grid.dx;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
+      // view-to-index: scale, rotate, trans
+      return X * _grid.dx;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      if (!_grid.hasProperty("sdf")) return limits<value_type>::max();
+      /// world to local
+      auto arena = Arena<value_type>::uniform(0);
+      IV loc{};
+      TV X = worldToIndex(x);
+      for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
+      TV diff = X - loc;
+      for (auto &&offset : ndrange<dim>(2)) {
+        auto coord = loc + make_vec<index_type>(offset);
+        auto blockid = coord - (coord & (side_length - 1));
+        auto blockno = _table.query(blockid);
+        if (blockno != table_t::sentinel_v)
+          arena.val(offset) = _grid("sdf", blockno, coord - blockid);
+      }
+      return xlerp<0>(diff, arena);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
+      typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
+      // TV diff{}, v1{}, v2{};
+      value_type eps = (value_type)1e-6;
+      /// compute a local partial derivative
+      for (int i = 0; i != dim; i++) {
+        v1 = x;
+        v2 = x;
+        v1(i) = x(i) + eps;
+        v2(i) = x(i) - eps;
+        diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
+      }
+      return diff.normalized();
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      if (!_grid.hasProperty("vel")) return TV::zeros();
+      /// world to local
+      using TV = typename VecT::template variant_vec<value_type, typename VecT::extents>;
+      auto arena = Arena<TV>::uniform(TV::zeros());
+      IV loc{};
+      TV X = worldToIndex(x);
+      for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
+      auto diff = X - loc;
+      for (auto &&offset : ndrange<dim>(2)) {
+        auto coord = loc + make_vec<index_type>(offset);
+        auto blockid = coord - (coord & (side_length - 1));
+        auto blockno = _table.query(blockid);
+        if (blockno != table_t::sentinel_v)
+          arena.val(offset) = _grid.template pack<dim>("vel", blockno, coord - blockid);
+      }
+      return xlerp<0>(diff, arena);
+    }
+
+    table_view_t _table{};
+    grid_view_t _grid{};
+  };
+#endif
 
   template <execspace_e ExecSpace, int dim, grid_e category>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,

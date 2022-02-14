@@ -62,4 +62,15 @@ namespace zs {
 
   template <class R, class... Args> using function = std::function<R(Args...)>;
 
+  template <typename F> struct recursive_lambda {
+    F f;
+
+    template <typename F_> constexpr recursive_lambda(F_ &&f) : f{FWD(f)} {}
+
+    template <typename... Args> constexpr decltype(auto) operator()(Args &&...args) {
+      return std::invoke(f, *this, FWD(args)...);
+    }
+  };
+  template <typename F> recursive_lambda(F &&) -> recursive_lambda<F>;
+
 }  // namespace zs

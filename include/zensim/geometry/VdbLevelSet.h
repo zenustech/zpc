@@ -26,6 +26,9 @@ namespace zs {
   OpenVDBStruct load_vec3fgrid_from_vdb_file(const std::string &fn);
   bool write_floatgrid_to_vdb_file(std::string_view fn, const OpenVDBStruct &grid);
 
+  ///
+  std::vector<const void *> get_floatgrid_interior_leaves(const OpenVDBStruct &grid);
+
   /// floatgrid
   OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SparseLevelSet<3> &grid);
   SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);

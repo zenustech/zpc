@@ -58,7 +58,7 @@ namespace zs {
     static constexpr auto num_cell_bits = bit_count(side_length);
 
     using grid_storage_t
-        = TileVector<value_type, (std::size_t)block_space(), unsigned char, allocator_type>;
+        = TileVector<value_type, (std::size_t)block_size, unsigned char, allocator_type>;
     using size_type = typename grid_storage_t::size_type;
     using channel_counter_type = typename grid_storage_t::channel_counter_type;
 
@@ -82,7 +82,7 @@ namespace zs {
 
     Grid(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
          value_type dx, size_type count = 0)
-        : blocks{allocator, channelTags, count * block_space()}, dx{dx} {}
+        : blocks{allocator, channelTags, count * block_size}, dx{dx} {}
     Grid(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
          memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Grid{get_default_allocator(mre, devid), channelTags, dx, count} {}
@@ -102,7 +102,7 @@ namespace zs {
       return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
 
-    void resize(size_type numBlocks) { blocks.resize(numBlocks * (size_type)block_space()); }
+    void resize(size_type numBlocks) { blocks.resize(numBlocks * (size_type)block_size); }
     bool hasProperty(const SmallString &str) const noexcept { return blocks.hasProperty(str); }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       return blocks.getChannelOffset(str);
@@ -124,7 +124,7 @@ namespace zs {
     static constexpr int dim = d_;
     static constexpr cell_index_type side_length = collocated_grid_t::side_length;
     static constexpr cell_index_type block_space() noexcept {
-      return collocated_grid_t::block_space();
+      return collocated_grid_t::block_size;
     }
     /// ninja optimization
     static constexpr bool is_power_of_two = collocated_grid_t::is_power_of_two;

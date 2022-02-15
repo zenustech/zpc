@@ -233,7 +233,7 @@ namespace zs {
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
-      if (entry == 0) *table._cnt = 0;
+      // if (entry == 0) *table._cnt = 0;
     }
 
     HashTableView table;
@@ -253,10 +253,11 @@ namespace zs {
   void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy, std::size_t tableSize) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto newTableSize = evaluateTableSize(tableSize);
+    if (newTableSize <= _tableSize) return;
     _table.resize(newTableSize);
     _tableSize = newTableSize;
     _activeKeys.resize(newTableSize);
-    policy(range(newTableSize), ResetHashTable{proxy<space>(*this)});
+    policy(range(newTableSize), ResetHashTable{proxy<space>(*this)});  // don't clear cnt
     const auto numEntries = size();
     policy(range(numEntries), ReinsertHashTable{proxy<space>(*this)});
   }

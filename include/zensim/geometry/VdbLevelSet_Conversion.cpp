@@ -219,6 +219,46 @@ namespace zs {
         // gridview.voxel("sdf", offset) = sdf;
       }
     }
+    /// iterate over all inactive tiles that have negative values
+    // Visit all of the grid's inactive tile and voxel values and update the values
+    // that correspond to the interior region.
+    for (GridType::ValueOffCIter iter = gridPtr->cbeginValueOff(); iter; ++iter) {
+      if (iter.getValue() < 0.0) {
+        auto coord = iter.getCoord();
+        auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+        auto loc = (coord_ & (ret.side_length - 1));
+        coord_ -= loc;
+        auto blockno = table.query(coord_);
+        if (blockno < 0) {
+          auto nbs = ret._table.size();
+          ret._table.resize(seq_exec(), nbs + 1);
+          ret._grid.resize(nbs + 1);
+          table = proxy<execspace_e::host>(ret._table);
+          gridview = proxy<execspace_e::host>(ret._grid);
+
+          blockno = table.insert(coord_);
+#if 0
+          fmt::print("inserting block ({}, {}, {}) [{}] at loc ({}, {}, {})\n", coord_[0],
+                     coord_[1], coord_[2], blockno, loc[0], loc[1], loc[2]);
+#endif
+          auto block = gridview.block(blockno);
+          for (auto cellno = 0; cellno != ret.block_size; ++cellno)
+            block("sdf", cellno) = -ret._backgroundValue;
+        }
+        auto block = gridview.block(blockno);
+        block("sdf", loc) = iter.getValue();
+#if 0
+        fmt::print("coord [{}, {}, {}], table query: {}\n", coord_[0], coord_[1], coord_[2], );
+        fmt::print("-> [{}, {}, {}] - [{}, {}, {}]; level: {}, depth: {} (ld: {})\n", st[0], st[1],
+                   st[2], ed[0], ed[1], ed[2], level, iter.getDepth(), iter.getLeafDepth());
+        auto k = (ed[0] - st[0]) / ret.side_length;
+        for (auto offset : ndrange<3>(k)) {
+          auto blockid = corner + make_vec<int>(offset);
+          fmt::print("\t[{}, {}, {}]\n", blockid[0], blockid[1], blockid[2]);
+        }
+#endif
+      }
+    }
     if constexpr (false) {
       auto lsv = proxy<execspace_e::host>(ret);
 #if 1

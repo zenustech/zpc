@@ -188,6 +188,11 @@ namespace zs {
     TM _i2wShat{TM::identity()}, _i2wRhat{TM::identity()};
   };
 
+  template <typename T, typename = void> struct is_spls : std::false_type {};
+  template <int dim, grid_e category> struct is_spls<SparseLevelSet<dim, category>>
+      : std::true_type {};
+  template <typename T> constexpr bool is_spls_v = is_spls<T>::value;
+
   using GeneralSparseLevelSet
       = variant<SparseLevelSet<3, grid_e::collocated>, SparseLevelSet<2, grid_e::collocated>>;
 

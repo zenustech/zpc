@@ -63,18 +63,20 @@ namespace zs {
     template <analytic_geometry_e type = analytic_geometry_e::Plane> using analytic_ls_t
         = AnalyticLevelSet<type, value_type, dim>;
     /// raw levelset type list
-    using raw_sdf_ls_tl
-        = type_seq<clspls_t, ccspls_t, sgspls_t, analytic_ls_t<analytic_geometry_e::Plane>
+    using raw_sdf_ls_tl = type_seq<clspls_t, ccspls_t
 #if 0
-                               ,analytic_ls_t<analytic_geometry_e::Cuboid>,
-                               analytic_ls_t<analytic_geometry_e::Sphere>,
-                               analytic_ls_t<analytic_geometry_e::Cylinder>
+                                   ,
+                                   sgspls_t, analytic_ls_t<analytic_geometry_e::Plane>,
+                                   analytic_ls_t<analytic_geometry_e::Cuboid>,
+                                   analytic_ls_t<analytic_geometry_e::Sphere>,
+                                   analytic_ls_t<analytic_geometry_e::Cylinder>
 #endif
-                   >;
-    using raw_vel_ls_tl = type_seq<dummy_ls_t, clspls_t, ccspls_t, sgspls_t, uniform_vel_ls_t>;
+                                   >;
+    using raw_vel_ls_tl = type_seq<dummy_ls_t /*, clspls_t, ccspls_t*/, sgspls_t, uniform_vel_ls_t>;
     // should automatically compute from the above two typelists
     using raw_ls_tl = type_seq<dummy_ls_t, clspls_t, ccspls_t, sgspls_t,
-                               analytic_ls_t<analytic_geometry_e::Plane>, uniform_vel_ls_t>;
+                               // analytic_ls_t<analytic_geometry_e::Plane>,
+                               uniform_vel_ls_t>;
     /// shared_ptr of const raw levelsets
     using basic_ls_ptr_t = assemble_t<variant, map_t<std::shared_ptr, raw_ls_tl>>;
     using const_basic_ls_ptr_t

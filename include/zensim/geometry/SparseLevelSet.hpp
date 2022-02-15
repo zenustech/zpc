@@ -15,6 +15,7 @@ namespace zs {
     static constexpr int side_length = 8;
     static constexpr auto category = category_;
     using value_type = f32;
+    using allocator_type = ZSPmrAllocator<>;
     using index_type = i32;
     using IV = vec<index_type, dim>;
     using TV = vec<value_type, dim>;
@@ -23,16 +24,85 @@ namespace zs {
     using grid_t = Grid<value_type, dim, side_length, category>;
     using size_type = typename grid_t::size_type;
     using table_t = HashTable<index_type, dim, size_type>;
+
+    using coord_index_type = typename grid_t::coord_index_type;
+    using channel_counter_type = typename grid_t::channel_counter_type;
+    // using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
+    using cell_index_type = typename grid_t::cell_index_type;
     static constexpr auto block_size = grid_traits<grid_t>::block_size;
 
-    constexpr SparseLevelSet() = default;
+    constexpr MemoryLocation memoryLocation() const noexcept { return _grid.memoryLocation(); }
+    constexpr ProcID devid() const noexcept { return _grid.devid(); }
+    constexpr memsrc_e memspace() const noexcept { return _grid.memspace(); }
+    constexpr auto size() const noexcept { return _grid.size(); }
+    decltype(auto) get_allocator() const noexcept { return _grid.get_allocator(); }
+    decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
+      if constexpr (is_virtual_zs_allocator<allocator_type>::value)
+        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+      else
+        return get_memory_source(mre, devid);
+    }
+    constexpr decltype(auto) numBlocks() const noexcept { return _grid.numBlocks(); }
+    constexpr channel_counter_type numChannels() const noexcept { return _grid.numChannels(); }
 
-    SparseLevelSet clone(const MemoryLocation &mloc) const {
+    SparseLevelSet(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
+                   value_type dx, size_type count = 0)
+        : _backgroundValue{(value_type)0},
+          _backgroundVecValue{TV::zeros()},
+          _table{allocator, count},
+          _grid{allocator, channelTags, dx, count},
+          _min{TV::uniform(limits<value_type>::max())},
+          _max{TV::uniform(limits<value_type>::lowest())},
+          _i2wSinv{TM::identity() / dx},
+          _i2wRinv{TM::identity()},
+          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
+          _i2wShat{TM::identity() * dx},
+          _i2wRhat{TM::identity()} {}
+    SparseLevelSet(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
+                   memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : _backgroundValue{(value_type)0},
+          _backgroundVecValue{TV::zeros()},
+          _table{count, mre, devid},
+          _grid{channelTags, dx, count, mre, devid},
+          _min{TV::uniform(limits<value_type>::max())},
+          _max{TV::uniform(limits<value_type>::lowest())},
+          _i2wSinv{TM::identity() / dx},
+          _i2wRinv{TM::identity()},
+          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
+          _i2wShat{TM::identity() * dx},
+          _i2wRhat{TM::identity()} {}
+    SparseLevelSet(channel_counter_type numChns, value_type dx, size_type count,
+                   memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : _backgroundValue{(value_type)0},
+          _backgroundVecValue{TV::zeros()},
+          _table{count, mre, devid},
+          _grid{numChns, dx, count, mre, devid},
+          _min{TV::uniform(limits<value_type>::max())},
+          _max{TV::uniform(limits<value_type>::lowest())},
+          _i2wSinv{TM::identity() / dx},
+          _i2wRinv{TM::identity()},
+          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
+          _i2wShat{TM::identity() * dx},
+          _i2wRhat{TM::identity()} {}
+    SparseLevelSet(value_type dx = 1.f, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : _backgroundValue{(value_type)0},
+          _backgroundVecValue{TV::zeros()},
+          _table{mre, devid},
+          _grid{dx, mre, devid},
+          _min{TV::uniform(limits<value_type>::max())},
+          _max{TV::uniform(limits<value_type>::lowest())},
+          _i2wSinv{TM::identity() / dx},
+          _i2wRinv{TM::identity()},
+          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
+          _i2wShat{TM::identity() * dx},
+          _i2wRhat{TM::identity()} {}
+
+    SparseLevelSet clone(const allocator_type &allocator) const {
       SparseLevelSet ret{};
       ret._backgroundValue = _backgroundValue;
       ret._backgroundVecValue = _backgroundVecValue;
-      ret._table = _table.clone(mloc);
-      ret._grid = _grid.clone(mloc);
+      ret._table = _table.clone(allocator);
+      ret._grid = _grid.clone(allocator);
       ret._min = _min;
       ret._max = _max;
       ret._i2wSinv = _i2wSinv;
@@ -41,6 +111,18 @@ namespace zs {
       ret._i2wShat = _i2wShat;
       ret._i2wRhat = _i2wRhat;
       return ret;
+    }
+    SparseLevelSet clone(const MemoryLocation &mloc) const {
+      return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
+    }
+
+    template <typename ExecPolicy> void resize(ExecPolicy &&policy, size_type numBlocks) {
+      _table.resize(FWD(policy), numBlocks);
+      _grid.resize(numBlocks);
+    }
+    bool hasProperty(const SmallString &str) const noexcept { return _grid.hasProperty(str); }
+    constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
+      return _grid.getChannelOffset(str);
     }
 
     template <typename VecTM,
@@ -97,7 +179,8 @@ namespace zs {
     TV _backgroundVecValue{TV::zeros()};
     table_t _table{};
     grid_t _grid{};
-    TV _min{}, _max{};
+    TV _min{TV::uniform(limits<value_type>::max())},
+        _max{TV::uniform(limits<value_type>::lowest())};
     // initial index-to-world affine transformation
     TM _i2wSinv{TM::identity()}, _i2wRinv{TM::identity()};
     TV _i2wT{TV::zeros()};
@@ -218,7 +301,7 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
       // view-to-index: scale, rotate, trans
-      return X * inverse(_i2wSinv) * inverse(_i2wRinv) + _i2wT;
+      return X * _i2wShat * _i2wRhat + _i2wT;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {

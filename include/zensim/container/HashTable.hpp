@@ -213,7 +213,7 @@ namespace zs {
       return make_iterator<const_iterator_impl>(_activeKeys.data(), size());
     }
 
-    template <typename Policy> void resize(Policy &&, std::size_t tableSize);
+    template <typename Policy> void resize(Policy &&, std::size_t numExpectedEntries);
 
     Table _table;
     allocator_type _allocator;
@@ -250,9 +250,10 @@ namespace zs {
   };
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
-  void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy, std::size_t tableSize) {
+  void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy,
+                                                    std::size_t numExpectedEntries) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    const auto newTableSize = evaluateTableSize(tableSize);
+    const auto newTableSize = evaluateTableSize(numExpectedEntries);
     if (newTableSize <= _tableSize) return;
     _table.resize(newTableSize);
     _tableSize = newTableSize;

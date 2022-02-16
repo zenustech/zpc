@@ -357,18 +357,21 @@ namespace zs {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto s = size();
     auto tags = getPropertyTags();
+    bool modified = false;
     for (const auto &tag : appendTags) {
       std::size_t i = 0;
       for (; i != tags.size(); ++i)
         if (tags[i].name == tag.name) break;
-      if (i == tags.size())
+      if (i == tags.size()) {
         tags.push_back(tag);
-      else if (tags[i].numChannels != tag.numChannels)
+        modified = true;
+      } else if (tags[i].numChannels != tag.numChannels)
         throw std::runtime_error(
             fmt::format("append_channels: property[{}] currently has [{}] channels, cannot change "
                         "it to [{}] channels.",
                         tag.name, tags[i].numChannels, tag.numChannels));
     }
+    if (!modified) return;
     TileVector<T, Length, ChnT, Allocator> tmp{get_allocator(), tags, s};
     policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);

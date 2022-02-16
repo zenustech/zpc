@@ -130,9 +130,16 @@ namespace zs {
     }
 
     bool hasProperty(const SmallString &str) const noexcept { return _grid.hasProperty(str); }
+    constexpr channel_counter_type getChannelSize(const SmallString &str) const {
+      return _grid.getChannelSize(str);
+    }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       return _grid.getChannelOffset(str);
     }
+    constexpr PropertyTag getPropertyTag(std::size_t i = 0) const {
+      return _grid.getPropertyTag(i);
+    }
+    constexpr const auto &getPropertyTags() const { return _grid.getPropertyTags(); }
 
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
@@ -209,7 +216,11 @@ namespace zs {
 
   template <execspace_e Space, typename SparseLevelSetT>
   struct SparseLevelSetView<Space, SparseLevelSetT>
-      : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>> {
+      : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>>,
+        RM_CVREF_T(
+            proxy<Space>({}, std::declval<conditional_t<std::is_const_v<SparseLevelSetT>,
+                                                        const typename SparseLevelSetT::grid_t &,
+                                                        typename SparseLevelSetT::grid_t &>>())) {
     static constexpr bool is_const_structure = std::is_const_v<SparseLevelSetT>;
     static constexpr auto space = Space;
     using ls_t = std::remove_const_t<SparseLevelSetT>;

@@ -112,9 +112,16 @@ namespace zs {
     }
 
     bool hasProperty(const SmallString &str) const noexcept { return blocks.hasProperty(str); }
+    constexpr channel_counter_type getChannelSize(const SmallString &str) const {
+      return blocks.getChannelSize(str);
+    }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       return blocks.getChannelOffset(str);
     }
+    constexpr PropertyTag getPropertyTag(std::size_t i = 0) const {
+      return blocks.getPropertyTag(i);
+    }
+    constexpr const auto &getPropertyTags() const { return blocks.getPropertyTags(); }
 
     grid_storage_t blocks;
     value_type dx;

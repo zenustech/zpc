@@ -103,6 +103,11 @@ namespace zs {
     }
 
     void resize(size_type numBlocks) { blocks.resize(numBlocks * (size_type)block_size); }
+    template <typename Policy>
+    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
+      blocks.append_channels(FWD(policy), tags);
+    }
+
     bool hasProperty(const SmallString &str) const noexcept { return blocks.hasProperty(str); }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       return blocks.getChannelOffset(str);

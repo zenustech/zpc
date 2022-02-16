@@ -120,6 +120,11 @@ namespace zs {
       _table.resize(FWD(policy), numBlocks);
       _grid.resize(numBlocks);
     }
+    template <typename Policy>
+    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
+      _grid.append_channels(FWD(policy), tags);
+    }
+
     bool hasProperty(const SmallString &str) const noexcept { return _grid.hasProperty(str); }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       return _grid.getChannelOffset(str);

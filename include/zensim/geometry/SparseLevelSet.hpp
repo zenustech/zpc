@@ -124,6 +124,9 @@ namespace zs {
     void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
       _grid.append_channels(FWD(policy), tags);
     }
+    template <typename Policy> void reset(Policy &&policy, value_type val) {
+      _grid.reset(FWD(policy), val);
+    }
 
     bool hasProperty(const SmallString &str) const noexcept { return _grid.hasProperty(str); }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
@@ -226,7 +229,11 @@ namespace zs {
     using IV = typename ls_t::IV;
     using Affine = typename ls_t::Affine;
 
-    static constexpr grid_e category = grid_t::category;
+    using coord_index_type = typename ls_t::coord_index_type;
+    using channel_counter_type = typename ls_t::channel_counter_type;
+    using cell_index_type = typename ls_t::cell_index_type;
+
+    static constexpr grid_e category = ls_t::category;
     static constexpr int dim = ls_t::dim;
     static constexpr auto side_length = ls_t::side_length;
     static constexpr auto block_size = ls_t::block_size;
@@ -300,6 +307,26 @@ namespace zs {
         }
       }
     }
+
+    constexpr const SmallString *getPropertyNames() const noexcept {
+      return _grid.getPropertyNames();
+    }
+    constexpr const channel_counter_type *getPropertyOffsets() const noexcept {
+      return _grid.getPropertyOffsets();
+    }
+    constexpr const channel_counter_type *getPropertySizes() const noexcept {
+      return _grid.getPropertySizes();
+    }
+    constexpr channel_counter_type numProperties() const noexcept { return _grid.numProperties(); }
+    constexpr channel_counter_type propertyIndex(const SmallString &propName) const noexcept {
+      return _grid.propertyIndex(propName);
+    }
+    constexpr bool hasProperty(const SmallString &propName) const noexcept {
+      return _grid.hasProperty(propName);
+    }
+    constexpr auto numCells() const noexcept { return _grid.numCells(); }
+    constexpr auto numBlocks() const noexcept { return _grid.numBlocks(); }
+    constexpr auto numChannels() const noexcept { return _grid.numChannels(); }
 
     constexpr auto do_getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 

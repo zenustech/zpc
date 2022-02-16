@@ -107,6 +107,9 @@ namespace zs {
     void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
       blocks.append_channels(FWD(policy), tags);
     }
+    template <typename Policy> void reset(Policy &&policy, value_type val) {
+      blocks.reset(FWD(policy), val);
+    }
 
     bool hasProperty(const SmallString &str) const noexcept { return blocks.hasProperty(str); }
     constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
@@ -364,6 +367,27 @@ namespace zs {
     GridView() noexcept = default;
     constexpr GridView(view_t g, value_type dx) noexcept : grid{g}, dx{dx} {}
 
+    template <auto V = with_name>
+    constexpr std::enable_if_t<V, const SmallString *> getPropertyNames() const noexcept {
+      return grid.getPropertyNames();
+    }
+    template <auto V = with_name>
+    constexpr std::enable_if_t<V, const channel_counter_type *> getPropertyOffsets()
+        const noexcept {
+      return grid.getPropertyOffsets();
+    }
+    template <auto V = with_name>
+    constexpr std::enable_if_t<V, const channel_counter_type *> getPropertySizes() const noexcept {
+      return grid.getPropertySizes();
+    }
+    template <auto V = with_name>
+    constexpr std::enable_if_t<V, channel_counter_type> numProperties() const noexcept {
+      return grid.numProperties();
+    }
+    template <auto V = with_name> constexpr std::enable_if_t<V, channel_counter_type> propertyIndex(
+        const SmallString &propName) const noexcept {
+      return grid.propertyIndex(propName);
+    }
     template <auto V = with_name>
     constexpr std::enable_if_t<V, bool> hasProperty(const SmallString &propName) const noexcept {
       return grid.hasProperty(propName);

@@ -287,6 +287,8 @@ namespace zs {
           _size = newSize;
       }
     }
+    template <typename Policy> void reset(Policy &&policy, value_type val);
+
     constexpr size_type geometric_size_growth(size_type newSize) noexcept {
       size_type geometricSize = capacity();
       geometricSize = geometricSize + geometricSize / 2;
@@ -340,7 +342,12 @@ namespace zs {
     TileVectorCopy(TileVectorView src, TileVectorView dst) : src{src}, dst{dst} {}
     constexpr void operator()(size_type i) {
       const auto nchns = src.numChannels();
-      for (channel_counter_type chn = 0; chn != nchns; ++chn) dst(chn, i) = src(chn, i);
+      channel_counter_type chn = 0;
+      for (; chn != nchns; ++chn) dst(chn, i) = src(chn, i);
+      /// zero-initialize newly appended channels
+      // note: do not rely on this convention!
+      const auto totalchns = dst.numChannels();
+      for (; chn != totalchns; ++chn) dst(chn, i) = 0;
     }
     TileVectorView src, dst;
   };
@@ -365,6 +372,24 @@ namespace zs {
     TileVector<T, Length, ChnT, Allocator> tmp{get_allocator(), tags, s};
     policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);
+  }
+  template <typename TileVectorView> struct TileVectorReset {
+    using size_type = typename TileVectorView::size_type;
+    using value_type = typename TileVectorView::value_type;
+    using channel_counter_type = typename TileVectorView::channel_counter_type;
+    TileVectorReset(TileVectorView tv, value_type val) : tv{tv}, v{val} {}
+    constexpr void operator()(size_type i) {
+      const auto nchns = tv.numChannels();
+      for (channel_counter_type chn = 0; chn != nchns; ++chn) tv(chn, i) = v;
+    }
+    TileVectorView tv;
+    value_type v;
+  };
+  template <typename T, std::size_t Length, typename ChnT, typename Allocator>
+  template <typename Policy>
+  void TileVector<T, Length, ChnT, Allocator>::reset(Policy &&policy, value_type val) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    policy(range(size()), TileVectorReset{proxy<space>(*this), val});
   }
 
   template <execspace_e Space, typename TileVectorT, bool WithinTile, typename = void>
@@ -637,6 +662,10 @@ namespace zs {
           _tagSizes{tagSizes},
           _N{N} {}
 
+    constexpr auto getPropertyNames() const noexcept { return _tagNames; }
+    constexpr auto getPropertyOffsets() const noexcept { return _tagOffsets; }
+    constexpr auto getPropertySizes() const noexcept { return _tagSizes; }
+    constexpr auto numProperties() const noexcept { return _N; }
     constexpr auto propertyIndex(const SmallString &propName) const noexcept {
       channel_counter_type i = 0;
       for (; i != _N; ++i)

@@ -285,13 +285,20 @@ namespace zs {
     using Tn = typename hash_table_type::Tn;
     using key_t = typename hash_table_type::key_t;
     using value_t = typename hash_table_type::value_t;
-    using unsigned_value_t = std::make_unsigned_t<value_t>;
+    using unsigned_value_t
+        = conditional_t<sizeof(value_t) == 2, u16, conditional_t<sizeof(value_t) == 4, u32, u64>>;
+    static_assert(sizeof(value_t) == sizeof(unsigned_value_t),
+                  "value_t and unsigned_value_t of different sizes");
     using status_t = typename hash_table_type::status_t;
     struct table_t {
       conditional_t<is_const_structure, const key_t *, key_t *> keys{nullptr};
       conditional_t<is_const_structure, const value_t *, value_t *> indices{nullptr};
       conditional_t<is_const_structure, const status_t *, status_t *> status{nullptr};
     };
+
+    static constexpr auto key_scalar_sentinel_v = hash_table_type::key_scalar_sentinel_v;
+    static constexpr auto sentinel_v = hash_table_type::sentinel_v;
+    static constexpr auto status_sentinel_v = hash_table_type::status_sentinel_v;
 
     HashTableView() noexcept = default;
     explicit constexpr HashTableView(HashTableT &table)

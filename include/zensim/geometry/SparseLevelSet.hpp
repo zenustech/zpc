@@ -42,7 +42,8 @@ namespace zs {
       else
         return get_memory_source(mre, devid);
     }
-    constexpr decltype(auto) numBlocks() const noexcept { return _grid.numBlocks(); }
+    /// do not use grid's numBlocks()
+    constexpr decltype(auto) numBlocks() const noexcept { return _table.size(); }
     constexpr channel_counter_type numChannels() const noexcept { return _grid.numChannels(); }
 
     SparseLevelSet(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,

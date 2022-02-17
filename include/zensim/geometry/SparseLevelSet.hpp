@@ -419,12 +419,40 @@ namespace zs {
                          const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
       return isample(propName, worldToIndex(x), defaultVal, ktTag);
     }
+    //
+    template <typename VecT, kernel_e kt = kernel_e::linear,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type isample(channel_counter_type chn, const VecInterface<VecT> &X,
+                                 const value_type defaultVal, wrapv<kt> = {}) const noexcept {
+      static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
+      /// world to local
+      if constexpr (category == grid_e::staggered) {
+        const auto orientation = chn % dim;
+        IV loc{};
+        value_type diff = X(orientation) - zs::floor(X(orientation));
+        auto [blockno, cellno] = decompose_coord(loc);
+        auto neighborLoc = loc;
+        ++neighborLoc(orientation);
+        auto [bno, cno] = decompose_coord(neighborLoc);
+        return linear_interop(diff, value_or(chn, blockno, cellno, defaultVal),
+                              value_or(chn, bno, cno, defaultVal));
+      } else {
+        Arena<value_type> arena{};
+        IV loc{};
+        for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
+        TV diff = X - loc;
+        for (auto &&offset : ndrange<dim>(2)) {
+          auto [bno, cno] = decompose_coord(loc + make_vec<index_type>(offset));
+          arena.val(offset) = value_or(chn, bno, cno, defaultVal);
+        }
+        return xlerp<0>(diff, arena);
+      }
+    }
     template <typename VecT, kernel_e kt = kernel_e::linear,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr value_type isample(const SmallString &propName, channel_counter_type chn,
                                  const VecInterface<VecT> &X, const value_type defaultVal,
-                                 wrapv<kt> = {}) const noexcept {
-      static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
+                                 wrapv<kt> ktTag = {}) const noexcept {
       {  // channel index check
         auto pid = _grid.propertyIndex(propName);
         if (pid == _grid.numProperties())
@@ -432,37 +460,31 @@ namespace zs {
         else if (chn >= _grid.getPropertySizes()[pid])
           return defaultVal;
       }
-      /// world to local
-      if constexpr (category == grid_e::staggered) {
-        const auto orientation = chn % dim;
-        const auto propOffset = _grid.propertyOffset(propName);
-        IV loc{};
-        value_type diff = X(orientation) - zs::floor(X(orientation));
-        auto [blockno, cellno] = decompose_coord(loc);
-        auto neighborLoc = loc;
-        ++neighborLoc(orientation);
-        auto [bno, cno] = decompose_coord(neighborLoc);
-        return linear_interop(diff, value_or(propOffset + orientation, blockno, cellno, defaultVal),
-                              value_or(propOffset + orientation, bno, cno, defaultVal));
-      } else {
-        const auto propOffset = _grid.propertyOffset(propName);
-        Arena<value_type> arena{};
-        IV loc{};
-        for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
-        TV diff = X - loc;
-        for (auto &&offset : ndrange<dim>(2)) {
-          auto [bno, cno] = decompose_coord(loc + make_vec<index_type>(offset));
-          arena.val(offset) = value_or(propOffset + chn, bno, cno, defaultVal);
-        }
-        return xlerp<0>(diff, arena);
-      }
+      const auto propOffset = _grid.propertyOffset(propName);
+      return isample(propOffset + chn, X, defaultVal, ktTag);
     }
     template <typename VecT, kernel_e kt = kernel_e::linear,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr value_type wsample(const SmallString &propName, channel_counter_type chn,
                                  const VecInterface<VecT> &x, const value_type defaultVal,
                                  wrapv<kt> ktTag = {}) const noexcept {
-      return isample(propName, chn, worldToIndex(x), defaultVal, ktTag);
+      {  // channel index check
+        auto pid = _grid.propertyIndex(propName);
+        if (pid == _grid.numProperties())
+          return defaultVal;
+        else if (chn >= _grid.getPropertySizes()[pid])
+          return defaultVal;
+      }
+      const auto propOffset = _grid.propertyOffset(propName);
+      return isample(propOffset + chn, worldToIndex(x), defaultVal, ktTag);
+    }
+    template <typename VecT, kernel_e kt = kernel_e::linear,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type wsample(channel_counter_type chn, const VecInterface<VecT> &x,
+                                 const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
+      // channel index check
+      if (chn >= _grid.numChannels()) return defaultVal;
+      return isample(chn, worldToIndex(x), defaultVal, ktTag);
     }
 
     /// levelset interface

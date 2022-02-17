@@ -478,6 +478,23 @@ namespace zs {
     }
     template <bool is_const = is_const_structure, auto in_block = block_scope,
               enable_if_all<!is_const, !in_block> = 0>
+    constexpr auto &operator()(channel_counter_type c, const size_type blockno,
+                               cell_index_type cellno) noexcept {
+      if constexpr (is_power_of_two)
+        return grid(c, (blockno << (size_type)num_block_bits) | (size_type)cellno);
+      else
+        return grid(c, blockno * (size_type)block_size + (size_type)cellno);
+    }
+    template <auto in_block = block_scope, enable_if_all<!in_block> = 0>
+    constexpr auto operator()(channel_counter_type c, const size_type blockno,
+                              cell_index_type cellno) const noexcept {
+      if constexpr (is_power_of_two)
+        return grid(c, (blockno << (size_type)num_block_bits) | (size_type)cellno);
+      else
+        return grid(c, blockno * (size_type)block_size + (size_type)cellno);
+    }
+    template <bool is_const = is_const_structure, auto in_block = block_scope,
+              enable_if_all<!is_const, !in_block> = 0>
     constexpr auto &operator()(channel_counter_type chn, size_type id) noexcept {
       return grid(chn, id);
     }

@@ -422,6 +422,8 @@ namespace zs {
       }
     }
 
+    constexpr auto size() const noexcept { return *_cnt; }
+
     table_t _table{};
     conditional_t<is_const_structure, const key_t *, key_t *> _activeKeys{nullptr};
     value_t _tableSize{0};  // constness makes non-trivial

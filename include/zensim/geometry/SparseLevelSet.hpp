@@ -56,47 +56,17 @@ namespace zs {
           _max{TV::uniform(limits<value_type>::lowest())},
           _i2wSinv{TM::identity() / dx},
           _i2wRinv{TM::identity()},
-          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
+          _i2wT{TV::zeros()},  // origin offset
           _i2wShat{TM::identity() * dx},
           _i2wRhat{TM::identity()} {}
     SparseLevelSet(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
                    memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _backgroundValue{(value_type)0},
-          _backgroundVecValue{TV::zeros()},
-          _table{count, mre, devid},
-          _grid{channelTags, dx, count, mre, devid},
-          _min{TV::uniform(limits<value_type>::max())},
-          _max{TV::uniform(limits<value_type>::lowest())},
-          _i2wSinv{TM::identity() / dx},
-          _i2wRinv{TM::identity()},
-          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
-          _i2wShat{TM::identity() * dx},
-          _i2wRhat{TM::identity()} {}
+        : SparseLevelSet{get_default_allocator(mre, devid), channelTags, dx, count} {}
     SparseLevelSet(channel_counter_type numChns, value_type dx, size_type count,
                    memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _backgroundValue{(value_type)0},
-          _backgroundVecValue{TV::zeros()},
-          _table{count, mre, devid},
-          _grid{numChns, dx, count, mre, devid},
-          _min{TV::uniform(limits<value_type>::max())},
-          _max{TV::uniform(limits<value_type>::lowest())},
-          _i2wSinv{TM::identity() / dx},
-          _i2wRinv{TM::identity()},
-          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
-          _i2wShat{TM::identity() * dx},
-          _i2wRhat{TM::identity()} {}
+        : SparseLevelSet{get_default_allocator(mre, devid), {{"unnamed", numChns}}, dx, count} {}
     SparseLevelSet(value_type dx = 1.f, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : _backgroundValue{(value_type)0},
-          _backgroundVecValue{TV::zeros()},
-          _table{mre, devid},
-          _grid{dx, mre, devid},
-          _min{TV::uniform(limits<value_type>::max())},
-          _max{TV::uniform(limits<value_type>::lowest())},
-          _i2wSinv{TM::identity() / dx},
-          _i2wRinv{TM::identity()},
-          _i2wT{TV::uniform(category == grid_e::collocated ? (value_type)0 : (value_type)0.5 * dx)},
-          _i2wShat{TM::identity() * dx},
-          _i2wRhat{TM::identity()} {}
+        : SparseLevelSet{get_default_allocator(mre, devid), {{"sdf", 1}}, dx, 0} {}
 
     SparseLevelSet clone(const allocator_type &allocator) const {
       SparseLevelSet ret{};
@@ -333,42 +303,172 @@ namespace zs {
     constexpr channel_counter_type propertyIndex(const SmallString &propName) const noexcept {
       return _grid.propertyIndex(propName);
     }
+    constexpr channel_counter_type propertySize(const SmallString &propName) const noexcept {
+      return _grid.propertySize(propName);
+    }
+    constexpr channel_counter_type propertyOffset(const SmallString &propName) const noexcept {
+      return _grid.propertyOffset(propName);
+    }
     constexpr bool hasProperty(const SmallString &propName) const noexcept {
       return _grid.hasProperty(propName);
     }
     constexpr auto numCells() const noexcept { return _grid.numCells(); }
-    constexpr auto numBlocks() const noexcept { return _grid.numBlocks(); }
+    constexpr auto numBlocks() const noexcept { return _table.size(); }
     constexpr auto numChannels() const noexcept { return _grid.numChannels(); }
 
     constexpr auto do_getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
 
+    /// coordinate transformation
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto worldToIndex(const VecInterface<VecT> &x) const noexcept {
       // world-to-view: minus trans, div rotation, div scale
-      return (x - _i2wT) * _i2wRinv * _i2wSinv;
+      if constexpr (category == grid_e::cellcentered)
+        return (x - _i2wT) * _i2wRinv * _i2wSinv - (value_type)0.5;
+      else
+        return (x - _i2wT) * _i2wRinv * _i2wSinv;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
       // view-to-index: scale, rotate, trans
-      return X * _i2wShat * _i2wRhat + _i2wT;
+      if constexpr (category == grid_e::cellcentered)
+        return (X + (value_type)0.5) * _i2wShat * _i2wRhat + _i2wT;
+      else
+        return X * _i2wShat * _i2wRhat + _i2wT;
+    }
+    constexpr auto indexToWorld(size_type bno, cell_index_type cno) const noexcept {
+      return indexToWorld(_table._activeKeys[bno] + grid_view_t::cellid_to_coord(cno));
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
-      if (!_grid.hasProperty("sdf")) return limits<value_type>::max();
+    constexpr auto indexToWorld(size_type bno, const VecInterface<VecT> &cid) const noexcept {
+      return indexToWorld(_table._activeKeys[bno] + cid);
+    }
+    // face center position (staggered grid only)
+    template <auto cate = category, enable_if_all<cate == grid_e::staggered> = 0>
+    constexpr auto indexToWorld(size_type bno, cell_index_type cno,
+                                int orientation) const noexcept {
+      auto offset = TV::uniform((value_type)0.5);
+      offset(orientation) = (value_type)0;
+      return indexToWorld(_table._activeKeys[bno] + grid_view_t::cellid_to_coord(cno) + offset);
+    }
+    template <typename VecT, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
+    constexpr auto indexToWorld(size_type bno, const VecInterface<VecT> &cid,
+                                int orientation) const noexcept {
+      auto offset = TV::uniform((value_type)0.5);
+      offset(orientation) = (value_type)0;
+      return indexToWorld(_table._activeKeys[bno] + cid + offset);
+    }
+
+    /// helper functions
+    template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
+                                            std::is_integral_v<typename VecTI::index_type>> = 0>
+    constexpr auto decompose_coord(const VecInterface<VecTI> &indexCoord) const noexcept {
+      auto cellid = indexCoord & (side_length - 1);
+      auto blockid = indexCoord - cellid;
+      return make_tuple(_table.query(blockid), grid_view_t::coord_to_cellid(cellid));
+    }
+    constexpr value_type value_or(channel_counter_type chn, typename table_t::value_t blockno,
+                                  cell_index_type cellno, value_type defaultVal) const noexcept {
+      return blockno < (typename table_t::value_t)0 ? _grid(chn, (size_type)blockno, cellno)
+                                                    : defaultVal;
+    }
+
+    /// sample
+    // cell-wise staggered grid sampling
+    template <typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            std::is_floating_point_v<typename VecT::value_type>,
+                            cate == grid_e::staggered> = 0>
+    constexpr TV isample(const SmallString &propName, const VecInterface<VecT> &X,
+                         const value_type defaultVal, wrapv<kt> = {}) const noexcept {
+      static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
+      if (!_grid.hasProperty(propName)) return TV::uniform(defaultVal);
       /// world to local
-      auto arena = Arena<value_type>::uniform(_backgroundValue);
+      const auto propOffset = _grid.propertyOffset(propName);
       IV loc{};
-      TV X = worldToIndex(x);
       for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
       TV diff = X - loc;
-      for (auto &&offset : ndrange<dim>(2)) {
-        auto coord = loc + make_vec<index_type>(offset);
-        auto blockid = coord - (coord & (side_length - 1));
-        auto blockno = _table.query(blockid);
-        if (blockno != table_t::sentinel_v)
-          arena.val(offset) = _grid("sdf", blockno, coord - blockid);
+      TV ret{};
+      auto [blockno, cellno] = decompose_coord(loc);
+      for (int d = 0; d != dim; ++d) {
+        auto neighborLoc = loc;
+        ++neighborLoc(d);
+        auto [bno, cno] = decompose_coord(neighborLoc);
+        ret(d) = linear_interop(diff(d), value_or(propOffset + d, blockno, cellno, defaultVal),
+                                value_or(propOffset + d, bno, cno, defaultVal));
       }
-      return xlerp<0>(diff, arena);
+      return ret;
+    }
+#if 0
+    template <
+        typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
+        enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                      std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
+    constexpr TV isample(const SmallString &propName, const VecInterface<VecT> &X, int orientation,
+                         const value_type defaultVal, wrapv<kt> = {}) const noexcept {
+      static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
+      if (!_grid.hasProperty(propName)) return TV::uniform(defaultVal);
+      /// world to local
+      const auto propOffset = _grid.propertyOffset(propName);
+      ;
+    }
+#endif
+    template <typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
+    constexpr TV wsample(const SmallString &propName, const VecInterface<VecT> &x,
+                         const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
+      return isample(propName, worldToIndex(x), defaultVal, ktTag);
+    }
+    template <typename VecT, kernel_e kt = kernel_e::linear,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type isample(const SmallString &propName, channel_counter_type chn,
+                                 const VecInterface<VecT> &X, const value_type defaultVal,
+                                 wrapv<kt> = {}) const noexcept {
+      static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
+      {  // channel index check
+        auto pid = _grid.propertyIndex(propName);
+        if (pid == _grid.numProperties())
+          return defaultVal;
+        else if (chn >= _grid.getPropertySizes()[pid])
+          return defaultVal;
+      }
+      /// world to local
+      if constexpr (category == grid_e::staggered) {
+        const auto orientation = chn % dim;
+        const auto propOffset = _grid.propertyOffset(propName);
+        IV loc{};
+        value_type diff = X(orientation) - zs::floor(X(orientation));
+        auto [blockno, cellno] = decompose_coord(loc);
+        auto neighborLoc = loc;
+        ++neighborLoc(orientation);
+        auto [bno, cno] = decompose_coord(neighborLoc);
+        return linear_interop(diff, value_or(propOffset + orientation, blockno, cellno, defaultVal),
+                              value_or(propOffset + orientation, bno, cno, defaultVal));
+      } else {
+        const auto propOffset = _grid.propertyOffset(propName);
+        Arena<value_type> arena{};
+        IV loc{};
+        for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
+        TV diff = X - loc;
+        for (auto &&offset : ndrange<dim>(2)) {
+          auto [bno, cno] = decompose_coord(loc + make_vec<index_type>(offset));
+          arena.val(offset) = value_or(propOffset + chn, bno, cno, defaultVal);
+        }
+        return xlerp<0>(diff, arena);
+      }
+    }
+    template <typename VecT, kernel_e kt = kernel_e::linear,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type wsample(const SmallString &propName, channel_counter_type chn,
+                                 const VecInterface<VecT> &x, const value_type defaultVal,
+                                 wrapv<kt> ktTag = {}) const noexcept {
+      return isample(propName, chn, worldToIndex(x), defaultVal, ktTag);
+    }
+
+    /// levelset interface
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      return wsample("sdf", 0, x, _backgroundValue);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
@@ -402,7 +502,8 @@ namespace zs {
         if (blockno != table_t::sentinel_v)
           arena.val(offset) = _grid.template pack<dim>("vel", blockno, coord - blockid);
       }
-      return xlerp<0>(diff, arena) * _i2wShat * _i2wRhat;
+      return xlerp<0>(diff, arena);  //  * _i2wShat * _i2wRhat
+      // don't be a smartass...
     }
 
     table_view_t _table{};
@@ -415,123 +516,6 @@ namespace zs {
     TM _i2wRinv{TM::identity()}, _i2wSinv{TM::identity()};
     TM _i2wRhat{TM::identity()}, _i2wShat{TM::identity()};
   };
-
-#if 0
-  template <execspace_e Space, typename TableT, typename GridT>
-  struct SparseLevelSetView<Space, type_seq<TableT, GridT>>
-      : LevelSetInterface<SparseLevelSetView<Space, type_seq<TableT, GridT>>> {
-    static constexpr bool is_const_structure = std::is_const_v<GridT>;
-    static constexpr auto space = Space;
-    using table_t = remove_cvref_t<TableT>;
-    using table_view_t = RM_CVREF_T(proxy<Space>(std::declval<const table_t &>()));
-    using grid_t = remove_cvref_t<GridT>;
-    using grid_view_t = RM_CVREF_T(proxy<Space>(
-        {}, std::declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
-    static_assert(table_t::dim == grid_t::dim, "dimension mismatch!");
-
-    using value_type = typename grid_t::value_type;
-    using size_type = typename table_t::size_type;
-    using index_type = typename table_t::index_type;
-
-    static constexpr grid_e category = grid_t::category;
-    static constexpr int dim = grid_t::dim;
-    static constexpr auto side_length = grid_t::side_length;
-    static constexpr auto block_size = grid_t::block_size;
-    static_assert(grid_t::is_power_of_two, "block_size should be power of 2");
-
-    using T = value_type;
-    using Ti = index_type;
-    using TV = vec<value_type, dim>;
-    using TM = vec<value_type, dim, dim>;
-    using IV = typename table_t::key_t;
-    using Affine = vec<value_type, dim + 1, dim + 1>;
-
-    template <typename Val, std::size_t... Is>
-    static constexpr auto arena_type_impl(index_seq<Is...>) {
-      return vec<Val, (Is + 1 > 0 ? 2 : 2)...>{};
-    }
-    template <typename Val, int d> static constexpr auto arena_type() {
-      return arena_type_impl<Val>(std::make_index_sequence<d>{});
-    }
-
-    template <typename Val> using Arena = decltype(arena_type<Val, dim>());
-
-    SparseLevelSetView() noexcept = default;
-    ~SparseLevelSetView() noexcept = default;
-    constexpr SparseLevelSetView(TableT &table, GridT &grid)
-        : _table{proxy<Space>(table)}, _grid{proxy<Space>({}, _grid)} {}
-
-    constexpr auto do_getBoundingBox() const noexcept {
-      return std::make_tuple(limits<value_type>::max(), limits<value_type>::lowest());
-    }
-
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto worldToIndex(const VecInterface<VecT> &x) const noexcept {
-      // world-to-view: minus trans, div rotation, div scale
-      return x / _grid.dx;
-    }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
-      // view-to-index: scale, rotate, trans
-      return X * _grid.dx;
-    }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
-      if (!_grid.hasProperty("sdf")) return limits<value_type>::max();
-      /// world to local
-      auto arena = Arena<value_type>::uniform(0);
-      IV loc{};
-      TV X = worldToIndex(x);
-      for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
-      TV diff = X - loc;
-      for (auto &&offset : ndrange<dim>(2)) {
-        auto coord = loc + make_vec<index_type>(offset);
-        auto blockid = coord - (coord & (side_length - 1));
-        auto blockno = _table.query(blockid);
-        if (blockno != table_t::sentinel_v)
-          arena.val(offset) = _grid("sdf", blockno, coord - blockid);
-      }
-      return xlerp<0>(diff, arena);
-    }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
-      typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
-      // TV diff{}, v1{}, v2{};
-      value_type eps = (value_type)1e-6;
-      /// compute a local partial derivative
-      for (int i = 0; i != dim; i++) {
-        v1 = x;
-        v2 = x;
-        v1(i) = x(i) + eps;
-        v2(i) = x(i) - eps;
-        diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
-      }
-      return diff.normalized();
-    }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
-      if (!_grid.hasProperty("vel")) return TV::zeros();
-      /// world to local
-      using TV = typename VecT::template variant_vec<value_type, typename VecT::extents>;
-      auto arena = Arena<TV>::uniform(TV::zeros());
-      IV loc{};
-      TV X = worldToIndex(x);
-      for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
-      auto diff = X - loc;
-      for (auto &&offset : ndrange<dim>(2)) {
-        auto coord = loc + make_vec<index_type>(offset);
-        auto blockid = coord - (coord & (side_length - 1));
-        auto blockno = _table.query(blockid);
-        if (blockno != table_t::sentinel_v)
-          arena.val(offset) = _grid.template pack<dim>("vel", blockno, coord - blockid);
-      }
-      return xlerp<0>(diff, arena);
-    }
-
-    table_view_t _table{};
-    grid_view_t _grid{};
-  };
-#endif
 
   template <execspace_e ExecSpace, int dim, grid_e category>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,

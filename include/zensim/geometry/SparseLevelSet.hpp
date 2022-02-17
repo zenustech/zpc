@@ -372,6 +372,13 @@ namespace zs {
       return blockno < (typename table_t::value_t)0 ? defaultVal
                                                     : _grid(chn, (size_type)blockno, cellno);
     }
+    template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
+                                            std::is_integral_v<typename VecTI::index_type>> = 0>
+    constexpr auto value_or(channel_counter_type chn, const VecInterface<VecTI> &indexCoord,
+                            value_type defaultVal) const noexcept {
+      auto [bno, cno] = decompose_coord(indexCoord);
+      return value_or(chn, bno, cno, defaultVal);
+    }
 
     /// sample
     // cell-wise staggered grid sampling
@@ -383,8 +390,8 @@ namespace zs {
                          const value_type defaultVal, wrapv<kt> = {}) const noexcept {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
       if (!_grid.hasProperty(propName)) return TV::uniform(defaultVal);
-      /// world to local
       const auto propOffset = _grid.propertyOffset(propName);
+      /// world to local
       IV loc{};
       for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
       TV diff = X - loc;
@@ -399,20 +406,37 @@ namespace zs {
       }
       return ret;
     }
-#if 0
     template <
         typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
         enable_if_all<VecT::dim == 1, VecT::extent == dim,
                       std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
-    constexpr TV isample(const SmallString &propName, const VecInterface<VecT> &X, int orientation,
+    constexpr TV isample(const SmallString &propName, const VecInterface<VecT> &coord, int f,
                          const value_type defaultVal, wrapv<kt> = {}) const noexcept {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
       if (!_grid.hasProperty(propName)) return TV::uniform(defaultVal);
-      /// world to local
       const auto propOffset = _grid.propertyOffset(propName);
-      ;
+      /// world to local
+      auto [blockno, cellno] = decompose_coord(coord);
+      TV ret{};
+      for (int d = 0; d != dim; ++d) {
+        if (d == f)
+          ret(d) = value_or(propOffset + d, blockno, cellno, defaultVal);
+        else
+          ret(d) = (value_or(propOffset + d, blockno, cellno, defaultVal)
+                    + value_or(propOffset + d,
+                               coord + IV::init([d](int i) noexcept { return i == d ? 1 : 0; }),
+                               defaultVal)
+                    + value_or(propOffset + d,
+                               coord + IV::init([f](int i) noexcept { return i == f ? -1 : 0; }),
+                               defaultVal)
+                    + value_or(propOffset + d, coord + IV::init([d, f](int i) noexcept {
+                                                 return i == d ? 1 : (i == f ? -1 : 0);
+                                               }),
+                               defaultVal))
+                   * (value_type)0.25;
+      }
+      return ret;
     }
-#endif
     template <typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
     constexpr TV wsample(const SmallString &propName, const VecInterface<VecT> &x,

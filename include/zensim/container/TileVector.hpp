@@ -680,6 +680,12 @@ namespace zs {
         if (_tagNames[i] == propName) break;
       return i;
     }
+    constexpr auto propertySize(const SmallString &propName) const noexcept {
+      return getPropertySizes()[propertyIndex(propName)];
+    }
+    constexpr auto propertyOffset(const SmallString &propName) const noexcept {
+      return getPropertyOffsets()[propertyIndex(propName)];
+    }
     constexpr bool hasProperty(const SmallString &propName) const noexcept {
       return propertyIndex(propName) != _N;
     }

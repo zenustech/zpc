@@ -369,8 +369,8 @@ namespace zs {
     }
     constexpr value_type value_or(channel_counter_type chn, typename table_t::value_t blockno,
                                   cell_index_type cellno, value_type defaultVal) const noexcept {
-      return blockno < (typename table_t::value_t)0 ? _grid(chn, (size_type)blockno, cellno)
-                                                    : defaultVal;
+      return blockno < (typename table_t::value_t)0 ? defaultVal
+                                                    : _grid(chn, (size_type)blockno, cellno);
     }
 
     /// sample

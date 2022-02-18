@@ -57,7 +57,7 @@ namespace zs {
           _i2wSinv{TM::identity() / dx},
           _i2wRinv{TM::identity()},
           _i2wT{TV::zeros()},  // origin offset
-          _i2wShat{TM::identity() * dx},
+          _i2wShat{TM::identity()},
           _i2wRhat{TM::identity()} {}
     SparseLevelSet(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
                    memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -334,9 +334,9 @@ namespace zs {
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
       // view-to-index: scale, rotate, trans
       if constexpr (category == grid_e::cellcentered)
-        return (X + (value_type)0.5) * _i2wShat * _i2wRhat + _i2wT;
+        return (X + (value_type)0.5) * inverse(_i2wSinv) * inverse(_i2wRinv) + _i2wT;
       else
-        return X * _i2wShat * _i2wRhat + _i2wT;
+        return X * inverse(_i2wSinv) * inverse(_i2wRinv) + _i2wT;
     }
     constexpr auto indexToWorld(size_type bno, cell_index_type cno) const noexcept {
       return indexToWorld(_table._activeKeys[bno] + grid_view_t::cellid_to_coord(cno));
@@ -588,8 +588,7 @@ namespace zs {
         if (blockno != table_t::sentinel_v)
           arena.val(offset) = _grid.template pack<dim>("vel", blockno, coord - blockid);
       }
-      return xlerp<0>(diff, arena);  //  * _i2wShat * _i2wRhat
-      // don't be a smartass...
+      return xlerp<0>(diff, arena) * _i2wShat * _i2wRhat;  // s**** a** indeed I am...
     }
 
     table_view_t _table{};

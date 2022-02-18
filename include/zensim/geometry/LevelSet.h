@@ -72,7 +72,8 @@ namespace zs {
                                    analytic_ls_t<analytic_geometry_e::Cylinder>
 #endif
                                    >;
-    using raw_vel_ls_tl = type_seq<dummy_ls_t /*, clspls_t, ccspls_t*/, sgspls_t, uniform_vel_ls_t>;
+    using raw_vel_ls_tl
+        = type_seq<dummy_ls_t /*, clspls_t, ccspls_t*/, sgspls_t /*, uniform_vel_ls_t*/>;
     // should automatically compute from the above two typelists
     using raw_ls_tl = type_seq<dummy_ls_t, clspls_t, ccspls_t, sgspls_t,
                                // analytic_ls_t<analytic_geometry_e::Plane>,

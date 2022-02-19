@@ -630,7 +630,7 @@ namespace zs {
     template <
         typename VecTV, typename VecTM = Derived,
         enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                      VecTM::template range_t<1>::value == VecTV::template range_t<0>::value> = 0>
+                      VecTM::template range_t<1>::value == VecTV::extent> = 0>
     friend constexpr auto operator*(const VecInterface& A, const VecInterface<VecTV>& x) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       constexpr auto M = VecTM::template range_t<0>::value;
@@ -646,12 +646,12 @@ namespace zs {
     template <
         typename VecTM, typename VecTV = Derived,
         enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                      VecTM::template range_t<1>::value == VecTV::template range_t<0>::value> = 0>
+                      VecTM::template range_t<0>::value == VecTV::extent> = 0>
     friend constexpr auto operator*(const VecInterface& x, const VecInterface<VecTM>& A) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       constexpr auto M = VecTM::template range_t<0>::value;
       constexpr auto N = VecTM::template range_t<1>::value;
-      using R = math::op_result_t<value_type, typename VecTV::value_type>;
+      using R = math::op_result_t<value_type, typename VecTM::value_type>;
       typename Derived::template variant_vec<R, integer_seq<index_type, N>> r{};
       for (index_type j = 0; j != N; ++j) {
         r(j) = 0;

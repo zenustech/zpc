@@ -10,6 +10,7 @@
 #include "zensim/math/Vec.h"
 // #include <taskflow/taskflow.hpp>
 #include "zensim/execution/Concurrency.h"
+#include "zensim/tpls/fmt/format.h"
 
 namespace zs {
 
@@ -142,7 +143,13 @@ namespace zs {
         std::size_t cnt, tmp;
         is.read((char *)&cnt, sizeof(std::size_t));
         auto estimate = cnt * (sideLength.prod() / scaled_ref_box_length.prod());
-        samples.reserve(estimate);
+        fmt::print(
+            "reserved {} entries, minDistance: {}, box: [{}, {}, {} ~ {}, {}, {}], sidelen: {}, "
+            "{}, {}, scaledlen: {}, {}, {}\n",
+            estimate, minDistance, minCorner[0], minCorner[1], minCorner[2], maxCorner[0],
+            maxCorner[1], maxCorner[2], sideLength[0], sideLength[1], sideLength[2],
+            scaled_ref_box_length[0], scaled_ref_box_length[1], scaled_ref_box_length[2]);
+        samples.reserve((i64)estimate);
 
         is.read((char *)&tmp, sizeof(std::size_t));  ///< neglect this
         // Read from file as float
@@ -207,11 +214,7 @@ namespace zs {
               }
         }
 #endif
-        printf(
-            "[PoissonDiskSampling]\tcnt: %d, minDistance: %f, sidelen: %f, "
-            "%f, %f, scaledlen: %f, %f, %f\n",
-            (int)samples.size(), minDistance, sideLength[0], sideLength[1], sideLength[2],
-            scaled_ref_box_length[0], scaled_ref_box_length[1], scaled_ref_box_length[2]);
+        fmt::print("[PoissonDiskSampling]\tcnt: {}\n", samples.size());
 
       } else if (dim == 2) {
         const T h = minDistance / std::sqrt((T)dim);

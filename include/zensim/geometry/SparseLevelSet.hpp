@@ -111,6 +111,14 @@ namespace zs {
     }
     constexpr const auto &getPropertyTags() const { return _grid.getPropertyTags(); }
 
+    void printTransformation(std::string_view msg = {}) const {
+      auto r = _i2wRinv.transpose();
+      fmt::print(
+          fg(fmt::color::aquamarine),
+          "[ls<dim {}, cate {}> {}] dx: {}. box: [{}, {}, {} ~ {}, {}, {}]. trans: {}, {}, {}. \nrotation [{}, {}, {}; {}, {}, {}; {}, {}, {}].\n", dim,
+          category, msg, (value_type)1 / _i2wSinv(0), _min[0], _min[1], _min[2], _max[0], _max[1],
+          _max[2], _i2wT(0), _i2wT(1), _i2wT(2), r(0, 0), r(0, 1), r(0, 2), r(1, 0), r(1, 1), r(1, 2), r(2, 0), r(2, 1), r(2, 2));
+    }
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
                             VecTM::template range_t<1>::value == dim + 1,
@@ -336,7 +344,7 @@ namespace zs {
       if constexpr (category == grid_e::cellcentered)
         return (X + (value_type)0.5) * inverse(_i2wSinv) * inverse(_i2wRinv) + _i2wT;
       else
-        return X * inverse(_i2wSinv) * inverse(_i2wRinv) + _i2wT;
+        return X * inverse(_i2wSinv) * _i2wRinv.transpose() + _i2wT;
     }
     constexpr auto indexToWorld(size_type bno, cell_index_type cno) const noexcept {
       return indexToWorld(_table._activeKeys[bno] + grid_view_t::cellid_to_coord(cno));

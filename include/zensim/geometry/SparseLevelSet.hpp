@@ -113,11 +113,12 @@ namespace zs {
 
     void printTransformation(std::string_view msg = {}) const {
       auto r = _i2wRinv.transpose();
-      fmt::print(
-          fg(fmt::color::aquamarine),
-          "[ls<dim {}, cate {}> {}] dx: {}. box: [{}, {}, {} ~ {}, {}, {}]. trans: {}, {}, {}. \nrotation [{}, {}, {}; {}, {}, {}; {}, {}, {}].\n", dim,
-          category, msg, (value_type)1 / _i2wSinv(0), _min[0], _min[1], _min[2], _max[0], _max[1],
-          _max[2], _i2wT(0), _i2wT(1), _i2wT(2), r(0, 0), r(0, 1), r(0, 2), r(1, 0), r(1, 1), r(1, 2), r(2, 0), r(2, 1), r(2, 2));
+      fmt::print(fg(fmt::color::aquamarine),
+                 "[ls<dim {}, cate {}> {}] dx: {}. box: [{}, {}, {} ~ {}, {}, {}]. trans: {}, {}, "
+                 "{}. \nrotation [{}, {}, {}; {}, {}, {}; {}, {}, {}].\n",
+                 dim, category, msg, (value_type)1 / _i2wSinv(0), _min[0], _min[1], _min[2],
+                 _max[0], _max[1], _max[2], _i2wT(0), _i2wT(1), _i2wT(2), r(0, 0), r(0, 1), r(0, 2),
+                 r(1, 0), r(1, 1), r(1, 2), r(2, 0), r(2, 1), r(2, 2));
     }
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
@@ -166,6 +167,7 @@ namespace zs {
     void scale(const VecInterface<VecT> &s) {
       _i2wShat = _i2wShat * s;
       _i2wSinv = inverse(s) * _i2wSinv;
+      _grid.dx *= s(0, 0);
     }
     void scale(const value_type s) { scale(s * TM::identity()); }
 
@@ -493,6 +495,15 @@ namespace zs {
       }
       return ret;
     }
+    template <auto... Ns, typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
+    constexpr auto wpack(const SmallString &propName, const VecInterface<VecT> &x,
+                         const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
+      using RetT = decltype(ipack<Ns...>(0, worldToIndex(x), defaultVal, ktTag));
+      if (!_grid.hasProperty(propName)) return RetT::uniform(defaultVal);
+      const auto propOffset = _grid.propertyOffset(propName);
+      return ipack<Ns...>(propOffset, worldToIndex(x), defaultVal, ktTag);
+    }
 
     ///
     /// scalar sampling
@@ -581,22 +592,10 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
-      if (!_grid.hasProperty("vel")) return TV::zeros();
-      /// world to local
-      using TV = typename VecT::template variant_vec<value_type, typename VecT::extents>;
-      auto arena = Arena<TV>::uniform(_backgroundVecValue);
-      IV loc{};
-      TV X = worldToIndex(x);
-      for (int d = 0; d < dim; ++d) loc(d) = zs::floor(X(d));
-      auto diff = X - loc;
-      for (auto &&offset : ndrange<dim>(2)) {
-        auto coord = loc + make_vec<index_type>(offset);
-        auto blockid = coord - (coord & (side_length - 1));
-        auto blockno = _table.query(blockid);
-        if (blockno != table_t::sentinel_v)
-          arena.val(offset) = _grid.template pack<dim>("vel", blockno, coord - blockid);
-      }
-      return xlerp<0>(diff, arena) * _i2wShat * _i2wRhat;  // s**** a** indeed I am...
+      if constexpr (category == grid_e::staggered)
+        return wpack("vel", x, 0) * _i2wShat * _i2wRhat;
+      else
+        return wpack<dim>("vel", x, 0) * _i2wShat * _i2wRhat;
     }
 
     table_view_t _table{};

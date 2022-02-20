@@ -627,10 +627,9 @@ namespace zs {
       return r;
     }
     /// matrix-vector product
-    template <
-        typename VecTV, typename VecTM = Derived,
-        enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                      VecTM::template range_t<1>::value == VecTV::extent> = 0>
+    template <typename VecTV, typename VecTM = Derived,
+              enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                            VecTM::template range_t<1>::value == VecTV::extent> = 0>
     friend constexpr auto operator*(const VecInterface& A, const VecInterface<VecTV>& x) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       constexpr auto M = VecTM::template range_t<0>::value;
@@ -643,10 +642,9 @@ namespace zs {
       }
       return r;
     }
-    template <
-        typename VecTM, typename VecTV = Derived,
-        enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
-                      VecTM::template range_t<0>::value == VecTV::extent> = 0>
+    template <typename VecTM, typename VecTV = Derived,
+              enable_if_all<VecTM::dim == 2, VecTV::dim == 1,
+                            VecTM::template range_t<0>::value == VecTV::extent> = 0>
     friend constexpr auto operator*(const VecInterface& x, const VecInterface<VecTM>& A) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       constexpr auto M = VecTM::template range_t<0>::value;

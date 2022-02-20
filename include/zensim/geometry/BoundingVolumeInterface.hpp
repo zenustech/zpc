@@ -38,4 +38,19 @@ namespace zs {
     }
   };
 
+  template <typename VecTA, typename VecTB,
+            enable_if_all<std::is_fundamental_v<math::op_result_t<typename VecTA::value_type,
+                                                                  typename VecTB::value_type>>,
+                          is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
+  constexpr auto get_bounding_box(const VecInterface<VecTA> &bva, const VecInterface<VecTB> &bvb) {
+    using ValueT = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
+    using TV = typename VecTA::template variant_vec<ValueT, typename VecTA::extents>;
+    return zs::make_tuple(TV::init([&bva, &bvb](typename VecTA::index_type i) noexcept -> ValueT {
+                            return bva(i) < bvb(i) ? (ValueT)bva(i) : (ValueT)bvb(i);
+                          }),
+                          TV::init([&bva, &bvb](typename VecTA::index_type i) noexcept -> ValueT {
+                            return bva(i) > bvb(i) ? (ValueT)bva(i) : (ValueT)bvb(i);
+                          }));
+  }
+
 }  // namespace zs

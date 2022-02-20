@@ -387,10 +387,22 @@ namespace zs {
       auto blockid = indexCoord - cellid;
       return make_tuple(_table.query(blockid), grid_view_t::coord_to_cellid(cellid));
     }
+    template <typename VecTI, auto cate = category,
+              enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
+                            std::is_integral_v<typename VecTI::index_type>,
+                            cate == grid_e::staggered> = 0>
+    constexpr value_type value_or(channel_counter_type chn, const VecInterface<VecTI> &indexCoord,
+                                  int orientation, value_type defaultVal) const noexcept {
+      /// 0, ..., dim-1: within cell
+      /// dim, ..., dim+dim-1: neighbor cell
+      auto coord = indexCoord.clone();
+      if (auto f = orientation % (dim + dim); f >= dim) ++coord[f - dim];
+      auto [bno, cno] = decompose_coord(coord);
+      return bno == table_t::sentinel_v ? defaultVal : _grid(chn, (size_type)bno, cno);
+    }
     constexpr value_type value_or(channel_counter_type chn, typename table_t::value_t blockno,
                                   cell_index_type cellno, value_type defaultVal) const noexcept {
-      return blockno < (typename table_t::value_t)0 ? defaultVal
-                                                    : _grid(chn, (size_type)blockno, cellno);
+      return blockno == table_t::sentinel_v ? defaultVal : _grid(chn, (size_type)blockno, cellno);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
                                             std::is_integral_v<typename VecTI::index_type>> = 0>

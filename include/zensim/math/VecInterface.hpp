@@ -682,16 +682,15 @@ namespace zs {
 
 //!@name Assignment operators
 // scalar
-#define DEFINE_VEC_OP_SCALAR_ASSIGN(OP)                                                     \
-  template <typename TT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>, \
-            enable_if_all<std::is_convertible_v<TT, typename VecT::value_type>,             \
-                          std::is_fundamental_v<TT>, IsAssignable> = 0>                     \
-  constexpr Derived& operator OP##=(TT&& v) noexcept {                                      \
-    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                        \
-    using R = math::op_result_t<value_type, TT>;                                            \
-    for (index_type i = 0; i != extent; ++i)                                                \
-      derivedPtr()->val(i) = (R)derivedPtr()->val(i) OP((R)v);                              \
-    return static_cast<Derived&>(*this);                                                    \
+#define DEFINE_VEC_OP_SCALAR_ASSIGN(OP)                                                            \
+  template <typename TT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>,        \
+            enable_if_all<std::is_convertible_v<TT, typename VecT::value_type>, IsAssignable> = 0> \
+  constexpr Derived& operator OP##=(TT v) noexcept {                                               \
+    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                               \
+    using R = math::op_result_t<value_type, TT>;                                                   \
+    for (index_type i = 0; i != extent; ++i)                                                       \
+      derivedPtr()->val(i) = (R)derivedPtr()->val(i) OP((R)v);                                     \
+    return static_cast<Derived&>(*this);                                                           \
   }
     DEFINE_VEC_OP_SCALAR_ASSIGN(+)
     DEFINE_VEC_OP_SCALAR_ASSIGN(-)
@@ -703,7 +702,7 @@ namespace zs {
   template <typename TT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>,      \
             enable_if_all<std::is_integral_v<typename VecT::value_type>, std::is_integral_v<TT>, \
                           IsAssignable> = 0>                                                     \
-  constexpr Derived& operator OP##=(TT&& v) noexcept {                                           \
+  constexpr Derived& operator OP##=(TT v) noexcept {                                             \
     DECLARE_VEC_INTERFACE_ATTRIBUTES                                                             \
     using R = math::op_result_t<value_type, TT>;                                                 \
     for (index_type i = 0; i != extent; ++i)                                                     \

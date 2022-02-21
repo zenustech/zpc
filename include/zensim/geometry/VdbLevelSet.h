@@ -40,6 +40,11 @@ namespace zs {
   SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid,
                                                          const MemoryHandle mh);
 
+  SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
+      const OpenVDBStruct &grid);
+  SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
+      const OpenVDBStruct &grid, const MemoryHandle mh);
+
   /// floatgrid + float3grid
   SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,
                                                            const OpenVDBStruct &vel);

@@ -435,13 +435,100 @@ namespace zs {
     return convert_vec3fgrid_to_sparse_levelset(grid).clone(mh);
   }
 
+  SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
+      const OpenVDBStruct &grid) {
+    using GridType = openvdb::Vec3fGrid;
+    using TreeType = GridType::TreeType;
+    using RootType = TreeType::RootNodeType;  // level 3 RootNode
+    assert(RootType::LEVEL == 3);
+    using Int1Type = RootType::ChildNodeType;  // level 2 InternalNode
+    using Int2Type = Int1Type::ChildNodeType;  // level 1 InternalNode
+    using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
+    using GridPtr = typename GridType::Ptr;
+    const GridPtr &gridPtr = grid.as<GridPtr>();
+    using SpLs = SparseLevelSet<3, grid_e::staggered>;
+    using IV = typename SpLs::table_t::key_t;
+    using TV = vec<typename SpLs::value_type, 3>;
+
+    assert(gridPtr->getGridClass() == openvdb::GridClass::GRID_STAGGERED);
+    gridPtr->tree().voxelizeActiveTiles();
+    SpLs ret{};
+    const auto leafCount = gridPtr->tree().leafCount();
+    ret._backgroundValue = 0;
+    {
+      auto v = gridPtr->background();
+      ret._backgroundVecValue = TV{v[0], v[1], v[2]};
+    }
+    ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
+    ret._grid = typename SpLs::grid_t{
+        {{"vel", 3}}, (float)gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
+    {
+      openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
+      auto corner = box.min();
+      auto length = box.max() - box.min();
+      auto world_min = gridPtr->indexToWorld(box.min());
+      auto world_max = gridPtr->indexToWorld(box.max());
+      for (size_t d = 0; d < 3; d++) {
+        ret._min(d) = world_min[d];
+        ret._max(d) = world_max[d];
+      }
+      for (auto &&[dx, dy, dz] : ndrange<3>(2)) {
+        auto coord
+            = corner + decltype(length){dx ? length[0] : 0, dy ? length[1] : 0, dz ? length[2] : 0};
+        auto pos = gridPtr->indexToWorld(coord);
+        for (int d = 0; d < 3; d++) {
+          ret._min(d) = pos[d] < ret._min(d) ? pos[d] : ret._min(d);
+          ret._max(d) = pos[d] > ret._max(d) ? pos[d] : ret._max(d);
+        }
+      }
+    }
+    openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
+
+    gridPtr->transform().print();
+    fmt::print("leaf count: {}. background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
+               leafCount, ret._backgroundValue, ret._grid.dx, ret._min[0], ret._min[1], ret._min[2],
+               ret._max[0], ret._max[1], ret._max[2]);
+
+    vec<float, 4, 4> lsv2w;
+    for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
+    ret.resetTransformation(lsv2w);
+
+    auto table = proxy<execspace_e::host>(ret._table);
+    auto gridview = proxy<execspace_e::host>(ret._grid);
+    table.clear();
+    for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
+      const TreeType::LeafNodeType &node = *iter;
+      if (node.onVoxelCount() > 0) {
+        auto cell = node.beginValueOn();
+        IV coord{};
+        for (int d = 0; d != SpLs::dim; ++d) coord[d] = cell.getCoord()[d];
+        auto blockid = coord;
+        for (int d = 0; d != SpLs::dim; ++d) blockid[d] -= (coord[d] & (ret.side_length - 1));
+        auto blockno = table.insert(blockid);
+        RM_CVREF_T(blockno) cellid = 0;
+        for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
+          auto vel = cell.getValue();
+          const auto offset = blockno * ret.block_size + cellid;
+          gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+          // gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
+        }
+      }
+    }
+    return ret;
+  }
+  SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
+      const OpenVDBStruct &grid, const MemoryHandle mh) {
+    return convert_vec3fgrid_to_sparse_staggered_grid(grid).clone(mh);
+  }
+
   ///
   /// zpc levelset -> vdb levelset
   ///
   template <typename SplsT>
   OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SplsT &splsIn) {
     static_assert(is_spls_v<SplsT>, "SplsT must be a sparse levelset type");
-    auto spls = splsIn.clone(MemoryHandle{memsrc_e::host, -1});
+    const auto &spls
+        = splsIn.memspace() == memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
     openvdb::FloatGrid::Ptr grid
         = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
     // meta

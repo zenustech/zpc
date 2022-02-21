@@ -438,7 +438,9 @@ namespace zs {
   ///
   /// zpc levelset -> vdb levelset
   ///
-  OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SparseLevelSet<3> &splsIn) {
+  template <typename SplsT>
+  OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SplsT &splsIn) {
+    static_assert(is_spls_v<SplsT>, "SplsT must be a sparse levelset type");
     auto spls = splsIn.clone(MemoryHandle{memsrc_e::host, -1});
     openvdb::FloatGrid::Ptr grid
         = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
@@ -452,21 +454,33 @@ namespace zs {
     for (auto &&[r, c] : ndrange<2>(4)) v2w[r][c] = lsv2w[r][c];
     grid->setTransform(openvdb::math::Transform::createLinearTransform(v2w));
     // tree
-    auto table = proxy<execspace_e::host>(spls._table);
+    auto lsv = proxy<execspace_e::host>(spls);
     auto gridview = proxy<execspace_e::host>(spls._grid);
     auto accessor = grid->getAccessor();
-    using GridT = RM_CVREF_T(gridview);
-    for (auto &&[blockno, blockid] :
-         zip(range(spls._grid.size() / spls.block_size), spls._table._activeKeys))
+    using LsT = RM_CVREF_T(lsv);
+    for (auto &&[blockno, blockid] : zip(range(spls.numBlocks()), spls._table._activeKeys))
       for (int cid = 0; cid != spls.block_size; ++cid) {
-        const auto offset = (int)blockno * (int)spls.block_size + cid;
-        const auto sdfVal = gridview.voxel("sdf", offset);
+        // const auto offset = (int)blockno * (int)spls.block_size + cid;
+        const auto sdfVal
+            = lsv.wsample("sdf", 0, lsv.indexToWorld(blockno, cid), lsv._backgroundValue);
         if (sdfVal == spls._backgroundValue) continue;
-        const auto coord = blockid + GridT::cellid_to_coord(cid);
+        const auto coord = blockid + LsT::cellid_to_coord(cid);
         // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
         accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
       }
+    if constexpr (SplsT::category == grid_e::staggered)
+      grid->setGridClass(openvdb::GridClass::GRID_STAGGERED);
+    else
+      grid->setGridClass(openvdb::GridClass::GRID_LEVEL_SET);
     return OpenVDBStruct{grid};
   }
+
+  template OpenVDBStruct convert_sparse_levelset_to_floatgrid<
+      SparseLevelSet<3, grid_e::collocated>>(const SparseLevelSet<3, grid_e::collocated> &splsIn);
+  template OpenVDBStruct
+  convert_sparse_levelset_to_floatgrid<SparseLevelSet<3, grid_e::cellcentered>>(
+      const SparseLevelSet<3, grid_e::cellcentered> &splsIn);
+  template OpenVDBStruct convert_sparse_levelset_to_floatgrid<SparseLevelSet<3, grid_e::staggered>>(
+      const SparseLevelSet<3, grid_e::staggered> &splsIn);
 
 }  // namespace zs

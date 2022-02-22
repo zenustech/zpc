@@ -205,8 +205,8 @@ namespace zs {
       for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
       auto blockid = coord - (coord & (ret.side_length - 1));
       if (table.query(blockid) >= 0) {
-        printf("what is this??? block ({}, {}, {}) already taken!\n", blockid[0], blockid[1],
-               blockid[2]);
+        fmt::print("what is this??? block ({}, {}, {}) already taken!\n", blockid[0], blockid[1],
+                   blockid[2]);
         getchar();
       }
       auto blockno = table.insert(blockid);

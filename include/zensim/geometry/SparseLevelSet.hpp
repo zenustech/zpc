@@ -512,6 +512,15 @@ namespace zs {
     }
     template <auto... Ns, typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
+    constexpr auto ipack(const SmallString &propName, const VecInterface<VecT> &X,
+                         const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
+      using RetT = decltype(ipack<Ns...>(0, X, defaultVal, ktTag));
+      if (!_grid.hasProperty(propName)) return RetT::uniform(defaultVal);
+      const auto propOffset = _grid.propertyOffset(propName);
+      return ipack<Ns...>(propOffset, X, defaultVal, ktTag);
+    }
+    template <auto... Ns, typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
     constexpr auto wpack(const SmallString &propName, const VecInterface<VecT> &x,
                          const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
       using RetT = decltype(ipack<Ns...>(0, worldToIndex(x), defaultVal, ktTag));

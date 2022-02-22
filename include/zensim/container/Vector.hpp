@@ -56,7 +56,7 @@ namespace zs {
         : _allocator{allocator},
           _base{nullptr},
           _size{count},
-          _capacity{geometric_size_growth(count)} {
+          _capacity{geometric_size_growth(count, 0)} {
       _base = allocate(sizeof(value_type) * capacity());
     }
     explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -256,11 +256,15 @@ namespace zs {
   protected:
     constexpr std::size_t usedBytes() const noexcept { return sizeof(T) * size(); }
 
-    constexpr size_type geometric_size_growth(size_type newSize) noexcept {
-      size_type geometricSize = capacity();
+    constexpr size_type geometric_size_growth(size_type newSize,
+                                              size_type capacity) const noexcept {
+      size_type geometricSize = capacity;
       geometricSize = geometricSize + geometricSize / 2;
       if (newSize > geometricSize) return newSize;
       return geometricSize;
+    }
+    constexpr size_type geometric_size_growth(size_type newSize) const noexcept {
+      return geometric_size_growth(newSize, capacity());
     }
 
     allocator_type _allocator{};  // alignment should be inside allocator

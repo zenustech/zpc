@@ -67,7 +67,7 @@ namespace zs {
           _base{nullptr},
           _tags{channelTags},
           _size{count},
-          _capacity{count_tiles(geometric_size_growth(count)) * lane_width},
+          _capacity{count_tiles(geometric_size_growth(count, 0)) * lane_width},
           _numChannels{numTotalChannels(channelTags)} {
       const auto N = numProperties();
       _base = allocate(sizeof(value_type) * numChannels() * capacity());
@@ -292,12 +292,16 @@ namespace zs {
     }
     template <typename Policy> void reset(Policy &&policy, value_type val);
 
-    constexpr size_type geometric_size_growth(size_type newSize) noexcept {
-      size_type geometricSize = capacity();
+    constexpr size_type geometric_size_growth(size_type newSize,
+                                              size_type capacity) const noexcept {
+      size_type geometricSize = capacity;
       geometricSize = geometricSize + geometricSize / 2;
       geometricSize = count_tiles(geometricSize) * lane_width;
       if (newSize > geometricSize) return count_tiles(newSize) * lane_width;
       return geometricSize;
+    }
+    constexpr size_type geometric_size_growth(size_type newSize) const noexcept {
+      return geometric_size_growth(newSize, capacity());
     }
     template <typename Policy>
     void append_channels(Policy &&, const std::vector<PropertyTag> &tags);

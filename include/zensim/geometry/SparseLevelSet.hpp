@@ -343,6 +343,15 @@ namespace zs {
     }
     /// index space to world space
     // cell-corresponding positions
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_integral_v<typename VecT::value_type>> = 0>
+    constexpr auto cellToIndex(const VecInterface<VecT> &X) const noexcept {
+      // view-to-index: scale, rotate, trans
+      if constexpr (category == grid_e::cellcentered)
+        return (X + (value_type)0.5);
+      else
+        return X.template cast<value_type>();
+    }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
       // view-to-index: scale, rotate, trans

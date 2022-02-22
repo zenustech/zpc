@@ -6,14 +6,15 @@ namespace zs {
 
   /// max velocity
   template <typename ExecPol, int dim, grid_e category>
-  void get_level_set_max_speed(ExecPol &&pol, SparseLevelSet<dim, category> &ls) {
+  auto get_level_set_max_speed(ExecPol &&pol, SparseLevelSet<dim, category> &ls) ->
+      typename SparseLevelSet<dim, category>::value_type {
     constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
 
     Vector<typename SparseLevelSet<dim, category>::value_type> vel{ls.get_allocator(), 1};
     vel.setVal(0);
     if (ls.hasProperty("vel")) {
       auto nbs = ls.numBlocks();
-      pol(std::initializer_list<std::size_t>{nbs, ls.block_size},
+      pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size},
           [ls = proxy<space>(ls), vel = vel.data()] ZS_LAMBDA(
               typename RM_CVREF_T(ls)::size_type bi,
               typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
@@ -21,7 +22,7 @@ namespace zs {
             auto coord = ls._table._activeKeys[bi] + ls_t::cellid_to_coord(ci);
             typename ls_t::TV vi{};
             if constexpr (ls_t::category == grid_e::staggered)
-              vi = ls.ipack("vel", coord, 0);
+              vi = ls.ipack("vel", ls.cellToIndex(coord), 0);
             else
               vi = ls.wpack<3>("vel", ls.indexToWorld(coord), 0);
             vi = vi.abs();
@@ -45,7 +46,7 @@ namespace zs {
 
     ls.append_channels(pol, {{"mark", 1}});
 
-    pol(std::initializer_list<std::size_t>{nbs, ls.block_size},
+    pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size},
         [ls = proxy<space>(ls), threshold] ZS_LAMBDA(
             typename RM_CVREF_T(ls)::size_type bi,
             typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
@@ -92,7 +93,7 @@ namespace zs {
       typename SparseLevelSet<dim, category>::value_type threshold
       = zs::limits<typename SparseLevelSet<dim, category>::value_type>::epsilon() * 128) {
     using SplsT = SparseLevelSet<dim, category>;
-    mark_level_set(pol, ls);
+    mark_level_set(pol, ls, threshold);
 
     constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
     std::size_t nbs = ls.numBlocks();
@@ -100,7 +101,7 @@ namespace zs {
 
     // mark
     Vector<typename SplsT::size_type> marks{allocator, nbs + 1};
-    pol(std::initializer_list<std::size_t>{nbs, ls.block_size},
+    pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size},
         [ls = proxy<space>(ls), marks = proxy<space>(marks)] ZS_LAMBDA(
             typename RM_CVREF_T(ls)::size_type bi,
             typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
@@ -125,7 +126,7 @@ namespace zs {
     using GridT = typename SplsT::grid_t;
 
     TableT newTable{allocator, newNbs};
-    GridT newGrid{allocator, ls._grid.getProperties(), ls._grid._dx, newNbs};
+    GridT newGrid{allocator, ls._grid.getPropertyTags(), ls._grid.dx, newNbs};
 
     // shrink table
     pol(range(newTable._tableSize),
@@ -139,7 +140,7 @@ namespace zs {
           if (bi == 0) *newTable._cnt = newNbs;
         });
     // shrink grid
-    pol(std::initializer_list<std::size_t>{newNbs, ls.block_size},
+    pol(std::initializer_list<sint_t>{(sint_t)newNbs, (sint_t)ls.block_size},
         [blocknos = proxy<space>(preservedBlockNos), grid = proxy<space>(ls._grid),
          newGrid
          = proxy<space>(newGrid)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi,
@@ -164,23 +165,24 @@ namespace zs {
       auto nbs = ls.numBlocks();
       if (nbs * 26 >= ls.numReservedBlocks())
         ls.resize(pol, nbs * 26);  // at most 26 neighbor blocks spawned
-      pol(range(nbs), [ls = proxy<space>(ls)](typename RM_CVREF_T(ls)::size_type bi) mutable {
-        using ls_t = RM_CVREF_T(ls);
-        using table_t = RM_CVREF_T(ls._table);
-        auto coord = ls._table._activeKeys[bi];
-        for (auto loc : ndrange<3>(3)) {
-          auto offset = (make_vec<int>(loc) - 1) * ls_t::side_length;
-          using TV = RM_CVREF_T(offset);
-          if (offset == TV::zeros()) return;
-          if (auto blockno = ls._table.insert(coord + offset);
-              blockno != table_t::sentinel_v) {  // initialize newly inserted block
-            auto block = ls._grid.block(blockno);
-            for (typename ls_t::channel_counter_type chn = 0; chn != ls.numChannels(); ++chn)
-              for (typename ls_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
-                block(chn, ci) = ls._backgroundValue;
-          }
-        }
-      });
+      pol(range(nbs),
+          [ls = proxy<space>(ls)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
+            using ls_t = RM_CVREF_T(ls);
+            using table_t = RM_CVREF_T(ls._table);
+            auto coord = ls._table._activeKeys[bi];
+            for (auto loc : ndrange<3>(3)) {
+              auto offset = (make_vec<int>(loc) - 1) * ls_t::side_length;
+              using TV = RM_CVREF_T(offset);
+              if (offset == TV::zeros()) return;
+              if (auto blockno = ls._table.insert(coord + offset);
+                  blockno != table_t::sentinel_v) {  // initialize newly inserted block
+                auto block = ls._grid.block(blockno);
+                for (typename ls_t::channel_counter_type chn = 0; chn != ls.numChannels(); ++chn)
+                  for (typename ls_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
+                    block(chn, ci) = ls._backgroundValue;
+              }
+            }
+          });
     }
   }
 

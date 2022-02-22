@@ -67,7 +67,7 @@ namespace zs {
           _base{nullptr},
           _tags{channelTags},
           _size{count},
-          _capacity{count_tiles(count) * lane_width},
+          _capacity{count_tiles(geometric_size_growth(count)) * lane_width},
           _numChannels{numTotalChannels(channelTags)} {
       const auto N = numProperties();
       _base = allocate(sizeof(value_type) * numChannels() * capacity());
@@ -172,6 +172,9 @@ namespace zs {
     constexpr size_type capacity() const noexcept { return _capacity; }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
     constexpr size_type numTiles() const noexcept { return (size() + lane_width - 1) / lane_width; }
+    constexpr size_type numReservedTiles() const noexcept {
+      return (capacity() + lane_width - 1) / lane_width;
+    }
     constexpr size_type tileBytes() const noexcept {
       return numChannels() * lane_width * sizeof(value_type);
     }

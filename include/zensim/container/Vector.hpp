@@ -54,17 +54,19 @@ namespace zs {
     /// allocator-aware
     Vector(const allocator_type &allocator, size_type count)
         : _allocator{allocator},
-          _base{allocate(count * sizeof(value_type))},
+          _base{nullptr},
           _size{count},
-          _capacity{count} {}
+          _capacity{geometric_size_growth(count)} {
+      _base = allocate(sizeof(value_type) * capacity());
+    }
     explicit Vector(size_type count, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Vector{get_default_allocator(mre, devid), count} {}
     Vector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Vector{get_default_allocator(mre, devid), 0} {}
 
     ~Vector() {
-      if (_base && _capacity > 0)
-        _allocator.deallocate(_base, _capacity * sizeof(value_type),
+      if (_base && capacity() > 0)
+        _allocator.deallocate(_base, capacity() * sizeof(value_type),
                               std::alignment_of_v<value_type>);
     }
 
@@ -218,11 +220,10 @@ namespace zs {
           }
           /// conventional way
           else {
-            Vector tmp{_allocator, geometric_size_growth(newSize)};
+            Vector tmp{_allocator, newSize};
             if (size())
               copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
                    MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
-            tmp._size = newSize;
             swap(tmp);
           }
           return;

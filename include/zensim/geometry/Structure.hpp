@@ -78,6 +78,9 @@ namespace zs {
         return get_memory_source(mre, devid);
     }
     constexpr decltype(auto) numBlocks() const noexcept { return blocks.numTiles(); }
+    constexpr decltype(auto) numReservedBlocks() const noexcept {
+      return blocks.numReservedTiles();
+    }
     constexpr channel_counter_type numChannels() const noexcept { return blocks.numChannels(); }
 
     Grid(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,

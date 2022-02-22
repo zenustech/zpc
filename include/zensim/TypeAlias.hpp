@@ -76,6 +76,13 @@ namespace zs {
   using StreamID = u32;
   using EventID = u32;
 
+  constexpr void do_nothing(...) noexcept {}
+  struct do_nothing_op {
+    constexpr void operator()(...) noexcept {}
+  };
+
+}  // namespace zs
+
 /// lambda capture
 /// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
 #define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
@@ -104,10 +111,3 @@ namespace zs {
 #  endif
 #  define ZS_FUNCTION inline
 #endif
-
-  constexpr void do_nothing(...) noexcept {}
-  struct do_nothing_op {
-    constexpr void operator()(...) noexcept {}
-  };
-
-}  // namespace zs

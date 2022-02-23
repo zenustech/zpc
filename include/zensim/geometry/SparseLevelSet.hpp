@@ -199,11 +199,7 @@ namespace zs {
 
   template <execspace_e Space, typename SparseLevelSetT>
   struct SparseLevelSetView<Space, SparseLevelSetT>
-      : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>>,
-        RM_CVREF_T(
-            proxy<Space>({}, std::declval<conditional_t<std::is_const_v<SparseLevelSetT>,
-                                                        const typename SparseLevelSetT::grid_t &,
-                                                        typename SparseLevelSetT::grid_t &>>())) {
+      : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>> {
     static constexpr bool is_const_structure = std::is_const_v<SparseLevelSetT>;
     static constexpr auto space = Space;
     using ls_t = std::remove_const_t<SparseLevelSetT>;

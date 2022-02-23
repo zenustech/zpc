@@ -551,7 +551,7 @@ namespace zs {
         const auto sdfVal
             = lsv.wsample("sdf", 0, lsv.indexToWorld(blockno, cid), lsv._backgroundValue);
         if (sdfVal == spls._backgroundValue) continue;
-        const auto coord = blockid + LsT::cellid_to_coord(cid);
+        const auto coord = blockid + LsT::grid_view_t::cellid_to_coord(cid);
         // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
         accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
       }

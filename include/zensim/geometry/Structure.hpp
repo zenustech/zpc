@@ -85,7 +85,7 @@ namespace zs {
 
     Grid(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
          value_type dx, size_type count = 0)
-        : blocks{allocator, channelTags, count * block_size}, dx{dx} {}
+        : blocks{allocator, channelTags, count * (std::size_t)block_size}, dx{dx} {}
     Grid(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
          memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Grid{get_default_allocator(mre, devid), channelTags, dx, count} {}

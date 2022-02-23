@@ -67,7 +67,7 @@ namespace zs {
           _base{nullptr},
           _tags{channelTags},
           _size{count},
-          _capacity{count_tiles(geometric_size_growth(count, 0)) * lane_width},
+          _capacity{count_tiles(count) * lane_width},
           _numChannels{numTotalChannels(channelTags)} {
       const auto N = numProperties();
       _base = allocate(sizeof(value_type) * numChannels() * capacity());
@@ -279,10 +279,11 @@ namespace zs {
           }
           /// conventional way
           else {
-            TileVector tmp{_allocator, _tags, newSize};
+            TileVector tmp{_allocator, _tags, geometric_size_growth(newSize)};
             if (size())
               copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
                    MemoryEntity{memoryLocation(), (void *)data()}, numTiles() * tileBytes());
+            tmp._size = newSize;
             swap(tmp);
           }
           return;

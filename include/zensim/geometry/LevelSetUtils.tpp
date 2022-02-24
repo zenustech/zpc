@@ -1,6 +1,7 @@
 #include <stdexcept>
 
 #include "LevelSetUtils.hpp"
+#include "zensim/math/MathUtils.h"
 
 namespace zs {
 
@@ -71,9 +72,10 @@ namespace zs {
                          || zs::abs(ls.value_or(propOffset + chn, coord, chn % 3 + 3, 0))
                                 > threshold))
                     || (isSdf
-                        && (ls.value_or(propOffset + chn, coord, chn % 3, 0) < -threshold
+                        && (ls.value_or(propOffset + chn, coord, chn % 3, 0)
+                                < ls._backgroundValue + threshold
                             || ls.value_or(propOffset + chn, coord, chn % 3 + 3, 0)
-                                   < -threshold))) {
+                                   < ls._backgroundValue + threshold))) {
                   ls._grid("mark", bi, ci) = 1;
                   atomic_add(wrapv<space>{}, cnt, (u64)1);
                   done = true;
@@ -94,14 +96,9 @@ namespace zs {
               auto propSize = ls.getPropertySizes()[propNo];
               for (typename ls_t::channel_counter_type chn = 0; chn != propSize; ++chn)
                 if ((zs::abs(block(propOffset + chn, ci)) > threshold && !isSdf)
-                    || (block(propOffset + chn, ci) < -threshold && isSdf)) {
+                    || (block(propOffset + chn, ci) < ls._backgroundValue + threshold && isSdf)) {
                   block("mark", ci) = 1;
                   atomic_add(wrapv<space>{}, cnt, (u64)1);
-#if 0
-                    printf("b[%d]c[%d] prop[%s] chn<%d, %d (%d)> val[%f]\n", (int)bi, (int)ci,
-                           ls.getPropertyNames()[propNo].asChars(), (int)propOffset, (int)chn,
-                           (int)propSize, (float)block(propOffset + chn, ci));
-#endif
                   done = true;
                   break;  // no need further checking
                 }
@@ -141,6 +138,8 @@ namespace zs {
     }
 #endif
 
+    mark_level_set(pol, ls, threshold);
+
     // mark
     Vector<typename SplsT::size_type> marks{allocator, nbs + 1};
     pol(range(nbs), [marks = proxy<space>(marks)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) {
@@ -164,39 +163,17 @@ namespace zs {
          blocknos = proxy<space>(
              preservedBlockNos)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
           if (marks[bi] != 0) blocknos[offsets[bi]] = bi;
-          // printf("mapping [%d]-th to offset [%d]\n", (int)bi, (int)offsets[bi]);
         });
-
-    using TableT = typename SplsT::table_t;
-    using GridT = typename SplsT::grid_t;
 
     auto prevKeys = ls._table._activeKeys.clone(allocator);
     auto prevGrid = ls._grid.clone(allocator);
     // ls._table.resize(pol, newNbs);
     // ls._grid.resize(newNbs);
-    // TableT newTable{allocator, newNbs};
-    // GridT newGrid{allocator, ls._grid.getPropertyTags(), ls._grid.dx, newNbs};
 
-#if 0
-    {
-      Vector<float> test{ls.get_allocator(), 1};
-      test.setVal(0);
-      pol(range(nbs), [grid = proxy<space>(ls), test = test.data()] ZS_LAMBDA(
-                          typename RM_CVREF_T(ls)::size_type bi) mutable {
-        using grid_t = RM_CVREF_T(grid);
-        const auto block = grid.block(bi);
-        if (!block.hasProperty("sdf")) return;
-        for (int ci = 0; ci != grid.block_size; ++ci)
-          if (block("sdf", ci) < 0) atomic_add(wrapv<space>{}, test, block("sdf", ci));
-      });
-      fmt::print("after map, {} blocks sdf sum: {}\n", nbs, test.getVal());
-    }
-#endif
-
-#if 0
+#if 1
     // shrink table
     pol(range(ls._table._tableSize),
-        zs::ResetHashTable{proxy<space>(ls._table)});  // cnt not yet cleared
+        zs::ResetHashTable{proxy<space>(ls._table), false});  // cnt not yet cleared
     pol(range(newNbs), [blocknos = proxy<space>(preservedBlockNos),
                         blockids = proxy<space>(prevKeys), newTable = proxy<space>(ls._table),
                         newNbs] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
@@ -221,54 +198,29 @@ namespace zs {
       fmt::print("before grid built, {} blocks sdf sum: {}\n", nbs, test.getVal());
     }
 #  endif
-    Vector<float> test{ls.get_allocator(), 1};
-    test.setVal(0);
+    // Vector<float> test{ls.get_allocator(), 1};
+    // test.setVal(0);
     pol(std::initializer_list<sint_t>{(sint_t)newNbs, (sint_t)ls.block_size},
         [blocknos = proxy<space>(preservedBlockNos), grid = proxy<space>(prevGrid),
-         newGrid = proxy<space>(ls), marks = proxy<space>(marks), offsets = proxy<space>(offsets),
-         ls = proxy<space>(ls),
-         test = test.data()] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi,
-                                       typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
-#  if 1
-          if (ci == 0) {
-            auto blockid = ls._table._activeKeys[bi];
-            printf("## new[%d] <- prev[%d]; mark{%d}, offset{%d}, coord{%d, %d, %d}\n", (int)bi,
-                   (int)blocknos[bi], (int)marks[blocknos[bi]], (int)offsets[blocknos[bi]],
-                   (int)blockid[0], (int)blockid[1], (int)blockid[2]);
-          }
-#  endif
+         marks = proxy<space>(marks), offsets = proxy<space>(offsets),
+         ls = proxy<space>(ls)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi,
+                                          typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
           using grid_t = RM_CVREF_T(grid);
           const auto block = grid.block(blocknos[bi]);
-          auto newBlock = newGrid.block(bi);
-          for (typename grid_t::channel_counter_type chn = 0; chn != newGrid.numChannels(); ++chn)
+          auto newBlock = ls._grid.block(bi);
+          for (typename grid_t::channel_counter_type chn = 0; chn != ls.numChannels(); ++chn)
             newBlock(chn, ci) = block(chn, ci);
-
-          if (newGrid.hasProperty("sdf"))
-            if (newBlock("sdf", ci) < 0) atomic_add(wrapv<space>{}, test, newBlock("sdf", ci));
+          // if (ls.hasProperty("sdf"))
+          //  if (newBlock("sdf", ci) < 0) atomic_add(wrapv<space>{}, test, newBlock("sdf", ci));
         });
 #  if 0
-    {
-      Vector<float> test{ls.get_allocator(), 1};
-      test.setVal(0);
-      pol(range(nbs), [grid = proxy<space>(ls), test = test.data()] ZS_LAMBDA(
-                          typename RM_CVREF_T(ls)::size_type bi) mutable {
-        using grid_t = RM_CVREF_T(grid);
-        const auto block = grid.block(bi);
-        if (!block.hasProperty("sdf")) return;
-        for (int ci = 0; ci != grid.block_size; ++ci)
-          if (block("sdf", ci) < 0) atomic_add(wrapv<space>{}, test, block("sdf", ci));
-      });
-      fmt::print("after grid built, {} blocks sdf sum: {}\n", nbs, test.getVal());
-    }
-#  endif
-#  if 1
     auto newSum = test.getVal();
     test.setVal(0);
     pol(range(nbs), [grid = proxy<space>(prevGrid), marks = proxy<space>(marks),
                      offsets = proxy<space>(offsets),
                      test = test.data()] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
-      if (marks[bi] == 1)
-        printf("@@ [%d] mark{%d}, offset{%d}\n", (int)bi, (int)marks[bi], (int)offsets[bi]);
+      // if (marks[bi] == 1)
+      //  printf("@@ [%d] mark{%d}, offset{%d}\n", (int)bi, (int)marks[bi], (int)offsets[bi]);
       using grid_t = RM_CVREF_T(grid);
       const auto block = grid.block(bi);
       if (!block.hasProperty("sdf")) return;
@@ -291,11 +243,6 @@ namespace zs {
     getchar();
 #  endif
 #endif
-
-#if 0
-    ls._table = newTable;
-    ls._grid = newGrid;
-#endif
   }
 
   /// usually shrink before extend
@@ -303,36 +250,52 @@ namespace zs {
   void extend_level_set_domain(ExecPol &&pol, SparseLevelSet<dim, category> &ls, int nlayers) {
     constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
 
+    constexpr auto coeff = math::pow_integral(dim, dim) - 1;
+    auto nbs = ls.numBlocks();
+    typename RM_CVREF_T(ls)::size_type base = 0;
+    // [base, nbs): candidate blocks to expand from
+    // [nbs, newNbs): newly spawned
     while (nlayers--) {
-      auto nbs = ls.numBlocks();
-      if (nbs * 26 >= ls.numReservedBlocks()) {
-        ls.resize(pol, nbs * 26);  // at most 26 neighbor blocks spawned
-        fmt::print("resizing to {} blocks\n", nbs * 26);
+      if (auto expectedNum = (nbs - base) * coeff + nbs; expectedNum >= ls.numReservedBlocks()) {
+        ls.resize(pol, expectedNum);
+        fmt::print("resizing to {} blocks\n", expectedNum);
       }
-      pol(range(nbs),
-          [ls = proxy<space>(ls)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
+      pol(range(nbs - base),
+          [ls = proxy<space>(ls), base] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
+            bi += base;
             using ls_t = RM_CVREF_T(ls);
             using table_t = RM_CVREF_T(ls._table);
             auto coord = ls._table._activeKeys[bi];
-            for (auto loc : ndrange<3>(3)) {
-              auto offset = (make_vec<int>(loc) - 1) * ls_t::side_length;
-              using TV = RM_CVREF_T(offset);
-              if (offset == TV::zeros()) return;
-              if (auto blockno = ls._table.insert(coord + offset);
-                  blockno != table_t::sentinel_v) {  // initialize newly inserted block
-                auto bid = coord + offset;
-#if 0
-                printf("[%d]-th block {%d, %d, %d} inserting [%d]-th block {%d, %d, %d}\n", (int)bi,
-                       (int)coord[0], (int)coord[1], (int)coord[2], (int)blockno, (int)bid[0],
-                       (int)bid[1], (int)bid[2]);
-#endif
-                auto block = ls._grid.block(blockno);
-                for (typename ls_t::channel_counter_type chn = 0; chn != ls.numChannels(); ++chn)
-                  for (typename ls_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
-                    block(chn, ci) = 0;  // ls._backgroundValue;
+#if 1
+            bool active = false;
+            for (typename ls_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
+              if ((int)ls._grid("mark", bi, ci) != 0) {
+                active = true;
+                break;
               }
+            if (!active) return;
+#endif
+            for (auto loc : ndrange<3>(3)) {
+              auto offset = (make_vec<int>(loc) - 1) * (typename ls_t::size_type)ls_t::side_length;
+              ls._table.insert(coord + offset);
             }
           });
+      auto newNbs = ls.numBlocks();
+      pol({(sint_t)newNbs - nbs, (sint_t)ls.block_size},
+          [ls = proxy<space>(ls), nbs] ZS_LAMBDA(
+              typename RM_CVREF_T(ls)::size_type bi,
+              typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
+            using ls_t = RM_CVREF_T(ls);
+            using table_t = RM_CVREF_T(ls._table);
+            auto block = ls._grid.block(bi + nbs);
+            for (typename ls_t::channel_counter_type chn = 0; chn != ls.numChannels(); ++chn)
+              block(chn, ci) = 0;
+            if (ls.hasProperty("sdf"))
+              block("sdf", ci) = ls._backgroundValue + ls._grid.dx;  // trick 'mark_activation'
+          });
+      fmt::print("{} blocks being spawned to {} blocks.\n", nbs, newNbs);
+      base = nbs;
+      nbs = newNbs;
     }
   }
 

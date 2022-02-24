@@ -122,7 +122,7 @@ namespace zs {
     std::size_t nbs = ls.numBlocks();
     const auto &allocator = ls.get_allocator();
 
-#if 1
+#if 0
     {
       Vector<float> test{ls.get_allocator(), 1};
       test.setVal(0);

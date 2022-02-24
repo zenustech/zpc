@@ -19,7 +19,7 @@ namespace zs {
               typename RM_CVREF_T(ls)::size_type bi,
               typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
             using ls_t = RM_CVREF_T(ls);
-            auto coord = ls._table._activeKeys[bi] + ls_t::cellid_to_coord(ci);
+            auto coord = ls._table._activeKeys[bi] + ls_t::grid_view_t::cellid_to_coord(ci);
             typename ls_t::TV vi{};
             if constexpr (ls_t::category == grid_e::staggered)
               vi = ls.ipack("vel", ls.cellToIndex(coord), 0);

@@ -214,6 +214,7 @@ namespace zs {
     }
 
     template <typename Policy> void resize(Policy &&, std::size_t numExpectedEntries);
+    template <typename Policy> void reset(Policy &&, bool clearCnt);
 
     Table _table;
     allocator_type _allocator;
@@ -224,7 +225,7 @@ namespace zs {
 
   template <typename HashTableView> struct ResetHashTable {
     using hash_table_type = typename HashTableView::hash_table_type;
-    explicit ResetHashTable(HashTableView tv) : table{tv} {}
+    explicit ResetHashTable(HashTableView tv, bool clearCnt) : table{tv}, clearCnt{clearCnt} {}
 
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
       using namespace placeholders;
@@ -233,10 +234,11 @@ namespace zs {
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
-      // if (entry == 0) *table._cnt = 0;
+      if (entry == 0 && clearCnt) *table._cnt = 0;
     }
 
     HashTableView table;
+    bool clearCnt;
   };
   template <typename HashTableView> struct ReinsertHashTable {
     using hash_table_type = typename HashTableView::hash_table_type;
@@ -258,9 +260,14 @@ namespace zs {
     _table.resize(newTableSize);
     _tableSize = newTableSize;
     _activeKeys.resize(newTableSize);
-    policy(range(newTableSize), ResetHashTable{proxy<space>(*this)});  // don't clear cnt
+    policy(range(newTableSize), ResetHashTable{proxy<space>(*this), false});  // don't clear cnt
     const auto numEntries = size();
     policy(range(numEntries), ReinsertHashTable{proxy<space>(*this)});
+  }
+  template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
+  void HashTable<Tn, dim, Index, Allocator>::reset(Policy &&policy, bool clearCnt) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    policy(range(_tableSize), ResetHashTable{proxy<space>(*this), clearCnt});
   }
 
 #if 0

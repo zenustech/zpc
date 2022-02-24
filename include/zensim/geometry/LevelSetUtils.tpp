@@ -6,6 +6,29 @@
 namespace zs {
 
   /// max velocity
+  template <typename ls_t, typename T>
+  struct max_ls_speed_op {
+    constexpr void operator()(typename ls_t::size_type bi, typename ls_t::cell_index_type ci) {
+      constexpr auto dim = ls_t::dim;
+      constexpr auto space = ls_t::space;
+      auto coord = ls._table._activeKeys[bi] + ls_t::grid_view_t::cellid_to_coord(ci);
+      typename ls_t::TV vi{};
+      if constexpr (ls_t::category == grid_e::staggered)
+        vi = ls.ipack("vel", ls.cellToIndex(coord), 0);
+      else
+        vi = ls.wpack<dim>("vel", ls.indexToWorld(coord), 0);
+      vi = vi.abs();
+      auto vm = vi[0];
+      for (int d = 1; d != dim; ++d)
+        if (vi[d] > vm) vm = vi[d];
+      atomic_max(wrapv<space>{}, vel, vm);
+    }
+    ls_t ls;
+    T*  vel;    // max velocity inf norm
+  };
+  template <typename LsvT, typename T>
+  max_ls_speed_op(LsvT, T*) -> max_ls_speed_op<LsvT, T>;
+
   template <typename ExecPol, int dim, grid_e category>
   auto get_level_set_max_speed(ExecPol &&pol, const SparseLevelSet<dim, category> &ls) ->
       typename SparseLevelSet<dim, category>::value_type {
@@ -15,6 +38,9 @@ namespace zs {
     vel.setVal(0);
     if (ls.hasProperty("vel")) {
       auto nbs = ls.numBlocks();
+      pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size}, 
+        max_ls_speed_op{proxy<space>(ls), vel.data()});
+#if 0
       pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size},
           [ls = proxy<space>(ls), vel = vel.data()] ZS_LAMBDA(
               typename RM_CVREF_T(ls)::size_type bi,
@@ -32,6 +58,7 @@ namespace zs {
             if (vi[2] > vm) vm = vi[2];
             atomic_max(wrapv<space>{}, vel, vm);
           });
+#endif
     }
     return vel.getVal();
   }

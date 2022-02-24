@@ -214,6 +214,7 @@ namespace zs {
     }
 
     template <typename Policy> void resize(Policy &&, std::size_t numExpectedEntries);
+    template <typename Policy> void preserve(Policy &&, std::size_t numExpectedEntries);
     template <typename Policy> void reset(Policy &&, bool clearCnt);
 
     Table _table;
@@ -241,7 +242,6 @@ namespace zs {
     bool clearCnt;
   };
   template <typename HashTableView> struct ReinsertHashTable {
-    using hash_table_type = typename HashTableView::hash_table_type;
     explicit ReinsertHashTable(HashTableView tv) : table{tv} {}
 
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
@@ -250,6 +250,55 @@ namespace zs {
 
     HashTableView table;
   };
+  template <typename HashTableView> struct RemoveHashTableEntries {
+    using hash_table_type = typename HashTableView::hash_table_type;
+    explicit RemoveHashTableEntries(HashTableView tv) : table{tv} {}
+    constexpr void operator()(typename HashTableView::size_type blockno) noexcept {
+      auto blockid = table._activeKeys[blockno];
+      auto entry = table.entry(blockid);
+      if (entry == hash_table_type::sentinel_v)
+        printf("%llu-th key does not exist in the table??\n", (unsigned long long)blockno);
+      table._table.keys[entry]
+          = hash_table_type::key_t::uniform(hash_table_type::key_scalar_sentinel_v);
+      table._table.indices[entry]
+          = hash_table_type::sentinel_v;  // necessary for query to terminate
+      table._table.status[entry] = -1;
+    }
+    HashTableView table;
+  };
+
+  template <typename HashTableView> struct ResetHashTableCounter {
+    explicit ResetHashTableCounter(HashTableView tv, typename HashTableView::value_t cnt)
+        : table{tv}, cnt{cnt} {}
+    constexpr void operator()(typename HashTableView::size_type entry) noexcept {
+      *table._cnt = cnt;
+    }
+    HashTableView table;
+    typename HashTableView::value_t cnt;
+  };
+
+  template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
+  void HashTable<Tn, dim, Index, Allocator>::preserve(Policy &&policy,
+                                                      std::size_t numExpectedEntries) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    const auto numEntries = size();
+    if (numExpectedEntries == numEntries) return;
+    using LsvT = decltype(proxy<space>(*this));
+    policy(range(1), ResetHashTableCounter<LsvT>{proxy<space>(*this),
+                                                 (typename LsvT::value_t)numExpectedEntries});
+    const auto newTableSize = evaluateTableSize(numExpectedEntries);
+    _activeKeys.resize(newTableSize);  // newTableSize must be larger than numExpectedEntries
+    /// clear table
+    if (newTableSize > _tableSize) {
+      _table.resize(newTableSize);
+      _tableSize = newTableSize;
+      policy(range(newTableSize),
+             ResetHashTable<LsvT>{proxy<space>(*this), false});  // don't clear cnt
+    } else
+      policy(range(numEntries), RemoveHashTableEntries<LsvT>{proxy<space>(*this)});
+    policy(range(std::min((std::size_t)numEntries, numExpectedEntries)),
+           ReinsertHashTable<LsvT>{proxy<space>(*this)});
+  }
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy,
@@ -264,10 +313,12 @@ namespace zs {
     const auto numEntries = size();
     policy(range(numEntries), ReinsertHashTable{proxy<space>(*this)});
   }
+
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::reset(Policy &&policy, bool clearCnt) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    policy(range(_tableSize), ResetHashTable{proxy<space>(*this), clearCnt});
+    using LsvT = decltype(proxy<space>(*this));
+    policy(range(_tableSize), ResetHashTable<LsvT>{proxy<space>(*this), clearCnt});
   }
 
 #if 0
@@ -409,6 +460,19 @@ namespace zs {
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       while (true) {
         if (key == _table.keys[hashedentry]) return _table.indices[hashedentry];
+        if (_table.indices[hashedentry] == HashTableT::sentinel_v) return HashTableT::sentinel_v;
+        hashedentry += 127;  ///< search next entry
+        if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
+      }
+    }
+    template <typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+    constexpr value_t entry(const VecInterface<VecT> &key) const noexcept {
+      using namespace placeholders;
+      value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
+      while (true) {
+        if (key == _table.keys[hashedentry]) return hashedentry;
         if (_table.indices[hashedentry] == HashTableT::sentinel_v) return HashTableT::sentinel_v;
         hashedentry += 127;  ///< search next entry
         if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;

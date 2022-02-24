@@ -167,8 +167,8 @@ namespace zs {
 
     auto prevKeys = ls._table._activeKeys.clone(allocator);
     auto prevGrid = ls._grid.clone(allocator);
-    // ls._table.resize(pol, newNbs);
-    // ls._grid.resize(newNbs);
+    // ls.resize(pol, newNbs);
+    // ls._table.preserve(pol, newNbs);
 
 #if 1
     // shrink table
@@ -257,8 +257,9 @@ namespace zs {
     // [nbs, newNbs): newly spawned
     while (nlayers--) {
       if (auto expectedNum = (nbs - base) * coeff + nbs; expectedNum >= ls.numReservedBlocks()) {
+        fmt::print("reserving levelset from {} to {} blocks\n", ls.numReservedBlocks(),
+                   expectedNum);
         ls.resize(pol, expectedNum);
-        fmt::print("resizing to {} blocks\n", expectedNum);
       }
       pol(range(nbs - base),
           [ls = proxy<space>(ls), base] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
@@ -266,7 +267,7 @@ namespace zs {
             using ls_t = RM_CVREF_T(ls);
             using table_t = RM_CVREF_T(ls._table);
             auto coord = ls._table._activeKeys[bi];
-#if 1
+#if 0
             bool active = false;
             for (typename ls_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
               if ((int)ls._grid("mark", bi, ci) != 0) {
@@ -281,6 +282,7 @@ namespace zs {
             }
           });
       auto newNbs = ls.numBlocks();
+      ls._grid.resize(newNbs);
       pol({(sint_t)newNbs - nbs, (sint_t)ls.block_size},
           [ls = proxy<space>(ls), nbs] ZS_LAMBDA(
               typename RM_CVREF_T(ls)::size_type bi,

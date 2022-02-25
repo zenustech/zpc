@@ -152,14 +152,28 @@ message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}
 if (ZS_ENABLE_DOC)
 find_package(Doxygen)
 if (DOXYGEN_FOUND)
-  message("Setting up the doxygen document cmake target")
+  find_package(Sphinx COMPONENTS breathe)
+  message("Setting up document cmake targets")
   set(DOXYGEN_EXCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/tpls)
-  set(DOXYGEN_GENERATE_HTML YES)
-  doxygen_add_docs(docs include
+  if (Sphinx_FOUND)
+    set(DOXYGEN_GENERATE_HTML YES)
+  endif(Sphinx_FOUND)
+  set(DOXYGEN_GENERATE_XML YES)
+  doxygen_add_docs(zpc_docs_doxygen include
     COMMENT           "Generating ZPC API documentation with Doxygen"
   )
+  if (Sphinx_FOUND)
+    sphinx_add_docs(
+      zpc_docs_sphinx
+      BREATHE_PROJECTS zpc_docs_doxygen
+      BUILDER html
+      SOURCE_DIRECTORY docs
+    )
+  else(Sphinx_FOUND)
+    message("Sphinx(with breathe) not found. Skipping target [zpc_docs_sphinx].")
+  endif(Sphinx_FOUND)
 else(DOXYGEN_FOUND)
-  message("Doxygen not found. Therefore skipping the documentation cmake target.")
+  message("Doxygen not found. Skipping target [zpc_docs_doxygen].")
 endif(DOXYGEN_FOUND)
 endif(ZS_ENABLE_DOC)
 

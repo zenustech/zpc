@@ -48,6 +48,7 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
 
 option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_ENABLE_TEST "Enable Tests" OFF)
+option(ZS_ENABLE_DOC "Enable Doxygen Documentation Generation" ON)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 set(ZS_ENABLE_SYCL_COMPUTECPP On CACHE BOOL "Enable SYCL[ComputeCpp] backend")
 set(ZS_ENABLE_SYCL_DPCPP Off CACHE BOOL "Enable SYCL[Intel-DPC++] backend")
@@ -146,10 +147,26 @@ message("project name: ${project_name}")
 message("package version: ${project_version}")
 message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}")
 
+# ----  Docs   ----
+# =================
+if (ZS_ENABLE_DOC)
+find_package(Doxygen)
+if (DOXYGEN_FOUND)
+  message("Setting up the doxygen document cmake target")
+  set(DOXYGEN_EXCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/tpls)
+  set(DOXYGEN_GENERATE_HTML YES)
+  doxygen_add_docs(docs include
+    COMMENT           "Generating ZPC API documentation with Doxygen"
+  )
+else(DOXYGEN_FOUND)
+  message("Doxygen not found. Therefore skipping the documentation cmake target.")
+endif(DOXYGEN_FOUND)
+endif(ZS_ENABLE_DOC)
 
 # ----  Tests  ----
 # =================
 if (ZS_ENABLE_TEST)
+include(CTest)
 enable_testing()
 add_subdirectory(test)
 endif(ZS_ENABLE_TEST)

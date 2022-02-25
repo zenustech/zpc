@@ -163,6 +163,8 @@ if (DOXYGEN_FOUND)
     COMMENT           "Generating ZPC API documentation with Doxygen"
   )
   if (Sphinx_FOUND)
+    set(SPHINX_VERSION ${PROJECT_VERSION})
+    set(SPHINX_LANGUAGE zh_CN)
     sphinx_add_docs(
       zpc_docs_sphinx
       BREATHE_PROJECTS zpc_docs_doxygen

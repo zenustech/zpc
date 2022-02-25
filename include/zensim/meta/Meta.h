@@ -125,4 +125,35 @@ namespace zs {
   template <typename Default, template <typename...> class Op, typename... Args> using detected_or_t
       = typename detected_or<Default, Op, Args...>::type;
 
+  /// ref: boost-hana
+  /// boost/hana/type.hpp
+  //////////////////////////////////////////////////////////////////////////
+  // is_valid
+  //////////////////////////////////////////////////////////////////////////
+  namespace detail {
+    template <typename F, typename... Args> constexpr auto is_valid_impl(int) noexcept
+        -> decltype(std::declval<F &&>()(std::declval<Args &&>()...), std::true_type{}) {
+      return std::true_type{};
+    }
+    template <typename F, typename... Args> constexpr auto is_valid_impl(...) noexcept {
+      return std::false_type{};
+    }
+    template <typename F> struct is_valid_fun {
+      template <typename... Args> constexpr auto operator()(Args &&...) const noexcept {
+        return is_valid_impl<F, Args &&...>(0);
+      }
+    };
+  }  // namespace detail
+
+  struct is_valid_t {
+    template <typename F> constexpr auto operator()(F &&) const noexcept {
+      return detail::is_valid_fun<F &&>{};
+    }
+    template <typename F, typename... Args> constexpr auto operator()(F &&, Args &&...) const {
+      return detail::is_valid_impl<F &&, Args &&...>(0);
+    }
+  };
+
+  constexpr is_valid_t is_valid{};
+
 }  // namespace zs

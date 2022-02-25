@@ -27,81 +27,63 @@ namespace zs {
     void operator()(Range &&range, F &&f,
                     const source_location &loc = source_location::current()) const {
       using fts = function_traits<F>;
-      using IterT = remove_cvref_t<decltype(std::begin(range))>;
       CppTimer timer;
       if (shouldProfile()) timer.tick();
-      if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category,
-                                          std::random_access_iterator_tag>) {
-        using DiffT = typename std::iterator_traits<IterT>::difference_type;
-        auto iter = std::begin(range);
-        const DiffT dist = std::end(range) - iter;
-#if 0
-
-#  pragma omp parallel for num_threads(_dop)
-        for (DiffT i = 0; i < dist; ++i) {
-          auto &&it = *(iter + i);
-          if constexpr (fts::arity == 0)
+      constexpr auto hasBegin = is_valid(
+          [](auto t) -> decltype((void)std::begin(std::declval<typename decltype(t)::type>())) {});
+      constexpr auto hasEnd = is_valid(
+          [](auto t) -> decltype((void)std::end(std::declval<typename decltype(t)::type>())) {});
+      if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
+        /// for iterator-like range (e.g. openvdb)
+        /// for openvdb parallel iteration...
+#pragma omp parallel num_threads(_dop)
+#pragma omp master
+        for (; range; ++range)
+#pragma omp task firstprivate(range)
+        {
+          if constexpr (fts::arity == 0) {
             f();
-          else {
-            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
-              std::apply(f, it);
-            else 
-              std::invoke(f, it);
+          } else {
+            std::invoke(f, range);
           }
         }
-#elif 0
-        DiffT nths{};
-#  pragma omp parallel if (_dop < dist) num_threads(_dop) shared(f, dist) firstprivate(iter)
-        {
-#  pragma omp single
-          { nths = omp_get_num_threads(); }
-#  pragma omp barrier
-          /// use block-style partition rather than cyclic-style
-          /// the former usually leads to a better cache utilization on cpu
-          DiffT tid = omp_get_thread_num();
-          DiffT nwork = (dist + nths - 1) / nths;
-          DiffT st = nwork * tid;
-          DiffT ed = st + nwork;
-          if (ed > dist) ed = dist;
+      } else {
+        /// not stl conforming iterator
+        using IterT = remove_cvref_t<decltype(std::begin(range))>;
+        // random iterator category
+        if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category,
+                                            std::random_access_iterator_tag>) {
+          using DiffT = typename std::iterator_traits<IterT>::difference_type;
+          auto iter = std::begin(range);
+          const DiffT dist = std::end(range) - iter;
 
-          for (iter += st; st < ed; ++st, ++iter)
+#pragma omp parallel for if (_dop < dist) num_threads(_dop)
+          for (DiffT i = 0; i < dist; ++i) {
             if constexpr (fts::arity == 0)
               f();
             else {
-              auto &&it = *iter;
+              auto &&it = *(iter + i);
               if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
                 std::apply(f, it);
               else
                 std::invoke(f, it);
             }
-        }
-#else
-#  pragma omp parallel for if (_dop < dist) num_threads(_dop)
-        for (DiffT i = 0; i < dist; ++i) {
-          if constexpr (fts::arity == 0)
-            f();
-          else {
-            auto &&it = *(iter + i);
-            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
-              std::apply(f, it);
-            else
-              std::invoke(f, it);
           }
-        }
-#endif
-      } else {
+        } else {
+          // forward iterator category
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
-        for (auto &&it : range)
+          for (auto &&it : range)
 #pragma omp task firstprivate(it)
-        {
-          if constexpr (fts::arity == 0) {
-            f();
-          } else {
-            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
-              std::apply(f, it);
-            else
-              std::invoke(f, it);
+          {
+            if constexpr (fts::arity == 0) {
+              f();
+            } else {
+              if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+                std::apply(f, it);
+              else
+                std::invoke(f, it);
+            }
           }
         }
       }

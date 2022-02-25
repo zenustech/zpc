@@ -48,7 +48,7 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
 
 option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_ENABLE_TEST "Enable Tests" OFF)
-option(ZS_ENABLE_DOC "Enable Doxygen Documentation Generation" ON)
+option(ZS_ENABLE_DOC "Enable Doxygen Documentation Generation" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 set(ZS_ENABLE_SYCL_COMPUTECPP On CACHE BOOL "Enable SYCL[ComputeCpp] backend")
 set(ZS_ENABLE_SYCL_DPCPP Off CACHE BOOL "Enable SYCL[Intel-DPC++] backend")

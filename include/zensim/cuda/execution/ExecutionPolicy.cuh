@@ -26,7 +26,7 @@ template <class U, U func, unsigned int> struct __nv_dl_tag;
 namespace zs {
 
   // =========================  signature  ==============================
-  // loopbody signature: (blockid, warpid, threadid, scratchpadMemory)
+  // loopbody signature: (scratchpadMemory, blockid, warpid, threadid)
   template <typename Tn, typename F> __global__ void thread_launch(Tn n, F f) {
     extern __shared__ char shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;

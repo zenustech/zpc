@@ -23,6 +23,33 @@ namespace zs {
   struct OmpExecutionPolicy : ExecutionPolicyInterface<OmpExecutionPolicy> {
     using exec_tag = omp_exec_tag;
     // EventID eventid{0}; ///< event id
+
+    template <typename Tn, typename F>
+    void operator()(std::initializer_list<Tn> dims, F &&f,
+                    const source_location &loc = source_location::current()) const {
+      const std::vector<Tn> range{dims};
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
+      if (range.size() == 1) {
+#pragma omp parallel for if (_dop < range[0]) num_threads(_dop)
+        for (Tn i = 0; i < range[0]; ++i) std::invoke(f, i);
+      } else if (range.size() == 2) {
+#pragma omp parallel for collapse(2) if (_dop < range[0] * range[1]) num_threads(_dop)
+        for (Tn i = 0; i < range[0]; ++i)
+          for (Tn j = 0; j < range[1]; ++j) std::invoke(f, i, j);
+      } else if (range.size() == 3) {
+#pragma omp parallel for collapse(3) if (_dop < range[0] * range[1] * range[2]) num_threads(_dop)
+        for (Tn i = 0; i < range[0]; ++i)
+          for (Tn j = 0; j < range[1]; ++j)
+            for (Tn k = 0; k < range[2]; ++k) std::invoke(f, i, j, k);
+      } else {
+        throw std::runtime_error(
+            fmt::format("execution of {}-layers of loops not supported!", range.size()));
+      }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
+    }
     template <typename Range, typename F>
     void operator()(Range &&range, F &&f,
                     const source_location &loc = source_location::current()) const {

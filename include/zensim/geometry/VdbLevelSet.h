@@ -30,7 +30,7 @@ namespace zs {
   std::vector<const void *> get_floatgrid_interior_leaves(const OpenVDBStruct &grid);
 
   /// floatgrid
-  template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SplsT &grid);
+  template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_vdbgrid(const SplsT &grid);
   SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);
   SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid,
                                                          const MemoryHandle mh);

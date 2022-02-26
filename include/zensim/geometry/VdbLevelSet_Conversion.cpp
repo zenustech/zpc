@@ -616,8 +616,7 @@ namespace zs {
   ///
   /// zpc levelset -> vdb levelset
   ///
-  template <typename SplsT>
-  OpenVDBStruct convert_sparse_levelset_to_floatgrid(const SplsT &splsIn) {
+  template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_vdbgrid(const SplsT &splsIn) {
     static_assert(is_spls_v<SplsT>, "SplsT must be a sparse levelset type");
     const auto &spls
         = splsIn.memspace() == memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
@@ -625,28 +624,66 @@ namespace zs {
         = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
     // meta
     grid->insertMeta("zpctag", openvdb::FloatMetadata(0.f));
-    grid->setGridClass(openvdb::GRID_LEVEL_SET);
     grid->setName("ZpcLevelSet");
     // transform
     openvdb::Mat4R v2w{};
     auto lsv2w = spls.getIndexToWorldTransformation();
     for (auto &&[r, c] : ndrange<2>(4)) v2w[r][c] = lsv2w[r][c];
     grid->setTransform(openvdb::math::Transform::createLinearTransform(v2w));
+
     // tree
-    auto lsv = proxy<execspace_e::host>(spls);
-    auto gridview = proxy<execspace_e::host>(spls._grid);
-    auto accessor = grid->getAccessor();
-    using LsT = RM_CVREF_T(lsv);
-    for (auto &&[blockno, blockid] : zip(range(spls.numBlocks()), spls._table._activeKeys))
-      for (int cid = 0; cid != spls.block_size; ++cid) {
-        // const auto offset = (int)blockno * (int)spls.block_size + cid;
-        const auto sdfVal
-            = lsv.wsample("sdf", 0, lsv.indexToWorld(blockno, cid), lsv._backgroundValue);
-        if (sdfVal == spls._backgroundValue) continue;
-        const auto coord = blockid + LsT::grid_view_t::cellid_to_coord(cid);
-        // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
-        accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
-      }
+    if constexpr (is_backend_available(exec_omp)) {
+      auto ompExec = omp_exec();
+      auto lsv = proxy<execspace_e::openmp>(spls);
+      using LsT = RM_CVREF_T(lsv);
+      for (const auto &blockid : spls._table._activeKeys)
+        grid->tree().touchLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
+      ompExec(zip(range(spls.numBlocks()), spls._table._activeKeys), [lsv, &grid, &spls](
+                                                                         typename LsT::size_type
+                                                                             blockno,
+                                                                         const typename LsT::IV
+                                                                             &blockid) mutable {
+        auto nodePtr = grid->tree().probeLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
+        if (nodePtr == nullptr)
+          throw std::runtime_error("strangely this leaf has not yet been allocated.");
+#if 0
+        typename LsT::cell_index_type ci = 0;
+        auto &node = *nodePtr;
+        auto block = lsv._grid.block(blockno);
+        for (auto cell = node.beginValueAll(); cell && ci != lsv.block_size; ++cell, ++ci) {
+          const auto sdfVal
+              = lsv.wsample("sdf", 0, lsv.indexToWorld(blockno, ci), lsv._backgroundValue);
+          // if (sdfVal == lsv._backgroundValue) continue;
+          // const auto coord = blockid + LsT::grid_view_t::cellid_to_coord(ci);
+          // accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
+          cell.setValue(block("sdf", ci));
+        }
+#else
+        auto accessor = grid->getAccessor();
+        for (typename LsT::cell_index_type cid = 0; cid != lsv.block_size; ++cid) {
+          const auto sdfVal
+              = lsv.wsample("sdf", 0, lsv.indexToWorld(blockno, cid), lsv._backgroundValue);
+          if (sdfVal == lsv._backgroundValue) continue;
+          const auto coord = blockid + LsT::grid_view_t::cellid_to_coord(cid);
+          accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
+        }
+#endif
+      });
+    } else {
+      auto lsv = proxy<execspace_e::host>(spls);
+      using LsT = RM_CVREF_T(lsv);
+      auto accessor = grid->getAccessor();
+      for (auto &&[blockno, blockid] : zip(range(spls.numBlocks()), spls._table._activeKeys))
+        for (int cid = 0; cid != lsv.block_size; ++cid) {
+          // const auto offset = (int)blockno * (int)spls.block_size + cid;
+          const auto sdfVal
+              = lsv.wsample("sdf", 0, lsv.indexToWorld(blockno, cid), lsv._backgroundValue);
+          if (sdfVal == lsv._backgroundValue) continue;
+          const auto coord = blockid + LsT::grid_view_t::cellid_to_coord(cid);
+          // (void)accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, 0.f);
+          accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
+        }
+    }
     if constexpr (SplsT::category == grid_e::staggered)
       grid->setGridClass(openvdb::GridClass::GRID_STAGGERED);
     else
@@ -654,12 +691,12 @@ namespace zs {
     return OpenVDBStruct{grid};
   }
 
-  template OpenVDBStruct convert_sparse_levelset_to_floatgrid<
-      SparseLevelSet<3, grid_e::collocated>>(const SparseLevelSet<3, grid_e::collocated> &splsIn);
+  template OpenVDBStruct convert_sparse_levelset_to_vdbgrid<SparseLevelSet<3, grid_e::collocated>>(
+      const SparseLevelSet<3, grid_e::collocated> &splsIn);
   template OpenVDBStruct
-  convert_sparse_levelset_to_floatgrid<SparseLevelSet<3, grid_e::cellcentered>>(
+  convert_sparse_levelset_to_vdbgrid<SparseLevelSet<3, grid_e::cellcentered>>(
       const SparseLevelSet<3, grid_e::cellcentered> &splsIn);
-  template OpenVDBStruct convert_sparse_levelset_to_floatgrid<SparseLevelSet<3, grid_e::staggered>>(
+  template OpenVDBStruct convert_sparse_levelset_to_vdbgrid<SparseLevelSet<3, grid_e::staggered>>(
       const SparseLevelSet<3, grid_e::staggered> &splsIn);
 
 }  // namespace zs

@@ -32,9 +32,10 @@ namespace zs {
       table = {pars.size(), memLoc, did};
 
       auto cudaPol = cuda_exec().device(did).sync(true);
-      cudaPol({table._tableSize}, CleanSparsity{exec_cuda, table});
-      cudaPol({pars.size()}, ComputeSparsity{exec_cuda, dx, 1, table,
-                                             const_cast<particles_t &>(pars).attrVector("pos"), 0});
+      cudaPol(Collapse{table._tableSize}, CleanSparsity{exec_cuda, table});
+      cudaPol(Collapse{pars.size()},
+              ComputeSparsity{exec_cuda, dx, 1, table,
+                              const_cast<particles_t &>(pars).attrVector("pos"), 0});
       /// counts, offsets, indices
       // counts
       auto &counts = indexBuckets._counts;
@@ -42,7 +43,7 @@ namespace zs {
       counts = vector_t{(std::size_t)numCells, memLoc, did};
       memset(mem_device, counts.data(), 0, sizeof(typename vector_t::value_type) * counts.size());
       auto tmp = counts;  // zero-ed array
-      cudaPol({pars.size()},
+      cudaPol(Collapse{pars.size()},
               SpatiallyCount{exec_cuda, dx, table,
                              const_cast<particles_t &>(pars).attrVector("pos"), counts, 1, 0});
       // offsets
@@ -52,9 +53,10 @@ namespace zs {
       // indices
       auto &indices = indexBuckets._indices;
       indices = vector_t{pars.size(), memLoc, did};
-      cudaPol({pars.size()}, SpatiallyDistribute{exec_cuda, dx, table,
-                                                 const_cast<particles_t &>(pars).attrVector("pos"),
-                                                 tmp, offsets, indices, 1, 0});
+      cudaPol(Collapse{pars.size()},
+              SpatiallyDistribute{exec_cuda, dx, table,
+                                  const_cast<particles_t &>(pars).attrVector("pos"), tmp, offsets,
+                                  indices, 1, 0});
       return indexBuckets;
     })(particles);
   }

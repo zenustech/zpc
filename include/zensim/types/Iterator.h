@@ -404,6 +404,10 @@ namespace zs {
     static constexpr std::size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
 
+    template <std::size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
+      return std::get<I>(ns);
+    }
+
     struct iterator : IteratorInterface<iterator> {
       constexpr iterator(wrapv<0>, const std::tuple<Tn...> &ns)
           : ns{ns}, it{(Is + 1 > 0 ? 0 : 0)...} {}
@@ -534,8 +538,8 @@ namespace zs {
   template <typename... Args> constexpr auto enumerate(Args &&...args) {
     auto begin = make_iterator<zip_iterator>(make_iterator<IndexIterator>((sint_t)0),
                                              std::begin(FWD(args))...);
-    auto end = make_iterator<zip_iterator>(
-        make_iterator<IndexIterator>(limits<sint_t>::max()), std::end(FWD(args))...);
+    auto end = make_iterator<zip_iterator>(make_iterator<IndexIterator>(limits<sint_t>::max()),
+                                           std::end(FWD(args))...);
     return detail::iter_range(std::move(begin), std::move(end));
   }
 

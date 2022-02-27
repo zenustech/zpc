@@ -6,8 +6,7 @@
 namespace zs {
 
   /// max velocity
-  template <typename ls_t, typename T>
-  struct max_ls_speed_op {
+  template <typename ls_t, typename T> struct max_ls_speed_op {
     constexpr void operator()(typename ls_t::size_type bi, typename ls_t::cell_index_type ci) {
       constexpr auto dim = ls_t::dim;
       constexpr auto space = ls_t::space;
@@ -24,10 +23,9 @@ namespace zs {
       atomic_max(wrapv<space>{}, vel, vm);
     }
     ls_t ls;
-    T*  vel;    // max velocity inf norm
+    T *vel;  // max velocity inf norm
   };
-  template <typename LsvT, typename T>
-  max_ls_speed_op(LsvT, T*) -> max_ls_speed_op<LsvT, T>;
+  template <typename LsvT, typename T> max_ls_speed_op(LsvT, T *) -> max_ls_speed_op<LsvT, T>;
 
   template <typename ExecPol, int dim, grid_e category>
   auto get_level_set_max_speed(ExecPol &&pol, const SparseLevelSet<dim, category> &ls) ->
@@ -38,10 +36,9 @@ namespace zs {
     vel.setVal(0);
     if (ls.hasProperty("vel")) {
       auto nbs = ls.numBlocks();
-      pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size}, 
-        max_ls_speed_op{proxy<space>(ls), vel.data()});
+      pol(Collapse{nbs, ls.block_size}, max_ls_speed_op{proxy<space>(ls), vel.data()});
 #if 0
-      pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size},
+      pol(Collapse{(sint_t)nbs, (sint_t)ls.block_size},
           [ls = proxy<space>(ls), vel = vel.data()] ZS_LAMBDA(
               typename RM_CVREF_T(ls)::size_type bi,
               typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
@@ -77,7 +74,7 @@ namespace zs {
     Vector<u64> numActiveVoxels{ls.get_allocator(), 1};
     numActiveVoxels.setVal(0);
 
-    pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size},
+    pol(Collapse{nbs, ls.block_size},
         [ls = proxy<space>(ls), threshold, cnt = numActiveVoxels.data()] ZS_LAMBDA(
             typename RM_CVREF_T(ls)::size_type bi,
             typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
@@ -172,7 +169,7 @@ namespace zs {
     pol(range(nbs), [marks = proxy<space>(marks)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) {
       marks[bi] = 0;
     });
-    pol(std::initializer_list<sint_t>{(sint_t)nbs, (sint_t)ls.block_size},
+    pol(Collapse{nbs, ls.block_size},
         [ls = proxy<space>(ls), marks = proxy<space>(marks)] ZS_LAMBDA(
             typename RM_CVREF_T(ls)::size_type bi,
             typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
@@ -227,7 +224,7 @@ namespace zs {
 #  endif
     // Vector<float> test{ls.get_allocator(), 1};
     // test.setVal(0);
-    pol(std::initializer_list<sint_t>{(sint_t)newNbs, (sint_t)ls.block_size},
+    pol(Collapse{newNbs, ls.block_size},
         [blocknos = proxy<space>(preservedBlockNos), grid = proxy<space>(prevGrid),
          marks = proxy<space>(marks), offsets = proxy<space>(offsets),
          ls = proxy<space>(ls)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi,
@@ -310,7 +307,7 @@ namespace zs {
           });
       auto newNbs = ls.numBlocks();
       ls._grid.resize(newNbs);
-      pol({(sint_t)newNbs - nbs, (sint_t)ls.block_size},
+      pol(Collapse{newNbs - nbs, ls.block_size},
           [ls = proxy<space>(ls), nbs] ZS_LAMBDA(
               typename RM_CVREF_T(ls)::size_type bi,
               typename RM_CVREF_T(ls)::cell_index_type ci) mutable {

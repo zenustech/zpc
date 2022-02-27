@@ -25,34 +25,50 @@ template <class U, U func, unsigned int> struct __nv_dl_tag;
 
 namespace zs {
 
-  // =========================  signature  ==============================
-  // loopbody signature: (scratchpadMemory, blockid, warpid, threadid)
-  template <typename Tn, typename F> __global__ void thread_launch(Tn n, F f) {
-    extern __shared__ char shmem[];
-    Tn id = blockIdx.x * blockDim.x + threadIdx.x;
-    if (id < n) {
-      using func_traits = function_traits<F>;
-      if constexpr (func_traits::arity == 1)
-        f(id);
-      else if constexpr (func_traits::arity == 2
-                         && std::is_pointer_v<
-                             std::tuple_element_t<0, typename func_traits::arguments_t>>)
-        f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem), id);
-    }
-  }
-  template <typename F> __global__ void block_thread_launch(F f) {
-    extern __shared__ char shmem[];
-    using func_traits = function_traits<F>;
-    if constexpr (func_traits::arity == 2
-                  && !std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
-      f(blockIdx.x, threadIdx.x);
-    else if constexpr (func_traits::arity == 3
-                       && std::is_pointer_v<
-                           std::tuple_element_t<0, typename func_traits::arguments_t>>)
-      f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
-        blockIdx.x, threadIdx.x);
-  }
   namespace detail {
+
+    template <typename F, typename ArgSeq, typename = void> struct deduce_fts {
+      static constexpr bool fts_available
+          = is_valid([](auto t) -> decltype(zs::function_traits<typename decltype(t)::type>{},
+                                            void()) {})(zs::wrapt<F>{});
+      template <typename Seq> struct impl;
+      template <typename... Args> struct impl<std::tuple<Args...>> {
+        static constexpr auto deduce_args_t() noexcept {
+          if constexpr (fts_available)
+            return typename function_traits<F>::arguments_t{};
+          else if constexpr (std::is_invocable_v<F, int, Args...>)
+            return std::tuple<int, Args...>{};
+          else if constexpr (std::is_invocable_v<F, void *, Args...>)
+            return std::tuple<void *, Args...>{};
+          else
+            return std::tuple<Args...>{};
+        }
+        static constexpr auto deduce_return_t() noexcept {
+          if constexpr (fts_available)
+            return typename function_traits<F>::return_t{};
+          else if constexpr (std::is_invocable_v<F, int, Args...>)
+            return std::invoke_result_t<F, int, Args...>{};
+          else if constexpr (std::is_invocable_v<F, void *, Args...>)
+            return std::invoke_result_t<F, void *, Args...>{};
+          else
+            return std::invoke_result_t<F, Args...>{};
+        }
+        static constexpr std::size_t deduce_arity() noexcept {
+          if constexpr (fts_available)
+            return function_traits<F>::arity;
+          else
+            return std::tuple_size_v<decltype(deduce_args_t())>;
+        }
+      };
+
+      using arguments_t = decltype(impl<ArgSeq>::deduce_args_t());
+      using return_t = decltype(impl<ArgSeq>::deduce_return_t());
+      static constexpr std::size_t arity = impl<ArgSeq>::deduce_arity();
+
+      static_assert(is_same_v<return_t, void>,
+                    "callable for execution policy should only return void");
+    };
+
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F &&f,
                                                   ZipIter &&iter, index_seq<Is...>) {
@@ -67,7 +83,7 @@ namespace zs {
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i,
                                                   F &&f, ZipIter &&iter, index_seq<Is...>) {
       (std::get<Is>(iter.iters).advance(i), ...);
-      using func_traits = function_traits<remove_cvref_t<F>>;
+      using func_traits = detail::deduce_fts<remove_cvref_t<F>, RM_CVREF_T(iter.iters)>;
       using shmem_ptr_t = std::tuple_element_t<0, typename func_traits::arguments_t>;
       if constexpr (withIndex)
         f(reinterpret_cast<shmem_ptr_t>(shmem), i, *std::get<Is>(iter.iters)...);
@@ -75,6 +91,36 @@ namespace zs {
         f(reinterpret_cast<shmem_ptr_t>(shmem), *std::get<Is>(iter.iters)...);
     }
   }  // namespace detail
+
+  // =========================  signature  ==============================
+  // loopbody signature: (scratchpadMemory, blockid, warpid, threadid)
+  template <typename Tn, typename F> __global__ void thread_launch(Tn n, F f) {
+    extern __shared__ char shmem[];
+    Tn id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id < n) {
+      using func_traits = detail::deduce_fts<F, std::tuple<RM_CVREF_T(id)>>;
+      if constexpr (func_traits::arity == 1)
+        f(id);
+      else if constexpr (func_traits::arity == 2
+                         && std::is_pointer_v<
+                             std::tuple_element_t<0, typename func_traits::arguments_t>>)
+        f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem), id);
+    }
+  }
+  template <typename F> __global__ void block_thread_launch(F f) {
+    extern __shared__ char shmem[];
+    using func_traits
+        = detail::deduce_fts<F, std::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(threadIdx.x)>>;
+    if constexpr (func_traits::arity == 2
+                  && !std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
+      f(blockIdx.x, threadIdx.x);
+    else if constexpr (func_traits::arity == 3
+                       && std::is_pointer_v<
+                           std::tuple_element_t<0, typename func_traits::arguments_t>>)
+      f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
+        blockIdx.x, threadIdx.x);
+  }
+
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
       std::is_convertible_v<
           typename std::iterator_traits<ZipIter>::iterator_category,
@@ -84,7 +130,7 @@ namespace zs {
     extern __shared__ char shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = function_traits<F>;
+      using func_traits = detail::deduce_fts<F, std::tuple<RM_CVREF_T(iter.iters)>>;
       constexpr auto numArgs = std::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
       constexpr auto indices = std::make_index_sequence<numArgs>{};
 
@@ -114,7 +160,9 @@ namespace zs {
     extern __shared__ char shmem[];
     cg::thread_block block = cg::this_thread_block();
     cg::thread_group tile = cg::tiled_partition(block, tileSize);
-    using func_traits = function_traits<F>;
+    using func_traits = detail::deduce_fts<
+        F, std::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(block.thread_rank() / tileSize),
+                      RM_CVREF_T(tile.thread_rank())>>;
     if constexpr (func_traits::arity == 3
                   && !std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
       f(blockIdx.x, block.thread_rank() / tileSize, tile.thread_rank());
@@ -173,10 +221,11 @@ namespace zs {
     }
 #endif
 
-    template <typename Tn, typename F>
-    void operator()(std::initializer_list<Tn> dims, F &&f,
+    template <typename Ts, typename Is, typename F>
+    void operator()(Collapse<Ts, Is> dims, F &&f,
                     const source_location &loc = source_location::current()) const {
-      const std::vector<Tn> range{dims};
+      using namespace index_literals;
+      constexpr auto dim = Collapse<Ts, Is>::dim;
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -185,24 +234,24 @@ namespace zs {
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
       // need to work on __device__ func as well
-      // if constexpr (arity == 1)
-      if (range.size() == 1) {
+      if constexpr (dim == 1) {
         LaunchConfig lc{};
         if (blockSize == 0)
-          lc = LaunchConfig{std::true_type{}, range[0], shmemBytes};
+          lc = LaunchConfig{std::true_type{}, dims.get(0_th), shmemBytes};
         else
-          lc = LaunchConfig{(range[0] + blockSize - 1) / blockSize, blockSize, shmemBytes};
-        cuda_safe_launch(loc, context, streamid, std::move(lc), thread_launch, range[0], f);
+          lc = LaunchConfig{(dims.get(0_th) + blockSize - 1) / blockSize, blockSize, shmemBytes};
+        cuda_safe_launch(loc, context, streamid, std::move(lc), thread_launch, dims.get(0_th), f);
       }
       // else if constexpr (arity == 2)
-      else if (range.size() == 2) {
-        cuda_safe_launch(loc, context, streamid, {range[0], range[1], shmemBytes},
+      else if constexpr (dim == 2) {
+        cuda_safe_launch(loc, context, streamid, {dims.get(0_th), dims.get(1_th), shmemBytes},
                          block_thread_launch, f);
       }
       // else if constexpr (arity == 3)
-      else if (range.size() == 3) {
-        cuda_safe_launch(loc, context, streamid, {range[0], range[1] * range[2], shmemBytes},
-                         block_tile_lane_launch, range[2], f);
+      else if constexpr (dim == 3) {
+        cuda_safe_launch(loc, context, streamid,
+                         {dims.get(0_th), dims.get(1_th) * dims.get(2_th), shmemBytes},
+                         block_tile_lane_launch, dims.get(2_th), f);
       }
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);

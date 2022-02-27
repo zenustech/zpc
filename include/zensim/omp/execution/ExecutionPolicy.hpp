@@ -24,27 +24,29 @@ namespace zs {
     using exec_tag = omp_exec_tag;
     // EventID eventid{0}; ///< event id
 
-    template <typename Tn, typename F>
-    void operator()(std::initializer_list<Tn> dims, F &&f,
+    template <typename Ts, typename Is, typename F>
+    void operator()(Collapse<Ts, Is> dims, F &&f,
                     const source_location &loc = source_location::current()) const {
-      const std::vector<Tn> range{dims};
+      using namespace index_literals;
+      constexpr auto dim = Collapse<Ts, Is>::dim;
       CppTimer timer;
       if (shouldProfile()) timer.tick();
-      if (range.size() == 1) {
-#pragma omp parallel for if (_dop < range[0]) num_threads(_dop)
-        for (Tn i = 0; i < range[0]; ++i) std::invoke(f, i);
-      } else if (range.size() == 2) {
-#pragma omp parallel for collapse(2) if (_dop < range[0] * range[1]) num_threads(_dop)
-        for (Tn i = 0; i < range[0]; ++i)
-          for (Tn j = 0; j < range[1]; ++j) std::invoke(f, i, j);
-      } else if (range.size() == 3) {
-#pragma omp parallel for collapse(3) if (_dop < range[0] * range[1] * range[2]) num_threads(_dop)
-        for (Tn i = 0; i < range[0]; ++i)
-          for (Tn j = 0; j < range[1]; ++j)
-            for (Tn k = 0; k < range[2]; ++k) std::invoke(f, i, j, k);
+      if constexpr (dim == 1) {
+#pragma omp parallel for if (_dop < dims.get(0_th)) num_threads(_dop)
+        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i) std::invoke(f, i);
+      } else if constexpr (dim == 2) {
+#pragma omp parallel for collapse(2) if (_dop < dims.get(0_th) * dims.get(1_th)) num_threads(_dop)
+        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i)
+          for (RM_CVREF_T(dims.get(1_th)) j = 0; j < dims.get(1_th); ++j) std::invoke(f, i, j);
+      } else if constexpr (dim == 3) {
+#pragma omp parallel for collapse(3) if (_dop < dims.get(0_th) * dims.get(1_th) * dims.get(2_th)) \
+    num_threads(_dop)
+        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i)
+          for (RM_CVREF_T(dims.get(1_th)) j = 0; j < dims.get(1_th); ++j)
+            for (RM_CVREF_T(dims.get(2_th)) k = 0; k < dims.get(2_th); ++k) std::invoke(f, i, j, k);
       } else {
         throw std::runtime_error(
-            fmt::format("execution of {}-layers of loops not supported!", range.size()));
+            fmt::format("execution of {}-layers of loops not supported!", dim));
       }
       if (shouldProfile())
         timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
@@ -53,7 +55,6 @@ namespace zs {
     template <typename Range, typename F>
     void operator()(Range &&range, F &&f,
                     const source_location &loc = source_location::current()) const {
-      using fts = function_traits<F>;
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       constexpr auto hasBegin = is_valid(
@@ -68,7 +69,7 @@ namespace zs {
         for (; range; ++range)
 #pragma omp task firstprivate(range)
         {
-          if constexpr (fts::arity == 0) {
+          if constexpr (std::is_invocable_v<F>) {
             f();
           } else {
             std::invoke(f, range);
@@ -86,7 +87,7 @@ namespace zs {
 
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
           for (DiffT i = 0; i < dist; ++i) {
-            if constexpr (fts::arity == 0)
+            if constexpr (std::is_invocable_v<F>)
               f();
             else {
               auto &&it = *(iter + i);
@@ -103,7 +104,7 @@ namespace zs {
           for (auto &&it : range)
 #pragma omp task firstprivate(it)
           {
-            if constexpr (fts::arity == 0) {
+            if constexpr (std::is_invocable_v<F>) {
               f();
             } else {
               if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)

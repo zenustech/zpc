@@ -230,7 +230,8 @@ namespace zs {
       ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
                                     nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
         auto block = ls._grid.block(bi + nbs);
-        for (typename RM_CVREF_T(ls)::cell_index_type ci = 0; ci != ls.block_size; ++ci)
+        using lsv_t = RM_CVREF_T(ls);
+        for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
           block("sdf", ci) = -ls._backgroundValue;
       });
       // register table

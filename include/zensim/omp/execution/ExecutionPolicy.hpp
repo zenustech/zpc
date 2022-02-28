@@ -64,15 +64,16 @@ namespace zs {
       if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
         /// for iterator-like range (e.g. openvdb)
         /// for openvdb parallel iteration...
+        auto iter = FWD(range);  // otherwise fails on win
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
-        for (; range; ++range)
-#pragma omp task firstprivate(range)
+        for (; iter; ++iter)
+#pragma omp task firstprivate(iter)
         {
           if constexpr (std::is_invocable_v<F>) {
             f();
           } else {
-            std::invoke(f, range);
+            std::invoke(f, iter);
           }
         }
       } else {

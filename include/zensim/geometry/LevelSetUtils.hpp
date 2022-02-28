@@ -33,9 +33,11 @@ namespace zs {
 
     static_assert(deriv_order >= 0 && deriv_order <= 2,
                   "weight derivative order should be a integer within [0, 2]");
+
     using WeightScratchPad
         = conditional_t<deriv_order == 0, tuple<TWM>,
                         conditional_t<deriv_order == 1, tuple<TWM, TWM>, tuple<TWM, TWM, TWM>>>;
+
     template <typename Val, std::size_t... Is>
     static constexpr auto arena_type_impl(index_seq<Is...>) {
       return vec<Val, (Is + 1 > 0 ? width : width)...>{};
@@ -43,8 +45,9 @@ namespace zs {
     template <typename Val, int d> static constexpr auto arena_type() {
       return arena_type_impl<Val>(std::make_index_sequence<d>{});
     }
-    template <typename Val> using Arena = decltype(arena_type<Val, dim>());
+    template <typename Val> using Arena = RM_CVREF_T(arena_type<Val, dim>());
 
+    /// constructors
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
     constexpr LevelSetArena(lsv_t &lsv, const VecInterface<VecT> &x, wrapv<kt> = {},
@@ -77,14 +80,84 @@ namespace zs {
         weights = cubic_bspline_weights<deriv_order>(iLocalPos);
     }
 
-#if 0
-    constexpr Arena<value_type> arena() const noexcept {
-      ;
-      ;
+    /// scalar arena
+    constexpr Arena<value_type> arena(typename lsv_t::channel_counter_type chn,
+                                      typename lsv_t::value_type defaultVal = 0) const noexcept {
+      // ensure that chn's orientation is aligned with initialization if within a staggered grid
+      Arena<value_type> pad{};
+      int cnt = 0;
+      for (auto offset : ndrange<dim>(width)) {
+        pad.val(offset) = lsPtr->value_or(
+            chn, iCorner + make_vec<typename lsv_t::coord_index_type>(offset), defaultVal);
+      }
+      return pad;
     }
-#endif
+    constexpr Arena<value_type> arena(const SmallString &propName,
+                                      typename lsv_t::channel_counter_type chn = 0,
+                                      typename lsv_t::value_type defaultVal = 0) const noexcept {
+      return arena(lsPtr->_grid.propertyOffset(propName) + chn, defaultVal);
+    }
 
-    // weight
+    /// minimum
+    constexpr value_type minimum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
+      auto pad = arena(chn, limits<value_type>::max());
+      if constexpr (kt == kernel_e::linear)
+        return xlerp(iLocalPos, pad);
+      else {
+        value_type ret = limits<value_type>::max();
+        for (auto offset : ndrange<dim>(width))
+          if (const auto &v = pad.val(offset); v < ret) ret = v;
+        return ret;
+      }
+    }
+    constexpr value_type minimum(const SmallString &propName,
+                                 typename lsv_t::channel_counter_type chn = 0) const noexcept {
+      return minimum(lsPtr->_grid.propertyOffset(propName) + chn);
+    }
+
+    /// maximum
+    constexpr value_type maximum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
+      auto pad = arena(chn, limits<value_type>::lowest());
+      if constexpr (kt == kernel_e::linear)
+        return xlerp(iLocalPos, pad);
+      else {
+        value_type ret = limits<value_type>::lowest();
+        for (auto offset : ndrange<dim>(width))
+          if (const auto &v = pad.val(offset); v > ret) ret = v;
+        return ret;
+      }
+    }
+    constexpr value_type maximum(const SmallString &propName,
+                                 typename lsv_t::channel_counter_type chn = 0) const noexcept {
+      return maximum(lsPtr->_grid.propertyOffset(propName) + chn);
+    }
+
+    /// isample
+    constexpr value_type isample(typename lsv_t::channel_counter_type chn,
+                                 typename lsv_t::value_type defaultVal) const noexcept {
+      auto pad = arena(chn, defaultVal);
+      if constexpr (kt == kernel_e::linear)
+        return xlerp(iLocalPos, pad);
+      else {
+        value_type ret = 0;
+        for (auto offset : ndrange<dim>(width)) ret += weight(offset) * pad.val(offset);
+        return ret;
+      }
+    }
+    constexpr value_type isample(const SmallString &propName,
+                                 typename lsv_t::channel_counter_type chn,
+                                 typename lsv_t::value_type defaultVal) const noexcept {
+      auto pad = arena(propName, chn, defaultVal);
+      if constexpr (kt == kernel_e::linear)
+        return xlerp(iLocalPos, pad);
+      else {
+        value_type ret = 0;
+        for (auto offset : ndrange<dim>(width)) ret += weight(offset) * pad.val(offset);
+        return ret;
+      }
+    }
+
+    /// weight
     template <typename... Tn>
     constexpr value_type weight(const std::tuple<Tn...> &loc) const noexcept {
       return weight_impl(loc, std::index_sequence_for<Tn...>{});
@@ -94,7 +167,7 @@ namespace zs {
     constexpr auto weight(Tn &&...is) const noexcept {
       return weight(std::forward_as_tuple(FWD(is)...));
     }
-    // weight gradient
+    /// weight gradient
     template <std::size_t I, typename... Tn, auto ord = deriv_order>
     constexpr std::enable_if_t<(ord > 0), value_type> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
@@ -117,7 +190,7 @@ namespace zs {
     lsv_t *lsPtr{nullptr};
     WeightScratchPad weights{};
     TV iLocalPos{TV::zeros()};  // index-space local offset
-    TV iCorner{TV::zeros()};    // index-space global coord
+    IV iCorner{IV::zeros()};    // index-space global coord
 
   protected:
     template <typename... Tn, std::size_t... Is,

@@ -95,9 +95,7 @@ namespace zs {
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(tableSize)} {
       value_t res[1];
-      res[0] = (value_t)0;
-      copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
-           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res}, sizeof(value_t));
+      _cnt.setVal((value_t)0);
     }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : HashTable{get_default_allocator(mre, devid), tableSize} {}

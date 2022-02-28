@@ -329,6 +329,11 @@ namespace zs {
     return LegacyIterator<IterT>(T(FWD(args)...));
   }
 
+  template <typename Iter> struct is_custom_iterator : std::false_type {};
+  template <typename Iter> struct is_custom_iterator<LegacyIterator<Iter>> : std::true_type {};
+
+  template <typename Iter> constexpr bool is_custom_iterator_v = is_custom_iterator<Iter>::value;
+
   namespace detail {
     template <typename IB, typename IE = IB> struct WrappedIterator {
       IB beginIterator;
@@ -509,6 +514,15 @@ namespace zs {
 
   template <typename... Iters> zip_iterator(Iters...)
       -> zip_iterator<std::tuple<Iters...>, std::index_sequence_for<Iters...>>;
+
+  template <typename Iter> struct is_zip_iterator : std::false_type {};
+  template <typename Iter, typename Indices>
+  struct is_zip_iterator<LegacyIterator<zip_iterator<Iter, Indices>>> : std::true_type {};
+
+  template <typename Iter, typename Indices> struct is_zip_iterator<zip_iterator<Iter, Indices>>
+      : std::true_type {};
+
+  template <typename Iter> constexpr bool is_zip_iterator_v = is_zip_iterator<Iter>::value;
 
   ///
   /// ranges

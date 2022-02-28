@@ -31,27 +31,51 @@ namespace zs {
       static constexpr bool fts_available
           = is_valid([](auto t) -> decltype(zs::function_traits<typename decltype(t)::type>{},
                                             void()) {})(zs::wrapt<F>{});
+      template <typename IterOrIndex> static constexpr bool deref_available
+          = is_valid([](auto t) -> decltype((void)(*std::declval<typename decltype(t)::type>())) {
+            })(zs::wrapt<IterOrIndex>{});
+      template <typename Iter> using iter_arg_t = decltype(*std::declval<Iter>());
+
       template <typename Seq> struct impl;
       template <typename... Args> struct impl<std::tuple<Args...>> {
+        static constexpr bool all_deref_available = (deref_available<Args> && ...);
         static constexpr auto deduce_args_t() noexcept {
           if constexpr (fts_available)
             return typename function_traits<F>::arguments_t{};
-          else if constexpr (std::is_invocable_v<F, int, Args...>)
-            return std::tuple<int, Args...>{};
-          else if constexpr (std::is_invocable_v<F, void *, Args...>)
-            return std::tuple<void *, Args...>{};
-          else
-            return std::tuple<Args...>{};
+          else if constexpr (all_deref_available) {
+            if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
+              return std::tuple<int, iter_arg_t<Args>...>{};
+            else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
+              return std::tuple<void *, iter_arg_t<Args>...>{};
+            else
+              return std::tuple<iter_arg_t<Args>...>{};
+          } else {
+            if constexpr (std::is_invocable_v<F, int, Args...>)
+              return std::tuple<int, Args...>{};
+            else if constexpr (std::is_invocable_v<F, void *, Args...>)
+              return std::tuple<void *, Args...>{};
+            else
+              return std::tuple<Args...>{};
+          }
         }
         static constexpr auto deduce_return_t() noexcept {
           if constexpr (fts_available)
             return typename function_traits<F>::return_t{};
-          else if constexpr (std::is_invocable_v<F, int, Args...>)
-            return std::invoke_result_t<F, int, Args...>{};
-          else if constexpr (std::is_invocable_v<F, void *, Args...>)
-            return std::invoke_result_t<F, void *, Args...>{};
-          else
-            return std::invoke_result_t<F, Args...>{};
+          else if constexpr (all_deref_available) {
+            if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
+              return std::invoke_result_t<F, int, iter_arg_t<Args>...>{};
+            else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
+              return std::invoke_result_t<F, void *, iter_arg_t<Args>...>{};
+            else
+              return std::invoke_result_t<F, iter_arg_t<Args>...>{};
+          } else {
+            if constexpr (std::is_invocable_v<F, int, Args...>)
+              return std::invoke_result_t<F, int, Args...>{};
+            else if constexpr (std::is_invocable_v<F, void *, Args...>)
+              return std::invoke_result_t<F, void *, Args...>{};
+            else
+              return std::invoke_result_t<F, Args...>{};
+          }
         }
         static constexpr std::size_t deduce_arity() noexcept {
           if constexpr (fts_available)
@@ -130,7 +154,7 @@ namespace zs {
     extern __shared__ char shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = detail::deduce_fts<F, std::tuple<RM_CVREF_T(iter.iters)>>;
+      using func_traits = detail::deduce_fts<F, RM_CVREF_T(iter.iters)>;
       constexpr auto numArgs = std::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
       constexpr auto indices = std::make_index_sequence<numArgs>{};
 
@@ -284,6 +308,9 @@ namespace zs {
 
       if constexpr (is_std_tuple<RefT>::value) {
         cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
+      } else if constexpr (is_zip_iterator_v<IterT>) {
+        cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
+                         std::begin(FWD(range)));
       } else {  // wrap the non-zip range in a zip range
         cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
                          std::begin(zip(FWD(range))));

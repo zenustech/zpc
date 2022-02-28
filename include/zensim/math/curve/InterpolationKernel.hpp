@@ -36,14 +36,53 @@ namespace zs {
     constexpr auto offset = (T)0.5 * interpolation_degree;
     return lower_trunc(x - offset);
   }
-  template <int order = 0, typename T = float, auto dim = 3>
-  constexpr auto quadratic_bspline_weights(const vec<T, dim>& x) noexcept {
+
+  template <int order, typename VecT,
+            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+  constexpr auto linear_bspline_weights(const VecInterface<VecT>& x) noexcept {
+    using T = typename VecT::value_type;
+    constexpr auto dim = VecT::extent;
+    // weights: 0
+    // 1nd deriv weights: 1
+    // 2nd deriv weights: 2
+    static_assert(order == 0 || order == 1 || order == 2,
+                  "wrong order for linear bspline weight pads");
+    using Pad =
+        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 2>>;
+    using RetT = conditional_t<order == 0, tuple<Pad>,
+                               conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
+    RetT weights{};
+    auto& w{get<0>(weights)};
+    for (int i = 0; i != dim; ++i) {
+      T dx = x(i) - base_node<0>(x(i));
+      w(i, 0) = (T)1 - dx;
+      w(i, 1) = dx;
+      if constexpr (order > 0) {
+        auto& dw{get<1>(weights)};
+        dw(i, 0) = (T)-1;
+        dw(i, 1) = (T)1;
+      }
+      if constexpr (order == 2) {
+        auto& ddw{get<2>(weights)};
+        ddw(i, 0) = (T)0;
+        ddw(i, 1) = (T)0;
+      }
+    }
+    return weights;
+  }
+
+  template <int order, typename VecT,
+            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+  constexpr auto quadratic_bspline_weights(const VecInterface<VecT>& x) noexcept {
+    using T = typename VecT::value_type;
+    constexpr auto dim = VecT::extent;
     // weights: 0
     // 1nd deriv weights: 1
     // 2nd deriv weights: 2
     static_assert(order == 0 || order == 1 || order == 2,
                   "wrong order for quadratic bspline weight pads");
-    using Pad = vec<T, dim, 3>;
+    using Pad =
+        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 3>>;
     using RetT = conditional_t<order == 0, tuple<Pad>,
                                conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
     RetT weights{};
@@ -66,6 +105,56 @@ namespace zs {
         ddw(i, 0) = 1;
         ddw(i, 1) = -2;
         ddw(i, 2) = 1;
+      }
+    }
+    return weights;
+  }
+
+  template <int order, typename VecT,
+            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+  constexpr auto cubic_bspline_weights(const VecInterface<VecT>& x) noexcept {
+    using T = typename VecT::value_type;
+    constexpr auto dim = VecT::extent;
+    // weights: 0
+    // 1nd deriv weights: 1
+    // 2nd deriv weights: 2
+    static_assert(order == 0 || order == 1 || order == 2,
+                  "wrong order for cubic bspline weight pads");
+    using Pad =
+        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 4>>;
+    using RetT = conditional_t<order == 0, tuple<Pad>,
+                               conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
+    RetT weights{};
+    auto& w{get<0>(weights)};
+    for (int i = 0; i != dim; ++i) {
+      T d0 = x(i) - base_node<2>(x(i));
+      T z = (T)2 - d0;
+      T z3 = z * z * z;
+      w(i, 0) = z3 / (T)6;
+
+      T d1 = d0 - (T)1.0;  // d0 - 1
+      w(i, 1) = ((T)0.5 * d1 - (T)1) * d1 * d1 + (T)2 / (T)3;
+
+      T d2 = (T)1 - d1;  // 2 - d0
+      w(i, 2) = ((T)0.5 * d2 - (T)1) * d2 * d2 + (T)2 / (T)3;
+
+      T d3 = (T)1 + d2;  // d0 - 1
+      T zzzz = (T)2 - d3;
+      w(i, 3) = zzzz * zzzz * zzzz / (T)6;
+
+      if constexpr (order > 0) {
+        auto& dw{get<1>(weights)};
+        dw(i, 0) = (T)-0.5 * z * z;
+        dw(i, 1) = ((T)1.5 * d1 - (T)2) * d1;
+        dw(i, 2) = ((T)-1.5 * d2 + (T)2) * d2;
+        dw(i, 3) = (T)0.5 * zzzz * zzzz;
+      }
+      if constexpr (order == 2) {
+        auto& ddw{get<2>(weights)};
+        ddw(i, 0) = (T)2 - d0;
+        ddw(i, 1) = (T)-2 + (T)3 * (d0 - (T)1);
+        ddw(i, 2) = (T)-2 + (T)3 * ((T)2 - d0);
+        ddw(i, 3) = (T)-1 + d0;
       }
     }
     return weights;

@@ -69,9 +69,9 @@ namespace zs {
                             wrapv<deriv_order> = {}) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
       auto X = lsv.worldToIndex(x);
-      for (int d = 0; d != dim; ++d)
-        iCorner[d] = lower_trunc(X[d] - (d != f ? (value_type)0.5 : (value_type)0)) + coord_offset;
-      iLocalPos = X - iCorner;
+      auto delta = TV::init([f](int d) { return d != f ? (value_type)0.5 : (value_type)0; });
+      for (int d = 0; d != dim; ++d) iCorner[d] = lower_trunc(X[d] - delta[d]) + coord_offset;
+      iLocalPos = X - (iCorner + delta);
       if constexpr (kt == kernel_e::linear)
         weights = linear_bspline_weights<deriv_order>(iLocalPos);
       else if constexpr (kt == kernel_e::quadratic)

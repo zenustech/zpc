@@ -17,13 +17,14 @@ namespace zs {
     using value_type = f32;
     using allocator_type = ZSPmrAllocator<>;
     using index_type = i32;
-    using IV = vec<index_type, dim>;
-    using TV = vec<value_type, dim>;
-    using TM = vec<value_type, dim, dim>;
-    using Affine = vec<value_type, dim + 1, dim + 1>;
     using grid_t = Grid<value_type, dim, side_length, category>;
     using size_type = typename grid_t::size_type;
     using table_t = HashTable<index_type, dim, size_type>;
+
+    using IV = typename table_t::key_t;
+    using TV = vec<value_type, dim>;
+    using TM = vec<value_type, dim, dim>;
+    using Affine = vec<value_type, dim + 1, dim + 1>;
 
     using coord_index_type = typename grid_t::coord_index_type;
     using channel_counter_type = typename grid_t::channel_counter_type;

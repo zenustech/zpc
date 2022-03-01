@@ -20,8 +20,6 @@ namespace zs {
     static constexpr int dim = lsv_t::dim;
     static constexpr index_type width = magic_enum::enum_integer(kt);
     static constexpr int deriv_order = drv_order;
-    static constexpr index_type coord_offset
-        = kt == kernel_e::quadratic ? -1 : (kt == kernel_e::linear ? 0 : -2);
 
     using TV = typename lsv_t::TV;
     using TWM = vec<value_type, dim, width>;
@@ -53,8 +51,10 @@ namespace zs {
     constexpr LevelSetArena(lsv_t &lsv, const VecInterface<VecT> &x, wrapv<kt> = {},
                             wrapv<deriv_order> = {}) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
+      constexpr int lerp_degree
+          = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
       auto X = lsv.worldToIndex(x);
-      for (int d = 0; d != dim; ++d) iCorner[d] = lower_trunc(X[d]) + coord_offset;
+      for (int d = 0; d != dim; ++d) iCorner[d] = base_node<lerp_degree>(X[d]);
       iLocalPos = X - iCorner;
       if constexpr (kt == kernel_e::linear)
         weights = linear_bspline_weights<deriv_order>(iLocalPos);
@@ -68,9 +68,11 @@ namespace zs {
     constexpr LevelSetArena(lsv_t &lsv, const VecInterface<VecT> &x, int f, wrapv<kt> = {},
                             wrapv<deriv_order> = {}) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
+      constexpr int lerp_degree
+          = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
       auto X = lsv.worldToIndex(x);
       auto delta = TV::init([f](int d) { return d != f ? (value_type)0.5 : (value_type)0; });
-      for (int d = 0; d != dim; ++d) iCorner[d] = lower_trunc(X[d] - delta[d]) + coord_offset;
+      for (int d = 0; d != dim; ++d) iCorner[d] = base_node<lerp_degree>(X[d] - delta[d]);
       iLocalPos = X - (iCorner + delta);
       if constexpr (kt == kernel_e::linear)
         weights = linear_bspline_weights<deriv_order>(iLocalPos);

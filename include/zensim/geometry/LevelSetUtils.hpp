@@ -4,7 +4,6 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/math/curve/InterpolationKernel.hpp"
-#include "zensim/tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
 
@@ -18,11 +17,11 @@ namespace zs {
     static constexpr grid_e category = lsv_t::category;
     static constexpr kernel_e kt = kt_;
     static constexpr int dim = lsv_t::dim;
-    static constexpr index_type width = magic_enum::enum_integer(kt);
+    static constexpr int width = (kt == kernel_e::linear ? 2 : (kt == kernel_e::quadratic ? 3 : 4));
     static constexpr int deriv_order = drv_order;
 
     using TV = typename lsv_t::TV;
-    using TWM = vec<value_type, dim, width>;
+    using TWM = vec<value_type, lsv_t::dim, width>;
     using IV = typename lsv_t::IV;
 
     using coord_index_type = typename lsv_t::coord_index_type;
@@ -43,13 +42,12 @@ namespace zs {
     template <typename Val, int d> static constexpr auto arena_type() {
       return arena_type_impl<Val>(std::make_index_sequence<d>{});
     }
-    template <typename Val> using Arena = RM_CVREF_T(arena_type<Val, dim>());
+    template <typename Val> using Arena = RM_CVREF_T(arena_type<Val, lsv_t::dim>());
 
     /// constructors
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
-    constexpr LevelSetArena(lsv_t &lsv, const VecInterface<VecT> &x, wrapv<kt> = {},
-                            wrapv<deriv_order> = {}) noexcept
+    constexpr LevelSetArena(lsv_t &lsv, const VecInterface<VecT> &x) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
@@ -65,8 +63,7 @@ namespace zs {
     }
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
-    constexpr LevelSetArena(lsv_t &lsv, const VecInterface<VecT> &x, int f, wrapv<kt> = {},
-                            wrapv<deriv_order> = {}) noexcept
+    constexpr LevelSetArena(lsv_t &lsv, const VecInterface<VecT> &x, int f) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
@@ -81,6 +78,17 @@ namespace zs {
       else if constexpr (kt == kernel_e::cubic)
         weights = cubic_bspline_weights<deriv_order>(iLocalPos);
     }
+    /// for CTAD
+    template <typename VecT, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
+    constexpr LevelSetArena(wrapv<kt>, wrapv<deriv_order>, lsv_t &lsv, const VecInterface<VecT> &x,
+                            int f) noexcept
+        : LevelSetArena{lsv, x, f} {}
+    template <typename VecT, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
+    constexpr LevelSetArena(wrapv<kt>, wrapv<deriv_order>, lsv_t &lsv,
+                            const VecInterface<VecT> &x) noexcept
+        : LevelSetArena{lsv, x} {}
 
     /// scalar arena
     constexpr Arena<value_type> arena(typename lsv_t::channel_counter_type chn,
@@ -220,6 +228,23 @@ namespace zs {
       return TV{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
     }
   };
+
+  template <kernel_e kt = kernel_e::linear, int deriv_order = 0, typename LsvT, typename VecT>
+  constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x) {
+    static_assert(LsvT::category != grid_e::staggered,
+                  "this method is not for staggered levelset.");
+    return LevelSetArena<LsvT, kt, deriv_order>{lsv, x};
+  }
+  template <kernel_e kt = kernel_e::linear, int deriv_order = 0, typename LsvT, typename VecT>
+  constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x, int f) {
+    static_assert(LsvT::category == grid_e::staggered,
+                  "this method is for staggered levelset only.");
+    return LevelSetArena<LsvT, kt, deriv_order>{lsv, x, f};
+  }
+
+  template <kernel_e kt, int drv_order, typename LsvT, typename... Args>
+  LevelSetArena(wrapv<kt>, wrapv<drv_order>, LsvT &, Args...)
+      -> LevelSetArena<std::remove_reference_t<LsvT>, kt, drv_order>;
 
   template <typename ExecPol, int dim, grid_e category>
   void flood_fill_levelset(ExecPol &&policy, SparseLevelSet<dim, category> &ls);

@@ -71,8 +71,8 @@ namespace zs {
 
 #define INST_(T) std::declval<T>()
 
-  constexpr std::true_type true_v{};
-  constexpr std::false_type false_v{};
+  constexpr std::true_type true_c{};
+  constexpr std::false_type false_c{};
 
   /// arithmetic type
   constexpr wrapt<u8> u8_v{};

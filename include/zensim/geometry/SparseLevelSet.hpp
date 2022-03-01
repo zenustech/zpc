@@ -465,7 +465,7 @@ namespace zs {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
       if (!_grid.hasProperty(propName)) return TV::uniform(defaultVal);
       const auto propOffset = _grid.propertyOffset(propName);
-      /// world to local
+#if 0
       IV loc{};
       for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
       TV diff = X - loc;
@@ -478,6 +478,13 @@ namespace zs {
         ret(d) = linear_interop(diff(d), value_or(propOffset + d, blockno, cellno, defaultVal),
                                 value_or(propOffset + d, bno, cno, defaultVal));
       }
+#else
+      TV ret{};
+      for (int d = 0; d != dim; ++d) {
+        auto pad = arena(X, d, kernel_linear_c, wrapv<0>{}, false_c);
+        ret(d) = pad.isample(propOffset + d, defaultVal);
+      }
+#endif
       return ret;
     }
     template <
@@ -526,10 +533,13 @@ namespace zs {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
       constexpr auto extent = RetT::extent;
       RetT ret{};
+#if 0
       IV loc{};
       for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
       auto diff = X - loc;
+#endif
       if constexpr (category == grid_e::staggered) {
+#if 0
         auto [blockno, cellno] = decompose_coord(loc);
         for (channel_counter_type d = 0; d != extent; ++d) {
           const auto orientation = (chn + d) % dim;
@@ -539,11 +549,24 @@ namespace zs {
               = linear_interop(diff(orientation), value_or(chn + d, blockno, cellno, defaultVal),
                                value_or(chn + d, neighborLoc, defaultVal));
         }
+#else
+        for (channel_counter_type d = 0; d != extent; ++d) {
+          const auto orientation = (chn + d) % dim;
+          auto pad = arena(X, orientation, kernel_linear_c, wrapv<0>{}, false_c);
+          ret.val(d) = pad.isample(chn + d, defaultVal);
+        }
+#endif
       } else {
+#if 0
         Arena<RetT> arena{};
         for (auto &&offset : ndrange<dim>(2))
           arena.val(offset) = value_or(chn, loc + make_vec<index_type>(offset), defaultVal);
         ret = xlerp<0>(diff, arena);
+#else
+        auto pad = arena(X, kernel_linear_c, wrapv<0>{}, false_c);
+        for (channel_counter_type d = 0; d != extent; ++d)
+          ret.val(d) = pad.isample(chn + d, defaultVal);
+#endif
       }
       return ret;
     }
@@ -578,18 +601,29 @@ namespace zs {
       IV loc{};
       for (int d = 0; d != dim; ++d) loc(d) = zs::floor(X(d));
       if constexpr (category == grid_e::staggered) {
+#if 0
         const auto orientation = chn % dim;
         value_type diff = X(orientation) - loc(orientation);
         auto neighborLoc = loc;
         ++neighborLoc(orientation);
         return linear_interop(diff, value_or(chn, loc, defaultVal),
                               value_or(chn, neighborLoc, defaultVal));
+#else
+        const auto orientation = chn % dim;
+        auto pad = arena(X, orientation, kernel_linear_c, wrapv<0>{}, false_c);
+        return pad.isample(chn, defaultVal);
+#endif
       } else {
+#if 0
         Arena<value_type> arena{};
         TV diff = X - loc;
         for (auto &&offset : ndrange<dim>(2))
           arena.val(offset) = value_or(chn, loc + make_vec<index_type>(offset), defaultVal);
         return xlerp<0>(diff, arena);
+#else
+        auto pad = arena(X, kernel_linear_c, wrapv<0>{}, false_c);
+        return pad.isample(chn, defaultVal);
+#endif
       }
     }
     template <typename VecT, kernel_e kt = kernel_e::linear,

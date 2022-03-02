@@ -120,12 +120,15 @@ namespace zs {
 
     void printTransformation(std::string_view msg = {}) const {
       auto r = _i2wRinv.transpose();
+      auto [mi, ma] = proxy<execspace_e::host>(*this).getBoundingBox();
       fmt::print(fg(fmt::color::aquamarine),
-                 "[ls<dim {}, cate {}> {}] dx: {}. box: [{}, {}, {} ~ {}, {}, {}]. trans: {}, {}, "
+                 "[ls<dim {}, cate {}> {}] dx: {}. ibox: [{}, {}, {} ~ {}, {}, {}]; wbox: [{}, {}, "
+                 "{} ~ {}, {}, {}]. trans: {}, {}, "
                  "{}. \nrotation [{}, {}, {}; {}, {}, {}; {}, {}, {}].\n",
                  dim, category, msg, (value_type)1 / _i2wSinv(0), _min[0], _min[1], _min[2],
-                 _max[0], _max[1], _max[2], _i2wT(0), _i2wT(1), _i2wT(2), r(0, 0), r(0, 1), r(0, 2),
-                 r(1, 0), r(1, 1), r(1, 2), r(2, 0), r(2, 1), r(2, 2));
+                 _max[0], _max[1], _max[2], mi[0], mi[1], mi[2], ma[0], ma[1], ma[2], _i2wT(0),
+                 _i2wT(1), _i2wT(2), r(0, 0), r(0, 1), r(0, 2), r(1, 0), r(1, 1), r(1, 2), r(2, 0),
+                 r(2, 1), r(2, 2));
     }
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
@@ -329,7 +332,20 @@ namespace zs {
     constexpr auto numBlocks() const noexcept { return _table.size(); }
     constexpr auto numChannels() const noexcept { return _grid.numChannels(); }
 
-    constexpr auto do_getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
+    constexpr auto do_getBoundingBox() const noexcept {
+      auto mi = TV::uniform(limits<value_type>::max());
+      auto ma = TV::uniform(limits<value_type>::lowest());
+      auto length = _max - _min;
+      for (auto loc : ndrange<dim>(2)) {
+        auto coord = _min + make_vec<value_type>(loc) * length;
+        auto pos = indexToWorld(coord);
+        for (int d = 0; d != dim; ++d) {
+          mi[d] = pos[d] < mi[d] ? pos[d] : mi[d];
+          ma[d] = pos[d] > ma[d] ? pos[d] : ma[d];
+        }
+      }
+      return std::make_tuple(mi, ma);
+    }
 
     /// coordinate transformation
     /// world space to index space

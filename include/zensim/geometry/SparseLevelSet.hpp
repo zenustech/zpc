@@ -862,14 +862,10 @@ namespace zs {
     /// minimum
     constexpr value_type minimum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
       auto pad = arena(chn, limits<value_type>::max());
-      if constexpr (kt == kernel_e::linear)
-        return xlerp(iLocalPos, pad);
-      else {
-        value_type ret = limits<value_type>::max();
-        for (auto offset : ndrange<dim>(width))
-          if (const auto &v = pad.val(offset); v < ret) ret = v;
-        return ret;
-      }
+      value_type ret = limits<value_type>::max();
+      for (auto offset : ndrange<dim>(width))
+        if (const auto &v = pad.val(offset); v < ret) ret = v;
+      return ret;
     }
     constexpr value_type minimum(const SmallString &propName,
                                  typename lsv_t::channel_counter_type chn = 0) const noexcept {
@@ -879,14 +875,10 @@ namespace zs {
     /// maximum
     constexpr value_type maximum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
       auto pad = arena(chn, limits<value_type>::lowest());
-      if constexpr (kt == kernel_e::linear)
-        return xlerp(iLocalPos, pad);
-      else {
-        value_type ret = limits<value_type>::lowest();
-        for (auto offset : ndrange<dim>(width))
-          if (const auto &v = pad.val(offset); v > ret) ret = v;
-        return ret;
-      }
+      value_type ret = limits<value_type>::lowest();
+      for (auto offset : ndrange<dim>(width))
+        if (const auto &v = pad.val(offset); v > ret) ret = v;
+      return ret;
     }
     constexpr value_type maximum(const SmallString &propName,
                                  typename lsv_t::channel_counter_type chn = 0) const noexcept {
@@ -908,14 +900,7 @@ namespace zs {
     constexpr value_type isample(const SmallString &propName,
                                  typename lsv_t::channel_counter_type chn,
                                  typename lsv_t::value_type defaultVal) const noexcept {
-      auto pad = arena(propName, chn, defaultVal);
-      if constexpr (kt == kernel_e::linear)
-        return xlerp(iLocalPos, pad);
-      else {
-        value_type ret = 0;
-        for (auto offset : ndrange<dim>(width)) ret += weight(offset) * pad.val(offset);
-        return ret;
-      }
+      return isample(lsPtr->_grid.propertyOffset(propName) + chn, defaultVal);
     }
 
     /// weight

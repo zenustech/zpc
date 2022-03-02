@@ -352,6 +352,15 @@ namespace zs {
       else
         return X.template cast<value_type>();
     }
+    template <typename VecT, auto cate = category,
+              enable_if_all<cate == grid_e::staggered, VecT::dim == 1, VecT::extent == dim,
+                            std::is_integral_v<typename VecT::value_type>> = 0>
+    constexpr auto cellToIndex(const VecInterface<VecT> &X, int f) const noexcept {
+      using RetT = typename VecT::template variant_vec<value_type, typename VecT::extents>;
+      return RetT::init([&X, f](int d) {
+        return d != f ? (value_type)X[d] + (value_type)0.5 : (value_type)X[d];
+      });
+    }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
       // view-to-index: scale, rotate, trans
@@ -487,6 +496,7 @@ namespace zs {
 #endif
       return ret;
     }
+    /// this serves as an optimized impl (access 4 instead of 8)
     template <
         typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
         enable_if_all<VecT::dim == 1, VecT::extent == dim,

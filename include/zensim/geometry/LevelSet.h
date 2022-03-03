@@ -187,8 +187,9 @@ namespace zs {
     void setStepDt(const value_type dt) noexcept { _stepDt = dt; }
     void advance(const value_type ratio) noexcept {
       _alpha += ratio;
-      while (_alpha > 1) {
-        _alpha -= 1;
+      constexpr auto threshold = (value_type)1 - (value_type)128 * limits<value_type>::epsilon();
+      while (_alpha > threshold) {
+        _alpha -= (value_type)1;
         if (_fields.size()) pop();
       }
     }

@@ -85,34 +85,29 @@ namespace zs {
                                       -1};
     {
       openvdb::CoordBBox box = sdfGridPtr->evalActiveVoxelBoundingBox();
-      auto corner = box.min();
-      auto length = box.max() - box.min();
-      auto world_min = sdfGridPtr->indexToWorld(box.min());
-      auto world_max = sdfGridPtr->indexToWorld(box.max());
-      for (size_t d = 0; d < 3; d++) {
-        ret._min(d) = world_min[d];
-        ret._max(d) = world_max[d];
-      }
-      for (auto &&[dx, dy, dz] : ndrange<3>(2)) {
-        auto coord
-            = corner + decltype(length){dx ? length[0] : 0, dy ? length[1] : 0, dz ? length[2] : 0};
-        auto pos = sdfGridPtr->indexToWorld(coord);
-        for (int d = 0; d < 3; d++) {
-          ret._min(d) = pos[d] < ret._min(d) ? pos[d] : ret._min(d);
-          ret._max(d) = pos[d] > ret._max(d) ? pos[d] : ret._max(d);
-        }
+      auto mi = box.min();
+      auto ma = box.max();
+      for (int d = 0; d != 3; ++d) {
+        ret._min[d] = mi[d];
+        ret._max[d] = ma[d];
       }
     }
     openvdb::Mat4R v2w = sdfGridPtr->transform().baseMap()->getAffineMap()->getMat4();
 
     sdfGridPtr->transform().print();
-    fmt::print("background value: {}. dx: {}. box: [{}, {}, {} ~ {}, {}, {}]\n",
-               ret._backgroundValue, ret._grid.dx, ret._min[0], ret._min[1], ret._min[2],
-               ret._max[0], ret._max[1], ret._max[2]);
 
     vec<float, 4, 4> lsv2w;
     for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
     ret.resetTransformation(lsv2w);
+
+    {
+      auto [mi, ma] = proxy<execspace_e::host>(ret).getBoundingBox();
+      fmt::print(
+          "leaf count: {}. background value: {}. dx: {}. ibox: [{}, {}, {} ~ {}, {}, {}], wbox: "
+          "[{}, {}, {} ~ {}, {}, {}]\n",
+          leafCount, ret._backgroundValue, ret._grid.dx, ret._min[0], ret._min[1], ret._min[2],
+          ret._max[0], ret._max[1], ret._max[2], mi[0], mi[1], mi[2], ma[0], ma[1], ma[2]);
+    }
 
     auto table = proxy<execspace_e::host>(ret._table);
     // auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);

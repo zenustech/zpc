@@ -120,12 +120,15 @@ namespace zs {
 
     void printTransformation(std::string_view msg = {}) const {
       auto r = _i2wRinv.transpose();
+      auto [mi, ma] = proxy<execspace_e::host>(*this).getBoundingBox();
       fmt::print(fg(fmt::color::aquamarine),
-                 "[ls<dim {}, cate {}> {}] dx: {}. box: [{}, {}, {} ~ {}, {}, {}]. trans: {}, {}, "
+                 "[ls<dim {}, cate {}> {}] dx: {}. ibox: [{}, {}, {} ~ {}, {}, {}]; wbox: [{}, {}, "
+                 "{} ~ {}, {}, {}]. trans: {}, {}, "
                  "{}. \nrotation [{}, {}, {}; {}, {}, {}; {}, {}, {}].\n",
                  dim, category, msg, (value_type)1 / _i2wSinv(0), _min[0], _min[1], _min[2],
-                 _max[0], _max[1], _max[2], _i2wT(0), _i2wT(1), _i2wT(2), r(0, 0), r(0, 1), r(0, 2),
-                 r(1, 0), r(1, 1), r(1, 2), r(2, 0), r(2, 1), r(2, 2));
+                 _max[0], _max[1], _max[2], mi[0], mi[1], mi[2], ma[0], ma[1], ma[2], _i2wT(0),
+                 _i2wT(1), _i2wT(2), r(0, 0), r(0, 1), r(0, 2), r(1, 0), r(1, 1), r(1, 2), r(2, 0),
+                 r(2, 1), r(2, 2));
     }
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
@@ -329,7 +332,20 @@ namespace zs {
     constexpr auto numBlocks() const noexcept { return _table.size(); }
     constexpr auto numChannels() const noexcept { return _grid.numChannels(); }
 
-    constexpr auto do_getBoundingBox() const noexcept { return std::make_tuple(_min, _max); }
+    constexpr auto do_getBoundingBox() const noexcept {
+      auto mi = TV::uniform(limits<value_type>::max());
+      auto ma = TV::uniform(limits<value_type>::lowest());
+      auto length = _max - _min;
+      for (auto loc : ndrange<dim>(2)) {
+        auto coord = _min + make_vec<value_type>(loc) * length;
+        auto pos = indexToWorld(coord);
+        for (int d = 0; d != dim; ++d) {
+          mi[d] = pos[d] < mi[d] ? pos[d] : mi[d];
+          ma[d] = pos[d] > ma[d] ? pos[d] : ma[d];
+        }
+      }
+      return std::make_tuple(mi, ma);
+    }
 
     /// coordinate transformation
     /// world space to index space
@@ -742,8 +758,8 @@ namespace zs {
 
     static_assert(std::is_signed_v<index_type>, "index_type should be a signed integer.");
     static constexpr grid_e category = lsv_t::category;
-    static constexpr kernel_e kt = kt_;
     static constexpr int dim = lsv_t::dim;
+    static constexpr kernel_e kt = kt_;
     static constexpr int width = (kt == kernel_e::linear ? 2 : (kt == kernel_e::quadratic ? 3 : 4));
     static constexpr int deriv_order = drv_order;
 
@@ -846,14 +862,10 @@ namespace zs {
     /// minimum
     constexpr value_type minimum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
       auto pad = arena(chn, limits<value_type>::max());
-      if constexpr (kt == kernel_e::linear)
-        return xlerp(iLocalPos, pad);
-      else {
-        value_type ret = limits<value_type>::max();
-        for (auto offset : ndrange<dim>(width))
-          if (const auto &v = pad.val(offset); v < ret) ret = v;
-        return ret;
-      }
+      value_type ret = limits<value_type>::max();
+      for (auto offset : ndrange<dim>(width))
+        if (const auto &v = pad.val(offset); v < ret) ret = v;
+      return ret;
     }
     constexpr value_type minimum(const SmallString &propName,
                                  typename lsv_t::channel_counter_type chn = 0) const noexcept {
@@ -863,14 +875,10 @@ namespace zs {
     /// maximum
     constexpr value_type maximum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
       auto pad = arena(chn, limits<value_type>::lowest());
-      if constexpr (kt == kernel_e::linear)
-        return xlerp(iLocalPos, pad);
-      else {
-        value_type ret = limits<value_type>::lowest();
-        for (auto offset : ndrange<dim>(width))
-          if (const auto &v = pad.val(offset); v > ret) ret = v;
-        return ret;
-      }
+      value_type ret = limits<value_type>::lowest();
+      for (auto offset : ndrange<dim>(width))
+        if (const auto &v = pad.val(offset); v > ret) ret = v;
+      return ret;
     }
     constexpr value_type maximum(const SmallString &propName,
                                  typename lsv_t::channel_counter_type chn = 0) const noexcept {
@@ -892,14 +900,7 @@ namespace zs {
     constexpr value_type isample(const SmallString &propName,
                                  typename lsv_t::channel_counter_type chn,
                                  typename lsv_t::value_type defaultVal) const noexcept {
-      auto pad = arena(propName, chn, defaultVal);
-      if constexpr (kt == kernel_e::linear)
-        return xlerp(iLocalPos, pad);
-      else {
-        value_type ret = 0;
-        for (auto offset : ndrange<dim>(width)) ret += weight(offset) * pad.val(offset);
-        return ret;
-      }
+      return isample(lsPtr->_grid.propertyOffset(propName) + chn, defaultVal);
     }
 
     /// weight

@@ -65,6 +65,52 @@ namespace zs {
     }
   };
 
+  struct static_plus {
+    template <typename T = int> constexpr auto e() const noexcept {
+      if constexpr (std::is_arithmetic_v<T>)
+        return (T)0;
+      else
+        return 0;
+    }
+    template <typename... Args> constexpr auto operator()(Args &&...args) const noexcept {
+      if constexpr (sizeof...(Args) == 0)
+        return e();
+      else  // default
+        return (FWD(args) + ...);
+    }
+  };
+  struct static_multiplies {
+    template <typename T = int> constexpr auto e() const noexcept {
+      if constexpr (std::is_arithmetic_v<T>)
+        return (T)1;
+      else  // default
+        return 1;
+    }
+    template <typename... Args> constexpr auto operator()(Args &&...args) const noexcept {
+      if constexpr (sizeof...(Args) == 0)
+        return e();
+      else
+        return (FWD(args) * ...);
+    }
+  };
+  struct static_minus {
+    template <typename TA, typename TB> constexpr auto operator()(TA a, TB b) const noexcept {
+      return a - b;
+    }
+  };
+  template <bool SafeMeasure = false> struct static_divides {
+    template <typename TA, typename TB> constexpr auto operator()(TA a, TB b) const noexcept {
+      if constexpr (std::is_arithmetic_v<TB>) {
+        if constexpr (SafeMeasure) {
+          constexpr auto eps = (TB)128 * limits<TB>::epsilon();
+          return (b >= -eps && b <= eps) ? a : a / b;
+        } else
+          return a / b;
+      } else
+        return a / b;
+    }
+  };
+
   /// monoid operation for value sequence declaration
   template <typename BinaryOp> struct monoid_op;
   template <typename T> struct monoid_op<plus<T>> {

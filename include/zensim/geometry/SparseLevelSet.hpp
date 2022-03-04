@@ -758,8 +758,8 @@ namespace zs {
 
     static_assert(std::is_signed_v<index_type>, "index_type should be a signed integer.");
     static constexpr grid_e category = lsv_t::category;
-    static constexpr kernel_e kt = kt_;
     static constexpr int dim = lsv_t::dim;
+    static constexpr kernel_e kt = kt_;
     static constexpr int width = (kt == kernel_e::linear ? 2 : (kt == kernel_e::quadratic ? 3 : 4));
     static constexpr int deriv_order = drv_order;
 

@@ -91,7 +91,7 @@ namespace zs {
     TV e1 = t2 - t0;
     T a00 = e0.dot(e0);
     T a01 = e0.dot(e1);
-    T a11 = e0.dot(e1);
+    T a11 = e1.dot(e1);
     T b0 = diff.dot(e0);
     T b1 = diff.dot(e1);
     T det = zs::max(a00 * a11 - a01 * a01, (T)0);

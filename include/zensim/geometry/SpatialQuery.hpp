@@ -3,35 +3,67 @@
 
 namespace zs {
 
-  // ref: Bow Geometry/IpcUtils
+  // ref: ipc-tools
 
   //! point-point
-  template <typename VecTA, typename VecTB>
+  template <
+      typename VecTA, typename VecTB,
+      enable_if_all<VecTA::dim == 1, is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
   constexpr auto dist_pp_sqr(const VecInterface<VecTA> &a, const VecInterface<VecTB> &b) noexcept {
     return (b - a).l2NormSqr();
   }
-  template <typename VecTA, typename VecTB>
+  template <
+      typename VecTA, typename VecTB,
+      enable_if_all<VecTA::dim == 1, is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
   constexpr auto dist_pp(const VecInterface<VecTA> &a, const VecInterface<VecTB> &b) noexcept {
     return zs::sqrt(dist_pp_sqr(a, b));
   }
 
   //! point-edge
-  template <typename VecTP, typename VecTE>
-  constexpr int dist_pe_category(const VecInterface<VecTP> &p, const VecInterface<VecTP> &e0,
-                                 const VecInterface<VecTP> &e1) noexcept {
+  template <
+      typename VecTP, typename VecTE,
+      enable_if_all<VecTP::dim == 1, is_same_v<typename VecTP::dims, typename VecTE::dims>> = 0>
+  constexpr int dist_pe_category(const VecInterface<VecTP> &p, const VecInterface<VecTE> &e0,
+                                 const VecInterface<VecTE> &e1) noexcept {
     const auto e = e1 - e0;
-    auto indicator = (p - e0).dot(e) / e.l2NormSqr();
+    auto indicator = e.dot(p - e0) / e.l2NormSqr();
     return indicator < 0 ? 0 : (indicator > 1 ? 1 : 2);
   }
 
-  template <typename VecTP, typename VecTE>
-  constexpr auto dist_pe_sqr(const VecInterface<VecTP> &p, const VecInterface<VecTP> &e0,
-                             const VecInterface<VecTP> &e1) noexcept {
-    ;
+  template <
+      typename VecTP, typename VecTE,
+      enable_if_all<VecTP::dim == 1, is_same_v<typename VecTP::dims, typename VecTE::dims>> = 0>
+  constexpr auto dist_pe_sqr(const VecInterface<VecTP> &p, const VecInterface<VecTE> &e0,
+                             const VecInterface<VecTE> &e1) noexcept {
+    using T = math::op_result_t<typename VecTP::value_type, typename VecTE::value_type>;
+    constexpr int dim = VecTP::extent;
+    T ret = limits<T>::max();
+    switch (dist_pe_category(p, e0, e1)) {
+      case 0:
+        ret = dist_pp_sqr(p, e0);
+        break;
+      case 1:
+        ret = dist_pp_sqr(p, e1);
+        break;
+      case 2:
+        if constexpr (dim == 2) {
+          const auto e = e1 - e0;
+          auto numerator = e[1] * p[0] - e[0] * p[1] + e1[0] * e0[1] - e1[1] * e0[0];
+          ret = numerator * numerator / e.l2NormSqr();
+        } else if constexpr (dim == 3) {
+          ret = cross(e0 - p, e1 - p).l2NormSqr() / (e1 - e0).l2NormSqr();
+        }
+        break;
+      default:
+        break;
+    }
+    return ret;
   }
-  template <typename VecTP, typename VecTE>
-  constexpr auto dist_pe(const VecInterface<VecTP> &p, const VecInterface<VecTP> &e0,
-                         const VecInterface<VecTP> &e1) noexcept {
+  template <
+      typename VecTP, typename VecTE,
+      enable_if_all<VecTP::dim == 1, is_same_v<typename VecTP::dims, typename VecTE::dims>> = 0>
+  constexpr auto dist_pe(const VecInterface<VecTP> &p, const VecInterface<VecTE> &e0,
+                         const VecInterface<VecTE> &e1) noexcept {
     return zs::sqrt(dist_pe_sqr(p, e0, e1));
   }
 
@@ -172,7 +204,9 @@ namespace zs {
     auto hitpoint = t0 + s * e0 + t * e1;
     return (p - hitpoint).l2NormSqr();
   }
-  template <typename VecTP, typename VecTT>
+  template <
+      typename VecTP, typename VecTT,
+      enable_if_all<VecTP::dim == 1, is_same_v<typename VecTP::dims, typename VecTT::dims>> = 0>
   constexpr auto dist_pt(const VecInterface<VecTP> &p, const VecInterface<VecTT> &t0,
                          const VecInterface<VecTT> &t1, const VecInterface<VecTT> &t2) noexcept {
     return zs::sqrt(dist_pt_sqr(p, t0, t1, t2));
@@ -182,7 +216,9 @@ namespace zs {
   // ref: <<practical geometry algorithms>> - Daniel Sunday
   // ref: http://geomalgorithms.com/a07-_distance.html
   // ref: dist3D_Segment_to_Segment()
-  template <typename VecTA, typename VecTB>
+  template <
+      typename VecTA, typename VecTB,
+      enable_if_all<VecTA::dim == 1, is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
   constexpr auto dist_ee_sqr(const VecInterface<VecTA> &ea0, const VecInterface<VecTA> &ea1,
                              const VecInterface<VecTB> &eb0,
                              const VecInterface<VecTB> &eb1) noexcept {
@@ -247,7 +283,9 @@ namespace zs {
     auto dP = w + (sc * u) - (tc * v);
     return dP.l2NormSqr();
   }
-  template <typename VecTA, typename VecTB>
+  template <
+      typename VecTA, typename VecTB,
+      enable_if_all<VecTA::dim == 1, is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
   constexpr auto dist_ee(const VecInterface<VecTA> &ea0, const VecInterface<VecTA> &ea1,
                          const VecInterface<VecTB> &eb0, const VecInterface<VecTB> &eb1) noexcept {
     return zs::sqrt(dist_ee_sqr(ea0, ea1, eb0, eb1));

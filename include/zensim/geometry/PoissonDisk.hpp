@@ -144,12 +144,14 @@ namespace zs {
         is.read((char *)&cnt, sizeof(std::size_t));
         auto estimate = cnt * (sideLength.prod() / scaled_ref_box_length.prod());
         fmt::print(
-            "reserved {} entries, minDistance: {}, box: [{}, {}, {} ~ {}, {}, {}], sidelen: {}, "
+            "try reserving {} entries, cnt {}, minDistance: {}, box: [{}, {}, {} ~ {}, {}, {}], "
+            "sidelen: "
+            "{}, "
             "{}, {}, scaledlen: {}, {}, {}\n",
-            estimate, minDistance, minCorner[0], minCorner[1], minCorner[2], maxCorner[0],
+            estimate, cnt, minDistance, minCorner[0], minCorner[1], minCorner[2], maxCorner[0],
             maxCorner[1], maxCorner[2], sideLength[0], sideLength[1], sideLength[2],
             scaled_ref_box_length[0], scaled_ref_box_length[1], scaled_ref_box_length[2]);
-        samples.reserve((i64)estimate);
+        if (estimate < 100000) samples.reserve((i64)estimate);
 
         is.read((char *)&tmp, sizeof(std::size_t));  ///< neglect this
         // Read from file as float
@@ -165,7 +167,7 @@ namespace zs {
 #    pragma omp parallel for
 #  endif
         for (int id = 0; id < nworkers; id++) {
-          localSamples[id].reserve(estimate / nworkers);
+          if (estimate < 100000) localSamples[id].reserve(estimate / nworkers);
           for (int i = id; i < cnt; i += nworkers) {
             const auto &new_point_read = data[i];
             TV new_point, offset_center, offset_new_point;

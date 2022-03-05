@@ -219,38 +219,41 @@ namespace zs {
       });
       fmt::print("{} more off-value voxels to be appended to {} blocks.\n", valueOffCount.load(),
                  nbs);
-      auto newNbs = nbs + valueOffCount.load() / ret.block_size;
-      ret.resize(ompExec, newNbs);
-      // init additional grid blocks
-      ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
-                                    nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
-        auto block = ls._grid.block(bi + nbs);
-        using lsv_t = RM_CVREF_T(ls);
-        for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
-          block("sdf", ci) = -ls._backgroundValue;
-      });
-      // register table
-      ompExec(gridPtr->cbeginValueOff(),
-              [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
-                if (iter.getValue() < 0.0) {
-                  auto coord = iter.getCoord();
-                  auto coord_ = IV{coord.x(), coord.y(), coord.z()};
-                  coord_ -= (coord_ & (ls.side_length - 1));
-                  ls._table.insert(coord_);
-                }
-              });
-      // write inactive voxels
-      ompExec(gridPtr->cbeginValueOff(),
-              [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
-                if (iter.getValue() < 0.0) {
-                  auto coord = iter.getCoord();
-                  auto coord_ = IV{coord.x(), coord.y(), coord.z()};
-                  auto loc = (coord_ & (ls.side_length - 1));
-                  coord_ -= loc;
-                  auto blockno = ls._table.query(coord_);
-                  ls._grid("sdf", blockno, loc) = iter.getValue();
-                }
-              });
+      // auto newNbs = nbs + valueOffCount.load() / ret.block_size;
+      auto newNbs = nbs + valueOffCount.load();  // worst-case scenario
+      if (newNbs != nbs) {
+        ret.resize(ompExec, newNbs);
+        // init additional grid blocks
+        ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
+                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+          auto block = ls._grid.block(bi + nbs);
+          using lsv_t = RM_CVREF_T(ls);
+          for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
+            block("sdf", ci) = -ls._backgroundValue;
+        });
+        // register table
+        ompExec(gridPtr->cbeginValueOff(),
+                [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
+                  if (iter.getValue() < 0.0) {
+                    auto coord = iter.getCoord();
+                    auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+                    coord_ -= (coord_ & (ls.side_length - 1));
+                    ls._table.insert(coord_);
+                  }
+                });
+        // write inactive voxels
+        ompExec(gridPtr->cbeginValueOff(),
+                [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
+                  if (iter.getValue() < 0.0) {
+                    auto coord = iter.getCoord();
+                    auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+                    auto loc = (coord_ & (ls.side_length - 1));
+                    coord_ -= loc;
+                    auto blockno = ls._table.query(coord_);
+                    ls._grid("sdf", blockno, loc) = iter.getValue();
+                  }
+                });
+      }
     } else {  // fall back to serial execution
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);
@@ -394,6 +397,7 @@ namespace zs {
     using Int1Type = RootType::ChildNodeType;  // level 2 InternalNode
     using Int2Type = Int1Type::ChildNodeType;  // level 1 InternalNode
     using LeafType = TreeType::LeafNodeType;   // level 0 LeafNode
+    using LeafCIterRange = openvdb::tree::IteratorRange<typename TreeType::LeafCIter>;
     using GridPtr = typename GridType::Ptr;
     const GridPtr &gridPtr = grid.as<GridPtr>();
     using SpLs = SparseLevelSet<3, grid_e::collocated>;
@@ -458,26 +462,101 @@ namespace zs {
     }
     getchar();
 #endif
-
-    auto table = proxy<execspace_e::host>(ret._table);
-    auto gridview = proxy<execspace_e::host>(ret._grid);
-    table.clear();
-    for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
-      const TreeType::LeafNodeType &node = *iter;
-      if (node.onVoxelCount() > 0) {
-        auto cell = node.beginValueOn();
-        IV coord{};
-        for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
-        auto blockid = coord;
-        for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d)
-          blockid[d] -= (coord[d] & (ret.side_length - 1));
-        auto blockno = table.insert(blockid);
-        RM_CVREF_T(blockno) cellid = 0;
-        for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
-          auto vel = cell.getValue();
-          const auto offset = blockno * ret.block_size + cellid;
-          gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
-          // gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
+    if constexpr (is_backend_available(exec_omp)) {
+      auto ompExec = omp_exec();
+      ret._table.reset(ompExec, true);
+      ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
+              [&ret, table = proxy<execspace_e::openmp>(ret._table),
+               gridview = proxy<execspace_e::openmp>(ret._grid)](LeafCIterRange &range) mutable {
+                const LeafType &node = *range.iterator();
+                if (node.onVoxelCount() <= 0) return;
+                auto cell = node.beginValueAll();
+                IV coord{};
+                for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d)
+                  coord[d] = cell.getCoord()[d];
+                auto blockid = coord - (coord & (ret.side_length - 1));
+                if (table.query(blockid) >= 0) {
+                  fmt::print("what is this??? block ({}, {}, {}) already taken!\n", blockid[0],
+                             blockid[1], blockid[2]);
+                }
+                auto blockno = table.insert(blockid);
+                auto block = gridview.block(blockno);
+                RM_CVREF_T(blockno) cellid = 0;
+                for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
+                  auto vel = cell.getValue();
+                  const auto offset = blockno * ret.block_size + cellid;
+                  gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+                }
+              });
+      /// iterate over all inactive tiles that have negative values
+      // Visit all of the grid's inactive tile and voxel values and update the values
+      // that correspond to the interior region.
+      auto nbs = ret._table.size();
+      std::atomic<i64> valueOffCount{0};
+      ompExec(gridPtr->cbeginValueOff(), [&valueOffCount](GridType::ValueOffCIter &iter) {
+        if (!iter.getValue().isZero()) valueOffCount.fetch_add(1, std::memory_order_relaxed);
+      });
+      fmt::print("{} more off-(vec-)value voxels to be appended to {} blocks.\n",
+                 valueOffCount.load(), nbs);
+      auto newNbs = nbs + valueOffCount.load();  // worst-case scenario
+      if (newNbs != nbs) {
+        ret.resize(ompExec, newNbs);
+        // init additional grid blocks
+        ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
+                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+          using lsv_t = RM_CVREF_T(ls);
+          for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci) {
+            const auto offset = (bi + nbs) * ls.block_size + ci;
+            ls._grid.set("vel", offset, ls._backgroundVecValue);
+          }
+        });
+        // register table
+        ompExec(gridPtr->cbeginValueOff(),
+                [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
+                  if (!iter.getValue().isZero()) {
+                    auto coord = iter.getCoord();
+                    auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+                    coord_ -= (coord_ & (ls.side_length - 1));
+                    ls._table.insert(coord_);
+                  }
+                });
+        // write inactive voxels
+        ompExec(gridPtr->cbeginValueOff(), [ls = proxy<execspace_e::openmp>(ret)](
+                                               GridType::ValueOffCIter &iter) mutable {
+          using lsv_t = RM_CVREF_T(ls);
+          if (!iter.getValue().isZero()) {
+            auto coord = iter.getCoord();
+            auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+            auto loc = (coord_ & (ls.side_length - 1));
+            coord_ -= loc;
+            auto blockno = ls._table.query(coord_);
+            auto val = TV{iter.getValue()[0], iter.getValue()[1], iter.getValue()[2]};
+            ls._grid.set("vel", blockno * ls.block_size + lsv_t::grid_view_t::coord_to_cellid(loc),
+                         val);
+          }
+        });
+      }
+    } else {
+      auto table = proxy<execspace_e::host>(ret._table);
+      auto gridview = proxy<execspace_e::host>(ret._grid);
+      table.clear();
+      for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
+        const TreeType::LeafNodeType &node = *iter;
+        if (node.onVoxelCount() > 0) {
+          auto cell = node.beginValueOn();
+          IV coord{};
+          for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d) coord[d] = cell.getCoord()[d];
+          auto blockid = coord;
+          for (int d = 0; d != SparseLevelSet<3>::table_t::dim; ++d)
+            blockid[d] -= (coord[d] & (ret.side_length - 1));
+          auto blockno = table.insert(blockid);
+          RM_CVREF_T(blockno) cellid = 0;
+          for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
+            auto vel = cell.getValue();
+            const auto offset = blockno * ret.block_size + cellid;
+            gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+            // gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
+          }
         }
       }
     }
@@ -545,7 +624,6 @@ namespace zs {
     if constexpr (is_backend_available(exec_omp)) {
       auto ompExec = omp_exec();
       ret._table.reset(ompExec, true);
-      // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
               [&ret, table = proxy<execspace_e::openmp>(ret._table),
                gridview = proxy<execspace_e::openmp>(ret._grid)](LeafCIterRange &range) mutable {
@@ -569,6 +647,54 @@ namespace zs {
                   gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
                 }
               });
+      /// iterate over all inactive tiles that have negative values
+      // Visit all of the grid's inactive tile and voxel values and update the values
+      // that correspond to the interior region.
+      auto nbs = ret._table.size();
+      std::atomic<i64> valueOffCount{0};
+      ompExec(gridPtr->cbeginValueOff(), [&valueOffCount](GridType::ValueOffCIter &iter) {
+        if (!iter.getValue().isZero()) valueOffCount.fetch_add(1, std::memory_order_relaxed);
+      });
+      fmt::print("{} more off-(vec-)value voxels to be appended to {} blocks.\n",
+                 valueOffCount.load(), nbs);
+      auto newNbs = nbs + valueOffCount.load();  // worst-case scenario
+      if (newNbs != nbs) {
+        ret.resize(ompExec, newNbs);
+        // init additional grid blocks
+        ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
+                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+          using lsv_t = RM_CVREF_T(ls);
+          for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci) {
+            const auto offset = (bi + nbs) * ls.block_size + ci;
+            ls._grid.set("vel", offset, ls._backgroundVecValue);
+          }
+        });
+        // register table
+        ompExec(gridPtr->cbeginValueOff(),
+                [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
+                  if (!iter.getValue().isZero()) {
+                    auto coord = iter.getCoord();
+                    auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+                    coord_ -= (coord_ & (ls.side_length - 1));
+                    ls._table.insert(coord_);
+                  }
+                });
+        // write inactive voxels
+        ompExec(gridPtr->cbeginValueOff(), [ls = proxy<execspace_e::openmp>(ret)](
+                                               GridType::ValueOffCIter &iter) mutable {
+          using lsv_t = RM_CVREF_T(ls);
+          if (!iter.getValue().isZero()) {
+            auto coord = iter.getCoord();
+            auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+            auto loc = (coord_ & (ls.side_length - 1));
+            coord_ -= loc;
+            auto blockno = ls._table.query(coord_);
+            auto val = TV{iter.getValue()[0], iter.getValue()[1], iter.getValue()[2]};
+            ls._grid.set("vel", blockno * ls.block_size + lsv_t::grid_view_t::coord_to_cellid(loc),
+                         val);
+          }
+        });
+      }
     } else {
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);

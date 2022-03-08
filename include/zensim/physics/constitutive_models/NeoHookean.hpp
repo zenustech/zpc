@@ -34,7 +34,7 @@ namespace zs {
                                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
-      constexpr auto dim = VecT::template range_t<0>::value;
+      // constexpr auto dim = VecT::template range_t<0>::value;
 
       auto S_prod_log = zs::log(S.prod());
       auto S_inv = (value_type)1 / S;

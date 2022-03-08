@@ -123,7 +123,7 @@ namespace zs {
   template <typename T> constexpr auto get_type() noexcept {
     constexpr auto typestr = detail::get_type_str_helper<T>();
     using CharT = std::remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
-    constexpr auto typelength = detail::get_type_len_helper(typestr);
+    // constexpr auto typelength = detail::get_type_len_helper(typestr);
 
 #if defined(_MSC_VER)
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');

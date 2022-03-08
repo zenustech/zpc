@@ -94,7 +94,6 @@ namespace zs {
           _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(tableSize)} {
-      value_t res[1];
       _cnt.setVal((value_t)0);
     }
     HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)

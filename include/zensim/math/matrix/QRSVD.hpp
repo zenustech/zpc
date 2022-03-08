@@ -18,7 +18,7 @@ namespace zs {
     constexpr auto polar_decomposition(const VecInterface<VecT>& A,
                                        GivensRotation<typename VecT::value_type>& R) noexcept {
       using value_type = typename VecT::value_type;
-      constexpr auto N = VecT::template range_t<0>::value;
+      // constexpr auto N = VecT::template range_t<0>::value;
       typename VecT::template variant_vec<value_type, typename VecT::extents> S = A;
       vec<value_type, 2> x{A(0, 0) + A(1, 1), A(1, 0) - A(0, 1)};
       auto d = x.norm();

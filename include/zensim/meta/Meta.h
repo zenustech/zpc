@@ -70,6 +70,7 @@ namespace zs {
   template <std::size_t N> constexpr index_t<N> index_c{};
 
 #define INST_(T) std::declval<T>()
+#define DECL_(T) std::declval<T>()
 
   constexpr std::true_type true_c{};
   constexpr std::false_type false_c{};

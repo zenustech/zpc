@@ -325,6 +325,116 @@ namespace zs {
     }
   }
 
+  template <typename ExecPol, int dim, grid_e category, typename SdfLsvT>
+  void extend_level_set_domain(ExecPol &&pol, SparseLevelSet<dim, category> &ls,
+                               const SdfLsvT sdfLsv) {
+    static_assert(dim == 3, "currently only supports 3d");
+    using ls_t = RM_CVREF_T(ls);
+    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+
+    ls.append_channels(pol, {{"mark", 1}});
+    auto markOffset = ls._grid.getChannelOffset("mark");
+    auto nbs = ls.numBlocks();
+    /// mark all existing cells
+    pol(Collapse{nbs, ls.block_size},
+        [ls = proxy<space>(ls), markOffset] ZS_LAMBDA(typename ls_t::size_type bi,
+                                                      typename ls_t::cell_index_type ci) mutable {
+          ls._grid(markOffset, bi, ci) = 1;
+        });
+
+    constexpr auto coeff = math::pow_integral(dim, dim) - 1;
+    typename ls_t::size_type base = 0;
+    // [base, nbs): candidate blocks to expand from
+    // [nbs, newNbs): newly spawned
+    while (true) {
+      if (auto expectedNum = (nbs - base) * coeff + nbs; expectedNum >= ls.numReservedBlocks()) {
+        fmt::print("reserving levelset from {} to {} blocks\n", ls.numReservedBlocks(),
+                   expectedNum);
+        ls.resize(pol, expectedNum);
+      }
+      pol(Collapse{nbs - base, ls.block_size},
+          [ls = proxy<space>(ls), sdfLsv, base] ZS_LAMBDA(
+              typename ls_t::size_type bi, typename ls_t::cell_index_type ci) mutable {
+            using lsv_t = RM_CVREF_T(ls);
+            bi += base;
+            using table_t = RM_CVREF_T(ls._table);
+            auto coord = ls._table._activeKeys[bi] + lsv_t::grid_view_t::cellid_to_coord(ci);
+            for (auto loc : ndrange<dim>(3)) {
+              auto c = coord + (make_vec<int>(loc) - 1);
+              auto cb = c - (c & (lsv_t::side_length - 1));
+              if (ls._table.query(cb) == table_t::sentinel_v
+                  && sdfLsv.getSignedDistance(ls.indexToWorld(c)) < 0)
+                ls._table.insert(cb);
+            }
+          });
+      auto newNbs = ls.numBlocks();
+      fmt::print("[extend_level_set_domain]: looking at expanding blocks from {} -> {}\n", nbs,
+                 newNbs);
+      if (newNbs == nbs) break;
+
+      ls._grid.resize(newNbs);
+      pol(Collapse{newNbs - nbs, ls.block_size},
+          [ls = proxy<space>(ls), nbs] ZS_LAMBDA(typename ls_t::size_type bi,
+                                                 typename ls_t::cell_index_type ci) mutable {
+            ls._grid("mark", bi + nbs, ci) = 0;
+          });
+      pol(Collapse{newNbs - nbs, ls.block_size},
+          [ls = proxy<space>(ls), nbs, markOffset] ZS_LAMBDA(
+              typename ls_t::size_type bi, typename ls_t::cell_index_type ci) mutable {
+            using lsv_t = RM_CVREF_T(ls);
+            bi += nbs;
+            using table_t = RM_CVREF_T(ls._table);
+            auto coord = ls._table._activeKeys[bi] + lsv_t::grid_view_t::cellid_to_coord(ci);
+
+            auto block = ls._grid.block(bi);
+            int iter = 0;
+            bool done = false;
+            for (; iter != ls.side_length; ++iter) {
+              if (!done) {
+                /// first accumulate num of active cells
+                int numActiveNei = 0;
+                i32 flag = 0;
+                for (auto loc : ndrange<dim>(3)) {
+                  auto c = coord + (make_vec<int>(loc) - 1);
+                  // auto cb = c - (c & (ls_t::side_length - 1));
+                  if ((int)ls.value_or(markOffset, c, 0) != 0) {
+                    numActiveNei += 1;
+                    flag |= 1 << (get<0>(loc) * 9 + get<1>(loc) * 3 + get<2>(loc));
+                  }
+                }
+                if (numActiveNei != 0) {
+                  done = true;
+                  ls._grid("mark", bi, ci) = 1;
+                  //
+                  for (typename ls_t::channel_counter_type propNo = 0; propNo != ls.numProperties();
+                       ++propNo) {
+                    // skip property ["mark", "sdf"]
+                    if (ls.getPropertyNames()[propNo] == "mark"
+                        || ls.getPropertyNames()[propNo] == "sdf")
+                      continue;
+                    auto propOffset = ls.getPropertyOffsets()[propNo];
+                    auto propSize = ls.getPropertySizes()[propNo];
+                    for (typename ls_t::channel_counter_type chn = 0; chn != propSize; ++chn) {
+                      typename ls_t::value_type sum = 0;
+                      for (auto loc : ndrange<3>(3))
+                        if (flag & (1 << (get<0>(loc) * 9 + get<1>(loc) * 3 + get<2>(loc)))) {
+                          auto c = coord + (make_vec<int>(loc) - 1);
+                          sum += ls.value_or(propOffset + chn, c, 0);
+                        }
+                      ls._grid(propOffset + chn, bi, ci) = sum / numActiveNei;
+                    }
+                  }
+                }
+              }
+              sync_threads(wrapv<space>{});
+            }
+          });
+      fmt::print("{} blocks being spawned to {} blocks.\n", nbs, newNbs);
+      base = nbs;
+      nbs = newNbs;
+    }
+  }
+
   template <typename ExecPol, int dim, grid_e category>
   void flood_fill_levelset(ExecPol &&policy, SparseLevelSet<dim, category> &ls) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;

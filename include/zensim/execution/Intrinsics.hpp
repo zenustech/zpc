@@ -46,6 +46,24 @@ namespace zs {
   template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
   inline void thread_fence(ExecTag) noexcept {}
 
+  // __syncthreads
+#if defined(__CUDACC__)
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
+  __forceinline__ __device__ void sync_threads(ExecTag) {
+    __syncthreads();
+  }
+#endif
+
+#if defined(_OPENMP)
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
+  inline void sync_threads(ExecTag) noexcept {
+#  pragma omp barrier
+  }
+#endif
+
+  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
+  inline void sync_threads(ExecTag) noexcept {}
+
   // pause
   template <typename ExecTag = host_exec_tag,
             enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>

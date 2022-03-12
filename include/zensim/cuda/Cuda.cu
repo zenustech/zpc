@@ -23,14 +23,6 @@ namespace zs {
                             (cudaStream_t)stream);
   }
 
-  std::string get_cu_error_message(u32 err) {
-    const char *err_name_ptr;
-    const char *err_string_ptr;
-    cudri::get_cu_error_name(err, &err_name_ptr);
-    cudri::get_cu_error_string(err, &err_string_ptr);
-    return fmt::format("CUDA Driver Error {}: {}", err_name_ptr, err_string_ptr);
-  }
-
   /// error handling
   u32 Cuda::get_last_cuda_rt_error() { return (u32)cudaGetLastError(); }
 

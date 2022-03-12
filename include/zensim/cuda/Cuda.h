@@ -30,7 +30,6 @@
 
 namespace zs {
 
-  std::string get_cu_error_message(u32 err);
   std::string get_cuda_error_message(uint32_t err);
 
   class Cuda : public Singleton<Cuda> {
@@ -222,6 +221,13 @@ namespace zs {
     void load_cuda_driver_apis();
     static void (*get_cu_error_name)(uint32_t, const char **);
     static void (*get_cu_error_string)(uint32_t, const char **);
+    static std::string get_cu_error_message(u32 err) {
+      const char *err_name_ptr;
+      const char *err_string_ptr;
+      cudri::get_cu_error_name(err, &err_name_ptr);
+      cudri::get_cu_error_string(err, &err_string_ptr);
+      return fmt::format("CUDA Driver Error {}: {}", err_name_ptr, err_string_ptr);
+    }
 
     // works like std::lock_guard, because its constructor is not trivial
     // hopefully its trivial destructor will make compiler destructs the object soon after

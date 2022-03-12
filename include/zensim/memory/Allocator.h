@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 #include "MemOps.hpp"
 #include "MemoryResource.h"
@@ -15,14 +15,15 @@ namespace zs {
 
   extern void record_allocation(mem_tags, void *, std::string_view, std::size_t, std::size_t);
   extern void erase_allocation(void *);
-  template <typename MemTag> struct raw_memory_resource : mr_t,
-                                                          Singleton<raw_memory_resource<MemTag>> {
+  template <typename MemTag> struct raw_memory_resource : mr_t {
     using value_type = std::byte;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
+
+    static raw_memory_resource &instance() noexcept { return s_rawMemResource; }
 
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       if (bytes) {
@@ -39,6 +40,9 @@ namespace zs {
       }
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+
+  protected:
+    static raw_memory_resource s_rawMemResource;
   };
 
   template <typename MemTag> struct default_memory_resource : mr_t {
@@ -151,7 +155,7 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
 
-#  if 0
+#if 0
   template <> struct stack_virtual_memory_resource<host_mem_tag>
       : vmr_t {  // default impl falls back to
     stack_virtual_memory_resource(ProcID did = -1, std::string_view type = "HOST_VIRTUAL");
@@ -168,7 +172,7 @@ namespace zs {
     size_t _offset, _allocatedSpace, _reservedSpace;
     ProcID _did;
   };
-#  else
+#else
   template <> struct stack_virtual_memory_resource<host_mem_tag>
       : vmr_t {  // default impl falls back to
     stack_virtual_memory_resource(ProcID did = -1, std::size_t size = vmr_t::s_chunk_granularity);
@@ -190,7 +194,7 @@ namespace zs {
     ProcID _did;
   };
 
-#  endif
+#endif
 
 #ifdef ZS_PLATFORM_WINDOWS
 #elif defined(ZS_PLATFORM_UNIX)

@@ -4,9 +4,15 @@
 
 #include "zensim/Logger.hpp"
 #include "zensim/math/bit/Bits.h"
+#include "zensim/memory/Allocator.h"
 #include "zensim/types/Iterator.h"
 
 namespace zs {
+
+  template <>
+  raw_memory_resource<device_mem_tag> raw_memory_resource<device_mem_tag>::s_rawMemResource{};
+
+  template <> raw_memory_resource<um_mem_tag> raw_memory_resource<um_mem_tag>::s_rawMemResource{};
 
 #if 0
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(
@@ -184,7 +190,8 @@ namespace zs {
     // _addr
     status = cuMemAddressReserve((CUdeviceptr *)&_addr, _reservedSpace, (size_t)0 /*alignment*/,
                                  (CUdeviceptr)0ull, 0ull /*flag*/);
-    if (status != CUDA_SUCCESS) throw std::runtime_error("fails to reserve a device virtual range.");
+    if (status != CUDA_SUCCESS)
+      throw std::runtime_error("fails to reserve a device virtual range.");
   }
 
   stack_virtual_memory_resource<device_mem_tag>::~stack_virtual_memory_resource() {

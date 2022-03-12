@@ -1,10 +1,15 @@
 #include "Resource.h"
 
+#include "zensim/Port.hpp"
 #include "zensim/execution/Concurrency.h"
 #include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemoryResource.h"
 #if defined(ZS_ENABLE_CUDA)
+#  include "zensim/cuda/Port.hpp"
 #  include "zensim/cuda/memory/Allocator.h"
+#endif
+#if defined(ZS_ENABLE_OPENMP)
+#  include "zensim/omp/Port.hpp"
 #endif
 
 namespace zs {
@@ -70,6 +75,16 @@ namespace zs {
     return ret;
   }
 
+  Resource::Resource() {
+    initialize_backend(exec_seq);
+#if defined(ZS_ENABLE_CUDA)
+    initialize_backend(exec_cuda);
+#endif
+#if defined(ZS_ENABLE_OPENMP)
+    initialize_backend(exec_omp);
+#endif
+    // sycl...
+  }
   Resource::~Resource() {
     for (auto &&record : g_resource_records) {
       const auto &[ptr, info] = record;
@@ -78,6 +93,13 @@ namespace zs {
                  match([](auto &tag) { return get_memory_tag_name(tag); })(info.tag), info.size,
                  info.alignment, info.allocatorType);
     }
+    deinitialize_backend(exec_seq);
+#if defined(ZS_ENABLE_CUDA)
+    deinitialize_backend(exec_cuda);
+#endif
+#if defined(ZS_ENABLE_OPENMP)
+    deinitialize_backend(exec_omp);
+#endif
   }
   void Resource::record(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
                         std::size_t alignment) {

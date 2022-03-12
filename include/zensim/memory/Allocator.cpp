@@ -16,6 +16,9 @@
 
 namespace zs {
 
+  template <>
+  raw_memory_resource<host_mem_tag> raw_memory_resource<host_mem_tag>::s_rawMemResource{};
+
 #if defined(ZS_PLATFORM_UNIX)
 
 #  if 0

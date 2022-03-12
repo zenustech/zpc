@@ -1,4 +1,5 @@
 set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
+    Port.cpp
     math/probability/Probability.cpp
     math/matrix/MatrixTransform.cpp
     math/matrix/MatrixCtor.cpp
@@ -23,6 +24,7 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
     simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
+    cuda/Port.cu
     cuda/Cuda.cu
 	  cuda/profile/CudaTimers.cu
     cuda/memory/MemOps.cpp
@@ -30,6 +32,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
     cuda/simulation/wrangler/Wrangler.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
+    omp/Port.cpp
     omp/math/matrix/MatrixCtor.cpp
     omp/math/matrix/MatrixTransform.cpp
     omp/execution/ExecutionPolicy.cpp
@@ -46,6 +49,7 @@ set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
   cuda/simulation/particle/Query.cpp
   cuda/simulation/sparsity/SparsityCompute.cpp
 )
+#[=[
 if (ZS_ENABLE_CUDA)
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES} 
   ${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES}
@@ -60,9 +64,11 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
   ${ZENSIM_LIBRARY_ZPC_OMP_SOURCE_FILES}
 )
 endif ()
+#]=]
 
 ## headers
 set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
+    Port.hpp
     # container
     container/DenseGrid.hpp
     container/RingBuffer.hpp
@@ -194,6 +200,7 @@ set(ZENSIM_LIBRARY_TOOL_INCLUDE_FILES
     geometry/VdbSampler.h
 )
 set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
+    cuda/Port.hpp
     cuda/Cuda.h
     cuda/DeviceUtils.cuh
     cuda/HostUtils.hpp
@@ -216,6 +223,7 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/simulation/wrangler/Wrangler.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
+    omp/Port.hpp
     omp/execution/ExecutionPolicy.hpp
     omp/math/matrix/MatrixCtor.hpp
     omp/math/matrix/MatrixTransform.hpp

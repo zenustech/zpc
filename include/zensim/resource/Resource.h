@@ -178,6 +178,10 @@ namespace zs {
   ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid, std::size_t bytes,
                                                  std::string_view option = "STACK");
 
+  template <execspace_e space> constexpr bool initialize_backend(wrapv<space> = {}) {
+    return false;
+  }
+
   struct Resource : Singleton<Resource> {
     static std::atomic_ullong &counter() noexcept { return instance()._counter; }
 
@@ -186,7 +190,7 @@ namespace zs {
       std::size_t size{0}, alignment{0};
       std::string allocatorType{};
     };
-    Resource() = default;
+    Resource();
     ~Resource();
 
     void record(mem_tags tag, void *ptr, std::string_view name, std::size_t size,

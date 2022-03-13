@@ -120,6 +120,7 @@ target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
 target_compile_definitions(zpc_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )
+target_link_libraries(zpc_deps INTERFACE zpc_cxx_deps)
 
 # ---- binaries ----
 # ==================

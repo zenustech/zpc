@@ -12,6 +12,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
+    io/ParticleIO.cpp
     io/IO.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
@@ -259,11 +260,7 @@ add_library(zensim INTERFACE)
 #############
 # zpc: core #
 #############
-if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpccore SHARED)
-else ()
-  add_library(zpccore STATIC)
-endif ()
+add_library(zpccore OBJECT)
 
 target_sources(zpccore
   PRIVATE 
@@ -291,33 +288,33 @@ set_target_properties(zpccore
 )
 
 if (ZS_ENABLE_OPENMP)
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_OPENMP=1)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_OPENMP=1)
 else()
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_OPENMP=0)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_OPENMP=0)
 endif(ZS_ENABLE_OPENMP)
 
 if (ZS_ENABLE_CUDA)
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_CUDA=1)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_CUDA=1)
 else()
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_CUDA=0)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_CUDA=0)
 endif(ZS_ENABLE_CUDA)
 
 if (ZS_ENABLE_SYCL_COMPUTECPP)
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_COMPUTECPP=1)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_COMPUTECPP=1)
 else()
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_COMPUTECPP=0)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_COMPUTECPP=0)
 endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
 if (ZS_ENABLE_SYCL_DPCPP)
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_DPCPP=1)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_DPCPP=1)
 else()
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL_DPCPP=0)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_DPCPP=0)
 endif(ZS_ENABLE_SYCL_DPCPP)
 
 if (ZS_ENABLE_SYCL)
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL=1)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL=1)
 else()
-  target_compile_definitions(zpccore PUBLIC ZS_ENABLE_SYCL=0)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL=0)
 endif(ZS_ENABLE_SYCL)
 
 ###############
@@ -326,17 +323,18 @@ endif(ZS_ENABLE_SYCL)
 if (ZS_ENABLE_OPENMP)
 
 if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpcomp SHARED)
+  add_library(zpcomp SHARED $<TARGET_OBJECTS:zpccore>)
 else ()
-  add_library(zpcomp STATIC)
+  add_library(zpcomp STATIC $<TARGET_OBJECTS:zpccore>)
 endif ()
+
 target_sources(zpcomp 
   PRIVATE   ${ZENSIM_LIBRARY_OMP_SOURCE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
   target_precompile_headers(zpcomp INTERFACE ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
 endif()
-target_link_libraries(zpcomp PUBLIC zpccore zpc_omp_deps)
+target_link_libraries(zpcomp PUBLIC zpc_cxx_deps zpc_omp_deps)
 target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
   PUBLIC   $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
@@ -349,18 +347,18 @@ endif(ZS_ENABLE_OPENMP)
 if (ZS_ENABLE_CUDA)
 
 if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpccuda SHARED)
+  add_library(zpccuda SHARED $<TARGET_OBJECTS:zpccore>)
 else ()
-  add_library(zpccuda STATIC)
+  add_library(zpccuda STATIC $<TARGET_OBJECTS:zpccore>)
 endif ()
 target_sources(zpccuda 
-  PRIVATE   ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} #  INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
+  PRIVATE   ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} #${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
 )
 if (ENABLE_PCH)
   target_precompile_headers(zpccuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
-target_link_libraries(zpccuda PUBLIC zpccore zpc_cuda_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpc_cxx_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 target_compile_options(zpccuda 
   PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642">
 # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
@@ -370,16 +368,14 @@ target_link_options(zpccuda
   PRIVATE       $<DEVICE_LINK:-dlto>
 )
 set_target_properties(zpccuda
-  PROPERTIES  # LINKER_LANGUAGE CUDA
+  PROPERTIES  #LINKER_LANGUAGE CUDA
               CUDA_EXTENSIONS ON
               CUDA_SEPARABLE_COMPILATION ON
               CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               CUDA_ARCHITECTURES OFF
               #CUDA_VISIBILITY_PRESET default
 )
-target_compile_definitions(zpccuda
-  PUBLIC    CMAKE_GENERATOR_PLATFORM=x64
-)
+target_compile_definitions(zpc_cuda_deps INTERFACE CMAKE_GENERATOR_PLATFORM=x64)
 
 endif(ZS_ENABLE_CUDA)
 
@@ -389,17 +385,17 @@ endif(ZS_ENABLE_CUDA)
 if (ZS_ENABLE_SYCL_COMPUTECPP)
 
 add_library(zpcsycl INTERFACE)
-target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
+target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
 
 elseif(ZS_ENABLE_SYCL_DPCPP)
 
 add_library(zpcsycl INTERFACE)
-target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
+target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
 
 elseif(ZS_ENABLE_SYCL)
 
 add_library(zpcsycl INTERFACE)
-target_link_libraries(zpcsycl INTERFACE zpccore zpc_sycl_deps)
+target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
 
 endif(ZS_ENABLE_SYCL_COMPUTECPP)
 
@@ -409,7 +405,7 @@ endif(ZS_ENABLE_SYCL_COMPUTECPP)
 if (ZS_ENABLE_OPENCL)
 
 add_library(zpccl INTERFACE)
-target_link_libraries(zpccl INTERFACE zpccore zpc_cl_deps)
+target_link_libraries(zpccl INTERFACE zpc_cl_deps zpc_cxx_deps)
 
 endif(ZS_ENABLE_OPENCL)
 
@@ -417,9 +413,9 @@ endif(ZS_ENABLE_OPENCL)
 # zpc #
 #######
 if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpc SHARED)
+  add_library(zpc SHARED $<TARGET_OBJECTS:zpccore>)
 else ()
-  add_library(zpc STATIC)
+  add_library(zpc STATIC $<TARGET_OBJECTS:zpccore>)
 endif ()
 
 target_sources(zpc
@@ -427,15 +423,19 @@ target_sources(zpc
     ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
     ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
 )
-target_link_libraries(zpc PUBLIC zpccore)
+target_link_libraries(zpc PUBLIC zpc_deps)
 
 if (ZS_ENABLE_OPENMP)
   target_link_libraries(zpc PUBLIC zpcomp)
+  # target_sources(zpc PUBLIC $<TARGET_OBJECTS:zpcomp>)
+  # target_link_libraries(zpc PUBLIC zpc_omp_deps)
 endif(ZS_ENABLE_OPENMP)
 
 if (ZS_ENABLE_CUDA)
-  set_source_files_properties(${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
+  #set_source_files_properties(${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
   target_link_libraries(zpc PUBLIC zpccuda)
+  # target_sources(zpc PRIVATE $<TARGET_OBJECTS:zpccuda>)
+  # target_link_libraries(zpc PUBLIC zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
 
 if (ZS_ENABLE_SYCL_COMPUTECPP)
@@ -500,7 +500,7 @@ target_link_libraries(zensim INTERFACE zpctool)  # zpctool -> zensim
 if (ZS_ENABLE_CUDA)
 
 if (MSVC)
-target_compile_definitions(zpccuda PUBLIC ZS_PTX_INCLUDE_DIR="")
+target_compile_definitions(zpc_cuda_deps INTERFACE ZS_PTX_INCLUDE_DIR="")
 
 else()
 
@@ -514,7 +514,7 @@ target_compile_options(zs_cu_wrangler
 )
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES  LANGUAGE CUDA)
 
-target_link_libraries(zs_cu_wrangler PRIVATE zpccuda)
+target_link_libraries(zs_cu_wrangler PRIVATE zpc)
 set(ZS_PTX_SOURCE_DIR cuda/simulation/wrangler)
 set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})
 set_target_properties(zs_cu_wrangler
@@ -526,7 +526,7 @@ set_target_properties(zs_cu_wrangler
               CUDA_PTX_COMPILATION ON # https://stackoverflow.com/questions/55993745/how-should-i-get-cmake-to-also-create-ptx-files-for-my-kernels
               #CUDA_VISIBILITY_PRESET default
 )
-target_compile_definitions(zpccuda PUBLIC ZS_PTX_INCLUDE_DIR="${ZS_PTX_INCLUDE_DIR}")
+target_compile_definitions(zpc_cuda_deps INTERFACE ZS_PTX_INCLUDE_DIR="${ZS_PTX_INCLUDE_DIR}")
 
 # $<TARGET_OBJECTS:zs_cu_wrangler>
 target_link_libraries(zensim INTERFACE zs_cu_wrangler)  # zs_cu_wrangler -> zensim

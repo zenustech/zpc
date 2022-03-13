@@ -45,8 +45,8 @@ namespace zs {
     static auto &context(int devid) { return driver().contexts[devid]; }
     static auto alignment() noexcept { return driver().textureAlignment; }
     static auto device_count() noexcept { return driver().numTotalDevice; }
-    static void init_constant_cache(void *ptr, std::size_t size);
-    static void init_constant_cache(void *ptr, std::size_t size, void *stream);
+    // static void init_constant_cache(void *ptr, std::size_t size);
+    // static void init_constant_cache(void *ptr, std::size_t size, void *stream);
 
     /// error handling
     static u32 get_last_cuda_rt_error();

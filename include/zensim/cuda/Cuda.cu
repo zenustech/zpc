@@ -12,16 +12,18 @@
 
 namespace zs {
 
-  __device__ __constant__ char g_cuda_constant_cache[8192];  // 1024 words
+  /*
+    __device__ __constant__ char g_cuda_constant_cache[8192];  // 1024 words
 
-  void Cuda::init_constant_cache(void *ptr, std::size_t size) {
-    cudaMemcpyToSymbol(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice);
-    // cudri::memcpyHtoD((void *)g_cuda_constant_cache, ptr, size);
-  }
-  void Cuda::init_constant_cache(void *ptr, std::size_t size, void *stream) {
-    cudaMemcpyToSymbolAsync(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice,
-                            (cudaStream_t)stream);
-  }
+    void Cuda::init_constant_cache(void *ptr, std::size_t size) {
+      cudaMemcpyToSymbol(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice);
+      // cudri::memcpyHtoD((void *)g_cuda_constant_cache, ptr, size);
+    }
+    void Cuda::init_constant_cache(void *ptr, std::size_t size, void *stream) {
+      cudaMemcpyToSymbolAsync(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice,
+                              (cudaStream_t)stream);
+    }
+    */
 
   /// error handling
   u32 Cuda::get_last_cuda_rt_error() { return (u32)cudaGetLastError(); }

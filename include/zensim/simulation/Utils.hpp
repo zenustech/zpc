@@ -76,34 +76,25 @@ namespace zs {
         = conditional_t<deriv_order == 0, tuple<TM>,
                         conditional_t<deriv_order == 1, tuple<TM, TM>, tuple<TM, TM, TM>>>;
 
-    constexpr IV world_to_index_base(const TV &pos) const noexcept {
-      const auto dxInv = (T)1 / dx;
-      constexpr index_type offset
-          = kt == kernel_e::quadratic ? -1 : (kt == kernel_e::linear ? 0 : -2);
-      IV ret{};
-      for (int d = 0; d != dim; ++d)
-        if constexpr (gt == grid_e::collocated)
-          ret[d] = lower_trunc(pos[d] * dxInv + (T)0.5) + offset;
-        else if constexpr (gt == grid_e::cellcentered)
-          ret[d] = lower_trunc(pos[d] * dxInv) + offset;
-        else if constexpr (gt == grid_e::staggered)
-          ret[d] = lower_trunc(pos[d] * dxInv) + offset;
-      return ret;
-    }
-
     constexpr void init(const value_type dx_, const TV &pos) {
       dx = dx_;
-      corner = world_to_index_base(pos);
-      if constexpr (gt == grid_e::collocated)
-        localPos = pos - corner * dx;
-      else if constexpr (gt == grid_e::cellcentered)
-        localPos = pos - (corner + (T)0.5) * dx;
-      else if constexpr (gt == grid_e::staggered)
-        localPos = pos - corner * dx;
+      auto X = pos;
+      if constexpr (gt == grid_e::cellcentered)
+        X = pos / dx - (value_type)0.5;
+      else
+        X = pos / dx;
 
-      if constexpr (kt == kernel_e::quadratic)
-        weights = quadratic_bspline_weights<deriv_order>(localPos / dx);
-      // std::get<0>(weights) = bspline_weight(localPos, (T)1 / dx);
+      constexpr int lerp_degree
+          = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
+      for (int d = 0; d != dim; ++d) corner[d] = base_node<lerp_degree>(X[d]);
+      localPos = X - corner;
+      if constexpr (kt == kernel_e::linear)
+        weights = linear_bspline_weights<deriv_order>(localPos);
+      else if constexpr (kt == kernel_e::quadratic)
+        weights = quadratic_bspline_weights<deriv_order>(localPos);
+      else if constexpr (kt == kernel_e::cubic)
+        weights = cubic_bspline_weights<deriv_order>(localPos);
+      localPos *= dx;
     }
 
     constexpr auto range() const noexcept { return ndrange<dim>(width); }

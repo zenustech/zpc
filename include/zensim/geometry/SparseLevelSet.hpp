@@ -262,6 +262,19 @@ namespace zs {
           _i2wRhat{ls._i2wRhat},
           _i2wShat{ls._i2wShat} {}
 
+    constexpr SparseLevelSetView(table_view_t tablev, grid_view_t gridv)
+        : _table{tablev},
+          _grid{gridv},
+          _backgroundValue{0},
+          _backgroundVecValue{TV::zeros()},
+          _min{TV::zeros()},
+          _max{TV::zeros()},
+          _i2wT{TV::zeros()},
+          _i2wRinv{TM::identity()},
+          _i2wSinv{TM::identity() / gridv.dx},
+          _i2wRhat{TM::identity()},
+          _i2wShat{TM::identity()} {}
+
     template <auto S = Space, enable_if_t<S == execspace_e::host> = 0> void print() {
       if constexpr (dim == 2) {
         auto blockCnt = *_table._cnt;

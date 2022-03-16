@@ -88,16 +88,16 @@ namespace zs {
       if (entryCnt == 0) return (std::size_t)0;
       return next_2pow(entryCnt) * reserve_ratio_v;
     }
-    HashTable(const allocator_type &allocator, std::size_t tableSize)
-        : _table{allocator, evaluateTableSize(tableSize)},
+    HashTable(const allocator_type &allocator, std::size_t numExpectedEntries)
+        : _table{allocator, evaluateTableSize(numExpectedEntries)},
           _allocator{allocator},
-          _tableSize{static_cast<value_t>(evaluateTableSize(tableSize))},
+          _tableSize{static_cast<value_t>(evaluateTableSize(numExpectedEntries))},
           _cnt{allocator, 1},
-          _activeKeys{allocator, evaluateTableSize(tableSize)} {
+          _activeKeys{allocator, evaluateTableSize(numExpectedEntries)} {
       _cnt.setVal((value_t)0);
     }
-    HashTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : HashTable{get_default_allocator(mre, devid), tableSize} {}
+    HashTable(std::size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : HashTable{get_default_allocator(mre, devid), numExpectedEntries} {}
     HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : HashTable{get_default_allocator(mre, devid), (std::size_t)0} {}
 
@@ -159,12 +159,7 @@ namespace zs {
     }
     friend void swap(HashTable &a, HashTable &b) { a.swap(b); }
 
-    inline value_t size() const {
-      value_t res[1];
-      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
-           MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
-      return res[0];
-    }
+    inline value_t size() const { return _cnt.getVal(0); }
 
     struct iterator_impl : IteratorInterface<iterator_impl> {
       template <typename Ti> constexpr iterator_impl(key_t *base, Ti &&idx)

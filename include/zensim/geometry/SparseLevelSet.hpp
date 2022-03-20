@@ -375,7 +375,6 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_integral_v<typename VecT::value_type>> = 0>
     constexpr auto cellToIndex(const VecInterface<VecT> &X) const noexcept {
-      // view-to-index: scale, rotate, trans
       if constexpr (category == grid_e::cellcentered)
         return (X + (value_type)0.5);
       else
@@ -388,6 +387,25 @@ namespace zs {
       using RetT = typename VecT::template variant_vec<value_type, typename VecT::extents>;
       return RetT::init([&X, f](int d) {
         return d != f ? (value_type)X[d] + (value_type)0.5 : (value_type)X[d];
+      });
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto indexToCell(const VecInterface<VecT> &x) const noexcept {
+      using T = decltype(lower_trunc((value_type)x[0]));
+      using RetT = typename VecT::template variant_vec<T, typename VecT::extents>;
+      if constexpr (category == grid_e::cellcentered)
+        return RetT::init([&x](int d) { return lower_trunc((value_type)x[d]); });
+      else
+        return RetT::init([&x](int d) { return lower_trunc((value_type)x[d] + (value_type)0.5); });
+    }
+    template <typename VecT, auto cate = category,
+              enable_if_all<cate == grid_e::staggered, VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto indexToCell(const VecInterface<VecT> &x, int f) const noexcept {
+      using T = decltype(lower_trunc((value_type)x[0]));
+      using RetT = typename VecT::template variant_vec<T, typename VecT::extents>;
+      return RetT::init([&x, f](int d) {
+        return d != f ? lower_trunc((value_type)x[d])
+                      : lower_trunc((value_type)x[d] + (value_type)0.5);
       });
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>

@@ -539,10 +539,15 @@ namespace zs {
     return a + (b - a) * alpha;
   }
 
+  template <typename T, enable_if_t<std::is_integral_v<T>> = 0>
+  constexpr auto lower_trunc(const T v) noexcept {
+    return v;
+  }
   constexpr auto lower_trunc(const double v) noexcept { return v >= 0 ? (i64)v : ((i64)v) - 1; }
   constexpr auto lower_trunc(const float v) noexcept { return v >= 0 ? (i32)v : ((i32)v) - 1; }
-  template <typename Ti, typename T,
-            enable_if_all<std::is_floating_point_v<T>, std::is_integral_v<Ti>, std::is_signed_v<Ti>> = 0>
+  template <
+      typename Ti, typename T,
+      enable_if_all<std::is_floating_point_v<T>, std::is_integral_v<Ti>, std::is_signed_v<Ti>> = 0>
   constexpr auto lower_trunc(wrapt<Ti>, const T v) noexcept {
     return v >= 0 ? static_cast<Ti>(v) : static_cast<Ti>(v) - (Ti)1;
   }

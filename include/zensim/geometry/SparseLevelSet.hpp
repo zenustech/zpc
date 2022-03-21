@@ -409,6 +409,10 @@ namespace zs {
       });
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto worldToCell(const VecInterface<VecT> &x) const noexcept {
+      return indexToCell((x - _i2wT) * _i2wRinv * _i2wSinv);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const noexcept {
       // view-to-index: scale, rotate, trans
       if constexpr (category == grid_e::cellcentered)

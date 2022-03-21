@@ -730,7 +730,7 @@ namespace zs {
   template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_vdbgrid(const SplsT &splsIn) {
     static_assert(is_spls_v<SplsT>, "SplsT must be a sparse levelset type");
     const auto &spls
-        = splsIn.memspace() == memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
+        = splsIn.memspace() != memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
     openvdb::FloatGrid::Ptr grid
         = openvdb::FloatGrid::create(/*background value=*/spls._backgroundValue);
     // meta
@@ -747,8 +747,12 @@ namespace zs {
       auto ompExec = omp_exec();
       auto lsv = proxy<execspace_e::openmp>(spls);
       using LsT = RM_CVREF_T(lsv);
-      for (const auto &blockid : spls._table._activeKeys)
+      // for (const auto &blockid : spls._table._activeKeys)
+      const auto numBlocks = spls.numBlocks();
+      for (typename LsT::size_type bno = 0; bno != numBlocks; ++bno) {
+        const auto blockid = spls._table._activeKeys[bno];
         grid->tree().touchLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
+      }
       ompExec(zip(range(spls.numBlocks()), spls._table._activeKeys), [lsv, &grid, &spls](
                                                                          typename LsT::size_type
                                                                              blockno,

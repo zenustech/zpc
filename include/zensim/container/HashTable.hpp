@@ -117,13 +117,9 @@ namespace zs {
     }
     HashTable clone(const allocator_type &allocator) const {
       HashTable ret{allocator, _tableSize / reserve_ratio_v};
-      if (_cnt.size() > 0)
-        copy(MemoryEntity{ret._cnt.memoryLocation(), (void *)ret._cnt.data()},
-             MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
-      if (_activeKeys.size() > 0)
-        copy(MemoryEntity{ret._activeKeys.memoryLocation(), (void *)ret._activeKeys.data()},
-             MemoryEntity{_activeKeys.memoryLocation(), (void *)_activeKeys.data()},
-             sizeof(key_t) * _activeKeys.size());
+      if (_cnt.size() > 0) ret._cnt.setVal(_cnt.getVal());
+      ret._tableSize = _tableSize;
+      ret._activeKeys = _activeKeys.clone(allocator);
       if (_tableSize > 0) {
         ret.self().keys = self().keys.clone(allocator);
         ret.self().indices = self().indices.clone(allocator);

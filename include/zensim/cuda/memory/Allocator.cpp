@@ -9,17 +9,12 @@
 
 namespace zs {
 
-  template class ZPC_API raw_memory_resource<device_mem_tag>;
-  template class ZPC_API raw_memory_resource<um_mem_tag>;
-
   template <>
   raw_memory_resource<device_mem_tag> raw_memory_resource<device_mem_tag>::s_rawMemResource{};
   template <> raw_memory_resource<um_mem_tag> raw_memory_resource<um_mem_tag>::s_rawMemResource{};
 
-  template <>
-  raw_memory_resource<device_mem_tag> &raw_memory_resource<device_mem_tag>::instance() noexcept { return s_rawMemResource; }
-  template <>
-  raw_memory_resource<um_mem_tag> &raw_memory_resource<um_mem_tag>::instance() noexcept { return s_rawMemResource; }
+  template struct ZPC_API raw_memory_resource<device_mem_tag>;
+  template struct ZPC_API raw_memory_resource<um_mem_tag>;
 
 #if 0
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(

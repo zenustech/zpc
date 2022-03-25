@@ -19,6 +19,11 @@ namespace zs {
   template <>
   raw_memory_resource<host_mem_tag> raw_memory_resource<host_mem_tag>::s_rawMemResource{};
 
+  template <>
+  raw_memory_resource<host_mem_tag> &raw_memory_resource<host_mem_tag>::instance() noexcept {
+    return s_rawMemResource;
+  }
+
   template struct ZPC_API raw_memory_resource<host_mem_tag>;
 
 #if defined(ZS_PLATFORM_UNIX)

@@ -45,11 +45,6 @@ namespace zs {
     static raw_memory_resource s_rawMemResource;
   };
 
-  template <typename MemTag>
-  raw_memory_resource<MemTag> &raw_memory_resource<MemTag>::instance() noexcept {
-    return s_rawMemResource;
-  }
-
   template <typename MemTag> struct default_memory_resource : mr_t {
     default_memory_resource(ProcID did = 0, mr_t *up = &raw_memory_resource<MemTag>::instance())
         : upstream{up}, did{did} {}

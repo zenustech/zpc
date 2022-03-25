@@ -50,13 +50,16 @@ option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_ENABLE_TEST "Enable Tests" OFF)
 option(ZS_ENABLE_DOC "Enable Doxygen Documentation Generation" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
+option(ZS_ENABLE_CUDA "Enable cuda backend" ON)
+option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
+option(ZS_ENABLE_OPENVDB "Enable openvdb-related build" ON)
 set(ZS_ENABLE_SYCL_COMPUTECPP On CACHE BOOL "Enable SYCL[ComputeCpp] backend")
 set(ZS_ENABLE_SYCL_DPCPP Off CACHE BOOL "Enable SYCL[Intel-DPC++] backend")
 set(ZS_ENABLE_SYCL Off CACHE BOOL "Enable SYCL[Clang-DPC++] backend")
 set(ZS_ENABLE_OPENCL Off CACHE BOOL "Enable OpenCL backend")
-set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp backend")
-set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda backend")
-set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
+# set(ZS_ENABLE_OPENMP On CACHE BOOL "Enable openmp backend")
+# set(ZS_ENABLE_CUDA On CACHE BOOL "Enable cuda backend")
+#set(ZS_ENABLE_OPENVDB On CACHE BOOL "Enable openvdb-related build")
 set(ZS_PROPAGATE_DEPS On CACHE BOOL "Pass on dependencies")
 
 option(ZS_ENABLE_INSTALL "Install targets" Off)
@@ -120,6 +123,15 @@ target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
 target_compile_definitions(zpc_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )
+if (ZS_BUILD_SHARED_LIBS)
+target_compile_definitions(zpc_cxx_deps
+    INTERFACE   ZS_BUILD_SHARED_LIBS=1
+)
+else()
+target_compile_definitions(zpc_cxx_deps
+    INTERFACE   ZS_BUILD_SHARED_LIBS=0
+)
+endif()
 target_link_libraries(zpc_deps INTERFACE zpc_cxx_deps)
 
 # ---- binaries ----

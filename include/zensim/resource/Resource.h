@@ -121,40 +121,9 @@ namespace zs {
     /// owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
     void setOwningUpstream(mem_tags tag, ProcID devid, std::tuple<Args &&...> args,
-                           index_seq<Is...>) {
-      match([&](auto t) {
-        res = std::make_unique<ResourceT<decltype(t)>>(devid, std::get<Is>(args)...);
-        location = MemoryLocation{t.value, devid};
-        cloner = [devid, args]() -> std::unique_ptr<resource_type> {
-          std::unique_ptr<resource_type> ret{};
-          std::apply(
-              [&ret](auto &&...ctorArgs) {
-                ret = std::make_unique<ResourceT<decltype(t)>>(FWD(ctorArgs)...);
-              },
-              std::tuple_cat(std::make_tuple(devid), args));
-          return ret;
-        };
-      })(tag);
-    }
+                           index_seq<Is...>);
     template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
-    void setOwningUpstream(MemTag tag, ProcID devid, Args &&...args) {
-      if constexpr (is_same_v<MemTag, mem_tags>)
-        setOwningUpstream<ResourceT>(tag, devid, std::forward_as_tuple(FWD(args)...),
-                                     std::index_sequence_for<Args...>{});
-      else {
-        res = std::make_unique<ResourceT<MemTag>>(devid, FWD(args)...);
-        location = MemoryLocation{MemTag::value, devid};
-        cloner = [devid, args = std::make_tuple(args...)]() -> std::unique_ptr<resource_type> {
-          std::unique_ptr<resource_type> ret{};
-          std::apply(
-              [&ret](auto &&...ctorArgs) {
-                ret = std::make_unique<ResourceT<MemTag>>(FWD(ctorArgs)...);
-              },
-              std::tuple_cat(std::make_tuple(devid), args));
-          return ret;
-        };
-      }
-    }
+    void setOwningUpstream(MemTag tag, ProcID devid, Args &&...args);
 
     ResourceCloner cloner{};
     std::unique_ptr<resource_type> res{};
@@ -169,21 +138,33 @@ namespace zs {
                       std::false_type>;
 
   /// global free function
-  void record_allocation(mem_tags, void *, std::string_view, std::size_t = 0, std::size_t = 0);
-  void erase_allocation(void *);
-  void copy(MemoryEntity dst, MemoryEntity src, std::size_t size);
+  ZPC_API void record_allocation(mem_tags, void *, std::string_view, std::size_t = 0,
+                                 std::size_t = 0);
+  ZPC_API void erase_allocation(void *);
+  ZPC_API void copy(MemoryEntity dst, MemoryEntity src, std::size_t size);
 
-  ZSPmrAllocator<> get_memory_source(memsrc_e mre, ProcID devid,
+  ZPC_API ZSPmrAllocator<> get_memory_source(memsrc_e mre, ProcID devid,
                                      std::string_view advice = std::string_view{});
-  ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid, std::size_t bytes,
+  ZPC_API ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid, std::size_t bytes,
                                                  std::string_view option = "STACK");
 
-  template <execspace_e space> constexpr bool initialize_backend(wrapv<space> = {}) {
+  template <execspace_e space> constexpr bool initialize_backend(wrapv<space>) noexcept {
+    return false;
+  }
+  template <typename MemTag> constexpr bool is_memory_source_available(MemTag) noexcept {
+    if constexpr (is_same_v<MemTag, device_mem_tag>)
+      return ZS_ENABLE_CUDA;
+    else if constexpr (is_same_v<MemTag, um_mem_tag>)
+      return ZS_ENABLE_CUDA;
+    else if constexpr (is_same_v<MemTag, host_mem_tag>)
+      return true;
     return false;
   }
 
-  struct Resource : Singleton<Resource> {
+  struct ZPC_API Resource {
     static std::atomic_ullong &counter() noexcept { return instance()._counter; }
+
+    static Resource &instance() noexcept;
 
     struct AllocationRecord {
       mem_tags tag{};
@@ -201,15 +182,11 @@ namespace zs {
 
   private:
     mutable std::atomic_ullong _counter{0};
+
+    static Resource s_resource;
   };
 
-  Resource &get_resource_manager() noexcept;
-
-  /// property tag
-  struct PropertyTag {
-    SmallString name;
-    int numChannels;
-  };
+  ZPC_API Resource &get_resource_manager() noexcept;
 
   inline auto select_properties(const std::vector<PropertyTag> &props,
                                 const std::vector<SmallString> &names) {

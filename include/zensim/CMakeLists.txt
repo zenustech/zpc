@@ -2,13 +2,13 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
     Port.cpp
     math/probability/Probability.cpp
     math/matrix/MatrixTransform.cpp
-    math/matrix/MatrixCtor.cpp
     memory/MemOps.cpp
     memory/Allocator.cpp
     profile/CppTimers.cpp
     execution/Stacktrace.cpp
     execution/ExecutionPolicy.cpp
     execution/ConcurrencyPrimitive.cpp
+    Logger.cpp
     # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
@@ -34,38 +34,19 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/Port.cpp
-    omp/math/matrix/MatrixCtor.cpp
     omp/math/matrix/MatrixTransform.cpp
     omp/execution/ExecutionPolicy.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
     math/matrix/Matrix.cpp
     simulation/mpm/Simulator.cpp
-    simulation/particle/Query.cpp
     simulation/sparsity/SparsityCompute.cpp
     resource/Resource.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES 
   # cuda/math/matrix/Matrix.cpp
-  cuda/simulation/particle/Query.cpp
   cuda/simulation/sparsity/SparsityCompute.cpp
 )
-#[=[
-if (ZS_ENABLE_CUDA)
-set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES} 
-  ${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES}
-)
-endif ()
-set(ZENSIM_LIBRARY_ZPC_OMP_SOURCE_FILES 
-  omp/simulation/particle/Query.cpp
-  omp/simulation/sparsity/SparsityCompute.cpp
-)
-if (ZS_ENABLE_OPENMP)
-set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES} 
-  ${ZENSIM_LIBRARY_ZPC_OMP_SOURCE_FILES}
-)
-endif ()
-#]=]
 
 ## headers
 set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
@@ -180,12 +161,10 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
     simulation/transfer/G2C2P.hpp
     simulation/grid/GridOp.hpp
     simulation/particle/ParticleOp.hpp
-    simulation/particle/Query.hpp
     simulation/sparsity/SparsityOp.hpp
     simulation/sparsity/SparsityCompute.hpp
     simulation/Utils.hpp
     # tpp
-    simulation/particle/Query.tpp
     simulation/sparsity/SparsityCompute.tpp
     container/BvhImpl.tpp
 )
@@ -226,7 +205,6 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/Port.hpp
     omp/execution/ExecutionPolicy.hpp
-    omp/math/matrix/MatrixCtor.hpp
     omp/math/matrix/MatrixTransform.hpp
 )
 set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
@@ -234,7 +212,6 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
 if (ZS_ENABLE_CUDA)
 set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES} 
   cuda/math/matrix/Matrix.hpp
-  cuda/simulation/particle/Query.hpp
 )
 endif ()
 if (ZS_ENABLE_OMP)
@@ -260,7 +237,11 @@ add_library(zensim INTERFACE)
 #############
 # zpc: core #
 #############
-add_library(zpccore OBJECT)
+if (ZS_BUILD_SHARED_LIBS)
+  add_library(zpccore SHARED)
+else ()
+  add_library(zpccore STATIC)
+endif ()
 
 target_sources(zpccore
   PRIVATE 
@@ -287,6 +268,12 @@ set_target_properties(zpccore
               # CXX_VISIBILITY_PRESET default
 )
 
+target_link_libraries(zpc_cxx_deps INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>, synchronization.lib, >)
+if (ZS_BUILD_SHARED_LIBS)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZPC_PRIVATE=1)
+else()
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZPC_PRIVATE=0)
+endif()
 if (ZS_ENABLE_OPENMP)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_OPENMP=1)
 else()
@@ -323,9 +310,9 @@ endif(ZS_ENABLE_SYCL)
 if (ZS_ENABLE_OPENMP)
 
 if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpcomp SHARED $<TARGET_OBJECTS:zpccore>)
+  add_library(zpcomp SHARED)
 else ()
-  add_library(zpcomp STATIC $<TARGET_OBJECTS:zpccore>)
+  add_library(zpcomp STATIC)
 endif ()
 
 target_sources(zpcomp 
@@ -334,7 +321,7 @@ target_sources(zpcomp
 if (ENABLE_PCH)
   target_precompile_headers(zpcomp INTERFACE ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
 endif()
-target_link_libraries(zpcomp PUBLIC zpc_cxx_deps zpc_omp_deps)
+target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
 target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
   PUBLIC   $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
 )
@@ -347,9 +334,9 @@ endif(ZS_ENABLE_OPENMP)
 if (ZS_ENABLE_CUDA)
 
 if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpccuda SHARED $<TARGET_OBJECTS:zpccore>)
+  add_library(zpccuda SHARED)
 else ()
-  add_library(zpccuda STATIC $<TARGET_OBJECTS:zpccore>)
+  add_library(zpccuda STATIC)
 endif ()
 target_sources(zpccuda 
   PRIVATE   ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} #${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
@@ -358,7 +345,7 @@ if (ENABLE_PCH)
   target_precompile_headers(zpccuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
 endif()
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
-target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpc_cxx_deps) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 target_compile_options(zpccuda 
   PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} --use_fast_math -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642">
 # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
@@ -413,9 +400,9 @@ endif(ZS_ENABLE_OPENCL)
 # zpc #
 #######
 if (ZS_BUILD_SHARED_LIBS)
-  add_library(zpc SHARED $<TARGET_OBJECTS:zpccore>)
+  add_library(zpc SHARED)
 else ()
-  add_library(zpc STATIC $<TARGET_OBJECTS:zpccore>)
+  add_library(zpc STATIC)
 endif ()
 
 target_sources(zpc
@@ -423,7 +410,7 @@ target_sources(zpc
     ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
     ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
 )
-target_link_libraries(zpc PUBLIC zpc_deps)
+target_link_libraries(zpc PUBLIC zpccore)
 
 if (ZS_ENABLE_OPENMP)
   target_link_libraries(zpc PUBLIC zpcomp)

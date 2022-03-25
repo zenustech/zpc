@@ -21,34 +21,31 @@ namespace zs {
     std::any object;
   };
 
-  OpenVDBStruct load_floatgrid_from_mesh_file(const std::string &fn, float h);
-  OpenVDBStruct load_floatgrid_from_vdb_file(const std::string &fn);
-  OpenVDBStruct load_vec3fgrid_from_vdb_file(const std::string &fn);
-  bool write_floatgrid_to_vdb_file(std::string_view fn, const OpenVDBStruct &grid);
-
-  ///
-  std::vector<const void *> get_floatgrid_interior_leaves(const OpenVDBStruct &grid);
+  ZPC_API OpenVDBStruct load_floatgrid_from_mesh_file(const std::string &fn, float h);
+  ZPC_API OpenVDBStruct load_floatgrid_from_vdb_file(const std::string &fn);
+  ZPC_API OpenVDBStruct load_vec3fgrid_from_vdb_file(const std::string &fn);
+  ZPC_API bool write_floatgrid_to_vdb_file(std::string_view fn, const OpenVDBStruct &grid);
 
   /// floatgrid
   template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_vdbgrid(const SplsT &grid);
-  SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);
-  SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid,
+  ZPC_API SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);
+  ZPC_API SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid,
                                                          const MemoryHandle mh);
 
   /// float3grid
-  SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid);
-  SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid,
+  ZPC_API SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid);
+  ZPC_API SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid,
                                                          const MemoryHandle mh);
 
-  SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
+  ZPC_API SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
       const OpenVDBStruct &grid);
-  SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
+  ZPC_API SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
       const OpenVDBStruct &grid, const MemoryHandle mh);
 
   /// floatgrid + float3grid
-  SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,
+  ZPC_API SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,
                                                            const OpenVDBStruct &vel);
-  SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,
+  ZPC_API SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,
                                                            const OpenVDBStruct &vel,
                                                            const MemoryHandle mh);
 

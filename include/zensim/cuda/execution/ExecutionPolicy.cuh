@@ -15,7 +15,6 @@
 #include <nvfunctional>
 #include <type_traits>
 
-#include "zensim/resource/Resource.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/SourceLocation.hpp"
 

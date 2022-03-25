@@ -2,7 +2,6 @@
 #include <cmath>
 
 #include "LinearOperators.hpp"
-#include "zensim/resource/Resource.h"
 
 namespace zs {
 

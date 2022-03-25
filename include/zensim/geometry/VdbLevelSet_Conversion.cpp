@@ -13,118 +13,6 @@
 
 namespace zs {
 
-  std::vector<const void *> get_floatgrid_interior_leaves(const OpenVDBStruct &grid) {
-    using GridType = openvdb::FloatGrid;
-    using ValueType = GridType::ValueType;
-    using TreeType = GridType::TreeType;
-    using RootType = TreeType::RootNodeType;  // level 3 RootNode
-    assert(RootType::LEVEL == 3);
-    using NodeChainType = RootType::NodeChainType;
-    using InternalNodeType = NodeChainType::template Get<1>;
-    // using Int1Type = RootType::ChildNodeType;  // level 2 InternalNode
-    // using Int2Type = Int1Type::ChildNodeType;  // level 1 InternalNode
-    using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
-
-    const auto &gridPtr = grid.as<typename GridType::Ptr>();
-    /// ref: implementation from sdfToFogVolume
-    const TreeType &tree = gridPtr->tree();
-
-    size_t numLeafNodes = 0;
-
-    std::vector<const void *> ret;
-    std::vector<const LeafType *> nodes;
-    std::vector<size_t> leafnodeCount;
-
-    ValueType cutoffDistance = limits<ValueType>::max();
-    {
-      // Compute the prefix sum of the leafnode count in each internal node.
-      std::vector<const InternalNodeType *> internalNodes;
-      tree.getNodes(internalNodes);
-
-      leafnodeCount.push_back(0);
-      for (size_t n = 0; n < internalNodes.size(); ++n) {
-        leafnodeCount.push_back(leafnodeCount.back() + internalNodes[n]->leafCount());
-      }
-
-      numLeafNodes = leafnodeCount.back();
-
-      // Steal all leafnodes (Removes them from the tree and transfers ownership.)
-      nodes.reserve(numLeafNodes);
-
-#if 0
-      using NT = std::remove_reference_t<std::remove_pointer_t<RM_CVREF_T(internalNodes[0])>>;
-      fmt::print("nc: {}\n", zs::get_type_str<typename NT::ChildNodeType>());
-      fmt::print("candidate: {}\n", zs::get_type_str<typename decltype(nodes)::value_type>());
-      getchar();
-#endif
-#if 1
-      auto stealNodes
-          = [&nodes, value = tree.background(), state = false](auto &self, auto nodePtr) {
-              using NodeT = std::remove_reference_t<std::remove_pointer_t<RM_CVREF_T(nodePtr)>>;
-              for (auto iter = nodePtr->cbeginChildOn(); iter; ++iter) {
-                const auto n = iter.pos();
-                if constexpr (is_same_v<LeafType, typename NodeT::ChildNodeType>) {
-                  auto nnode = nodePtr->getTable()[n];
-                  nodes.push_back(nnode.getChild());
-                  auto valueMask = nodePtr->getValueMask();
-                  const_cast<std::remove_const_t<RM_CVREF_T(valueMask)> &>(valueMask).set(n, state);
-                  const_cast<std::remove_const_t<RM_CVREF_T(nnode)> &>(nnode).setValue(value);
-                } else
-                  self(nodePtr->getTable()[n]);
-              }
-              if constexpr (is_same_v<LeafType, typename NodeT::ChildNodeType>) {
-                auto childMask = nodePtr->getChildMask();
-                const_cast<std::remove_const_t<RM_CVREF_T(childMask)> &>(childMask).setOff();
-              }
-            };
-      auto snf = recursive_lambda(stealNodes);
-#endif
-      for (size_t n = 0; n < internalNodes.size(); ++n) {
-        // internalNodes[n]->stealNodes(nodes, tree.background(), false);
-        snf(internalNodes[n]);
-      }
-
-      // Clamp cutoffDistance to min sdf value
-      ValueType minSDFValue = limits<ValueType>::max();
-
-      {
-        openvdb::tools::level_set_util_internal::FindMinTileValue<InternalNodeType> minOp(
-            internalNodes.data());
-        tbb::parallel_reduce(tbb::blocked_range<size_t>(0, internalNodes.size()), minOp);
-        minSDFValue = std::min(minSDFValue, minOp.minValue);
-      }
-
-      if (minSDFValue > ValueType(0.0)) {
-        openvdb::tools::level_set_util_internal::FindMinVoxelValue<LeafType> minOp(nodes.data());
-        tbb::parallel_reduce(tbb::blocked_range<size_t>(0, nodes.size()), minOp);
-        minSDFValue = std::min(minSDFValue, minOp.minValue);
-      }
-
-      cutoffDistance = -std::abs(cutoffDistance);
-      cutoffDistance = minSDFValue > cutoffDistance ? minSDFValue : cutoffDistance;
-    }
-
-#if 0
-    for (auto leafNode : nodes) {
-      if (leafNode == nullptr) {
-        fmt::print("indeed there is invalid leaf!\n");
-        getchar();
-      }
-      auto values = leafNode->buffer().data();
-      for (int i = 0; i != LeafType::SIZE; ++i) {
-        if (values[i] < 0) fmt::print("[{}]: {}\n", i, values[i]);
-      }
-      // getchar();
-    }
-    getchar();
-#endif
-
-    ret.resize(nodes.size());
-    std::transform(std::begin(nodes), std::end(nodes), std::begin(ret),
-                   [](auto ptr) { return static_cast<const void *>(ptr); });
-    return ret;
-  }
-
   ///
   /// vdb levelset -> zpc levelset
   ///
@@ -142,14 +30,6 @@ namespace zs {
     using SpLs = SparseLevelSet<3, grid_e::collocated>;
     using IV = typename SpLs::table_t::key_t;
     using TV = vec<typename SpLs::value_type, 3>;
-#if 0
-    auto tmp = get_floatgrid_interior_leaves(grid);
-    std::vector<const LeafType *> leaves(tmp.size());
-    std::transform(std::begin(tmp), std::end(tmp), std::begin(leaves),
-                   [](auto ptr) { return (const LeafType *)ptr; });
-    fmt::print("been here!\n");
-    getchar();
-#endif
 
     gridPtr->tree().voxelizeActiveTiles();
     static_assert(8 * 8 * 8 == LeafType::SIZE, "leaf node size not 8x8x8!");

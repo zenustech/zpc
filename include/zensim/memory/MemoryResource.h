@@ -101,7 +101,7 @@ namespace zs {
 
   using mem_tags = variant<host_mem_tag, device_mem_tag, um_mem_tag>;
 
-  constexpr mem_tags to_memory_source_tag(memsrc_e loc) {
+  constexpr mem_tags to_memory_source_tag(memsrc_e loc) noexcept {
     mem_tags ret{};
     switch (loc) {
       case memsrc_e::host:

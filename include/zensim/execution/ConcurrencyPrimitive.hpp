@@ -9,7 +9,7 @@ namespace zs {
 
   /// shared within a single process
   /// blocking construct in the context of shared-memory synchronization
-  struct Futex {
+  struct ZPC_API Futex {
     enum result_t {
       value_changed,  // when expected != atomic value
       awoken,         // awoken from 'wake' (success state)
@@ -26,11 +26,11 @@ namespace zs {
     static int wake(std::atomic<i32> *v, int count = limits<int>::max(), i32 wakeMask = 0xffffffff);
   };
 
-  void await_change(std::atomic<i32> &v, i32 cur);
-  void await_equal(std::atomic<i32> &v, i32 desired);
+  ZPC_API void await_change(std::atomic<i32> &v, i32 cur);
+  ZPC_API void await_equal(std::atomic<i32> &v, i32 desired);
 
   // process-local mutex
-  struct Mutex : std::atomic<i32> {
+  struct ZPC_API Mutex : std::atomic<i32> {
     // 0: unlocked
     // 1: locked
     // 257: locked and contended (...0001 | 00000001)
@@ -41,7 +41,7 @@ namespace zs {
 
   // 8 bytes alignment for rollover issue
   // https://docs.ntpsec.org/latest/rollover.html
-  struct alignas(16) ConditionVariable {
+  struct alignas(16) ZPC_API ConditionVariable {
     void notify_one();
     void notify_all();
     bool wait(Mutex &mut);

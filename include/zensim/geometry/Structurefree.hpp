@@ -6,7 +6,6 @@
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
-#include "zensim/resource/Resource.h"
 #include "zensim/types/Optional.h"
 #include "zensim/types/Polymorphism.h"
 

@@ -3,7 +3,6 @@
 
 #include "LinearOperators.hpp"
 #include "zensim/math/matrix/Givens.hpp"
-#include "zensim/resource/Resource.h"
 
 namespace zs {
 

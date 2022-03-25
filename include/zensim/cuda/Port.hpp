@@ -4,7 +4,7 @@
 
 namespace zs {
 
-  bool initialize_backend(cuda_exec_tag);
-  bool deinitialize_backend(cuda_exec_tag);
+  ZPC_API bool initialize_backend(cuda_exec_tag);
+  ZPC_API bool deinitialize_backend(cuda_exec_tag);
 
 }  // namespace zs

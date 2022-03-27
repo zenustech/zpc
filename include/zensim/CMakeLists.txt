@@ -30,6 +30,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 	  cuda/profile/CudaTimers.cu
     cuda/memory/MemOps.cpp
     cuda/memory/Allocator.cpp
+    cuda/simulation/wrangler/Wrangler.cpp
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
     omp/Port.cpp
@@ -198,6 +199,8 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
     cuda/simulation/transfer/P2G.hpp
     # physics
     cuda/physics/ConstitutiveModel.hpp
+    # wrangler
+    cuda/simulation/wrangler/Wrangler.hpp
 )
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
     omp/Port.hpp
@@ -217,11 +220,8 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
 endif ()
 # wrangler
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
-    # wrangler
-    cuda/simulation/wrangler/Wrangler.hpp
 )
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
-    cuda/simulation/wrangler/Wrangler.cpp
     cuda/simulation/wrangler/VolumeWrangler.cpp
     cuda/simulation/wrangler/ParticleWrangler.cpp
 )

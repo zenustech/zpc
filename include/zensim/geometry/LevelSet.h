@@ -96,6 +96,21 @@ namespace zs {
               enable_if_t<raw_ls_tl::template occurencies_t<remove_cvref_t<Ls>>::value == 1> = 0>
     BasicLevelSet(const std::shared_ptr<Ls> &ls) : _ls{ls} {}
 
+    BasicLevelSet(const BasicLevelSet &ls) : _ls{} {
+      match([this](const auto &lsPtr) {
+        using LsT = typename RM_CVREF_T(lsPtr)::element_type;
+        static_assert(std::is_copy_constructible_v<LsT>,
+                      "the levelset should be copy constructible");
+        _ls = std::make_shared<LsT>(*lsPtr);
+      })(ls._ls);
+    }
+    BasicLevelSet &operator=(const BasicLevelSet &ls) {
+      if (this != &ls) return *this;
+      BasicLevelSet tmp(ls);
+      std::swap(_ls, tmp._ls);
+      return *this;
+    }
+
     template <typename LsT> bool holdsLevelSet() const noexcept {
       return std::holds_alternative<std::shared_ptr<LsT>>(_ls);
     }

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Platform.hpp"
+#include "zensim/Singleton.h"
 #include "zensim/tpls/fmt/format.h"
 // #include "zensim/tpls/loguru/loguru.hpp"
 #include "zensim/tpls/plog/Log.h"
@@ -12,15 +13,12 @@ namespace zs {
   // Reference:
   // https://blog.kowalczyk.info/article/j/guide-to-predefined-macros-in-c-compilers-gcc-clang-msvc-etc..html
 
-  struct ZPC_API Logger {
-    static Logger &instance() noexcept;
+  struct Logger : Singleton<Logger> {
     Logger() { plog::init(plog::info, "zensim_logs.log"); }
     void log(const int level, const char* fileName, const char* funcName, int line,
              std::string_view msg) {
       PLOG(static_cast<plog::Severity>(level)) << fmt::format("{}:{}{} {}\n", fileName, funcName, line, msg);
     }
-  protected:
-    static Logger s_logger;
   };
 
   ///

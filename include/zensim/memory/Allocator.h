@@ -13,17 +13,13 @@
 
 namespace zs {
 
-  // extern void record_allocation(mem_tags, void *, std::string_view, std::size_t, std::size_t);
-  // extern void erase_allocation(void *);
-  template <typename MemTag> struct raw_memory_resource : mr_t {
+  template <typename MemTag> struct raw_memory_resource : mr_t, Singleton<raw_memory_resource<MemTag>> {
     using value_type = std::byte;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
-
-    static raw_memory_resource &instance() noexcept;
 
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       if (bytes) {
@@ -40,9 +36,6 @@ namespace zs {
       }
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
-
-  protected:
-    static raw_memory_resource s_rawMemResource;
   };
 
   template <typename MemTag> struct default_memory_resource : mr_t {

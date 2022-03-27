@@ -65,7 +65,12 @@ namespace zs {
           ret._max[0], ret._max[1], ret._max[2], mi[0], mi[1], mi[2], ma[0], ma[1], ma[2]);
     }
 
-    if constexpr (is_backend_available(exec_omp)) {
+#ifdef ZS_PLATFORM_WINDOWS
+    constexpr bool onwin = true;
+#else
+    constexpr bool onwin = false;
+#endif
+    if constexpr (is_backend_available(exec_omp) && !onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(ompExec, true);
       // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
@@ -341,8 +346,13 @@ namespace zs {
           V2W(2, 0), V2W(2, 1), V2W(2, 2), V2W(2, 3), V2W(3, 0), V2W(3, 1), V2W(3, 2), V2W(3, 3));
     }
     getchar();
+#endif 
+#ifdef ZS_PLATFORM_WINDOWS
+    constexpr bool onwin = true;
+#else
+    constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp)) {
+    if constexpr (is_backend_available(exec_omp) && !onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(ompExec, true);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
@@ -501,7 +511,12 @@ namespace zs {
           ret._max[0], ret._max[1], ret._max[2], mi[0], mi[1], mi[2], ma[0], ma[1], ma[2]);
     }
 
-    if constexpr (is_backend_available(exec_omp)) {
+#ifdef ZS_PLATFORM_WINDOWS
+    constexpr bool onwin = true;
+#else
+    constexpr bool onwin = false;
+#endif
+    if constexpr (is_backend_available(exec_omp) && !onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(ompExec, true);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
@@ -623,7 +638,12 @@ namespace zs {
     grid->setTransform(openvdb::math::Transform::createLinearTransform(v2w));
 
     // tree
-    if constexpr (is_backend_available(exec_omp)) {
+#ifdef ZS_PLATFORM_WINDOWS
+    constexpr bool onwin = true;
+#else
+    constexpr bool onwin = false;
+#endif
+    if constexpr (is_backend_available(exec_omp) && !onwin) {
       auto ompExec = omp_exec();
       auto lsv = proxy<execspace_e::openmp>(spls);
       using LsT = RM_CVREF_T(lsv);

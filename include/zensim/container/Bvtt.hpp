@@ -22,7 +22,7 @@ namespace zs {
           _cnt{allocator, 1} {
       counter_t res{};
       res[0] = static_cast<index_t>(0);
-      copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
+      Resource::copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
            MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res.data()}, sizeof(index_t));
     }
     BvttFront(std::size_t numNodes, std::size_t estimatedCount, memsrc_e mre = memsrc_e::host,
@@ -31,7 +31,7 @@ namespace zs {
 
     inline auto size() const {
       counter_t res{};
-      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res.data()},
+      Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res.data()},
            MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(index_t));
       return res[0];
     }

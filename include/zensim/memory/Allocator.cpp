@@ -16,16 +16,6 @@
 
 namespace zs {
 
-  template <>
-  raw_memory_resource<host_mem_tag> raw_memory_resource<host_mem_tag>::s_rawMemResource{};
-
-  template <>
-  raw_memory_resource<host_mem_tag> &raw_memory_resource<host_mem_tag>::instance() noexcept {
-    return s_rawMemResource;
-  }
-
-  template struct ZPC_API raw_memory_resource<host_mem_tag>;
-
 #if defined(ZS_PLATFORM_UNIX)
 
 #  if 0
@@ -259,6 +249,7 @@ namespace zs {
 
   void stack_virtual_memory_resource<host_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
                                                                   std::size_t alignment) {}
+
 
   /// handle_resource
   handle_resource::handle_resource(mr_t *upstream) noexcept : _upstream{upstream} {}

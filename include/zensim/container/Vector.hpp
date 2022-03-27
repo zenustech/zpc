@@ -70,12 +70,12 @@ namespace zs {
 
     inline value_type getVal(size_type i = 0) const {
       value_type res[1];
-      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
+      Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
            MemoryEntity{memoryLocation(), (void *)(data() + i)}, sizeof(value_type));
       return res[0];
     }
     inline void setVal(value_type v, size_type i = 0) const {
-      copy(MemoryEntity{memoryLocation(), (void *)(data() + i)},
+      Resource::copy(MemoryEntity{memoryLocation(), (void *)(data() + i)},
            MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v}, sizeof(value_type));
     }
 
@@ -156,7 +156,7 @@ namespace zs {
           _size{o.size()},
           _capacity{o._capacity} {
       if (o.data() && o.size() > 0)
-        copy(MemoryEntity{memoryLocation(), (void *)data()},
+        Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
              MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
     }
     Vector &operator=(const Vector &o) {
@@ -167,7 +167,7 @@ namespace zs {
     }
     Vector clone(const allocator_type &allocator) const {
       Vector ret{allocator, capacity()};
-      copy(MemoryEntity{allocator.location, (void *)ret.data()},
+      Resource::copy(MemoryEntity{allocator.location, (void *)ret.data()},
            MemoryEntity{memoryLocation(), (void *)this->data()}, usedBytes());
       return ret;
     }
@@ -220,7 +220,7 @@ namespace zs {
           else {
             Vector tmp{_allocator, geometric_size_growth(newSize)};
             if (size())
-              copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+              Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
                    MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
             tmp._size = newSize;
             swap(tmp);
@@ -248,7 +248,7 @@ namespace zs {
         resize(size() + count);
       else
         _size += count;
-      copy(MemoryEntity{memoryLocation(), (void *)(_base + size())},
+      Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + size())},
            MemoryEntity{other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
     }
 

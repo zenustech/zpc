@@ -205,7 +205,7 @@ namespace zs {
           _capacity{o.capacity()},
           _numChannels{o.numChannels()} {
       if (capacity() > 0)
-        copy(MemoryEntity{memoryLocation(), (void *)data()},
+        Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
              MemoryEntity{o.memoryLocation(), (void *)o.data()},
              sizeof(value_type) * o.numChannels() * o.capacity());
     }
@@ -217,7 +217,7 @@ namespace zs {
     }
     TileVector clone(const allocator_type &allocator) const {
       TileVector ret{allocator, _tags, size()};
-      copy(MemoryEntity{allocator.location, (void *)ret.data()},
+      Resource::copy(MemoryEntity{allocator.location, (void *)ret.data()},
            MemoryEntity{memoryLocation(), (void *)data()},
            sizeof(value_type) * numChannels() * (count_tiles(size()) * lane_width));
       return ret;
@@ -281,7 +281,7 @@ namespace zs {
           else {
             TileVector tmp{_allocator, _tags, geometric_size_growth(newSize)};
             if (size())
-              copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+              Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
                    MemoryEntity{memoryLocation(), (void *)data()}, numTiles() * tileBytes());
             tmp._size = newSize;
             swap(tmp);

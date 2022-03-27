@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "CudaLaunchConfig.cuh"
+#include "zensim/Singleton.h"
 #include "zensim/Reflection.h"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/tpls/fmt/color.h"
@@ -31,9 +32,8 @@ namespace zs {
 
   std::string get_cuda_error_message(uint32_t err);
 
-  class ZPC_API Cuda {
+  struct Cuda : Singleton<Cuda> {
   public:
-    static Cuda &instance() noexcept;
     Cuda();
     ~Cuda();
 
@@ -215,7 +215,6 @@ namespace zs {
 
     std::vector<CudaContext> contexts;  ///< generally one per device
     int textureAlignment;
-    static Cuda s_cuda;
   };
 
   namespace cudri {

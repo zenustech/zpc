@@ -7,16 +7,22 @@
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
-#include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemOps.hpp"
 #include "zensim/memory/MemoryResource.h"
 // #include "zensim/types/Pointers.hpp"
 #include "zensim/types/SmallVector.hpp"
 #include "zensim/types/Tuple.h"
 
+#include "zensim/memory/Allocator.h"
+#if ZS_ENABLE_CUDA
+#  include "zensim/cuda/memory/Allocator.h"
+#endif
+#if ZS_ENABLE_OPENMP
+#endif
+
 namespace zs {
 
-  template <bool is_virtual_ = false, typename T = std::byte> struct ZSPmrAllocator {
+  template <bool is_virtual_ = false, typename T = std::byte> struct ZPC_API ZSPmrAllocator {
     using value_type = T;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -121,9 +127,47 @@ namespace zs {
     /// owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
     void setOwningUpstream(mem_tags tag, ProcID devid, std::tuple<Args &&...> args,
-                           index_seq<Is...>);
+                           index_seq<Is...>) {
+      match(
+          [&](auto t) {
+            if constexpr (is_memory_source_available(t)) {
+              using MemT = RM_CVREF_T(t);
+              res = std::make_unique<ResourceT<MemT>>(devid, std::get<Is>(args)...);
+              location = MemoryLocation{t.value, devid};
+              cloner = [devid, args]() -> std::unique_ptr<resource_type> {
+                std::unique_ptr<resource_type> ret{};
+                std::apply(
+                    [&ret](auto &&...ctorArgs) {
+                      ret = std::make_unique<ResourceT<decltype(t)>>(FWD(ctorArgs)...);
+                    },
+                    std::tuple_cat(std::make_tuple(devid), args));
+                return ret;
+              };
+            }
+          },
+          [](...) {})(tag);
+    }
     template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
-    void setOwningUpstream(MemTag tag, ProcID devid, Args &&...args);
+    void setOwningUpstream(MemTag tag, ProcID devid, Args &&...args) {
+      if constexpr (is_same_v<MemTag, mem_tags>)
+        setOwningUpstream<ResourceT>(tag, devid, std::forward_as_tuple(FWD(args)...),
+                                     std::index_sequence_for<Args...>{});
+      else {
+        if constexpr (is_memory_source_available(tag)) {
+          res = std::make_unique<ResourceT<MemTag>>(devid, FWD(args)...);
+          location = MemoryLocation{MemTag::value, devid};
+          cloner = [devid, args = std::make_tuple(args...)]() -> std::unique_ptr<resource_type> {
+            std::unique_ptr<resource_type> ret{};
+            std::apply(
+                [&ret](auto &&...ctorArgs) {
+                  ret = std::make_unique<ResourceT<MemTag>>(FWD(ctorArgs)...);
+                },
+                std::tuple_cat(std::make_tuple(devid), args));
+            return ret;
+          };
+        }
+      }
+    }
 
     ResourceCloner cloner{};
     std::unique_ptr<resource_type> res{};
@@ -137,20 +181,6 @@ namespace zs {
       = conditional_t<is_zs_allocator<Allocator>::value, typename Allocator::is_virtual,
                       std::false_type>;
 
-  /// global free function
-  ZPC_API void record_allocation(mem_tags, void *, std::string_view, std::size_t = 0,
-                                 std::size_t = 0);
-  ZPC_API void erase_allocation(void *);
-  ZPC_API void copy(MemoryEntity dst, MemoryEntity src, std::size_t size);
-
-  ZPC_API ZSPmrAllocator<> get_memory_source(memsrc_e mre, ProcID devid,
-                                     std::string_view advice = std::string_view{});
-  ZPC_API ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid, std::size_t bytes,
-                                                 std::string_view option = "STACK");
-
-  template <execspace_e space> constexpr bool initialize_backend(wrapv<space>) noexcept {
-    return false;
-  }
   template <typename MemTag> constexpr bool is_memory_source_available(MemTag) noexcept {
     if constexpr (is_same_v<MemTag, device_mem_tag>)
       return ZS_ENABLE_CUDA;
@@ -161,10 +191,88 @@ namespace zs {
     return false;
   }
 
-  struct ZPC_API Resource {
-    static std::atomic_ullong &counter() noexcept { return instance()._counter; }
+  inline ZPC_API ZSPmrAllocator<> get_memory_source(memsrc_e mre, ProcID devid,
+                                                    std::string_view advice = std::string_view{}) {
+    const mem_tags tag = to_memory_source_tag(mre);
+    ZSPmrAllocator<> ret{};
+    if (advice.empty()) {
+      if (mre == memsrc_e::um) {
+        if (devid < -1)
+          match(
+              [&ret, devid](auto tag) {
+                if constexpr (is_memory_source_available(tag)
+                              || is_same_v<RM_CVREF_T(tag), mem_tags>)
+                  ret.setOwningUpstream<advisor_memory_resource>(tag, devid, "READ_MOSTLY");
+              },
+              [](...) {})(tag);
+        else
+          match(
+              [&ret, devid](auto tag) {
+                if constexpr (is_memory_source_available(tag)
+                              || is_same_v<RM_CVREF_T(tag), mem_tags>)
+                  ret.setOwningUpstream<advisor_memory_resource>(tag, devid, "PREFERRED_LOCATION");
+              },
+              [](...) {})(tag);
+      } else {
+        // match([&ret](auto &tag) { ret.setNonOwningUpstream<raw_memory_resource>(tag); })(tag);
+        match(
+            [&ret, devid](auto tag) {
+              if constexpr (is_memory_source_available(tag) || is_same_v<RM_CVREF_T(tag), mem_tags>)
+                ret.setOwningUpstream<default_memory_resource>(tag, devid);
+            },
+            [](...) {})(tag);
+        // ret.setNonOwningUpstream<raw_memory_resource>(tag);
+      }
+    } else
+      match(
+          [&ret, &advice, devid](auto tag) {
+            if constexpr (is_memory_source_available(tag) || is_same_v<RM_CVREF_T(tag), mem_tags>)
+              ret.setOwningUpstream<advisor_memory_resource>(tag, devid, advice);
+          },
+          [](...) {})(tag);
+    return ret;
+  }
 
+  inline ZPC_API ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid,
+                                                                std::size_t bytes,
+                                                                std::string_view option = "STACK") {
+    const mem_tags tag = to_memory_source_tag(mre);
+    ZSPmrAllocator<true> ret{};
+    if (mre == memsrc_e::um)
+      throw std::runtime_error("no corresponding virtual memory resource for [um]");
+    match(
+        [&ret, devid, bytes, option](auto tag) {
+          if constexpr (!is_same_v<decltype(tag), um_mem_tag>)
+            if constexpr (is_memory_source_available(tag)) {
+              using MemTag = decltype(tag);
+              if (option == "ARENA")
+                ret.setOwningUpstream<arena_virtual_memory_resource>(tag, devid, bytes);
+              else if (option == "STACK" || option.empty())
+                ret.setOwningUpstream<stack_virtual_memory_resource>(tag, devid, bytes);
+              else
+                throw std::runtime_error(fmt::format("unkonwn vmr option [{}]\n", option));
+            }
+        },
+        [](...) {})(tag);
+    return ret;
+  }
+
+  template <execspace_e space> constexpr bool initialize_backend(wrapv<space>) noexcept {
+    return false;
+  }
+
+  struct ZPC_API Resource {
+    static std::atomic_ullong &counter() noexcept;
     static Resource &instance() noexcept;
+    static void copy(MemoryEntity dst, MemoryEntity src,
+                                                 std::size_t size) {
+      if (dst.location.onHost() && src.location.onHost())
+        zs::copy(mem_host, dst.ptr, src.ptr, size);
+      else {
+        if constexpr (is_memory_source_available(mem_device))
+          zs::copy(mem_device, dst.ptr, src.ptr, size);
+      }
+    }
 
     struct AllocationRecord {
       mem_tags tag{};
@@ -182,11 +290,7 @@ namespace zs {
 
   private:
     mutable std::atomic_ullong _counter{0};
-
-    static Resource s_resource;
   };
-
-  ZPC_API Resource &get_resource_manager() noexcept;
 
   inline auto select_properties(const std::vector<PropertyTag> &props,
                                 const std::vector<SmallString> &names) {

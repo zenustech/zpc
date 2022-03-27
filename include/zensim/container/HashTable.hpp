@@ -53,9 +53,9 @@ namespace zs {
         status.resize(size);
       }
 
-      Vector<key_t> keys;
-      Vector<value_t> indices;
-      Vector<status_t> status;
+      Vector<key_t, allocator_type> keys;
+      Vector<value_t, allocator_type> indices;
+      Vector<status_t, allocator_type> status;
     };
 
     static_assert(

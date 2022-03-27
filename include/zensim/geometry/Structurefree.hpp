@@ -75,7 +75,7 @@ namespace zs {
     std::vector<std::array<ValueT, dim>> retrievePositions() const {
       const auto &X = attr<TV>("pos");
       Vector<TV> Xtmp{X.size(), memsrc_e::host, -1};
-      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Xtmp.data()},
+      Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Xtmp.data()},
            MemoryEntity{X.memoryLocation(), (void *)X.data()}, X.size() * sizeof(TV));
       std::vector<std::array<ValueT, dim>> ret(X.size());
       memcpy(ret.data(), Xtmp.data(), sizeof(TV) * X.size());
@@ -87,7 +87,7 @@ namespace zs {
       if (hasAttr("F", true)) {
         const auto &F = attr<TM>("F");
         Vector<TM> Ftmp{X.size()};
-        copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Ftmp.data()},
+        Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Ftmp.data()},
              MemoryEntity{F.memoryLocation(), (void *)F.data()}, F.size() * sizeof(TM));
         for (size_type i = 0; i < Ftmp.size(); ++i) {
           const auto &v = Ftmp[i];
@@ -96,7 +96,7 @@ namespace zs {
         }
       } else if (hasAttr("J", true)) {
         const auto &J = attr<TM>("F");
-        copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)ret.data()},
+        Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)ret.data()},
              MemoryEntity{J.memoryLocation(), (void *)J.data()}, J.size() * sizeof(T));
       }
       return ret;

@@ -61,7 +61,7 @@ namespace zs {
           _activeKeys{allocator, evaluateTableSize(tableSize)} {
       value_t res[1];
       res[0] = (value_t)0;
-      copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
+      Resource::copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
            MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res}, sizeof(value_t));
     }
     Vec3iTable(std::size_t tableSize, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
@@ -86,10 +86,10 @@ namespace zs {
     Vec3iTable clone(const allocator_type &allocator) const {
       Vec3iTable ret{allocator, _tableSize / reserve_ratio_v};
       if (_cnt.size() > 0)
-        copy(MemoryEntity{ret._cnt.memoryLocation(), (void *)ret._cnt.data()},
+        Resource::copy(MemoryEntity{ret._cnt.memoryLocation(), (void *)ret._cnt.data()},
              MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
       if (_activeKeys.size() > 0)
-        copy(MemoryEntity{ret._activeKeys.memoryLocation(), (void *)ret._activeKeys.data()},
+        Resource::copy(MemoryEntity{ret._activeKeys.memoryLocation(), (void *)ret._activeKeys.data()},
              MemoryEntity{_activeKeys.memoryLocation(), (void *)_activeKeys.data()},
              sizeof(key_t) * _activeKeys.size());
       if (_tableSize > 0) {
@@ -126,7 +126,7 @@ namespace zs {
 
     inline value_t size() const {
       value_t res[1];
-      copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
+      Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
            MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(value_t));
       return res[0];
     }

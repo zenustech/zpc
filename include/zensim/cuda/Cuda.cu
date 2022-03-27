@@ -24,9 +24,6 @@ namespace zs {
                               (cudaStream_t)stream);
     }
     */
-  
-  Cuda &Cuda::instance() noexcept { return s_cuda; }
-  Cuda Cuda::s_cuda{};
 
   /// error handling
   u32 Cuda::get_last_cuda_rt_error() { return (u32)cudaGetLastError(); }

@@ -458,10 +458,19 @@ if (ENABLE_PCH)
   target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
-target_link_libraries(zpctool PUBLIC zpc zspartio)
+target_link_libraries(zpctool PUBLIC zpc)
+
 set_target_properties(zpctool
   PROPERTIES  POSITION_INDEPENDENT_CODE ON
 )
+
+if (ZS_ENABLE_PARTIO)
+  target_link_libraries(zpctool PUBLIC zspartio)
+endif(ZS_ENABLE_PARTIO)
+
+if (ZS_ENABLE_MSHIO)
+  target_link_libraries(zpctool PUBLIC mshio::mshio)
+endif(ZS_ENABLE_MSHIO)
 # set_property(TARGET zpctool APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}")
 
 if (ZS_ENABLE_OPENVDB)

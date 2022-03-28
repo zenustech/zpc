@@ -41,7 +41,7 @@ namespace zs {
 
   // 8 bytes alignment for rollover issue
   // https://docs.ntpsec.org/latest/rollover.html
-  struct ZPC_API alignas(16) ConditionVariable {
+  struct alignas(16) ConditionVariable {
     void notify_one();
     void notify_all();
     bool wait(Mutex &mut);

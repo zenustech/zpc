@@ -151,11 +151,12 @@ set(ZS_ENABLE_PTHREADS ${ZS_ENABLE_PTHREADS} PARENT_SCOPE)
 set(ZS_ENABLE_OPENMP ${ZS_ENABLE_OPENMP} PARENT_SCOPE)
 set(ZS_ENABLE_OPENVDB ${ZS_ENABLE_OPENVDB} PARENT_SCOPE)
 set(ZS_ENABLE_PARTIO ${ZS_ENABLE_PARTIO} PARENT_SCOPE)
+set(ZS_ENABLE_MSHIO ${ZS_ENABLE_MSHIO} PARENT_SCOPE)
 
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}")
+message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
 # =================

@@ -96,6 +96,7 @@ namespace zs {
               enable_if_t<raw_ls_tl::template occurencies_t<remove_cvref_t<Ls>>::value == 1> = 0>
     BasicLevelSet(const std::shared_ptr<Ls> &ls) : _ls{ls} {}
 
+#if 0
     BasicLevelSet(const BasicLevelSet &ls) : _ls{} {
       match([this](const auto &lsPtr) {
         using LsT = typename RM_CVREF_T(lsPtr)::element_type;
@@ -110,6 +111,7 @@ namespace zs {
       std::swap(_ls, tmp._ls);
       return *this;
     }
+#endif
 
     template <typename LsT> bool holdsLevelSet() const noexcept {
       return std::holds_alternative<std::shared_ptr<LsT>>(_ls);

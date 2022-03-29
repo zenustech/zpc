@@ -40,52 +40,52 @@ namespace zs {
         static constexpr bool all_deref_available = (deref_available<Args> && ...);
         static constexpr auto deduce_args_t() noexcept {
           if constexpr (fts_available)
-            return typename function_traits<F>::arguments_t{};
+            return wrapt<typename function_traits<F>::arguments_t>{};
           else if constexpr (all_deref_available) {
             if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
-              return std::tuple<int, iter_arg_t<Args>...>{};
+              return wrapt<std::tuple<int, iter_arg_t<Args>...>>{};
             else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
-              return std::tuple<void *, iter_arg_t<Args>...>{};
+              return wrapt<std::tuple<void *, iter_arg_t<Args>...>>{};
             else
-              return std::tuple<iter_arg_t<Args>...>{};
+              return wrapt<std::tuple<iter_arg_t<Args>...>>{};
           } else {
             if constexpr (std::is_invocable_v<F, int, Args...>)
-              return std::tuple<int, Args...>{};
+              return wrapt<std::tuple<int, Args...>>{};
             else if constexpr (std::is_invocable_v<F, void *, Args...>)
-              return std::tuple<void *, Args...>{};
+              return wrapt<std::tuple<void *, Args...>>{};
             else
-              return std::tuple<Args...>{};
+              return wrapt<std::tuple<Args...>>{};
           }
         }
         static constexpr auto deduce_return_t() noexcept {
           if constexpr (fts_available)
-            return typename function_traits<F>::return_t{};
+            return wrapt<typename function_traits<F>::return_t>{};
           else if constexpr (all_deref_available) {
             if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
-              return std::invoke_result_t<F, int, iter_arg_t<Args>...>{};
+              return wrapt<std::invoke_result_t<F, int, iter_arg_t<Args>...>>{};
             else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
-              return std::invoke_result_t<F, void *, iter_arg_t<Args>...>{};
+              return wrapt<std::invoke_result_t<F, void *, iter_arg_t<Args>...>>{};
             else
-              return std::invoke_result_t<F, iter_arg_t<Args>...>{};
+              return wrapt<std::invoke_result_t<F, iter_arg_t<Args>...>>{};
           } else {
             if constexpr (std::is_invocable_v<F, int, Args...>)
-              return std::invoke_result_t<F, int, Args...>{};
+              return wrapt<std::invoke_result_t<F, int, Args...>>{};
             else if constexpr (std::is_invocable_v<F, void *, Args...>)
-              return std::invoke_result_t<F, void *, Args...>{};
+              return wrapt<std::invoke_result_t<F, void *, Args...>>{};
             else
-              return std::invoke_result_t<F, Args...>{};
+              return wrapt<std::invoke_result_t<F, Args...>>{};
           }
         }
         static constexpr std::size_t deduce_arity() noexcept {
           if constexpr (fts_available)
             return function_traits<F>::arity;
           else
-            return std::tuple_size_v<decltype(deduce_args_t())>;
+            return std::tuple_size_v<typename decltype(deduce_args_t())::type>;
         }
       };
 
-      using arguments_t = decltype(impl<ArgSeq>::deduce_args_t());
-      using return_t = decltype(impl<ArgSeq>::deduce_return_t());
+      using arguments_t = typename decltype(impl<ArgSeq>::deduce_args_t())::type;
+      using return_t = typename decltype(impl<ArgSeq>::deduce_return_t())::type;
       static constexpr std::size_t arity = impl<ArgSeq>::deduce_arity();
 
       static_assert(is_same_v<return_t, void>,

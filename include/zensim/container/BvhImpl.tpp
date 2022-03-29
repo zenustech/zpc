@@ -126,7 +126,6 @@ namespace zs {
           const auto childMask = marks(cur) & 3;
           const auto& leftBox = (childMask & 1) ? leafBvs(lc) : trunkBvs(lc);
           const auto& rightBox = (childMask & 2) ? leafBvs(rc) : trunkBvs(rc);
-          Box bv{};
 
           BV bv{/*TV::uniform(limits<T>().max()),
                 TV::uniform(limits<T>().lowest())*/};

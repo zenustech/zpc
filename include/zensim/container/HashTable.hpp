@@ -69,7 +69,6 @@ namespace zs {
     static constexpr status_t status_sentinel_v{-1};
     static constexpr std::size_t reserve_ratio_v = 16;
 
-    constexpr decltype(auto) memoryLocation() noexcept { return _allocator.location; }
     constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }

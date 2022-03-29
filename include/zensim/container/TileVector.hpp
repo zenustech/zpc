@@ -39,7 +39,6 @@ namespace zs {
       return (elementCount + lane_width - 1) / lane_width;
     }
 
-    constexpr decltype(auto) memoryLocation() noexcept { return _allocator.location; }
     constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }

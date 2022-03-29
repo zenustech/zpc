@@ -29,7 +29,6 @@ namespace zs {
             && std::allocator_traits<allocator_type>::propagate_on_container_swap::value,
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
-    constexpr decltype(auto) memoryLocation() noexcept { return _allocator.location; }
     constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }

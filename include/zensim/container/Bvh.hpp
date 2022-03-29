@@ -7,30 +7,41 @@
 
 namespace zs {
 
-  template <int dim_ = 3, int lane_width_ = 32, bool is_double = false> struct LBvh {
+  template <int dim_ = 3, int lane_width_ = 32, typename Index = int, typename ValueT = f32,
+            typename AllocatorT = ZSPmrAllocator<>>
+  struct LBvh {
     static constexpr int dim = dim_;
     static constexpr int lane_width = lane_width_;
-    using allocator_type = ZSPmrAllocator<>;
-    using value_type = conditional_t<is_double, dat64, dat32>;
-    using float_type = remove_cvref_t<decltype(std::declval<value_type>().asFloat())>;
-    using integer_type = remove_cvref_t<decltype(std::declval<value_type>().asSignedInteger())>;
+    using allocator_type = AllocatorT;
+    using value_type = ValueT;
+    using index_type = std::make_signed_t<Index>;
+    static_assert(std::is_floating_point_v<value_type>, "value_type should be floating point");
+    static_assert(std::is_integral_v<index_type>, "index_type should be an integral");
+
     // must be signed integer, since we are using -1 as sentinel value
-    using index_type = conditional_t<is_double, i64, i32>;
-    using Box = AABBBox<dim, float_type>;
-    using TV = vec<float_type, dim>;
-    using IV = vec<integer_type, dim>;
-    using vector_t = Vector<value_type>;
-    using indices_t = Vector<index_type>;
-    using bvs_t = Vector<Box>;
-    using tilevector_t = TileVector<float_type, lane_width>;
+    using Box = AABBBox<dim, value_type>;
+    using TV = vec<value_type, dim>;
+    using IV = vec<index_type, dim>;
+    using bvs_t = Vector<Box, allocator_type>;
+    using vector_t = Vector<value_type, allocator_type>;
+    using indices_t = Vector<index_type, allocator_type>;
+    using tilevector_t = TileVector<value_type, lane_width, unsigned char, allocator_type>;
+
+    constexpr decltype(auto) memoryLocation() const noexcept {
+      return leafIndices.memoryLocation();
+    }
+    constexpr ProcID devid() const noexcept { return leafIndices.devid(); }
+    constexpr memsrc_e memspace() const noexcept { return leafIndices.memspace(); }
+    decltype(auto) get_allocator() const noexcept { return leafIndices.get_allocator(); }
+    decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
+      return leafIndices.get_default_allocator(mre, devid);
+    }
 
     LBvh() = default;
 
     LBvh clone(const allocator_type &allocator) const {
       LBvh ret{};
-      ret.wholeBox = wholeBox;
       ret.sortedBvs = sortedBvs.clone(allocator);
-      ret.tiledBvs = tiledBvs.clone(allocator);
       ret.auxIndices = auxIndices.clone(allocator);
       ret.levels = levels.clone(allocator);
       ret.parents = parents.clone(allocator);
@@ -38,17 +49,18 @@ namespace zs {
       return ret;
     }
     LBvh clone(const MemoryLocation &mloc) const {
-      return clone(get_memory_source(mloc.memspace(), mloc.devid()));
+      return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
 
     constexpr auto numNodes() const noexcept { return auxIndices.size(); }
-    constexpr auto numLeaves() const noexcept { return (numNodes() + 1) / 2; }
+    constexpr auto numLeaves() const noexcept { return leafIndices.size(); }
 
-    Box wholeBox{TV::uniform(limits<float>().max()),
-                 TV::uniform(limits<float>().min())};
+    template <typename Policy>
+    void build(Policy &&, const Vector<AABBBox<dim, value_type>> &primBvs);
+    template <typename Policy>
+    void refit(Policy &&, const Vector<AABBBox<dim, value_type>> &primBvs);
 
-    bvs_t sortedBvs;  // bounding volumes
-    tilevector_t tiledBvs;
+    tilevector_t sortedBvs;
     // escape index for internal nodes, primitive index for leaf nodes
     indices_t auxIndices;
     indices_t levels;   // count from bottom up (0-based) in left branch
@@ -88,11 +100,20 @@ namespace zs {
     index_t _numNodes;
   };
 
-  template <execspace_e space, int dim, int lane_width, bool is_double>
-  constexpr decltype(auto) proxy(const LBvh<dim, lane_width, is_double> &lbvh) {
-    return LBvhView<space, const LBvh<dim, lane_width, is_double>>{lbvh};
+  template <execspace_e space, int dim, int lane_width, typename Ti, typename T, typename Allocator>
+  constexpr decltype(auto) proxy(const LBvh<dim, lane_width, Ti, T, Allocator> &lbvh) {
+    return LBvhView<space, const LBvh<dim, lane_width, Ti, T, Allocator>>{lbvh};
   }
 
+  template <int dim, int lane_width, typename Index, typename Value, typename Allocator>
+  template <typename Policy> void LBvh<dim, lane_width, Index, Value, Allocator>::build(
+      Policy &&policy, const Vector<AABBBox<dim, Value>> &primBvs) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    ;
+    return;
+  }
+
+#if 0
   /// build bvh
   template <execspace_e space, int lane_width, int dim, typename T>
   inline auto build_lbvh(const Vector<AABBBox<dim, T>> &primBvs) {
@@ -212,8 +233,8 @@ namespace zs {
   }
 
   /// refit bvh
-  template <execspace_e space, int dim, int lane_width, bool is_double, typename T>
-  inline void refit_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
+  template <execspace_e space, int dim, int lane_width, bool Ti, typename T, typename AllocatorT>
+  inline void refit_lbvh(LBvh<dim, lane_width, Ti, T, AllocatorT> &lbvh,
                          const Vector<AABBBox<dim, T>> &primBvs) {
     using namespace zs;
     using lbvh_t = LBvh<dim, lane_width, is_double>;
@@ -289,5 +310,6 @@ namespace zs {
     records.resize(n[0]);
     return records;
   }
+#endif
 
 }  // namespace zs

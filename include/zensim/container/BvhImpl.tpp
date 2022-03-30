@@ -11,7 +11,7 @@ namespace zs {
     using bv_t = VectorView<space, Vector<BV>>;
     ComputeBoundingVolume() = default;
     constexpr ComputeBoundingVolume(wrapv<space>, Vector<BV>& v) noexcept : box{proxy<space>(v)} {}
-    constexpr void operator()(const BV& bv) {
+    constexpr void operator()(const BV& bv) noexcept {
       for (int d = 0; d != dim; ++d) {
         atomic_min(wrapv<space>{}, &box(0)._min[d], bv._min[d]);
         atomic_max(wrapv<space>{}, &box(0)._max[d], bv._max[d]);
@@ -22,14 +22,16 @@ namespace zs {
   };
 
   ///
-  template <execspace_e space, typename CodeT, typename Index, typename BV>
-  struct ComputeMortonCodes {
+  template <typename BV> struct ComputeMortonCodes {
     ComputeMortonCodes() = default;
-    constexpr ComputeMortonCodes(wrapv<space>, const BV& wholeBox) noexcept : wholeBox{wholeBox} {}
+    constexpr ComputeMortonCodes(const BV& wholeBox) noexcept : wholeBox{wholeBox} {}
 
-    constexpr void operator()(Index id, const BV& bv, CodeT& code, Index& index) {
+    template <typename Ti0, typename Ti1, typename CodeT>
+    constexpr void operator()(Ti0 id, const BV& bv, CodeT& code, Ti1& index) {
       auto c = bv.getBoxCenter();
       auto coord = wholeBox.getUniformCoord(c);  // this is a vec<T, dim>
+      static_assert(is_same_v<CodeT, decltype(morton_code<BV::dim>(coord))>,
+                    "morton code assignee and producer type mismatch");
       code = morton_code<BV::dim>(coord);
       index = id;
     }
@@ -39,59 +41,52 @@ namespace zs {
 
   ///
   template <execspace_e space, typename CodeT> struct ComputeSplitMetric {
-    using mc_t = VectorView<space, const Vector<CodeT>>;
     ComputeSplitMetric() = default;
     constexpr ComputeSplitMetric(wrapv<space>, std::size_t numLeaves, const Vector<CodeT>& mcs,
                                  u8 totalBits) noexcept
         : mcs{proxy<space>(mcs)}, numLeaves{numLeaves}, totalBits{totalBits} {}
 
-    constexpr void operator()(std::size_t id, CodeT& split) {
+    template <typename Ti> constexpr void operator()(Ti id, CodeT& split) {
       if (id != numLeaves - 1)
         split = totalBits - count_lz(wrapv<space>{}, mcs(id) ^ mcs(id + 1));
       else
         split = totalBits + 1;
-      // if (id < 7) printf("%d, split %lld\n", id, split);
     }
 
-    mc_t mcs;
+    VectorView<space, const Vector<CodeT>> mcs;
     std::size_t numLeaves;
     u8 totalBits;
   };
 
   ///
-  template <execspace_e space> struct ResetBuildStates {
-    using flag_t = VectorView<space, Vector<int>>;
-    using mark_t = VectorView<space, Vector<u32>>;
-    ResetBuildStates() = default;
-    constexpr ResetBuildStates(wrapv<space>) noexcept {}
-
-    constexpr void operator()(u32& mark, int& flag) {
+  struct ResetBuildStates {
+    constexpr void operator()(u32& mark, int& flag) noexcept {
       mark = 0;
       flag = 0;
     }
   };
 
-  template <execspace_e space> ResetBuildStates(wrapv<space>) -> ResetBuildStates<space>;
-
-  template <execspace_e space, int dim, typename T, typename MC, typename Index>
+  template <execspace_e space, typename BvTiles, int dim, typename T, typename MC, typename Index>
   struct BuildRefitLBvh {
     using BV = AABBBox<dim, T>;
     using bv_t = VectorView<space, Vector<BV>>;
     using cbv_t = VectorView<space, const Vector<BV>>;
+    using bvtiles_t = decltype(proxy<space>({}, std::declval<BvTiles&>()));
+    using size_type = typename bvtiles_t::size_type;
     using mc_t = VectorView<space, const Vector<MC>>;
     using id_t = VectorView<space, Vector<Index>>;
     using mark_t = VectorView<space, Vector<u32>>;
     using flag_t = VectorView<space, Vector<int>>;
     BuildRefitLBvh() = default;
-    constexpr BuildRefitLBvh(wrapv<space>, std::size_t numLeaves, const Vector<BV>& primBvs,
-                             Vector<BV>& leafBvs, Vector<BV>& trunkBvs, const Vector<MC>& splits,
+    constexpr BuildRefitLBvh(wrapv<space>, size_type numLeaves, const Vector<BV>& primBvs,
+                             BvTiles& leafBvs, BvTiles& trunkBvs, const Vector<MC>& splits,
                              Vector<Index>& indices, Vector<Index>& leafLca,
                              Vector<Index>& leafDepths, Vector<Index>& trunkL,
                              Vector<Index>& trunkR, Vector<Index>& trunkLc, Vector<Index>& trunkRc,
                              Vector<u32>& marks, Vector<int>& flags) noexcept
         : primBvs{proxy<space>(primBvs)},
-          leafBvs{proxy<space>(leafBvs)},
-          trunkBvs{proxy<space>(trunkBvs)},
+          leafBvs{proxy<space>({}, leafBvs)},
+          trunkBvs{proxy<space>({}, trunkBvs)},
           splits{proxy<space>(splits)},
           indices{proxy<space>(indices)},
           leafLca{proxy<space>(leafLca)},
@@ -104,9 +99,13 @@ namespace zs {
           flags{proxy<space>(flags)},
           numLeaves{numLeaves} {}
 
-    constexpr void operator()(Index idx) {
+    constexpr void operator()(Index idx) noexcept {
       using TV = vec<T, dim>;
-      leafBvs(idx) = primBvs(indices(idx));
+      {
+        BV bv = primBvs(indices(idx));
+        leafBvs.template tuple<dim>("min", idx) = bv._min;
+        leafBvs.template tuple<dim>("max", idx) = bv._max;
+      }
 
       leafLca(idx) = -1, leafDepths(idx) = 1;
       Index l = idx - 1, r = idx;  ///< (l, r]
@@ -124,16 +123,22 @@ namespace zs {
         {  // refit
           int lc = trunkLc(cur), rc = trunkRc(cur);
           const auto childMask = marks(cur) & 3;
-          const auto& leftBox = (childMask & 1) ? leafBvs(lc) : trunkBvs(lc);
-          const auto& rightBox = (childMask & 2) ? leafBvs(rc) : trunkBvs(rc);
+          const auto& leftBox = (childMask & 1) ? BV{leafBvs.template pack<dim>("min", lc),
+                                                     leafBvs.template pack<dim>("max", lc)}
+                                                : BV{trunkBvs.template pack<dim>("min", lc),
+                                                     trunkBvs.template pack<dim>("max", lc)};
+          const auto& rightBox = (childMask & 2) ? BV{leafBvs.template pack<dim>("min", rc),
+                                                      leafBvs.template pack<dim>("max", rc)}
+                                                 : BV{trunkBvs.template pack<dim>("min", rc),
+                                                      trunkBvs.template pack<dim>("max", rc)};
 
-          BV bv{/*TV::uniform(limits<T>().max()),
-                TV::uniform(limits<T>().lowest())*/};
-          for (int d = 0; d < dim; ++d) {
+          BV bv{};
+          for (int d = 0; d != dim; ++d) {
             bv._min[d] = leftBox._min[d] < rightBox._min[d] ? leftBox._min[d] : rightBox._min[d];
             bv._max[d] = leftBox._max[d] > rightBox._max[d] ? leftBox._max[d] : rightBox._max[d];
           }
-          trunkBvs(cur) = bv;
+          trunkBvs.template tuple<dim>("min", cur) = bv._min;
+          trunkBvs.template tuple<dim>("max", cur) = bv._max;
         }
         marks(cur) &= 0x00000007;
 
@@ -165,12 +170,12 @@ namespace zs {
     }
 
     cbv_t primBvs;
-    bv_t leafBvs, trunkBvs;
+    bvtiles_t leafBvs, trunkBvs;
     mc_t splits;
     id_t indices, leafLca, leafDepths, trunkL, trunkR, trunkLc, trunkRc;
     mark_t marks;
     flag_t flags;
-    std::size_t numLeaves;
+    size_type numLeaves;
   };
 
   ///
@@ -201,141 +206,146 @@ namespace zs {
   };
 
   ///
-  template <execspace_e space, typename BV, typename Index> struct ReorderTrunk {
-    using vector_t = Vector<Index>;
-    using T = typename BV::T;
+  template <execspace_e space, typename BV, typename IndicesT, typename BvTiles>
+  struct ReorderTrunk {
+    using T = typename BvTiles::value_type;
     static constexpr int dim = BV::dim;
-    using bv_t = VectorView<space, Vector<BV>>;
-    using cid_t = VectorView<space, const vector_t>;
-    using id_t = VectorView<space, vector_t>;
+    using Ti = typename IndicesT::value_type;
+    static_assert(std::is_signed_v<Ti>, "Ti should be a signed integer");
+    using bvtiles_t = decltype(proxy<space>({}, std::declval<BvTiles&>()));
+    using cbvtiles_t = decltype(proxy<space>({}, std::declval<const BvTiles&>()));
+    using cid_t = decltype(proxy<space>(std::declval<const IndicesT&>()));
+    using id_t = decltype(proxy<space>(std::declval<IndicesT&>()));
 
-    ReorderTrunk(wrapv<space>, std::size_t numLeaves, const vector_t& trunkDst,
-                 const vector_t& leafLca, const vector_t& leafOffsets, Vector<BV>& sortedBvs,
-                 vector_t& escapeIndices, vector_t& parents)
+    ReorderTrunk(wrapv<space>, wrapt<BV>, Ti numLeaves, const IndicesT& trunkDst,
+                 const IndicesT& leafLca, const IndicesT& leafOffsets, const BvTiles& trunkBvs,
+                 BvTiles& sortedBvs, IndicesT& escapeIndices, IndicesT& parents)
         : trunkDst{proxy<space>(trunkDst)},
           leafLca{proxy<space>(leafLca)},
           leafOffsets{proxy<space>(leafOffsets)},
-          sortedBvs{proxy<space>(sortedBvs)},
+          trunkBvs{proxy<space>({}, trunkBvs)},
+          sortedBvs{proxy<space>({}, sortedBvs)},
           escapeIndices{proxy<space>(escapeIndices)},
           parents{proxy<space>(parents)},
-          numLeaves{static_cast<Index>(numLeaves)} {}
+          numLeaves{numLeaves} {}
 
-    constexpr void operator()(Index dst, const BV& bv, Index r) {
-      sortedBvs(dst) = bv;
+    constexpr void operator()(Ti tid, Ti dst, Ti r) noexcept {
+      sortedBvs.template tuple<dim>("min", dst) = trunkBvs.pack<dim>("min", tid);
+      sortedBvs.template tuple<dim>("max", dst) = trunkBvs.pack<dim>("max", tid);
       const auto rb = r + 1;
       if (rb < numLeaves) {
         auto lca = leafLca(rb);  // rb must be in left-branch
         auto brother = (lca != -1 ? trunkDst(lca) : leafOffsets(rb));
         escapeIndices(dst) = brother;
-        if (/*dst > 0 && */parents(dst) == dst - 1)  // most likely
-          parents(brother) = dst - 1;            // setup right-branch brother's parent
-#if 0
-        if (dst < 20 || escapeIndices(dst) >= numLeaves * 2 - 1)
-          printf("numnodes %d | trunk %d lb on leaf %d (- %d), esc %d, lca[%c] %d, bro %d\n",
-                 (int)numLeaves * 2 - 1, (int)dst, (int)l, (int)r, (int)escapeIndices(dst),
-                 lca != -1 ? 'T' : 'L', (int)lca, (int)brother);
-#endif
+        if (parents(dst) == dst - 1)   // most likely
+          parents(brother) = dst - 1;  // setup right-branch brother's parent
       } else
         escapeIndices(dst) = -1;
     }
 
     cid_t trunkDst, leafLca, leafOffsets;
-    bv_t sortedBvs;
+    cbvtiles_t trunkBvs;
+    bvtiles_t sortedBvs;
     id_t escapeIndices, parents;
-    Index numLeaves;
+    Ti numLeaves;
   };
 
-  template <execspace_e space, int dim, typename T, typename Index> struct ReorderLeafs {
-    using vector_t = Vector<Index>;
-    using BV = AABBBox<dim, T>;
-    using cbv_t = VectorView<space, const Vector<BV>>;
-    using bv_t = VectorView<space, Vector<BV>>;
-    using cid_t = VectorView<space, const vector_t>;
-    using id_t = VectorView<space, vector_t>;
+  template <execspace_e space, typename BV, typename IndicesT, typename BvTiles>
+  struct ReorderLeafs {
+    using T = typename BvTiles::value_type;
+    using Ti = typename IndicesT::value_type;
+    static constexpr int dim = BV::dim;
+    using bvtiles_t = decltype(proxy<space>({}, std::declval<BvTiles&>()));
+    using cbvtiles_t = decltype(proxy<space>({}, std::declval<const BvTiles&>()));
+    using cid_t = decltype(proxy<space>(std::declval<const IndicesT&>()));
+    using id_t = decltype(proxy<space>(std::declval<IndicesT&>()));
 
-    ReorderLeafs(wrapv<space>, std::size_t numLeaves, const vector_t& sortedIndices,
-                 vector_t& primitiveIndices, vector_t& parents, vector_t& levels,
-                 Vector<BV>& sortedBvs, vector_t& leafIndices)
+    ReorderLeafs(wrapv<space>, wrapt<BV>, Ti numLeaves, const IndicesT& sortedIndices,
+                 IndicesT& primitiveIndices, IndicesT& parents, IndicesT& levels,
+                 const BvTiles& leafBvs, BvTiles& sortedBvs, IndicesT& leafIndices)
         : sortedIndices{proxy<space>(sortedIndices)},
           primitiveIndices{proxy<space>(primitiveIndices)},
           parents{proxy<space>(parents)},
           levels{proxy<space>(levels)},
-          sortedBvs{proxy<space>(sortedBvs)},
+          leafBvs{proxy<space>({}, leafBvs)},
+          sortedBvs{proxy<space>({}, sortedBvs)},
           leafIndices{proxy<space>(leafIndices)},
-          numLeaves{static_cast<Index>(numLeaves)} {}
+          numLeaves{numLeaves} {}
 
-    constexpr void operator()(Index idx, const BV& bv, Index leafOffset, Index leafDepth) {
+    constexpr void operator()(Ti idx, Ti leafOffset, Ti leafDepth) noexcept {
       const auto dst = leafOffset + leafDepth - 1;
       leafIndices(idx) = dst;
-      sortedBvs(dst) = bv;
+      sortedBvs.template tuple<dim>("min", dst) = leafBvs.pack<dim>("min", idx);
+      sortedBvs.template tuple<dim>("max", dst) = leafBvs.pack<dim>("max", idx);
       primitiveIndices(dst) = sortedIndices(idx);
       levels(dst) = 0;
       if (leafDepth > 1) parents(dst + 1) = dst - 1;  // setup right-branch brother's parent
-#if 0
-      if (dst < 20)
-        printf("%d-th leaf %d, prim index %d\n", (int)idx, (int)dst, (int)sortedIndices(idx));
-#endif
     }
 
     cid_t sortedIndices;
     id_t primitiveIndices, parents, levels;
-    bv_t sortedBvs;
+    cbvtiles_t leafBvs;
+    bvtiles_t sortedBvs;
     id_t leafIndices;
-    Index numLeaves;
+    Ti numLeaves;
   };
 
   ///
   /// refit
   ///
-  template <execspace_e space, int dim, typename T> struct ResetRefitStates {
-    using BV = AABBBox<dim, T>;
-    using TV = vec<T, dim>;
-    ResetRefitStates() = default;
-    constexpr ResetRefitStates(wrapv<space>) noexcept {}
-
-    constexpr void operator()(int& flag, BV& bv) {
-      flag = 0;
-      bv = BV{TV::uniform(limits<T>().max()),
-              TV::uniform(limits<T>().lowest())};
-    }
+  struct ResetRefitStates {
+    constexpr void operator()(int& flag) noexcept { flag = 0; }
   };
 
-  template <execspace_e space, int dim, typename T, typename Index> struct RefitLBvh {
-    using BV = AABBBox<dim, T>;
-    using cbv_t = VectorView<space, const Vector<BV>>;
-    using bv_t = VectorView<space, Vector<BV>>;
-    using cid_t = VectorView<space, const Vector<Index>>;
+  template <execspace_e space, typename BvsT, typename IndicesT, typename BvTilesT>
+  struct RefitLBvh {
+    using BV = typename BvsT::value_type;
+    static constexpr int dim = BV::dim;
+    using Ti = typename IndicesT::value_type;
+    using bvtiles_t = decltype(proxy<space>({}, std::declval<BvTilesT&>()));
+    using cid_t = decltype(proxy<space>(std::declval<const IndicesT&>()));
+    using cbvs_t = decltype(proxy<space>(std::declval<const BvsT&>()));
+    using flags_t = decltype(proxy<space>(std::declval<Vector<int>&>()));
 
     RefitLBvh() = default;
-    RefitLBvh(wrapv<space>, const Vector<BV>& primBvs, const Vector<Index>& primitiveIndices,
-              const Vector<Index>& parents, Vector<int>& refitFlags, Vector<BV>& bvs)
+    RefitLBvh(wrapv<space>, const BvsT& primBvs, const IndicesT& parents, const IndicesT& levels,
+              const IndicesT& auxIndices, Vector<int>& refitFlags, BvTilesT& bvs)
         : primBvs{proxy<space>(primBvs)},
-          primitiveIndices{proxy<space>(primitiveIndices)},
           parents{proxy<space>(parents)},
+          levels{proxy<space>(levels)},
+          auxIndices{proxy<space>(auxIndices)},
           flags{proxy<space>(refitFlags)},
-          bvs{proxy<space>(bvs)} {}
+          bvs{proxy<space>({}, bvs)} {}
 
-    constexpr void operator()(Index node) {
-      bvs(node) = primBvs(primitiveIndices(node));
-      Index fa = parents(node);
+    constexpr void operator()(Ti primid, Ti node) noexcept {
+      {
+        auto bv = primBvs(primid);
+        bvs.template tuple<dim>("min", node) = bv._min;
+        bvs.template tuple<dim>("max", node) = bv._max;
+      }
+      Ti fa = parents(node);
 
       while (fa != -1) {
-        BV& bv = bvs(fa);
-        const BV box = bvs(node);
-        for (int d = 0; d < dim; ++d) {
-          atomic_min(wrapv<space>{}, &bv._min[d], box._min[d]);
-          atomic_max(wrapv<space>{}, &bv._max[d], box._max[d]);
+        if (atomic_cas(wrapv<space>{}, &flags[fa], 0, 1) == 0) break;
+        auto lc = fa + 1;
+        auto rc = levels[lc] == 0 ? lc + 1 : auxIndices[lc];
+        auto lMin = bvs.template pack<3>("min", lc);
+        auto lMax = bvs.template pack<3>("max", lc);
+        auto rMin = bvs.template pack<3>("min", rc);
+        auto rMax = bvs.template pack<3>("max", rc);
+        for (int d = 0; d != dim; ++d) {
+          bvs("min", d, fa) = lMin[d] < rMin[d] ? lMin[d] : rMin[d];
+          bvs("max", d, fa) = lMax[d] > rMax[d] ? lMax[d] : rMax[d];
         }
-        if (atomic_add(wrapv<space>{}, &flags(fa), 1) != 1) break;
-        node = fa;
-        fa = parents(node);
+        thread_fence(wrapv<space>{});
+        fa = parents[fa];
       }
     }
 
-    cbv_t primBvs;
-    cid_t primitiveIndices, parents;
-    VectorView<space, Vector<int>> flags;
-    bv_t bvs;
+    cbvs_t primBvs;
+    cid_t parents, levels, auxIndices;
+    flags_t flags;
+    bvtiles_t bvs;
   };
 
   template <execspace_e space, typename Collider, typename BV, typename Index, typename ResultIndex>
@@ -364,8 +374,7 @@ namespace zs {
         Index level = levels(node);
         // internal node traversal
         for (; level; --level, ++node)
-          if (!overlaps(collider, bvhBvs(node)))
-            break;
+          if (!overlaps(collider, bvhBvs(node))) break;
         // leaf node check
         if (level == 0) {
           if (overlaps(collider, bvhBvs(node))) {

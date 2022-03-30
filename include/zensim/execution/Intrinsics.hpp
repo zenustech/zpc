@@ -28,41 +28,31 @@ namespace zs {
 
   // __threadfence
 #if defined(__CUDACC__)
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __forceinline__ __device__ void thread_fence(ExecTag) {
-    __threadfence();
-  }
+  __forceinline__ __device__ void thread_fence(cuda_exec_tag) { __threadfence(); }
 #endif
 
 #if defined(_OPENMP)
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  inline void thread_fence(ExecTag) noexcept {
+  inline void thread_fence(omp_exec_tag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
 #  pragma omp flush
   }
 #endif
 
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  inline void thread_fence(ExecTag) noexcept {}
+  inline void thread_fence(host_exec_tag) noexcept {}
 
   // __syncthreads
 #if defined(__CUDACC__)
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __forceinline__ __device__ void sync_threads(ExecTag) {
-    __syncthreads();
-  }
+  __forceinline__ __device__ void sync_threads(cuda_exec_tag) { __syncthreads(); }
 #endif
 
 #if defined(_OPENMP)
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, omp_exec_tag>> = 0>
-  inline void sync_threads(ExecTag) noexcept {
+  inline void sync_threads(omp_exec_tag) noexcept {
 #  pragma omp barrier
   }
 #endif
 
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, host_exec_tag>> = 0>
-  inline void sync_threads(ExecTag) noexcept {}
+  inline void sync_threads(host_exec_tag) noexcept {}
 
   // pause
   template <typename ExecTag = host_exec_tag,
@@ -77,16 +67,12 @@ namespace zs {
 
   // __activemask
 #if defined(__CUDACC__)
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __forceinline__ __device__ unsigned active_mask(ExecTag) {
-    return __activemask();
-  }
+  __forceinline__ __device__ unsigned active_mask(cuda_exec_tag) { return __activemask(); }
 #endif
 
   // __ballot_sync
 #if defined(__CUDACC__)
-  template <typename ExecTag, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __forceinline__ __device__ unsigned ballot_sync(ExecTag, unsigned mask, int predicate) {
+  __forceinline__ __device__ unsigned ballot_sync(cuda_exec_tag, unsigned mask, int predicate) {
     return __ballot_sync(mask, predicate);
   }
 #endif
@@ -95,8 +81,7 @@ namespace zs {
 
   /// count leading zeros
 #if defined(__CUDACC__)
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __forceinline__ __device__ int count_lz(ExecTag, T x) {
+  template <typename T> __forceinline__ __device__ int count_lz(cuda_exec_tag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
       return __clz((int)x);
@@ -136,8 +121,7 @@ namespace zs {
 
   /// reverse bits
 #if defined(__CUDACC__)
-  template <typename ExecTag, typename T, enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> = 0>
-  __forceinline__ __device__ T reverse_bits(ExecTag, T x) {
+  template <typename T> __forceinline__ __device__ T reverse_bits(cuda_exec_tag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)
       return __brev((unsigned int)x);

@@ -70,12 +70,13 @@ namespace zs {
     inline value_type getVal(size_type i = 0) const {
       value_type res[1];
       Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res},
-           MemoryEntity{memoryLocation(), (void *)(data() + i)}, sizeof(value_type));
+                     MemoryEntity{memoryLocation(), (void *)(data() + i)}, sizeof(value_type));
       return res[0];
     }
     inline void setVal(value_type v, size_type i = 0) const {
       Resource::copy(MemoryEntity{memoryLocation(), (void *)(data() + i)},
-           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v}, sizeof(value_type));
+                     MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v},
+                     sizeof(value_type));
     }
 
     struct iterator_impl : IteratorInterface<iterator_impl> {
@@ -156,7 +157,7 @@ namespace zs {
           _capacity{o._capacity} {
       if (o.data() && o.size() > 0)
         Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
-             MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
+                       MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
@@ -167,7 +168,7 @@ namespace zs {
     Vector clone(const allocator_type &allocator) const {
       Vector ret{allocator, capacity()};
       Resource::copy(MemoryEntity{allocator.location, (void *)ret.data()},
-           MemoryEntity{memoryLocation(), (void *)this->data()}, usedBytes());
+                     MemoryEntity{memoryLocation(), (void *)this->data()}, usedBytes());
       return ret;
     }
     Vector clone(const MemoryLocation &mloc) const {
@@ -220,7 +221,7 @@ namespace zs {
             Vector tmp{_allocator, geometric_size_growth(newSize)};
             if (size())
               Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
-                   MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
+                             MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
             tmp._size = newSize;
             swap(tmp);
           }
@@ -248,7 +249,7 @@ namespace zs {
       else
         _size += count;
       Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + size())},
-           MemoryEntity{other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
+                     MemoryEntity{other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
     }
 
   protected:
@@ -276,6 +277,7 @@ namespace zs {
     using const_vector_type = std::add_const_t<vector_type>;
     using pointer = conditional_t<is_const_structure, typename vector_type::const_pointer,
                                   typename vector_type::pointer>;
+    using value_type = typename vector_type::value_type;
     using size_type = typename vector_type::size_type;
     using difference_type = typename vector_type::difference_type;
 

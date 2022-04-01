@@ -27,7 +27,7 @@ namespace zs {
       : VecInterface<vec_view<T, integer_seq<Tn, Ns...>>> {
     using base_t = VecInterface<vec_view<T, integer_seq<Tn, Ns...>>>;
     // essential defs for any VecInterface
-    using value_type = T;
+    using value_type = std::remove_const_t<T>;
     using index_type = Tn;
     using indexer_type = indexer<index_type, Ns...>;
     using extents = integer_seq<index_type, Ns...>;
@@ -39,7 +39,7 @@ namespace zs {
     constexpr vec_view() = delete;
     constexpr vec_view(const vec_view &) = delete;             // prevents accidental copy of view
     constexpr vec_view &operator=(const vec_view &) = delete;  // prevents accidental copy of view
-    constexpr explicit vec_view(value_type *ptr) : _data{ptr} {}
+    constexpr explicit vec_view(T *ptr) : _data{ptr} {}
 
     constexpr explicit operator variant_vec<value_type, extents>() const noexcept {
       variant_vec<value_type, extents> r{};

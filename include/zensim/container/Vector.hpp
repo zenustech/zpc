@@ -271,6 +271,24 @@ namespace zs {
     size_type _size{0}, _capacity{0};
   };
 
+  extern template struct Vector<u8, ZSPmrAllocator<>>;
+  extern template struct Vector<u32, ZSPmrAllocator<>>;
+  extern template struct Vector<u64, ZSPmrAllocator<>>;
+  extern template struct Vector<i8, ZSPmrAllocator<>>;
+  extern template struct Vector<i32, ZSPmrAllocator<>>;
+  extern template struct Vector<i64, ZSPmrAllocator<>>;
+  extern template struct Vector<f32, ZSPmrAllocator<>>;
+  extern template struct Vector<f64, ZSPmrAllocator<>>;
+
+  extern template struct Vector<u8, ZSPmrAllocator<true>>;
+  extern template struct Vector<u32, ZSPmrAllocator<true>>;
+  extern template struct Vector<u64, ZSPmrAllocator<true>>;
+  extern template struct Vector<i8, ZSPmrAllocator<true>>;
+  extern template struct Vector<i32, ZSPmrAllocator<true>>;
+  extern template struct Vector<i64, ZSPmrAllocator<true>>;
+  extern template struct Vector<f32, ZSPmrAllocator<true>>;
+  extern template struct Vector<f64, ZSPmrAllocator<true>>;
+
   template <execspace_e, typename VectorT, typename = void> struct VectorView {
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
     using vector_type = std::remove_const_t<VectorT>;

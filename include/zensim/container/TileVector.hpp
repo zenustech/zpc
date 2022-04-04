@@ -154,13 +154,14 @@ namespace zs {
     using const_iterator = LegacyIterator<const_iterator_impl>;
 
     constexpr auto begin(channel_counter_type chn = 0) noexcept {
-      return make_iterator<iterator_impl>(_base, 0, chn, numChannels());
+      return make_iterator<iterator_impl>(_base, static_cast<size_type>(0), chn, numChannels());
     }
     constexpr auto end(channel_counter_type chn = 0) noexcept {
       return make_iterator<iterator_impl>(_base, size(), chn, numChannels());
     }
     constexpr auto begin(channel_counter_type chn = 0) const noexcept {
-      return make_iterator<const_iterator_impl>(_base, 0, chn, numChannels());
+      return make_iterator<const_iterator_impl>(_base, static_cast<size_type>(0), chn,
+                                                numChannels());
     }
     constexpr auto end(channel_counter_type chn = 0) const noexcept {
       return make_iterator<const_iterator_impl>(_base, size(), chn, numChannels());
@@ -205,8 +206,8 @@ namespace zs {
           _numChannels{o.numChannels()} {
       if (capacity() > 0)
         Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
-             MemoryEntity{o.memoryLocation(), (void *)o.data()},
-             sizeof(value_type) * o.numChannels() * o.capacity());
+                       MemoryEntity{o.memoryLocation(), (void *)o.data()},
+                       sizeof(value_type) * o.numChannels() * o.capacity());
     }
     TileVector &operator=(const TileVector &o) {
       if (this == &o) return *this;
@@ -217,8 +218,8 @@ namespace zs {
     TileVector clone(const allocator_type &allocator) const {
       TileVector ret{allocator, _tags, size()};
       Resource::copy(MemoryEntity{allocator.location, (void *)ret.data()},
-           MemoryEntity{memoryLocation(), (void *)data()},
-           sizeof(value_type) * numChannels() * (count_tiles(size()) * lane_width));
+                     MemoryEntity{memoryLocation(), (void *)data()},
+                     sizeof(value_type) * numChannels() * (count_tiles(size()) * lane_width));
       return ret;
     }
     TileVector clone(const MemoryLocation &mloc) const {
@@ -281,7 +282,8 @@ namespace zs {
             TileVector tmp{_allocator, _tags, geometric_size_growth(newSize)};
             if (size())
               Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
-                   MemoryEntity{memoryLocation(), (void *)data()}, numTiles() * tileBytes());
+                             MemoryEntity{memoryLocation(), (void *)data()},
+                             numTiles() * tileBytes());
             tmp._size = newSize;
             swap(tmp);
           }
@@ -347,6 +349,26 @@ namespace zs {
     size_type _size{0}, _capacity{0};  // element size
     channel_counter_type _numChannels{1};
   };
+
+#define EXTERN_TILEVECTOR_INSTANTIATIONS(LENGTH)                                       \
+  extern template struct TileVector<u32, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<u64, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<i32, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<i64, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<f32, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<f64, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<u32, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<u64, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<i32, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<i64, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<f32, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<f64, LENGTH, unsigned char, ZSPmrAllocator<true>>;
+
+  /// 8, 32, 64, 512
+  EXTERN_TILEVECTOR_INSTANTIATIONS(8)
+  EXTERN_TILEVECTOR_INSTANTIATIONS(32)
+  EXTERN_TILEVECTOR_INSTANTIATIONS(64)
+  EXTERN_TILEVECTOR_INSTANTIATIONS(512)
 
   template <typename TileVectorView> struct TileVectorCopy {
     using size_type = typename TileVectorView::size_type;

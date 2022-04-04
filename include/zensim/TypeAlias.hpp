@@ -1,18 +1,20 @@
 #pragma once
 #include <cstdint>
 #include <memory>
+
 #include "Platform.hpp"
 
 namespace zs {
 
-  using u8 = std::uint8_t;
   using uint = unsigned int;
   // signed
+  using i8 = std::conditional_t<sizeof(char) == 1, char, int8_t>;
   using i16 = std::conditional_t<sizeof(short) == 2, short, int16_t>;
   using i32 = std::conditional_t<sizeof(int) == 4, int, int32_t>;
   using i64 = std::conditional_t<sizeof(long long int) == 8, long long int,
                                  std::conditional_t<sizeof(long int) == 8, long int, int64_t>>;
   // unsigned
+  using u8 = std::conditional_t<sizeof(unsigned char) == 1, unsigned char, uint8_t>;
   using u16 = std::conditional_t<sizeof(unsigned short) == 2, unsigned short, uint16_t>;
   using u32 = std::conditional_t<sizeof(unsigned int) == 4, unsigned int, uint32_t>;
   using u64 = std::conditional_t<

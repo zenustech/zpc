@@ -207,9 +207,23 @@ namespace zs {
     Table _table;
     allocator_type _allocator;
     value_t _tableSize;
-    Vector<value_t> _cnt;
-    Vector<key_t> _activeKeys;
+    Vector<value_t, allocator_type> _cnt;
+    Vector<key_t, allocator_type> _activeKeys;
   };
+
+#define EXTERN_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                      \
+  extern template struct HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<>>;     \
+  extern template struct HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<>>;     \
+  extern template struct HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<>>;     \
+  extern template struct HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<>>;     \
+  extern template struct HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<true>>; \
+  extern template struct HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<true>>; \
+  extern template struct HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<true>>; \
+  extern template struct HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<true>>;
+
+  EXTERN_HASHTABLE_INSTANTIATIONS(i32, i32)
+  EXTERN_HASHTABLE_INSTANTIATIONS(i32, i64)
+  EXTERN_HASHTABLE_INSTANTIATIONS(i64, i64)
 
   template <typename HashTableView> struct ResetHashTable {
     using hash_table_type = typename HashTableView::hash_table_type;

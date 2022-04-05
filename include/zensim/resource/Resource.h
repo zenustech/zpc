@@ -10,10 +10,9 @@
 #include "zensim/memory/MemOps.hpp"
 #include "zensim/memory/MemoryResource.h"
 // #include "zensim/types/Pointers.hpp"
+#include "zensim/memory/Allocator.h"
 #include "zensim/types/SmallVector.hpp"
 #include "zensim/types/Tuple.h"
-
-#include "zensim/memory/Allocator.h"
 #if ZS_ENABLE_CUDA
 #  include "zensim/cuda/memory/Allocator.h"
 #endif
@@ -264,13 +263,24 @@ namespace zs {
   struct ZPC_API Resource {
     static std::atomic_ullong &counter() noexcept;
     static Resource &instance() noexcept;
-    static void copy(MemoryEntity dst, MemoryEntity src,
-                                                 std::size_t size) {
+    static void copy(MemoryEntity dst, MemoryEntity src, std::size_t numBytes) {
       if (dst.location.onHost() && src.location.onHost())
-        zs::copy(mem_host, dst.ptr, src.ptr, size);
+        zs::copy(mem_host, dst.ptr, src.ptr, numBytes);
       else {
         if constexpr (is_memory_source_available(mem_device))
-          zs::copy(mem_device, dst.ptr, src.ptr, size);
+          zs::copy(mem_device, dst.ptr, src.ptr, numBytes);
+        else
+          throw std::runtime_error("There is no corresponding device backend for Resource::copy");
+      }
+    }
+    static void memset(MemoryEntity dst, char ch, std::size_t numBytes) {
+      if (dst.location.onHost())
+        zs::memset(mem_host, dst.ptr, ch, numBytes);
+      else {
+        if constexpr (is_memory_source_available(mem_device))
+          zs::memset(mem_device, dst.ptr, ch, numBytes);
+        else
+          throw std::runtime_error("There is no corresponding device backend for Resource::memset");
       }
     }
 

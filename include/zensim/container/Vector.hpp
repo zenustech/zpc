@@ -201,6 +201,9 @@ namespace zs {
     friend void swap(Vector &a, Vector &b) { a.swap(b); }
 
     void clear() { resize(0); }
+    void reset(int ch) {
+      Resource::memset(MemoryEntity{memoryLocation(), (void *)data()}, ch, usedBytes());
+    }
     void resize(size_type newSize) {
       const auto oldSize = size();
       if (newSize < oldSize) {

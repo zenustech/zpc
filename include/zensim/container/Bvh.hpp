@@ -150,7 +150,7 @@ namespace zs {
     // total bounding volume
     Vector<Box> wholeBox{1, memdst, devid};
     wholeBox.setVal(
-        Box{TV::uniform(limits<value_type>().max()), TV::uniform(limits<value_type>().lowest())});
+        Box{TV::uniform(limits<value_type>::max()), TV::uniform(limits<value_type>::lowest())});
     policy(primBvs, ComputeBoundingVolume{execTag, wholeBox});
 
     // morton codes

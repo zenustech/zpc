@@ -60,7 +60,6 @@ namespace zs::math {
     constexpr auto dim = VecTM::template range_t<0>::value - 1;
     static_assert(VecTM::template range_t<0>::value <= 4 && (VecTM::template range_t<0>::value > 1),
                   "transformation should be of 2x2, 3x3 or 4x4 shape only.");
-    using Mat = decltype(m.clone());
     using ValT = typename VecTM::value_type;
     using Tn = typename VecTM::index_type;
     auto H = m.clone();

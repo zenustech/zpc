@@ -420,17 +420,42 @@ namespace zs {
     }
     template <typename VecT = Derived,
               enable_if_all<std::is_arithmetic_v<typename VecT::value_type>, VecT::dim == 1,
+                            VecT::extent == 2> = 0>
+    constexpr auto orthogonal() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+                              conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
+      using V = typename Derived::template variant_vec<value_type, extents>;
+      V r{};
+      r.val(0) = -derivedPtr()->val(1);
+      r.val(1) = derivedPtr()->val(0);
+      return r.normalized();
+    }
+    template <typename VecT = Derived,
+              enable_if_all<std::is_arithmetic_v<typename VecT::value_type>, VecT::dim == 1,
                             VecT::extent == 3> = 0>
     constexpr auto orthogonal() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
-                              conditional_t<(sizeof(value_type) >= 8), double, float>>;
+                              conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
       T x = math::abs(derivedPtr()->val(0));
       T y = math::abs(derivedPtr()->val(1));
       T z = math::abs(derivedPtr()->val(2));
       using V = typename Derived::template variant_vec<value_type, extents>;
-      auto other = x < y ? (x < z ? V{1, 0, 0} : V{0, 0, 1}) : (y < z ? V{0, 1, 0} : V{0, 0, 1});
-      return cross(other);
+      auto r = V::zeros();
+      if (x < y) {
+        if (x < z)
+          r.val(0) = 1;
+        else
+          r.val(2) = 1;
+      } else {
+        if (y < z)
+          r.val(1) = 1;
+        else
+          r.val(2) = 1;
+      }
+      // auto other = x < y ? (x < z ? V{1, 0, 0} : V{0, 0, 1}) : (y < z ? V{0, 1, 0} : V{0, 0, 1});
+      return cross(r);
     }
     //!@name Coefficient-wise math funcs
     template <typename VecT = Derived,
@@ -868,7 +893,8 @@ namespace zs {
       static_assert(sizeof...(dims) == sizeof...(Is), "count of indices and dims mismatch.");
       if constexpr (dim == VecT::dim) {
         if constexpr (sizeof...(dims) <= dim)
-          return ((VecT::template range<Is> == select_indexed_value<Is, dims...>::value) && ...);
+          return ((VecT::template range_t<Is>::value == select_indexed_value<Is, dims...>::value)
+                  && ...);
         else
           return false;
       } else

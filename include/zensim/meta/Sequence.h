@@ -231,7 +231,7 @@ namespace zs {
     template <typename F> constexpr void for_each(F &&f) const noexcept { (f(Ns), ...); }
     /// scan
     template <auto Cate, typename BinaryOp, std::size_t... Is>
-    constexpr auto scan_impl(BinaryOp bop, index_seq<Is...>) const noexcept {
+    constexpr auto scan_impl(BinaryOp, index_seq<Is...>) const noexcept {
       constexpr auto get_sum = [](auto I_) noexcept {
         constexpr auto I = decltype(I_)::value;
         if constexpr (Cate == 0)

@@ -13,7 +13,8 @@
 
 namespace zs {
 
-  template <typename MemTag> struct raw_memory_resource : mr_t, Singleton<raw_memory_resource<MemTag>> {
+  template <typename MemTag> struct raw_memory_resource : mr_t,
+                                                          Singleton<raw_memory_resource<MemTag>> {
     using value_type = std::byte;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -207,7 +208,7 @@ namespace zs {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override { return _addr; }
+    void *do_allocate(std::size_t /*bytes*/, std::size_t /*alignment*/) override { return _addr; }
 
     size_t _granularity;
     const size_t _reservedSpace;

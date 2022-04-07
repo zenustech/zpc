@@ -1025,9 +1025,10 @@ namespace zs {
       s33 = Sa33.f;
     }
 
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
-                                           VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto svd(const VecInterface<VecT>& F) noexcept {
       // F = U S V^T
       typename VecT::template variant_vec<typename VecT::value_type, typename VecT::extents> U{},
@@ -1052,8 +1053,8 @@ namespace zs {
         V(0, 0) = (typename VecT::value_type)1;
         S(0) = F(0, 0);
         return std::make_tuple(U, S, V);
-      } else
-        ;
+      } else {
+      }
     }
 
   }  // namespace math

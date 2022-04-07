@@ -50,7 +50,7 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     std::vector<unsigned long long> _allocHandles;
-    std::vector<std::pair<size_t, size_t>> _allocRanges;
+    std::vector<std::pair<size_t, size_t> > _allocRanges;
     std::any _allocProp;
     std::any _accessDescr;
     size_t _granularity;
@@ -75,7 +75,7 @@ namespace zs {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override { return _addr; }
+    void *do_allocate(std::size_t /*bytes*/, std::size_t /*alignment*/) override { return _addr; }
 
     std::any _allocProp;
     std::any _accessDescr;

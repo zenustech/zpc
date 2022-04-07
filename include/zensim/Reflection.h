@@ -143,7 +143,7 @@ namespace zs {
     for (std::size_t i = 0; i != length; ++i) ret[i] = typestr[i + head];
     return ret;
   }
-  template <typename T> constexpr auto get_var_type(T &&v) noexcept { return get_type<T>(); }
+  template <typename T> constexpr auto get_var_type(T &&) noexcept { return get_type<T>(); }
 
   template <typename CharT, std::size_t N>
   auto convert_char_array_to_string(const std::array<CharT, N> &str) noexcept {

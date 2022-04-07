@@ -165,6 +165,9 @@ namespace zs {
   }
 
   // different from math::sqrt
+  template <typename T, enable_if_t<std::is_arithmetic_v<T>> = 0> constexpr T sqr(T v) noexcept {
+    return v * v;
+  }
   template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
   constexpr T sqrt(T v) noexcept {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)

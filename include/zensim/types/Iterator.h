@@ -295,10 +295,10 @@ namespace zs {
   friend constexpr bool operator OP(const Derived &a, const Derived &b) {             \
     return (a - b) OP 0;                                                              \
   }
-    LEGACY_ITERATOR_OP(<);
-    LEGACY_ITERATOR_OP(<=);
-    LEGACY_ITERATOR_OP(>);
-    LEGACY_ITERATOR_OP(>=);
+    LEGACY_ITERATOR_OP(<)
+    LEGACY_ITERATOR_OP(<=)
+    LEGACY_ITERATOR_OP(>)
+    LEGACY_ITERATOR_OP(>=)
     /// sentinel support
     template <typename T = Derived, enable_if_t<detail::has_sentinel<T>::value> = 0>
     friend constexpr bool operator==(const Derived &self, typename T::sentinel_type sentinel) {

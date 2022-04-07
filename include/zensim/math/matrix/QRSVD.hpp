@@ -514,8 +514,8 @@ namespace zs {
           detail::sort_sigma<1>(U, S, V);
         }
         return std::make_tuple(U, S, V);
-      } else
-        ;
+      } else {
+      }
     }
 
     // Polar guarantees negative sign is on the small magnitude singular value.
@@ -542,8 +542,8 @@ namespace zs {
         R = U * V.transpose();
         auto Ssym = ::zs::diag_mul(V, S) * V.transpose();
         return std::make_tuple(R, Ssym);
-      } else
-        ;
+      } else {
+      }
     }
 
   }  // namespace math

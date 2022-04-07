@@ -117,6 +117,9 @@ target_compile_definitions(zsproj_deps INTERFACE
 add_library(zpc_cxx_deps INTERFACE)
 target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
+target_compile_options(zpc_cxx_deps INTERFACE
+  $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, , -Wno-unused-local-typedefs $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+)
 target_compile_definitions(zpc_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
 )

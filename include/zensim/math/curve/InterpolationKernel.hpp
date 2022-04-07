@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/math/MathUtils.h"
 #include "zensim/math/Vec.h"
+#include "zensim/types/Property.h"
 
 namespace zs {
 
@@ -27,6 +28,15 @@ namespace zs {
       dw(i, 2) = 0.5 * d * d;
     }
     return dw;
+  }
+  template <kernel_e kt> constexpr int get_lerp_degree(wrapv<kt> = {}) noexcept {
+    if constexpr (kt == kernel_e::linear)
+      return 0;
+    else if constexpr (kt == kernel_e::quadratic)
+      return 1;
+    else if constexpr (kt == kernel_e::cubic)
+      return 2;
+    return -1;
   }
   // ref: ziran2020
   template <int interpolation_degree, typename T, enable_if_t<std::is_floating_point_v<T>> = 0>

@@ -243,7 +243,6 @@ namespace zs {
         [&ret, devid, bytes, option](auto tag) {
           if constexpr (!is_same_v<decltype(tag), um_mem_tag>)
             if constexpr (is_memory_source_available(tag)) {
-              using MemTag = decltype(tag);
               if (option == "ARENA")
                 ret.setOwningUpstream<arena_virtual_memory_resource>(tag, devid, bytes);
               else if (option == "STACK" || option.empty())

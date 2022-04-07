@@ -211,9 +211,9 @@ namespace zs {
                                            const vec_t<T1, Tn, (Tn)3, (Tn)3>& fiberDirection,
                                            const T2 E, const T2 nu, vec_t<T2, Tn, (Tn)3, (Tn)3> F) {
     using R = math::op_result_t<T0, T1, T2>;
-    using vec3 = vec_t<R, Tn, (Tn)3>;
+    // using vec3 = vec_t<R, Tn, (Tn)3>;
     using vec9 = vec_t<R, Tn, (Tn)9>;
-    using mat3 = vec_t<R, Tn, (Tn)3, (Tn)3>;
+    // using mat3 = vec_t<R, Tn, (Tn)3, (Tn)3>;
     using mat9 = vec_t<R, Tn, (Tn)9, (Tn)9>;
     using Ret
         = conditional_t<Opt == 1, std::tuple<R>,

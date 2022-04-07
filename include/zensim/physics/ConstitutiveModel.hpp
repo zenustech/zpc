@@ -124,7 +124,6 @@ namespace zs {
     constexpr auto first_piola_derivative(const VecInterface<VecT>& F) const noexcept {
       using T = typename VecT::value_type;
       using Ti = typename VecT::index_type;
-      using extents = typename VecT::extents;
       constexpr int dim = VecT::template range_t<0>::value;
 
       auto [U, S, V] = math::svd(F);

@@ -86,14 +86,16 @@ namespace zs {
   ///
   /// VecInterface
   ///
+  // ref: https://en.cppreference.com/w/cpp/language/attributes/maybe_unused
   template <typename Derived> struct VecInterface {
-#define DECLARE_VEC_INTERFACE_ATTRIBUTES                                                       \
-  using value_type = typename Derived::value_type;                                             \
-  using index_type = typename Derived::index_type;                                             \
-  using extents = typename Derived::extents; /*not necessarily same as indexer_type::extents*/ \
-  using indexer_type = typename Derived::indexer_type;                                         \
-  using dims = typename Derived::dims;                                                         \
-  enum : index_type { extent = Derived::extent };                                              \
+#define DECLARE_VEC_INTERFACE_ATTRIBUTES                                           \
+  using value_type [[maybe_unused]] = typename Derived::value_type;                \
+  using index_type [[maybe_unused]] = typename Derived::index_type;                \
+  using extents [[maybe_unused]] =                                                 \
+      typename Derived::extents; /*not necessarily same as indexer_type::extents*/ \
+  using indexer_type [[maybe_unused]] = typename Derived::indexer_type;            \
+  using dims [[maybe_unused]] = typename Derived::dims;                            \
+  enum : index_type { extent = Derived::extent };                                  \
   enum : int { dim = Derived::dim };
 
     using vec_type = Derived;
@@ -425,7 +427,7 @@ namespace zs {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
                               conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
-      using V = typename Derived::template variant_vec<value_type, extents>;
+      using V = typename Derived::template variant_vec<T, extents>;
       V r{};
       r.val(0) = -derivedPtr()->val(1);
       r.val(1) = derivedPtr()->val(0);
@@ -441,7 +443,7 @@ namespace zs {
       T x = math::abs(derivedPtr()->val(0));
       T y = math::abs(derivedPtr()->val(1));
       T z = math::abs(derivedPtr()->val(2));
-      using V = typename Derived::template variant_vec<value_type, extents>;
+      using V = typename Derived::template variant_vec<T, extents>;
       auto r = V::zeros();
       if (x < y) {
         if (x < z)

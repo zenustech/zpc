@@ -204,7 +204,7 @@ namespace zs {
                                          VecT::template range_t<1>::value == 4,
                                          std::is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
-    using T = typename VecT::value_type;
+    // using T = typename VecT::value_type;
     auto ret = VecT::zeros();
     ret(0, 0) = detail::cofactor<0, 0>(A);
     ret(1, 0) = -detail::cofactor<0, 1>(A);

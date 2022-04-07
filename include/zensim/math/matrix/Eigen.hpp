@@ -6,6 +6,7 @@
 
 namespace zs {
 
+  /// ref: http://docs.ros.org/en/kinetic/api/gtsam/html/SelfAdjointEigenSolver_8h_source.html
   template <typename VecTM,
             enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
                           VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
@@ -65,10 +66,9 @@ namespace zs {
             enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
                           VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                           VecTM::template range_t<0>::value == 3> = 0>
-  constexpr auto eigen_decomposition(VecInterface<VecTM> &mat) noexcept {
+  constexpr auto eigen_decomposition(VecInterface<VecTM> &M) noexcept {
     using T = typename VecTM::value_type;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
-    ;
   }
 
 }  // namespace zs

@@ -45,13 +45,13 @@ template <std::size_t I, typename T> struct tuple_value {
 #else
   template <std::size_t I, typename T, typename = void> struct tuple_value : T {
     /// by index
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) & noexcept { return *this; }
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) && noexcept { return std::move(*this); }
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) const & noexcept { return *this; }
+    constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept { return *this; }
+    constexpr decltype(auto) get(integral_t<std::size_t, I>) &&noexcept { return std::move(*this); }
+    constexpr decltype(auto) get(integral_t<std::size_t, I>) const &noexcept { return *this; }
     /// by type
-    constexpr decltype(auto) get(wrapt<T>) & noexcept { return *this; }
-    constexpr decltype(auto) get(wrapt<T>) && noexcept { return std::move(*this); }
-    constexpr decltype(auto) get(wrapt<T>) const & noexcept { return *this; }
+    constexpr decltype(auto) get(wrapt<T>) &noexcept { return *this; }
+    constexpr decltype(auto) get(wrapt<T>) &&noexcept { return std::move(*this); }
+    constexpr decltype(auto) get(wrapt<T>) const &noexcept { return *this; }
   };
   template <std::size_t I, typename T> struct tuple_value<
       I, T,
@@ -59,25 +59,29 @@ template <std::size_t I, typename T> struct tuple_value {
           std::is_fundamental_v<
               T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>)>> {
     /// by index
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) & noexcept { 
+    constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept {
       if constexpr (std::is_rvalue_reference_v<T>)
-        return std::move(value); 
+        return std::move(value);
       else
-        return value; 
+        return value;
     }
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) && noexcept { return std::move(value); }
+    constexpr decltype(auto) get(integral_t<std::size_t, I>) &&noexcept { return std::move(value); }
     template <bool NonRValRef = !std::is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) const & noexcept { return value; }
+    constexpr decltype(auto) get(integral_t<std::size_t, I>) const &noexcept {
+      return value;
+    }
     /// by type
-    constexpr decltype(auto) get(wrapt<T>) & noexcept { 
+    constexpr decltype(auto) get(wrapt<T>) &noexcept {
       if constexpr (std::is_rvalue_reference_v<T>)
-        return std::move(value); 
+        return std::move(value);
       else
-        return value; 
+        return value;
     }
-    constexpr decltype(auto) get(wrapt<T>) && noexcept { return std::move(value); }
+    constexpr decltype(auto) get(wrapt<T>) &&noexcept { return std::move(value); }
     template <bool NonRValRef = !std::is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
-    constexpr decltype(auto) get(wrapt<T>) const & noexcept { return value; }
+    constexpr decltype(auto) get(wrapt<T>) const &noexcept {
+      return value;
+    }
     T value;
   };
 #endif
@@ -260,7 +264,8 @@ template <std::size_t I, typename T> struct tuple_value {
     return std::move(t).template get<I>();
   }
 
-  template <typename T, typename... Ts> constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
+  template <typename T, typename... Ts>
+  constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
     return t.template get<T>();
   }
   template <typename T, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
@@ -287,7 +292,7 @@ template <std::size_t I, typename T> struct tuple_value {
   constexpr auto index_to_coord(std::size_t I, value_seq<Ns...> vs, index_seq<Is...>) {
     constexpr auto N = sizeof...(Ns);
     using Tn = typename value_seq<Ns...>::value_type;
-    using RetT = typename gen_seq<N>::template uniform_types_t<tuple, Tn>;
+    // using RetT = typename gen_seq<N>::template uniform_types_t<tuple, Tn>;
     constexpr auto exsuf = vs.template scan<2>(multiplies<std::size_t>{});
     Tn bases[N]{exsuf.get_value(wrapv<Is>()).value...};
     Tn cs[N]{};
@@ -311,17 +316,18 @@ template <std::size_t I, typename T> struct tuple_value {
   namespace tuple_detail_impl {
     /// concat
     template <typename... Tuples> struct concat {
-      static_assert((is_tuple_v<remove_cvref_t<Tuples>> && ...), "concat should only take zs::tuple type template params!");
+      static_assert((is_tuple_v<remove_cvref_t<Tuples>> && ...),
+                    "concat should only take zs::tuple type template params!");
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<std::size_t>{}).value;
       using indices = typename gen_seq<length>::ascend;
-      using outer
-          = decltype(counts{}.template scan<1, plus<std::size_t>>().map(count_leq{},
-                                                                           wrapv<length>{}));
+      using outer = decltype(counts{}.template scan<1, plus<std::size_t>>().map(count_leq{},
+                                                                                wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
           std::minus<std::size_t>{},
           counts{}.template scan<0, std::plus<std::size_t>>().shuffle(outer{})));
-      // using types = decltype(type_seq<typename remove_cvref_t<Tuples>::tuple_types...>{}.shuffle(outer{}).shuffle_join(inner{}));
+      // using types = decltype(type_seq<typename
+      // remove_cvref_t<Tuples>::tuple_types...>{}.shuffle(outer{}).shuffle_join(inner{}));
       template <auto... Os, auto... Is, typename... Tups>
       static constexpr auto get_ret_type(value_seq<Os...>, value_seq<Is...>, Tups &&...tups) {
         auto tup = forward_as_tuple(FWD(tups)...);
@@ -357,7 +363,8 @@ template <std::size_t I, typename T> struct tuple_value {
         // using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
         using helper = tuple_detail_impl::concat<Ts...>;
         return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
-            typename helper::outer{}, typename helper::inner{}, zs::forward_as_tuple(FWD(tuples)...));
+            typename helper::outer{}, typename helper::inner{},
+            zs::forward_as_tuple(FWD(tuples)...));
       } else {
         constexpr auto N = marks.reduce(plus<int>{}).value;
         constexpr auto offsets = marks.scan();  // exclusive scan
@@ -369,7 +376,8 @@ template <std::size_t I, typename T> struct tuple_value {
     }
   }
 
-  template <typename TupA, typename TupB, enable_if_t<(is_tuple_v<TupA> || is_tuple_v<remove_cvref_t<TupB>>)> = 0>
+  template <typename TupA, typename TupB,
+            enable_if_t<(is_tuple_v<TupA> || is_tuple_v<remove_cvref_t<TupB>>)> = 0>
   constexpr auto operator+(TupA tupa, TupB &&tupb) {
     return tuple_cat(FWD(tupa), FWD(tupb));
   }

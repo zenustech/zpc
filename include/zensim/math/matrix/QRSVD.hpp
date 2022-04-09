@@ -326,6 +326,47 @@ namespace zs {
 #endif
     }
 
+    template <typename VecT,
+              enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
+                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto gram_schmidt(const VecInterface<VecT>& A) noexcept {
+      using value_type = typename VecT::value_type;
+      using index_type = typename VecT::index_type;
+      constexpr auto N = VecT::template range_t<0>::value;
+      using RetT = typename VecT::template variant_vec<value_type, typename VecT::extents>;
+      auto d1 = col(A, 0);
+      auto d2 = col(A, 1);
+      auto d3 = col(A, 2);
+      auto q1 = d1.normalized();
+      auto r11 = d1.norm();
+      auto r12 = d2.dot(q1);
+      auto q2 = d2 - r12 * q1;
+      auto r22 = q2.norm();
+      q2 = q2.normalized();
+
+      auto r13 = d3.dot(q1);
+      auto r23 = d3.dot(q2);
+      auto q3 = d3 - r13 * q1 - r23 * q2;
+      auto r33 = q3.norm();
+      q3 = q3.normalized();
+
+      RetT Q{};
+      for (int d = 0; d != 3; ++d) {
+        Q(d, 0) = q1(d);
+        Q(d, 1) = q2(d);
+        Q(d, 2) = q3(d);
+      }
+      auto R = RetT::zeros();
+      R(0, 0) = r11;
+      R(0, 1) = r12;
+      R(0, 2) = r13;
+      R(1, 1) = r22;
+      R(1, 2) = r23;
+      R(2, 2) = r33;
+      return zs::make_tuple(Q, R);
+    }
+
     // Polar guarantees negative sign is on the small magnitude singular value.
     // S is guaranteed to be the closest one to identity.
     // R is guaranteed to be the closest rotation to A.

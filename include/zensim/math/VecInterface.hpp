@@ -264,6 +264,15 @@ namespace zs {
       return r;
     }
     template <typename T, typename VecT = Derived,
+              enable_if_t<sizeof(typename VecT::value_type) == sizeof(T)> = 0>
+    constexpr auto reinterpret_bits() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<T, extents> r{};
+      for (index_type i = 0; i != extent; ++i)
+        r.val(i) = zs::reinterpret_bits<T>(derivedPtr()->val(i));
+      return r;
+    }
+    template <typename T, typename VecT = Derived,
               enable_if_t<std::is_convertible_v<typename VecT::value_type, T>> = 0>
     constexpr operator typename VecT::template variant_vec<T, typename VecT::extents>()
         const noexcept {

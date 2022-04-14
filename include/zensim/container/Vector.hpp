@@ -233,6 +233,44 @@ namespace zs {
           _size = newSize;
       }
     }
+    void resize(size_type newSize, int ch) {
+      const auto oldSize = size();
+      if (newSize < oldSize) {
+        _size = newSize;
+        // Resource::memset(MemoryEntity{memoryLocation(), data() + newSize}, ch,
+        //                 sizeof(T) * (capacity() - newSize));
+        return;
+      }
+      if (newSize > oldSize) {
+        const auto oldCapacity = capacity();
+        if (newSize > oldCapacity) {
+          /// virtual memory way
+          if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
+            _capacity = geometric_size_growth(newSize);
+            _allocator.commit(_capacity * sizeof(value_type));
+            Resource::memset(MemoryEntity{memoryLocation(), (void *)(data() + _size)}, ch,
+                             sizeof(T) * (newSize - _size));
+            _size = newSize;
+          }
+          /// conventional way
+          else {
+            Vector tmp{_allocator, geometric_size_growth(newSize)};
+            if (size())
+              Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+                             MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
+            Resource::memset(MemoryEntity{tmp.memoryLocation(), (void *)(tmp.data() + _size)}, ch,
+                             sizeof(T) * (newSize - _size));
+            tmp._size = newSize;
+            swap(tmp);
+          }
+          return;
+        } else {
+          Resource::memset(MemoryEntity{memoryLocation(), (void *)(data() + _size)}, ch,
+                           sizeof(T) * (newSize - _size));
+          _size = newSize;
+        }
+      }
+    }
 
     void push_back(const value_type &val) {
       if (size() >= capacity()) resize(size() + 1);

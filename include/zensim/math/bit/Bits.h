@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include <bitset>
+#include <cstring>
 #include <limits>
 
 #include "zensim/TypeAlias.hpp"
@@ -51,17 +52,25 @@ namespace zs {
   }
   // ref: https://www.youtube.com/watch?v=_qzMpk-22cc
   // CppCon 2019: Timur Doumler “Type punning in modern C++”
-  template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) {
+  template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) noexcept {
     using Src = std::remove_cv_t<std::remove_reference_t<SrcT>>;
     using Dst = std::remove_cv_t<std::remove_reference_t<DstT>>;
     static_assert(sizeof(Src) == sizeof(Dst),
                   "Source Type and Destination Type must be of the same size");
+    static_assert(std::is_trivially_copyable_v<Src> && std::is_trivially_copyable_v<Dst>,
+                  "Both types should be trivially copyable.");
+    static_assert(std::alignment_of_v<Src> % std::alignment_of_v<Dst> == 0,
+                  "The original type should at least have an alignment as strict.");
 #if 0
     union {
       Src in;
       Dst out;
     } tmp{FWD(val)};
     return tmp.out;
+#elif 1
+    Dst dst{};
+    std::memcpy(&dst, &val, sizeof(Dst));
+    return dst;
 #else
     // unsafe due to strict aliasing rule
     // ref: https://en.cppreference.com/w/cpp/language/reinterpret_cast#Type_aliasing

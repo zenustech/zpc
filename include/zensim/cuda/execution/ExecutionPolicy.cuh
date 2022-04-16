@@ -118,7 +118,7 @@ namespace zs {
   // =========================  signature  ==============================
   // loopbody signature: (scratchpadMemory, blockid, warpid, threadid)
   template <typename Tn, typename F> __global__ void thread_launch(Tn n, F f) {
-    extern __shared__ char shmem[];
+    extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
       using func_traits = detail::deduce_fts<F, std::tuple<RM_CVREF_T(id)>>;
@@ -131,7 +131,7 @@ namespace zs {
     }
   }
   template <typename F> __global__ void block_thread_launch(F f) {
-    extern __shared__ char shmem[];
+    extern __shared__ std::max_align_t shmem[];
     using func_traits
         = detail::deduce_fts<F, std::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(threadIdx.x)>>;
     if constexpr (func_traits::arity == 2
@@ -150,7 +150,7 @@ namespace zs {
           std::
               random_access_iterator_tag> && is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value>
   range_launch(Tn n, F f, ZipIter iter) {
-    extern __shared__ char shmem[];
+    extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
       using func_traits = detail::deduce_fts<F, RM_CVREF_T(iter.iters)>;
@@ -180,7 +180,7 @@ namespace zs {
   }
   namespace cg = cooperative_groups;
   template <typename Tn, typename F> __global__ void block_tile_lane_launch(Tn tileSize, F f) {
-    extern __shared__ char shmem[];
+    extern __shared__ std::max_align_t shmem[];
     cg::thread_block block = cg::this_thread_block();
     cg::thread_group tile = cg::tiled_partition(block, tileSize);
     using func_traits = detail::deduce_fts<

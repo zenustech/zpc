@@ -7,6 +7,15 @@
 namespace zs {
 
   /// ref: http://docs.ros.org/en/kinetic/api/gtsam/html/SelfAdjointEigenSolver_8h_source.html
+  // This file is part of Eigen, a lightweight C++ template library
+  // for linear algebra.
+  //
+  // Copyright (C) 2008-2010 Gael Guennebaud <gael.guennebaud@inria.fr>
+  // Copyright (C) 2010 Jitse Niesen <jitse@maths.leeds.ac.uk>
+  //
+  // This Source Code Form is subject to the terms of the Mozilla
+  // Public License v. 2.0. If a copy of the MPL was not distributed
+  // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
   template <typename VecTM,
             enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
                           VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,

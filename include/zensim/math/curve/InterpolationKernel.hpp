@@ -39,6 +39,7 @@ namespace zs {
     return -1;
   }
   // ref: ziran2020
+  // https://github.com/penn-graphics-research/ziran2020
   template <int interpolation_degree, typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
   constexpr auto base_node(T x) noexcept {
     // linear: 0

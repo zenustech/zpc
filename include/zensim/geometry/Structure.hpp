@@ -57,8 +57,7 @@ namespace zs {
         = side_length > 0 && ((side_length & (side_length - 1)) == 0);
     static constexpr auto num_cell_bits = bit_count(side_length);
 
-    using grid_storage_t
-        = TileVector<value_type, (std::size_t)block_size, unsigned char, allocator_type>;
+    using grid_storage_t = TileVector<value_type, (std::size_t)block_size, allocator_type>;
     using size_type = typename grid_storage_t::size_type;
     using channel_counter_type = typename grid_storage_t::channel_counter_type;
 

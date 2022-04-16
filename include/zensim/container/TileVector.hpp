@@ -8,8 +8,7 @@
 
 namespace zs {
 
-  template <typename T, std::size_t Length = 8, typename ChnCounter = unsigned char,
-            typename AllocatorT = ZSPmrAllocator<>>
+  template <typename T, std::size_t Length = 8, typename AllocatorT = ZSPmrAllocator<>>
   struct TileVector {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "TileVector only works with zspmrallocator for now.");
@@ -26,7 +25,7 @@ namespace zs {
     using pointer = value_type *;
     using const_pointer = const value_type *;
     // tile vector specific configs
-    using channel_counter_type = ChnCounter;
+    using channel_counter_type = size_type;
     static constexpr size_type lane_width = Length;
 
     static_assert(
@@ -350,19 +349,19 @@ namespace zs {
     channel_counter_type _numChannels{1};
   };
 
-#define EXTERN_TILEVECTOR_INSTANTIATIONS(LENGTH)                                       \
-  extern template struct TileVector<u32, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<u64, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<i32, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<i64, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<f32, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<f64, LENGTH, unsigned char, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<u32, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<u64, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<i32, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<i64, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<f32, LENGTH, unsigned char, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<f64, LENGTH, unsigned char, ZSPmrAllocator<true>>;
+#define EXTERN_TILEVECTOR_INSTANTIATIONS(LENGTH)                        \
+  extern template struct TileVector<u32, LENGTH, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<u64, LENGTH, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<i32, LENGTH, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<i64, LENGTH, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<f32, LENGTH, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<f64, LENGTH, ZSPmrAllocator<>>;     \
+  extern template struct TileVector<u32, LENGTH, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<u64, LENGTH, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<i32, LENGTH, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<i64, LENGTH, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<f32, LENGTH, ZSPmrAllocator<true>>; \
+  extern template struct TileVector<f64, LENGTH, ZSPmrAllocator<true>>;
 
   /// 8, 32, 64, 512
   EXTERN_TILEVECTOR_INSTANTIATIONS(8)
@@ -385,8 +384,8 @@ namespace zs {
     }
     TileVectorView src, dst;
   };
-  template <typename T, std::size_t Length, typename ChnT, typename Allocator>
-  template <typename Policy> void TileVector<T, Length, ChnT, Allocator>::append_channels(
+  template <typename T, std::size_t Length, typename Allocator> template <typename Policy>
+  void TileVector<T, Length, Allocator>::append_channels(
       Policy &&policy, const std::vector<PropertyTag> &appendTags) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto s = size();
@@ -406,7 +405,7 @@ namespace zs {
                         tag.name, tags[i].numChannels, tag.numChannels));
     }
     if (!modified) return;
-    TileVector<T, Length, ChnT, Allocator> tmp{get_allocator(), tags, s};
+    TileVector<T, Length, Allocator> tmp{get_allocator(), tags, s};
     policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
     *this = std::move(tmp);
   }
@@ -422,9 +421,8 @@ namespace zs {
     TileVectorView tv;
     value_type v;
   };
-  template <typename T, std::size_t Length, typename ChnT, typename Allocator>
-  template <typename Policy>
-  void TileVector<T, Length, ChnT, Allocator>::reset(Policy &&policy, value_type val) {
+  template <typename T, std::size_t Length, typename Allocator> template <typename Policy>
+  void TileVector<T, Length, Allocator>::reset(Policy &&policy, value_type val) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     policy(range(size()), TileVectorReset{proxy<space>(*this), val});
   }
@@ -637,16 +635,13 @@ namespace zs {
     channel_counter_type _numChannels{0};
   };
 
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
-            typename Allocator>
-  constexpr decltype(auto) proxy(const TileVector<T, Length, ChnT, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, ChnT, Allocator>, false>{
-        vec};
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
+  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec) {
+    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false>{vec};
   }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
-            typename Allocator>
-  constexpr decltype(auto) proxy(TileVector<T, Length, ChnT, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, ChnT, Allocator>, false>{vec};
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
+  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec) {
+    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false>{vec};
   }
 
   template <execspace_e Space, typename TileVectorT, bool WithinTile, typename = void>
@@ -804,26 +799,23 @@ namespace zs {
     channel_counter_type _N{0};
   };
 
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
-            typename Allocator>
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 const TileVector<T, Length, ChnT, Allocator> &vec) {
+                                 const TileVector<T, Length, Allocator> &vec) {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
             fmt::format("tilevector attribute [\"{}\"] not exists", (std::string)tag));
-    return TileVectorView<ExecSpace, const TileVector<T, Length, ChnT, Allocator>, false>{tagNames,
-                                                                                          vec};
+    return TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false>{tagNames, vec};
   }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename ChnT,
-            typename Allocator>
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 TileVector<T, Length, ChnT, Allocator> &vec) {
+                                 TileVector<T, Length, Allocator> &vec) {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
             fmt::format("tilevector attribute [\"{}\"] not exists\n", (std::string)tag));
-    return TileVectorView<ExecSpace, TileVector<T, Length, ChnT, Allocator>, false>{tagNames, vec};
+    return TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false>{tagNames, vec};
   }
 
 }  // namespace zs

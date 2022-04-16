@@ -27,7 +27,7 @@ namespace zs {
     using bvs_t = Vector<Box, allocator_type>;
     using vector_t = Vector<value_type, allocator_type>;
     using indices_t = Vector<index_type, allocator_type>;
-    using tilevector_t = TileVector<value_type, lane_width, unsigned char, allocator_type>;
+    using tilevector_t = TileVector<value_type, lane_width, allocator_type>;
 
     constexpr decltype(auto) memoryLocation() const noexcept {
       return leafIndices.memoryLocation();

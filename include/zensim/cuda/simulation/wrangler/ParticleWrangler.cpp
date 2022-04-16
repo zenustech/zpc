@@ -6,8 +6,8 @@
 #include "zensim/physics/ConstitutiveModel.hpp"
 #include "zensim/types/Tuple.h"
 
-// zs::TileVector<float, 32, unsigned char, zs::ZSPmrAllocator<false>>;
-using ZenoParticlesType = zs::TileVector<float, 32, unsigned char, zs::ZSPmrAllocator<false>>;
+// zs::TileVector<float, 32, zs::ZSPmrAllocator<false>>;
+using ZenoParticlesType = zs::TileVector<float, 32, zs::ZSPmrAllocator<false>>;
 
 using ZenoParticlesView = zs::TileVectorView<zs::execspace_e::cuda, ZenoParticlesType, false>;
 using ConstZenoParticlesView

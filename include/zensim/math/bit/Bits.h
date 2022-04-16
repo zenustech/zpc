@@ -49,6 +49,8 @@ namespace zs {
     u.d = d;
     return u.l;
   }
+  // ref: https://www.youtube.com/watch?v=_qzMpk-22cc
+  // CppCon 2019: Timur Doumler “Type punning in modern C++”
   template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) {
     using Src = std::remove_cv_t<std::remove_reference_t<SrcT>>;
     using Dst = std::remove_cv_t<std::remove_reference_t<DstT>>;
@@ -61,6 +63,8 @@ namespace zs {
     } tmp{FWD(val)};
     return tmp.out;
 #else
+    // unsafe due to strict aliasing rule
+    // ref: https://en.cppreference.com/w/cpp/language/reinterpret_cast#Type_aliasing
     return reinterpret_cast<Dst const volatile &>(val);
 #endif
   }
@@ -139,8 +143,7 @@ namespace zs {
   template <typename Tn = std::size_t> constexpr Tn interleaved_bit_mask(int dim) noexcept {
     constexpr Tn totalBits = sizeof(Tn) << (Tn)3;
     Tn mask = 0;
-    for (Tn curBit = 0; curBit < totalBits; curBit += (Tn)dim)
-      mask |= ((Tn)1 << curBit);
+    for (Tn curBit = 0; curBit < totalBits; curBit += (Tn)dim) mask |= ((Tn)1 << curBit);
     return mask;
   }
   /**
@@ -166,9 +169,7 @@ namespace zs {
       return (Tn)0;
   }
 
-  template <typename Tn> constexpr Tn next_2pow(Tn n) noexcept {
-    return (Tn)1 << bit_count(n);
-  }
+  template <typename Tn> constexpr Tn next_2pow(Tn n) noexcept { return (Tn)1 << bit_count(n); }
   /**
    *	\fn uint32_t next_power_of_two(uint32_t i)
    *	\brief compute the next power of two bigger than the number i

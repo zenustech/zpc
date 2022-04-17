@@ -117,11 +117,12 @@ namespace zs {
       return diag_mul(U, dE_dsigma) * V.transpose();
     }
     // first piola derivative
-    template <typename VecT,
+    template <typename VecT, bool project_SPD = false,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto first_piola_derivative(const VecInterface<VecT>& F) const noexcept {
+    constexpr auto first_piola_derivative(const VecInterface<VecT>& F,
+                                          wrapv<project_SPD> = {}) const noexcept {
       using T = typename VecT::value_type;
       using Ti = typename VecT::index_type;
       constexpr int dim = VecT::template range_t<0>::value;
@@ -130,6 +131,7 @@ namespace zs {
       auto dE_dsigma = static_cast<const Model*>(this)->dpsi_dsigma(S);
       // A
       auto d2E_dsigma2 = static_cast<const Model*>(this)->d2psi_dsigma2(S);
+      if constexpr (project_SPD) make_pd(d2E_dsigma2);
       // Bij
       using MatB = typename VecT::template variant_vec<T, integer_seq<Ti, 2, 2>>;
       auto ComputeBij = [&dE_dsigma, &S = S,
@@ -147,6 +149,11 @@ namespace zs {
 
       if constexpr (is_same_v<typename VecT::dims, sindex_seq<3, 3>>) {
         auto B0 = ComputeBij(0) /*B12*/, B1 = ComputeBij(1) /*B23*/, B2 = ComputeBij(2) /*B13*/;
+        if constexpr (project_SPD) {
+          make_pd(B0);
+          make_pd(B1);
+          make_pd(B2);
+        }
         // fmt::print("B0: [{}, {}], [{}, {}]\n", B0(0, 0), B0(0, 1), B0(1, 0), B0(1, 1));
         // fmt::print("B1: [{}, {}], [{}, {}]\n", B1(0, 0), B1(0, 1), B1(1, 0), B1(1, 1));
         // fmt::print("B2: [{}, {}], [{}, {}]\n", B2(0, 0), B2(0, 1), B2(1, 0), B2(1, 1));
@@ -191,6 +198,7 @@ namespace zs {
         }
       } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<2, 2>>) {
         auto B = ComputeBij(0);
+        if constexpr (project_SPD) make_pd(B);
         for (int ji = 0; ji != dim * dim; ++ji) {
           int j = ji / dim;
           int i = ji - j * dim;

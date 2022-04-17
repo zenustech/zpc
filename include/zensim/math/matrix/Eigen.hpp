@@ -17,7 +17,7 @@ namespace zs {
   // Public License v. 2.0. If a copy of the MPL was not distributed
   // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
   template <typename VecTM,
-            enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
+            enable_if_all<VecTM::dim == 2,
                           VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                           VecTM::template range_t<0>::value == 2> = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &M) noexcept {
@@ -74,7 +74,7 @@ namespace zs {
   }
 
   template <typename VecTM,
-            enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
+            enable_if_all<VecTM::dim == 2,
                           VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                           VecTM::template range_t<0>::value == 3> = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &mat) noexcept {
@@ -210,6 +210,29 @@ namespace zs {
     eivals *= scale;
     eivals += shift;
     return zs::make_tuple(eivals, eivecs);
+  }
+
+  template <
+      typename VecTM,
+      enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
+                    VecTM::template range_t<0>::value == VecTM::template range_t<1>::value> = 0>
+  constexpr void make_pd(VecInterface<VecTM> &mat) noexcept {
+    constexpr int dim = VecTM::template range_t<0>::value;
+    using value_type = typename VecTM::value_type;
+    using MatT = typename VecTM::template variant_vec<value_type, typename VecTM::extents>;
+
+    // ref:
+    // Hierarchical Optimization Time Integration (HOT)
+    // https://github.com/penn-graphics-research/HOT/blob/d8d57be410ed343c3fb37af6020cf5e14a0d1bec/Lib/Ziran/Math/Linear/EigenDecomposition.h#L111
+    auto [eivals, eivecs] = eigen_decomposition(mat);
+    for (int i = 0; i != dim; ++i) {
+      if (eivals[i] < limits<value_type>::epsilon())
+        eivals[i] = limits<value_type>::epsilon();
+      else
+        break;  // eivals in ascending order
+    }
+    mat = eivecs * MatT::init([&eivals](int i, int j) { return i == j ? eivals[i] : 0; })
+          * eivecs.transpose();
   }
 
 }  // namespace zs

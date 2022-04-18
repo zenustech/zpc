@@ -25,7 +25,7 @@ namespace zs {
     using pointer = value_type *;
     using const_pointer = const value_type *;
     // tile vector specific configs
-    using channel_counter_type = size_type;
+    using channel_counter_type = int;
     static constexpr size_type lane_width = Length;
 
     static_assert(

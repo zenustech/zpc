@@ -231,8 +231,9 @@ namespace zs {
       else
         break;  // eivals in ascending order
     }
-    mat = eivecs * MatT::init([&eivals](int i, int j) { return i == j ? eivals[i] : 0; })
-          * eivecs.transpose();
+    auto diag = MatT::zeros();
+    for (int d = 0; d != dim; ++d) diag(d, d) = eivals[d];
+    mat = eivecs * diag * eivecs.transpose();
   }
 
 }  // namespace zs

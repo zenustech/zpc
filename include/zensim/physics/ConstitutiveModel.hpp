@@ -3,6 +3,7 @@
 
 #include "zensim/math/Vec.h"
 #include "zensim/math/curve/InterpolationKernel.hpp"
+#include "zensim/math/matrix/Eigen.hpp"
 #include "zensim/math/matrix/SVD.hpp"
 #include "zensim/tpls/fmt/core.h"
 #include "zensim/types/Polymorphism.h"
@@ -253,18 +254,20 @@ namespace zs {
     // I_2 = tr(F^T F)
     // I_3 = det(F)
     // I_i(F)
-    template <int I, int deriv_order = 0, typename VecT,
+    template <int I, int deriv_order = 0, typename VecT, bool project_SPD = false,
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             VecT::template range_t<0>::value <= 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto I_wrt_F(const VecInterface<VecT>& F) const noexcept {
+    constexpr auto I_wrt_F(const VecInterface<VecT>& F, wrapv<project_SPD> = {}) const noexcept {
       constexpr auto dim = dim_t<VecT>::value;
       using ScalarT = typename VecT::value_type;
       using index_type = typename VecT::index_type;
       using GradientT = gradient_t<VecT>;
       using HessianT = hessian_t<VecT>;
       using RetT = pack_t<VecT, deriv_order>;
+
+      static_assert(!project_SPD, "no SPD projection impl for invariant-based iso elastic model");
 
       using MatT = vec<ScalarT, dim, dim>;
       RetT ret{};
@@ -276,22 +279,31 @@ namespace zs {
         } else if constexpr (deriv_order == 1) {
           auto [R, S] = math::polar_decomposition(F);
           std::get<0>(ret) = trace(S);
+          // ref: Dynamic Deformables: Implementations and Production Practices
+          // Sec 7.3.2, P96
           std::get<1>(ret) = vectorize(R);
         } else if constexpr (deriv_order == 2) {
           auto [U, S, V] = math::qr_svd(F);
           std::get<0>(ret) = S.sum();
           auto R = U * V.transpose();
+          // ref: Dynamic Deformables: Implementations and Production Practices
+          // Sec 7.3.2, P96
           std::get<1>(ret) = vectorize(R);
           // auto Ssym = diag_mul(V, S) * V.transpose();
           auto& dRdF = std::get<2>(ret);
           dRdF = HessianT::zeros();
           constexpr auto sqrt2Inv = (ScalarT)1 / g_sqrt2;
           if constexpr (dim == 2) {
+            // ref: Dynamic Deformables: Implementations and Production Practices
+            // Sec 5.4.4 (5.42), P65
             constexpr MatT T0{0, -1, 1, 0};
             const auto vecQ0 = vectorize(sqrt2Inv * U * T0 * V.transpose());
             dRdF
                 += (ScalarT)2 / math::max((S(0) + S(1)), (ScalarT)1e-6) * dyadic_prod(vecQ0, vecQ0);
           } else if constexpr (dim == 3) {
+            // ref: Dynamic Deformables: Implementations and Production Practices
+            // Sec 5.4.4 (5.47), P67
+            // Sec 7.2 P89
             constexpr MatT Ti[3] = {{0, -1, 0, 1, 0, 0, 0, 0, 0},
                                     {0, 0, 0, 0, 0, 1, 0, -1, 0},
                                     {0, 0, 1, 0, 0, 0, -1, 0, 0}};
@@ -307,6 +319,8 @@ namespace zs {
       else if constexpr (I == 1) {
         std::get<0>(ret) = trace(F.transpose() * F);
         if constexpr (deriv_order > 0) {
+          // ref: Dynamic Deformables: Implementations and Production Practices
+          // Sec 7.3.2, P96
           std::get<1>(ret) = vectorize(F + F);
           if constexpr (deriv_order > 1) {
             constexpr auto I9x9 = HessianT::identity();
@@ -327,6 +341,8 @@ namespace zs {
           else if constexpr (dim == 2)
             std::get<1>(ret) = GradientT{F(1, 1), -F(0, 1), -F(1, 0), F(0, 0)};
           else if constexpr (dim == 3) {
+            // ref: Dynamic Deformables: Implementations and Production Practices
+            // Sec 7.3.2, P96
             const auto f1f2 = cross(f1, f2);
             const auto f2f0 = cross(f2, f0);
             const auto f0f1 = cross(f0, f1);
@@ -334,6 +350,8 @@ namespace zs {
                                          f2f0(2), f0f1(0), f0f1(1), f0f1(2)};
           }
           // hessian
+          // ref: Dynamic Deformables: Implementations and Production Practices
+          // Sec 7.3.2 (7.10), P95
           if constexpr (deriv_order > 1) {
             if constexpr (dim == 1)
               std::get<2>(ret) = HessianT{0};
@@ -509,20 +527,21 @@ namespace zs {
       return m;
     }
     // first piola derivative
-    template <typename VecT,
+    template <typename VecT, bool project_SPD = false,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto first_piola_derivative(const VecInterface<VecT>& F) const noexcept {
+    constexpr auto first_piola_derivative(const VecInterface<VecT>& F,
+                                          wrapv<project_SPD> flag = {}) const noexcept {
       // sum_i ((d2Psi / dI_i2) g_i g_i^T + ((dPsi / dI_i) H_i))
       typename VecT::template variant_vec<typename VecT::value_type,
                                           integer_seq<typename VecT::index_type, 3>>
           Is{};
       gradient_t<VecT> gi[3]{};
       hessian_t<VecT> Hi[3]{};
-      zs::tie(Is[0], gi[0], Hi[0]) = I_wrt_F<0, 2>(F);
-      zs::tie(Is[1], gi[1], Hi[1]) = I_wrt_F<1, 2>(F);
-      zs::tie(Is[2], gi[2], Hi[2]) = I_wrt_F<2, 2>(F);
+      zs::tie(Is[0], gi[0], Hi[0]) = I_wrt_F<0, 2>(F, flag);
+      zs::tie(Is[1], gi[1], Hi[1]) = I_wrt_F<1, 2>(F, flag);
+      zs::tie(Is[2], gi[2], Hi[2]) = I_wrt_F<2, 2>(F, flag);
       auto dPdF = hessian_t<VecT>::zeros();
       dPdF += d2psi_dI2<0>(Is) * dyadic_prod(gi[0], gi[0]) + dpsi_dI<0>(Is) * Hi[0];
       dPdF += d2psi_dI2<1>(Is) * dyadic_prod(gi[1], gi[1]) + dpsi_dI<1>(Is) * Hi[1];

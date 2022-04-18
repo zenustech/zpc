@@ -607,12 +607,11 @@ namespace zs {
       return false;
     }
     template <typename VecT, typename... Args>
-    constexpr decltype(auto) do_project_strain(VecInterface<VecT>& F,
-                                               Args&&... args) const noexcept {
+    constexpr auto do_project_strain(VecInterface<VecT>& F, Args&&... args) const noexcept {
       auto [U, S, V] = math::svd(F);
       using result_t = decltype(static_cast<const Model*>(this)->project_sigma(S, FWD(args)...));
       if constexpr (!is_same_v<result_t, void>) {
-        decltype(auto) res = static_cast<const Model*>(this)->project_sigma(S, FWD(args)...);
+        auto res = static_cast<const Model*>(this)->project_sigma(S, FWD(args)...);
         F.assign(diag_mul(U, S) * V.transpose());
         return res;
       } else {
@@ -622,6 +621,35 @@ namespace zs {
       }
     }
   };
+
+  template <typename VecTM,
+            enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value
+                                               == VecTM::template range_t<1>::value> = 0>
+  constexpr auto dFdXMatrix(const VecInterface<VecTM>& DmInv) noexcept {
+    using value_type = typename VecTM::value_type;
+    using index_type = typename VecTM::index_type;
+    constexpr int dim = VecTM::template range_t<0>::value;
+    constexpr int dimp1 = dim + 1;
+    using RetT =
+        typename VecTM::template variant_vec<value_type,
+                                             integer_seq<index_type, dim * dim, dim * dimp1>>;
+
+    vec<value_type, dim> t{};  // negative col-sum
+    for (int d = 0; d != dim; ++d) {
+      t[d] = -DmInv(0, d);
+      for (int vi = 1; vi != dim; ++vi) t[d] -= DmInv(vi, d);
+    }
+    auto ret = RetT::zeros();
+    for (int vi = 0; vi != dimp1; ++vi) {
+      index_type c = vi * dim;
+      for (int j = 0; j != dim; ++j) {
+        index_type r = j * dim;
+        const auto v = vi != 0 ? DmInv(vi - 1, j) : t(j);
+        for (int d = 0; d != dim; ++d) ret(r + d, c + d) = v;
+      }
+    }
+    return ret;
+  }
 
   struct MaterialConfig {
     float rho{1e3};

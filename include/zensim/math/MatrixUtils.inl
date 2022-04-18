@@ -53,6 +53,23 @@ namespace zs {
     for (typename VecTM::index_type i = 0; i != nrows; ++i) c.val(i) = m(i, j);
     return c;
   }
+  template <typename VecTM, bool ColumnMajor = true, enable_if_all<VecTM::dim == 2> = 0>
+  constexpr auto flatten(const VecInterface<VecTM> &m, wrapv<ColumnMajor> = {}) noexcept {
+    constexpr auto nrows = VecTM::template range_t<0>::value;
+    constexpr auto ncols = VecTM::template range_t<1>::value;
+    using index_type = typename VecTM::index_type;
+    typename VecTM::template variant_vec<typename VecTM::value_type,
+                                         integer_seq<index_type, nrows * ncols>>
+        r{};
+    if constexpr (ColumnMajor) {
+      for (index_type offset = 0, j = 0; j != ncols; ++j)
+        for (index_type i = 0; i != nrows; ++i) r(offset++) = m(i, j);
+    } else {
+      for (index_type offset = 0, i = 0; i != nrows; ++i)
+        for (index_type j = 0; j != ncols; ++j) r(offset++) = m(i, j);
+    }
+    return r;
+  }
 
   template <typename VecTM,
             enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value

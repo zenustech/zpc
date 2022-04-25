@@ -11,9 +11,9 @@
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
 #include "zensim/resource/Resource.h"
-#include "zensim/tpls/fmt/color.h"
-#include "zensim/tpls/fmt/core.h"
-#include "zensim/tpls/magic_enum/magic_enum.hpp"
+#include "zensim/zpc_tpls/fmt/color.h"
+#include "zensim/zpc_tpls/fmt/core.h"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
 

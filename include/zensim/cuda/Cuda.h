@@ -24,7 +24,7 @@
 #include "zensim/Singleton.h"
 #include "zensim/Reflection.h"
 #include "zensim/profile/CppTimers.hpp"
-#include "zensim/tpls/fmt/color.h"
+#include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
 

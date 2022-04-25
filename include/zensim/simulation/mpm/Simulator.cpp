@@ -3,7 +3,7 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/geometry/Collider.h"
 #include "zensim/physics/SoundSpeedCfl.hpp"
-#include "zensim/tpls/magic_enum/magic_enum.hpp"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
 

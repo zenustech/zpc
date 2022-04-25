@@ -1,9 +1,9 @@
 #include "Allocator.h"
 
 #include "zensim/Logger.hpp"
-#include "zensim/tpls/fmt/color.h"
-#include "zensim/tpls/fmt/core.h"
-#include "zensim/tpls/fmt/format.h"
+#include "zensim/zpc_tpls/fmt/color.h"
+#include "zensim/zpc_tpls/fmt/core.h"
+#include "zensim/zpc_tpls/fmt/format.h"
 
 #if defined(ZS_PLATFORM_UNIX)
 #  include <sys/mman.h>

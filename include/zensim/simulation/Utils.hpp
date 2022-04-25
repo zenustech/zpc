@@ -1,7 +1,7 @@
 #pragma once
 #include "zensim/math/Vec.h"
 #include "zensim/math/curve/InterpolationKernel.hpp"
-#include "zensim/tpls/magic_enum/magic_enum.hpp"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Property.h"
 

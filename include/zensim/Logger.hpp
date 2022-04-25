@@ -3,9 +3,9 @@
 
 #include "Platform.hpp"
 #include "zensim/Singleton.h"
-#include "zensim/tpls/fmt/format.h"
-// #include "zensim/tpls/loguru/loguru.hpp"
-#include "zensim/tpls/plog/Log.h"
+#include "zensim/zpc_tpls/fmt/format.h"
+// #include "zensim/zpc_tpls/loguru/loguru.hpp"
+#include "zensim/zpc_tpls/plog/Log.h"
 #include "plog/Initializers/RollingFileInitializer.h"
 
 namespace zs {

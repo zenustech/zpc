@@ -5,7 +5,7 @@
 #include "zensim/math/curve/InterpolationKernel.hpp"
 #include "zensim/math/matrix/Eigen.hpp"
 #include "zensim/math/matrix/SVD.hpp"
-#include "zensim/tpls/fmt/core.h"
+#include "zensim/zpc_tpls/fmt/core.h"
 #include "zensim/types/Polymorphism.h"
 
 namespace zs {

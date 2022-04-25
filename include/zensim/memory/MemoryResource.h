@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #include "zensim/Platform.hpp"
-#include "zensim/tpls/fmt/format.h"
+#include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"

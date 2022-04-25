@@ -7,7 +7,7 @@
 #include "zensim/math/Vec.h"
 #include "zensim/math/curve/InterpolationKernel.hpp"
 #include "zensim/math/matrix/Transform.hpp"
-#include "zensim/tpls/fmt/color.h"
+#include "zensim/zpc_tpls/fmt/color.h"
 
 namespace zs {
 

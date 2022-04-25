@@ -5,7 +5,7 @@
 #include <filesystem>
 
 #include "zensim/cuda/Cuda.h"
-#include "zensim/tpls/jitify/jitify2.hpp"
+#include "zensim/zpc_tpls/jitify/jitify2.hpp"
 #include "zensim/types/Tuple.h"
 
 namespace fs = std::filesystem;

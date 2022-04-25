@@ -5,7 +5,7 @@
 #include "zensim/geometry/VdbLevelSet.h"
 #include "zensim/math/Vec.h"
 #include "zensim/physics/ConstitutiveModel.hpp"
-#include "zensim/tpls/magic_enum/magic_enum.hpp"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/BuilderBase.hpp"
 
 namespace zs {

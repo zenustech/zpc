@@ -1,6 +1,6 @@
 #include "ParticleIO.hpp"
 
-#include "zensim/tpls/partio/Partio.h"
+#include "zensim/zpc_tpls/partio/Partio.h"
 
 namespace zs {
 

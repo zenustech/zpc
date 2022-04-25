@@ -6,7 +6,7 @@
 
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/cuda/profile/CudaTimers.cuh"
-#include "zensim/tpls/fmt/color.h"
+#include "zensim/zpc_tpls/fmt/color.h"
 
 namespace zs {
 

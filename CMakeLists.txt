@@ -78,7 +78,7 @@ enable_doxygen()
 
 # ---- dependencies ---- 
 # ======================
-add_subdirectory(include/zensim/tpls) # build zsproj_deps target
+add_subdirectory(include/zensim/zpc_tpls) # build zsproj_deps target
 enable_sanitizers(zsproj_deps)
 if (ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which
@@ -118,7 +118,7 @@ add_library(zpc_cxx_deps INTERFACE)
 target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
 target_compile_definitions(zpc_cxx_deps
-    INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/Assets/"
+    INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/zpc_assets/"
 )
 if (ZS_BUILD_SHARED_LIBS)
 target_compile_definitions(zpc_cxx_deps
@@ -165,7 +165,7 @@ find_package(Doxygen)
 if (DOXYGEN_FOUND)
   find_package(Sphinx COMPONENTS breathe)
   message("Setting up document cmake targets")
-  set(DOXYGEN_EXCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/tpls)
+  set(DOXYGEN_EXCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/zpc_tpls)
   if (Sphinx_FOUND)
     set(DOXYGEN_GENERATE_HTML YES)
   endif(Sphinx_FOUND)
@@ -263,7 +263,7 @@ install(TARGETS ${INSTALL_TARGETS}
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim
   PATTERN "*.h|*.hpp|*.tpp|*.cuh"
-  PATTERN "tpls/*"
+  PATTERN "zpc_tpls/*"
   # FILES_MATCHING PATTERN "*.h|*.hpp|*.tpp|*.cuh"
 )
 

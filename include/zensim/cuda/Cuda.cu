@@ -4,8 +4,8 @@
 
 #include "../Platform.hpp"
 #include "Cuda.h"
-#include "zensim/tpls/fmt/color.h"
-#include "zensim/tpls/fmt/format.h"
+#include "zensim/zpc_tpls/fmt/color.h"
+#include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/types/SourceLocation.hpp"
 
 #define MEM_POOL_CTRL 3

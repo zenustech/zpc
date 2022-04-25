@@ -9,8 +9,8 @@
 #include "zensim/math/matrix/Transform.hpp"
 #include "zensim/physics/constitutive_models/NeoHookean.hpp"
 #include "zensim/resource/Resource.h"
-#include "zensim/tpls/fmt/color.h"
-#include "zensim/tpls/fmt/core.h"
+#include "zensim/zpc_tpls/fmt/color.h"
+#include "zensim/zpc_tpls/fmt/core.h"
 
 struct Dummy {
   using T = float;

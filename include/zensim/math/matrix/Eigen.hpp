@@ -2,7 +2,7 @@
 
 #include "Utility.h"
 #include "zensim/math/Vec.h"
-#include "zensim/tpls/fmt/core.h"
+#include "zensim/zpc_tpls/fmt/core.h"
 
 namespace zs {
 

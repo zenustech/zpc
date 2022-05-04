@@ -5,8 +5,8 @@
 #include "zensim/math/curve/InterpolationKernel.hpp"
 #include "zensim/math/matrix/Eigen.hpp"
 #include "zensim/math/matrix/SVD.hpp"
-#include "zensim/zpc_tpls/fmt/core.h"
 #include "zensim/types/Polymorphism.h"
+#include "zensim/zpc_tpls/fmt/core.h"
 
 namespace zs {
 
@@ -35,6 +35,12 @@ namespace zs {
     T mu = 0.5 * E / (1 + nu);
     T lam = E * nu / ((1 + nu) * (1 - 2 * nu));
     return std::make_tuple(mu, lam);
+  }
+  template <typename T> constexpr std::tuple<T, T> E_nu_from_lame_parameters(T mu, T lam) {
+    T lam_mu = lam + mu;
+    T E = mu * (3 * lam + 2 * mu) / lam_mu;
+    T nu = lam / (2 * lam_mu);
+    return std::make_tuple(E, nu);
   }
 
   template <typename Model> struct IsotropicConstitutiveModelInterface {

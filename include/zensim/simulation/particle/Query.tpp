@@ -29,7 +29,7 @@ namespace zs {
       constexpr auto execTag = wrapv<space>{};
       execPol(range(table._tableSize), CleanSparsity{execTag, table});
       execPol(range(pars.size()),
-              ComputeSparsity{execTag, dx, 1, table, pars.attrVector("pos"), 0, displacement});
+              ComputeSparsity{execTag, dx, 1, table, pars.attrVector("x"), 0, displacement});
       /// counts, offsets, indices
       // counts
       auto &counts = indexBuckets._counts;
@@ -41,8 +41,8 @@ namespace zs {
       })(counts.memoryLocation().getTag());
 
       auto tmp = counts;  // zero-ed array
-      execPol(range(pars.size()), SpatiallyCount{execTag, dx, table, pars.attrVector("pos"), counts,
-                                                 1, 0, displacement});
+      execPol(range(pars.size()),
+              SpatiallyCount{execTag, dx, table, pars.attrVector("x"), counts, 1, 0, displacement});
       // offsets
       auto &offsets = indexBuckets._offsets;
       offsets = vector_t{allocator, (std::size_t)numCells};
@@ -52,8 +52,8 @@ namespace zs {
       // indices
       auto &indices = indexBuckets._indices;
       indices = vector_t{allocator, pars.size()};
-      execPol(range(pars.size()), SpatiallyDistribute{execTag, dx, table, pars.attrVector("pos"),
-                                                      tmp, offsets, indices, 1, 0, displacement});
+      execPol(range(pars.size()), SpatiallyDistribute{execTag, dx, table, pars.attrVector("x"), tmp,
+                                                      offsets, indices, 1, 0, displacement});
       return indexBuckets;
     })(particles);
   }

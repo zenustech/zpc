@@ -78,7 +78,7 @@ namespace zs {
       ret._backgroundVecValue = TV{v[0], v[1], v[2]};
     }
     ret._table = typename SparseLevelSet<3>::table_t{leafCount, memsrc_e::host, -1};
-    ret._grid = typename SpLs::grid_t{{{"sdf", 1}, {"vel", 3}},
+    ret._grid = typename SpLs::grid_t{{{"sdf", 1}, {"v", 3}},
                                       (float)sdfGridPtr->transform().voxelSize()[0],
                                       leafCount,
                                       memsrc_e::host,
@@ -110,7 +110,7 @@ namespace zs {
     }
 
     auto table = proxy<execspace_e::host>(ret._table);
-    // auto tiles = proxy<execspace_e::host>({"sdf", "vel"}, ret._tiles);
+    // auto tiles = proxy<execspace_e::host>({"sdf", "v"}, ret._tiles);
     auto gridview = proxy<execspace_e::host>(ret._grid);
     table.clear();
 
@@ -143,7 +143,7 @@ namespace zs {
           auto vel = velSampler.wsSample(sdfTransform.indexToWorld(sdfCell.getCoord()));
           const auto offset = blockno * ret.block_size + cellid;
           gridview.voxel("sdf", offset) = sdf;
-          gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+          gridview.set("v", offset, TV{vel[0], vel[1], vel[2]});
         }
       }
     }

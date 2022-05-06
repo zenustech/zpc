@@ -92,7 +92,7 @@ namespace zs {
          memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Grid{get_default_allocator(mre, devid), {{"unnamed", numChns}}, dx, count} {}
     Grid(value_type dx = 1.f, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : Grid{get_default_allocator(mre, devid), {{"mass", 1}, {"vel", dim}}, dx, 0} {}
+        : Grid{get_default_allocator(mre, devid), {{"m", 1}, {"v", dim}}, dx, 0} {}
 
     Grid clone(const allocator_type &allocator) const {
       Grid ret{};
@@ -203,8 +203,8 @@ namespace zs {
     }
 
     Grids(const allocator_type &allocator,
-          const std::vector<PropertyTag> &channelTags = {{"mass", 1}, {"vel", dim}},
-          value_type dx = 1.f, size_type numBlocks = 0, grid_e ge = grid_e::collocated)
+          const std::vector<PropertyTag> &channelTags = {{"m", 1}, {"v", dim}}, value_type dx = 1.f,
+          size_type numBlocks = 0, grid_e ge = grid_e::collocated)
         : _collocatedGrid{allocator, channelTags, dx},
           _cellcenteredGrid{allocator, channelTags, dx},
           _staggeredGrid{allocator, channelTags, dx},
@@ -217,9 +217,9 @@ namespace zs {
       else if (ge == grid_e::staggered)
         _staggeredGrid.resize(numBlocks);
     }
-    Grids(const std::vector<PropertyTag> &channelTags = {{"mass", 1}, {"vel", dim}},
-          value_type dx = 1.f, size_type numBlocks = 0, memsrc_e mre = memsrc_e::host,
-          ProcID devid = -1, grid_e ge = grid_e::collocated)
+    Grids(const std::vector<PropertyTag> &channelTags = {{"m", 1}, {"v", dim}}, value_type dx = 1.f,
+          size_type numBlocks = 0, memsrc_e mre = memsrc_e::host, ProcID devid = -1,
+          grid_e ge = grid_e::collocated)
         : Grids{get_default_allocator(mre, devid), channelTags, dx, numBlocks, ge} {}
 
     void align(grid_e targetGrid) {

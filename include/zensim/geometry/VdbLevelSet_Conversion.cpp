@@ -299,7 +299,7 @@ namespace zs {
     }
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
     ret._grid = typename SpLs::grid_t{
-        {{"vel", 3}}, (float)gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
+        {{"v", 3}}, (float)gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto mi = box.min();
@@ -346,7 +346,7 @@ namespace zs {
           V2W(2, 0), V2W(2, 1), V2W(2, 2), V2W(2, 3), V2W(3, 0), V2W(3, 1), V2W(3, 2), V2W(3, 3));
     }
     getchar();
-#endif 
+#endif
 #ifdef ZS_PLATFORM_WINDOWS
     constexpr bool onwin = true;
 #else
@@ -375,7 +375,7 @@ namespace zs {
                 for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
                   auto vel = cell.getValue();
                   const auto offset = blockno * ret.block_size + cellid;
-                  gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+                  gridview.set("v", offset, TV{vel[0], vel[1], vel[2]});
                 }
               });
       /// iterate over all inactive tiles that have negative values
@@ -397,7 +397,7 @@ namespace zs {
           using lsv_t = RM_CVREF_T(ls);
           for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci) {
             const auto offset = (bi + nbs) * ls.block_size + ci;
-            ls._grid.set("vel", offset, ls._backgroundVecValue);
+            ls._grid.set("v", offset, ls._backgroundVecValue);
           }
         });
         // register table
@@ -421,7 +421,7 @@ namespace zs {
             coord_ -= loc;
             auto blockno = ls._table.query(coord_);
             auto val = TV{iter.getValue()[0], iter.getValue()[1], iter.getValue()[2]};
-            ls._grid.set("vel", blockno * ls.block_size + lsv_t::grid_view_t::coord_to_cellid(loc),
+            ls._grid.set("v", blockno * ls.block_size + lsv_t::grid_view_t::coord_to_cellid(loc),
                          val);
           }
         });
@@ -444,7 +444,7 @@ namespace zs {
           for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
             auto vel = cell.getValue();
             const auto offset = blockno * ret.block_size + cellid;
-            gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+            gridview.set("v", offset, TV{vel[0], vel[1], vel[2]});
             // gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
           }
         }
@@ -484,7 +484,7 @@ namespace zs {
     }
     ret._table = typename SpLs::table_t{leafCount, memsrc_e::host, -1};
     ret._grid = typename SpLs::grid_t{
-        {{"vel", 3}}, (float)gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
+        {{"v", 3}}, (float)gridPtr->transform().voxelSize()[0], leafCount, memsrc_e::host, -1};
     {
       openvdb::CoordBBox box = gridPtr->evalActiveVoxelBoundingBox();
       auto mi = box.min();
@@ -539,7 +539,7 @@ namespace zs {
                 for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
                   auto vel = cell.getValue();
                   const auto offset = blockno * ret.block_size + cellid;
-                  gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+                  gridview.set("v", offset, TV{vel[0], vel[1], vel[2]});
                 }
               });
       /// iterate over all inactive tiles that have negative values
@@ -561,7 +561,7 @@ namespace zs {
           using lsv_t = RM_CVREF_T(ls);
           for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci) {
             const auto offset = (bi + nbs) * ls.block_size + ci;
-            ls._grid.set("vel", offset, ls._backgroundVecValue);
+            ls._grid.set("v", offset, ls._backgroundVecValue);
           }
         });
         // register table
@@ -585,7 +585,7 @@ namespace zs {
             coord_ -= loc;
             auto blockno = ls._table.query(coord_);
             auto val = TV{iter.getValue()[0], iter.getValue()[1], iter.getValue()[2]};
-            ls._grid.set("vel", blockno * ls.block_size + lsv_t::grid_view_t::coord_to_cellid(loc),
+            ls._grid.set("v", blockno * ls.block_size + lsv_t::grid_view_t::coord_to_cellid(loc),
                          val);
           }
         });
@@ -606,7 +606,7 @@ namespace zs {
           for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
             auto vel = cell.getValue();
             const auto offset = blockno * ret.block_size + cellid;
-            gridview.set("vel", offset, TV{vel[0], vel[1], vel[2]});
+            gridview.set("v", offset, TV{vel[0], vel[1], vel[2]});
             // gridview.voxel("mask", offset) = cell.isValueOn() ? 1 : 0;
           }
         }

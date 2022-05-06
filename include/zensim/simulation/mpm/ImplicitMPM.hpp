@@ -50,7 +50,7 @@ namespace zs {
                      G2P2GTransfer{execTag, wrapv<transfer_scheme_e::apic>{}, dt, constitutiveModel,
                                    proxy<space>(grids.grid()), in, out, partition, obj});
               // update v_i
-              auto gridm = dof_view<space, 1>(grids.grid(), "mass", 0);
+              auto gridm = dof_view<space, 1>(grids.grid(), "m", 0);
               policy(range(in.numEntries()), ForceDtSqrPlusMass{out, gridm, out, in, dt});
             },
             [](...) {})(model, simulator.partitions[partI], simulator.particles[objId],
@@ -145,7 +145,7 @@ namespace zs {
           [&, did = mh.devid()](auto& partition, auto& grids)
               -> std::enable_if_t<RM_CVREF_T(partition)::dim == RM_CVREF_T(grids)::dim> {
             fmt::print("[gpu {}]\tpreconditioning {} grid blocks\n", (int)did, partition.size());
-            auto gridm = dof_view<space, 1>(grids.grid(), "mass", 0);
+            auto gridm = dof_view<space, 1>(grids.grid(), "m", 0);
             policy(range(out.numEntries()), DivPernodeMass{in, gridm, out});
           },
           [](...) {})(simulator.partitions[partI], simulator.grids[partI]);

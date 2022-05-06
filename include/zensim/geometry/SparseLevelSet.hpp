@@ -749,9 +749,9 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
       if constexpr (category == grid_e::staggered)
-        return wpack("vel", x, 0) * _i2wShat * _i2wRhat;
+        return wpack("v", x, 0) * _i2wShat * _i2wRhat;
       else
-        return wpack<dim>("vel", x, 0) * _i2wShat * _i2wRhat;
+        return wpack<dim>("v", x, 0) * _i2wShat * _i2wRhat;
     }
 
     table_view_t _table{};
@@ -765,6 +765,14 @@ namespace zs {
     TM _i2wRhat{TM::identity()}, _i2wShat{TM::identity()};
   };
 
+  // directly
+  template <execspace_e ExecSpace, typename HashTableT, typename GridT>
+  constexpr decltype(auto) proxy(HashTableView<ExecSpace, HashTableT> tablev,
+                                 GridView<ExecSpace, GridT, true, false> gridv) {
+    constexpr int dim = RM_CVREF_T(tablev)::dim;
+    constexpr auto category = RM_CVREF_T(gridv)::category;
+    return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{tablev, gridv};
+  }
   template <execspace_e ExecSpace, int dim, grid_e category>
   constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  SparseLevelSet<dim, category> &levelset) {

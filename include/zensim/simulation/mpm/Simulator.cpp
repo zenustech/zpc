@@ -111,9 +111,9 @@ namespace zs {
     this->target().partitions.resize(memDsts.size());
     this->target().maxVelSqrNorms.resize(memDsts.size());
     for (auto&& [memDst, nblocks, grids, partition, maxVel] :
-         zs::zip(memDsts, numBlocks, this->target().grids,
-                 this->target().partitions, this->target().maxVelSqrNorms)) {
-      grids = Grids<f32, 3, 4>{{{"mass", 1}, {"vel", 3}, {"rhs", 3}},
+         zs::zip(memDsts, numBlocks, this->target().grids, this->target().partitions,
+                 this->target().maxVelSqrNorms)) {
+      grids = Grids<f32, 3, 4>{{{"m", 1}, {"v", 3}, {"rhs", 3}},
                                target().simOptions.dx,
                                nblocks,
                                memDst.memspace(),

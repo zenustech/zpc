@@ -19,7 +19,7 @@ namespace zs {
         execPol.device(mloc.devid());
 
       execPol(range(ret._tableSize), CleanSparsity{execTag, ret});
-      execPol(range(p.size()), ComputeSparsity{execTag, dx, blocklen, ret, p.attrVector("pos")});
+      execPol(range(p.size()), ComputeSparsity{execTag, dx, blocklen, ret, p.attrVector("x")});
       return ret;
     })(particles);
   }

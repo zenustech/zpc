@@ -119,7 +119,7 @@ extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
     if (!accessors[i].aux) globals[i] = *(T *)accessors[i](pi);
 
   /// execute
-  auto xi = pars.pack<3>("pos", pi);
+  auto xi = pars.pack<3>("x", pi);
   auto coord = ibs.bucketCoord(xi) - 1;
 
   for (auto &&iter : zs::ndrange<3>(3)) {
@@ -132,7 +132,7 @@ extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
     for (std::size_t j = 0; j != bucketSize; ++j) {
       auto pj = ibs.indices[bucketOffset + j];
       if (pj == pi) continue;  // skip myself
-      auto xj = neighborPars.pack<3>("pos", pj);
+      auto xj = neighborPars.pack<3>("x", pj);
       auto disSqr = (xi - xj).l2NormSqr();
       if (disSqr < ibs.dx * ibs.dx) {
         /// assign neighbor particle channels

@@ -11,8 +11,8 @@ namespace zs {
   template <typename T, int d> bool convertParticles(Particles<T, d> &particles) {
     if (particles.space() == memsrc_e::device || particles.space() == memsrc_e::um) {
       constexpr auto dim = d;
-      std::vector<PropertyTag> properties{PropertyTag{"mass", 1}, PropertyTag{"pos", dim},
-                                          PropertyTag{"vel", dim}};
+      std::vector<PropertyTag> properties{PropertyTag{"m", 1}, PropertyTag{"x", dim},
+                                          PropertyTag{"v", dim}};
       if (particles.hasC()) properties.push_back(PropertyTag{"C", dim * dim});
       if (particles.hasF()) properties.push_back(PropertyTag{"F", dim * dim});
       if (particles.hasJ()) properties.push_back(PropertyTag{"J", 1});
@@ -32,12 +32,12 @@ namespace zs {
 #  if 1
             if (i == 0) {
               printf("num total channels %d\n", (int)ptiles.numChannels());
-              printf("mass channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("mass"),
-                     (int)ptiles._tagOffsets[ptiles.propertyIndex("mass")], ptiles.hasProperty("mass"));
-              printf("pos channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("pos"),
-                     (int)ptiles._tagOffsets[ptiles.propertyIndex("pos")], ptiles.hasProperty("pos"));
-              printf("vel channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("vel"),
-                     (int)ptiles._tagOffsets[ptiles.propertyIndex("vel")], ptiles.hasProperty("vel"));
+              printf("mass channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("m"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("m")], ptiles.hasProperty("m"));
+              printf("pos channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("x"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("x")], ptiles.hasProperty("x"));
+              printf("vel channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("v"),
+                     (int)ptiles._tagOffsets[ptiles.propertyIndex("v")], ptiles.hasProperty("v"));
               printf("F channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("F"),
                      (int)ptiles._tagOffsets[ptiles.propertyIndex("F")], ptiles.hasProperty("F"));
               printf("C channel %d offset: %d (%d)\n", (int)ptiles.propertyIndex("C"),
@@ -48,10 +48,10 @@ namespace zs {
                      (int)ptiles._tagOffsets[ptiles.propertyIndex("logjp")], ptiles.hasProperty("logjp"));
             }
 #  endif
-            ptiles.template tuple<dim>("pos",
+            ptiles.template tuple<dim>("x",
                                        i);  // = vec<float, 3>{0.f, 1.f, 2.f};  // parray.pos(i);
-            ptiles("mass", i) = parray.mass(i);
-            ptiles.template tuple<dim>("vel", i) = parray.vel(i);
+            ptiles("m", i) = parray.mass(i);
+            ptiles.template tuple<dim>("v", i) = parray.vel(i);
             if (ptiles.hasProperty("C")) ptiles.template tuple<dim * dim>("C", i) = parray.C(i);
             if (ptiles.hasProperty("F")) ptiles.template tuple<dim * dim>("F", i) = parray.F(i);
             if (ptiles.hasProperty("J")) ptiles("J", i) = parray.J(i);

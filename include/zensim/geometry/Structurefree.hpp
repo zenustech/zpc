@@ -48,24 +48,24 @@ namespace zs {
     }
 
     constexpr MemoryLocation memoryLocation() const noexcept {
-      return match([](auto &&att) { return att.memoryLocation(); })(attr("pos"));
+      return match([](auto &&att) { return att.memoryLocation(); })(attr("x"));
     }
     constexpr memsrc_e space() const noexcept {
-      return match([](auto &&att) { return att.memspace(); })(attr("pos"));
+      return match([](auto &&att) { return att.memspace(); })(attr("x"));
     }
     constexpr ProcID devid() const noexcept {
-      return match([](auto &&att) { return att.devid(); })(attr("pos"));
+      return match([](auto &&att) { return att.devid(); })(attr("x"));
     }
     constexpr auto size() const noexcept {
-      return match([](auto &&att) { return att.size(); })(attr("pos"));
+      return match([](auto &&att) { return att.size(); })(attr("x"));
     }
     decltype(auto) get_allocator() const noexcept {
-      return match([](auto &&att) { return att.get_allocator(); })(attr("pos"));
+      return match([](auto &&att) { return att.get_allocator(); })(attr("x"));
     }
 
     Particles(const allocator_type &allocator, size_type count) {
-      /// "pos" is a reserved key
-      _attributes["pos"] = Vector<TV>{allocator, count};
+      /// "x" is a reserved key
+      _attributes["x"] = Vector<TV>{allocator, count};
     }
     Particles(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Particles{get_memory_source(mre, devid), 0} {}
@@ -73,22 +73,22 @@ namespace zs {
         : Particles{get_memory_source(mre, devid), count} {}
 
     std::vector<std::array<ValueT, dim>> retrievePositions() const {
-      const auto &X = attr<TV>("pos");
+      const auto &X = attr<TV>("x");
       Vector<TV> Xtmp{X.size(), memsrc_e::host, -1};
       Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Xtmp.data()},
-           MemoryEntity{X.memoryLocation(), (void *)X.data()}, X.size() * sizeof(TV));
+                     MemoryEntity{X.memoryLocation(), (void *)X.data()}, X.size() * sizeof(TV));
       std::vector<std::array<ValueT, dim>> ret(X.size());
       memcpy(ret.data(), Xtmp.data(), sizeof(TV) * X.size());
       return ret;
     }
     std::vector<T> retrieveStressMagnitude() const {
-      const auto &X = attr<TV>("pos");
+      const auto &X = attr<TV>("x");
       std::vector<T> ret(X.size());
       if (hasAttr("F", true)) {
         const auto &F = attr<TM>("F");
         Vector<TM> Ftmp{X.size()};
         Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)Ftmp.data()},
-             MemoryEntity{F.memoryLocation(), (void *)F.data()}, F.size() * sizeof(TM));
+                       MemoryEntity{F.memoryLocation(), (void *)F.data()}, F.size() * sizeof(TM));
         for (size_type i = 0; i < Ftmp.size(); ++i) {
           const auto &v = Ftmp[i];
           ret[i] = v(0) * (v(4) * v(8) - v(5) * v(7)) - v(1) * (v(3) * v(8) - v(5) * v(6))
@@ -97,7 +97,7 @@ namespace zs {
       } else if (hasAttr("J", true)) {
         const auto &J = attr<TM>("F");
         Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)ret.data()},
-             MemoryEntity{J.memoryLocation(), (void *)J.data()}, J.size() * sizeof(T));
+                       MemoryEntity{J.memoryLocation(), (void *)J.data()}, J.size() * sizeof(T));
       }
       return ret;
     }
@@ -240,9 +240,9 @@ namespace zs {
     ParticlesView() = default;
     ~ParticlesView() = default;
     explicit constexpr ParticlesView(ParticlesT &particles)
-        : _M{(T *)particles.getAttrAddress("mass")},
-          _X{(TV *)particles.getAttrAddress("pos")},
-          _V{(TV *)particles.getAttrAddress("vel")},
+        : _M{(T *)particles.getAttrAddress("m")},
+          _X{(TV *)particles.getAttrAddress("x")},
+          _V{(TV *)particles.getAttrAddress("v")},
           _Dinv{(TV *)particles.getAttrAddress("Dinv")},
           _J{(T *)particles.getAttrAddress("J")},
           _F{(TM *)particles.getAttrAddress("F")},
@@ -293,9 +293,9 @@ namespace zs {
     ParticlesView() = default;
     ~ParticlesView() = default;
     explicit constexpr ParticlesView(const ParticlesT &particles)
-        : _M{(const T *)particles.getAttrAddress("mass")},
-          _X{(const TV *)particles.getAttrAddress("pos")},
-          _V{(const TV *)particles.getAttrAddress("vel")},
+        : _M{(const T *)particles.getAttrAddress("m")},
+          _X{(const TV *)particles.getAttrAddress("x")},
+          _V{(const TV *)particles.getAttrAddress("v")},
           _Dinv{(const TV *)particles.getAttrAddress("Dinv")},
           _J{(const T *)particles.getAttrAddress("J")},
           _F{(const TM *)particles.getAttrAddress("F")},

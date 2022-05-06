@@ -13,9 +13,9 @@ namespace zs {
       auto coord = ls._table._activeKeys[bi] + ls_t::grid_view_t::cellid_to_coord(ci);
       typename ls_t::TV vi{};
       if constexpr (ls_t::category == grid_e::staggered)
-        vi = ls.ipack("vel", ls.cellToIndex(coord), 0);
+        vi = ls.ipack("v", ls.cellToIndex(coord), 0);
       else
-        vi = ls.wpack<dim>("vel", ls.indexToWorld(coord), 0);
+        vi = ls.wpack<dim>("v", ls.indexToWorld(coord), 0);
       vi = vi.abs();
       auto vm = vi[0];
       for (int d = 1; d != dim; ++d)
@@ -34,7 +34,7 @@ namespace zs {
 
     Vector<typename SparseLevelSet<dim, category>::value_type> vel{ls.get_allocator(), 1};
     vel.setVal(0);
-    if (ls.hasProperty("vel")) {
+    if (ls.hasProperty("v")) {
       auto nbs = ls.numBlocks();
       pol(Collapse{nbs, ls.block_size}, max_ls_speed_op{proxy<space>(ls), vel.data()});
 #if 0
@@ -46,9 +46,9 @@ namespace zs {
             auto coord = ls._table._activeKeys[bi] + ls_t::grid_view_t::cellid_to_coord(ci);
             typename ls_t::TV vi{};
             if constexpr (ls_t::category == grid_e::staggered)
-              vi = ls.ipack("vel", ls.cellToIndex(coord), 0);
+              vi = ls.ipack("v", ls.cellToIndex(coord), 0);
             else
-              vi = ls.wpack<3>("vel", ls.indexToWorld(coord), 0);
+              vi = ls.wpack<3>("v", ls.indexToWorld(coord), 0);
             vi = vi.abs();
             auto vm = vi[0];
             if (vi[1] > vm) vm = vi[1];

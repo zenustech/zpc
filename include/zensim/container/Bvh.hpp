@@ -77,27 +77,33 @@ namespace zs {
   template <execspace_e space, typename LBvhT> struct LBvhView<space, const LBvhT> {
     static constexpr int dim = LBvhT::dim;
     static constexpr auto exectag = wrapv<space>{};
-    using Tn = typename LBvhT::float_type;
-    using index_t = typename LBvhT::integer_type;
+    using index_t = typename LBvhT::index_type;
     using bv_t = typename LBvhT::Box;
     using bvs_t = typename LBvhT::bvs_t;
     using indices_t = typename LBvhT::indices_t;
+    using tilevector_t = typename LBvhT::tilevector_t;
 
     constexpr LBvhView() = default;
     ~LBvhView() = default;
 
     explicit constexpr LBvhView(const LBvhT &lbvh)
-        : _sortedBvs{proxy<space>(lbvh.sortedBvs)},
+        : _sortedBvs{proxy<space>({}, lbvh.sortedBvs)},
           _auxIndices{proxy<space>(lbvh.auxIndices)},
           _levels{proxy<space>(lbvh.levels)},
           _parents{proxy<space>(lbvh.parents)},
           _leafIndices{proxy<space>(lbvh.leafIndices)},
-          _numNodes{static_cast<index_t>(lbvh.numNodes())} {}
+          _numNodes{static_cast<index_t>(lbvh.getNumNodes())} {}
 
     constexpr auto numNodes() const noexcept { return _numNodes; }
     constexpr auto numLeaves() const noexcept { return (numNodes() + 1) / 2; }
 
-    VectorView<space, const bvs_t> _sortedBvs;
+    constexpr bv_t getNodeBV(index_t node) {
+      auto mi = _sortedBvs.pack<dim>("min", node);
+      auto ma = _sortedBvs.pack<dim>("max", node);
+      return bv_t{mi, ma};
+    }
+
+    TileVectorView<space, const tilevector_t, false> _sortedBvs;
     VectorView<space, const indices_t> _auxIndices, _levels, _parents, _leafIndices;
     index_t _numNodes;
   };

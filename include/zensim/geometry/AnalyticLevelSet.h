@@ -60,6 +60,11 @@ namespace zs {
       _max = max;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr AnalyticLevelSet(const tuple<VecT, VecT> &bv) noexcept : _min{}, _max{} {
+      _min = get<0>(bv);
+      _max = get<1>(bv);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr AnalyticLevelSet(const VecInterface<VecT> &center, T len) : _min{}, _max{} {
       _min = center - (len / 2);
       _max = center + (len / 2);

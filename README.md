@@ -10,7 +10,7 @@ See [Specification](Specification.md) for more usage info.
 ## **Compilation**
 This is a cross-platform C++/CUDA cmake project. The minimum version requirement of cmake is 3.18, yet the latest version is generally recommended. Please install cmake through official website or python3-pip, since the cmake version in apt repo is behind.
 
-When CUDA is enabled, the required CUDA version is 11.0+ (for c++17).
+When CUDA is enabled, the required CUDA version is 11.4+ (for c++17 and latest cuda utilities).
 
 Currently, *supported OS* is Ubuntu 20.04+, and *tested compilers* includes >gcc10.0, >clang-11. 
 

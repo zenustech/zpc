@@ -27,6 +27,20 @@ namespace zs {
       TV X = R.transpose() * x_minus_b * one_over_s;  // material space
       return levelset.getSignedDistance(X) < 0;
     }
+    template <typename VecT>
+    constexpr auto getVelocity(const VecInterface<VecT> &x) const noexcept {
+      auto x_minus_b = x - b;
+      auto one_over_s = 1 / s;
+      auto X = R.transpose() * x_minus_b * one_over_s;  // material space
+      return omega.cross(x_minus_b) + (dsdt * one_over_s) * x_minus_b
+             + R * s * levelset.getMaterialVelocity(X) + dbdt;
+    }
+    template <typename VecT> constexpr auto getNormal(const VecInterface<VecT> &x) const noexcept {
+      auto x_minus_b = x - b;
+      auto one_over_s = 1 / s;
+      auto X = R.transpose() * x_minus_b * one_over_s;  // material space
+      return R * levelset.getNormal(X);
+    }
     template <typename VecT0, typename VecT1, typename VecT2>
     constexpr bool resolveCollisionWithNormal(const VecInterface<VecT0> &x, VecInterface<VecT1> &v,
                                               VecInterface<VecT2> &normal,

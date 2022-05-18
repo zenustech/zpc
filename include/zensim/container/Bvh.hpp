@@ -97,10 +97,33 @@ namespace zs {
     constexpr auto numNodes() const noexcept { return _numNodes; }
     constexpr auto numLeaves() const noexcept { return (numNodes() + 1) / 2; }
 
-    constexpr bv_t getNodeBV(index_t node) {
-      auto mi = _sortedBvs.pack<dim>("min", node);
-      auto ma = _sortedBvs.pack<dim>("max", node);
+    constexpr bv_t getNodeBV(index_t node) const {
+      auto mi = _sortedBvs.template pack<dim>("min", node);
+      auto ma = _sortedBvs.template pack<dim>("max", node);
       return bv_t{mi, ma};
+    }
+
+    // BV can be either VecInterface<VecT> or AABBBox<dim, T>
+    template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
+      if (auto nl = numLeaves(); nl <= 2) {
+        for (index_t i = 0; i != nl; ++i) {
+          if (overlaps(getNodeBV(i), bv)) f(_auxIndices[i]);
+        }
+        return;
+      }
+      index_t node = 0;
+      while (node != -1 && node != _numNodes) {
+        index_t level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (!overlaps(getNodeBV(node), bv)) break;
+        // leaf node check
+        if (level == 0) {
+          if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
+          node++;
+        } else  // separate at internal nodes
+          node = _auxIndices[node];
+      }
     }
 
     TileVectorView<space, const tilevector_t, false> _sortedBvs;

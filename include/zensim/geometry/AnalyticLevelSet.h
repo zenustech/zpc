@@ -65,7 +65,7 @@ namespace zs {
       _max = get<1>(bv);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr AnalyticLevelSet(const VecInterface<VecT> &center, T len) : _min{}, _max{} {
+    constexpr AnalyticLevelSet(const VecInterface<VecT> &center, T len = 0) : _min{}, _max{} {
       _min = center - (len / 2);
       _max = center + (len / 2);
     }
@@ -236,6 +236,15 @@ namespace zs {
     for (int d = 0; d < dim; ++d)
       if (b._min[d] > p[d] || b._max[d] < p[d]) return false;
     return true;
+  }
+
+  template <int dim, typename T, typename VecT,
+            enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+  constexpr void merge(AABBBox<dim, T> &box, const VecInterface<VecT> &p) noexcept {
+    for (int d = 0; d != dim; ++d) {
+      if (p[d] < box._min[d]) box._min[d] = p[d];
+      if (p[d] > box._max[d]) box._max[d] = p[d];
+    }
   }
   /// Sphere
   template <int dim, typename T = float> using BoundingSphere

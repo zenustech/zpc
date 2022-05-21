@@ -339,8 +339,8 @@ namespace zs {
 
   // 26.2.7/3 abs(__z):  Returns the magnitude of __z.
   template <typename T> constexpr T abs(const complex<T> &z) noexcept {
-    const T x = z.real();
-    const T y = z.imag();
+    T x = z.real();
+    T y = z.imag();
     const T s = zs::max(zs::abs(x), zs::abs(y));
     if (s == T{}) return s;
     x /= s;
@@ -732,7 +732,8 @@ namespace zs {
       }
       return t;
     }
-    template <typename T> T get_smallest_positive_real_cubic_root(T a, T b, T c, T d, T tol) {
+    template <typename T>
+    constexpr T get_smallest_positive_real_cubic_root(T a, T b, T c, T d, T tol) {
       // return negative value if no positive real root is found
       T t = -1;
       if (zs::abs(a) <= tol)
@@ -742,17 +743,19 @@ namespace zs {
         zs::complex<T> delta0(b * b - 3 * a * c, 0);
         zs::complex<T> delta1(2 * b * b * b - 9 * a * b * c + 27 * a * a * d, 0);
         zs::complex<T> C = zs::pow(
-            (delta1 + zs::sqrt(delta1 * delta1 - 4.0 * delta0 * delta0 * delta0)) / 2.0, 1.0 / 3.0);
-        if (zs::abs(C) == 0.0) {
+            (delta1 + zs::sqrt(delta1 * delta1 - (T)4.0 * delta0 * delta0 * delta0)) / (T)2.0,
+            (T)1.0 / (T)3.0);
+        if (zs::abs(C) == (T)0.0) {
           // a corner case listed by wikipedia found by our collaborate from another project
-          C = zs::pow((delta1 - zs::sqrt(delta1 * delta1 - 4.0 * delta0 * delta0 * delta0)) / 2.0,
-                      1.0 / 3.0);
+          C = zs::pow(
+              (delta1 - zs::sqrt(delta1 * delta1 - (T)4.0 * delta0 * delta0 * delta0)) / (T)2.0,
+              (T)1.0 / (T)3.0);
         }
-        zs::complex<T> u2 = (-1.0 + sqrt(3.0) * i) / 2.0;
-        zs::complex<T> u3 = (-1.0 - sqrt(3.0) * i) / 2.0;
-        zs::complex<T> t1 = (b + C + delta0 / C) / (-3.0 * a);
-        zs::complex<T> t2 = (b + u2 * C + delta0 / (u2 * C)) / (-3.0 * a);
-        zs::complex<T> t3 = (b + u3 * C + delta0 / (u3 * C)) / (-3.0 * a);
+        zs::complex<T> u2 = ((T)-1.0 + zs::sqrt((T)3.0) * i) / (T)2.0;
+        zs::complex<T> u3 = ((T)-1.0 - zs::sqrt((T)3.0) * i) / (T)2.0;
+        zs::complex<T> t1 = (b + C + delta0 / C) / ((T)-3.0 * a);
+        zs::complex<T> t2 = (b + u2 * C + delta0 / (u2 * C)) / ((T)-3.0 * a);
+        zs::complex<T> t3 = (b + u3 * C + delta0 / (u3 * C)) / ((T)-3.0 * a);
 
         if ((zs::abs(imag(t1)) < tol) && (real(t1) > 0)) t = real(t1);
         if ((zs::abs(imag(t2)) < tol) && (real(t2) > 0) && ((real(t2) < t) || (t < 0)))

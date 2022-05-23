@@ -248,4 +248,15 @@ namespace zs {
     return grad;
   }
 
+  template <typename T> constexpr T barrier_hessian(const T d2, const T dHat2, const T kappa) {
+    T hess = 0;
+    if (d2 < dHat2) {
+      T t2 = d2 - dHat2;
+      hess = kappa
+             * ((zs::log(d2 / dHat2) * (T)-2.0 - t2 * (T)4.0 / d2) / (dHat2 * dHat2)
+                + 1.0 / (d2 * d2) * (t2 / dHat2) * (t2 / dHat2));
+    }
+    return hess;
+  }
+
 }  // namespace zs

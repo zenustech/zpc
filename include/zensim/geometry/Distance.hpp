@@ -28,14 +28,14 @@ namespace zs {
     using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::extent;
-    using RetT = typename VecTA::template variant_vec<T, integer_seq<Ti, 2, dim>>;
-    RetT ret{};
+    using GradT = typename VecTA::template variant_vec<T, integer_seq<Ti, 2, dim>>;
+    GradT grad{};
     for (int d = 0; d != dim; ++d) {
       auto v = 2 * (a(d) - b(d));
-      ret(0, d) = v;
-      ret(1, d) = -v;
+      grad(0, d) = v;
+      grad(1, d) = -v;
     }
-    return ret;
+    return grad;
   }
   template <
       typename VecTA, typename VecTB,
@@ -676,13 +676,13 @@ namespace zs {
     using Ti = typename VecTP::index_type;
     constexpr int dim = VecTP::extent;
     static_assert(dim == 3 || dim == 2, "currently only implement 2d/3d version");
-    using RetT = typename VecTP::template variant_vec<T, integer_seq<Ti, 3, dim>>;
-    RetT ret{};
+    using GradT = typename VecTP::template variant_vec<T, integer_seq<Ti, 3, dim>>;
+    GradT grad{};
     if constexpr (dim == 2)
-      detail::g_PE2D(p[0], p[1], e0[0], e0[1], e1[0], e1[1], ret);
+      detail::g_PE2D(p[0], p[1], e0[0], e0[1], e1[0], e1[1], grad);
     else if constexpr (dim == 3)
-      detail::g_PE3D(p[0], p[1], p[2], e0[0], e0[1], e0[2], e1[0], e1[1], e1[2], ret);
-    return ret;
+      detail::g_PE3D(p[0], p[1], p[2], e0[0], e0[1], e0[2], e1[0], e1[1], e1[2], grad);
+    return grad;
   }
 
   template <
@@ -1542,11 +1542,11 @@ namespace zs {
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
-    using HessT = typename VecTA::template variant_vec<T, integer_seq<Ti, 4, dim>>;
-    HessT hess{};
+    using GradT = typename VecTA::template variant_vec<T, integer_seq<Ti, 4, dim>>;
+    GradT grad{};
     detail::g_EE(ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2], eb1[0],
-                 eb1[1], eb1[2], hess);
-    return hess;
+                 eb1[1], eb1[2], grad);
+    return grad;
   }
 
   template <
@@ -1560,10 +1560,10 @@ namespace zs {
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
     using HessT = typename VecTA::template variant_vec<T, integer_seq<Ti, dim * 4, dim * 4>>;
-    HessT ret{};
+    HessT hess{};
     detail::H_EE(ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2], eb1[0],
-                 eb1[1], eb1[2], ret);
-    return ret;
+                 eb1[1], eb1[2], hess);
+    return hess;
   }
 
   //
@@ -2363,11 +2363,11 @@ namespace zs {
     using Ti = typename VecTP::index_type;
     constexpr int dim = VecTP::extent;
     static_assert(dim == 3, "currently only implement 3d version");
-    using RetT = typename VecTP::template variant_vec<T, integer_seq<Ti, 4, dim>>;
-    RetT ret{};
+    using GradT = typename VecTP::template variant_vec<T, integer_seq<Ti, 4, dim>>;
+    GradT grad{};
     detail::g_PT(p[0], p[1], p[2], t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], t2[0], t2[1], t2[2],
-                 ret);
-    return ret;
+                 grad);
+    return grad;
   }
 
   template <

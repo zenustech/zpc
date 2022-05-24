@@ -212,6 +212,98 @@ namespace zs {
     return zs::make_tuple(eivals, eivecs);
   }
 
+  /// ref: Yu Fang, wiki
+  template <
+      typename VecTM,
+      enable_if_all<
+          VecTM::dim == 2, VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
+          VecTM::template range_t<0>::value != 2, VecTM::template range_t<0>::value != 3> = 0>
+  constexpr auto eigen_decomposition(const VecInterface<VecTM> &mat) noexcept {
+    using value_type = typename VecTM::value_type;
+    using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+                            conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
+    using Ti = typename VecTM::index_type;
+    constexpr int dim = VecTM::template range_t<0>::value;
+    using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
+    using VecT =
+        typename VecTM::template variant_vec<T, integer_seq<typename VecTM::index_type, dim>>;
+    using IVecT =
+        typename VecTM::template variant_vec<Ti, integer_seq<typename VecTM::index_type, dim>>;
+
+    auto S = mat.clone();
+    MatT E = MatT::identity();  // eigen vectors
+    VecT e{};                   // eigen values
+    T max_S = 0;
+    for (Ti i = 0; i != dim; ++i)
+      for (Ti j = 0; j != dim; ++j) max_S = zs::max(max_S, zs::abs(S(i, j)));
+    Ti k{}, l{}, m{}, state{};
+    T s{}, c{}, t{}, p{}, y{}, d{}, r{};
+    IVecT ind{}, changed{};
+    state = dim;
+    auto maxind = [&S](Ti k) {
+      constexpr int dim = VecTM::template range_t<0>::value;
+      Ti m = k + 1;
+      for (Ti i = k + 2; i < dim; ++i)
+        if (zs::abs(S(k, i)) > zs::abs(S(k, m))) m = i;
+      return m;
+    };
+    auto update = [&e, &changed, &y, &state](int k, T t) {
+      y = e[k];
+      e[k] = y + t;
+      if (changed[k] && y == e[k]) {
+        changed[k] = false;
+        --state;
+      } else if (!changed[k] && y != e[k]) {
+        changed[k] = true;
+        ++state;
+      }
+    };
+    auto rotate = [&S](Ti k, Ti l, Ti i, Ti j, T s, T c) {
+      constexpr int dim = VecTM::template range_t<0>::value;
+      T Skl = S(k, l), Sij = S(i, j);
+      S(k, l) = c * Skl - s * Sij;
+      S(i, j) = s * Skl + c * Sij;
+    };
+    for (k = 0; k != dim; ++k) {
+      ind[k] = maxind(k);
+      e[k] = S(k, k);
+      changed[k] = true;
+    }
+    while (state != 0) {
+      m = 0;
+      for (k = 1; k < dim - 1; ++k)
+        if (zs::abs(S(k, ind[k])) > zs::abs(S(m, ind[m]))) m = k;
+      k = m;
+      l = ind[m];
+      p = S(k, l);
+      if (zs::abs(p) < max_S * 1e-6) break;
+      y = (e[l] - e[k]) / 2;
+      d = zs::abs(y) + zs::sqrt(p * p + y * y);
+      r = zs::sqrt(p * p + d * d);
+      c = d / r;
+      s = p / r;
+      t = p * p / d;
+      if (y < 0) {
+        s = -s;
+        t = -t;
+      }
+      S(k, l) = 0;
+      update(k, -t);
+      update(l, t);
+      for (int i = 0; i <= k - 1; ++i) rotate(i, k, i, l, s, c);
+      for (int i = k + 1; i <= l - 1; ++i) rotate(k, i, i, l, s, c);
+      for (int i = l + 1; i < dim; ++i) rotate(k, i, l, i, s, c);
+      for (int i = 0; i != dim; ++i) {
+        T Eik = E(i, k), Eil = E(i, l);
+        E(i, k) = c * Eik - s * Eil;
+        E(i, l) = s * Eik + c * Eil;
+      }
+      ind[k] = maxind(k);
+      ind[l] = maxind(l);
+    }
+    return zs::make_tuple(e, E);
+  }
+
   template <
       typename VecTM,
       enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
@@ -233,7 +325,14 @@ namespace zs {
     }
     auto diag = MatT::zeros();
     for (int d = 0; d != dim; ++d) diag(d, d) = eivals[d];
+#if 0
     mat = eivecs * diag * eivecs.transpose();
+#else
+    mat = mat.zeros();
+    for (int i = 0; i != dim; ++i)
+      for (int j = 0; j != dim; ++j)
+        for (int k = 0; k != dim; ++k) mat(i, k) += eivecs(i, j) * eivals[j] * eivecs(k, j);
+#endif
   }
 
 }  // namespace zs

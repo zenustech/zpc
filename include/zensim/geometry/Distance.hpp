@@ -1,5 +1,6 @@
 #pragma once
 #include "zensim/math/MathUtils.h"
+#include "zensim/math/Vec.h"
 #include "zensim/math/VecInterface.hpp"
 
 namespace zs {
@@ -1420,7 +1421,7 @@ namespace zs {
 
     // compute the line parameters of the two closest points
     sN = (b * e - c * d);
-    if (sN <= 0.0) {  // sc < 0 => the s=0 edge is visible
+    if (sN <= 0) {  // sc < 0 => the s=0 edge is visible
       tN = e;
       tD = c;
       defaultCase = 2;
@@ -1430,8 +1431,8 @@ namespace zs {
       defaultCase = 5;
     } else {
       tN = (a * e - b * d);
-      if (tN > 0.0 && tN < tD
-          && (u.cross(v).dot(w) == 0.0 || u.cross(v).l2NormSqr() < 1.0e-20 * a * c)) {
+      if (tN > 0 && tN < tD
+          && (u.cross(v).dot(w) == 0 || u.cross(v).l2NormSqr() < 1.0e-20 * a * c)) {
         if (sN < D / 2) {
           tN = e;
           tD = c;
@@ -1445,9 +1446,9 @@ namespace zs {
       // else defaultCase stays as 8
     }
 
-    if (tN <= 0.0) {  // tc < 0 => the t=0 edge is visible
+    if (tN <= 0) {  // tc < 0 => the t=0 edge is visible
       // recompute sc for this edge
-      if (-d <= 0.0) {
+      if (-d <= 0) {
         return 0;
       } else if (-d >= a) {
         return 3;
@@ -1456,7 +1457,7 @@ namespace zs {
       }
     } else if (tN >= tD) {  // tc > 1  => the t=1 edge is visible
       // recompute sc for this edge
-      if ((-d + b) <= 0.0) {
+      if ((-d + b) <= 0) {
         return 1;
       } else if ((-d + b) >= a) {
         return 4;
@@ -2216,6 +2217,7 @@ namespace zs {
 
   }  // namespace detail
 
+#if 0
   template <typename VecTP, typename VecT>
   constexpr int pt_distance_type(const VecInterface<VecTP> &p, const VecInterface<VecT> &t0,
                                  const VecInterface<VecT> &t1, const VecInterface<VecT> &t2) {
@@ -2297,6 +2299,72 @@ namespace zs {
       return -1;
     }
   }
+#else
+  template <typename VecTP, typename VecT>
+  constexpr int pt_distance_type(const VecInterface<VecTP> &p, const VecInterface<VecT> &t0,
+                                 const VecInterface<VecT> &t1, const VecInterface<VecT> &t2) {
+    using T = math::op_result_t<typename VecTP::value_type, typename VecT::value_type>;
+    constexpr int dim = VecTP::extent;
+    static_assert(dim == 3, "only implemented 3d version");
+    using Ti = typename VecTP::index_type;
+    using MatT = typename VecTP::template variant_vec<T, integer_seq<Ti, dim, dim>>;
+
+    auto basis0 = t1 - t0;
+    auto basis1 = t2 - t0;
+    auto basis2 = p - t0;
+    const auto nVec = cross(basis0, basis1);
+    basis1 = basis0.cross(nVec);
+    MatT D{}, D1{}, D2{};
+    auto fillMats = [&]() {
+      for (int d = 0; d != dim; ++d) {
+        D(d, 0) = basis0[d];
+        D(d, 1) = basis1[d];
+        D(d, 2) = nVec[d];
+        D1(d, 0) = basis2[d];
+        D1(d, 1) = basis1[d];
+        D1(d, 2) = nVec[d];
+        D2(d, 0) = basis0[d];
+        D2(d, 1) = basis2[d];
+        D2(d, 2) = nVec[d];
+      }
+    };
+    fillMats();
+    T param[3][2] = {};
+    {
+      const auto detD = zs::determinant(D);
+      param[0][0] = zs::determinant(D1) / detD;
+      param[0][1] = zs::determinant(D2) / detD;
+    }
+    if (param[0][0] > 0 && param[0][0] < 1 && param[0][1] >= 0) return 3;  // PE t0t1
+
+    basis0 = t2 - t1;
+    basis1 = basis0.cross(nVec);
+    basis2 = p - t1;
+    fillMats();
+    {
+      const auto detD = zs::determinant(D);
+      param[1][0] = zs::determinant(D1) / detD;
+      param[1][1] = zs::determinant(D2) / detD;
+    }
+    if (param[1][0] > 0 && param[1][0] < 1 && param[1][1] >= 0) return 4;  // PE t1t2
+
+    basis0 = t0 - t2;
+    basis1 = basis0.cross(nVec);
+    basis2 = p - t2;
+    fillMats();
+    {
+      const auto detD = zs::determinant(D);
+      param[2][0] = zs::determinant(D1) / detD;
+      param[2][1] = zs::determinant(D2) / detD;
+    }
+    if (param[2][0] > 0 && param[2][0] < 1 && param[2][1] >= 0) return 5;  // PE t2t0
+
+    if (param[0][0] <= 0 && param[2][0] >= 1) return 0;  // PP t0
+    if (param[1][0] <= 0 && param[0][0] >= 1) return 1;  // PP t1
+    if (param[2][0] <= 0 && param[1][0] >= 1) return 2;  // PP t2
+    return 6;
+  }
+#endif
 
   template <
       typename VecTP, typename VecT,

@@ -323,9 +323,9 @@ namespace zs {
       else
         break;  // eivals in ascending order
     }
+#if 0
     auto diag = MatT::zeros();
     for (int d = 0; d != dim; ++d) diag(d, d) = eivals[d];
-#if 0
     mat = eivecs * diag * eivecs.transpose();
 #else
     mat = mat.zeros();

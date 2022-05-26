@@ -69,6 +69,15 @@ namespace zs {
       _min = center - (len / 2);
       _max = center + (len / 2);
     }
+    template <typename... Tis> constexpr auto getVert(Tis... is_) const noexcept {
+      static_assert(sizeof...(is_) == dim, "dimension mismtach!");
+      int is[] = {is_...};
+      TV ret{};
+      for (int i = 0; i != sizeof...(is_); ++i) {
+        ret[i] = is[i] == 0 ? _min[i] : _max[i];
+      }
+      return ret;
+    }
 
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr T do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {

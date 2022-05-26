@@ -246,6 +246,9 @@ namespace zs {
     const size_type numLeaves = getNumLeaves();
     const size_type numNodes = getNumNodes();
 
+    if (primBvs.size() != numLeaves)
+      throw std::runtime_error("bvh topology changes, require rebuild!");
+
     const memsrc_e memdst{sortedBvs.memspace()};
     const ProcID devid{sortedBvs.devid()};
 

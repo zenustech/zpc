@@ -229,15 +229,21 @@ namespace zs {
   }
 
   template <typename T> constexpr T barrier(const T d2, const T dHat2, const T kappa) {
+#if 0
     T e = 0;
     if (d2 < dHat2) {
       T t2 = d2 - dHat2;
       e = -kappa * (t2 / dHat2) * (t2 / dHat2) * zs::log(d2 / dHat2);
     }
     return e;
+#else
+    if (d2 >= dHat2) return 0;
+    return -kappa * (d2 - dHat2) * (d2 - dHat2) * zs::log(d2 / dHat2);
+#endif
   }
 
   template <typename T> constexpr T barrier_gradient(const T d2, const T dHat2, const T kappa) {
+#if 0
     T grad = 0;
     if (d2 < dHat2) {
       T t2 = d2 - dHat2;
@@ -246,9 +252,15 @@ namespace zs {
                 - ((t2 / dHat2) * (t2 / dHat2)) / d2);
     }
     return grad;
+#else
+    if (d2 >= dHat2) return 0;
+    T t2 = d2 - dHat2;
+    return kappa * (t2 * zs::log(d2 / dHat2) * -2 - (t2 * t2) / d2);
+#endif
   }
 
   template <typename T> constexpr T barrier_hessian(const T d2, const T dHat2, const T kappa) {
+#if 0
     T hess = 0;
     if (d2 < dHat2) {
       T t2 = d2 - dHat2;
@@ -257,6 +269,11 @@ namespace zs {
                 + 1.0 / (d2 * d2) * (t2 / dHat2) * (t2 / dHat2));
     }
     return hess;
+#else
+    if (d2 >= dHat2) return 0;
+    T t2 = d2 - dHat2;
+    return kappa * ((zs::log(d2 / dHat2) * -2 - t2 * 4 / d2) + (t2 / d2) * (t2 / d2));
+#endif
   }
 
 }  // namespace zs

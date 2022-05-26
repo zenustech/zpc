@@ -255,6 +255,48 @@ namespace zs {
       if (p[d] > box._max[d]) box._max[d] = p[d];
     }
   }
+
+  template <typename VecT>
+  constexpr bool pt_ccd_broadphase(const VecInterface<VecT> &p, const VecInterface<VecT> &t0,
+                                   const VecInterface<VecT> &t1, const VecInterface<VecT> &t2,
+                                   const VecInterface<VecT> &dp, const VecInterface<VecT> &dt0,
+                                   const VecInterface<VecT> &dt1, const VecInterface<VecT> &dt2,
+                                   const typename VecT::value_type dist,
+                                   const typename VecT::value_type toc_upperbound) {
+    constexpr int dim = VecT::template range_t<0>::value;
+    using T = typename VecT::value_type;
+    using bv_t = AABBBox<dim, T>;
+    bv_t pbv{get_bounding_box(p, p + toc_upperbound * dp)},
+        tbv{get_bounding_box(t0, t0 + toc_upperbound * dt0)};
+    merge(tbv, t1);
+    merge(tbv, t1 + toc_upperbound * dt1);
+    merge(tbv, t2);
+    merge(tbv, t2 + toc_upperbound * dt2);
+    pbv._min -= dist;
+    pbv._max += dist;
+    return overlaps(pbv, tbv);
+  }
+
+  template <typename VecT>
+  constexpr bool ee_ccd_broadphase(const VecInterface<VecT> &ea0, const VecInterface<VecT> &ea1,
+                                   const VecInterface<VecT> &eb0, const VecInterface<VecT> &eb1,
+                                   const VecInterface<VecT> &dea0, const VecInterface<VecT> &dea1,
+                                   const VecInterface<VecT> &deb0, const VecInterface<VecT> &deb1,
+                                   const typename VecT::value_type dist,
+                                   const typename VecT::value_type toc_upperbound) {
+    constexpr int dim = VecT::template range_t<0>::value;
+    using T = typename VecT::value_type;
+    using bv_t = AABBBox<dim, T>;
+    bv_t abv{get_bounding_box(ea0, ea0 + toc_upperbound * dea0)},
+        bbv{get_bounding_box(eb0, eb0 + toc_upperbound * deb0)};
+    merge(abv, ea1);
+    merge(abv, ea1 + toc_upperbound * dea1);
+    merge(bbv, eb1);
+    merge(bbv, eb1 + toc_upperbound * deb1);
+    abv._min -= dist;
+    abv._max += dist;
+    return overlaps(abv, bbv);
+  }
   /// Sphere
   template <int dim, typename T = float> using BoundingSphere
       = AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>;

@@ -2454,4 +2454,45 @@ namespace zs {
     return hess;
   }
 
+  template <
+      typename VecTE, typename VecT,
+      enable_if_all<VecTE::dim == 1, is_same_v<typename VecTE::dims, typename VecT::dims>> = 0>
+  constexpr bool et_intersected(const VecInterface<VecTE> &e0, const VecInterface<VecTE> &e1,
+                                const VecInterface<VecT> &t0, const VecInterface<VecT> &t1,
+                                const VecInterface<VecT> &t2) noexcept {
+    using T = math::op_result_t<typename VecTE::value_type, typename VecT::value_type>;
+    using Ti = typename VecTE::index_type;
+    constexpr int dim = VecTE::extent;
+    static_assert(dim == 3, "currently only implement 3d version");
+    using MatT = typename VecTE::template variant_vec<T, integer_seq<Ti, dim, dim>>;
+    auto col0 = t1 - t0;
+    auto col1 = t2 - t0;
+    auto col2 = e0 - e1;
+    MatT mat{};
+    auto setMatCols = [](auto &mat, const auto &col0, const auto &col1, const auto &col2) {
+      for (int d = 0; d != dim; ++d) {
+        mat(d, 0) = col0(d);
+        mat(d, 1) = col1(d);
+        mat(d, 2) = col2(d);
+      }
+    };
+    setMatCols(mat, col0, col1, col2);
+    auto n = col0.cross(col1);
+    if (n.dot(e0 - t0) * n.dot(e1 - t0) > 0) return false;
+    auto det = determinant(mat);
+    if (det == 0) return false;
+
+    MatT D1{}, D2{}, D3{};
+    auto b = e0 - t0;
+    setMatCols(D1, b, col1, col2);
+    setMatCols(D2, col0, b, col2);
+    setMatCols(D3, col0, col1, b);
+
+    T uvt[3] = {determinant(D1) / det, determinant(D2) / det, determinant(D3) / det};
+
+    if (uvt[0] >= 0 && uvt[1] >= 0 && uvt[0] + uvt[1] <= 1 && uvt[2] >= 0 && uvt[2] <= 1)
+      return true;
+    return false;
+  }
+
 }  // namespace zs

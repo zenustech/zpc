@@ -29,8 +29,9 @@ namespace zs {
     constexpr Rotation(const TM &m) noexcept : TM{m} {}
 
     constexpr Rotation &operator=(const TM &o) noexcept {
-      Rotation tmp{o};
-      std::swap(*this, tmp);
+      // Rotation tmp{o};
+      // std::swap(*this, tmp);
+      this->self() = o.self();
       return *this;
     }
 

@@ -79,7 +79,10 @@ namespace zs {
       // Sorting
       // Polar already guarantees negative sign is on the small magnitude singular value.
       if (S(0) < S(1)) {
-        std::swap(S(0), S(1));
+        // std::swap(S(0), S(1));
+        auto S0 = S(0);
+        S(0) = S(1);
+        S(1) = S0;
         V.c = -sine;
         V.s = cosine;
       } else {
@@ -122,6 +125,11 @@ namespace zs {
                               vec_fits_shape<VecTV, 2, 3, 3>()> = 0>
       constexpr void sort_sigma(VecInterface<VecTU>& U, VecInterface<VecTS>& sigma,
                                 VecInterface<VecTV>& V) noexcept {
+        const auto swapScalar = [](auto& a, auto& b) {
+          auto tmp = a;
+          a = b;
+          b = tmp;
+        };
         /// t == 0
         if constexpr (t == 0) {
           // Case: sigma(0) > |sigma(1)| >= |sigma(2)|
@@ -140,18 +148,18 @@ namespace zs {
           }
 
           // swap sigma(1) and sigma(2) for both cases
-          std::swap(sigma(1), sigma(2));
+          swapScalar(sigma(1), sigma(2));
           for (int d = 0; d != 3; ++d) {
-            std::swap(U(d, 1), U(d, 2));
-            std::swap(V(d, 1), V(d, 2));
+            swapScalar(U(d, 1), U(d, 2));
+            swapScalar(V(d, 1), V(d, 2));
           }
 
           // Case: |sigma(2)| >= sigma(0) > |simga(1)|
           if (sigma(1) > sigma(0)) {
-            std::swap(sigma(0), sigma(1));
+            swapScalar(sigma(0), sigma(1));
             for (int d = 0; d != 3; ++d) {
-              std::swap(U(d, 0), U(d, 1));
-              std::swap(V(d, 0), V(d, 1));
+              swapScalar(U(d, 0), U(d, 1));
+              swapScalar(V(d, 0), V(d, 1));
             }
           }
 
@@ -175,22 +183,22 @@ namespace zs {
           }
 
           // swap sigma(0) and sigma(1) for both cases
-          std::swap(sigma(0), sigma(1));
+          swapScalar(sigma(0), sigma(1));
           // U.col(0).swap(U.col(1));
           // V.col(0).swap(V.col(1));
           for (int d = 0; d != 3; ++d) {
-            std::swap(U(d, 0), U(d, 1));
-            std::swap(V(d, 0), V(d, 1));
+            swapScalar(U(d, 0), U(d, 1));
+            swapScalar(V(d, 0), V(d, 1));
           }
 
           // Case: sigma(1) > |sigma(2)| >= |sigma(0)|
           if (fabs(sigma(1)) < fabs(sigma(2))) {
-            std::swap(sigma(1), sigma(2));
+            swapScalar(sigma(1), sigma(2));
             // U.col(1).swap(U.col(2));
             // V.col(1).swap(V.col(2));
             for (int d = 0; d != 3; ++d) {
-              std::swap(U(d, 1), U(d, 2));
-              std::swap(V(d, 1), V(d, 2));
+              swapScalar(U(d, 1), U(d, 2));
+              swapScalar(V(d, 1), V(d, 2));
             }
           }
 

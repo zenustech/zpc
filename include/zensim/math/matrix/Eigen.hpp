@@ -326,9 +326,9 @@ namespace zs {
 #if 0
     auto diag = MatT::zeros();
     for (int d = 0; d != dim; ++d) diag(d, d) = eivals[d];
-    mat = eivecs * diag * eivecs.transpose();
+    mat.assign(eivecs * diag * eivecs.transpose());
 #else
-    mat = mat.zeros();
+    mat.assign(mat.zeros());
     for (int i = 0; i != dim; ++i)
       for (int j = 0; j != dim; ++j)
         for (int k = 0; k != dim; ++k) mat(i, k) += eivecs(i, j) * eivals[j] * eivecs(k, j);

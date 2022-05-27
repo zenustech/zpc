@@ -38,7 +38,7 @@ namespace zs {
     constexpr void do_project_strain(VecInterface<VecT>& F, const Model& model) const noexcept {
       auto [U, S, V] = math::svd(F);
       do_project_sigma(S, model);
-      F = diag_mul(U, S) * V.transpose();
+      F.assign(diag_mul(U, S) * V.transpose());
     }
 
     template <typename VecT, typename Model,
@@ -114,11 +114,11 @@ namespace zs {
                    (float)oldRes, (float)res);
         }
 
-        F = diag_mul(U, SeHat) * V.transpose();
+        F.assign(diag_mul(U, SeHat) * V.transpose());
         return SeHat;
       } else {
         // TODO
-        F = diag_mul(U, S) * V.transpose();
+        F.assign(diag_mul(U, S) * V.transpose());
         return S;
       }
     }

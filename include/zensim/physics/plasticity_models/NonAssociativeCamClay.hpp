@@ -53,7 +53,7 @@ namespace zs {
       if (caseNo < 3) {
         auto JeNew = caseNo == 1 ? zs::sqrt(-(pMax + pMax) / kappa + (value_type)1)
                                  : zs::sqrt((pMin + pMin) / kappa + (value_type)1);
-        S = zs::pow(JeNew, (value_type)1 / (value_type)dim);  // assigned the scalar
+        S.assign(zs::pow(JeNew, (value_type)1 / (value_type)dim));  // assigned the scalar
         // hardening
         if (hardeningOn) logJp += zs::log(J / JeNew);
         return true;

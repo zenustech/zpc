@@ -41,13 +41,13 @@ namespace zs {
       auto delta_gamma = dev_eps_norm - yieldStress / _2mu;
       if (delta_gamma > 0) {
         auto H = eps - (delta_gamma / dev_eps_norm) * dev_eps;
-        S = H.exp();
+        S.assign(H.exp());
       }
 
       if (eps_trace > k1Stretch / (dim_mul_lam + _2mu))
-        S = S * zs::exp(k1Stretch / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim);
+        S.assign(S * zs::exp(k1Stretch / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim));
       else if (eps_trace < -k1Compress / (dim_mul_lam + _2mu))
-        S = S * zs::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim);
+        S.assign(S * zs::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / dim));
     }
 
     template <typename VecT, typename Model,
@@ -57,7 +57,7 @@ namespace zs {
     constexpr void do_project_strain(VecInterface<VecT>& F, const Model& model) const noexcept {
       auto [U, S, V] = math::svd(F);
       do_project_sigma(S, model);
-      F = diag_mul(U, S) * V.transpose();
+      F.assign(diag_mul(U, S) * V.transpose());
     }
 
     template <typename VecT, typename Model,
@@ -166,7 +166,7 @@ namespace zs {
         S = S * zs::exp(-k1Compress / (dim * dim_mul_lam + dim * _2mu) - eps_trace / (value_type)dim);
 #endif
 
-      F = diag_mul(U, S) * V.transpose();
+      F.assign(diag_mul(U, S) * V.transpose());
       return S;
     }
   };

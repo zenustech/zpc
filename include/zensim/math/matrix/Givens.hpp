@@ -96,7 +96,7 @@ namespace zs {
                               VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                               std::is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void fill(VecInterface<VecT>& A) const noexcept {
-        A = A.identity();
+        A.assign(A.identity());
         A(rowi, rowi) = c;
         A(rowk, rowi) = -s;
         A(rowi, rowk) = s;

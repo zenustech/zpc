@@ -147,7 +147,10 @@ namespace zs {
         T d1 = eivals(1) - eivals(0);
         int k{0}, l{2};
         if (d0 > d1) {
-          std::swap(k, l);
+          // std::swap(k, l); // damn you nvcc!
+          auto t = k;
+          k = l;
+          l = t;
           d0 = d1;
         }
 
@@ -157,8 +160,8 @@ namespace zs {
           // find non-zero column i0 (there must exist a non zero coeff on diagonal)
           T entry{limits<T>::lowest()};
           for (int d = 0; d != 3; ++d)
-            if (mat(d, d) > entry) {
-              entry = mat(d, d);
+            if (auto v = zs::abs(mat(d, d)); v > entry) {
+              entry = v;
               i0 = d;
             }
           // mat.col(i0) is a good candidate for an orthogonal vector to the current eigenvector

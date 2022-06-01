@@ -766,6 +766,81 @@ namespace zs {
       return t;
     }
 
+    template <typename T> constexpr T newton_solve_for_cubic_equation(T a, T b, T c, T d,
+                                                                      T *results, int &numSols,
+                                                                      T eps) {
+      const auto __f
+          = [](T x, T a, T b, T c, T d) { return a * x * x * x + b * x * x + c * x + d; };
+      const auto __df = [](T x, T a, T b, T c) { return 3 * a * x * x + 2 * b * x + c; };
+      T DX = 0;
+      numSols = 0;
+      T specialPoint = -b / a / 3;
+      T pos[2] = {};
+      int solves = 1;
+      T delta = 4 * b * b - 12 * a * c;
+      if (delta > 0) {
+        pos[0] = (zs::sqrt(delta) - 2 * b) / 6 / a;
+        pos[1] = (-zs::sqrt(delta) - 2 * b) / 6 / a;
+        T v1 = __f(pos[0], a, b, c, d);
+        T v2 = __f(pos[1], a, b, c, d);
+        if (zs::abs(v1) < eps * eps) {
+          v1 = 0;
+        }
+        if (zs::abs(v2) < eps * eps) {
+          v2 = 0;
+        }
+        T sign = v1 * v2;
+        DX = (pos[0] - pos[1]);
+        if (sign <= 0) {
+          solves = 3;
+        } else if (sign > 0) {
+          if ((a < 0 && __f(pos[0], a, b, c, d) > 0) || (a > 0 && __f(pos[0], a, b, c, d) < 0)) {
+            DX = -DX;
+          }
+        }
+      } else if (delta == 0) {
+        if (zs::abs(__f(specialPoint, a, b, c, d)) < eps * eps) {
+          for (int i = 0; i < 3; i++) {
+            T tempReuslt = specialPoint;
+            results[numSols] = tempReuslt;
+            numSols++;
+          }
+          return;
+        }
+        if (a > 0) {
+          if (__f(specialPoint, a, b, c, d) > 0) {
+            DX = 1;
+          } else if (__f(specialPoint, a, b, c, d) < 0) {
+            DX = -1;
+          }
+        } else if (a < 0) {
+          if (__f(specialPoint, a, b, c, d) > 0) {
+            DX = -1;
+          } else if (__f(specialPoint, a, b, c, d) < 0) {
+            DX = 1;
+          }
+        }
+      }
+
+      T start = specialPoint - DX;
+      T x0 = start;
+
+      for (int i = 0; i < solves; i++) {
+        T x1 = 0;
+        int itCount = 0;
+        do {
+          if (itCount) x0 = x1;
+
+          x1 = x0 - ((__f(x0, a, b, c, d)) / (__df(x0, a, b, c)));
+          itCount++;
+        } while (zs::abs(x1 - x0) > eps && itCount < 100000);
+        results[numSols] = (x1);
+        numSols++;
+        start = start + DX;
+        x0 = start;
+      }
+    }
+
   }  // namespace math
 
   template <typename... Args>

@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <array>
 #include <cstdio>
 #include <fstream>
@@ -153,8 +154,8 @@ namespace zs {
 
   template <typename T, typename Tn>
   bool write_tet_mesh_vtk(const std::string &filename, const Mesh<T, 3, Tn, 4> &mesh) {
-    assert((X.size() != (std::size_t)0) && "The X array for writing tetmesh vtk is empty.");
-    assert((indices.size() != (std::size_t)0)
+    assert((mesh.nodes.size() != (std::size_t)0) && "The X array for writing tetmesh vtk is empty.");
+    assert((mesh.elems.size() != (std::size_t)0)
            && "The tet mesh data structure for writing tetmesh vtk is empty.");
 
     std::ofstream os(filename);

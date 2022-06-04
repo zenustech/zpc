@@ -330,6 +330,19 @@ namespace zs {
   extern template struct Vector<f32, ZSPmrAllocator<true>>;
   extern template struct Vector<f64, ZSPmrAllocator<true>>;
 
+  template <typename T,
+            enable_if_all<is_same_v<T, remove_cvref_t<T>>, std::is_default_constructible_v<T>,
+                          std::is_trivially_copyable_v<T>> = 0>
+  auto from_std_vector(const std::vector<T> &vs,
+                       const MemoryLocation &mloc = {memsrc_e::host, -1}) {
+    auto allocator = get_memory_source(mloc.memspace(), mloc.devid());
+    Vector<T> ret{allocator, vs.size()};
+    Resource::copy(MemoryEntity{allocator.location, (void *)ret.data()},
+                   MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)vs.data()},
+                   sizeof(T) * vs.size());
+    return ret;
+  }
+
   template <execspace_e, typename VectorT, typename = void> struct VectorView {
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
     using vector_type = std::remove_const_t<VectorT>;

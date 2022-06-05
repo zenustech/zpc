@@ -136,6 +136,29 @@ namespace zs {
     return LBvhView<space, const LBvh<dim, lane_width, Ti, T, Allocator>>{lbvh};
   }
 
+  template <typename BvhView, typename BV, class F> constexpr void iter_neighbors(const BvhView &bvh, const BV &bv, F &&f) {
+    using index_t  = typename BvhView::index_t;
+    if (auto nl = bvh.numLeaves(); nl <= 2) {
+      for (index_t i = 0; i != nl; ++i) {
+        if (overlaps(bvh.getNodeBV(i), bv)) f(bvh._auxIndices[i]);
+      }
+      return;
+    }
+    index_t node = 0;
+    while (node != -1 && node != bvh._numNodes) {
+      index_t level = bvh._levels[node];
+      // level and node are always in sync
+      for (; level; --level, ++node)
+        if (!overlaps(bvh.getNodeBV(node), bv)) break;
+      // leaf node check
+      if (level == 0) {
+        if (overlaps(bvh.getNodeBV(node), bv)) f(bvh._auxIndices[node]);
+        node++;
+      } else  // separate at internal nodes
+        node = bvh._auxIndices[node];
+    }
+  }
+
   template <typename BvTilesView, typename BvVectorView> struct AssignBV {
     using size_type = typename BvTilesView::size_type;
     static constexpr int d = remove_cvref_t<typename BvVectorView::value_type>::dim;

@@ -647,27 +647,27 @@ namespace zs {
     }
   };
 
-  template <typename VecTM,
+  template <typename VecTM, auto dim = VecTM::template range_t<0>::value,
             enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value
                                                == VecTM::template range_t<1>::value> = 0>
-  constexpr auto dFdXMatrix(const VecInterface<VecTM>& DmInv) noexcept {
+  constexpr auto dFdXMatrix(const VecInterface<VecTM>& DmInv, wrapv<dim> = {}) noexcept {
     using value_type = typename VecTM::value_type;
     using index_type = typename VecTM::index_type;
-    constexpr int dim = VecTM::template range_t<0>::value;
-    constexpr int dimp1 = dim + 1;
+    constexpr int bdim = VecTM::template range_t<0>::value;
+    constexpr int bdimp1 = bdim + 1;
     using RetT =
         typename VecTM::template variant_vec<value_type,
-                                             integer_seq<index_type, dim * dim, dim * dimp1>>;
+                                             integer_seq<index_type, dim * bdim, dim * bdimp1>>;
 
-    vec<value_type, dim> t{};  // negative col-sum
-    for (int d = 0; d != dim; ++d) {
+    vec<value_type, bdim> t{};  // negative col-sum
+    for (int d = 0; d != bdim; ++d) {
       t[d] = -DmInv(0, d);
-      for (int vi = 1; vi != dim; ++vi) t[d] -= DmInv(vi, d);
+      for (int vi = 1; vi != bdim; ++vi) t[d] -= DmInv(vi, d);
     }
     auto ret = RetT::zeros();
-    for (int vi = 0; vi != dimp1; ++vi) {
+    for (int vi = 0; vi != bdimp1; ++vi) {
       index_type c = vi * dim;
-      for (int j = 0; j != dim; ++j) {
+      for (int j = 0; j != bdim; ++j) {
         index_type r = j * dim;
         const auto v = vi != 0 ? DmInv(vi - 1, j) : t(j);
         for (int d = 0; d != dim; ++d) ret(r + d, c + d) = v;

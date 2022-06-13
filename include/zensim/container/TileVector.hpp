@@ -526,9 +526,9 @@ namespace zs {
         ret.val(d) = *(_vector + offset);
       return ret;
     }
-    template <channel_counter_type N>
+    template <channel_counter_type N, typename VT = value_type>
     constexpr auto array(channel_counter_type chn, const size_type i) const noexcept {
-      using RetT = std::array<value_type, (std::size_t)N>;
+      using RetT = std::array<VT, (std::size_t)N>;
       RetT ret{};
       size_type offset{};
       if constexpr (is_power_of_two)
@@ -767,9 +767,9 @@ namespace zs {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
           _tagOffsets[propertyIndex(propName)], i);
     }
-    template <channel_counter_type N>
+    template <channel_counter_type N, typename VT = value_type>
     constexpr auto array(const SmallString &propName, const size_type i) const noexcept {
-      return static_cast<const base_t &>(*this).template array<N>(
+      return static_cast<const base_t &>(*this).template array<N, VT>(
           _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>

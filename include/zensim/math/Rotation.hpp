@@ -280,7 +280,10 @@ namespace zs {
     constexpr AngularVelocity operator*(T alpha) const noexcept {
       return AngularVelocity{omega * alpha};
     }
-    constexpr TV cross(const TV &x) const noexcept { return TV{-omega * x(1), omega * x(0)}; }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == 2> = 0>
+    constexpr auto cross(const VecInterface<VecT> &x) const noexcept {
+      return TV{-omega * x(1), omega * x(0)};
+    }
   };
 
   template <class T> struct AngularVelocity<T, 3> {
@@ -295,8 +298,12 @@ namespace zs {
     friend constexpr AngularVelocity operator*(T alpha, const AngularVelocity &o) noexcept {
       return AngularVelocity{o.omega * alpha};
     }
-    constexpr TV cross(const TV &x) const noexcept { return omega.cross(x); }
-    friend constexpr TV cross(const TV &x, const AngularVelocity &o) noexcept {
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == 3> = 0>
+    constexpr auto cross(const VecInterface<VecT> &x) const noexcept {
+      return omega.cross(x);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == 3> = 0>
+    friend constexpr auto cross(const VecInterface<VecT> &x, const AngularVelocity &o) noexcept {
       return x.cross(o.omega);
     }
   };

@@ -21,10 +21,11 @@ namespace zs {
       R = R_in;
       omega = omega_in;
     }
-    constexpr bool queryInside(const TV &x) const noexcept {
-      TV x_minus_b = x - b;
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr bool queryInside(const VecInterface<VecT> &x) const noexcept {
+      auto x_minus_b = x - b;
       T one_over_s = 1 / s;
-      TV X = R.transpose() * x_minus_b * one_over_s;  // material space
+      auto X = R.transpose() * x_minus_b * one_over_s;  // material space
       return levelset.getSignedDistance(X) < 0;
     }
     template <typename VecT>

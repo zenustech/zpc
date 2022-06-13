@@ -12,14 +12,12 @@ namespace zs {
     }
     template <typename VecT, typename LS = Derived,
               enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
-    constexpr auto getNormal(const VecInterface<VecT> &x) const noexcept ->
-        typename VecT::template variant_vec<typename LS::value_type, typename VecT::extents> {
+    constexpr auto getNormal(const VecInterface<VecT> &x) const noexcept {
       return static_cast<const Derived *>(this)->do_getNormal(x);
     }
     template <typename VecT, typename LS = Derived,
               enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
-    constexpr auto getMaterialVelocity(const VecInterface<VecT> &x) const noexcept ->
-        typename VecT::template variant_vec<typename LS::value_type, typename VecT::extents> {
+    constexpr auto getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
       return static_cast<const Derived *>(this)->do_getMaterialVelocity(x);
     }
 

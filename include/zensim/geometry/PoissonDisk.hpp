@@ -10,6 +10,7 @@
 #include "zensim/math/Vec.h"
 // #include <taskflow/taskflow.hpp>
 #include "zensim/execution/Concurrency.h"
+#include "zensim/geometry/LevelSetInterface.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 
 namespace zs {

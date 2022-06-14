@@ -544,7 +544,7 @@ namespace zs {
                                           integer_seq<typename VecT::index_type, 3>>
           Is{};
       if constexpr (project_SPD) {
-        return static_cast<const Model*>(this)->template do_first_piola_derivative_spd(F,elm_id);
+        return static_cast<const Model*>(this)->template do_first_piola_derivative_spd(F);
       } else {
         gradient_t<VecT> gi[3]{};
         hessian_t<VecT> Hi[3]{};

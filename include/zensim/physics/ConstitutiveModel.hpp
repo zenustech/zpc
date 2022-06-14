@@ -468,11 +468,11 @@ namespace zs {
       return static_cast<const Model*>(this)->template do_dpsi_dI<I>(Is);
     }
     // d2psi_dI2 -> dim [dimxdim] matrices
-    template <int I, typename VecT,
+    template <int I, int J = I, typename VecT,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
-      return static_cast<const Model*>(this)->template do_d2psi_dI2<I>(Is);
+      return static_cast<const Model*>(this)->template do_d2psi_dI2<I, J>(Is);
     }
 
     // details (default impls)
@@ -484,7 +484,7 @@ namespace zs {
     constexpr typename VecT::value_type do_dpsi_dI(const VecInterface<VecT>&) const noexcept {
       return (typename VecT::value_type)0;
     }
-    template <int I, typename VecT>
+    template <int I, int J, typename VecT>
     constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>&) const noexcept {
       return (typename VecT::value_type)0;
     }
@@ -543,16 +543,20 @@ namespace zs {
       typename VecT::template variant_vec<typename VecT::value_type,
                                           integer_seq<typename VecT::index_type, 3>>
           Is{};
-      gradient_t<VecT> gi[3]{};
-      hessian_t<VecT> Hi[3]{};
-      zs::tie(Is[0], gi[0], Hi[0]) = I_wrt_F<0, 2>(F, flag);
-      zs::tie(Is[1], gi[1], Hi[1]) = I_wrt_F<1, 2>(F, flag);
-      zs::tie(Is[2], gi[2], Hi[2]) = I_wrt_F<2, 2>(F, flag);
-      auto dPdF = hessian_t<VecT>::zeros();
-      dPdF += d2psi_dI2<0>(Is) * dyadic_prod(gi[0], gi[0]) + dpsi_dI<0>(Is) * Hi[0];
-      dPdF += d2psi_dI2<1>(Is) * dyadic_prod(gi[1], gi[1]) + dpsi_dI<1>(Is) * Hi[1];
-      dPdF += d2psi_dI2<2>(Is) * dyadic_prod(gi[2], gi[2]) + dpsi_dI<2>(Is) * Hi[2];
-      return dPdF;
+      if constexpr (project_SPD) {
+        return static_cast<const Model*>(this)->template do_first_piola_derivative_spd(F,elm_id);
+      } else {
+        gradient_t<VecT> gi[3]{};
+        hessian_t<VecT> Hi[3]{};
+        zs::tie(Is[0], gi[0], Hi[0]) = I_wrt_F<0, 2>(F, flag);
+        zs::tie(Is[1], gi[1], Hi[1]) = I_wrt_F<1, 2>(F, flag);
+        zs::tie(Is[2], gi[2], Hi[2]) = I_wrt_F<2, 2>(F, flag);
+        auto dPdF = hessian_t<VecT>::zeros();
+        dPdF += d2psi_dI2<0>(Is) * dyadic_prod(gi[0], gi[0]) + dpsi_dI<0>(Is) * Hi[0];
+        dPdF += d2psi_dI2<1>(Is) * dyadic_prod(gi[1], gi[1]) + dpsi_dI<1>(Is) * Hi[1];
+        dPdF += d2psi_dI2<2>(Is) * dyadic_prod(gi[2], gi[2]) + dpsi_dI<2>(Is) * Hi[2];
+        return dPdF;
+      }
     }
 
     /// anisotropic

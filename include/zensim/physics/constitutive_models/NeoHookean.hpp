@@ -108,7 +108,7 @@ namespace zs {
     template <typename VecT>
     constexpr typename VecT::value_type do_psi_I(const VecInterface<VecT>& Is) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
-      auto logI3 = zs::log(Is[2]); // logI3
+      auto logI3 = zs::log(Is[2]);  // logI3
       return (value_type)0.5 * mu * (Is[1] - dim) - (mu - (value_type)0.5 * lam * logI3) * logI3;
     }
     template <int I, typename VecT>
@@ -129,12 +129,12 @@ namespace zs {
     }
   };
 
-  template <typename T = float> struct StableNeohookeanInvarient 
+  template <typename T = float> struct StableNeohookeanInvarient
       : InvariantConstitutiveModelInterface<StableNeohookeanInvarient<T>> {
     using base_t = InvariantConstitutiveModelInterface<StableNeohookeanInvarient<T>>;
     using value_type = T;
     static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
-    value_type mu,lam;
+    value_type mu, lam;
 
     StableNeohookeanInvarient() noexcept = default;
     constexpr StableNeohookeanInvarient(value_type E, value_type nu) noexcept {
@@ -145,60 +145,64 @@ namespace zs {
     constexpr typename VecT::value_type do_psi_I(const VecInterface<VecT>& Is) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
       value_type l2m1 = (Is[2] - (value_type)1.0);
-      return (value_type)0.5 * mu * (Is[1] - (value_type)3.0) - mu * l2m1 + (value_type)0.5 * lam * l2m1 * l2m1;
+      return (value_type)0.5 * mu * (Is[1] - (value_type)3.0) - mu * l2m1
+             + (value_type)0.5 * lam * l2m1 * l2m1;
     }
 
-    template <int I,typename VecT>
+    template <int I, typename VecT>
     constexpr typename VecT::value_type do_dpsi_dI(const VecInterface<VecT>& Is) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
       if constexpr (I == 0)
-        return (value_type) 0.0;
+        return (value_type)0.0;
       else if constexpr (I == 1)
         return (value_type)0.5 * mu;
-      else // I == 2
+      else  // I == 2
         return -mu + lam * (Is[2] - (value_type)1.0);
     }
 
-    template <int I,int J,typename VecT>
+    template <int I, int J, typename VecT>
     constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
       if constexpr (I == 2 && J == 2)
-        return (value_type) lam;
+        return (value_type)lam;
       else
-        return (value_type) 0.0;
+        return (value_type)0.0;
     }
 
     template <typename VecT, typename VecS,
-                            enable_if_all<VecT::dim == 1, VecS::dim == 1, VecT::template range_t<0>::value == 3,
+              enable_if_all<VecT::dim == 1, VecS::dim == 1, VecT::template range_t<0>::value == 3,
                             VecS::template range_t<0>::value == 3,
                             std::is_floating_point_v<typename VecT::value_type>,
                             std::is_floating_point_v<typename VecS::value_type>> = 0>
-    constexpr auto eval_stretching_matrix(const VecInterface<VecT>& Is,const VecInterface<VecS>& sigma) const noexcept {
+    constexpr auto eval_stretching_matrix(const VecInterface<VecT>& Is,
+                                          const VecInterface<VecS>& sigma) const noexcept {
       typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3, 3>> A{};
-        A(0,0) = mu + lam * Is[2] * Is[2] / sigma[0] / sigma[0];
-        A(0,1) = sigma[2] * (lam * (2*Is[2] - 1) - mu);
-        A(0,2) = sigma[1] * (lam * (2*Is[2] - 1) - mu);
-        A(1,1) = mu + lam * Is[2] * Is[2] / sigma[1] / sigma[1];
-        A(1,2) = sigma[0] * (lam * (2*Is[2] - 1) - mu);
-        A(2,2) = mu + lam * Is[2] * Is[2] / sigma[2] / sigma[2];
-        A(1,0) = A(0,1);
-        A(2,0) = A(0,2);
-        A(2,1) = A(1,2);
+                                          integer_seq<typename VecT::index_type, 3, 3>>
+          A{};
+      A(0, 0) = mu + lam * Is[2] * Is[2] / sigma[0] / sigma[0];
+      A(0, 1) = sigma[2] * (lam * (2 * Is[2] - 1) - mu);
+      A(0, 2) = sigma[1] * (lam * (2 * Is[2] - 1) - mu);
+      A(1, 1) = mu + lam * Is[2] * Is[2] / sigma[1] / sigma[1];
+      A(1, 2) = sigma[0] * (lam * (2 * Is[2] - 1) - mu);
+      A(2, 2) = mu + lam * Is[2] * Is[2] / sigma[2] / sigma[2];
+      A(1, 0) = A(0, 1);
+      A(2, 0) = A(0, 2);
+      A(2, 1) = A(1, 2);
 
-        return A;
+      return A;
     }
 
-  //   // first piola derivative
-    template <typename VecT, 
+    //   // first piola derivative
+    template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto do_first_piola_derivative_spd(const VecInterface<VecT>& F,int elm_id/*for debug purpose only*/) const noexcept {
+    constexpr auto do_first_piola_derivative_spd(const VecInterface<VecT>& F) const noexcept {
       // sum_i ((d2Psi / dI_i2) g_i g_i^T + ((dPsi / dI_i) H_i))
       // printf("do_first_piola_derivative_spd get called\n");
 
       typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3>> Is{};
+                                          integer_seq<typename VecT::index_type, 3>>
+          Is{};
 
       auto [U, S, V] = math::qr_svd(F);
 
@@ -206,7 +210,7 @@ namespace zs {
       zs::tie(Is[1]) = base_t::I_wrt_F<1, 0>(F);
       zs::tie(Is[2]) = base_t::I_wrt_F<2, 0>(F);
 
-      auto A = eval_stretching_matrix(Is,S);
+      auto A = eval_stretching_matrix(Is, S);
       auto [A_eigvals, A_eigvecs] = zs::eigen_decomposition(A.template cast<double>());
 
       typename base_t::template gradient_t<VecT> eigen_vals{};
@@ -214,7 +218,7 @@ namespace zs {
 
       using Ti = typename VecT::index_type;
       Ti offset = 0;
-      //scale
+      // scale
       eigen_vals[offset++] = A_eigvals[0];
       eigen_vals[offset++] = A_eigvals[1];
       eigen_vals[offset++] = A_eigvals[2];
@@ -225,37 +229,36 @@ namespace zs {
       eigen_vals[offset++] = mu * (1 - S[0]) + S[0] * (lam * (Is[2] - 1));
       // eigen_vals[offset++] = (double)mu + (double)S[1] * (lam * (Is[2] - 1) - mu);
       eigen_vals[offset++] = mu * (1 - S[1]) + S[1] * (lam * (Is[2] - 1));
-      //twist     
+      // twist
       eigen_vals[offset++] = mu - S[2] * (lam * (Is[2] - 1) - mu);
       eigen_vals[offset++] = mu - S[0] * (lam * (Is[2] - 1) - mu);
       eigen_vals[offset++] = mu - S[1] * (lam * (Is[2] - 1) - mu);
 
-      using mat3 = typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3, 3>>;
+      using mat3 =
+          typename VecT::template variant_vec<typename VecT::value_type,
+                                              integer_seq<typename VecT::index_type, 3, 3>>;
       constexpr auto sqrt2 = 1.4142135623730950488016887242096980785697L;
-      constexpr mat3 Qs[9] = {
-        mat3::init([](int i) { return i == 0 ? 1 : 0; }),
-        mat3::init([](int i) { return i == 4 ? 1 : 0; }),
-        mat3::init([](int i) { return i == 8 ? 1 : 0; }),
-        mat3::init([](int i) { return i == 1 ? -1 / sqrt2 : (i == 3 ? 1 / sqrt2 : 0); }),
-        mat3::init([](int i) { return i == 5 ? 1 / sqrt2 : (i == 7 ? -1 / sqrt2 : 0); }),
-        mat3::init([](int i) { return i == 2 ? 1 / sqrt2 : (i == 6 ? -1 / sqrt2 : 0); }),
-        mat3::init([](int i) { return i == 1 ? 1 / sqrt2 : (i == 3 ? 1 / sqrt2 : 0); }),
-        mat3::init([](int i) { return i == 5 ? 1 / sqrt2 : (i == 7 ? 1 / sqrt2 : 0); }),
-        mat3::init([](int i) { return i == 2 ? 1 / sqrt2 : (i == 6 ? 1 / sqrt2 : 0); })
-      };
-      typename base_t::template gradient_t<VecT> projspace[3] = {vectorize(U * Qs[0] * V.transpose(), wrapv<true>{}),
-        vectorize(U * Qs[1] * V.transpose(), wrapv<true>{}),
-        vectorize(U * Qs[2] * V.transpose(), wrapv<true>{})
-      };
+      constexpr mat3 Qs[9]
+          = {mat3::init([](int i) { return i == 0 ? 1 : 0; }),
+             mat3::init([](int i) { return i == 4 ? 1 : 0; }),
+             mat3::init([](int i) { return i == 8 ? 1 : 0; }),
+             mat3::init([](int i) { return i == 1 ? -1 / sqrt2 : (i == 3 ? 1 / sqrt2 : 0); }),
+             mat3::init([](int i) { return i == 5 ? 1 / sqrt2 : (i == 7 ? -1 / sqrt2 : 0); }),
+             mat3::init([](int i) { return i == 2 ? 1 / sqrt2 : (i == 6 ? -1 / sqrt2 : 0); }),
+             mat3::init([](int i) { return i == 1 ? 1 / sqrt2 : (i == 3 ? 1 / sqrt2 : 0); }),
+             mat3::init([](int i) { return i == 5 ? 1 / sqrt2 : (i == 7 ? 1 / sqrt2 : 0); }),
+             mat3::init([](int i) { return i == 2 ? 1 / sqrt2 : (i == 6 ? 1 / sqrt2 : 0); })};
+      typename base_t::template gradient_t<VecT> projspace[3]
+          = {vectorize(U * Qs[0] * V.transpose(), wrapv<true>{}),
+             vectorize(U * Qs[1] * V.transpose(), wrapv<true>{}),
+             vectorize(U * Qs[2] * V.transpose(), wrapv<true>{})};
       for (Ti col = 0; col != 3; ++col) {
         for (int i = 0; i != 9; ++i) {
           eigen_vecs[col](i) = 0;
-          for (int d = 0; d != 3; ++d)
-            eigen_vecs[col](i) += projspace[d](i) * A_eigvecs(d, col);
+          for (int d = 0; d != 3; ++d) eigen_vecs[col](i) += projspace[d](i) * A_eigvecs(d, col);
         }
       }
-      for(Ti i = 3;i != 9;++i){
+      for (Ti i = 3; i != 9; ++i) {
         auto eigen_M = U * Qs[i] * V.transpose();
         // if(elm_id == 0){
         //   printf("Eigen_VECS<%d>:\n%lf %lf %lf\n%lf %lf %lf\n%lf %lf %lf\n",i,
@@ -279,8 +282,7 @@ namespace zs {
         //     (double)Qs[i](2,0),(double)Qs[i](2,1),(double)Qs[i](2,2)
         //   );
         // }
-        for(Ti d = 0;d != 9;++d)
-          eigen_vecs[i](d) = eigen_M(d % 3,d / 3);
+        for (Ti d = 0; d != 9; ++d) eigen_vecs[i](d) = eigen_M(d % 3, d / 3);
       }
 
       // if(elm_id == 0){
@@ -317,7 +319,6 @@ namespace zs {
       //     );
       // }
 
-
       auto dPdF = base_t::template hessian_t<VecT>::zeros();
       // if(elm_id == 0){
       //   printf("TEST_ELM<%d> : EVAL_VALS\n %f %f %f %f %f %f %f %f %f\n",
@@ -332,7 +333,8 @@ namespace zs {
       //     (float)eigen_vals[8]
       //   );
 
-      //   printf("PARAMS : %f %f %f %f %f\n",(float)lam,(float)mu,(float)Is[0],(float)Is[1],(float)Is[2]);
+      //   printf("PARAMS : %f %f %f %f
+      //   %f\n",(float)lam,(float)mu,(float)Is[0],(float)Is[1],(float)Is[2]);
 
       //   printf("EIGEN_VECS:\n %f %f %f %f %f %f %f %f %f\n",
       //     (float)eigen_vecs[0].norm(),
@@ -347,16 +349,17 @@ namespace zs {
       //   );
       // }
 
-
-      for(Ti i = 0;i != 9;++i)
-        eigen_vals[i] = eigen_vals[i] < limits<value_type>::epsilon() ? limits<value_type>::epsilon() : eigen_vals[i];
-
+      for (Ti i = 0; i != 9; ++i)
+        eigen_vals[i] = eigen_vals[i] < limits<value_type>::epsilon()
+                            ? limits<value_type>::epsilon()
+                            : eigen_vals[i];
 
       // if(elm_id == 0)
-      //   printf("epsilon : %e %e\n",(double)limits<value_type>::epsilon(),(double)limits<value_type>::min());
+      //   printf("epsilon : %e
+      //   %e\n",(double)limits<value_type>::epsilon(),(double)limits<value_type>::min());
 
-      for(Ti i = 0;i != 9;++i)
-        dPdF += eigen_vals[i] * zs::dyadic_prod(eigen_vecs[i],eigen_vecs[i]);
+      for (Ti i = 0; i != 9; ++i)
+        dPdF += eigen_vals[i] * zs::dyadic_prod(eigen_vecs[i], eigen_vecs[i]);
 
       // if(elm_id == 0){
       //   printf("dPdF<%d>:\n",elm_id);
@@ -373,8 +376,6 @@ namespace zs {
       //       (double)dPdF(i,8)
       //     );
       // }
-
-
 
       return dPdF;
     }
@@ -477,7 +478,7 @@ namespace zs {
     // Is, Ds, Hs
     auto pack = compute_anisotrpic_invariant_deriv_hesssian<Opt>(fiberDirection, weights, F);
 
-    auto I1_d = eval_I1_delta(weights, fiberDirection, F);                      // scalar
+    auto I1_d = eval_I1_delta(weights, fiberDirection, F);                       // scalar
     auto I1_d_deriv = eval_I1_delta_deriv(weights, fiberDirection).vectorize();  // vec9
     // chain-rule
     auto dFact_dF = eval_dFact_dF(actInv);  // mat9

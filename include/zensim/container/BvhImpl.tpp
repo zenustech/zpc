@@ -317,8 +317,9 @@ namespace zs {
           flags{proxy<space>(refitFlags)},
           bvs{proxy<space>({}, bvs)} {}
 
-    constexpr void operator()(Ti primid, Ti node) noexcept {
+    constexpr void operator()(Ti node) noexcept {
       {
+        auto primid = auxIndices(node);
         auto bv = primBvs(primid);
         bvs.template tuple<dim>("min", node) = bv._min;
         bvs.template tuple<dim>("max", node) = bv._max;

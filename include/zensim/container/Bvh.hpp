@@ -136,8 +136,9 @@ namespace zs {
     return LBvhView<space, const LBvh<dim, lane_width, Ti, T, Allocator>>{lbvh};
   }
 
-  template <typename BvhView, typename BV, class F> constexpr void iter_neighbors(const BvhView &bvh, const BV &bv, F &&f) {
-    using index_t  = typename BvhView::index_t;
+  template <typename BvhView, typename BV, class F>
+  constexpr void iter_neighbors(const BvhView &bvh, const BV &bv, F &&f) {
+    using index_t = typename BvhView::index_t;
     if (auto nl = bvh.numLeaves(); nl <= 2) {
       for (index_t i = 0; i != nl; ++i) {
         if (overlaps(bvh.getNodeBV(i), bv)) f(bvh._auxIndices[i]);
@@ -290,7 +291,7 @@ namespace zs {
     Vector<int> refitFlags{numNodes, memdst, devid};
     policy(refitFlags, ResetRefitStates{});
     // refit
-    policy(enumerate(leafIndices),
+    policy(leafIndices,
            RefitLBvh{execTag, primBvs, parents, levels, auxIndices, refitFlags, sortedBvs});
     return;
   }

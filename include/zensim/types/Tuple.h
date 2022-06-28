@@ -44,6 +44,14 @@ template <std::size_t I, typename T> struct tuple_value {
 };
 #else
   template <std::size_t I, typename T, typename = void> struct tuple_value : T {
+    constexpr tuple_value() = default;
+    ~tuple_value() = default;
+    template <typename V> constexpr tuple_value(V &&v) noexcept : T{FWD(v)} {}
+    constexpr tuple_value(tuple_value &&) = default;
+    constexpr tuple_value(const tuple_value &) = default;
+    constexpr tuple_value &operator=(tuple_value &&) = default;
+    constexpr tuple_value &operator=(const tuple_value &) = default;
+
     /// by index
     constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept { return *this; }
     constexpr decltype(auto) get(integral_t<std::size_t, I>) &&noexcept { return std::move(*this); }
@@ -58,6 +66,14 @@ template <std::size_t I, typename T> struct tuple_value {
       std::enable_if_t<(
           std::is_fundamental_v<
               T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>)>> {
+    constexpr tuple_value() = default;
+    ~tuple_value() = default;
+    template <typename V> constexpr tuple_value(V &&v) noexcept : value{FWD(v)} {}
+    constexpr tuple_value(tuple_value &&) = default;
+    constexpr tuple_value(const tuple_value &) = default;
+    constexpr tuple_value &operator=(tuple_value &&) = default;
+    constexpr tuple_value &operator=(const tuple_value &) = default;
+
     /// by index
     constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept {
       if constexpr (std::is_rvalue_reference_v<T>)
@@ -104,6 +120,15 @@ template <std::size_t I, typename T> struct tuple_value {
       : tuple_value<Is, Ts>... {
     using tuple_types = type_seq<Ts...>;
     static constexpr std::size_t tuple_size = sizeof...(Ts);
+
+    constexpr tuple_base() = default;
+    ~tuple_base() = default;
+    template <typename... Vs> constexpr tuple_base(Vs &&...vs) noexcept
+        : tuple_value<Is, Ts>{FWD(vs)}... {}
+    constexpr tuple_base(tuple_base &&) = default;
+    constexpr tuple_base(const tuple_base &) = default;
+    constexpr tuple_base &operator=(tuple_base &&) = default;
+    constexpr tuple_base &operator=(const tuple_base &) = default;
 
     using tuple_value<Is, Ts>::get...;
     template <std::size_t I> constexpr decltype(auto) get() noexcept {
@@ -193,6 +218,14 @@ template <std::size_t I, typename T> struct tuple_value {
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
     using base_t = tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>;
     using tuple_types = typename base_t::tuple_types;
+
+    constexpr tuple() = default;
+    ~tuple() = default;
+    template <typename... Vs> constexpr tuple(Vs &&...vs) noexcept : base_t{FWD(vs)...} {}
+    constexpr tuple(tuple &&) = default;
+    constexpr tuple(const tuple &) = default;
+    constexpr tuple &operator=(tuple &&) = default;
+    constexpr tuple &operator=(const tuple &) = default;
 
     // vec
     template <typename VecT>
@@ -396,6 +429,7 @@ template <std::size_t I, typename T> struct tuple_value {
     return detail::apply_impl(FWD(f), FWD(t),
                               std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
   }
+
   template <template <class...> class F, class Tuple,
             enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr decltype(auto) apply(assemble_t<F, get_ttal_t<remove_cvref_t<Tuple>>> &&f, Tuple &&t) {

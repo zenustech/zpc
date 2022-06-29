@@ -337,6 +337,57 @@ namespace zs {
 #endif
   }
 
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr bool isnan(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    return ::isnan(v) != 0;  // due to msvc
+#else
+    return std::isnan(v);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr bool isinf(T v) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    return ::isinf(v) != 0;  // due to msvc
+#else
+    return std::isinf(v);
+#endif
+  }
+
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T modf(T x, T *iptr) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::modff(x, iptr);
+    else
+      return ::modf(x, iptr);
+#else
+    return std::modf(x, iptr);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T frexp(T x, int *exp) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::frexpf(x, exp);
+    else
+      return ::frexp(x, exp);
+#else
+    return std::frexp(x, exp);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T ldexp(T x, int exp) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::ldexpf(x, exp);  // scalbnf(x, exp)
+    else
+      return ::ldexp(x, exp);
+#else
+    return std::ldexp(x, exp);
+#endif
+  }
+
   // 26.2.7/3 abs(__z):  Returns the magnitude of __z.
   template <typename T> constexpr T abs(const complex<T> &z) noexcept {
     T x = z.real();

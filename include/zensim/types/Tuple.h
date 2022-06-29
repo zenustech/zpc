@@ -123,8 +123,8 @@ template <std::size_t I, typename T> struct tuple_value {
 
     constexpr tuple_base() = default;
     ~tuple_base() = default;
-    template <typename... Vs> constexpr tuple_base(Vs &&...vs) noexcept
-        : tuple_value<Is, Ts>{FWD(vs)}... {}
+    template <typename... Vs, enable_if_t<sizeof...(Vs) == tuple_size> = 0>
+    constexpr tuple_base(Vs &&...vs) noexcept : tuple_value<Is, Ts>{FWD(vs)}... {}
     constexpr tuple_base(tuple_base &&) = default;
     constexpr tuple_base(const tuple_base &) = default;
     constexpr tuple_base &operator=(tuple_base &&) = default;
@@ -354,8 +354,8 @@ template <std::size_t I, typename T> struct tuple_value {
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<std::size_t>{}).value;
       using indices = typename gen_seq<length>::ascend;
-      using outer = decltype(counts{}.template scan<1, plus<std::size_t>>().map(count_leq{},
-                                                                                wrapv<length>{}));
+      using outer = decltype(
+          counts{}.template scan<1, plus<std::size_t>>().map(count_leq{}, wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
           std::minus<std::size_t>{},
           counts{}.template scan<0, std::plus<std::size_t>>().shuffle(outer{})));
@@ -411,7 +411,7 @@ template <std::size_t I, typename T> struct tuple_value {
 
   template <typename TupA, typename TupB,
             enable_if_t<(is_tuple_v<TupA> || is_tuple_v<remove_cvref_t<TupB>>)> = 0>
-  constexpr auto operator+(TupA tupa, TupB &&tupb) {
+  constexpr auto operator+(TupA &&tupa, TupB &&tupb) {
     return tuple_cat(FWD(tupa), FWD(tupb));
   }
 

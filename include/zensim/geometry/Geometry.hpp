@@ -185,7 +185,7 @@ namespace zs {
     // tr)
     //* b1rs_ + tr * b1re_));
 
-    template <typename T> bool isHexBboxCutBbox(const T& min, const T& max) const {
+    template <typename T> constexpr bool isHexBboxCutBbox(const T& min, const T& max) const {
       bv_t bv = bv_t{get_bounding_box(h_vertices[0], h_vertices[1])};
       for (int i = 2; i != 8; ++i) merge(bv, h_vertices[i]);
       return overlaps(bv, bv_t{min, max});
@@ -936,4 +936,96 @@ namespace zs {
     bool oin = shoot_origin_ray_prism(vfprism, bls);
     return oin;
   }
+
+  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  constexpr int point_inside_hex(bilinear bls[6], const VecInterface<VecT>& pt,
+                                 const VecInterface<VecT>& pt1, const VecInterface<VecT>& dir,
+                                 const bool is_pt_in_tet[6]) {
+    int S = 0;
+    if (dir[0] == 0 && dir[1] == 0 && dir[2] == 0) {
+      printf("random direction wrong\n");
+      return -1;
+    }
+    for (int patch = 0; patch != 6; ++patch) {
+      int is_ray_patch = ray_bilinear_parity(bls[patch], pt, pt1, dir, bls[patch].is_degenerated,
+                                             is_pt_in_tet[patch]);
+      // std::cout<<"\nis ray parity "<<is_ray_patch<<" is pt in tet
+      // "<<is_pt_in_tet[patch]<<std::endl; std::cout<<"bilinear ori,
+      // "<<orient_3d(bls[patch].v[0],bls[patch].v[1],bls[patch].v[2],bls[patch].v[3])<<"this
+      // bilinear finished\n"<<std::endl;
+
+      if (is_ray_patch == 2) return 1;
+
+      if (is_ray_patch == -1) return -1;
+
+      if (is_ray_patch == 1) S++;
+    }
+    return ((S % 2) == 1) ? 1 : 0;
+  }
+  constexpr bool shoot_origin_ray_hex(bilinear bls[6]) {
+    constexpr int max_trials = 8;
+    using vec3 = zs::vec<double, 3>;
+
+    // if a/2<=b<=2*a, then a-b is exact.
+    bool is_pt_in_tet[6] = {};
+    for (int i = 0; i < 6; i++) {
+      if (bls[i].is_degenerated)
+        is_pt_in_tet[i] = false;
+      else
+        is_pt_in_tet[i] = is_point_inside_tet(bls[i], vec3::zeros());
+    }
+    vec3 dir(1, 0, 0);
+    vec3 pt2 = dir;
+
+    int res = -1;
+    int trials{};
+    PCG pcg{};
+
+    for (trials = 0; trials < max_trials; ++trials) {
+      res = point_inside_hex(bls, vec3::zeros(), pt2, dir, is_pt_in_tet);
+
+      if (res >= 0) break;
+
+      dir[0] = pcg();
+      dir[1] = pcg();
+      dir[2] = pcg();
+      pt2 = dir;
+    }
+
+    if (trials == max_trials) {
+      printf("All rays are on edges, increase trials.\n");
+      // throw "All rays are on edges, increase trials";
+      return false;
+    }
+
+    return res >= 1;  // >=1 means point inside of prism
+  }
+
+  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  constexpr bool edgeEdgeCCD(
+      const VecInterface<VecT>& edge0_vertex0_start, const VecInterface<VecT>& edge0_vertex1_start,
+      const VecInterface<VecT>& edge1_vertex0_start, const VecInterface<VecT>& edge1_vertex1_start,
+      const VecInterface<VecT>& edge0_vertex0_end, const VecInterface<VecT>& edge0_vertex1_end,
+      const VecInterface<VecT>& edge1_vertex0_end, const VecInterface<VecT>& edge1_vertex1_end) {
+    hex hx(edge0_vertex0_start, edge0_vertex1_start, edge1_vertex0_start, edge1_vertex1_start,
+           edge0_vertex0_end, edge0_vertex1_end, edge1_vertex0_end, edge1_vertex1_end);
+
+    // step 1. bounding box checking
+    zs::vec<double, 3> bmin(0, 0, 0), bmax(0, 0, 0);
+    bool intersection = hx.isHexBboxCutBbox(bmin, bmax);
+
+    if (!intersection) return false;  // if bounding box not intersected, then not intersected
+    bilinear bl0(hx.h_vertices[0], hx.h_vertices[1], hx.h_vertices[2], hx.h_vertices[3]);
+    bilinear bl1(hx.h_vertices[4], hx.h_vertices[5], hx.h_vertices[6], hx.h_vertices[7]);
+    bilinear bl2(hx.h_vertices[0], hx.h_vertices[1], hx.h_vertices[5], hx.h_vertices[4]);
+    bilinear bl3(hx.h_vertices[1], hx.h_vertices[2], hx.h_vertices[6], hx.h_vertices[5]);
+    bilinear bl4(hx.h_vertices[2], hx.h_vertices[3], hx.h_vertices[7], hx.h_vertices[6]);
+    bilinear bl5(hx.h_vertices[0], hx.h_vertices[3], hx.h_vertices[7], hx.h_vertices[4]);
+    bilinear bls[6] = {bl0, bl1, bl2, bl3, bl4, bl5};
+    bool oin = shoot_origin_ray_hex(bls);
+    return oin;
+  }
+
 }  // namespace zs

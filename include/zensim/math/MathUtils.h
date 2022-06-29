@@ -609,8 +609,9 @@ namespace zs {
     template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0> constexpr T abs(T x) noexcept {
       return x < 0 ? -x : x;
     }
-    // ref:
+    // TODO refer to:
     // https://github.com/mountunion/ModGCD-OneGPU/blob/master/ModGCD-OneGPU.pdf
+    // http://www.iaeng.org/IJCS/issues_v42/issue_4/IJCS_42_4_01.pdf
     template <typename Ti, enable_if_t<std::is_integral_v<Ti>> = 0>
     constexpr Ti gcd(Ti u, Ti v) noexcept {
       while (v != 0) {

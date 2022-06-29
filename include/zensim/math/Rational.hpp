@@ -41,8 +41,15 @@ namespace zs {
     // assert(exponent <= 0);
 
     // significand is now a whole number
-    num = (Ti)significand;
-    den = (Ti)(1.0 / zs::ldexp((T)1.0, exponent));
+    if (significand < limits<Ti>::max() && significand > limits<Ti>::lowest())
+      num = (Ti)significand;
+    else
+      printf("underlying integer not big enough!");
+    if (auto v = (1.0 / zs::ldexp((T)1.0, exponent));
+        v < limits<Ti>::max() && v > limits<Ti>::lowest())
+      den = (Ti)v;
+    else
+      printf("underlying integer not big enough!");
 
     // assert(_val == _num / _den);
   }

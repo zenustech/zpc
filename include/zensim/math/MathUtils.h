@@ -609,6 +609,21 @@ namespace zs {
     template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0> constexpr T abs(T x) noexcept {
       return x < 0 ? -x : x;
     }
+    // ref:
+    // https://github.com/mountunion/ModGCD-OneGPU/blob/master/ModGCD-OneGPU.pdf
+    template <typename Ti, enable_if_t<std::is_integral_v<Ti>> = 0>
+    constexpr Ti gcd(Ti u, Ti v) noexcept {
+      while (v != 0) {
+        auto r = u % v;
+        u = v;
+        v = r;
+      }
+      return u;
+    }
+    template <typename Ti, enable_if_t<std::is_integral_v<Ti>> = 0>
+    constexpr Ti lcm(Ti u, Ti v) noexcept {
+      return (u / gcd(u, v)) * v;
+    }
 
 #if 0
     template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>

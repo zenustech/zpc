@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cmath>
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#  include "math.h"  // CUDA math library
+#endif
 #include <functional>
 #include <type_traits>
 #include <utility>
@@ -234,6 +237,29 @@ namespace zs {
       return ::pow(base, exp);
 #else
     return std::pow(base, exp);
+#endif
+  }
+
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  ZS_FUNCTION T add_ru(T x, T y) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::__fadd_ru(x, y);
+    else
+      return ::__dadd_ru(x, y);
+#else
+    return (x + y);
+#endif
+  }
+  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+  ZS_FUNCTION T sub_ru(T x, T y) noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    if constexpr (is_same_v<T, float>)
+      return ::__fsub_ru(x, y);
+    else
+      return ::__dsub_ru(x, y);
+#else
+    return (x - y);
 #endif
   }
 

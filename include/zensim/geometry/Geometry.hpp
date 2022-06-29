@@ -110,14 +110,14 @@ namespace zs {
                     const VecInterface<VecT>& fe1, const VecInterface<VecT>& fe2) noexcept
         : prism_edge_id{ivec2{0, 1}, ivec2{1, 2}, ivec2{2, 0}, ivec2{3, 4}, ivec2{4, 5},
                         ivec2{5, 3}, ivec2{0, 3}, ivec2{1, 4}, ivec2{2, 5}},
-          p_vertices{vs - fs0, vs - fs2, vs - fs1, ve - fs0, ve - fs2, ve - fs1} {
+          p_vertices{vs - fs0, vs - fs2, vs - fs1, ve - fe0, ve - fe2, ve - fe1} {
 #if 0
       p_vertices[0] = vs - fs0;
       p_vertices[1] = vs - fs2;
       p_vertices[2] = vs - fs1;
-      p_vertices[3] = ve - fs0;
-      p_vertices[4] = ve - fs2;
-      p_vertices[5] = ve - fs1;
+      p_vertices[3] = ve - fe0;
+      p_vertices[4] = ve - fe2;
+      p_vertices[5] = ve - fe1;
 #endif
     }
 

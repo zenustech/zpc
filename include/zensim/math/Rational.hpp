@@ -78,7 +78,7 @@ namespace zs {
   //    Nickolay Mladenov, for the implementation of operator+=
 
   struct rational {
-    using int_type = u64;  // 128 would be better
+    using int_type = i64;  // 128 would be better
     constexpr rational() noexcept : num{0}, den{1} {}
     constexpr rational(int_type n) noexcept : num{n}, den{1} {}
     constexpr rational(int_type n, int_type d) noexcept : num{n}, den{d} { normalize(); }

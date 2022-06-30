@@ -334,4 +334,183 @@ namespace zs {
     int_type num, den;
   };
 
+  ///
+  /// ref: Tight-Inclusion
+  ///
+  // calculate 2^exponent
+  constexpr u64 pow2(const u8 exponent) noexcept { return (u64)1l << exponent; }
+  // return power t. n=result*2^t
+  constexpr u8 reduction(const u64 n, u64 &result) noexcept {
+    u8 t = 0;
+    result = n;
+    while (result != 0 && (result & 1) == 0) {
+      result >>= 1;
+      t++;
+    }
+    return t;
+  }
+
+  static constexpr u8 MAX_DENOM_POWER = 8 * sizeof(u64) - 1;
+  //<k,n> pair present a number k/pow(2,n)
+  struct NumCCD {
+    u64 numerator;
+    u8 denom_power;
+
+    NumCCD() noexcept = default;
+    ~NumCCD() noexcept = default;
+    constexpr NumCCD(const NumCCD &) noexcept = default;
+    constexpr NumCCD(NumCCD &&) noexcept = default;
+    constexpr NumCCD &operator=(const NumCCD &) noexcept = default;
+    constexpr NumCCD &operator=(NumCCD &&) noexcept = default;
+
+    constexpr NumCCD(u64 p_numerator, u8 p_denom_power)
+        : numerator{p_numerator}, denom_power{p_denom_power} {}
+
+    constexpr NumCCD(double x) noexcept : numerator{}, denom_power{} {
+      NumCCD low{0, 0}, high{1, 0}, mid{};
+
+      // Hard code these cases for better accuracy.
+      if (x == 0) {
+        *this = low;
+        return;
+      } else if (x == 1) {
+        *this = high;
+        return;
+      }
+
+      do {
+        mid = low + high;
+        mid.denom_power++;
+
+        if (mid.denom_power >= MAX_DENOM_POWER) {
+          break;
+        }
+
+        if (x > mid) {
+          low = mid;
+        } else if (x < mid) {
+          high = mid;
+        } else {
+          break;
+        }
+      } while (mid.denom_power < MAX_DENOM_POWER);
+      *this = high;
+    }
+
+    constexpr u64 denominator() const noexcept { return (u64)1 << denom_power; }
+
+    // convert NumCCD to double number
+    constexpr double value() const noexcept { return (double)numerator / denominator(); }
+
+    constexpr operator double() const noexcept { return value(); }
+
+    constexpr NumCCD operator+(const NumCCD &other) const noexcept {
+      const u64 &k1 = numerator, &k2 = other.numerator;
+      const u8 &n1 = denom_power, &n2 = other.denom_power;
+
+      NumCCD result{};
+      if (n1 == n2) {
+        result.denom_power = n2 - reduction(k1 + k2, result.numerator);
+      } else if (n2 > n1) {
+        result.numerator = k1 * pow2(n2 - n1) + k2;
+        // assert(result.numerator % 2 == 1);
+        result.denom_power = n2;
+      } else {  // n2 < n1
+        result.numerator = k1 + k2 * pow2(n1 - n2);
+        // assert(result.numerator % 2 == 1);
+        result.denom_power = n1;
+      }
+      return result;
+    }
+
+    constexpr bool operator==(const NumCCD &other) const noexcept {
+      return numerator == other.numerator && denom_power == other.denom_power;
+    }
+    constexpr bool operator!=(const NumCCD &other) const { return !(*this == other); }
+    constexpr bool operator<(const NumCCD &other) const {
+      const u64 &k1 = numerator, &k2 = other.numerator;
+      const u8 &n1 = denom_power, &n2 = other.denom_power;
+
+      u64 tmp_k1 = k1, tmp_k2 = k2;
+      if (n1 < n2) {
+        tmp_k1 = pow2(n2 - n1) * k1;
+      } else if (n1 > n2) {
+        tmp_k2 = pow2(n1 - n2) * k2;
+      }
+      // assert((value() < other.value()) == (tmp_k1 < tmp_k2));
+      return tmp_k1 < tmp_k2;
+    }
+    constexpr bool operator<=(const NumCCD &other) const {
+      return (*this == other) || (*this < other);
+    }
+    constexpr bool operator>=(const NumCCD &other) const { return !(*this < other); }
+    constexpr bool operator>(const NumCCD &other) const { return !(*this <= other); }
+
+    constexpr bool operator<(const double other) const { return value() < other; }
+    constexpr bool operator>(const double other) const { return value() > other; }
+    constexpr bool operator==(const double other) const { return value() == other; }
+
+    static constexpr bool is_sum_leq_1(const NumCCD &num1, const NumCCD &num2) {
+      if (num1.denom_power == num2.denom_power) {
+        // skip the reduction in num1 + num2
+        return num1.numerator + num2.numerator <= num1.denominator();
+      }
+      NumCCD tmp = num1 + num2;
+      return tmp.numerator <= tmp.denominator();
+    }
+  };
+
+  // an interval represented by two double numbers
+  struct Interval {
+    NumCCD lower;
+    NumCCD upper;
+
+    Interval() noexcept = default;
+    ~Interval() noexcept = default;
+    constexpr Interval(const Interval &) noexcept = default;
+    constexpr Interval(Interval &&) noexcept = default;
+    constexpr Interval &operator=(const Interval &) noexcept = default;
+    constexpr Interval &operator=(Interval &&) noexcept = default;
+
+    constexpr Interval(const NumCCD &p_lower, const NumCCD &p_upper) noexcept
+        : lower{p_lower}, upper{p_upper} {}
+
+    constexpr zs::tuple<Interval, Interval> bisect() const noexcept {
+      // interval is [k1/pow2(n1), k2/pow2(n2)]
+      NumCCD mid = upper + lower;
+      mid.denom_power++;  // ÷ 2
+      // assert(mid.value() > lower.value() && mid.value() < upper.value());
+      return zs::make_tuple(Interval(lower, mid), Interval(mid, upper));
+    }
+
+    constexpr bool overlaps(const double r1, const double r2) const noexcept {
+      return upper.value() >= r1 && lower.value() <= r2;
+    }
+  };
+
+  using Interval3 = zs::vec<Interval, 3>;
+  using Array3 = zs::vec<double, 3>;
+
+  constexpr Array3 width(const Interval3 &x) {
+    return {x[0].upper.value() - x[0].lower.value(), x[1].upper.value() - x[1].lower.value(),
+            x[2].upper.value() - x[2].lower.value()};
+  }
+
+  // find the largest width/tol dimension that is greater than its tolerance
+  constexpr int find_next_split(const Array3 &widths, const Array3 &tols) noexcept {
+    // assert((widths > tols).any());
+    Array3 tmp = Array3::init([&widths, &tols](int d) {
+      return widths[d] > tols[d] ? widths[d] / tols[d] : -std::numeric_limits<double>::infinity();
+    });
+    double val = tmp[0];
+    int max_index{0};
+    for (int i = 1; i != 3; ++i)
+      if (tmp[i] > val) {
+        val = tmp[i];
+        max_index = i;
+      }
+    // tmp.maxCoeff(&max_index);
+    return max_index;
+  }
+
 }  // namespace zs

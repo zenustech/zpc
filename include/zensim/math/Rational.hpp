@@ -116,8 +116,20 @@ namespace zs {
     }
     constexpr int_type numerator() const noexcept { return num; }
     constexpr int_type denominator() const noexcept { return den; }
+    std::string get_denominator_str() const { return std::to_string(denominator()); }
+    std::string get_numerator_str() const { return std::to_string(numerator()); }
 
-    constexpr double to_double() noexcept { return (double)num / den; }
+    constexpr double to_double() const noexcept { return (double)num / den; }
+    static double get_double(const std::string &num, const std::string &denom) {
+      rational v{std::stoll(num), std::stoll(denom)};
+      return v.to_double();
+    }
+
+    //<<
+    friend std::ostream &operator<<(std::ostream &os, const rational &r) {
+      os << r.to_double();
+      return os;
+    }
 
     /// Arithmetic assignment operators
     constexpr rational &operator+=(const rational &r) {
@@ -211,25 +223,25 @@ namespace zs {
     }
 
     constexpr rational operator-() const noexcept { return rational(-num, den); }
-    constexpr rational operator+(const rational &r) const {
-      rational tmp{*this};
+    friend constexpr rational operator+(const rational &l, const rational &r) {
+      rational tmp{l};
       return tmp += r;
     }
-    constexpr rational operator-(const rational &r) const {
-      rational tmp{*this};
+    friend constexpr rational operator-(const rational &l, const rational &r) {
+      rational tmp{l};
       return tmp -= r;
     }
-    constexpr rational operator*(const rational &r) const {
-      rational tmp{*this};
+    friend constexpr rational operator*(const rational &l, const rational &r) {
+      rational tmp{l};
       return tmp *= r;
     }
-    constexpr rational operator/(const rational &r) const {
-      rational tmp{*this};
+    friend constexpr rational operator/(const rational &l, const rational &r) {
+      rational tmp{l};
       return tmp /= r;
     }
 
     /// Comparison operators
-    constexpr bool operator<(const rational &r) const {
+    friend constexpr bool operator<(const rational &l, const rational &r) {
       // Avoid repeated construction
       int_type const zero(0);
 
@@ -244,8 +256,8 @@ namespace zs {
       // fraction representation using the Euclidian GCD algorithm.
       struct {
         int_type n, d, q, r;
-      } ts = {this->num, this->den, static_cast<int_type>(this->num / this->den),
-              static_cast<int_type>(this->num % this->den)},
+      } ts = {l.num, l.den, static_cast<int_type>(l.num / l.den),
+              static_cast<int_type>(l.num % l.den)},
         rs = {r.num, r.den, static_cast<int_type>(r.num / r.den),
               static_cast<int_type>(r.num % r.den)};
       unsigned reverse = 0u;
@@ -308,12 +320,15 @@ namespace zs {
         return (ts.r != zero) != static_cast<bool>(reverse);
       }
     }
-    constexpr bool operator==(const rational &r) const noexcept {
-      return num == r.num && den == r.den;
+    friend constexpr bool operator==(const rational &l, const rational &r) noexcept {
+      return l.num == r.num && l.den == r.den;
     }
-    constexpr bool operator>(const rational &r) const {
-      if (operator==(r)) return false;
-      return !operator<(r);
+    friend constexpr bool operator!=(const rational &l, const rational &r) noexcept {
+      return !(l == r);
+    }
+    friend constexpr bool operator>(const rational &l, const rational &r) {
+      if (l == r) return false;
+      return !(l < r);
     }
 
     int_type num, den;

@@ -491,6 +491,44 @@ namespace zs {
   using Interval3 = zs::vec<Interval, 3>;
   using Array3 = zs::vec<double, 3>;
 
+  constexpr zs::vec<double, 8> function_ee(
+      const double &a0s, const double &a1s, const double &b0s, const double &b1s, const double &a0e,
+      const double &a1e, const double &b0e, const double &b1e, const zs::vec<double, 8> &t_up,
+      const zs::vec<double, 8> &t_dw, const zs::vec<double, 8> &u_up,
+      const zs::vec<double, 8> &u_dw, const zs::vec<double, 8> &v_up,
+      const zs::vec<double, 8> &v_dw) {
+    zs::vec<double, 8> rst{};
+    for (int i = 0; i < 8; i++) {
+      double edge0_vertex0 = (a0e - a0s) * t_up[i] / t_dw[i] + a0s;
+      double edge0_vertex1 = (a1e - a1s) * t_up[i] / t_dw[i] + a1s;
+      double edge1_vertex0 = (b0e - b0s) * t_up[i] / t_dw[i] + b0s;
+      double edge1_vertex1 = (b1e - b1s) * t_up[i] / t_dw[i] + b1s;
+
+      double edge0_vertex = (edge0_vertex1 - edge0_vertex0) * u_up[i] / u_dw[i] + edge0_vertex0;
+      double edge1_vertex = (edge1_vertex1 - edge1_vertex0) * v_up[i] / v_dw[i] + edge1_vertex0;
+      rst[i] = edge0_vertex - edge1_vertex;
+    }
+    return rst;
+  }
+
+  constexpr zs::vec<double, 8> function_vf(
+      const double &vs, const double &t0s, const double &t1s, const double &t2s, const double &ve,
+      const double &t0e, const double &t1e, const double &t2e, const zs::vec<double, 8> &t_up,
+      const zs::vec<double, 8> &t_dw, const zs::vec<double, 8> &u_up,
+      const zs::vec<double, 8> &u_dw, const zs::vec<double, 8> &v_up,
+      const zs::vec<double, 8> &v_dw) {
+    zs::vec<double, 8> rst{};
+    for (int i = 0; i < 8; i++) {
+      double v = (ve - vs) * t_up[i] / t_dw[i] + vs;
+      double t0 = (t0e - t0s) * t_up[i] / t_dw[i] + t0s;
+      double t1 = (t1e - t1s) * t_up[i] / t_dw[i] + t1s;
+      double t2 = (t2e - t2s) * t_up[i] / t_dw[i] + t2s;
+      double pt = (t1 - t0) * u_up[i] / u_dw[i] + (t2 - t0) * v_up[i] / v_dw[i] + t0;
+      rst[i] = v - pt;
+    }
+    return rst;
+  }
+
   constexpr Array3 width(const Interval3 &x) {
     return {x[0].upper.value() - x[0].lower.value(), x[1].upper.value() - x[1].lower.value(),
             x[2].upper.value() - x[2].lower.value()};
@@ -512,5 +550,406 @@ namespace zs {
     // tmp.maxCoeff(&max_index);
     return max_index;
   }
+
+  constexpr void convert_tuv_to_array(const Interval3 &itv, zs::vec<double, 8> &t_up,
+                                      zs::vec<double, 8> &t_dw, zs::vec<double, 8> &u_up,
+                                      zs::vec<double, 8> &u_dw, zs::vec<double, 8> &v_up,
+                                      zs::vec<double, 8> &v_dw) {
+    // t order: 0,0,0,0,1,1,1,1
+    // u order: 0,0,1,1,0,0,1,1
+    // v order: 0,1,0,1,0,1,0,1
+    const double t0_up = itv[0].lower.numerator, t0_dw = itv[0].lower.denominator(),
+                 t1_up = itv[0].upper.numerator, t1_dw = itv[0].upper.denominator(),
+                 u0_up = itv[1].lower.numerator, u0_dw = itv[1].lower.denominator(),
+                 u1_up = itv[1].upper.numerator, u1_dw = itv[1].upper.denominator(),
+                 v0_up = itv[2].lower.numerator, v0_dw = itv[2].lower.denominator(),
+                 v1_up = itv[2].upper.numerator, v1_dw = itv[2].upper.denominator();
+    t_up = {t0_up, t0_up, t0_up, t0_up, t1_up, t1_up, t1_up, t1_up};
+    t_dw = {t0_dw, t0_dw, t0_dw, t0_dw, t1_dw, t1_dw, t1_dw, t1_dw};
+    u_up = {u0_up, u0_up, u1_up, u1_up, u0_up, u0_up, u1_up, u1_up};
+    u_dw = {u0_dw, u0_dw, u1_dw, u1_dw, u0_dw, u0_dw, u1_dw, u1_dw};
+    v_up = {v0_up, v1_up, v0_up, v1_up, v0_up, v1_up, v0_up, v1_up};
+    v_dw = {v0_dw, v1_dw, v0_dw, v1_dw, v0_dw, v1_dw, v0_dw, v1_dw};
+  }
+  template <typename T, int N>
+  constexpr void min_max_array(const zs::vec<T, N> &arr, T &min, T &max) {
+    static_assert(N > 0, "no min/max of empty array");
+    min = arr[0];
+    max = arr[0];
+    for (int i = 1; i != N; ++i) {
+      if (min > arr[i]) {
+        min = arr[i];
+      }
+      if (max < arr[i]) {
+        max = arr[i];
+      }
+    }
+  }
+
+  // ** this version can return the true x or y or z tolerance of the co-domain **
+  // eps is the interval [-eps,eps] we need to check
+  // if [-eps,eps] overlap, return true
+  // bbox_in_eps tell us if the box is totally in eps box
+  // ms is the minimum seperation
+  template <bool check_vf> constexpr bool evaluate_bbox_one_dimension_vector(
+      zs::vec<double, 8> &t_up, zs::vec<double, 8> &t_dw, zs::vec<double, 8> &u_up,
+      zs::vec<double, 8> &u_dw, zs::vec<double, 8> &v_up, zs::vec<double, 8> &v_dw,
+      const Array3 &a0s, const Array3 &a1s, const Array3 &b0s, const Array3 &b1s, const Array3 &a0e,
+      const Array3 &a1e, const Array3 &b0e, const Array3 &b1e, const int dim, const double eps,
+      bool &bbox_in_eps, const double ms = 0, double *tol = nullptr) {
+    zs::vec<double, 8> vs{};
+    if constexpr (check_vf) {
+      vs = function_vf(a0s[dim], a1s[dim], b0s[dim], b1s[dim], a0e[dim], a1e[dim], b0e[dim],
+                       b1e[dim], t_up, t_dw, u_up, u_dw, v_up, v_dw);
+    } else {
+      vs = function_ee(a0s[dim], a1s[dim], b0s[dim], b1s[dim], a0e[dim], a1e[dim], b0e[dim],
+                       b1e[dim], t_up, t_dw, u_up, u_dw, v_up, v_dw);
+    }
+
+    double minv{}, maxv{};
+    min_max_array<double, 8>(vs, minv, maxv);
+
+    if (tol != nullptr) {
+      *tol = maxv - minv;  // this is the real tolerance
+    }
+
+    bbox_in_eps = false;
+
+    const double eps_and_ms = eps + ms;
+
+    if (minv > eps_and_ms || maxv < -eps_and_ms) {
+      return false;
+    }
+
+    if (minv >= -eps_and_ms && maxv <= eps_and_ms) {
+      bbox_in_eps = true;
+    }
+
+    return true;
+  }
+  // ** this version can return the true tolerance of the co-domain **
+  // give the result of if the hex overlaps the input eps box around origin
+  // use vectorized hex-vertex-solving function for acceleration
+  // box_in_eps shows if this hex is totally inside box. if so, no need to do further bisection
+  template <bool check_vf> constexpr bool origin_in_function_bounding_box_vector(
+      const Interval3 &paras, const Array3 &a0s, const Array3 &a1s, const Array3 &b0s,
+      const Array3 &b1s, const Array3 &a0e, const Array3 &a1e, const Array3 &b0e, const Array3 &b1e,
+      const Array3 &eps, bool &box_in_eps, const double ms = 0, Array3 *tolerance = nullptr) {
+    box_in_eps = false;
+
+    zs::vec<double, 8> t_up{}, t_dw{}, u_up{}, u_dw{}, v_up{}, v_dw{};
+    convert_tuv_to_array(paras, t_up, t_dw, u_up, u_dw, v_up, v_dw);
+
+    bool box_in[3] = {};
+    for (int i = 0; i < 3; i++) {
+      double *tol = tolerance == nullptr ? nullptr : &((*tolerance)[i]);
+      if (!evaluate_bbox_one_dimension_vector<check_vf>(t_up, t_dw, u_up, u_dw, v_up, v_dw, a0s,
+                                                        a1s, b0s, b1s, a0e, a1e, b0e, b1e, i,
+                                                        eps[i], box_in[i], ms, tol)) {
+        return false;
+      }
+    }
+
+    if (box_in[0] && box_in[1] && box_in[2]) {
+      box_in_eps = true;
+    }
+
+    return true;
+  }
+  template <typename F>  // std::function<void(const Interval3 &)>
+  constexpr bool split_and_push(const Interval3 &tuv, int split_i, F &&push, bool check_vf,
+                                double t_upper_bound = 1) {
+    auto [halves_first, halves_second] = tuv[split_i].bisect();
+    if (halves_first.lower >= halves_first.upper || halves_second.lower >= halves_second.upper) {
+      printf("OVERFLOW HAPPENS WHEN SPLITTING INTERVALS");
+      return true;
+    }
+
+    Interval3 tmp = tuv;
+
+    if (split_i == 0) {
+      if (t_upper_bound == 1 || halves_second.overlaps(0, t_upper_bound)) {
+        tmp[split_i] = halves_second;
+        push(tmp);
+      }
+      if (t_upper_bound == 1 || halves_first.overlaps(0, t_upper_bound)) {
+        tmp[split_i] = halves_first;
+        push(tmp);
+      }
+    } else if (!check_vf) {  // edge uv
+      tmp[split_i] = halves_second;
+      push(tmp);
+      tmp[split_i] = halves_first;
+      push(tmp);
+    } else {
+      // assert(check_vf && split_i != 0);
+      // u + v ≤ 1
+      if (split_i == 1) {
+        const Interval &v = tuv[2];
+        if (NumCCD::is_sum_leq_1(halves_second.lower, v.lower)) {
+          tmp[split_i] = halves_second;
+          push(tmp);
+        }
+        if (NumCCD::is_sum_leq_1(halves_first.lower, v.lower)) {
+          tmp[split_i] = halves_first;
+          push(tmp);
+        }
+      } else if (split_i == 2) {
+        const Interval &u = tuv[1];
+        if (NumCCD::is_sum_leq_1(u.lower, halves_second.lower)) {
+          tmp[split_i] = halves_second;
+          push(tmp);
+        }
+        if (NumCCD::is_sum_leq_1(u.lower, halves_first.lower)) {
+          tmp[split_i] = halves_first;
+          push(tmp);
+        }
+      }
+    }
+    return false;  // no overflow
+  }
+
+  // this version cannot give the impact time at t=1, although this collision can
+  // be detected at t=0 of the next time step, but still may cause problems in
+  // line-search based physical simulation
+  template <bool check_vf>
+  constexpr bool interval_root_finder_DFS(const Array3 &a0s, const Array3 &a1s, const Array3 &b0s,
+                                          const Array3 &b1s, const Array3 &a0e, const Array3 &a1e,
+                                          const Array3 &b0e, const Array3 &b1e, const Array3 &tol,
+                                          const Array3 &err, const double ms, double &toi) {
+    auto cmp_time
+        = [](const Interval3 &i1, const Interval3 &i2) { return i1[0].lower >= i2[0].lower; };
+
+    // build interval set [0,1]x[0,1]x[0,1]
+    const Interval zero_to_one = Interval(NumCCD(0, 0), NumCCD(1, 0));
+    Interval3 iset{zero_to_one, zero_to_one, zero_to_one};
+
+    // Stack of intervals and the last split dimension
+    // std::stack<std::pair<Interval3,int>> istack;
+    Interval3 istack[256] = {iset};
+    int top = 1;
+    auto sort_stack = [&istack, &top, &cmp_time]() {
+      for (int i = 0; i != top - 1; ++i)
+        if (cmp_time(istack[i], istack[i + 1])) {
+          auto tmp = istack[i];
+          istack[i] = istack[i + 1];
+          istack[i + 1] = tmp;
+        }
+    };
+    auto all_le = [](const Array3 &a, const Array3 &b) {
+      return a[0] <= b[0] && a[1] <= b[1] && a[2] <= b[2];
+    };
+
+    Array3 err_and_ms = err + ms;
+
+    int refine = 0;
+
+    toi = limits<double>::infinity();
+    NumCCD TOI(1, 0);
+
+    bool collision = false;
+    int rnbr = 0;
+    while (top) {
+      sort_stack();                       // mimic priority queue
+      Interval3 current = istack[--top];  // top + pop
+
+      // TOI should always be no larger than current
+      if (current[0].lower >= TOI) continue;
+
+      refine++;
+
+      bool zero_in{}, box_in{};
+      zero_in = origin_in_function_bounding_box_vector<check_vf>(current, a0s, a1s, b0s, b1s, a0e,
+                                                                 a1e, b0e, b1e, err_and_ms, box_in);
+
+      if (!zero_in) continue;
+
+      Array3 widths = width(current);
+
+      if (box_in || all_le(widths, tol)) {
+        TOI = current[0].lower;
+        collision = true;
+        rnbr++;
+        // continue;
+        toi = TOI.value();
+        return true;
+      }
+
+      // find the next dimension to split
+      int split_i = find_next_split(widths, tol);
+
+      bool overflowed = split_and_push(
+          current, split_i,
+          [&](const Interval3 &i) {
+            if (top <= 255) istack[top++] = i;
+          },
+          check_vf);
+      if (top > 255) {
+        printf("local stack depth not enough!\n");
+        return true;
+      }
+      if (overflowed) {
+        printf("OVERFLOW HAPPENS WHEN SPLITTING INTERVALS");
+        return true;
+      }
+    }
+    // if (collision) toi = TOI.value();
+    return collision;
+  }
+  template <int N> constexpr Array3 get_numerical_error(const zs::vec<Array3, N> &vertices,
+                                                        const bool check_vf,
+                                                        const bool using_minimum_separation) {
+    double eefilter{};
+    double vffilter{};
+    if (!using_minimum_separation) {
+      eefilter = 6.217248937900877e-15;
+      vffilter = 6.661338147750939e-15;
+    } else  // using minimum separation
+    {
+      eefilter = 7.105427357601002e-15;
+      vffilter = 7.549516567451064e-15;
+    }
+
+    Array3 max = vertices[0].abs();
+    for (int i = 0; i < N; ++i) {
+      // max = max.cwiseMax(vertices[i].cwiseAbs());
+      for (int d = 0; d != 3; ++d)
+        if (vertices[i][d] > max[d]) max[d] = vertices[i][d];
+    }
+    Array3 delta = max.min(1);  // (..., 1]
+    double filter = check_vf ? vffilter : eefilter;
+    return filter
+           * Array3{delta[0] * delta[0] * delta[0], delta[1] * delta[1] * delta[1],
+                    delta[2] * delta[2] * delta[2]};
+  }
+
+  constexpr double max_linf_4(const Array3 &p1, const Array3 &p2, const Array3 &p3,
+                              const Array3 &p4, const Array3 &p1e, const Array3 &p2e,
+                              const Array3 &p3e, const Array3 &p4e) {
+    return zs::max(zs::max((p1e - p1).infNorm(), (p2e - p2).infNorm()),
+                   zs::max((p3e - p3).infNorm(), (p4e - p4).infNorm()));
+  }
+  constexpr Array3 compute_edge_edge_tolerances(
+      const Array3 &edge0_vertex0_start, const Array3 &edge0_vertex1_start,
+      const Array3 &edge1_vertex0_start, const Array3 &edge1_vertex1_start,
+      const Array3 &edge0_vertex0_end, const Array3 &edge0_vertex1_end,
+      const Array3 &edge1_vertex0_end, const Array3 &edge1_vertex1_end,
+      const double distance_tolerance) {
+    const Array3 p000 = edge0_vertex0_start - edge1_vertex0_start;
+    const Array3 p001 = edge0_vertex0_start - edge1_vertex1_start;
+    const Array3 p011 = edge0_vertex1_start - edge1_vertex1_start;
+    const Array3 p010 = edge0_vertex1_start - edge1_vertex0_start;
+    const Array3 p100 = edge0_vertex0_end - edge1_vertex0_end;
+    const Array3 p101 = edge0_vertex0_end - edge1_vertex1_end;
+    const Array3 p111 = edge0_vertex1_end - edge1_vertex1_end;
+    const Array3 p110 = edge0_vertex1_end - edge1_vertex0_end;
+
+    double dl = 3 * max_linf_4(p000, p001, p011, p010, p100, p101, p111, p110);
+    double edge0_length = 3 * max_linf_4(p000, p100, p101, p001, p010, p110, p111, p011);
+    double edge1_length = 3 * max_linf_4(p000, p100, p110, p010, p001, p101, p111, p011);
+
+    return Array3(zs::min(distance_tolerance / dl, 1e-3),             // CCD_MAX_TIME_TOL
+                  zs::min(distance_tolerance / edge0_length, 1e-2),   // CCD_MAX_COORD_TOL
+                  zs::min(distance_tolerance / edge1_length, 1e-2));  // CCD_MAX_COORD_TOL
+  }
+  constexpr bool edgeEdgeCCD(const Array3 &a0s, const Array3 &a1s, const Array3 &b0s,
+                             const Array3 &b1s, const Array3 &a0e, const Array3 &a1e,
+                             const Array3 &b0e, const Array3 &b1e, const Array3 &err_in,
+                             const double ms_in, double &toi, const double tolerance_in,
+                             const double t_max_in, const int max_itr, double &output_tolerance,
+                             bool no_zero_toi = false) {
+    constexpr int MAX_NO_ZERO_TOI_ITER = limits<int>::max();
+    // unsigned so can be larger than MAX_NO_ZERO_TOI_ITER
+    unsigned int no_zero_toi_iter = 0;
+
+    bool is_impacting{}, tmp_is_impacting{};
+
+    // Mutable copies for no_zero_toi
+    double t_max = t_max_in;
+    double tolerance = tolerance_in;
+    double ms = ms_in;
+
+    Array3 tol = compute_edge_edge_tolerances(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tolerance_in);
+
+    //////////////////////////////////////////////////////////
+    // this should be the error of the whole mesh
+    Array3 err{};
+    // if error[0]<0, means we need to calculate error here
+    if (err_in[0] < 0) {
+      zs::vec<Array3, 8> vlist = {a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e};
+      bool use_ms = ms > 0;
+      err = get_numerical_error(vlist, false, use_ms);
+    } else {
+      err = err_in;
+    }
+    //////////////////////////////////////////////////////////
+
+    do {
+      // case CCDRootFindingMethod::DEPTH_FIRST_SEARCH:
+      // no handling for zero toi
+      return interval_root_finder_DFS<false>(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tol, err, ms,
+                                             toi);
+      // assert(!tmp_is_impacting || toi >= 0);
+
+      if (t_max == t_max_in) {
+        // This will be the final output because we might need to
+        // perform CCD again if the toi is zero. In which case we will
+        // use a smaller t_max for more time resolution.
+        is_impacting = tmp_is_impacting;
+      } else {
+        toi = tmp_is_impacting ? toi : t_max;
+      }
+
+      // This modification is for CCD-filtered line-search (e.g., IPC)
+      // strategies for dealing with toi = 0:
+      // 1. shrink t_max (when reaches max_itr),
+      // 2. shrink tolerance (when not reach max_itr and tolerance is big) or
+      // ms (when tolerance is too small comparing with ms)
+      if (tmp_is_impacting && toi == 0 && no_zero_toi) {
+        if (output_tolerance > tolerance) {
+          // reaches max_itr, so shrink t_max to return a more accurate result to reach target
+          // tolerance.
+          t_max *= 0.9;
+        } else if (10 * tolerance < ms) {
+          ms *= 0.5;  // ms is too large, shrink it
+        } else {
+          tolerance *= 0.5;  // tolerance is too large, shrink it
+
+          tol = compute_edge_edge_tolerances(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tolerance);
+        }
+      }
+
+      // Only perform a second iteration if toi == 0.
+      // WARNING: This option assumes the initial distance is not zero.
+    } while (no_zero_toi && ++no_zero_toi_iter < MAX_NO_ZERO_TOI_ITER && tmp_is_impacting
+             && toi == 0);
+    // assert(!no_zero_toi || !is_impacting || toi != 0);
+
+    return is_impacting;
+  }
+
+#if 0
+  Array3 compute_face_vertex_tolerances(const Vector3 &vs, const Vector3 &f0s, const Vector3 &f1s,
+                                        const Vector3 &f2s, const Vector3 &ve, const Vector3 &f0e,
+                                        const Vector3 &f1e, const Vector3 &f2e,
+                                        const Scalar distance_tolerance) {
+    const Vector3 p000 = vs - f0s;
+    const Vector3 p001 = vs - f2s;
+    const Vector3 p011 = vs - (f1s + f2s - f0s);
+    const Vector3 p010 = vs - f1s;
+    const Vector3 p100 = ve - f0e;
+    const Vector3 p101 = ve - f2e;
+    const Vector3 p111 = ve - (f1e + f2e - f0e);
+    const Vector3 p110 = ve - f1e;
+
+    Scalar dl = 3 * max_linf_4(p000, p001, p011, p010, p100, p101, p111, p110);
+    Scalar edge0_length = 3 * max_linf_4(p000, p100, p101, p001, p010, p110, p111, p011);
+    Scalar edge1_length = 3 * max_linf_4(p000, p100, p110, p010, p001, p101, p111, p011);
+
+    return Array3(std::min(distance_tolerance / dl, CCD_MAX_TIME_TOL),
+                  std::min(distance_tolerance / edge0_length, CCD_MAX_COORD_TOL),
+                  std::min(distance_tolerance / edge1_length, CCD_MAX_COORD_TOL));
+  }
+#endif
 
 }  // namespace zs

@@ -442,6 +442,27 @@ namespace zs {
       return r;
     }
     template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto min() const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      value_type res{derivedPtr()->val(0)};
+      for (index_type i = 1; i != extent; ++i)
+        if (const auto& v = derivedPtr()->val(i); v < res) res = v;
+      return res;
+    }
+    template <typename VecT = Derived,
+              enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
+    constexpr auto min(typename VecT::value_type val) const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      typename Derived::template variant_vec<value_type, extents> r{};
+      for (index_type i = 0; i != extent; ++i)
+        if (const auto& v = derivedPtr()->val(i); v < val)
+          r.val(i) = v;
+        else
+          r.val(i) = val;
+      return r;
+    }
+    template <typename VecT = Derived,
               enable_if_all<std::is_arithmetic_v<typename VecT::value_type>, VecT::dim == 1,
                             VecT::extent == 2> = 0>
     constexpr auto orthogonal() const noexcept {

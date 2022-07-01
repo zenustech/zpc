@@ -336,6 +336,7 @@ namespace zs {
 
   ///
   /// ref: Tight-Inclusion
+  /// https://github.com/Continuous-Collision-Detection/Tight-Inclusion
   ///
   // calculate 2^exponent
   constexpr u64 pow2(const u8 exponent) noexcept { return (u64)1l << exponent; }
@@ -728,13 +729,17 @@ namespace zs {
     // std::stack<std::pair<Interval3,int>> istack;
     Interval3 istack[256] = {iset};
     int top = 1;
-    auto sort_stack = [&istack, &top, &cmp_time]() {
-      for (int i = 0; i != top - 1; ++i)
-        if (cmp_time(istack[i], istack[i + 1])) {
-          auto tmp = istack[i];
-          istack[i] = istack[i + 1];
-          istack[i + 1] = tmp;
+    auto popPriority = [&istack, &top, &cmp_time]() {
+      auto ret = istack[0];
+      int id = 0;
+      for (int i = 1; i < top; ++i)
+        if (cmp_time(istack[i], ret)) {
+          ret = istack[i];
+          id = i;
         }
+      --top;
+      if (id != top) istack[id] = istack[top];
+      return ret;
     };
     auto all_le = [](const Array3 &a, const Array3 &b) {
       return a[0] <= b[0] && a[1] <= b[1] && a[2] <= b[2];
@@ -750,8 +755,7 @@ namespace zs {
     bool collision = false;
     int rnbr = 0;
     while (top) {
-      sort_stack();                       // mimic priority queue
-      Interval3 current = istack[--top];  // top + pop
+      Interval3 current = popPriority();  // mimic priority queue: top + pop
 
       // TOI should always be no larger than current
       if (current[0].lower >= TOI) continue;
@@ -809,6 +813,7 @@ namespace zs {
       eefilter = 7.105427357601002e-15;
       vffilter = 7.549516567451064e-15;
     }
+    double filter = check_vf ? vffilter : eefilter;
 
     Array3 max = vertices[0].abs();
     for (int i = 0; i < N; ++i) {
@@ -817,7 +822,6 @@ namespace zs {
         if (vertices[i][d] > max[d]) max[d] = vertices[i][d];
     }
     Array3 delta = max.min(1);  // (..., 1]
-    double filter = check_vf ? vffilter : eefilter;
     return filter
            * Array3{delta[0] * delta[0] * delta[0], delta[1] * delta[1] * delta[1],
                     delta[2] * delta[2] * delta[2]};
@@ -829,6 +833,9 @@ namespace zs {
     return zs::max(zs::max((p1e - p1).infNorm(), (p2e - p2).infNorm()),
                    zs::max((p3e - p3).infNorm(), (p4e - p4).infNorm()));
   }
+
+#define CCD_MAX_TIME_TOL 1e-3
+#define CCD_MAX_COORD_TOL 1e-2
   constexpr Array3 compute_edge_edge_tolerances(
       const Array3 &edge0_vertex0_start, const Array3 &edge0_vertex1_start,
       const Array3 &edge1_vertex0_start, const Array3 &edge1_vertex1_start,
@@ -848,16 +855,16 @@ namespace zs {
     double edge0_length = 3 * max_linf_4(p000, p100, p101, p001, p010, p110, p111, p011);
     double edge1_length = 3 * max_linf_4(p000, p100, p110, p010, p001, p101, p111, p011);
 
-    return Array3(zs::min(distance_tolerance / dl, 1e-3),             // CCD_MAX_TIME_TOL
-                  zs::min(distance_tolerance / edge0_length, 1e-2),   // CCD_MAX_COORD_TOL
-                  zs::min(distance_tolerance / edge1_length, 1e-2));  // CCD_MAX_COORD_TOL
+    return Array3(zs::min(distance_tolerance / dl, CCD_MAX_TIME_TOL),
+                  zs::min(distance_tolerance / edge0_length, CCD_MAX_COORD_TOL),
+                  zs::min(distance_tolerance / edge1_length, CCD_MAX_COORD_TOL));
   }
   constexpr bool edgeEdgeCCD(const Array3 &a0s, const Array3 &a1s, const Array3 &b0s,
                              const Array3 &b1s, const Array3 &a0e, const Array3 &a1e,
                              const Array3 &b0e, const Array3 &b1e, const Array3 &err_in,
                              const double ms_in, double &toi, const double tolerance_in,
                              const double t_max_in, const int max_itr, double &output_tolerance,
-                             bool no_zero_toi = false) {
+                             bool no_zero_toi = true) {
     constexpr int MAX_NO_ZERO_TOI_ITER = limits<int>::max();
     // unsigned so can be larger than MAX_NO_ZERO_TOI_ITER
     unsigned int no_zero_toi_iter = 0;
@@ -928,28 +935,117 @@ namespace zs {
     return is_impacting;
   }
 
-#if 0
-  Array3 compute_face_vertex_tolerances(const Vector3 &vs, const Vector3 &f0s, const Vector3 &f1s,
-                                        const Vector3 &f2s, const Vector3 &ve, const Vector3 &f0e,
-                                        const Vector3 &f1e, const Vector3 &f2e,
-                                        const Scalar distance_tolerance) {
-    const Vector3 p000 = vs - f0s;
-    const Vector3 p001 = vs - f2s;
-    const Vector3 p011 = vs - (f1s + f2s - f0s);
-    const Vector3 p010 = vs - f1s;
-    const Vector3 p100 = ve - f0e;
-    const Vector3 p101 = ve - f2e;
-    const Vector3 p111 = ve - (f1e + f2e - f0e);
-    const Vector3 p110 = ve - f1e;
+  constexpr Array3 compute_face_vertex_tolerances(const Array3 &vs, const Array3 &f0s,
+                                                  const Array3 &f1s, const Array3 &f2s,
+                                                  const Array3 &ve, const Array3 &f0e,
+                                                  const Array3 &f1e, const Array3 &f2e,
+                                                  const double distance_tolerance) {
+    const Array3 p000 = vs - f0s;
+    const Array3 p001 = vs - f2s;
+    const Array3 p011 = vs - (f1s + f2s - f0s);
+    const Array3 p010 = vs - f1s;
+    const Array3 p100 = ve - f0e;
+    const Array3 p101 = ve - f2e;
+    const Array3 p111 = ve - (f1e + f2e - f0e);
+    const Array3 p110 = ve - f1e;
 
-    Scalar dl = 3 * max_linf_4(p000, p001, p011, p010, p100, p101, p111, p110);
-    Scalar edge0_length = 3 * max_linf_4(p000, p100, p101, p001, p010, p110, p111, p011);
-    Scalar edge1_length = 3 * max_linf_4(p000, p100, p110, p010, p001, p101, p111, p011);
+    double dl = 3 * max_linf_4(p000, p001, p011, p010, p100, p101, p111, p110);
+    double edge0_length = 3 * max_linf_4(p000, p100, p101, p001, p010, p110, p111, p011);
+    double edge1_length = 3 * max_linf_4(p000, p100, p110, p010, p001, p101, p111, p011);
 
     return Array3(std::min(distance_tolerance / dl, CCD_MAX_TIME_TOL),
                   std::min(distance_tolerance / edge0_length, CCD_MAX_COORD_TOL),
                   std::min(distance_tolerance / edge1_length, CCD_MAX_COORD_TOL));
   }
+  constexpr bool vertexFaceCCD(const Array3 &vertex_start, const Array3 &face_vertex0_start,
+                               const Array3 &face_vertex1_start, const Array3 &face_vertex2_start,
+                               const Array3 &vertex_end, const Array3 &face_vertex0_end,
+                               const Array3 &face_vertex1_end, const Array3 &face_vertex2_end,
+                               const Array3 &err_in, const double ms_in, double &toi,
+                               const double tolerance_in, const double t_max_in, const int max_itr,
+                               double &output_tolerance, bool no_zero_toi = true) {
+    const int MAX_NO_ZERO_TOI_ITER = std::numeric_limits<int>::max();
+    // unsigned so can be larger than MAX_NO_ZERO_TOI_ITER
+    unsigned int no_zero_toi_iter = 0;
+
+    bool is_impacting{}, tmp_is_impacting{};
+
+    // Mutable copies for no_zero_toi
+    double t_max = t_max_in;
+    double tolerance = tolerance_in;
+    double ms = ms_in;
+
+    Array3 tol = compute_face_vertex_tolerances(
+        vertex_start, face_vertex0_start, face_vertex1_start, face_vertex2_start, vertex_end,
+        face_vertex0_end, face_vertex1_end, face_vertex2_end, tolerance);
+
+    //////////////////////////////////////////////////////////
+    // this is the error of the whole mesh
+    Array3 err{};
+    // if error[0]<0, means we need to calculate error here
+    if (err_in[0] < 0) {
+      zs::vec<Array3, 8> vlist{vertex_start,       face_vertex0_start, face_vertex1_start,
+                               face_vertex2_start, vertex_end,         face_vertex0_end,
+                               face_vertex1_end,   face_vertex2_end};
+      bool use_ms = ms > 0;
+      err = get_numerical_error(vlist, true, use_ms);
+    } else {
+      err = err_in;
+    }
+    //////////////////////////////////////////////////////////
+
+    do {
+      // no handling for zero toi
+      return interval_root_finder_DFS<true>(vertex_start, face_vertex0_start, face_vertex1_start,
+                                            face_vertex2_start, vertex_end, face_vertex0_end,
+                                            face_vertex1_end, face_vertex2_end, tol, err, ms, toi);
+// assert(t_max >= 0 && t_max <= 1);
+#if 0
+          tmp_is_impacting = vertex_face_interval_root_finder_BFS(
+              vertex_start, face_vertex0_start, face_vertex1_start, face_vertex2_start, vertex_end,
+              face_vertex0_end, face_vertex1_end, face_vertex2_end, tol, tolerance, err, ms, t_max,
+              max_itr, toi, output_tolerance);
 #endif
+      // assert(!tmp_is_impacting || toi >= 0);
+
+      if (t_max == t_max_in) {
+        // This will be the final output because we might need to
+        // perform CCD again if the toi is zero. In which case we will
+        // use a smaller t_max for more time resolution.
+        is_impacting = tmp_is_impacting;
+      } else {
+        toi = tmp_is_impacting ? toi : t_max;
+      }
+
+      // This modification is for CCD-filtered line-search (e.g., IPC)
+      // strategies for dealing with toi = 0:
+      // 1. shrink t_max (when reaches max_itr),
+      // 2. shrink tolerance (when not reach max_itr and tolerance is big) or
+      // ms (when tolerance is too small comparing with ms)
+      if (tmp_is_impacting && toi == 0 && no_zero_toi) {
+        if (output_tolerance > tolerance) {
+          // reaches max_itr, so shrink t_max to return a more accurate result to reach target
+          // tolerance.
+          t_max *= 0.9;
+        } else if (10 * tolerance < ms) {
+          ms *= 0.5;  // ms is too large, shrink it
+        } else {
+          tolerance *= 0.5;  // tolerance is too large, shrink it
+
+          // recompute this
+          tol = compute_face_vertex_tolerances(vertex_start, face_vertex0_start, face_vertex1_start,
+                                               face_vertex2_start, vertex_end, face_vertex0_end,
+                                               face_vertex1_end, face_vertex2_end, tolerance);
+        }
+      }
+
+      // Only perform a second iteration if toi == 0.
+      // WARNING: This option assumes the initial distance is not zero.
+    } while (no_zero_toi && ++no_zero_toi_iter < MAX_NO_ZERO_TOI_ITER && tmp_is_impacting
+             && toi == 0);
+    // assert(!no_zero_toi || !is_impacting || toi != 0);
+
+    return is_impacting;
+  }
 
 }  // namespace zs

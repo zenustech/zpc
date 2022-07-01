@@ -488,6 +488,10 @@ namespace zs {
     constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>&) const noexcept {
       return (typename VecT::value_type)0;
     }
+    template <typename VecT>
+    constexpr decltype(auto) do_first_piola_derivative_spd(const VecInterface<VecT>& F) const noexcept {
+      return static_cast<const Model *>(this)->template first_piola_derivative<VecT, false>(F, wrapv<false>{});
+    }
 
     /// isotropic
     // psi
@@ -544,7 +548,7 @@ namespace zs {
                                           integer_seq<typename VecT::index_type, 3>>
           Is{};
       if constexpr (project_SPD) {
-        return static_cast<const Model*>(this)->template do_first_piola_derivative_spd(F);
+        return static_cast<const Model*>(this)->template do_first_piola_derivative_spd<VecT>(F);
       } else {
         gradient_t<VecT> gi[3]{};
         hessian_t<VecT> Hi[3]{};

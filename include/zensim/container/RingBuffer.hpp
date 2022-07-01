@@ -1,6 +1,4 @@
 #pragma once
-#include <vector>
-
 #include "zensim/math/Vec.h"
 
 namespace zs {

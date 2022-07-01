@@ -800,6 +800,204 @@ namespace zs {
     // if (collision) toi = TOI.value();
     return collision;
   }
+
+  // when check_t_overlap = false, check [0,1]x[0,1]x[0,1]; otherwise, check [0, t_max]x[0,1]x[0,1]
+  template <bool check_vf>
+  constexpr bool interval_root_finder_BFS(const Array3 &a0s, const Array3 &a1s, const Array3 &b0s,
+                                          const Array3 &b1s, const Array3 &a0e, const Array3 &a1e,
+                                          const Array3 &b0e, const Array3 &b1e, const Array3 &tol,
+                                          const double co_domain_tolerance, const Array3 &err,
+                                          const double ms, const double max_time, const int max_itr,
+                                          double &toi, double &output_tolerance) {
+    // if max_itr <0, output_tolerance= co_domain_tolerance;
+    // else, output_tolearancewill be the precision after iteration time > max_itr
+    output_tolerance = co_domain_tolerance;
+
+    // this is used to catch the tolerance for each level
+    double temp_output_tolerance = co_domain_tolerance;
+
+    using Record = zs::tuple<Interval3, int>;
+    // check the tree level by level instead of going deep
+    // (if level 1 != level 2, return level 1 >= level 2; else, return time1 >= time2)
+    auto horiz_cmp = [](const Record &i1, const Record &i2) {
+      if (zs::get<1>(i1) != zs::get<1>(i2)) {
+        return zs::get<1>(i1) >= zs::get<1>(i2);
+      } else {
+        return zs::get<0>(i1)[0].lower > zs::get<0>(i2)[0].lower;
+      }
+    };
+
+    // Stack of intervals and the last split dimension
+    const Interval zero_to_one = Interval(NumCCD(0, 0), NumCCD(1, 0));
+    Interval3 iset{zero_to_one, zero_to_one, zero_to_one};
+
+    // Stack of intervals and the last split dimension
+    Record istack[256] = {zs::make_tuple(iset, -1)};
+    int top = 1;
+    auto popPriority = [&istack, &top, &cmp = horiz_cmp]() {
+      auto ret = istack[0];
+      int id = 0;
+      for (int i = 1; i < top; ++i)
+        if (cmp(istack[i], ret)) {
+          ret = istack[i];
+          id = i;
+        }
+      --top;
+      if (id != top) istack[id] = istack[top];
+      return ret;
+    };
+    auto all_le = [](const Array3 &a, const Array3 &b) {
+      return a[0] <= b[0] && a[1] <= b[1] && a[2] <= b[2];
+    };
+
+    // current intervals
+    int refine = 0;
+    double impact_ratio = 1;
+
+    toi = zs::limits<double>::infinity();  // set toi as infinate
+    // temp_toi is to catch the toi of each level
+    double temp_toi = toi;
+    // set TOI to 4. this is to record the impact time of this level
+    NumCCD TOI(4, 0);
+    // this is to record the element that already small enough or contained in eps-box
+    NumCCD TOI_SKIP = TOI;
+    bool use_skip = false;  // this is to record if TOI_SKIP is used.
+    bool collision = false;
+    int rnbr = 0;
+    int current_level = -2;  // in the begining, current_level != level
+    int box_in_level = -2;   // this checks if all the boxes before this
+    // level < tolerance. only true, we can return when we find one overlaps eps box and smaller
+    // than tolerance or eps-box
+    bool this_level_less_tol = true;
+    bool find_level_root = false;
+    double t_upper_bound = max_time;  // 2*tol make it more conservative
+    while (top) {
+      auto [current, level] = popPriority();
+
+      // if this box is later than TOI_SKIP in time, we can skip this one.
+      // TOI_SKIP is only updated when the box is small enough or totally contained in eps-box
+      if (current[0].lower >= TOI_SKIP) {
+        continue;
+      }
+      // before check a new level, set this_level_less_tol=true
+      if (box_in_level != level) {
+        box_in_level = level;
+        this_level_less_tol = true;
+      }
+
+      refine++;
+      bool zero_in{}, box_in{};
+      Array3 true_tol{};
+      zero_in = origin_in_function_bounding_box_vector<check_vf>(
+          current, a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, err, box_in, ms, &true_tol);
+
+      if (!zero_in) continue;
+
+      Array3 widths = width(current);
+
+      bool tol_condition = all_le(true_tol, co_domain_tolerance);
+
+      // Condition 1, stopping condition on t, u and v is satisfied. this is useless now since we
+      // have condition 2
+      bool condition1 = all_le(widths, tol);
+
+      // Condition 2, zero_in = true, box inside eps-box and in this level,
+      // no box whose zero_in is true but box size larger than tolerance, can return
+      bool condition2 = box_in && this_level_less_tol;
+      if (!tol_condition) {
+        this_level_less_tol = false;
+        // this level has at least one box whose size > tolerance, thus we
+        // cannot directly return if find one box whose size < tolerance or box-in
+        // TODO: think about it. maybe we can return even if this value is false, so we can
+        // terminate earlier.
+      }
+
+      // Condition 3, in this level, we find a box that zero-in and size < tolerance.
+      // and no other boxes whose zero-in is true in this level before this one is larger than
+      // tolerance, can return
+      bool condition3 = this_level_less_tol;
+      if (condition1 || condition2 || condition3) {
+        TOI = current[0].lower;
+        collision = true;
+        rnbr++;
+        // continue;
+        toi = TOI.value() * impact_ratio;
+        // we don't need to compare with TOI_SKIP because we already
+        // continue when t >= TOI_SKIP
+        return true;
+      }
+
+      if (max_itr > 0) {  // if max_itr <= 0 ⟹ unlimited iterations
+        if (current_level != level) {
+          // output_tolerance=current_tolerance;
+          // current_tolerance=0;
+          current_level = level;
+          find_level_root = false;
+        }
+        // current_tolerance=std::max(
+        // std::max(std::max(current_tolerance,true_tol[0]),true_tol[1]),true_tol[2]
+        // );
+        if (!find_level_root) {
+          TOI = current[0].lower;
+          // collision=true;
+          rnbr++;
+          // continue;
+          temp_toi = TOI.value() * impact_ratio;
+
+          // if the real tolerance is larger than input, use the real one;
+          // if the real tolerance is smaller than input, use input
+          temp_output_tolerance = zs::max(zs::max(true_tol[0], true_tol[1]),
+                                          zs::max(true_tol[2], co_domain_tolerance));
+          // this ensures always find the earlist root
+          find_level_root = true;
+        }
+        if (refine > max_itr) {
+          toi = temp_toi;
+          output_tolerance = temp_output_tolerance;
+
+          // std::cout<<"return from refine"<<std::endl;
+          return true;
+        }
+        // get the time of impact down here
+      }
+
+      // if this box is small enough, or inside of eps-box, then just continue,
+      // but we need to record the collision time
+      if (tol_condition || box_in) {
+        if (current[0].lower < TOI_SKIP) {
+          TOI_SKIP = current[0].lower;
+        }
+        use_skip = true;
+        continue;
+      }
+
+      // find the next dimension to split
+      int split_i = find_next_split(widths, tol);
+
+      bool overflow = split_and_push(
+          current, split_i,
+          [&, level = level](const Interval3 &i) {
+            if (top <= 255) istack[top++] = zs::make_tuple(i, level + 1);
+          },
+          check_vf, t_upper_bound);
+      if (top > 255) {
+        printf("local queue size not enough!\n");
+        return true;
+      }
+      if (overflow) {
+        printf("OVERFLOW HAPPENS WHEN SPLITTING INTERVALS");
+        return true;
+      }
+    }
+
+    if (use_skip) {
+      toi = TOI_SKIP.value() * impact_ratio;
+      return true;
+    }
+
+    return false;
+  }
+
   template <int N> constexpr Array3 get_numerical_error(const zs::vec<Array3, N> &vertices,
                                                         const bool check_vf,
                                                         const bool using_minimum_separation) {
@@ -892,10 +1090,17 @@ namespace zs {
     //////////////////////////////////////////////////////////
 
     do {
+#if 0
       // case CCDRootFindingMethod::DEPTH_FIRST_SEARCH:
       // no handling for zero toi
       return interval_root_finder_DFS<false>(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tol, err, ms,
                                              toi);
+#else
+      tmp_is_impacting
+          = interval_root_finder_BFS<false>(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tol, tolerance,
+                                            err, ms, t_max, max_itr, toi, output_tolerance);
+      // if (tmp_is_impacting) return true;
+#endif
       // assert(!tmp_is_impacting || toi >= 0);
 
       if (t_max == t_max_in) {
@@ -995,16 +1200,18 @@ namespace zs {
     //////////////////////////////////////////////////////////
 
     do {
+#if 0
       // no handling for zero toi
       return interval_root_finder_DFS<true>(vertex_start, face_vertex0_start, face_vertex1_start,
                                             face_vertex2_start, vertex_end, face_vertex0_end,
                                             face_vertex1_end, face_vertex2_end, tol, err, ms, toi);
-// assert(t_max >= 0 && t_max <= 1);
-#if 0
-          tmp_is_impacting = vertex_face_interval_root_finder_BFS(
-              vertex_start, face_vertex0_start, face_vertex1_start, face_vertex2_start, vertex_end,
-              face_vertex0_end, face_vertex1_end, face_vertex2_end, tol, tolerance, err, ms, t_max,
-              max_itr, toi, output_tolerance);
+      // assert(t_max >= 0 && t_max <= 1);
+#else
+      tmp_is_impacting = interval_root_finder_BFS<true>(
+          vertex_start, face_vertex0_start, face_vertex1_start, face_vertex2_start, vertex_end,
+          face_vertex0_end, face_vertex1_end, face_vertex2_end, tol, tolerance, err, ms, t_max,
+          max_itr, toi, output_tolerance);
+      // if (tmp_is_impacting) return true;
 #endif
       // assert(!tmp_is_impacting || toi >= 0);
 

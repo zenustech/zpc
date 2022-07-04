@@ -356,10 +356,7 @@ namespace zs {
     double product0{};
     int eindex{}, hindex{};
     double enow{};
-    double c{};
-    double abig{};
-    double ahi{}, alo{}, bhi{}, blo{};
-    double err1{}, err2{}, err3{};
+    double bhi{}, blo{};
 
     split(b, bhi, blo);
     two_product_presplit(e[0], b, bhi, blo, Q, hh);
@@ -405,8 +402,6 @@ namespace zs {
     double Q{};
     double Qnew{};
     double hh{};
-    double bvirt{};
-    double avirt{}, bround{}, around{};
     int eindex{}, findex{}, hindex{};
     double enow{}, fnow{};
 
@@ -508,15 +503,6 @@ namespace zs {
     double u3{};
     double s1{}, t1{};
     double s0{}, t0{};
-
-    double bvirt{};
-    double avirt{}, bround{}, around{};
-    double c{};
-    double abig{};
-    double ahi{}, alo{}, bhi{}, blo{};
-    double err1{}, err2{}, err3{};
-    double _i{}, _j{};
-    double _0{};
 
     acx = (double)(pa[0] - pc[0]);
     bcx = (double)(pb[0] - pc[0]);
@@ -674,15 +660,6 @@ namespace zs {
     double u3{};
     int vlength{}, wlength{};
     double negate{};
-
-    double bvirt{};
-    double avirt{}, bround{}, around{};
-    double c{};
-    double abig{};
-    double ahi{}, alo{}, bhi{}, blo{};
-    double err1{}, err2{}, err3{};
-    double _i{}, _j{}, _k{};
-    double _0{};
 
     adx = (double)(pa[0] - pd[0]);
     bdx = (double)(pb[0] - pd[0]);

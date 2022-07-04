@@ -710,7 +710,7 @@ namespace zs {
     return false;  // no overflow
   }
 
-#define ZS_MAXIMUM_LOCAL_STACK_SIZE 64
+#define ZS_MAXIMUM_LOCAL_STACK_SIZE 256
   // this version cannot give the impact time at t=1, although this collision can
   // be detected at t=0 of the next time step, but still may cause problems in
   // line-search based physical simulation
@@ -861,7 +861,6 @@ namespace zs {
     // this is to record the element that already small enough or contained in eps-box
     NumCCD TOI_SKIP = TOI;
     bool use_skip = false;  // this is to record if TOI_SKIP is used.
-    bool collision = false;
     int rnbr = 0;
     int current_level = -2;  // in the begining, current_level != level
     int box_in_level = -2;   // this checks if all the boxes before this
@@ -917,7 +916,6 @@ namespace zs {
       bool condition3 = this_level_less_tol;
       if (condition1 || condition2 || condition3) {
         TOI = current[0].lower;
-        collision = true;
         rnbr++;
         // continue;
         toi = TOI.value() * impact_ratio;

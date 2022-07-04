@@ -710,6 +710,7 @@ namespace zs {
     return false;  // no overflow
   }
 
+#define ZS_MAXIMUM_LOCAL_STACK_SIZE 64
   // this version cannot give the impact time at t=1, although this collision can
   // be detected at t=0 of the next time step, but still may cause problems in
   // line-search based physical simulation
@@ -727,7 +728,7 @@ namespace zs {
 
     // Stack of intervals and the last split dimension
     // std::stack<std::pair<Interval3,int>> istack;
-    Interval3 istack[256] = {iset};
+    Interval3 istack[ZS_MAXIMUM_LOCAL_STACK_SIZE] = {iset};
     int top = 1;
     auto popPriority = [&istack, &top, &cmp_time]() {
       auto ret = istack[0];
@@ -785,10 +786,10 @@ namespace zs {
       bool overflowed = split_and_push(
           current, split_i,
           [&](const Interval3 &i) {
-            if (top <= 255) istack[top++] = i;
+            if (top < ZS_MAXIMUM_LOCAL_STACK_SIZE) istack[top++] = i;
           },
           check_vf);
-      if (top > 255) {
+      if (top > ZS_MAXIMUM_LOCAL_STACK_SIZE - 1) {
         printf("local stack depth not enough!\n");
         return true;
       }
@@ -802,13 +803,11 @@ namespace zs {
   }
 
   // when check_t_overlap = false, check [0,1]x[0,1]x[0,1]; otherwise, check [0, t_max]x[0,1]x[0,1]
-  template <bool check_vf>
-  constexpr bool interval_root_finder_BFS(const Array3 &a0s, const Array3 &a1s, const Array3 &b0s,
-                                          const Array3 &b1s, const Array3 &a0e, const Array3 &a1e,
-                                          const Array3 &b0e, const Array3 &b1e, const Array3 &tol,
-                                          const double co_domain_tolerance, const Array3 &err,
-                                          const double ms, const double max_time, const int max_itr,
-                                          double &toi, double &output_tolerance) {
+  template <bool check_vf> constexpr bool interval_root_finder_BFS(
+      const Array3 &a0s, const Array3 &a1s, const Array3 &b0s, const Array3 &b1s, const Array3 &a0e,
+      const Array3 &a1e, const Array3 &b0e, const Array3 &b1e, const Array3 &tol,
+      const double co_domain_tolerance, const Array3 &err, const double ms, const double max_time,
+      const int max_itr, double &toi, double &output_tolerance, bool &earlyTerminate) {
     // if max_itr <0, output_tolerance= co_domain_tolerance;
     // else, output_tolearancewill be the precision after iteration time > max_itr
     output_tolerance = co_domain_tolerance;
@@ -832,7 +831,7 @@ namespace zs {
     Interval3 iset{zero_to_one, zero_to_one, zero_to_one};
 
     // Stack of intervals and the last split dimension
-    Record istack[256] = {zs::make_tuple(iset, -1)};
+    Record istack[ZS_MAXIMUM_LOCAL_STACK_SIZE] = {zs::make_tuple(iset, -1)};
     int top = 1;
     auto popPriority = [&istack, &top, &cmp = horiz_cmp]() {
       auto ret = istack[0];
@@ -954,6 +953,7 @@ namespace zs {
         if (refine > max_itr) {
           toi = temp_toi;
           output_tolerance = temp_output_tolerance;
+          earlyTerminate = true;
 
           // std::cout<<"return from refine"<<std::endl;
           return true;
@@ -977,10 +977,11 @@ namespace zs {
       bool overflow = split_and_push(
           current, split_i,
           [&, level = level](const Interval3 &i) {
-            if (top <= 255) istack[top++] = zs::make_tuple(i, level + 1);
+            if (top < ZS_MAXIMUM_LOCAL_STACK_SIZE) istack[top++] = zs::make_tuple(i, level + 1);
           },
           check_vf, t_upper_bound);
-      if (top > 255) {
+      if (top > ZS_MAXIMUM_LOCAL_STACK_SIZE - 1) {
+        earlyTerminate = true;
         printf("local queue size not enough!\n");
         return true;
       }
@@ -1062,11 +1063,12 @@ namespace zs {
                              const Array3 &b0e, const Array3 &b1e, const Array3 &err_in,
                              const double ms_in, double &toi, const double tolerance_in,
                              const double t_max_in, const int max_itr, double &output_tolerance,
-                             bool no_zero_toi = true) {
+                             bool &earlyTerminate, bool no_zero_toi = true) {
     constexpr int MAX_NO_ZERO_TOI_ITER = limits<int>::max();
     // unsigned so can be larger than MAX_NO_ZERO_TOI_ITER
     unsigned int no_zero_toi_iter = 0;
 
+    earlyTerminate = false;
     bool is_impacting{}, tmp_is_impacting{};
 
     // Mutable copies for no_zero_toi
@@ -1096,9 +1098,9 @@ namespace zs {
       return interval_root_finder_DFS<false>(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tol, err, ms,
                                              toi);
 #else
-      tmp_is_impacting
-          = interval_root_finder_BFS<false>(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tol, tolerance,
-                                            err, ms, t_max, max_itr, toi, output_tolerance);
+      tmp_is_impacting = interval_root_finder_BFS<false>(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e,
+                                                         tol, tolerance, err, ms, t_max, max_itr,
+                                                         toi, output_tolerance, earlyTerminate);
       // if (tmp_is_impacting) return true;
 #endif
       // assert(!tmp_is_impacting || toi >= 0);
@@ -1168,11 +1170,13 @@ namespace zs {
                                const Array3 &face_vertex1_end, const Array3 &face_vertex2_end,
                                const Array3 &err_in, const double ms_in, double &toi,
                                const double tolerance_in, const double t_max_in, const int max_itr,
-                               double &output_tolerance, bool no_zero_toi = true) {
+                               double &output_tolerance, bool &earlyTerminate,
+                               bool no_zero_toi = true) {
     const int MAX_NO_ZERO_TOI_ITER = std::numeric_limits<int>::max();
     // unsigned so can be larger than MAX_NO_ZERO_TOI_ITER
     unsigned int no_zero_toi_iter = 0;
 
+    earlyTerminate = false;
     bool is_impacting{}, tmp_is_impacting{};
 
     // Mutable copies for no_zero_toi
@@ -1210,7 +1214,7 @@ namespace zs {
       tmp_is_impacting = interval_root_finder_BFS<true>(
           vertex_start, face_vertex0_start, face_vertex1_start, face_vertex2_start, vertex_end,
           face_vertex0_end, face_vertex1_end, face_vertex2_end, tol, tolerance, err, ms, t_max,
-          max_itr, toi, output_tolerance);
+          max_itr, toi, output_tolerance, earlyTerminate);
       // if (tmp_is_impacting) return true;
 #endif
       // assert(!tmp_is_impacting || toi >= 0);

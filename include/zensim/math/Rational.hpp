@@ -1090,7 +1090,7 @@ namespace zs {
     //////////////////////////////////////////////////////////
 
     do {
-#if 0
+#if 1
       // case CCDRootFindingMethod::DEPTH_FIRST_SEARCH:
       // no handling for zero toi
       return interval_root_finder_DFS<false>(a0s, a1s, b0s, b1s, a0e, a1e, b0e, b1e, tol, err, ms,
@@ -1202,7 +1202,7 @@ namespace zs {
     //////////////////////////////////////////////////////////
 
     do {
-#if 0
+#if 1
       // no handling for zero toi
       return interval_root_finder_DFS<true>(vertex_start, face_vertex0_start, face_vertex1_start,
                                             face_vertex2_start, vertex_end, face_vertex0_end,

@@ -170,6 +170,32 @@ namespace zs {
     auto d3_3 = detail::det3<0, 1, 2>(A, d2_12, d2_02, d2_01);
     return -A(0, 3) * d3_0 + A(1, 3) * d3_1 + -A(2, 3) * d3_2 + A(3, 3) * d3_3;
   }
+  template <typename VecT,
+            enable_if_all<VecT::dim == 2,
+                          VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+                          (VecT::template range_t<0>::value > 4)> = 0>
+  constexpr auto determinant(const VecInterface<VecT> &A) noexcept {
+    using Ti = typename VecT::index_type;
+    using T = typename VecT::value_type;
+    constexpr auto dim = VecT::template range_t<0>::value;
+    using SubMatT = typename VecT::template variant_vec<T, integer_seq<Ti, dim - 1, dim - 1>>;
+    T det = 0;
+    SubMatT m{};
+    for (Ti j = 0; j != dim; ++j) {
+      for (Ti r = 1; r != dim; ++r) {
+        int cOffset = 0;
+        for (Ti c = 0; c != dim; ++c) {
+          if (c == j) {
+            cOffset = 1;
+            continue;
+          }
+          m(r - 1, c - cOffset) = A(r, c);
+        }
+      }
+      det += (j & 1 ? -1 : 1) * A(0, j) * determinant(m);
+    }
+    return det;
+  }
 
   template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 1,
                                          VecT::template range_t<1>::value == 1,

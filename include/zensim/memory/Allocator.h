@@ -44,12 +44,12 @@ namespace zs {
         : upstream{up}, did{did} {}
     ~default_memory_resource() = default;
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
-      if (!prepare_context(MemTag{}, did)) return nullptr;
+      // if (!prepare_context(MemTag{}, did)) return nullptr;
       void *ret = upstream->allocate(bytes, alignment);
       return ret;
     }
     void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
-      if (!prepare_context(MemTag{}, did)) return;
+      // if (!prepare_context(MemTag{}, did)) return;
       upstream->deallocate(ptr, bytes, alignment);
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }

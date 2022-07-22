@@ -13,6 +13,12 @@ namespace zs {
               const source_location &loc = source_location::current());
   void copy(device_mem_tag, void *dst, void *src, std::size_t size,
             const source_location &loc = source_location::current());
+  void copyHtoD(device_mem_tag, void *dst, void *src, std::size_t size,
+                const source_location &loc = source_location::current());
+  void copyDtoH(device_mem_tag, void *dst, void *src, std::size_t size,
+                const source_location &loc = source_location::current());
+  void copyDtoD(device_mem_tag, void *dst, void *src, std::size_t size,
+                const source_location &loc = source_location::current());
 
   bool prepare_context(um_mem_tag, ProcID devid);
   void *allocate(um_mem_tag, std::size_t size, std::size_t alignment,
@@ -23,6 +29,12 @@ namespace zs {
               const source_location &loc = source_location::current());
   void copy(um_mem_tag, void *dst, void *src, std::size_t size,
             const source_location &loc = source_location::current());
+  void copyHtoD(um_mem_tag, void *dst, void *src, std::size_t size,
+                const source_location &loc = source_location::current());
+  void copyDtoH(um_mem_tag, void *dst, void *src, std::size_t size,
+                const source_location &loc = source_location::current());
+  void copyDtoD(um_mem_tag, void *dst, void *src, std::size_t size,
+                const source_location &loc = source_location::current());
   void advise(um_mem_tag, std::string advice, void *addr, std::size_t bytes, ProcID did,
               const source_location &loc = source_location::current());
 

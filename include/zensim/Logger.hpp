@@ -2,11 +2,10 @@
 #pragma once
 
 #include "Platform.hpp"
+#include "plog/Initializers/RollingFileInitializer.h"
 #include "zensim/Singleton.h"
 #include "zensim/zpc_tpls/fmt/format.h"
-// #include "zensim/zpc_tpls/loguru/loguru.hpp"
 #include "zensim/zpc_tpls/plog/Log.h"
-#include "plog/Initializers/RollingFileInitializer.h"
 
 namespace zs {
 
@@ -17,7 +16,8 @@ namespace zs {
     Logger() { plog::init(plog::info, "zensim_logs.log"); }
     void log(const int level, const char* fileName, const char* funcName, int line,
              std::string_view msg) {
-      PLOG(static_cast<plog::Severity>(level)) << fmt::format("{}:{}{} {}\n", fileName, funcName, line, msg);
+      PLOG(static_cast<plog::Severity>(level))
+          << fmt::format("{}:{}{} {}\n", fileName, funcName, line, msg);
     }
   };
 

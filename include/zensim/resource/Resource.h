@@ -266,9 +266,14 @@ namespace zs {
       if (dst.location.onHost() && src.location.onHost())
         zs::copy(mem_host, dst.ptr, src.ptr, numBytes);
       else {
-        if constexpr (is_memory_source_available(mem_device))
-          zs::copy(mem_device, dst.ptr, src.ptr, numBytes);
-        else
+        if constexpr (is_memory_source_available(mem_device)) {
+          if (!dst.location.onHost() && !src.location.onHost())
+            zs::copyDtoD(mem_device, dst.ptr, src.ptr, numBytes);
+          else if (dst.location.onHost() && !src.location.onHost())
+            zs::copyDtoH(mem_device, dst.ptr, src.ptr, numBytes);
+          else if (!dst.location.onHost() && src.location.onHost())
+            zs::copyHtoD(mem_device, dst.ptr, src.ptr, numBytes);
+        } else
           throw std::runtime_error("There is no corresponding device backend for Resource::copy");
       }
     }

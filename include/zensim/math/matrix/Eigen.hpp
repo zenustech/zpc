@@ -279,7 +279,7 @@ namespace zs {
       k = m;
       l = ind[m];
       p = S(k, l);
-      if (zs::abs(p) < max_S * 1e-6) break;
+      if (zs::abs(p) < max_S * 1e-11) break;
       y = (e[l] - e[k]) / 2;
       d = zs::abs(y) + zs::sqrt(p * p + y * y);
       r = zs::sqrt(p * p + d * d);

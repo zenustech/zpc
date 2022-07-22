@@ -1,12 +1,13 @@
 #include "Wrangler.hpp"
 
+#include <cuda.h>
 #include <nvrtc.h>
 
 #include <filesystem>
 
 #include "zensim/cuda/Cuda.h"
-#include "zensim/zpc_tpls/jitify/jitify2.hpp"
 #include "zensim/types/Tuple.h"
+#include "zensim/zpc_tpls/jitify/jitify2.hpp"
 
 namespace fs = std::filesystem;
 
@@ -43,8 +44,8 @@ namespace zs::cudri {
   std::string compile_cuda_source_to_ptx(std::string_view code, std::string_view name,
                                          std::vector<std::string_view> additionalOptions) {
     int major, minor;
-    getDeviceAttribute(&major, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, 0);
-    getDeviceAttribute(&minor, (unsigned)CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, 0);
+    cuDeviceGetAttribute(&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, 0);
+    cuDeviceGetAttribute(&minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, 0);
 
     std::vector<std::string> fixedOpts{
         fmt::format("--include-path={}", ZS_INCLUDE_DIR), "--device-as-default-execution-space",

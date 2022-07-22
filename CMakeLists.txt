@@ -49,6 +49,7 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
 option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_ENABLE_TEST "Enable Tests" OFF)
 option(ZS_ENABLE_DOC "Enable Doxygen Documentation Generation" OFF)
+option(ZS_ENABLE_OFB_ACCESS_CHECK "Enable out-of-bound access check" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ZS_ENABLE_CUDA "Enable cuda backend" ON)
 option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
@@ -117,6 +118,9 @@ target_compile_definitions(zsproj_deps INTERFACE
 add_library(zpc_cxx_deps INTERFACE)
 target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
+target_compile_definitions(zpc_cxx_deps
+    INTERFACE   ZS_ENABLE_OFB_ACCESS_CHECK=${ZS_ENABLE_OFB_ACCESS_CHECK}
+)
 target_compile_definitions(zpc_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/zpc_assets/"
 )

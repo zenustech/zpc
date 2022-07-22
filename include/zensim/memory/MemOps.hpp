@@ -48,6 +48,24 @@ namespace zs {
         "copy(tag {}, dst {}, src {}, size {}) not implemented\n", get_memory_tag_name(MemTag{}),
         reinterpret_cast<std::uintptr_t>(dst), reinterpret_cast<std::uintptr_t>(src), size));
   }
+  template <typename MemTag> void copyHtoD(MemTag, void *dst, void *src, std::size_t size) {
+    throw std::runtime_error(
+        fmt::format("copyHtoD(tag {}, dst {}, src {}, size {}) not implemented\n",
+                    get_memory_tag_name(MemTag{}), reinterpret_cast<std::uintptr_t>(dst),
+                    reinterpret_cast<std::uintptr_t>(src), size));
+  }
+  template <typename MemTag> void copyDtoH(MemTag, void *dst, void *src, std::size_t size) {
+    throw std::runtime_error(
+        fmt::format("copyDtoH(tag {}, dst {}, src {}, size {}) not implemented\n",
+                    get_memory_tag_name(MemTag{}), reinterpret_cast<std::uintptr_t>(dst),
+                    reinterpret_cast<std::uintptr_t>(src), size));
+  }
+  template <typename MemTag> void copyDtoD(MemTag, void *dst, void *src, std::size_t size) {
+    throw std::runtime_error(
+        fmt::format("copyDtoD(tag {}, dst {}, src {}, size {}) not implemented\n",
+                    get_memory_tag_name(MemTag{}), reinterpret_cast<std::uintptr_t>(dst),
+                    reinterpret_cast<std::uintptr_t>(src), size));
+  }
   template <typename MemTag, typename... Args>
   void advise(MemTag, std::string advice, void *addr, Args...) {
     throw std::runtime_error(

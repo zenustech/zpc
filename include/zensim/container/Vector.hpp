@@ -1,7 +1,6 @@
 #pragma once
 #include <type_traits>
 
-#include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 

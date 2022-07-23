@@ -1,14 +1,7 @@
 #include "Resource.h"
 
-#include "zensim/Port.hpp"
 #include "zensim/execution/Concurrency.h"
 #include "zensim/memory/MemoryResource.h"
-#if ZS_ENABLE_CUDA
-#  include "zensim/cuda/Port.hpp"
-#endif
-#if ZS_ENABLE_OPENMP
-#  include "zensim/omp/Port.hpp"
-#endif
 
 namespace zs {
 
@@ -27,16 +20,18 @@ namespace zs {
   std::atomic_ullong &Resource::counter() noexcept { return instance()._counter; }
 
   Resource::Resource() {
+#if 0
     initialize_backend(exec_seq);
-#if ZS_ENABLE_CUDA
+#  if ZS_ENABLE_CUDA
     puts("cuda initialized");
     initialize_backend(exec_cuda);
-#endif
-#if ZS_ENABLE_OPENMP
+#  endif
+#  if ZS_ENABLE_OPENMP
     puts("openmp initialized");
     initialize_backend(exec_omp);
-#endif
+#  endif
     // sycl...
+#endif
   }
   Resource::~Resource() {
     for (auto &&record : g_resource_records) {

@@ -1,7 +1,6 @@
 #pragma once
 #include "Vector.hpp"
 #include "zensim/math/Vec.h"
-#include "zensim/memory/Allocator.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/SmallVector.hpp"

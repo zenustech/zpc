@@ -23,10 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 </editor-fold> */
 
+#include <array>
 #include <string>
 #include <typeindex>
 #include <typeinfo>
 
+#include "TypeAlias.hpp"
 #include "zensim/execution/Stacktrace.hpp"
 namespace zs {
 

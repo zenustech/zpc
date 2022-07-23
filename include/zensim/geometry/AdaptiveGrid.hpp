@@ -2,7 +2,6 @@
 #include "zensim/container/HashTable.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
-#include "zensim/memory/Allocator.h"
 
 namespace zs {
 

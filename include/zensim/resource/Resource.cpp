@@ -15,13 +15,13 @@ namespace zs {
   static std::shared_mutex g_resource_rw_mutex{};
   static concurrent_map<void *, Resource::AllocationRecord> g_resource_records;
 
-#if 1
+#if 0
   static Resource g_resource;
   Resource &Resource::instance() noexcept { return g_resource; }
 #else
-  Resource &Resource::instance() noexcept { 
+  Resource &Resource::instance() noexcept {
     static Resource *ptr = new Resource();
-    return *ptr; 
+    return *ptr;
   }
 #endif
   std::atomic_ullong &Resource::counter() noexcept { return instance()._counter; }

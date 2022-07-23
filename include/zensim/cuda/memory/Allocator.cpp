@@ -3,11 +3,15 @@
 #include <cuda.h>
 
 #include "zensim/Logger.hpp"
+#include "zensim/cuda/Cuda.h"
 #include "zensim/math/bit/Bits.h"
 #include "zensim/memory/Allocator.h"
 #include "zensim/types/Iterator.h"
 
 namespace zs {
+
+  raw_memory_resource<device_mem_tag>::raw_memory_resource() noexcept { (void)Cuda::instance(); }
+  raw_memory_resource<um_mem_tag>::raw_memory_resource() noexcept { (void)Cuda::instance(); }
 
 #if 0
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(

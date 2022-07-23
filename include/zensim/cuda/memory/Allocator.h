@@ -3,10 +3,71 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "MemOps.hpp"
+#include "zensim/Singleton.h"
+#include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/types/Property.h"
 
 namespace zs {
+
+  template <> struct raw_memory_resource<device_mem_tag>
+      : mr_t, Singleton<raw_memory_resource<device_mem_tag>> {
+    using value_type = std::byte;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+
+    raw_memory_resource() noexcept;
+    ~raw_memory_resource() = default;
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+      if (bytes) {
+        auto ret = zs::allocate(mem_device, bytes, alignment);
+        // record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
+        return ret;
+      }
+      return nullptr;
+    }
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+      if (bytes) {
+        zs::deallocate(mem_device, ptr, bytes, alignment);
+        // erase_allocation(ptr);
+      }
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+  };
+
+  template <> struct raw_memory_resource<um_mem_tag> : mr_t,
+                                                       Singleton<raw_memory_resource<um_mem_tag>> {
+    using value_type = std::byte;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+
+    raw_memory_resource() noexcept;
+    ~raw_memory_resource() = default;
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+      if (bytes) {
+        auto ret = zs::allocate(mem_um, bytes, alignment);
+        // record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
+        return ret;
+      }
+      return nullptr;
+    }
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+      if (bytes) {
+        zs::deallocate(mem_um, ptr, bytes, alignment);
+        // erase_allocation(ptr);
+      }
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+  };
 
   template <typename MemTag> struct stack_virtual_memory_resource;
   template <typename MemTag> struct arena_virtual_memory_resource;
@@ -50,7 +111,7 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     std::vector<unsigned long long> _allocHandles;
-    std::vector<std::pair<size_t, size_t> > _allocRanges;
+    std::vector<std::pair<size_t, size_t>> _allocRanges;
     std::any _allocProp;
     std::any _accessDescr;
     size_t _granularity;

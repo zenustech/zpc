@@ -237,7 +237,7 @@ namespace zs {
       using mat3 =
           typename VecT::template variant_vec<typename VecT::value_type,
                                               integer_seq<typename VecT::index_type, 3, 3>>;
-      constexpr auto sqrt2 = 1.4142135623730950488016887242096980785697L;
+      constexpr double sqrt2 = 1.4142135623730950488016887242096980785697L;
       constexpr mat3 Qs[9]
           = {mat3::init([](int i) { return i == 0 ? 1 : 0; }),
              mat3::init([](int i) { return i == 4 ? 1 : 0; }),

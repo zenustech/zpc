@@ -38,9 +38,9 @@ namespace zs {
   }  // namespace mathutil_impl
 
   /// copied from gcem_options.hpp
-  constexpr auto g_pi = 3.1415926535897932384626433832795028841972L;
-  constexpr auto g_half_pi = 1.5707963267948966192313216916397514420986L;
-  constexpr auto g_sqrt2 = 1.4142135623730950488016887242096980785697L;
+  constexpr double g_pi = 3.1415926535897932384626433832795028841972L;
+  constexpr double g_half_pi = 1.5707963267948966192313216916397514420986L;
+  constexpr double g_sqrt2 = 1.4142135623730950488016887242096980785697L;
 
   namespace math {
 
@@ -85,7 +85,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::copysignf(mag, sgn);
     else
-      return ::copysign(mag, sgn);
+      return ::copysign((double)mag, (double)sgn);
 #else
     return std::copysign(mag, sgn);
 #endif
@@ -96,7 +96,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::fabsf(v);
     else
-      return ::fabs(v);
+      return ::fabs((double)v);
 #else
     return std::abs(v);
 #endif
@@ -107,7 +107,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::fmaxf(x, y);
     else
-      return ::fmax(x, y);
+      return ::fmax((double)x, (double)y);
 #else
     return std::max(x, y);
 #endif
@@ -118,7 +118,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::fminf(x, y);
     else
-      return ::fmin(x, y);
+      return ::fmin((double)x, (double)y);
 #else
     return std::min(x, y);
 #endif
@@ -129,7 +129,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::fmaf(x, y, z);
     else
-      return ::fma(x, y, z);
+      return ::fma((double)x, (double)y, (double)z);
 #else
     return std::fma(x, y, z);
 #endif
@@ -140,7 +140,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::fmodf(x, y);
     else
-      return ::fmod(x, y);
+      return ::fmod((double)x, (double)y);
 #else
     return std::fmod(x, y);
 #endif
@@ -151,7 +151,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::ceilf(v);
     else
-      return ::ceil(v);
+      return ::ceil((double)v);
 #else
     return std::ceil(v);
 #endif
@@ -162,7 +162,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::floorf(v);
     else
-      return ::floor(v);
+      return ::floor((double)v);
 #else
     return std::floor(v);
 #endif
@@ -178,7 +178,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::sqrtf(v);
     else
-      return ::sqrt(v);
+      return ::sqrt((double)v);
 #else
     return std::sqrt(v);
 #endif
@@ -189,7 +189,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::rsqrtf(v);
     else
-      return ::rsqrt(v);
+      return ::rsqrt((double)v);
 #else
     return (T)1 / (T)std::sqrt(v);
 #endif
@@ -201,7 +201,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::logf(v);
     else
-      return ::log(v);
+      return ::log((double)v);
 #else
     return std::log(v);
 #endif
@@ -212,7 +212,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::log1pf(v);
     else
-      return ::log1p(v);
+      return ::log1p((double)v);
 #else
     return std::log1p(v);
 #endif
@@ -223,7 +223,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::expf(v);
     else
-      return ::exp(v);
+      return ::exp((double)v);
 #else
     return std::exp(v);
 #endif
@@ -234,7 +234,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::powf(base, exp);
     else
-      return ::pow(base, exp);
+      return ::pow((double)base, (double)exp);
 #else
     return std::pow(base, exp);
 #endif
@@ -246,7 +246,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::__fadd_ru(x, y);
     else
-      return ::__dadd_ru(x, y);
+      return ::__dadd_ru((double)x, (double)y);
 #else
     return (x + y);
 #endif
@@ -257,7 +257,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::__fsub_ru(x, y);
     else
-      return ::__dsub_ru(x, y);
+      return ::__dsub_ru((double)x, (double)y);
 #else
     return (x - y);
 #endif
@@ -269,7 +269,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::sinhf(v);
     else
-      return ::sinh(v);
+      return ::sinh((double)v);
 #else
     return std::sinh(v);
 #endif
@@ -280,7 +280,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::sinf(v);
     else
-      return ::sin(v);
+      return ::sin((double)v);
 #else
     return std::sin(v);
 #endif
@@ -291,7 +291,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::asinhf(v);
     else
-      return ::asinh(v);
+      return ::asinh((double)v);
 #else
     return std::asinh(v);
 #endif
@@ -302,7 +302,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::asinf(v);
     else
-      return ::asin(v);
+      return ::asin((double)v);
 #else
     return std::asin(v);
 #endif
@@ -313,7 +313,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::coshf(v);
     else
-      return ::cosh(v);
+      return ::cosh((double)v);
 #else
     return std::cosh(v);
 #endif
@@ -324,7 +324,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::cosf(v);
     else
-      return ::cos(v);
+      return ::cos((double)v);
 #else
     return std::cos(v);
 #endif
@@ -335,7 +335,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::acoshf(v);
     else
-      return ::acosh(v);
+      return ::acosh((double)v);
 #else
     return std::acosh(v);
 #endif
@@ -346,7 +346,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::acosf(v);
     else
-      return ::acos(v);
+      return ::acos((double)v);
 #else
     return std::acos(v);
 #endif
@@ -357,7 +357,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::atan2f(y, x);
     else
-      return ::atan2(y, x);
+      return ::atan2((double)y, (double)x);
 #else
     return std::atan2(y, x);
 #endif
@@ -383,9 +383,10 @@ namespace zs {
   template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
   constexpr T modf(T x, T *iptr) noexcept {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    static_assert(is_same_v<T, float> || is_same_v<T, double>, "modf only supports float/double");
     if constexpr (is_same_v<T, float>)
       return ::modff(x, iptr);
-    else
+    else if constexpr (is_same_v<T, double>)
       return ::modf(x, iptr);
 #else
     return std::modf(x, iptr);
@@ -397,7 +398,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::frexpf(x, exp);
     else
-      return ::frexp(x, exp);
+      return ::frexp((double)x, exp);
 #else
     return std::frexp(x, exp);
 #endif
@@ -408,7 +409,7 @@ namespace zs {
     if constexpr (is_same_v<T, float>)
       return ::ldexpf(x, exp);  // scalbnf(x, exp)
     else
-      return ::ldexp(x, exp);
+      return ::ldexp((double)x, exp);
 #else
     return std::ldexp(x, exp);
 #endif

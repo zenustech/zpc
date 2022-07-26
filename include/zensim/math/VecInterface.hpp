@@ -78,7 +78,11 @@ namespace zs {
   template <typename OtherVecT,                                                                   \
             enable_if_all<OtherVecT::extent == extent,                                            \
                           std::is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
-  constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs) noexcept {               \
+  constexpr auto operator=(const VecInterface<OtherVecT>& rhs)&& noexcept = delete; /**/          \
+  template <typename OtherVecT,                                                                   \
+            enable_if_all<OtherVecT::extent == extent,                                            \
+                          std::is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
+  constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs)& noexcept {              \
     for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);                           \
     return *this;                                                                                 \
   }

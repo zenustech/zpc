@@ -7,6 +7,26 @@
 namespace zs {
 
   /// ref: ipc-sim/Codim-IPC, FEM/FRICTION_UTILS.h
+  template <class T> constexpr T f0_SF(T x2, T epsvh) {
+    if (x2 >= epsvh * epsvh) {
+      return zs::sqrt(x2);
+    } else {
+      return x2 * (-zs::sqrt(x2) / 3 + epsvh) / (epsvh * epsvh) + epsvh / 3;
+    }
+  }
+
+  template <class T> constexpr T f1_SF_div_rel_dx_norm(T x2, T epsvh) {
+    if (x2 >= epsvh * epsvh) {
+      return 1 / zs::sqrt(x2);
+    } else {
+      return (-zs::sqrt(x2) + 2 * epsvh) / (epsvh * epsvh);
+    }
+  }
+
+  template <class T> constexpr T f2_SF_term(T x2, T epsvh) {
+    return -1 / (epsvh * epsvh);
+    // same for x2 >= epsvh * epsvh for C1 clamped friction
+  }
 
   /// PP
   template <typename VecTA, typename VecTB,
@@ -34,6 +54,42 @@ namespace zs {
       basis(d, 1) = c1[d];
     }
     return basis;
+  }
+  template <typename VecTV, enable_if_all<VecTV::dim == 1, VecTV::extent == 3> = 0>
+  constexpr auto point_point_rel_dx(const VecInterface<VecTV>& dx0,
+                                    const VecInterface<VecTV>& dx1) {
+    return dx0 - dx1;  // relDX
+  }
+  template <typename VecTV, typename VecTM,
+            enable_if_all<VecTV::dim == 1, VecTV::extent == 2, VecTM::dim == 2,
+                          VecTM::template range_t<0>::value == 3,
+                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto point_point_rel_dx_tan_to_mesh(const VecInterface<VecTV>& relDXTan,
+                                                const VecInterface<VecTM>& basis) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 3>>;
+    RetT TTTDX{};
+    auto val = basis * relDXTan;
+    for (Ti d = 0; d != 3; ++d) {
+      TTTDX(0, d) = val(d);
+      TTTDX(1, d) = -val(d);
+    }
+    return TTTDX;
+  }
+  template <typename VecTM, enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == 3,
+                                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto point_point_TT(const VecInterface<VecTM>& basis) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 6>>;
+    HessT hess{};
+    for (Ti r = 0; r != 2; ++r)
+      for (Ti c = 0; c != 3; ++c) {
+        hess(r, c) = basis(c, r);
+        hess(r, 3 + c) = -basis(c, r);
+      }
+    return hess;
   }
 
   /// PE
@@ -64,6 +120,46 @@ namespace zs {
       basis(d, 1) = c1[d];
     }
     return basis;
+  }
+
+  template <typename VecTV, typename T, enable_if_all<VecTV::dim == 1, VecTV::extent == 3> = 0>
+  constexpr auto point_edge_rel_dx(const VecInterface<VecTV>& dx0, const VecInterface<VecTV>& dx1,
+                                   const VecInterface<VecTV>& dx2, T yita) {
+    return dx0 - (dx1 + yita * (dx2 - dx1));
+  }
+  template <typename VecTV, typename VecTM, typename TT,
+            enable_if_all<VecTV::dim == 1, VecTV::extent == 2, VecTM::dim == 2,
+                          VecTM::template range_t<0>::value == 3,
+                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto point_edge_rel_dx_tan_to_mesh(const VecInterface<VecTV>& relDXTan,
+                                               const VecInterface<VecTM>& basis, TT yita) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 3, 3>>;
+    RetT TTTDX{};
+    auto val = basis * relDXTan;
+    for (Ti d = 0; d != 3; ++d) {
+      TTTDX(0, d) = val(d);
+      TTTDX(1, d) = (yita - 1) * val(d);
+      TTTDX(2, d) = -yita * val(d);
+    }
+    return TTTDX;
+  }
+  template <typename VecTM, typename TT,
+            enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == 3,
+                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto point_edge_TT(const VecInterface<VecTM>& basis, TT yita) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 9>>;
+    HessT hess{};
+    for (Ti r = 0; r != 2; ++r)
+      for (Ti c = 0; c != 3; ++c) {
+        hess(r, c) = basis(c, r);
+        hess(r, 3 + c) = (yita - 1) * basis(c, r);
+        hess(r, 6 + c) = -yita * basis(c, r);
+      }
+    return hess;
   }
 
   /// PT
@@ -107,6 +203,50 @@ namespace zs {
       basis(d, 1) = c1[d];
     }
     return basis;
+  }
+  template <typename VecTV, typename T, enable_if_all<VecTV::dim == 1, VecTV::extent == 3> = 0>
+  constexpr auto point_triangle_rel_dx(const VecInterface<VecTV>& dx0,
+                                       const VecInterface<VecTV>& dx1,
+                                       const VecInterface<VecTV>& dx2,
+                                       const VecInterface<VecTV>& dx3, T beta1, T beta2) {
+    return dx0 - (dx1 + beta1 * (dx2 - dx1) + beta2 * (dx3 - dx1));
+  }
+  template <typename VecTV, typename VecTM, typename TT,
+            enable_if_all<VecTV::dim == 1, VecTV::extent == 2, VecTM::dim == 2,
+                          VecTM::template range_t<0>::value == 3,
+                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto point_triangle_rel_dx_tan_to_mesh(const VecInterface<VecTV>& relDXTan,
+                                                   const VecInterface<VecTM>& basis, TT beta1,
+                                                   TT beta2) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 4, 3>>;
+    RetT TTTDX{};
+    auto val = basis * relDXTan;
+    for (Ti d = 0; d != 3; ++d) {
+      TTTDX(0, d) = val(d);
+      TTTDX(1, d) = (-1 + beta1 + beta2) * val(d);
+      TTTDX(2, d) = -beta1 * val(d);
+      TTTDX(3, d) = -beta2 * val(d);
+    }
+    return TTTDX;
+  }
+  template <typename VecTM, typename TT,
+            enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == 3,
+                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto point_triangle_TT(const VecInterface<VecTM>& basis, TT beta1, TT beta2) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 12>>;
+    HessT hess{};
+    for (Ti r = 0; r != 2; ++r)
+      for (Ti c = 0; c != 3; ++c) {
+        hess(r, c) = basis(c, r);
+        hess(r, 3 + c) = (-1 + beta1 + beta2) * basis(c, r);
+        hess(r, 6 + c) = -beta1 * basis(c, r);
+        hess(r, 9 + c) = -beta2 * basis(c, r);
+      }
+    return hess;
   }
 
   /// EE
@@ -153,6 +293,49 @@ namespace zs {
       basis(d, 1) = c1[d];
     }
     return basis;
+  }
+  template <typename VecTV, typename T, enable_if_all<VecTV::dim == 1, VecTV::extent == 3> = 0>
+  constexpr auto edge_edge_rel_dx(const VecInterface<VecTV>& dx0, const VecInterface<VecTV>& dx1,
+                                  const VecInterface<VecTV>& dx2, const VecInterface<VecTV>& dx3,
+                                  T gamma1, T gamma2) {
+    return dx0 + gamma1 * (dx1 - dx0) - (dx2 + gamma2 * (dx3 - dx2));
+  }
+  template <typename VecTV, typename VecTM, typename TT,
+            enable_if_all<VecTV::dim == 1, VecTV::extent == 2, VecTM::dim == 2,
+                          VecTM::template range_t<0>::value == 3,
+                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto edge_edge_rel_dx_tan_to_mesh(const VecInterface<VecTV>& relDXTan,
+                                              const VecInterface<VecTM>& basis, TT gamma1,
+                                              TT gamma2) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 4, 3>>;
+    RetT TTTDX{};
+    auto val = basis * relDXTan;
+    for (Ti d = 0; d != 3; ++d) {
+      TTTDX(0, d) = (1 - gamma1) * val(d);
+      TTTDX(1, d) = gamma1 * val(d);
+      TTTDX(2, d) = (gamma2 - 1) * val(d);
+      TTTDX(3, d) = -gamma2 * val(d);
+    }
+    return TTTDX;
+  }
+  template <typename VecTM, typename TT,
+            enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == 3,
+                          VecTM::template range_t<1>::value == 2> = 0>
+  constexpr auto edge_edge_TT(const VecInterface<VecTM>& basis, TT gamma1, TT gamma2) {
+    using T = typename VecTM::value_type;
+    using Ti = typename VecTM::index_type;
+    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 12>>;
+    HessT hess{};
+    for (Ti r = 0; r != 2; ++r)
+      for (Ti c = 0; c != 3; ++c) {
+        hess(r, c) = (1 - gamma1) * basis(c, r);
+        hess(r, 3 + c) = gamma1 * basis(c, r);
+        hess(r, 6 + c) = (gamma2 - 1) * basis(c, r);
+        hess(r, 9 + c) = -gamma2 * basis(c, r);
+      }
+    return hess;
   }
 
 }  // namespace zs

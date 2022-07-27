@@ -113,9 +113,7 @@ namespace zs {
     constexpr vec_impl(const vec_impl &) noexcept = default;
     constexpr vec_impl(vec_impl &&) noexcept = default;
     constexpr vec_impl &operator=(const vec_impl &) &noexcept = default;
-    constexpr vec_impl &operator=(const vec_impl &) &&noexcept = delete;
     constexpr vec_impl &operator=(vec_impl &&) &noexcept = default;
-    constexpr vec_impl &operator=(vec_impl &&) &&noexcept = delete;
     template <typename... Ts,
               enable_if_all<(sizeof...(Ts) <= extent),
                             (std::is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)> = 0>

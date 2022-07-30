@@ -36,18 +36,24 @@ namespace zs {
                                            const VecInterface<VecTB>& p1) {
     using T = typename VecTA::value_type;
     using Ti = typename VecTA::index_type;
+    using TV = typename VecTA::template variant_vec<T, integer_seq<Ti, 3>>;
     using RetT = typename VecTA::template variant_vec<T, integer_seq<Ti, 3, 2>>;
     RetT basis{};
     auto v01 = (p1 - p0);
-    auto xCross = VecTA::init([](int i) -> T { return i == 0 ? 1 : 0; }).cross(v01);
-    auto yCross = VecTA::init([](int i) -> T { return i == 1 ? 1 : 0; }).cross(v01);
-    RM_CVREF_T(v01) c0{}, c1{};
+    TV xCross{}, yCross{};
+    xCross(0) = 0;
+    xCross(1) = -v01[2];
+    xCross(2) = v01[1];
+    yCross(0) = v01[2];
+    yCross(1) = 0;
+    yCross(2) = -v01[0];
+    TV c0{}, c1{};
     if (xCross.l2NormSqr() > yCross.l2NormSqr()) {
-      auto c0 = xCross.normalized();
-      auto c1 = v01.cross(xCross).normalized();
+      c0 = xCross.normalized();
+      c1 = v01.cross(xCross).normalized();
     } else {
-      auto c0 = yCross.normalized();
-      auto c1 = v01.cross(yCross).normalized();
+      c0 = yCross.normalized();
+      c1 = v01.cross(yCross).normalized();
     }
     for (int d = 0; d != 3; ++d) {
       basis(d, 0) = c0[d];

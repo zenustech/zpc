@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cooperative_groups.h>
+#include <cuda.h>
 
 #include <cub/device/device_histogram.cuh>
 #include <cub/device/device_radix_sort.cuh>
@@ -358,9 +359,11 @@ namespace zs {
       cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      binary_op, dist, stream);
 
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      void *d_tmp;
+      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
       cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, dist, stream);
-      context.streamMemFree(d_tmp, stream);
+      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
+      // context.streamMemFree(d_tmp, stream);
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -396,10 +399,13 @@ namespace zs {
       std::size_t temp_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      void *d_tmp;
+      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
+      // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceScan::ExclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      context.streamMemFree(d_tmp, stream);
+      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
+      // context.streamMemFree(d_tmp, stream);
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -435,9 +441,12 @@ namespace zs {
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
       cub::DeviceReduce::Reduce(nullptr, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      void *d_tmp;
+      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
       cub::DeviceReduce::Reduce(d_tmp, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      context.streamMemFree(d_tmp, stream);
+      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
+      // context.streamMemFree(d_tmp, stream);
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -481,11 +490,14 @@ namespace zs {
         cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+        // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+        void *d_tmp;
+        cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
         cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        context.streamMemFree(d_tmp, stream);
+        // context.streamMemFree(d_tmp, stream);
+        cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
         if (this->shouldProfile()) context.tock(timer, loc);
       }
       if (this->shouldSync()) context.syncStreamSpare(streamid);
@@ -507,10 +519,13 @@ namespace zs {
       if (this->shouldProfile()) timer = context.tick(stream, loc);
       cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      void *d_tmp;
+      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
       cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      context.streamMemFree(d_tmp, stream);
+      // context.streamMemFree(d_tmp, stream);
+      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);

@@ -61,6 +61,35 @@ namespace zs {
     void build(Policy &&, const Vector<AABBBox<dim, value_type>> &primBvs);
     template <typename Policy>
     void refit(Policy &&, const Vector<AABBBox<dim, value_type>> &primBvs);
+    template <typename Policy> Box getTotalBox(Policy &&pol) const {
+      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      // ZS_LAMBDA -> __device__
+      static_assert(space == execspace_e::cuda, "specialized policy and compiler not match");
+#else
+      static_assert(space != execspace_e::cuda, "specialized policy and compiler not match");
+#endif
+
+      auto numLeaves = getNumLeaves();
+      Vector<Box> box{sortedBvs.get_allocator(), 1};
+      if (numLeaves <= 2) {
+        using TV = typename Box::TV;
+        box.setVal(
+            Box{TV::uniform(limits<value_type>::max()), TV::uniform(limits<value_type>::lowest())});
+        pol(Collapse{numLeaves},
+            [bvh = proxy<space>(*this), box = proxy<space>(box)] ZS_LAMBDA(int vi) mutable {
+              auto bv = bvh.getNodeBV(vi);
+              for (int d = 0; d != dim; ++d) {
+                atomic_min(wrapv<space>{}, &box[0]._min[d], bv._min[d]);
+                atomic_max(wrapv<space>{}, &box[0]._max[d], bv._max[d]);
+              }
+            });
+      } else {
+        pol(Collapse{1}, [bvh = proxy<space>(*this), box = proxy<space>(box)] ZS_LAMBDA(
+                             int vi) mutable { box[0] = bvh.getNodeBV(0); });
+      }
+      return box.getVal();
+    }
 
     tilevector_t sortedBvs;
     // escape index for internal nodes, primitive index for leaf nodes
@@ -246,8 +275,23 @@ namespace zs {
     }
 
     /// sort bvh
+#if 0
     indices_t leafOffsets{numLeaves + 1, memdst, devid};
     exclusive_scan(policy, leafDepths.begin(), leafDepths.end(), leafOffsets.begin());
+#else
+    indices_t leafOffsets{};
+    {
+      const auto &depths
+          = memdst == memsrc_e::host ? leafDepths : leafDepths.clone({memsrc_e::host, -1});
+      indices_t offsets{numLeaves + 1, memsrc_e::host, -1};
+      offsets[0] = 0;
+      for (int i = 0; i != numLeaves; ++i) offsets[i + 1] = offsets[i] + depths[i];
+      if (memdst != memsrc_e::host)
+        leafOffsets = offsets.clone({memdst, devid});
+      else
+        leafOffsets = std::move(offsets);
+    }
+#endif
     indices_t trunkDst{numLeaves - 1, memdst, devid};
 
     policy(zip(leafLca, leafDepths, leafOffsets),
@@ -295,204 +339,5 @@ namespace zs {
            RefitLBvh{execTag, primBvs, parents, levels, auxIndices, refitFlags, sortedBvs});
     return;
   }
-
-#if 0
-  /// build bvh
-  template <execspace_e space, int lane_width, int dim, typename T>
-  inline auto build_lbvh(const Vector<AABBBox<dim, T>> &primBvs) {
-    using namespace zs;
-    static constexpr bool is_double = is_same_v<T, double>;
-    using mc_t = conditional_t<is_double, u64, u32>;
-    using lbvh_t = LBvh<dim, lane_width, is_double>;
-    using float_type = typename lbvh_t::float_type;
-    using index_type = typename lbvh_t::index_type;
-    using Box = typename lbvh_t::Box;
-    using TV = vec<float_type, dim>;
-    static_assert(is_same_v<float_type, typename Box::T>, "float type mismatch");
-
-    lbvh_t lbvh{};
-
-    const auto numLeaves = primBvs.size();
-    const memsrc_e memdst{primBvs.memspace()};
-    const ProcID devid{primBvs.devid()};
-    constexpr auto execTag = wrapv<space>{};
-
-    auto execPol = par_exec(execTag).sync(true);
-    if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
-
-    {
-      /// total bounding volume
-      Vector<Box> tmp{1, memsrc_e::host, -1};
-      tmp[0] = Box{TV::uniform(limits<float_type>().max()),
-                   TV::uniform(limits<float_type>().lowest())};
-      Vector<Box> wholeBox = tmp.clone({memdst, devid});
-      execPol(primBvs, ComputeBoundingVolume{execTag, wholeBox});
-      lbvh.wholeBox = wholeBox.clone({memsrc_e::host, -1})[0];
-    }
-
-    if constexpr (false) {
-      auto &wholeBox = lbvh.wholeBox;
-      fmt::print("fin {} leaves, {}, {}, {} - {}, {}, {}\n", numLeaves, wholeBox._min[0],
-                 wholeBox._min[1], wholeBox._min[2], wholeBox._max[0], wholeBox._max[1],
-                 wholeBox._max[2]);
-    }
-
-    // morton codes
-    Vector<mc_t> mcs{numLeaves, memdst, devid};
-    Vector<index_type> indices{numLeaves, memdst, devid};
-    execPol(enumerate(primBvs, mcs, indices),
-            ComputeMortonCodes<space, mc_t, index_type, Box>{execTag, lbvh.wholeBox});
-    // puts("done mcs compute");
-
-    // sort by morton codes
-    Vector<mc_t> sortedMcs{numLeaves, memdst, devid};
-    Vector<index_type> sortedIndices{numLeaves, memdst, devid};
-    radix_sort_pair(execPol, mcs.begin(), indices.begin(), sortedMcs.begin(), sortedIndices.begin(),
-                    mcs.size());
-
-    // for (int id = 0; id < 5; ++id) fmt::print("[{}]: {}\t", sortedIndices[id], sortedMcs[id]);
-    // puts("done sort");
-
-    Vector<mc_t> splits{numLeaves, memdst, devid};
-    constexpr auto totalBits = sizeof(mc_t) * 8;
-    execPol(enumerate(splits), ComputeSplitMetric{execTag, numLeaves, sortedMcs, totalBits});
-
-    // puts("done calc splits");
-
-    Vector<Box> leafBvs{numLeaves, memdst, devid}, trunkBvs{numLeaves - 1, memdst, devid};
-    Vector<index_type> leafLca{numLeaves, memdst, devid};
-    // Vector<index_type> leafPar{numLeaves, memdst, devid};
-    Vector<index_type> leafDepths{numLeaves, memdst, devid};
-    // Vector<index_type> trunkPar{numLeaves - 1, memdst, devid};
-    Vector<index_type> trunkR{numLeaves - 1, memdst, devid};
-    Vector<index_type> trunkL{numLeaves - 1, memdst, devid};
-    Vector<index_type> trunkRc{numLeaves - 1, memdst, devid};
-    Vector<index_type> trunkLc{numLeaves - 1, memdst, devid};
-
-    /// build + refit
-    Vector<u32> trunkTopoMarks{numLeaves - 1, memdst, devid};
-    {
-      Vector<int> trunkBuildFlags{numLeaves - 1, memdst, devid};
-      execPol(zip(trunkTopoMarks, trunkBuildFlags), ResetBuildStates{execTag});
-
-      execPol(range(numLeaves),
-              BuildRefitLBvh{execTag, numLeaves, primBvs, leafBvs, trunkBvs, splits, sortedIndices,
-                             leafLca, leafDepths, trunkL, trunkR, trunkLc, trunkRc, trunkTopoMarks,
-                             trunkBuildFlags});
-    }
-
-    // puts("done init build");
-    ///
-    auto &sortedBvs = lbvh.sortedBvs;
-    auto &auxIndices = lbvh.auxIndices;
-    auto &levels = lbvh.levels;
-    auto &parents = lbvh.parents;
-    auto &leafIndices = lbvh.leafIndices;
-
-    const auto numNodes = numLeaves + numLeaves - 1;
-    sortedBvs = Vector<Box>{numNodes, memdst, devid};
-    auxIndices = Vector<index_type>{numNodes, memdst, devid};
-    levels = Vector<index_type>{numNodes, memdst, devid};
-    parents = Vector<index_type>{numNodes, memdst, devid};
-
-    leafIndices = Vector<index_type>{numLeaves, memdst, devid};  // for refit
-
-    /// sort bvh
-    Vector<index_type> leafOffsets{numLeaves, memdst, devid};
-    exclusive_scan(execPol, leafDepths.begin(), leafDepths.end(), leafOffsets.begin());
-    Vector<index_type> trunkDst{numLeaves - 1, memdst, devid};
-
-    execPol(zip(leafLca, leafDepths, leafOffsets),
-            ComputeTrunkOrder{execTag, trunkLc, trunkDst, levels, parents});
-    execPol(zip(trunkDst, trunkBvs, trunkR),
-            ReorderTrunk{execTag, numLeaves, trunkDst, leafLca, leafOffsets, sortedBvs, auxIndices,
-                         parents});
-    execPol(enumerate(leafBvs, leafOffsets, leafDepths),
-            ReorderLeafs{execTag, numLeaves, sortedIndices, auxIndices, parents, levels, sortedBvs,
-                         leafIndices});
-    // puts("done reorder");
-
-    return lbvh;
-  }
-
-  /// refit bvh
-  template <execspace_e space, int dim, int lane_width, bool Ti, typename T, typename AllocatorT>
-  inline void refit_lbvh(LBvh<dim, lane_width, Ti, T, AllocatorT> &lbvh,
-                         const Vector<AABBBox<dim, T>> &primBvs) {
-    using namespace zs;
-    using lbvh_t = LBvh<dim, lane_width, is_double>;
-    using float_type = typename lbvh_t::float_type;
-    using Box = typename lbvh_t::Box;
-    using TV = vec<float_type, dim>;
-
-    const auto numNodes = lbvh.numNodes();
-    const auto memdst = lbvh.sortedBvs.memspace();
-    const auto devid = lbvh.sortedBvs.devid();
-    constexpr auto execTag = wrapv<space>{};
-
-    auto execPol = par_exec(execTag).sync(true);
-    if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
-    Vector<int> refitFlags{numNodes, memdst, devid};
-    auto &leafIndices = lbvh.leafIndices;
-    auto &sortedBvs = lbvh.sortedBvs;
-    auto &auxIndices = lbvh.auxIndices;
-    auto &parents = lbvh.parents;
-
-    // puts("refit begin");
-    // init bvs, refit flags
-    execPol(zip(refitFlags, sortedBvs), ResetRefitStates<space, dim, typename Box::T>{execTag});
-    // puts("done reset refit states");
-    // refit
-    execPol(leafIndices, RefitLBvh{execTag, primBvs, auxIndices, parents, refitFlags, sortedBvs});
-    // puts("done refit");
-    if constexpr (false) {
-      auto wholeBox = sortedBvs[0];
-      fmt::print("fin {} leaves, {}, {}, {} - {}, {}, {}\n", lbvh.numLeaves(), wholeBox._min[0],
-                 wholeBox._min[1], wholeBox._min[2], wholeBox._max[0], wholeBox._max[1],
-                 wholeBox._max[2]);
-    }
-  }
-
-  /// collision detection traversal
-  // collider (aabb, point) - bvh
-  template <execspace_e space, typename Index, int dim, int lane_width, bool is_double,
-            typename Collider>
-  inline Vector<tuple<Index, Index>> intersect_lbvh(LBvh<dim, lane_width, is_double> &lbvh,
-                                                    const Vector<Collider> &colliders) {
-    using namespace zs;
-    using lbvh_t = LBvh<dim, lane_width, is_double>;
-    using float_type = typename lbvh_t::float_type;
-    using TV = vec<float_type, dim>;
-
-    const auto memdst = lbvh.sortedBvs.memspace();
-    const auto devid = lbvh.sortedBvs.devid();
-
-    std::size_t evaluatedSize = colliders.size() * dim * dim * 10;
-    Vector<tuple<Index, Index>> records{evaluatedSize, memdst,
-                                        devid};  // this is the estimated count
-    Vector<Index> tmp{1, memsrc_e::host, -1};
-    tmp[0] = 0;
-    Vector<Index> cnt = tmp.clone({memdst, devid});
-
-    auto execPol = par_exec(wrapv<space>{}).sync(true);
-    if constexpr (space == execspace_e::cuda) execPol = execPol.device(devid);
-
-    auto &sortedBvs = lbvh.sortedBvs;
-    auto &auxIndices = lbvh.auxIndices;
-    auto &levels = lbvh.levels;
-    // init bvs, refit flags
-    execPol(
-        enumerate(colliders),
-        IntersectLBvh<space, Collider, typename lbvh_t::Box, typename lbvh_t::index_type, Index>{
-            wrapv<space>{}, sortedBvs, auxIndices, levels, cnt, records});
-    auto n = cnt.clone({memsrc_e::host, -1});
-    if (n[0] >= records.size())
-      throw std::runtime_error(fmt::format(
-          "not enough space reserved for collision indices, requires {} at least, currently {}\n",
-          n[0], evaluatedSize));
-    records.resize(n[0]);
-    return records;
-  }
-#endif
 
 }  // namespace zs

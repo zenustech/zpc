@@ -8,24 +8,15 @@ namespace zs {
 
   /// ref: ipc-sim/Codim-IPC, FEM/FRICTION_UTILS.h
   template <class T> constexpr T f0_SF(T x2, T epsvh) {
-    if (x2 >= epsvh * epsvh) {
-      return zs::sqrt(x2);
-    } else {
-      return x2 * (-zs::sqrt(x2) / 3 + epsvh) / (epsvh * epsvh) + epsvh / 3;
-    }
+    return x2 * (-zs::sqrt(x2) / 3 + epsvh) / (epsvh * epsvh) + epsvh / 3;
   }
 
   template <class T> constexpr T f1_SF_div_rel_dx_norm(T x2, T epsvh) {
-    if (x2 >= epsvh * epsvh) {
-      return 1 / zs::sqrt(x2);
-    } else {
-      return (-zs::sqrt(x2) + 2 * epsvh) / (epsvh * epsvh);
-    }
+    return (-zs::sqrt(x2) + 2 * epsvh) / (epsvh * epsvh);
   }
 
   template <class T> constexpr T f2_SF_term(T x2, T epsvh) {
-    return -1 / (epsvh * epsvh);
-    // same for x2 >= epsvh * epsvh for C1 clamped friction
+    return 2 * (epsvh - zs::sqrt(x2)) / (epsvh * epsvh);
   }
 
   /// PP

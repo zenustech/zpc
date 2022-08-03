@@ -191,17 +191,22 @@ namespace zs {
 #    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char)) {  // 8-bit
         return reinterpret_bits<T>(_InterlockedCompareExchange8(
-            (char *)dest, reinterpret_bits<char>(desired), reinterpret_bits<char>(expected)));
+            const_cast<volatile char *>((char *)dest), reinterpret_bits<char>(desired),
+            reinterpret_bits<char>(expected)));
       } else if constexpr (sizeof(T) == sizeof(short)) {  // 16-bit
         return reinterpret_bits<T>(_InterlockedCompareExchange16(
-            (short *)dest, reinterpret_bits<short>(desired), reinterpret_bits<short>(expected)));
+            const_cast<volatile short *>((short *)dest), reinterpret_bits<short>(desired),
+            reinterpret_bits<short>(expected)));
       } else if constexpr (sizeof(T) == sizeof(long)) {  // 32-bit
         return reinterpret_bits<T>(_InterlockedCompareExchange(
-            (long *)dest, reinterpret_bits<long>(desired), reinterpret_bits<long>(expected)));
+            const_cast<volatile long *>((long *)dest), reinterpret_bits<long>(desired),
+            reinterpret_bits<long>(expected)));
       } else if constexpr (sizeof(T) == sizeof(__int64)) {
-        return reinterpret_bits<T>(
-            InterlockedCompareExchange64((__int64 *)dest, reinterpret_bits<__int64>(desired),
-                                         reinterpret_bits<__int64>(expected)));
+        return reinterpret_bits<T>(InterlockedCompareExchange64(
+            const_cast<volatile __int64 *>((__int64 *)dest), reinterpret_bits<__int64>(desired),
+            reinterpret_bits<__int64>(expected)));
+      } else {
+        throw std::runtime_error("no corresponding atomic_cas (win) impl!");
       }
 #    else
 

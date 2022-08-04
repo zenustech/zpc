@@ -66,78 +66,71 @@ namespace zs {
     }
   };
 
-  template <execspace_e space, typename BvTiles, typename ITiles, int dim, typename T, typename MC,
-            typename Index>
+  template <execspace_e space, typename BvTiles, int dim, typename T, typename MC, typename Index>
   struct BuildRefitLBvh {
     using BV = AABBBox<dim, T>;
     using bv_t = VectorView<space, Vector<BV>>;
     using cbv_t = VectorView<space, const Vector<BV>>;
-    using tiles_t = decltype(proxy<space>({}, std::declval<BvTiles&>()));
-    using itiles_t = decltype(proxy<space>({}, std::declval<ITiles&>()));
-    using size_type = typename tiles_t::size_type;
+    using bvtiles_t = decltype(proxy<space>({}, std::declval<BvTiles&>()));
+    using size_type = typename bvtiles_t::size_type;
     using mc_t = VectorView<space, const Vector<MC>>;
     using id_t = VectorView<space, Vector<Index>>;
     using mark_t = VectorView<space, Vector<u32>>;
     using flag_t = VectorView<space, Vector<int>>;
     BuildRefitLBvh() = default;
     constexpr BuildRefitLBvh(wrapv<space>, size_type numLeaves, const Vector<BV>& primBvs,
-                             BvTiles& leafBvs, BvTiles& trunkBvs, ITiles& leafTopo,
-                             ITiles& trunkTopo, const Vector<MC>& splits, Vector<Index>& indices,
-                             Vector<int>& flags, Vector<Index>& rt) noexcept
+                             BvTiles& leafBvs, BvTiles& trunkBvs, const Vector<MC>& splits,
+                             Vector<Index>& indices, Vector<Index>& leafLca,
+                             Vector<Index>& leafDepths, Vector<Index>& trunkL,
+                             Vector<Index>& trunkR, Vector<Index>& trunkLc, Vector<Index>& trunkRc,
+                             Vector<u32>& marks, Vector<int>& flags) noexcept
         : primBvs{proxy<space>(primBvs)},
           leafBvs{proxy<space>({}, leafBvs)},
           trunkBvs{proxy<space>({}, trunkBvs)},
-          leafTopo{proxy<space>({}, leafTopo)},
-          trunkTopo{proxy<space>({}, trunkTopo)},
           splits{proxy<space>(splits)},
           indices{proxy<space>(indices)},
+          leafLca{proxy<space>(leafLca)},
+          leafDepths{proxy<space>(leafDepths)},
+          trunkL{proxy<space>(trunkL)},
+          trunkR{proxy<space>(trunkR)},
+          trunkLc{proxy<space>(trunkLc)},
+          trunkRc{proxy<space>(trunkRc)},
+          marks{proxy<space>(marks)},
           flags{proxy<space>(flags)},
-          rt{proxy<space>(rt)},
-          numTrunk{numLeaves - 1} {}
+          numLeaves{numLeaves} {}
 
     constexpr void operator()(Index idx) noexcept {
       using TV = vec<T, dim>;
       {
-        auto ind = indices(idx);
-        leafTopo("inds", idx) = ind;
-        BV bv = primBvs(ind);
+        BV bv = primBvs(indices(idx));
         leafBvs.template tuple<dim>("min", idx) = bv._min;
         leafBvs.template tuple<dim>("max", idx) = bv._max;
       }
 
-      leafTopo("lca", idx) = idx + numTrunk;  // set to itself
-      leafTopo("depth", idx) = 1;
+      leafLca(idx) = -1, leafDepths(idx) = 1;
       Index l = idx - 1, r = idx;  ///< (l, r]
       bool mark{false};
 
       if (l >= 0) mark = splits(l) < splits(r);  ///< true when right child, false otherwise
 
       int cur = mark ? l : r;
-      leafTopo("par", idx) = cur;
-      if (mark) {
-        trunkTopo("rc", cur) = idx + numTrunk;
-        trunkTopo("r", cur) = idx;
-        // atomic_or(wrapv<space>{}, &marks(cur), 0x00000002u);
-      } else {
-        trunkTopo("lc", cur) = idx + numTrunk;
-        trunkTopo("l", cur) = idx;
-        // atomic_or(wrapv<space>{}, &marks(cur), 0x00000001u);
-      }
+      if (mark)
+        trunkRc(cur) = idx, trunkR(cur) = idx, atomic_or(wrapv<space>{}, &marks(cur), 0x00000002u);
+      else
+        trunkLc(cur) = idx, trunkL(cur) = idx, atomic_or(wrapv<space>{}, &marks(cur), 0x00000001u);
 
       while (atomic_add(wrapv<space>{}, &flags(cur), 1) == 1) {
         {  // refit
-          int lc = trunkTopo("lc", cur), rc = trunkTopo("rc", cur);
-          // const auto childMask = marks(cur) & 3;
-          const auto& leftBox = (lc >= numTrunk)
-                                    ? BV{leafBvs.template pack<dim>("min", lc - numTrunk),
-                                         leafBvs.template pack<dim>("max", lc - numTrunk)}
-                                    : BV{trunkBvs.template pack<dim>("min", lc),
-                                         trunkBvs.template pack<dim>("max", lc)};
-          const auto& rightBox = (rc >= numTrunk)
-                                     ? BV{leafBvs.template pack<dim>("min", rc - numTrunk),
-                                          leafBvs.template pack<dim>("max", rc - numTrunk)}
-                                     : BV{trunkBvs.template pack<dim>("min", rc),
-                                          trunkBvs.template pack<dim>("max", rc)};
+          int lc = trunkLc(cur), rc = trunkRc(cur);
+          const auto childMask = marks(cur) & 3;
+          const auto& leftBox = (childMask & 1) ? BV{leafBvs.template pack<dim>("min", lc),
+                                                     leafBvs.template pack<dim>("max", lc)}
+                                                : BV{trunkBvs.template pack<dim>("min", lc),
+                                                     trunkBvs.template pack<dim>("max", lc)};
+          const auto& rightBox = (childMask & 2) ? BV{leafBvs.template pack<dim>("min", rc),
+                                                      leafBvs.template pack<dim>("max", rc)}
+                                                 : BV{trunkBvs.template pack<dim>("min", rc),
+                                                      trunkBvs.template pack<dim>("max", rc)};
 
           BV bv{};
           for (int d = 0; d != dim; ++d) {
@@ -147,13 +140,10 @@ namespace zs {
           trunkBvs.template tuple<dim>("min", cur) = bv._min;
           trunkBvs.template tuple<dim>("max", cur) = bv._max;
         }
-        // marks(cur) &= 0x00000007;
+        marks(cur) &= 0x00000007;
 
-        l = trunkTopo("l", cur) - 1;
-        r = trunkTopo("r", cur);
-        leafTopo("lca", l + 1) = cur;
-        leafTopo("depth", l + 1)++;
-
+        l = trunkL(cur) - 1, r = trunkR(cur);
+        leafLca(l + 1) = cur, leafDepths(l + 1)++;
         thread_fence(wrapv<space>{});  // this is needed
 
         if (l >= 0)
@@ -161,35 +151,31 @@ namespace zs {
         else
           mark = false;
 
-        if (l + 1 == 0 && r == numTrunk) {
-          trunkTopo("par", cur) = -1;
-          rt[0] = cur;  // assign root
-          // marks(cur) &= 0xFFFFFFFB;
+        if (l + 1 == 0 && r == numLeaves - 1) {
+          // trunkPar(cur) = -1;
+          marks(cur) &= 0xFFFFFFFB;
           break;
         }
 
         int par = mark ? l : r;
-        trunkTopo("par", cur) = par;
-        if (mark) {
-          trunkTopo("rc", par) = cur;
-          trunkTopo("r", par) = r;
-          // atomic_and(wrapv<space>{}, &marks(par), 0xFFFFFFFD), marks(cur) |= 0x00000004;
-        } else {
-          trunkTopo("lc", par) = cur;
-          trunkTopo("l", par) = l + 1;
-          // atomic_and(wrapv<space>{}, &marks(par), 0xFFFFFFFE), marks(cur) &= 0xFFFFFFFB;
-        }
+        // trunkPar(cur) = par;
+        if (mark)
+          trunkRc(par) = cur, trunkR(par) = r, atomic_and(wrapv<space>{}, &marks(par), 0xFFFFFFFD),
+          marks(cur) |= 0x00000004;
+        else
+          trunkLc(par) = cur, trunkL(par) = l + 1,
+          atomic_and(wrapv<space>{}, &marks(par), 0xFFFFFFFE), marks(cur) &= 0xFFFFFFFB;
         cur = par;
       }
     }
 
     cbv_t primBvs;
-    tiles_t leafBvs, trunkBvs;
-    itiles_t leafTopo, trunkTopo;
+    bvtiles_t leafBvs, trunkBvs;
     mc_t splits;
-    id_t indices, rt;
+    id_t indices, leafLca, leafDepths, trunkL, trunkR, trunkLc, trunkRc;
+    mark_t marks;
     flag_t flags;
-    size_type numTrunk;
+    size_type numLeaves;
   };
 
   ///

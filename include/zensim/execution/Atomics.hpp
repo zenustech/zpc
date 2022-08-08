@@ -70,9 +70,10 @@ namespace zs {
         else if constexpr (sizeof(T) == sizeof(short))
           return InterlockedExchangeAdd16(const_cast<short volatile *>((short *)dest), (short)val);
         else if constexpr (sizeof(T) == sizeof(long))
-          return InterlockedAdd(const_cast<long volatile *>((long *)dest), (long)val);
+          return InterlockedExchangeAdd(const_cast<long volatile *>((long *)dest), (long)val);
         else if constexpr (sizeof(T) == sizeof(__int64))
-          return InterlockedAdd64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
+          return InterlockedExchangeAdd64(const_cast<__int64 volatile *>((__int64 *)dest),
+                                          (__int64)val);
       } else
         return atomic_add_impl(ExecTag{}, dest, val);
 #    else

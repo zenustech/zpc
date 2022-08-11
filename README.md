@@ -12,7 +12,7 @@ This is a cross-platform C++/CUDA cmake project. The minimum version requirement
 
 When CUDA is enabled, the required CUDA version is 11.4+ (for c++17 and latest cuda utilities).
 
-Currently, *supported OS* is Ubuntu 20.04+, and *tested compilers* includes >gcc10.0, >clang-11. 
+Currently, *supported OS* are Ubuntu 20.04+ and Windows 10, and *tested compilers* includes gcc10.0+, clang-11+, vs2019+. 
 
 ### **Build**
 
@@ -23,7 +23,7 @@ git submodule init
 git submodule update
 ```
 
-If CUDA (>=11.3) is installed and required, be sure to set *ZS_ENABLE_CUDA=On* first.
+If CUDA (>=11.4) is installed and required, be sure to set *ZS_ENABLE_CUDA=On* first.
 
 Configure the project using the *CMake Tools* extension in *Visual Studio Code* (recommended), or follow the build instructions in [git wiki](https://github.com/zensim-dev/zpc/wiki). 
 
@@ -45,7 +45,6 @@ The following libraries are adopted and made fully localized in our project deve
 - [fmt](https://fmt.dev/latest/index.html)
 - [loguru](https://github.com/emilk/loguru). (pro: "chrono" is not exposed in its header)
 - [magic_enum](https://github.com/Neargye/magic_enum)
-- [gcem](https://github.com/kthohr/gcem). (pro: their constexpr implementations can be directly used in cuda device functions and kernels)
 - [catch2](https://github.com/catchorg/Catch2)
 
 For spatial data IO and generation, we use these libraries in addition:

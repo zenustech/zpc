@@ -232,13 +232,22 @@ namespace zs {
                    " kernel error location ", fileInfo, locInfo, funcInfo, "=");
       }
     }
-#define CHECK_LAUNCH_CONFIG                                                                      \
-  if (lc.enableAutoConfig()) {                                                                   \
-    auto nwork = lc.db.x;                                                                        \
-    lc.db.x = Cuda::deduce_block_size(ctx, (void *)f,                                            \
-                                      [shmem = lc.shmem](int) -> std::size_t { return shmem; }); \
-    lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                                   \
-  }
+#if 0
+#  define CHECK_LAUNCH_CONFIG                                                                      \
+    if (lc.enableAutoConfig()) {                                                                   \
+      auto nwork = lc.db.x;                                                                        \
+      lc.db.x = Cuda::deduce_block_size(ctx, (void *)f,                                            \
+                                        [shmem = lc.shmem](int) -> std::size_t { return shmem; }); \
+      lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                                   \
+    }
+#else
+#  define CHECK_LAUNCH_CONFIG                    \
+    if (lc.enableAutoConfig()) {                 \
+      auto nwork = lc.db.x;                      \
+      lc.db.x = 128;                             \
+      lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x; \
+    }
+#endif
     explicit cuda_safe_launch(const source_location &loc, const Cuda::CudaContext &ctx,
                               LaunchConfig &&lc, void (*f)(remove_cvref_t<Args>...),
                               const Args &...args) {

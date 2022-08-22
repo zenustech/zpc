@@ -322,7 +322,7 @@ namespace zs {
     auto [eivals, eivecs] = eigen_decomposition(mat);
     for (int i = 0; i != dim; ++i) {
       if (eivals[i] < limits<value_type>::epsilon())
-        eivals[i] = limits<value_type>::epsilon();
+        eivals[i] = 0;
       // else
       //  break;  // eivals in ascending order
       // the above assumption not necessarily true, especially for custom eig(...)

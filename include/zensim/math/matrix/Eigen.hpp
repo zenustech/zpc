@@ -323,8 +323,9 @@ namespace zs {
     for (int i = 0; i != dim; ++i) {
       if (eivals[i] < limits<value_type>::epsilon())
         eivals[i] = limits<value_type>::epsilon();
-      else
-        break;  // eivals in ascending order
+      // else
+      //  break;  // eivals in ascending order
+      // the above assumption not necessarily true, especially for custom eig(...)
     }
 #if 0
     auto diag = MatT::zeros();

@@ -326,6 +326,7 @@ namespace zs {
       // else
       //  break;  // eivals in ascending order
       // the above assumption not necessarily true, especially for custom eig(...)
+      // credits to huang kemeng
     }
 #if 0
     auto diag = MatT::zeros();

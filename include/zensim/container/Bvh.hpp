@@ -331,8 +331,8 @@ namespace zs {
             orderedTrunkTopo("esc", dst) = mapped_index(trunkTopo("esc", i));
             orderedTrunkTopo("l", dst) = trunkTopo("l", i);
             orderedTrunkTopo("r", dst) = trunkTopo("r", i);
-            orderedTrunkBvs.template tuple<dim>("min", dst) = trunkBvs.pack<dim>("min", i);
-            orderedTrunkBvs.template tuple<dim>("max", dst) = trunkBvs.pack<dim>("max", i);
+            orderedTrunkBvs.template tuple<dim>("min", dst) = trunkBvs.template pack<dim>("min", i);
+            orderedTrunkBvs.template tuple<dim>("max", dst) = trunkBvs.template pack<dim>("max", i);
           });
       trunkTopo = std::move(orderedTrunkTopo);
       trunkBvs = std::move(orderedTrunkBvs);

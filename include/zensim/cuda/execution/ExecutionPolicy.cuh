@@ -2,6 +2,10 @@
 
 #include <cooperative_groups.h>
 #include <cuda.h>
+#include <thrust/device_ptr.h>
+#include <thrust/reduce.h>
+#include <thrust/scan.h>
+#include <thrust/sort.h>
 
 #include <cub/device/device_histogram.cuh>
 #include <cub/device/device_radix_sort.cuh>
@@ -326,10 +330,14 @@ namespace zs {
     void for_each_impl(std::random_access_iterator_tag, ForwardIt &&first, ForwardIt &&last,
                        UnaryFunction &&f, const source_location &loc) const {
       using IterT = remove_cvref_t<ForwardIt>;
+      static_assert(is_same_v<typename std::iterator_traits<IterT>::iterator_category,
+                              std::random_access_iterator_tag>,
+                    "iterator passed to cuda_for_each must be a random_access_iterator.");
       const auto dist = last - first;
       (*this)(
-          {dist},
-          [first, f](typename std::iterator_traits<IterT>::difference_type tid) {
+          Collapse{dist},
+          [first = FWD(first), f = FWD(f)] __device__(
+              typename std::iterator_traits<IterT>::difference_type tid) mutable {
             f(*(first + tid));
           },
           loc);
@@ -356,14 +364,22 @@ namespace zs {
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
+#if 0
+      thrust::inclusive_scan(thrust::cuda::par.on(stream),
+                             thrust::device_pointer_cast(first.operator->()),
+                             thrust::device_pointer_cast(first.operator->() + dist),
+                             thrust::device_pointer_cast(d_first.operator->()), FWD(binary_op));
+#else
       cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      binary_op, dist, stream);
+      context.syncStreamSpare(streamid);
 
-      void *d_tmp;
-      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
-      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, dist, stream);
-      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
-      // context.streamMemFree(d_tmp, stream);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
+                                     binary_op, dist, stream);
+      context.syncStreamSpare(streamid);
+      context.streamMemFree(d_tmp, stream);
+#endif
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -396,16 +412,22 @@ namespace zs {
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
+#if 0
+      thrust::exclusive_scan(
+          thrust::cuda::par.on(stream), thrust::device_pointer_cast(first.operator->()),
+          thrust::device_pointer_cast(first.operator->() + dist),
+          thrust::device_pointer_cast(d_first.operator->()), init, FWD(binary_op));
+#else
       std::size_t temp_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      void *d_tmp;
-      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
-      // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      context.syncStreamSpare(streamid);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceScan::ExclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
-      // context.streamMemFree(d_tmp, stream);
+      context.syncStreamSpare(streamid);
+      context.streamMemFree(d_tmp, stream);
+#endif
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -435,18 +457,27 @@ namespace zs {
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
+      using ValueT = typename std::iterator_traits<IterT>::value_type;
       const auto dist = last - first;
       std::size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
+#if 0
+      ValueT res
+          = thrust::reduce(thrust::device, thrust::device_pointer_cast(first.operator->()),
+                           thrust::device_pointer_cast(last.operator->()), (ValueT)init, binary_op);
+      (*this)(
+          Collapse{1}, [d_first = FWD(d_first), res] __device__(int) mutable { *d_first = res; },
+          loc);
+#else
       cub::DeviceReduce::Reduce(nullptr, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
-      void *d_tmp;
-      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
+      context.syncStreamSpare(streamid);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceReduce::Reduce(d_tmp, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
-      // context.streamMemFree(d_tmp, stream);
+      context.syncStreamSpare(streamid);
+      context.streamMemFree(d_tmp, stream);
+#endif
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -487,17 +518,35 @@ namespace zs {
         auto stream = (cudaStream_t)context.streamSpare(streamid);
         Cuda::CudaContext::StreamExecutionTimer *timer{};
         if (this->shouldProfile()) timer = context.tick(stream, loc);
+#if 0
+        (*this)(
+            Collapse{count},
+            [keysIn, keysOut, valsIn, valsOut] __device__(Tn i) mutable {
+              *(keysOut + i) = *(keysIn + i);
+              *(valsOut + i) = *(valsIn + i);
+            },
+            loc);
+        thrust::sort_by_key(thrust::cuda::par.on(stream),
+                            thrust::device_pointer_cast(keysOut.operator->()),
+                            thrust::device_pointer_cast(keysOut.operator->() + count),
+                            thrust::device_pointer_cast(valsOut.operator->()));
+#else
         cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+        context.syncStreamSpare(streamid);
+        void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+#  if 0
         void *d_tmp;
         cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
+#  endif
         cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        // context.streamMemFree(d_tmp, stream);
-        cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
+        context.syncStreamSpare(streamid);
+        // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
+        context.streamMemFree(d_tmp, stream);
+#endif
         if (this->shouldProfile()) context.tock(timer, loc);
       }
       if (this->shouldSync()) context.syncStreamSpare(streamid);
@@ -513,19 +562,26 @@ namespace zs {
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       const auto dist = last - first;
-      std::size_t temp_bytes = 0;
-      auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
+      auto stream = (cudaStream_t)context.streamSpare(streamid);
       if (this->shouldProfile()) timer = context.tick(stream, loc);
+#if 0
+      (*this)(
+          Collapse{dist},
+          [first, d_first] __device__(auto i) mutable { *(d_first + i) = *(first + i); }, loc);
+      thrust::sort(thrust::cuda::par.on(stream), thrust::device_pointer_cast(d_first.operator->()),
+                   thrust::device_pointer_cast(d_first.operator->() + dist));
+#else
+      std::size_t temp_bytes = 0;
       cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      // void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
-      void *d_tmp;
-      cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
+      context.syncStreamSpare(streamid);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
       cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      // context.streamMemFree(d_tmp, stream);
-      cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
+      context.syncStreamSpare(streamid);
+      context.streamMemFree(d_tmp, stream);
+#endif
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid);
       context.recordEventSpare(streamid);
@@ -547,6 +603,10 @@ namespace zs {
 
     constexpr ProcID getProcid() const noexcept { return procid; }
     constexpr StreamID getStreamid() const noexcept { return streamid; }
+    void *getStream() const noexcept {
+      return Cuda::context(getProcid()).streamSpare(getStreamid());
+    }
+
     constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
     constexpr StreamID getIncomingStreamid() const noexcept { return incomingStreamid; }
 

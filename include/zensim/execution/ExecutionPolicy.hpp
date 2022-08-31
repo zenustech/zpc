@@ -6,12 +6,12 @@
 #include "zensim/TypeAlias.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/profile/CppTimers.hpp"
-#include "zensim/zpc_tpls/fmt/format.h"
-#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
+#include "zensim/zpc_tpls/fmt/format.h"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 namespace zs {
 
   using exec_tags = variant<host_exec_tag, omp_exec_tag, cuda_exec_tag, hip_exec_tag>;

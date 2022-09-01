@@ -250,9 +250,12 @@ namespace zs {
   template <int dim, typename T, typename VecT,
             enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
   constexpr void merge(AABBBox<dim, T> &box, const VecInterface<VecT> &p) noexcept {
+    using TT = math::op_result_t<T, typename VecT::value_type>;
     for (int d = 0; d != dim; ++d) {
-      if (p[d] < box._min[d]) box._min[d] = p[d];
-      if (p[d] > box._max[d]) box._max[d] = p[d];
+      box._min[d] = zs::min(static_cast<TT>(box._min[d]), static_cast<TT>(p[d]));
+      box._max[d] = zs::max(static_cast<TT>(box._max[d]), static_cast<TT>(p[d]));
+      // if (p[d] < box._min[d]) box._min[d] = p[d];
+      // if (p[d] > box._max[d]) box._max[d] = p[d];
     }
   }
 

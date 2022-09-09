@@ -257,7 +257,7 @@ target_compile_options(zpccore
 target_link_options(zpccore
   PUBLIC        $<HOST_LINK:
     $<IF:$<CXX_COMPILER_ID:MSVC>, /MACHINE:X64 /OPT:REF /OPT:ICF, 
-    $<IF:$<CXX_COMPILER_ID:GNU>, "LINKER:--no-as-needed", > 
+    $<IF:$<CXX_COMPILER_ID:GNU>, --no-as-needed, >
     $<IF:$<CXX_COMPILER_ID:Clang>, ,>
     -O3 -m64>>
 )
@@ -345,18 +345,19 @@ endif()
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES  LANGUAGE CUDA)
 target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 target_compile_options(zpccuda 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642">
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" >
 # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
   PUBLIC        $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
 )
+# https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#implicit-cuda-host-code
 target_link_options(zpccuda 
-  PRIVATE       $<DEVICE_LINK:-dlto>
+  PUBLIC        $<DEVICE_LINK:-dlto>  # LINK_LANGUAGE
 )
 set_target_properties(zpccuda
-  PROPERTIES  #LINKER_LANGUAGE CUDA
+  PROPERTIES  # LINKER_LANGUAGE CUDA
               CUDA_EXTENSIONS ON
-              CUDA_SEPARABLE_COMPILATION ON
-              CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
+              CUDA_SEPARABLE_COMPILATION OFF
+              CUDA_RESOLVE_DEVICE_SYMBOLS OFF # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               CUDA_ARCHITECTURES OFF
               #CUDA_VISIBILITY_PRESET default
 )

@@ -257,7 +257,7 @@ target_compile_options(zpccore
 target_link_options(zpccore
   PUBLIC        $<HOST_LINK:
     $<IF:$<CXX_COMPILER_ID:MSVC>, /MACHINE:X64 /OPT:REF /OPT:ICF, 
-    $<IF:$<CXX_COMPILER_ID:GNU>, --no-as-needed, >
+    $<IF:$<CXX_COMPILER_ID:GNU>, -Wl,--no-as-needed, >
     $<IF:$<CXX_COMPILER_ID:Clang>, ,>
     -O3 -m64>>
 )

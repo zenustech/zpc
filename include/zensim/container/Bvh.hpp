@@ -263,6 +263,10 @@ namespace zs {
     indices_t rt{primBvs.get_allocator(), 1};
 
     Vector<int> trunkBuildFlags{primBvs.get_allocator(), numTrunk};
+    indices_t leafDepths{primBvs.get_allocator(), numLeaves + 1},
+        leafOffsets{primBvs.get_allocator(), numLeaves + 1},
+        trunkDst{primBvs.get_allocator(), numTrunk};
+
     trunkBuildFlags.reset(0);
     {
       policy(range(numLeaves),
@@ -283,26 +287,16 @@ namespace zs {
            });
     // auxIndices (jump table), leafIndices (leafid -> primid)
 
-    if constexpr (false) {  // ordering
-      indices_t leafDepths{primBvs.get_allocator(), numLeaves},
-          leafOffsets{primBvs.get_allocator(), numLeaves},
-          trunkDst{primBvs.get_allocator(), numTrunk};
-      policy(Collapse(numLeaves), [leafTopo = proxy<space>({}, leafTopo),
-                                   leafDepths = proxy<space>(leafDepths)] ZS_LAMBDA(int i) mutable {
-        leafDepths[i] = leafTopo("depth", i) - 1;
-      });
-#if 0
-      exclusive_scan(policy, std::begin(leafDepths), std::end(leafDepths), std::begin(leafOffsets));
-#else
-      auto pol = seq_exec();
-      leafDepths = leafDepths.clone({memsrc_e::host, -1});
-      leafOffsets = leafOffsets.clone({memsrc_e::host, -1});
-      exclusive_scan(pol, std::begin(leafDepths), std::end(leafDepths), std::begin(leafOffsets));
-      leafDepths = leafDepths.clone(primBvs.get_allocator());
-      leafOffsets = leafOffsets.clone(primBvs.get_allocator());
-#endif
+    if constexpr (true) {  // ordering
+      policy(range(numLeaves),
+             [leafTopo = proxy<space>({}, leafTopo), leafOffsets = proxy<space>(leafOffsets),
+              leafDepths = proxy<space>(leafDepths)] ZS_LAMBDA(int i) mutable {
+               leafDepths[i] = leafTopo("depth", i) - 1;
+             });
 
-      policy(Collapse(numLeaves - 1),
+      exclusive_scan(policy, std::begin(leafDepths), std::end(leafDepths), std::begin(leafOffsets));
+
+      policy(range(numLeaves - 1),
              [leafTopo = proxy<space>({}, leafTopo), trunkTopo = proxy<space>({}, trunkTopo),
               trunkDst = proxy<space>(trunkDst), leafOffsets = proxy<space>(leafOffsets),
               numTrunk] ZS_LAMBDA(int i) mutable {
@@ -314,8 +308,9 @@ namespace zs {
              });
       auto orderedTrunkTopo = trunkTopo;
       auto orderedTrunkBvs = trunkBvs;
+
       policy(
-          Collapse(numTrunk),
+          range(numTrunk),
           [trunkDst = proxy<space>(trunkDst), trunkTopo = proxy<space>({}, trunkTopo),
            trunkBvs = proxy<space>({}, trunkBvs),
            orderedTrunkTopo = proxy<space>({}, orderedTrunkTopo),
@@ -337,7 +332,7 @@ namespace zs {
       trunkTopo = std::move(orderedTrunkTopo);
       trunkBvs = std::move(orderedTrunkBvs);
 
-      policy(Collapse(numLeaves),
+      policy(range(numLeaves),
              [trunkDst = proxy<space>(trunkDst), leafTopo = proxy<space>({}, leafTopo),
               numTrunk] ZS_LAMBDA(int i) mutable {
                auto mapped_index = [&trunkDst, numTrunk](int id) {
@@ -347,84 +342,131 @@ namespace zs {
                leafTopo("lca", i) = mapped_index(leafTopo("lca", i));
                leafTopo("esc", i) = mapped_index(leafTopo("esc", i));
              });
+#if 0
       if (false) {  // dbg
-        indices_t chk{primBvs.get_allocator(), 1};
-        chk.setVal(0);
-        // leaf: par, lca, depth, esc, inds
-        // trunk: par, lc, rc, l, r, esc
-        policy(range(1), [chk = proxy<space>(chk), trunkDst = proxy<space>(trunkDst),
-                          leafTopo = proxy<space>({}, leafTopo),
-                          trunkTopo = proxy<space>({}, trunkTopo),
-                          trunkBvs = proxy<space>({}, trunkBvs),
-                          leafBvs = proxy<space>({}, leafBvs), numTrunk] ZS_LAMBDA(int i) mutable {
-          int node = 0;
-          bool shouldBreak = false;
-          auto asst = [&node, &chk, &shouldBreak, &trunkTopo, &leafTopo, numTrunk](
-                          bool pred, const char *msg) {
-            if (!pred) {
-              printf("%s not passed! failed at node %d\n", msg, node);
-              if (node < numTrunk)
-                printf("nt[%d], tr [l %d, r %d] [lc %d, rc %d, par %d, esc %d] \n", (int)numTrunk,
-                       trunkTopo("l", node), trunkTopo("r", node), trunkTopo("lc", node),
-                       trunkTopo("rc", node), trunkTopo("par", node), trunkTopo("esc", node));
-              else {
-                printf("nt[%d], lf [depth %d, lca %d, par %d, esc %d] \n", (int)numTrunk,
-                       leafTopo("depth", node - numTrunk), leafTopo("lca", node - numTrunk),
-                       leafTopo("par", node - numTrunk), leafTopo("esc", node - numTrunk));
-              }
-              chk[0] = 1;
-              shouldBreak = true;
+        policy(range(numTrunk), [lDepths, lOffsets, tLs, tRs, tLcs, tRcs, tPars, lPars, lLcas, tDst,
+                                 auxIndices = proxy<space>(auxIndices),
+                                 levels = proxy<space>(levels), parents = proxy<space>(parents),
+                                 numTrunk] ZS_LAMBDA(Ti idx) mutable {
+          auto dst = tDst[idx];
+          auto l = tLs[idx];
+          auto r = tRs[idx];
+          auto lc = tLcs[idx];
+          auto rc = tRcs[idx];
+          auto triggered = [&]() {
+            int ids[20] = {};
+            for (auto &id : ids) id = -3;
+            int cnt = 0;
+            int id = idx;
+            int depth = 1;
+            while (id < numTrunk) {
+              ids[cnt++] = id;
+              int lch = tLcs[id];
+              id = lch;
+            }
+            for (auto &&i : zs::range(cnt)) {
+              id = ids[i];
+              int lch = tLcs[id];
+              printf("tk node %d <%d (depth %d), %d> cur depth %d, level %d, lch %d\n", id, tLs[id],
+                     lDepths[tLs[id]], tRs[id], depth++, levels[tDst[id]], lch);
             }
           };
-          asst(trunkTopo("l", 0) == 0, "fuck!");
-          // iterate left-branch
-          for (; node != -1 && node < numTrunk + numTrunk + 1;) {
-            if (shouldBreak) break;
-            bool isLeaf = node >= numTrunk;
-            int l;
-            if (!isLeaf) {
-              l = trunkTopo("l", node);
-              asst(leafTopo("lca", l) == node, "lgc not aligned with lca at left bound!!!\n");
-
-              int par = trunkTopo("par", node);
-              if (par != -1) {
-                asst(trunkTopo("rc", par) == node, "lca - par mislink\n");
+          auto chkPar = [&](int ch, int par) {
+            if (ch < numTrunk) {
+              if (int p = tPars[ch]; p != par) {
+                printf("trunk child %d <%d, %d>\' parent %d <%d, %d> not %d <%d, %d>!\n", ch,
+                       tLs[ch], tRs[ch], p, tLs[p], tRs[p], par, tLs[par], tRs[par]);
+                triggered();
               }
-
-              int depth = leafTopo("depth", l) - 1;  // 'depth' trunk nodes
-              // printf("iterating lca branch [%d] of [%d] tk nodes\n", l, depth);
-              // iterate along the branch
-              for (; --depth; ++node) {
-                int rc = trunkTopo("rc", node);
-                int ch = node + 1;
-                asst(trunkTopo("l", ch) == l, "lc left bound not aligned\n");
-                asst(trunkTopo("par", ch) == node, "left branch bottom-up mislink\n");
-                asst(trunkTopo("lc", node) == ch, "left branch top-down mislink\n");
-                asst(trunkTopo("esc", ch) == rc, "esc break (0)\n");
+              if (parents[tDst[ch]] != tDst[par]) {
+                int actPar = parents[tDst[ch]];
+                int incPar = tDst[par];
+                printf("ordered trunk ch %d\' parent %d not %d\n", (int)tDst[ch], actPar, incPar);
               }
-              asst(trunkTopo("l", node) == l, "lc left bound not aligned\n");
-              asst(leafTopo("par", l) == node, "left branch bottom-up mislink\n");
-              asst(trunkTopo("lc", node) == l + numTrunk, "left branch top-down mislink\n");
-              asst(leafTopo("esc", l) == trunkTopo("rc", node), "esc break (00)\n");
             } else {
-              l = node - numTrunk;
-              // printf("iterating lca branch [%d] of itself\n", l);
+              if (int p = lPars[ch - numTrunk]; p != par) {
+                printf("leaf child %d\' parent %d <%d, %d> not %d <%d, %d>!\n", ch, p, tLs[p],
+                       tRs[p], par, tLs[par], tRs[par]);
+                triggered();
+              }
+              if (parents[lOffsets[ch - numTrunk + 1] - 1] != tDst[par]) {
+                int actPar = parents[lOffsets[ch - numTrunk + 1] - 1];
+                int incPar = tDst[par];
+                printf("ordered leaf ch %d\' parent %d not %d\n",
+                       (int)(lOffsets[ch - numTrunk + 1] - 1), actPar, incPar);
+              }
             }
-            int esc = leafTopo("esc", l);
-            if (esc < numTrunk) {
-              // printf("leaf %d turning to tk node %d with %d lb\n", l, esc, trunkTopo("l", esc));
-              asst(trunkTopo("l", esc) == l + 1, "esc break (1)!\n");
-              if (!isLeaf) asst(esc == -1 || esc == node + 1, "esc break (2)!\n");
-            } else {
-              asst(esc == l + 1 + numTrunk, "esc break (3)!\n");
-              if (!isLeaf) asst(esc == trunkTopo("rc", node), "esc break (4)!\n");
+          };
+          auto getRange = [&](int ch) {
+            if (ch < numTrunk)
+              return zs::make_tuple(tLs[ch], tRs[ch]);
+            else
+              return zs::make_tuple((int)(ch - numTrunk), (int)(ch - numTrunk));
+          };
+          chkPar(lc, idx);
+          chkPar(rc, idx);
+          auto lRange = getRange(lc);
+          auto rRange = getRange(rc);
+          auto range = getRange(idx);
+          if (idx == 0
+              || !(zs::get<0>(range) == zs::get<0>(lRange)
+                   && zs::get<1>(range) == zs::get<1>(rRange)
+                   && zs::get<1>(lRange) + 1 == zs::get<0>(rRange)))
+            printf("<%d, %d> != <%d, %d> + <%d, %d>\n", zs::get<0>(range), zs::get<1>(range),
+                   zs::get<0>(lRange), zs::get<1>(lRange), zs::get<0>(rRange), zs::get<1>(rRange));
+          auto level = levels[dst];
+          // lca
+          Ti lcc = lc;
+          for (int i = 1; i != level; ++i) {
+            if (lcc >= numTrunk) printf("\t!! f**k, should not reach leaf node yet.\n");
+            if (tDst[lcc] != dst + i) printf("\t!! damn, left branch mapping not consequential.\n");
+            if (tLs[lcc] != zs::get<0>(range)) printf("\t!! s**t, left bound not aligned!\n");
+            lcc = tLcs[lcc];
+          }
+          if (lcc < numTrunk) {
+            printf("\t!! wtf, should just reach left node.\n");
+          }
+          lcc -= numTrunk;
+          if (lOffsets[lcc + 1] - 1 != dst + level)
+            printf("\t!! damn, left branch mapping not consequential.\n");
+          if (lcc != zs::get<0>(lRange))
+            printf("damn, left bottom ch %d not equals left range %d\n", (int)lcc,
+                   (int)zs::get<0>(lRange));
+          Ti lca = tPars[idx], node = idx;
+          while (lca != -1 && tLcs[lca] == node) {
+            node = lca;
+            lca = tPars[node];
+          }
+          lca = node;
+          if (lDepths[lcc] != levels[tDst[lca]] + 1) {
+            printf("depth and level misalign. leaf %d, depth %d, lca level %d !\n", (int)lcc,
+                   (int)lDepths[lcc], (int)(levels[tDst[lca]] + 1));
+          }
+          if (false) {  // l == 4960 && levels[dst] > 2
+            printf("leaf %d branch, lca %d. depth %d, level %d, trunk node %d (%d ordered)\n",
+                   (int)l, (int)lca, (int)lDepths[l], (int)levels[tDst[lca]], (int)idx, (int)dst);
+            for (int n = lca; n < numTrunk; n = tLcs[n]) {
+              auto lc_ = tLcs[n];
+              printf("node %d <%d, %d>, level %d, lc %d (%d ordered)\n", n, (int)tLs[n],
+                     (int)tRs[n], (int)levels[tDst[n]], (int)lc_,
+                     lc_ < numTrunk ? (int)tDst[lc_] : (int)lOffsets[l + 1] - 1);
             }
-            // now node is leaf's parent
-            node = esc;
+          }
+          if (lLcas[lcc] != lca)
+            printf("lca mismatch! leaf %d lca %d (found lca %d)\n", lcc, lLcas[lcc], lca);
+          // esc
+          auto rDst = rc < numTrunk ? tDst[rc] : lOffsets[rc - numTrunk + 1] - 1;
+          if (lc < numTrunk) {
+            auto lDst = tDst[lc];
+            if (auxIndices[lDst] != rDst) printf("left trunk ch escape not right!.\n");
+          } else {
+            auto lDst = lOffsets[lc - numTrunk + 1] - 1;
+            if (lDst + 1 != rDst) printf("left leaf ch escape not right!.\n");
           }
         });
       }  // end dbg
       root = 0;
+#endif
     }
     return;
   }
@@ -472,8 +514,8 @@ namespace zs {
                auto rMax = rc < numTrunk ? trunkBvs.template pack<dim>("max", rc)
                                          : leafBvs.template pack<dim>("max", rc - numTrunk);
                for (int d = 0; d != dim; ++d) {
-                 trunkBvs("min", d, node) = lMin[d] < rMin[d] ? lMin[d] : rMin[d];
-                 trunkBvs("max", d, node) = lMax[d] > rMax[d] ? lMax[d] : rMax[d];
+                 trunkBvs("min", d, node) = zs::min(lMin[d], rMin[d]);
+                 trunkBvs("max", d, node) = zs::max(lMax[d], rMax[d]);
                }
                thread_fence(wrapv<space>{});
                node = trunkTopo("par", node);

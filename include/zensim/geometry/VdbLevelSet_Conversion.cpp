@@ -674,7 +674,7 @@ namespace zs {
           cell.setValue(block("sdf", ci));
         }
 #else
-        auto accessor = grid->getAccessor();
+        auto accessor = grid->getUnsafeAccessor();
         for (typename LsT::cell_index_type cid = 0; cid != lsv.block_size; ++cid) {
           const auto sdfVal
               = lsv.wsample("sdf", 0, lsv.indexToWorld(blockno, cid), lsv._backgroundValue);

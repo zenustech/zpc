@@ -1,4 +1,5 @@
 #include "Wrangler.hpp"
+#include "zensim/container/Bvh.hpp"
 #include "zensim/container/IndexBuckets.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
@@ -18,6 +19,10 @@ using ZenoIndexBucketsType
 using ZenoIndexBucketsView = zs::IndexBucketsView<zs::execspace_e::cuda, ZenoIndexBucketsType>;
 using ConstZenoIndexBucketsView
     = zs::IndexBucketsView<zs::execspace_e::cuda, const ZenoIndexBucketsType>;
+
+using ZenoLBvh = zs::LBvh<3, int, zs::f32, zs::ZSPmrAllocator<false>>;
+using ZenoLBvhView = zs::LBvhView<zs::execspace_e::cuda, ZenoLBvh>;
+using ConstZenoLBvhView = zs::LBvhView<zs::execspace_e::cuda, const ZenoLBvh>;
 
 __device__ void zfx_wrangle_func(float *globals, float const *params);
 
@@ -57,7 +62,7 @@ extern "C" __global__ void zpc_particle_wrangler_kernel(std::size_t npars, zs::f
 
 // todo: templatize indexbucket parameter type
 extern "C" __global__ void zpc_particle_neighbor_wrangle_kernel(
-    std::size_t npars,
+    std::size_t npars, int isBox, float radius,
     zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> pos,
     zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> neighborPos,
     zs::IndexBucketsView<zs::execspace_e::cuda, zs::IndexBuckets<3>> ibs, zs::f32 const *params,
@@ -88,8 +93,12 @@ extern "C" __global__ void zpc_particle_neighbor_wrangle_kernel(
       auto pj = ibs.indices[bucketOffset + j];
       if (pj == pi) continue;  // skip myself
       auto xj = neighborPos(pj);
-      auto disSqr = (xi - xj).l2NormSqr();
-      if (disSqr < ibs.dx * ibs.dx) {
+      bool inRange = false;
+      if (!isBox)
+        inRange = (xi - xj).l2NormSqr() < radius * radius;
+      else
+        inRange = (xi - xj).abs().max() < radius;
+      if (inRange) {
         /// assign neighbor particle channels
         for (int i = 0; i < nchns; ++i)
           if (accessors[i].aux) globals[i] = *(T *)accessors[i](pj);
@@ -105,8 +114,9 @@ extern "C" __global__ void zpc_particle_neighbor_wrangle_kernel(
 }
 
 extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
-    std::size_t npars, ZenoParticlesView pars, ConstZenoParticlesView neighborPars,
-    ConstZenoIndexBucketsView ibs, zs::f32 const *params, int nchns, zs::AccessorAoSoA *accessors) {
+    std::size_t npars, int isBox, float radius, ZenoParticlesView pars,
+    ConstZenoParticlesView neighborPars, ConstZenoIndexBucketsView ibs, zs::f32 const *params,
+    int nchns, zs::AccessorAoSoA *accessors) {
   auto pi = blockIdx.x * blockDim.x + threadIdx.x;
   if (pi >= npars) return;
 
@@ -133,8 +143,12 @@ extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
       auto pj = ibs.indices[bucketOffset + j];
       if (pj == pi) continue;  // skip myself
       auto xj = neighborPars.pack<3>("x", pj);
-      auto disSqr = (xi - xj).l2NormSqr();
-      if (disSqr < ibs.dx * ibs.dx) {
+      bool inRange = false;
+      if (!isBox)
+        inRange = (xi - xj).l2NormSqr() < radius * radius;
+      else
+        inRange = (xi - xj).abs().max() < radius;
+      if (inRange) {
         /// assign neighbor particle channels
         for (int i = 0; i != nchns; ++i)
           if (accessors[i].aux) globals[i] = *(T *)accessors[i](pj);
@@ -142,6 +156,76 @@ extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
       }
     }
   }
+
+  /// write back
+  /// assign target particle channels
+  for (int i = 0; i < nchns; ++i)
+    if (!accessors[i].aux) *(T *)accessors[i](pi) = globals[i];
+}
+
+extern "C" __global__ void zpc_particle_neighbor_bvh_wrangle_kernel(
+    std::size_t npars, int isBox, float radius2,
+    zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> pos,
+    zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> neighborPos,
+    ConstZenoLBvhView lbvh, zs::f32 const *params, int nchns, zs::AccessorAoSoA *accessors) {
+  auto pi = blockIdx.x * blockDim.x + threadIdx.x;
+  if (pi >= npars) return;
+
+  using T = zs::f32;
+  static_assert(zs::is_same_v<T, float>, "wtf");
+  T globals[64];
+
+  /// assign target particle channels
+  for (int i = 0; i < nchns; ++i)
+    if (!accessors[i].aux) globals[i] = *(T *)accessors[i](pi);
+
+  /// execute
+  auto xi = pos(pi);
+  lbvh.iter_neighbors(xi, [&](int pid) {
+    auto xj = neighborPos(pid);
+    if (!isBox)
+      if ((xi - xj).l2NormSqr() > radius2) return;
+    {
+      /// assign neighbor particle channels
+      for (int i = 0; i < nchns; ++i)
+        if (accessors[i].aux) globals[i] = *(T *)accessors[i](pid);
+      zfx_wrangle_func((float *)globals, (float const *)params);
+    }
+  });
+
+  /// write back
+  /// assign target particle channels
+  for (int i = 0; i < nchns; ++i)
+    if (!accessors[i].aux) *(T *)accessors[i](pi) = globals[i];
+}
+
+extern "C" __global__ void zpc_particle_neighbor_bvh_wrangler_kernel(
+    std::size_t npars, int isBox, float radius2, ZenoParticlesView pars,
+    ConstZenoParticlesView neighborPars, ConstZenoLBvhView lbvh, zs::f32 const *params, int nchns,
+    zs::AccessorAoSoA *accessors) {
+  auto pi = blockIdx.x * blockDim.x + threadIdx.x;
+  if (pi >= npars) return;
+  using T = zs::f32;
+  static_assert(zs::is_same_v<T, float>, "wtf");
+  T globals[64];
+
+  /// assign target particle channels
+  for (int i = 0; i < nchns; ++i)
+    if (!accessors[i].aux) globals[i] = *(T *)accessors[i](pi);
+
+  /// execute
+  auto xi = pars.template pack<3>("x", pi);
+  lbvh.iter_neighbors(xi, [&](int pid) {
+    auto xj = neighborPars.pack<3>("x", pid);
+    if (!isBox)
+      if ((xi - xj).l2NormSqr() > radius2) return;
+    {
+      /// assign neighbor particle channels
+      for (int i = 0; i < nchns; ++i)
+        if (accessors[i].aux) globals[i] = *(T *)accessors[i](pid);
+      zfx_wrangle_func((float *)globals, (float const *)params);
+    }
+  });
 
   /// write back
   /// assign target particle channels

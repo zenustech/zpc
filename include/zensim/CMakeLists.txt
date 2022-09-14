@@ -220,7 +220,7 @@ endif ()
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
 )
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
-    #cuda/simulation/wrangler/VolumeWrangler.cpp
+    cuda/simulation/wrangler/VolumeWrangler.cpp
     cuda/simulation/wrangler/ParticleWrangler.cpp
 )
 
@@ -494,12 +494,6 @@ target_link_libraries(zensim INTERFACE zpctool)  # zpctool -> zensim
 
 if (ZS_ENABLE_CUDA)
 
-# if (MSVC)
-if (FALSE)
-target_compile_definitions(zpc_cuda_deps INTERFACE ZS_PTX_INCLUDE_DIR="")
-
-else()
-
 add_library(zs_cu_wrangler OBJECT)
 
 target_sources(zs_cu_wrangler
@@ -555,9 +549,12 @@ add_custom_command(
 add_custom_command(
   TARGET zpctool
   POST_BUILD
-  #COMMAND "${BIN_TO_C_COMMAND}" --name PW $<TARGET_OBJECTS:zs_cu_wrangler>
   COMMAND ${CMAKE_COMMAND} -E make_directory ${ZS_PTX_INCLUDE_DIR}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_OBJECTS:zs_cu_wrangler> ${ZS_PTX_INCLUDE_DIR}
+  COMMAND ${CMAKE_COMMAND} 
+    -DOBJECTS=$<TARGET_OBJECTS:zs_cu_wrangler> 
+    -DOUTPUT=${ZS_PTX_INCLUDE_DIR}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+  # COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_OBJECTS:zs_cu_wrangler> ${ZS_PTX_INCLUDE_DIR}
   VERBATIM
   DEPENDS zs_cu_wrangler
   COMMENT "copying wrangler ptx files"
@@ -567,7 +564,6 @@ target_compile_definitions(zpc_cuda_deps INTERFACE ZS_PTX_INCLUDE_DIR="${ZS_PTX_
 
 # $<TARGET_OBJECTS:zs_cu_wrangler>
 target_link_libraries(zensim INTERFACE zs_cu_wrangler)  # zs_cu_wrangler -> zensim
-endif(MSVC)
 
 endif (ZS_ENABLE_CUDA)
 

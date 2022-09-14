@@ -266,7 +266,7 @@ install(TARGETS ${INSTALL_TARGETS}
 )
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/zensim/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/zensim
-  PATTERN "*.h|*.hpp|*.tpp|*.cuh"
+  PATTERN "*.h|*.hpp|*.tpp|*.cuh|*.inl"
   PATTERN "zpc_tpls/*"
   # FILES_MATCHING PATTERN "*.h|*.hpp|*.tpp|*.cuh"
 )

@@ -220,7 +220,7 @@ endif ()
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
 )
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
-    cuda/simulation/wrangler/VolumeWrangler.cpp
+    #cuda/simulation/wrangler/VolumeWrangler.cpp
     cuda/simulation/wrangler/ParticleWrangler.cpp
 )
 
@@ -505,13 +505,14 @@ target_sources(zs_cu_wrangler
   PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES}
 )
 target_compile_options(zs_cu_wrangler 
-  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -ptx -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
+  PRIVATE       $<$<COMPILE_LANGUAGE:CUDA>:-ptx -lineinfo --ptxas-options=-allow-expensive-optimizations=true>  # -ptx --keep 
 )
 set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES  LANGUAGE CUDA)
 
 target_link_libraries(zs_cu_wrangler PRIVATE zpc)
 set(ZS_PTX_SOURCE_DIR cuda/simulation/wrangler)
-set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})
+# set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})  # not valid for win platform
+set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/${ZS_PTX_SOURCE_DIR})
 set_target_properties(zs_cu_wrangler
   PROPERTIES  LINKER_LANGUAGE CUDA
               CUDA_EXTENSIONS ON
@@ -521,6 +522,46 @@ set_target_properties(zs_cu_wrangler
               CUDA_PTX_COMPILATION ON # https://stackoverflow.com/questions/55993745/how-should-i-get-cmake-to-also-create-ptx-files-for-my-kernels
               #CUDA_VISIBILITY_PRESET default
 )
+
+#[=[
+# ref: developer.nvidia.com/blog/building-cuda-applications-cmake/
+find_program(bin_to_c
+  NAMES bin2c
+  PATHS ${CUDAToolkit_BIN_DIR}
+)
+if(NOT bin_to_c)
+  message(FATAL_ERROR
+    "bin2c not found:\n"
+    " CUDAToolkit_BIN_DIR='${CUDAToolkit_BIN_DIR}'\n"
+  )
+endif()
+
+set(zs_cu_wrangler_output_file ${CMAKE_CURRENT_SOURCE_DIR}/${ZS_PTX_SOURCE_DIR}/wrangler_ptxs.h)
+
+add_custom_command(
+  OUTPUT  "${zs_cu_wrangler_output_file}"
+  COMMAND ${CMAKE_COMMAND}
+    -DBIN_TO_C_COMMAND=${bin_to_c}
+    -DOBJECTS=$<TARGET_OBJECTS:zs_cu_wrangler>
+    -DOUTPUT=${zs_cu_wrangler_output_file}
+    -P bin2c_wrapper.cmake
+  VERBATIM
+  DEPENDS zpctool
+  COMMENT "converting ptx files to a header"
+)
+#]=]
+
+add_custom_command(
+  TARGET zpctool
+  POST_BUILD
+  #COMMAND "${BIN_TO_C_COMMAND}" --name PW $<TARGET_OBJECTS:zs_cu_wrangler>
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${ZS_PTX_INCLUDE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_OBJECTS:zs_cu_wrangler> ${ZS_PTX_INCLUDE_DIR}
+  VERBATIM
+  DEPENDS zs_cu_wrangler
+  COMMENT "copying wrangler ptx files"
+)
+
 target_compile_definitions(zpc_cuda_deps INTERFACE ZS_PTX_INCLUDE_DIR="${ZS_PTX_INCLUDE_DIR}")
 
 # $<TARGET_OBJECTS:zs_cu_wrangler>

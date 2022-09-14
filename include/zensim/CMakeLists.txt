@@ -494,7 +494,8 @@ target_link_libraries(zensim INTERFACE zpctool)  # zpctool -> zensim
 
 if (ZS_ENABLE_CUDA)
 
-if (MSVC)
+# if (MSVC)
+if (FALSE)
 target_compile_definitions(zpc_cuda_deps INTERFACE ZS_PTX_INCLUDE_DIR="")
 
 else()

@@ -11,32 +11,44 @@ namespace zs {
     using node_id_t = NodeIdT;
     using prim_vector_t = Vector<prim_id_t>;
     using node_vector_t = Vector<node_id_t>;
-    using index_t = unsigned long long;
+    using index_t = std::make_signed_t<math::op_result_t<prim_id_t, node_id_t>>;
     using counter_t = Vector<index_t>;
 
-    BvttFront(const allocator_type &allocator, std::size_t numNodes, std::size_t estimatedCount)
-        : _numNodes{numNodes},
-          _primIds{allocator, estimatedCount},
+    constexpr decltype(auto) memoryLocation() const noexcept { return _cnt.memoryLocation(); }
+    constexpr zs::ProcID devid() const noexcept { return _cnt.devid(); }
+    constexpr zs::memsrc_e memspace() const noexcept { return _cnt.memspace(); }
+    decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
+    decltype(auto) get_default_allocator(zs::memsrc_e mre, zs::ProcID devid) const {
+      return _cnt.get_default_allocator(mre, devid);
+    }
+
+    BvttFront() = default;
+
+    BvttFront clone(const allocator_type &allocator) const {
+      BvttFront ret{};
+      ret._primIds = _primIds.clone(allocator);
+      ret._nodeIds = _nodeIds.clone(allocator);
+      ret._offsets = _offsets.clone(allocator);
+      ret._cnt = _cnt.clone(allocator);
+      return ret;
+    }
+    BvttFront clone(const zs::MemoryLocation &mloc) const {
+      return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
+    }
+
+    BvttFront(const allocator_type &allocator, node_id_t numNodes, index_t estimatedCount)
+        : _primIds{allocator, estimatedCount},
           _nodeIds{allocator, estimatedCount},
           _offsets{allocator, numNodes + 1},
           _cnt{allocator, 1} {
-      counter_t res{};
-      res[0] = static_cast<index_t>(0);
-      Resource::copy(MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()},
-           MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res.data()}, sizeof(index_t));
+      _cnt.setVal(0);
     }
-    BvttFront(std::size_t numNodes, std::size_t estimatedCount, memsrc_e mre = memsrc_e::host,
+    BvttFront(node_id_t numNodes, index_t estimatedCount, memsrc_e mre = memsrc_e::host,
               ProcID devid = -1)
         : BvttFront{get_memory_source(mre, devid), numNodes, estimatedCount} {}
 
-    inline auto size() const {
-      counter_t res{};
-      Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)res.data()},
-           MemoryEntity{_cnt.memoryLocation(), (void *)_cnt.data()}, sizeof(index_t));
-      return res[0];
-    }
+    auto size() const { return _cnt.getVal(0); }
 
-    std::size_t _numNodes;
     prim_vector_t _primIds;
     node_vector_t _nodeIds;
     counter_t _offsets;
@@ -44,6 +56,7 @@ namespace zs {
   };
 
   template <execspace_e space, typename BvttFrontT, typename = void> struct BvttFrontView {
+    static constexpr bool is_const_structure = std::is_const_v<BvttFrontT>;
     using prim_id_t = typename BvttFrontT::prim_id_t;
     using node_id_t = typename BvttFrontT::node_id_t;
     using prim_vector_t = typename BvttFrontT::prim_vector_t;
@@ -60,7 +73,8 @@ namespace zs {
           _numFrontNodes{std::min(bvfront._primIds.size(), bvfront._nodeIds.size())} {}
 
 #if defined(__CUDACC__)
-    template <execspace_e S = space, enable_if_t<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __device__ void push_back(prim_id_t prim, node_id_t node) {
       const auto no = atomic_add(wrapv<space>{}, _cnt, (index_t)1);
       if (no < _numFrontNodes) {
@@ -69,7 +83,8 @@ namespace zs {
       }
     }
 #endif
-    template <execspace_e S = space, enable_if_t<S != execspace_e::cuda> = 0>
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_all<S != execspace_e::cuda, !V> = 0>
     inline void push_back(prim_id_t prim, node_id_t node) {
       const auto no = atomic_add(wrapv<space>{}, _cnt, (index_t)1);
       if (no < _numFrontNodes) {
@@ -77,25 +92,6 @@ namespace zs {
         _nodes[no] = node;
       }
     }
-
-    typename prim_vector_t::pointer _prims;
-    typename node_vector_t::pointer _nodes;
-    typename counter_t::pointer _cnt;
-    const index_t _numFrontNodes;
-  };
-
-  template <execspace_e space, typename BvttFrontT> struct BvttFrontView<space, const BvttFrontT> {
-    using prim_id_t = typename BvttFrontT::prim_id_t;
-    using node_id_t = typename BvttFrontT::node_id_t;
-    using prim_vector_t = typename BvttFrontT::prim_vector_t;
-    using node_vector_t = typename BvttFrontT::node_vector_t;
-    using index_t = typename BvttFrontT::index_t;
-    using counter_t = typename BvttFrontT::counter_t;
-
-    explicit constexpr BvttFrontView(const BvttFrontT &bvfront)
-        : _prims{bvfront._primIds.data()},
-          _nodes{bvfront._nodeIds.data()},
-          _numFrontNodes{bvfront.size()} {}
 
     constexpr auto prim(index_t i) const {
       if (i < _numFrontNodes) return _prims[i];
@@ -106,8 +102,9 @@ namespace zs {
       return ~(typename node_vector_t::value_type)0;
     }
 
-    typename prim_vector_t::const_pointer _prims;
-    typename node_vector_t::const_pointer _nodes;
+    typename prim_vector_t::pointer _prims;
+    typename node_vector_t::pointer _nodes;
+    typename counter_t::pointer _cnt;
     const index_t _numFrontNodes;
   };
 

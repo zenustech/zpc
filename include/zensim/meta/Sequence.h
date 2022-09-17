@@ -430,7 +430,8 @@ namespace zs {
       else {
         using Tn = decltype(partial);
         static_assert(c0 >= '0' && c0 <= '9', "Invalid non-numeric character");
-        static_assert(partial <= (limits<Tn>::max() - (c0 - '0')) / 10, "numeric literal overflow");
+        static_assert(partial < (limits<Tn>::max() - (c0 - '0')) / 10 + 1,
+                      "numeric literal overflow");
         return index_impl<partial *(Tn)10 + (Tn)(c0 - '0'), c...>();
       }
     }

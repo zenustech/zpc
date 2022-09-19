@@ -49,6 +49,13 @@ namespace zs {
 
     auto size() const { return _cnt.getVal(0); }
 
+    void setCounter(index_t newSize) { _cnt.setVal(newSize); }
+    void getCounter(index_t newSize) const { _cnt.getVal(); }
+    void reserve(index_t newSize) {
+      _primIds.resize(newSize);
+      _nodeIds.resize(newSize);
+    }
+
     prim_vector_t _primIds;
     node_vector_t _nodeIds;
     counter_t _offsets;
@@ -90,6 +97,16 @@ namespace zs {
       if (no < _numFrontNodes) {
         _prims[no] = prim;
         _nodes[no] = node;
+      }
+    }
+
+    constexpr void assign(index_t no, prim_id_t pid, node_id_t nid) {
+      if (no < _numFrontNodes) {
+        _prims[no] = pid;
+        _nodes[no] = nid;
+      } else {
+        printf("bvtt front overflow! [%lld] exceeding cap [%lld]\n", (long long int)no,
+               (long long int)_numFrontNodes);
       }
     }
 

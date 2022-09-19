@@ -143,9 +143,7 @@ namespace zs {
     template <typename BV, class F>
     constexpr void iter_neighbors(const BV &bv, index_t node, F &&f) const {
       if (auto nl = numLeaves(); nl <= 2) {
-        for (index_t i = 0; i != nl; ++i) {
-          if (overlaps(getNodeBV(i), bv)) f(_auxIndices[i]);
-        }
+        if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
         return;
       }
       const auto ed = _levels[node] != 0 ? _auxIndices[node] : node + 1;
@@ -160,6 +158,40 @@ namespace zs {
           node++;
         } else  // separate at internal nodes
           node = _auxIndices[node];
+      }
+    }
+    template <typename BV, typename Front, class F>
+    ZS_FUNCTION void iter_neighbors(const BV &bv, index_t i, Front &front, F &&f) const {
+      auto node = front.node(i);
+      if (auto nl = numLeaves(); nl <= 2) {
+        if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
+        return;
+      }
+      const auto primid = front.prim(i);
+      bool expanded = false;
+      auto record = [&]() {
+        if (!expanded) {
+          front.assign(i, node);
+          expanded = true;
+        } else {
+          front.push_back(primid, node);
+        }
+      };
+      const auto ed = _levels[node] != 0 ? _auxIndices[node] : node + 1;
+      while (node != ed && node != _numNodes) {
+        index_t level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (!overlaps(getNodeBV(node), bv)) break;
+        // leaf node check
+        if (level == 0) {
+          if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
+          record();
+          node++;
+        } else {  // separate at internal nodes
+          record();
+          node = _auxIndices[node];
+        }
       }
     }
 

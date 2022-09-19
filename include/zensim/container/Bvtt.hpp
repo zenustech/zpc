@@ -77,7 +77,7 @@ namespace zs {
         : _prims{bvfront._primIds.data()},
           _nodes{bvfront._nodeIds.data()},
           _cnt{bvfront._cnt.data()},
-          _numFrontNodes{std::min(bvfront._primIds.size(), bvfront._nodeIds.size())} {}
+          _numFrontNodes{std::min(bvfront._primIds.capacity(), bvfront._nodeIds.capacity())} {}
 
 #if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
@@ -100,9 +100,20 @@ namespace zs {
       }
     }
 
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr void assign(index_t no, prim_id_t pid, node_id_t nid) {
       if (no < _numFrontNodes) {
         _prims[no] = pid;
+        _nodes[no] = nid;
+      } else {
+        printf("bvtt front overflow! [%lld] exceeding cap [%lld]\n", (long long int)no,
+               (long long int)_numFrontNodes);
+      }
+    }
+
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr void assign(index_t no, node_id_t nid) {
+      if (no < _numFrontNodes) {
         _nodes[no] = nid;
       } else {
         printf("bvtt front overflow! [%lld] exceeding cap [%lld]\n", (long long int)no,
@@ -119,9 +130,15 @@ namespace zs {
       return ~(typename node_vector_t::value_type)0;
     }
 
-    typename prim_vector_t::pointer _prims;
-    typename node_vector_t::pointer _nodes;
-    typename counter_t::pointer _cnt;
+    conditional_t<is_const_structure, typename prim_vector_t::const_pointer,
+                  typename prim_vector_t::pointer>
+        _prims;
+    conditional_t<is_const_structure, typename node_vector_t::const_pointer,
+                  typename node_vector_t::pointer>
+        _nodes;
+    conditional_t<is_const_structure, typename counter_t::const_pointer,
+                  typename counter_t::pointer>
+        _cnt;
     const index_t _numFrontNodes;
   };
 

@@ -48,6 +48,7 @@ namespace zs {
         : BvttFront{get_memory_source(mre, devid), numNodes, estimatedCount} {}
 
     auto size() const { return _cnt.getVal(0); }
+    auto numNodes() const { return _offsets.size() - 1; }
 
     void setCounter(index_t newSize) { _cnt.setVal(newSize); }
     void getCounter(index_t newSize) const { _cnt.getVal(); }
@@ -56,11 +57,50 @@ namespace zs {
       _nodeIds.resize(newSize);
     }
 
+    template <typename Policy> void reorder(Policy &&policy);
+
     prim_vector_t _primIds;
     node_vector_t _nodeIds;
     counter_t _offsets;
     counter_t _cnt;
   };
+
+  template <typename PrimIdT, typename NodeIdT> template <typename Policy>
+  void BvttFront<PrimIdT, NodeIdT>::reorder(Policy &&policy) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr auto execTag = wrapv<space>{};
+    using bvtt_t = BvttFront<PrimIdT, NodeIdT>;
+    using index_t = typename bvtt_t::index_t;
+    using counter_t = typename bvtt_t::counter_t;
+    // count front nodes by node id
+    const auto numFrontNodes = size();
+    counter_t offsets{_cnt.get_allocator(), numNodes()};
+    counter_t counts{_cnt.get_allocator(), numNodes()};
+    counts.reset(0);
+    auto frontView = proxy<space>(*this);
+    fmt::print("holy shit, {} current front nodes, {} num bvh nodes\n", numFrontNodes, numNodes());
+    policy(range(numFrontNodes),
+           [execTag, counts = proxy<space>(counts), front = frontView] ZS_LAMBDA(
+               index_t i) mutable { atomic_add(execTag, &counts[front.node(i)], (index_t)1); });
+    // scan
+    exclusive_scan(policy, std::begin(counts), std::end(counts), std::begin(offsets));
+    // reorder front
+    auto primIds = _primIds;
+    auto nodeIds = _nodeIds;
+    counts.reset(0);
+    policy(range(numFrontNodes), [counts = proxy<space>(counts), offsets = proxy<space>(offsets),
+                                  primIds = proxy<space>(primIds), nodeIds = proxy<space>(nodeIds),
+                                  front = frontView, execTag] ZS_LAMBDA(index_t i) mutable {
+      auto nodeid = front.node(i);
+      // auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
+      auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
+      primIds[loc] = front.prim(i);
+      nodeIds[loc] = nodeid;
+    });
+
+    _primIds = std::move(primIds);
+    _nodeIds = std::move(nodeIds);
+  }
 
   template <execspace_e space, typename BvttFrontT, typename = void> struct BvttFrontView {
     static constexpr bool is_const_structure = std::is_const_v<BvttFrontT>;
@@ -149,49 +189,6 @@ namespace zs {
   template <execspace_e ExecSpace, typename PrimIdT, typename NodeIdT>
   constexpr decltype(auto) proxy(const BvttFront<PrimIdT, NodeIdT> &front) {
     return BvttFrontView<ExecSpace, const BvttFront<PrimIdT, NodeIdT>>{front};
-  }
-
-  template <execspace_e space, typename PrimIdT, typename NodeIdT>
-  inline void reorder_bvtt_front(BvttFront<PrimIdT, NodeIdT> &front) {
-    using bvtt_t = BvttFront<PrimIdT, NodeIdT>;
-    using index_t = typename bvtt_t::index_t;
-    using counter_t = typename bvtt_t::counter_t;
-    constexpr auto execTag = wrapv<space>{};
-    const memsrc_e memdst{front._primIds.memspace()};
-    const ProcID devid{front._primIds.devid()};
-    auto execPol = par_exec(execTag).sync(true);
-    // count front nodes by prim id;
-    const auto numFrontNodes = front.size();
-    auto &offsets = front._offsets;
-    auto counts = offsets.clone({memdst, devid});
-    // memset({memdst, devid}, (void *)counts.data(), 0, counts.size() * sizeof(index_t));
-    execPol(range(counts.size()),
-            [counts = proxy<space>(counts)] ZS_LAMBDA(index_t i) mutable { counts[i] = 0; });
-    auto frontView = proxy<space>(const_cast<const bvtt_t &>(front));
-    execPol(range(numFrontNodes), [execTag, counts = proxy<space>(counts),
-                                   front = frontView] ZS_LAMBDA(index_t i) mutable {
-      // atomic_add(execTag, &counts[front.node(i)], (index_t)1);
-      atomic_add(execTag, &counts[front.node(i)], (index_t)1);
-    });
-    // scan
-    exclusive_scan(execPol, std::begin(counts), std::end(counts), std::begin(offsets));
-    // reorder front
-    auto primIds = front._primIds;
-    auto nodeIds = front._nodeIds;
-    execPol(range(counts.size()),
-            [counts = proxy<space>(counts)] ZS_LAMBDA(index_t i) mutable { counts[i] = 0; });
-    execPol(range(numFrontNodes), [counts = proxy<space>(counts), primIds = proxy<space>(primIds),
-                                   nodeIds = proxy<space>(nodeIds), offsets = proxy<space>(offsets),
-                                   front = frontView] ZS_LAMBDA(index_t i) mutable {
-      auto nodeid = front.node(i);
-      // auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
-      auto loc = offsets[nodeid] + atomic_add(execTag, &counts[nodeid], (index_t)1);
-      primIds[loc] = front.prim(i);
-      nodeIds[loc] = nodeid;
-    });
-
-    front._primIds = std::move(primIds);
-    front._nodeIds = std::move(nodeIds);
   }
 
 }  // namespace zs

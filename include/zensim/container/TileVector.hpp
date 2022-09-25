@@ -320,18 +320,31 @@ namespace zs {
     constexpr const channel_counter_type *tagOffsetHandle() const noexcept {
       return _tagOffsets.data();
     }
-    constexpr channel_counter_type getChannelSize(const SmallString &str) const {
+    [[deprecated]] constexpr channel_counter_type getChannelSize(const SmallString &str) const {
       for (auto &&tag : _tags)
         if (str == tag.name) return tag.numChannels;
       return 0;
     }
-    constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
+    constexpr channel_counter_type getPropertySize(const SmallString &str) const {
+      for (auto &&tag : _tags)
+        if (str == tag.name) return tag.numChannels;
+      return 0;
+    }
+    [[deprecated]] constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
       channel_counter_type offset = 0;
       for (auto &&tag : _tags) {
         if (str == tag.name) return offset;
         offset += tag.numChannels;
       }
       return 0;
+    }
+    constexpr channel_counter_type getPropertyOffset(const SmallString &str) const {
+      channel_counter_type offset = 0;
+      for (auto &&tag : _tags) {
+        if (str == tag.name) return offset;
+        offset += tag.numChannels;
+      }
+      return -1;
     }
     constexpr PropertyTag getPropertyTag(std::size_t i = 0) const { return _tags[i]; }
     constexpr const auto &getPropertyTags() const { return _tags; }

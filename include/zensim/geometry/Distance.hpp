@@ -216,7 +216,7 @@ namespace zs {
   template <
       typename VecTA, typename VecTB,
       enable_if_all<VecTA::dim == 1, is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
-  constexpr auto dist_hess_pp(const VecInterface<VecTA> &a, const VecInterface<VecTB> &b) noexcept {
+  constexpr auto dist_hess_pp(const VecInterface<VecTA> &, const VecInterface<VecTB> &) noexcept {
     using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::extent;
@@ -2170,7 +2170,9 @@ namespace zs {
       return 2 * one_div_eps_x * (-one_div_eps_x * input + 1);
     }
 
-    template <typename T> constexpr T H_EEM(T input, T eps_x) { return -2 / (eps_x * eps_x); }
+    template <typename T> constexpr T H_EEM([[maybe_unused]] T input, T eps_x) {
+      return -2 / (eps_x * eps_x);
+    }
 
     template <typename T, typename VecT> void g_EECN2(T v01, T v02, T v03, T v11, T v12, T v13,
                                                       T v21, T v22, T v23, T v31, T v32, T v33,
@@ -2509,7 +2511,7 @@ namespace zs {
       enable_if_all<VecTA::dim == 1, is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
   constexpr auto cn2_ee(const VecInterface<VecTA> &ea0, const VecInterface<VecTA> &ea1,
                         const VecInterface<VecTB> &eb0, const VecInterface<VecTB> &eb1) noexcept {
-    using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
+    // using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
     return (ea1 - ea0).cross(eb1 - eb0).l2NormSqr();
   }
 

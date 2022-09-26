@@ -161,7 +161,7 @@ namespace zs {
     }
 
     template <int I, int J, typename VecT>
-    constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
+    constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>&) const noexcept {
       if constexpr (I == 2 && J == 2)
         return (value_type)lam;
       else

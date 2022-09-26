@@ -212,12 +212,13 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr operator tuple<Ts...>() const noexcept { return *this; }
   };
 
-  template <class... Types> class tuple;
+  template <class... Types> struct tuple;
 
   template <typename... Ts> struct tuple
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
     using base_t = tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>;
     using tuple_types = typename base_t::tuple_types;
+    template <std::size_t I> using tuple_element_t = select_indexed_type<I, Ts...>;
 
     constexpr tuple() = default;
     ~tuple() = default;
@@ -354,20 +355,21 @@ template <std::size_t I, typename T> struct tuple_value {
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<std::size_t>{}).value;
       using indices = typename gen_seq<length>::ascend;
-      using outer = decltype(
-          counts{}.template scan<1, plus<std::size_t>>().map(count_leq{}, wrapv<length>{}));
+      using outer = decltype(counts{}.template scan<1, plus<std::size_t>>().map(count_leq{},
+                                                                                wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
           std::minus<std::size_t>{},
           counts{}.template scan<0, std::plus<std::size_t>>().shuffle(outer{})));
       // using types = decltype(type_seq<typename
       // remove_cvref_t<Tuples>::tuple_types...>{}.shuffle(outer{}).shuffle_join(inner{}));
-      template <auto... Os, auto... Is, typename... Tups>
-      static constexpr auto get_ret_type(value_seq<Os...>, value_seq<Is...>, Tups &&...tups) {
-        auto tup = forward_as_tuple(FWD(tups)...);
-        return type_seq<decltype(get<Is>(get<Os>(tup)))...>{};
+      template <auto... Os, auto... Is>
+      static constexpr auto get_ret_type(value_seq<Os...>, value_seq<Is...>) {
+        // precisely extract types from these tuples
+        return type_seq<typename select_indexed_type<
+            Os, std::remove_reference_t<Tuples>...>::template tuple_element_t<Is>...>{};
       }
       // https://en.cppreference.com/w/cpp/utility/tuple/tuple_cat
-      using types = decltype(get_ret_type(outer{}, inner{}, std::declval<Tuples>()...));
+      using types = decltype(get_ret_type(outer{}, inner{}));
     };
     template <typename R, auto... Os, auto... Is, typename Tuple>
     constexpr decltype(auto) tuple_cat_impl(value_seq<Os...>, value_seq<Is...>, Tuple &&tup) {
@@ -383,11 +385,13 @@ template <std::size_t I, typename T> struct tuple_value {
   }
   template <typename... Ts> constexpr auto tuple_cat(Ts &&...tuples) {
     if constexpr ((!zs::is_tuple_v<remove_cvref_t<Ts>> || ...)) {
-      constexpr auto trans = [](auto &&param) {
+      constexpr auto trans = [](auto &&param) -> decltype(auto) {
         if constexpr (zs::is_tuple_v<RM_CVREF_T(param)>)
           return FWD(param);
-        else
-          return zs::make_tuple<RM_CVREF_T(param)>(FWD(param));
+        else if constexpr (is_refwrapper_v<decltype(param)>) {  // reference
+          return zs::tuple<decltype(param.get())>(param.get());
+        } else
+          return zs::make_tuple(FWD(param));
       };
       return tuple_cat(trans(FWD(tuples))...);
     } else {

@@ -87,29 +87,34 @@ namespace zs {
     }
     ~stack_virtual_memory_resource() = default;
 
-    bool do_check_residency(std::size_t offset, std::size_t bytes) const override {
+    bool do_check_residency([[maybe_unused]] std::size_t offset,
+                            [[maybe_unused]] std::size_t bytes) const override {
       throw std::runtime_error("stack virtual memory allocator not implemented!");
       return false;
     }
-    bool do_commit(std::size_t offset, std::size_t bytes) override {
+    bool do_commit([[maybe_unused]] std::size_t offset,
+                   [[maybe_unused]] std::size_t bytes) override {
       throw std::runtime_error("stack virtual memory allocator not implemented!");
       return false;
     }
-    bool do_evict(std::size_t offset, std::size_t bytes) override {
+    bool do_evict([[maybe_unused]] std::size_t offset,
+                  [[maybe_unused]] std::size_t bytes) override {
       throw std::runtime_error("stack virtual memory allocator not implemented!");
       return false;
     }
-    void *do_address(std::size_t offset) const override {
+    void *do_address([[maybe_unused]] std::size_t offset) const override {
       throw std::runtime_error("stack virtual memory allocator not implemented!");
       return nullptr;
     }
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+    void *do_allocate([[maybe_unused]] std::size_t bytes,
+                      [[maybe_unused]] std::size_t alignment) override {
       throw std::runtime_error("stack virtual memory allocator not implemented!");
       return nullptr;
     }
 
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+    void do_deallocate([[maybe_unused]] void *ptr, [[maybe_unused]] std::size_t bytes,
+                       [[maybe_unused]] std::size_t alignment) override {
       throw std::runtime_error("stack virtual memory allocator not implemented!");
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
@@ -121,29 +126,34 @@ namespace zs {
     }
     ~arena_virtual_memory_resource() = default;
 
-    bool do_check_residency(std::size_t offset, std::size_t bytes) const override {
+    bool do_check_residency([[maybe_unused]] std::size_t offset,
+                            [[maybe_unused]] std::size_t bytes) const override {
       throw std::runtime_error("arena virtual memory allocator not implemented!");
       return false;
     }
-    bool do_commit(std::size_t offset, std::size_t bytes) override {
+    bool do_commit([[maybe_unused]] std::size_t offset,
+                   [[maybe_unused]] std::size_t bytes) override {
       throw std::runtime_error("arena virtual memory allocator not implemented!");
       return false;
     }
-    bool do_evict(std::size_t offset, std::size_t bytes) override {
+    bool do_evict([[maybe_unused]] std::size_t offset,
+                  [[maybe_unused]] std::size_t bytes) override {
       throw std::runtime_error("arena virtual memory allocator not implemented!");
       return false;
     }
-    void *do_address(std::size_t offset) const override {
+    void *do_address([[maybe_unused]] std::size_t offset) const override {
       throw std::runtime_error("arena virtual memory allocator not implemented!");
       return nullptr;
     }
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+    void *do_allocate([[maybe_unused]] std::size_t bytes,
+                      [[maybe_unused]] std::size_t alignment) override {
       throw std::runtime_error("arena virtual memory allocator not implemented!");
       return nullptr;
     }
 
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+    void do_deallocate([[maybe_unused]] void *ptr, [[maybe_unused]] std::size_t bytes,
+                       [[maybe_unused]] std::size_t alignment) override {
       throw std::runtime_error("arena virtual memory allocator not implemented!");
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }

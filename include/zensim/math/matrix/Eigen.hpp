@@ -262,7 +262,7 @@ namespace zs {
       }
     };
     auto rotate = [&S](Ti k, Ti l, Ti i, Ti j, T s, T c) {
-      constexpr int dim = VecTM::template range_t<0>::value;
+      // constexpr int dim = VecTM::template range_t<0>::value;
       T Skl = S(k, l), Sij = S(i, j);
       S(k, l) = c * Skl - s * Sij;
       S(i, j) = s * Skl + c * Sij;
@@ -314,21 +314,20 @@ namespace zs {
   constexpr void make_pd(VecInterface<VecTM> &mat) noexcept {
     constexpr int dim = VecTM::template range_t<0>::value;
     using value_type = typename VecTM::value_type;
-    using MatT = typename VecTM::template variant_vec<value_type, typename VecTM::extents>;
 
     // ref:
     // Hierarchical Optimization Time Integration (HOT)
     // https://github.com/penn-graphics-research/HOT/blob/d8d57be410ed343c3fb37af6020cf5e14a0d1bec/Lib/Ziran/Math/Linear/EigenDecomposition.h#L111
     auto [eivals, eivecs] = eigen_decomposition(mat);
     for (int i = 0; i != dim; ++i) {
-      if (eivals[i] < limits<value_type>::epsilon())
-        eivals[i] = 0;
+      if (eivals[i] < limits<value_type>::epsilon()) eivals[i] = 0;
       // else
       //  break;  // eivals in ascending order
       // the above assumption not necessarily true, especially for custom eig(...)
       // credits to huang kemeng
     }
 #if 0
+    using MatT = typename VecTM::template variant_vec<value_type, typename VecTM::extents>;
     auto diag = MatT::zeros();
     for (int d = 0; d != dim; ++d) diag(d, d) = eivals[d];
     mat.assign(eivecs * diag * eivecs.transpose());

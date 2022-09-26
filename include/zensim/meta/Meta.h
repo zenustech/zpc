@@ -43,6 +43,13 @@ namespace zs {
   template <class T> using special_decay_t =
       typename unwrap_refwrapper<typename std::decay_t<T>>::type;
 
+  template <class T> struct is_refwrapper { static constexpr bool value = false; };
+  template <class T> struct is_refwrapper<std::reference_wrapper<T>> {
+    static constexpr bool value = true;
+  };
+  template <class T> static constexpr bool is_refwrapper_v
+      = is_refwrapper<typename std::decay_t<T>>::value;
+
   ///
   /// fundamental type-value wrapper
   ///

@@ -301,7 +301,8 @@ namespace zs {
     LEGACY_ITERATOR_OP(>=)
     /// sentinel support
     template <typename T = Derived, enable_if_t<detail::has_sentinel<T>::value> = 0>
-    friend constexpr bool operator==(const Derived &self, typename T::sentinel_type sentinel) {
+    friend constexpr bool operator==(const Derived &self,
+                                     [[maybe_unused]] typename T::sentinel_type sentinel) {
       return self.at_end();
     }
 

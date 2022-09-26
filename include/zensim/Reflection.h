@@ -108,7 +108,7 @@ namespace zs {
     }
 
     template <std::size_t head = 0, std::size_t length = 0, typename T>
-    constexpr auto get_var_type_substr(T &&v) noexcept {
+    constexpr auto get_var_type_substr(T &&) noexcept {
       constexpr auto typestr = get_type_str_helper<T>();
       using CharT = std::remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
       constexpr auto typelength = get_type_len_helper(typestr);

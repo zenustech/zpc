@@ -85,19 +85,19 @@ namespace zs {
 
     // details (default impls)
     template <typename VecT>
-    constexpr typename VecT::value_type do_psi_sigma(const VecInterface<VecT>& S) const noexcept {
+    constexpr typename VecT::value_type do_psi_sigma(const VecInterface<VecT>&) const noexcept {
       return (typename VecT::value_type)0;
     }
     template <typename VecT>
-    constexpr auto do_dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
+    constexpr auto do_dpsi_dsigma(const VecInterface<VecT>&) const noexcept {
       return vec_type<VecT>::zeros();
     }
     template <typename VecT>
-    constexpr auto do_d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
+    constexpr auto do_d2psi_dsigma2(const VecInterface<VecT>&) const noexcept {
       return mat_type<VecT>::zeros();
     }
     template <typename VecT>
-    constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
+    constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>&) const noexcept {
       using RetT = typename VecT::template variant_vec<
           typename VecT::value_type,
           integer_seq<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
@@ -488,9 +488,10 @@ namespace zs {
     constexpr typename VecT::value_type do_d2psi_dI2(const VecInterface<VecT>&) const noexcept {
       return (typename VecT::value_type)0;
     }
-    template <typename VecT>
-    constexpr decltype(auto) do_first_piola_derivative_spd(const VecInterface<VecT>& F) const noexcept {
-      return static_cast<const Model *>(this)->template first_piola_derivative<VecT, false>(F, wrapv<false>{});
+    template <typename VecT> constexpr decltype(auto) do_first_piola_derivative_spd(
+        const VecInterface<VecT>& F) const noexcept {
+      return static_cast<const Model*>(this)->template first_piola_derivative<VecT, false>(
+          F, wrapv<false>{});
     }
 
     /// isotropic
@@ -636,7 +637,7 @@ namespace zs {
     // details (default impls)
     // return delta_gamma (projection distance)
     template <typename VecT, typename... Args>
-    constexpr bool do_project_sigma(VecInterface<VecT>& S, Args&&... args) const noexcept {
+    constexpr bool do_project_sigma(VecInterface<VecT>&, Args&&...) const noexcept {
       return false;
     }
     template <typename VecT, typename... Args>

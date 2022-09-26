@@ -340,7 +340,7 @@ namespace zs {
                             std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto gram_schmidt(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
-      using index_type = typename VecT::index_type;
+      // using index_type = typename VecT::index_type;
       constexpr auto N = VecT::template range_t<0>::value;
       using RetT = typename VecT::template variant_vec<value_type, typename VecT::extents>;
       auto d1 = col(A, 0);

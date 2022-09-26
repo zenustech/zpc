@@ -357,7 +357,7 @@ set_target_properties(zpccuda
   PROPERTIES  # LINKER_LANGUAGE CUDA
               CUDA_EXTENSIONS ON
               CUDA_SEPARABLE_COMPILATION OFF
-              CUDA_RESOLVE_DEVICE_SYMBOLS OFF # https://devblogs.nvidia.com/building-cuda-applications-cmake/
+              CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
               CUDA_ARCHITECTURES OFF
               #CUDA_VISIBILITY_PRESET default
 )

@@ -249,6 +249,11 @@ namespace zs {
     }
 #endif
 
+    void syncCtx() const {
+      auto &context = Cuda::context(procid);
+      context.syncStreamSpare(streamid);
+    }
+
     template <typename Ts, typename Is, typename F>
     void operator()(Collapse<Ts, Is> dims, F &&f,
                     const source_location &loc = source_location::current()) const {

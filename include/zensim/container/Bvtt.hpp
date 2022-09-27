@@ -37,9 +37,9 @@ namespace zs {
     }
 
     BvttFront(const allocator_type &allocator, node_id_t numNodes, index_t estimatedCount)
-        : _primIds{allocator, estimatedCount},
-          _nodeIds{allocator, estimatedCount},
-          _offsets{allocator, numNodes + 1},
+        : _primIds{allocator, (std::size_t)estimatedCount},
+          _nodeIds{allocator, (std::size_t)estimatedCount},
+          _offsets{allocator, (std::size_t)numNodes + 1},
           _cnt{allocator, 1} {
       _cnt.setVal(0);
     }
@@ -117,7 +117,8 @@ namespace zs {
         : _prims{bvfront._primIds.data()},
           _nodes{bvfront._nodeIds.data()},
           _cnt{bvfront._cnt.data()},
-          _numFrontNodes{std::min(bvfront._primIds.capacity(), bvfront._nodeIds.capacity())} {}
+          _numFrontNodes{
+              (index_t)std::min(bvfront._primIds.capacity(), bvfront._nodeIds.capacity())} {}
 
 #if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,

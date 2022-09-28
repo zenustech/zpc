@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <memory>
+#include <type_traits>
 
 #include "Platform.hpp"
 
@@ -71,8 +71,8 @@ namespace zs {
   template <typename T> using RefPtr = ::std::decay_t<T> *;  ///< non-owning reference
   template <typename T> using ConstRefPtr
       = const ::std::decay_t<T> *;  ///< non-owning const reference
-  template <typename T> using Holder = ::std::unique_ptr<T>;
-  template <typename T> using SharedHolder = ::std::shared_ptr<T>;
+  // template <typename T> using Holder = ::std::unique_ptr<T>;
+  // template <typename T> using SharedHolder = ::std::shared_ptr<T>;
 
   using NodeID = i32;
   using ProcID = char;

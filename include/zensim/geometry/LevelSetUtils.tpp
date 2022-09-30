@@ -333,7 +333,7 @@ namespace zs {
     constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
 
     ls.append_channels(pol, {{"mark", 1}});
-    auto markOffset = ls._grid.getChannelOffset("mark");
+    auto markOffset = ls._grid.getPropertyOffset("mark");
     auto nbs = ls.numBlocks();
     /// mark all existing cells
     pol(Collapse{nbs, ls.block_size},
@@ -452,16 +452,16 @@ namespace zs {
       ls.append_channels(policy, tags);
       policy(range(grid.size()),
              InitFloodFillGridChannels<RM_CVREF_T(proxy<space>(grid))>{proxy<space>(grid)});
-      fmt::print("tagmask at chn {}, tag at chn {}\n", grid.getChannelOffset("tagmask"),
-                 grid.getChannelOffset("tag"));
+      fmt::print("tagmask at chn {}, tag at chn {}\n", grid.getPropertyOffset("tagmask"),
+                 grid.getPropertyOffset("tag"));
     }
-    fmt::print("sdf at chn {}, mask at chn {}\n", grid.getChannelOffset("sdf"),
-               grid.getChannelOffset("mask"));
+    fmt::print("sdf at chn {}, mask at chn {}\n", grid.getPropertyOffset("sdf"),
+               grid.getPropertyOffset("mask"));
 
     fmt::print(
         "block capacity: {}, table block count: {}, cell count: {} ({}), tag chn offset: {}\n",
         blocks.size(), table.size(), blocks.size() * grid.block_space(), grid.size(),
-        grid.getChannelOffset("tag"));
+        grid.getPropertyOffset("tag"));
 
     std::size_t tableSize = table.size();
     int iter = 0;

@@ -359,17 +359,21 @@ namespace zs {
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr decltype(auto) operator[](size_type i) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (i >= _vectorSize)
+      if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
+        return _vector[0];
+      }
 #endif
       return _vector[i];
     }
     constexpr decltype(auto) operator[](size_type i) const {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (i >= _vectorSize)
+      if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
+        return _vector[0];
+      }
 #endif
       return _vector[i];
     }
@@ -377,17 +381,21 @@ namespace zs {
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr decltype(auto) operator()(size_type i) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (i >= _vectorSize)
+      if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
+        return _vector[0];
+      }
 #endif
       return _vector[i];
     }
     constexpr decltype(auto) operator()(size_type i) const {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (i >= _vectorSize)
+      if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
+        return _vector[0];
+      }
 #endif
       return _vector[i];
     }

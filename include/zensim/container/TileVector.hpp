@@ -479,12 +479,16 @@ namespace zs {
     constexpr reference operator()(const channel_counter_type chn, const size_type i) noexcept {
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels)
+        if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-        if (i >= lane_width)
+          return *_vector;
+        }
+        if (i >= lane_width) {
           printf("tilevector ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)lane_width);
+          return *_vector;
+        }
 #endif
         if constexpr (is_power_of_two)
           return *(_vector + ((chn << num_lane_bits) | i));
@@ -492,12 +496,16 @@ namespace zs {
           return *(_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels)
+        if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-        if (i >= _vectorSize)
+          return *_vector;
+        }
+        if (i >= _vectorSize) {
           printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)_vectorSize);
+          return *_vector;
+        }
 #endif
         if constexpr (is_power_of_two)
           return *(_vector
@@ -511,12 +519,16 @@ namespace zs {
                                          const size_type i) const noexcept {
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels)
+        if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-        if (i >= lane_width)
+          return *_vector;
+        }
+        if (i >= lane_width) {
           printf("tilevector ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)lane_width);
+          return *_vector;
+        }
 #endif
         if constexpr (is_power_of_two)
           return *(_vector + ((chn << num_lane_bits) | i));
@@ -524,12 +536,16 @@ namespace zs {
           return *(_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels)
+        if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-        if (i >= _vectorSize)
+          return *_vector;
+        }
+        if (i >= _vectorSize) {
           printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)_vectorSize);
+          return *_vector;
+        }
 #endif
         if constexpr (is_power_of_two)
           return *(_vector
@@ -543,9 +559,12 @@ namespace zs {
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (long long nt = numTiles(); tileid >= nt)
+      if (long long nt = numTiles(); tileid >= nt) {
         printf("tilevector ofb! global accessing tile [%lld] out of [0, %lld)\n", (long long)tileid,
                nt);
+        return TileVectorUnnamedView<Space, tile_vector_type, true>{_vector, lane_width,
+                                                                    _numChannels};
+      }
 #endif
       if constexpr (is_power_of_two)
         return TileVectorUnnamedView<Space, tile_vector_type, true>{
@@ -557,9 +576,12 @@ namespace zs {
     template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
     constexpr auto tile(const size_type tileid) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (long long nt = numTiles(); tileid >= nt)
+      if (long long nt = numTiles(); tileid >= nt) {
         printf("tilevector ofb! global accessing tile [%lld] out of [0, %lld)\n", (long long)tileid,
                nt);
+        return TileVectorUnnamedView<Space, const_tile_vector_type, true>{_vector, lane_width,
+                                                                          _numChannels};
+      }
 #endif
       if constexpr (is_power_of_two)
         return TileVectorUnnamedView<Space, const_tile_vector_type, true>{
@@ -575,12 +597,16 @@ namespace zs {
       RetT ret{};
       size_type offset{};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (chn + RetT::extent > _numChannels)
+      if (chn + RetT::extent > _numChannels) {
         printf("tilevector ofb! accessing chn [%d, %d) out of [0, %d)\n", (int)chn,
                (int)(chn + RetT::extent), (int)_numChannels);
-      if (i >= _vectorSize)
+        return RetT::zeros();
+      }
+      if (i >= _vectorSize) {
         printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
+        return RetT::zeros();
+      }
 #endif
       if constexpr (is_power_of_two)
         offset = ((((i >> num_lane_bits) * _numChannels) + chn) << num_lane_bits)
@@ -641,12 +667,16 @@ namespace zs {
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple(const channel_counter_type chn, const size_type i) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (chn + d > _numChannels)
+      if (chn + d > _numChannels) {
         printf("tilevector ofb! tieing chn [%d, %d) out of [0, %d)\n", (int)chn, (int)(chn + d),
                (int)_numChannels);
-      if (i >= _vectorSize)
+        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+      }
+      if (i >= _vectorSize) {
         printf("tilevector ofb! global tieing ele [%lld] out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
+        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+      }
 #endif
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
     }
@@ -689,12 +719,16 @@ namespace zs {
     template <auto d>
     constexpr auto tuple(const channel_counter_type chn, const size_type i) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (chn + d > _numChannels)
+      if (chn + d > _numChannels) {
         printf("tilevector ofb! tieing chn [%d, %d) out of [0, %d)\n", (int)chn, (int)(chn + d),
                (int)_numChannels);
-      if (i >= _vectorSize)
+        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+      }
+      if (i >= _vectorSize) {
         printf("tilevector ofb! global tieing ele [%lld] out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
+        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+      }
 #endif
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
     }

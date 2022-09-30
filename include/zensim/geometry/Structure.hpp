@@ -114,11 +114,11 @@ namespace zs {
     }
 
     bool hasProperty(const SmallString &str) const noexcept { return blocks.hasProperty(str); }
-    constexpr channel_counter_type getChannelSize(const SmallString &str) const {
-      return blocks.getChannelSize(str);
+    constexpr channel_counter_type getPropertySize(const SmallString &str) const {
+      return blocks.getPropertySize(str);
     }
-    constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
-      return blocks.getChannelOffset(str);
+    constexpr channel_counter_type getPropertyOffset(const SmallString &str) const {
+      return blocks.getPropertyOffset(str);
     }
     constexpr PropertyTag getPropertyTag(std::size_t i = 0) const {
       return blocks.getPropertyTag(i);

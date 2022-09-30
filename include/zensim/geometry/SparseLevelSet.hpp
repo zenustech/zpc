@@ -107,11 +107,11 @@ namespace zs {
     }
 
     bool hasProperty(const SmallString &str) const noexcept { return _grid.hasProperty(str); }
-    constexpr channel_counter_type getChannelSize(const SmallString &str) const {
-      return _grid.getChannelSize(str);
+    constexpr channel_counter_type getPropertySize(const SmallString &str) const {
+      return _grid.getPropertySize(str);
     }
-    constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
-      return _grid.getChannelOffset(str);
+    constexpr channel_counter_type getPropertyOffset(const SmallString &str) const {
+      return _grid.getPropertyOffset(str);
     }
     constexpr PropertyTag getPropertyTag(std::size_t i = 0) const {
       return _grid.getPropertyTag(i);

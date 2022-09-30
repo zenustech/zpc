@@ -78,7 +78,7 @@ namespace zs {
     counter_t counts{_cnt.get_allocator(), numNodes()};
     counts.reset(0);
     auto frontView = proxy<space>(*this);
-    fmt::print("holy shit, {} current front nodes, {} num bvh nodes\n", numFrontNodes, numNodes());
+    fmt::print("{} current front nodes, {} num bvh nodes\n", numFrontNodes, numNodes());
     policy(range(numFrontNodes),
            [execTag, counts = proxy<space>(counts), front = frontView] ZS_LAMBDA(
                index_t i) mutable { atomic_add(execTag, &counts[front.node(i)], (index_t)1); });

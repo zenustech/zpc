@@ -197,7 +197,7 @@ namespace zs {
       std::swap(_size, o._size);
       std::swap(_capacity, o._capacity);
     }
-    friend void swap(Vector &a, Vector &b) { a.swap(b); }
+    friend void swap(Vector &a, Vector &b) noexcept { a.swap(b); }
 
     void clear() { resize(0); }
     void reset(int ch) {

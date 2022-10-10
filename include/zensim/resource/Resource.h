@@ -80,7 +80,7 @@ namespace zs {
       return *this;
     }
 
-    friend void swap(ZSPmrAllocator &a, ZSPmrAllocator &b) {
+    friend void swap(ZSPmrAllocator &a, ZSPmrAllocator &b) noexcept {
       std::swap(a.res, b.res);
       std::swap(a.location, b.location);
     }

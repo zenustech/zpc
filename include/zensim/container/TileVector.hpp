@@ -257,7 +257,7 @@ namespace zs {
       std::swap(_capacity, o._capacity);
       std::swap(_numChannels, o._numChannels);
     }
-    friend void swap(TileVector &a, TileVector &b) { a.swap(b); }
+    friend void swap(TileVector &a, TileVector &b) noexcept { a.swap(b); }
 
     void clear() { *this = TileVector{_allocator, _tags, 0}; }
     void resize(size_type newSize) {

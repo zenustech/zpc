@@ -4,10 +4,10 @@
 #include <stdexcept>
 
 #include "zensim/Platform.hpp"
-#include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
+#include "zensim/zpc_tpls/fmt/format.h"
 
 #ifdef ZS_PLATFORM_WINDOWS
 #  include <memory_resource>
@@ -152,7 +152,7 @@ namespace zs {
       std::swap(_devid, o._devid);
       std::swap(_memsrc, o._memsrc);
     }
-    friend void swap(MemoryLocation& a, MemoryLocation& b) { a.swap(b); }
+    friend void swap(MemoryLocation& a, MemoryLocation& b) noexcept { a.swap(b); }
 
     friend constexpr bool operator==(const MemoryLocation& a, const MemoryLocation& b) noexcept {
       return a._memsrc == b._memsrc && a._devid == b._devid;
@@ -179,7 +179,7 @@ namespace zs {
       std::swap(_traits, o._traits);
       std::swap(static_cast<MemoryLocation&>(*this), static_cast<MemoryLocation&>(o));
     }
-    friend void swap(MemoryProperty& a, MemoryProperty& b) { a.swap(b); }
+    friend void swap(MemoryProperty& a, MemoryProperty& b) noexcept { a.swap(b); }
 
     /// behavior traits
     MemoryTraits _traits{};

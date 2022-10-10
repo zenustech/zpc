@@ -152,7 +152,7 @@ namespace zs {
       std::swap(_cnt, o._cnt);
       std::swap(_activeKeys, o._activeKeys);
     }
-    friend void swap(HashTable &a, HashTable &b) { a.swap(b); }
+    friend void swap(HashTable &a, HashTable &b) noexcept { a.swap(b); }
 
     inline value_t size() const { return _cnt.getVal(0); }
 

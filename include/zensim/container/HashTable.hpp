@@ -69,10 +69,12 @@ namespace zs {
     static constexpr status_t status_sentinel_v{-1};
     static constexpr std::size_t reserve_ratio_v = 16;
 
-    constexpr decltype(auto) memoryLocation() const noexcept { return _allocator.location; }
+    constexpr decltype(auto) memoryLocation() const noexcept {
+      return _cnt.get_allocator().location;
+    }
     constexpr ProcID devid() const noexcept { return memoryLocation().devid(); }
     constexpr memsrc_e memspace() const noexcept { return memoryLocation().memspace(); }
-    decltype(auto) get_allocator() const noexcept { return _allocator; }
+    decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
         return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
@@ -89,7 +91,6 @@ namespace zs {
     }
     HashTable(const allocator_type &allocator, std::size_t numExpectedEntries)
         : _table{allocator, evaluateTableSize(numExpectedEntries)},
-          _allocator{allocator},
           _tableSize{static_cast<value_t>(evaluateTableSize(numExpectedEntries))},
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(numExpectedEntries)} {
@@ -103,11 +104,7 @@ namespace zs {
     ~HashTable() = default;
 
     HashTable(const HashTable &o)
-        : _table{o._table},
-          _allocator{o._allocator},
-          _tableSize{o._tableSize},
-          _cnt{o._cnt},
-          _activeKeys{o._activeKeys} {}
+        : _table{o._table}, _tableSize{o._tableSize}, _cnt{o._cnt}, _activeKeys{o._activeKeys} {}
     HashTable &operator=(const HashTable &o) {
       if (this == &o) return *this;
       HashTable tmp(o);
@@ -133,7 +130,6 @@ namespace zs {
     HashTable(HashTable &&o) noexcept {
       const HashTable defaultTable{};
       self() = std::exchange(o.self(), defaultTable.self());
-      _allocator = std::exchange(o._allocator, defaultTable._allocator);
       _tableSize = std::exchange(o._tableSize, defaultTable._tableSize);
       /// critical! use user-defined move assignment constructor!
       _cnt = std::exchange(o._cnt, defaultTable._cnt);
@@ -147,7 +143,6 @@ namespace zs {
     }
     void swap(HashTable &o) noexcept {
       std::swap(self(), o.self());
-      std::swap(_allocator, o._allocator);
       std::swap(_tableSize, o._tableSize);
       std::swap(_cnt, o._cnt);
       std::swap(_activeKeys, o._activeKeys);
@@ -205,7 +200,6 @@ namespace zs {
     template <typename Policy> void reset(Policy &&, bool clearCnt);
 
     Table _table;
-    allocator_type _allocator;
     value_t _tableSize;
     Vector<value_t, allocator_type> _cnt;
     Vector<key_t, allocator_type> _activeKeys;

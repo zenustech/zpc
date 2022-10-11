@@ -120,7 +120,7 @@ namespace zs {
           _numFrontNodes{
               (index_t)std::min(bvfront._primIds.capacity(), bvfront._nodeIds.capacity())} {}
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __device__ void push_back(prim_id_t prim, node_id_t node) {

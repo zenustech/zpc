@@ -27,11 +27,11 @@
 namespace zs {
 
   // __threadfence
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
   __forceinline__ __device__ void thread_fence(cuda_exec_tag) { __threadfence(); }
 #endif
 
-#if defined(_OPENMP)
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP
   inline void thread_fence(omp_exec_tag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
@@ -42,11 +42,11 @@ namespace zs {
   inline void thread_fence(host_exec_tag) noexcept {}
 
   // __syncthreads
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
   __forceinline__ __device__ void sync_threads(cuda_exec_tag) { __syncthreads(); }
 #endif
 
-#if defined(_OPENMP)
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP
   inline void sync_threads(omp_exec_tag) noexcept {
 #  pragma omp barrier
   }
@@ -66,12 +66,12 @@ namespace zs {
   }
 
   // __activemask
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
   __forceinline__ __device__ unsigned active_mask(cuda_exec_tag) { return __activemask(); }
 #endif
 
   // __ballot_sync
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
   __forceinline__ __device__ unsigned ballot_sync(cuda_exec_tag, unsigned mask, int predicate) {
     return __ballot_sync(mask, predicate);
   }
@@ -80,7 +80,7 @@ namespace zs {
   // ref: https://graphics.stanford.edu/~seander/bithacks.html
 
   /// count leading zeros
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename T> __forceinline__ __device__ int count_lz(cuda_exec_tag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
@@ -120,7 +120,7 @@ namespace zs {
   }
 
   /// reverse bits
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename T> __forceinline__ __device__ T reverse_bits(cuda_exec_tag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)

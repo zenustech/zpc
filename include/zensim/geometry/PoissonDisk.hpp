@@ -1,5 +1,5 @@
 #pragma once
-#if defined(_OPENMP)
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP
 #  include <omp.h>
 #endif
 #include <algorithm>

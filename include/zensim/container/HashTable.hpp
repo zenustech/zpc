@@ -360,7 +360,7 @@ namespace zs {
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()} {}
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
@@ -407,7 +407,7 @@ namespace zs {
       return HashTableT::sentinel_v;
     }
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
@@ -504,7 +504,7 @@ namespace zs {
       for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);
     }
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>

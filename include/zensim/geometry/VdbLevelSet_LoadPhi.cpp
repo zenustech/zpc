@@ -56,20 +56,20 @@ namespace zs {
     std::vector<openvdb::Vec3I> triangles;
     points.resize(vertList.size());
     triangles.resize(faceList.size());
-#if defined(_OPENMP)
-    #pragma omp parallel for
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#  pragma omp parallel for
 #endif
     for (int p = 0; p < vertList.size(); ++p)
       points[p] = openvdb::Vec3s(vertList[p][0], vertList[p][1], vertList[p][2]);
-    //tbb::parallel_for(0, (int)vertList.size(), 1, [&](int p) {
-    //  points[p] = openvdb::Vec3s(vertList[p][0], vertList[p][1], vertList[p][2]);
-    //});
-#if defined(_OPENMP)
-    #pragma omp parallel for
+      // tbb::parallel_for(0, (int)vertList.size(), 1, [&](int p) {
+      //  points[p] = openvdb::Vec3s(vertList[p][0], vertList[p][1], vertList[p][2]);
+      //});
+#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#  pragma omp parallel for
 #endif
     for (int p = 0; p < faceList.size(); ++p)
       triangles[p] = openvdb::Vec3I(faceList[p][0], faceList[p][1], faceList[p][2]);
-    //tbb::parallel_for(0, (int)faceList.size(), 1, [&](int p) {
+    // tbb::parallel_for(0, (int)faceList.size(), 1, [&](int p) {
     //  triangles[p] = openvdb::Vec3I(faceList[p][0], faceList[p][1], faceList[p][2]);
     //});
     openvdb::FloatGrid::Ptr grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(

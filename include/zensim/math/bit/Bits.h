@@ -50,8 +50,10 @@ namespace zs {
     u.d = d;
     return u.l;
   }
+
   // ref: https://www.youtube.com/watch?v=_qzMpk-22cc
-  // CppCon 2019: Timur Doumler “Type punning in modern C++”
+  // CppCon 2019 Timur Doumler [Type punning in modern C++]
+  //
   template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) noexcept {
     using Src = std::remove_cv_t<std::remove_reference_t<SrcT>>;
     using Dst = std::remove_cv_t<std::remove_reference_t<DstT>>;
@@ -67,7 +69,7 @@ namespace zs {
       Dst out;
     } tmp{FWD(val)};
     return tmp.out;
-#elif 1
+#elif 0
     Dst dst{};
     std::memcpy(&dst, &val, sizeof(Dst));
     return dst;

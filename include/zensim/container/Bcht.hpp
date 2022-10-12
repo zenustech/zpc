@@ -678,4 +678,49 @@ namespace zs {
     return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>>{table};
   }
 
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename F, typename KeyT, typename IndexT, bool KeyCompare, typename Hasher, int B,
+            typename AllocatorT>
+  void bucket_hash_insertion(CudaExecutionPolicy &pol, std::size_t N, F &&f,
+                             bcht<KeyT, IndexT, KeyCompare, Hasher, B, AllocatorT> &tb) {
+    using namespace zs;
+    namespace cg = ::cooperative_groups;
+    constexpr auto space = execspace_e::cuda;
+    tb._buildSuccess.setVal(1);
+    pol(range(N), [tb = proxy<space>(tb), f = FWD(f)] __device__(std::size_t id) mutable {
+      using table_t = RM_CVREF_T(tb);
+      auto block = cg::this_thread_block();
+      auto tile = cg::tiled_partition<B>(block);
+
+      bool has_work = true;
+      auto work = f(id);
+      static_assert(std::is_convertible_v<RM_CVREF_T(work), typename table_t::key_type>,
+                    "key type not insertable to this bcht.");
+
+      has_work = true;
+
+      bool success = true;
+      u32 work_queue = tile.ballot(has_work);
+      int iter = 0;
+      while (work_queue) {
+        // off-load one work from the queue
+        auto cur_rank = __ffs(work_queue) - 1;
+        // every worker in the tile works on the work just popped
+        auto cur_work = tile.shfl(work, cur_rank);
+
+        auto status = tb.insert(cur_work, tile);
+
+        if (tile.thread_rank() == cur_rank) {
+          has_work = false;
+          success = status != table_t::failure_token_v;
+        }
+        work_queue = tile.ballot(has_work);
+      }
+
+      if (!tile.all(success)) *tb._success = false;
+    });
+    return;
+  }
+#endif
+
 }  // namespace zs

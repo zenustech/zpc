@@ -393,17 +393,17 @@ namespace zs {
 #else
       cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      binary_op, dist, stream);
-      context.syncStreamSpare(streamid);
+      context.syncStreamSpare(streamid, loc);
 
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      binary_op, dist, stream);
-      context.syncStreamSpare(streamid);
-      context.streamMemFree(d_tmp, stream);
+      context.syncStreamSpare(streamid, loc);
+      context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.recordEventSpare(streamid);
+      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
+      context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
@@ -442,16 +442,16 @@ namespace zs {
       std::size_t temp_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      context.syncStreamSpare(streamid);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      context.syncStreamSpare(streamid, loc);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceScan::ExclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      context.syncStreamSpare(streamid);
-      context.streamMemFree(d_tmp, stream);
+      context.syncStreamSpare(streamid, loc);
+      context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.recordEventSpare(streamid);
+      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
+      context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
@@ -493,15 +493,15 @@ namespace zs {
           loc);
 #else
       cub::DeviceReduce::Reduce(nullptr, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      context.syncStreamSpare(streamid);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      context.syncStreamSpare(streamid, loc);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceReduce::Reduce(d_tmp, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      context.syncStreamSpare(streamid);
-      context.streamMemFree(d_tmp, stream);
+      context.syncStreamSpare(streamid, loc);
+      context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.recordEventSpare(streamid);
+      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
+      context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
@@ -555,8 +555,8 @@ namespace zs {
         cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        context.syncStreamSpare(streamid);
-        void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+        context.syncStreamSpare(streamid, loc);
+        void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
 #  if 0
         void *d_tmp;
         cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
@@ -564,14 +564,14 @@ namespace zs {
         cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        context.syncStreamSpare(streamid);
+        context.syncStreamSpare(streamid, loc);
         // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
-        context.streamMemFree(d_tmp, stream);
+        context.streamMemFree(d_tmp, stream, loc);
 #endif
         if (this->shouldProfile()) context.tock(timer, loc);
       }
-      if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.recordEventSpare(streamid);
+      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
+      context.recordEventSpare(streamid, loc);
     }
     /// radix sort
     template <class InputIt, class OutputIt>
@@ -596,16 +596,16 @@ namespace zs {
       std::size_t temp_bytes = 0;
       cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      context.syncStreamSpare(streamid);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream);
+      context.syncStreamSpare(streamid, loc);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      context.syncStreamSpare(streamid);
-      context.streamMemFree(d_tmp, stream);
+      context.syncStreamSpare(streamid, loc);
+      context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.recordEventSpare(streamid);
+      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
+      context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt> void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,

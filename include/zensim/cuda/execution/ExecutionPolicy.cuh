@@ -292,12 +292,8 @@ namespace zs {
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) {
         context.syncStreamSpare(streamid, loc);
-        // cudaStreamSynchronize((cudaStream_t)context.streamSpare(streamid));
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (ec == 0) {
-          cudaDeviceSynchronize();
-          ec = Cuda::get_last_cuda_rt_error();
-        }
+        if (ec == 0) ec = Cuda::get_last_cuda_rt_error();
 #endif
       }
       checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
@@ -342,12 +338,8 @@ namespace zs {
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) {
         context.syncStreamSpare(streamid, loc);
-        // cudaStreamSynchronize((cudaStream_t)context.streamSpare(streamid));
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (ec == 0) {
-          cudaDeviceSynchronize();
-          ec = Cuda::get_last_cuda_rt_error();
-        }
+        if (ec == 0) ec = Cuda::get_last_cuda_rt_error();
 #endif
       }
       checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);

@@ -80,35 +80,35 @@ namespace zs {
 
   // record
   void Cuda::CudaContext::recordEventCompute(const source_location &loc) {
-    // checkError(cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute()), loc);
-    cuEventRecord((CUevent)eventCompute(), (CUstream)streamCompute());
+    checkError(cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute()), loc);
+    // cuEventRecord((CUevent)eventCompute(), (CUstream)streamCompute());
   }
   void Cuda::CudaContext::recordEventSpare(unsigned id, const source_location &loc) {
-    // checkError(cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id)), loc);
-    cuEventRecord((CUevent)eventSpare(id), (CUstream)streamSpare(id));
+    checkError(cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id)), loc);
+    // cuEventRecord((CUevent)eventSpare(id), (CUstream)streamSpare(id));
   }
   // sync
   void Cuda::CudaContext::syncStream(unsigned sid, const source_location &loc) const {
-    // checkError(cudaStreamSynchronize((cudaStream_t)stream(sid)), loc);
-    cuStreamSynchronize((CUstream)stream(sid));
+    checkError(cudaStreamSynchronize((cudaStream_t)stream(sid)), loc);
+    // cuStreamSynchronize((CUstream)stream(sid));
   }
   void Cuda::CudaContext::syncCompute(const source_location &loc) const {
-    // checkError(cudaStreamSynchronize((cudaStream_t)streamCompute()), loc);
-    cuStreamSynchronize((CUstream)streamCompute());
+    checkError(cudaStreamSynchronize((cudaStream_t)streamCompute()), loc);
+    // cuStreamSynchronize((CUstream)streamCompute());
   }
   void Cuda::CudaContext::syncStreamSpare(unsigned sid, const source_location &loc) const {
-    // checkError(cudaStreamSynchronize((cudaStream_t)streamSpare(sid)), loc);
-    cuStreamSynchronize((CUstream)streamSpare(sid));
+    checkError(cudaStreamSynchronize((cudaStream_t)streamSpare(sid)), loc);
+    // cuStreamSynchronize((CUstream)streamSpare(sid));
   }
   // stream-event sync
   void Cuda::CudaContext::computeStreamWaitForEvent(void *event, const source_location &loc) {
-    cuStreamWaitEvent((CUstream)streamCompute(), (CUevent)event, 0);
+    checkError(cudaStreamWaitEvent((cudaStream_t)streamCompute(), (cudaEvent_t)event, 0), loc);
+    // cuStreamWaitEvent((CUstream)streamCompute(), (CUevent)event, 0);
   }
   void Cuda::CudaContext::spareStreamWaitForEvent(unsigned sid, void *event,
                                                   const source_location &loc) {
-    // checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0),
-    // loc);
-    cuStreamWaitEvent((CUstream)streamSpare(sid), (CUevent)event, 0);
+    checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0), loc);
+    // cuStreamWaitEvent((CUstream)streamSpare(sid), (CUevent)event, 0);
   }
   void *Cuda::CudaContext::streamMemAlloc(std::size_t size, void *stream,
                                           const source_location &loc) {

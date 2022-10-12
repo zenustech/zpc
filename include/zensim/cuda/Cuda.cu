@@ -27,7 +27,7 @@ namespace zs {
     */
 
   /// error handling
-  u32 Cuda::get_last_cuda_rt_error() { return (u32)cudaGetLastError(); }
+  u32 Cuda::get_last_cuda_rt_error() { return (u32)cudaPeekAtLastError(); }
 
   std::string_view Cuda::get_cuda_rt_error_string(u32 errorCode) {
     // return cudaGetErrorString((cudaError_t)errorCode);
@@ -157,12 +157,13 @@ namespace zs {
         fmt::print("device ordinal {} has handle {}\n", i, dev);
 
         unsigned int ctxFlags, expectedFlags = CU_CTX_SCHED_AUTO;
+        // unsigned int ctxFlags, expectedFlags = CU_CTX_SCHED_BLOCKING_SYNC;
         int isActive;
         cuDevicePrimaryCtxGetState((CUdevice)dev, &ctxFlags, &isActive);
 
         /// follow tensorflow's impl
         if (ctxFlags != expectedFlags) {
-          if (ctxFlags != expectedFlags) {
+          if (isActive) {
             ZS_ERROR(
                 fmt::format("The primary active context has flag [{}], but [{}] is expected.\n",
                             ctxFlags, expectedFlags)
@@ -203,7 +204,7 @@ namespace zs {
 
       context.streams.resize((int)StreamIndex::Total);
       for (auto &stream : context.streams)
-        cuStreamCreate((CUstream *)&stream, CU_STREAM_NON_BLOCKING);
+        cuStreamCreate((CUstream *)&stream, CU_STREAM_DEFAULT);  // safer to sync with stream 0
       context.events.resize((int)EventIndex::Total);
       for (auto &event : context.events) cuEventCreate((CUevent *)&event, CU_EVENT_BLOCKING_SYNC);
 
@@ -282,13 +283,14 @@ namespace zs {
   }
 
   /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
-  int Cuda::deduce_block_size(const Cuda::CudaContext &ctx, void *kernelFunc,
+  int Cuda::deduce_block_size(const source_location &loc, const Cuda::CudaContext &ctx,
+                              void *kernelFunc,
                               std::function<std::size_t(int)> block_size_to_dynamic_shmem,
                               std::string_view kernelName) {
     if (auto it = ctx.funcLaunchConfigs.find(kernelFunc); it != ctx.funcLaunchConfigs.end())
       return it->second.optBlockSize;
     cudaFuncAttributes funcAttribs;
-    ctx.checkError(cudaFuncGetAttributes(&funcAttribs, kernelFunc));
+    ctx.checkError(cudaFuncGetAttributes(&funcAttribs, kernelFunc), loc);
     int optBlockSize{0};
 
     auto cuda_max_active_blocks_per_sm = [&](int block_size, int dynamic_shmem) {

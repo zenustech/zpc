@@ -362,7 +362,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return _vector[0];
+        return *((value_type *)0);
       }
 #endif
       return _vector[i];
@@ -372,7 +372,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return _vector[0];
+        return *((const value_type *)0);
       }
 #endif
       return _vector[i];
@@ -384,7 +384,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return _vector[0];
+        return *((value_type *)0);
       }
 #endif
       return _vector[i];
@@ -394,7 +394,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return _vector[0];
+        return *((const value_type *)0);
       }
 #endif
       return _vector[i];

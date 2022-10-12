@@ -118,9 +118,15 @@ target_compile_definitions(zsproj_deps INTERFACE
 add_library(zpc_cxx_deps INTERFACE)
 target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
+if (ZS_ENABLE_OFB_ACCESS_CHECK)
 target_compile_definitions(zpc_cxx_deps
-    INTERFACE   ZS_ENABLE_OFB_ACCESS_CHECK=${ZS_ENABLE_OFB_ACCESS_CHECK}
+    INTERFACE   ZS_ENABLE_OFB_ACCESS_CHECK=1
 )
+else(ZS_ENABLE_OFB_ACCESS_CHECK)
+target_compile_definitions(zpc_cxx_deps
+    INTERFACE   ZS_ENABLE_OFB_ACCESS_CHECK=0
+)
+endif(ZS_ENABLE_OFB_ACCESS_CHECK)
 target_compile_definitions(zpc_cxx_deps
     INTERFACE   AssetDirPath="${PROJECT_SOURCE_DIR}/zpc_assets/"
 )

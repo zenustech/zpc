@@ -266,29 +266,42 @@ namespace zs {
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
+
       // need to work on __device__ func as well
+      u32 ec = 0;
       if constexpr (dim == 1) {
         LaunchConfig lc{};
         if (blockSize == 0)
           lc = LaunchConfig{std::true_type{}, dims.get(0_th), shmemBytes};
         else
           lc = LaunchConfig{(dims.get(0_th) + blockSize - 1) / blockSize, blockSize, shmemBytes};
-        cuda_safe_launch(loc, context, streamid, std::move(lc), thread_launch, dims.get(0_th), f);
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), thread_launch, dims.get(0_th),
+                              f);
       }
       // else if constexpr (arity == 2)
       else if constexpr (dim == 2) {
-        cuda_safe_launch(loc, context, streamid, {dims.get(0_th), dims.get(1_th), shmemBytes},
-                         block_thread_launch, f);
+        ec = cuda_safe_launch(loc, context, streamid, {dims.get(0_th), dims.get(1_th), shmemBytes},
+                              block_thread_launch, f);
       }
       // else if constexpr (arity == 3)
       else if constexpr (dim == 3) {
-        cuda_safe_launch(loc, context, streamid,
-                         {dims.get(0_th), dims.get(1_th) * dims.get(2_th), shmemBytes},
-                         block_tile_lane_launch, dims.get(2_th), f);
+        ec = cuda_safe_launch(loc, context, streamid,
+                              {dims.get(0_th), dims.get(1_th) * dims.get(2_th), shmemBytes},
+                              block_tile_lane_launch, dims.get(2_th), f);
       }
       if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.recordEventSpare(streamid);
+      if (this->shouldSync()) {
+        context.syncStreamSpare(streamid, loc);
+        // cudaStreamSynchronize((cudaStream_t)context.streamSpare(streamid));
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+        if (ec == 0) {
+          cudaDeviceSynchronize();
+          ec = Cuda::get_last_cuda_rt_error();
+        }
+#endif
+      }
+      checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
+      context.recordEventSpare(streamid, loc);
     }
     template <typename Range, typename F>
     auto operator()(Range &&range, F &&f,
@@ -315,19 +328,30 @@ namespace zs {
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
 
+      u32 ec = 0;
       if constexpr (is_std_tuple<RefT>::value) {
-        cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
       } else if constexpr (is_zip_iterator_v<IterT>) {
-        cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
-                         std::begin(FWD(range)));
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
+                              std::begin(FWD(range)));
       } else {  // wrap the non-zip range in a zip range
-        cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
-                         std::begin(zip(FWD(range))));
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
+                              std::begin(zip(FWD(range))));
       }
 
       if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid);
-      context.recordEventSpare(streamid);
+      if (this->shouldSync()) {
+        context.syncStreamSpare(streamid, loc);
+        // cudaStreamSynchronize((cudaStream_t)context.streamSpare(streamid));
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+        if (ec == 0) {
+          cudaDeviceSynchronize();
+          ec = Cuda::get_last_cuda_rt_error();
+        }
+#endif
+      }
+      checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
+      context.recordEventSpare(streamid, loc);
     }
 
     /// for_each

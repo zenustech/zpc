@@ -482,12 +482,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *_vector;
+          return *((value_type *)0);
         }
         if (i >= lane_width) {
           printf("tilevector ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)lane_width);
-          return *_vector;
+          return *((value_type *)0);
         }
 #endif
         if constexpr (is_power_of_two)
@@ -499,12 +499,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *_vector;
+          return *((value_type *)0);
         }
         if (i >= _vectorSize) {
           printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)_vectorSize);
-          return *_vector;
+          return *((value_type *)0);
         }
 #endif
         if constexpr (is_power_of_two)
@@ -522,12 +522,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *_vector;
+          return *((const value_type *)0);
         }
         if (i >= lane_width) {
           printf("tilevector ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)lane_width);
-          return *_vector;
+          return *((const value_type *)0);
         }
 #endif
         if constexpr (is_power_of_two)
@@ -539,12 +539,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *_vector;
+          return *((const value_type *)0);
         }
         if (i >= _vectorSize) {
           printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)_vectorSize);
-          return *_vector;
+          return *((const value_type *)0);
         }
 #endif
         if constexpr (is_power_of_two)
@@ -562,7 +562,7 @@ namespace zs {
       if (long long nt = numTiles(); tileid >= nt) {
         printf("tilevector ofb! global accessing tile [%lld] out of [0, %lld)\n", (long long)tileid,
                nt);
-        return TileVectorUnnamedView<Space, tile_vector_type, true>{_vector, lane_width,
+        return TileVectorUnnamedView<Space, tile_vector_type, true>{(value_type *)0, lane_width,
                                                                     _numChannels};
       }
 #endif
@@ -579,8 +579,8 @@ namespace zs {
       if (long long nt = numTiles(); tileid >= nt) {
         printf("tilevector ofb! global accessing tile [%lld] out of [0, %lld)\n", (long long)tileid,
                nt);
-        return TileVectorUnnamedView<Space, const_tile_vector_type, true>{_vector, lane_width,
-                                                                          _numChannels};
+        return TileVectorUnnamedView<Space, const_tile_vector_type, true>{(const value_type *)0,
+                                                                          lane_width, _numChannels};
       }
 #endif
       if constexpr (is_power_of_two)
@@ -600,12 +600,12 @@ namespace zs {
       if (chn + RetT::extent > _numChannels) {
         printf("tilevector ofb! accessing chn [%d, %d) out of [0, %d)\n", (int)chn,
                (int)(chn + RetT::extent), (int)_numChannels);
-        return RetT::zeros();
+        return RetT::uniform(*(value_type *)0);
       }
       if (i >= _vectorSize) {
         printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return RetT::zeros();
+        return RetT::uniform(*(value_type *)0);
       }
 #endif
       if constexpr (is_power_of_two)
@@ -670,12 +670,12 @@ namespace zs {
       if (chn + d > _numChannels) {
         printf("tilevector ofb! tieing chn [%d, %d) out of [0, %d)\n", (int)chn, (int)(chn + d),
                (int)_numChannels);
-        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+        return tuple_impl(_numChannels, i, std::make_index_sequence<d>{});
       }
       if (i >= _vectorSize) {
         printf("tilevector ofb! global tieing ele [%lld] out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+        return tuple_impl(chn, limits<size_type>::max(), std::make_index_sequence<d>{});
       }
 #endif
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
@@ -722,12 +722,12 @@ namespace zs {
       if (chn + d > _numChannels) {
         printf("tilevector ofb! tieing chn [%d, %d) out of [0, %d)\n", (int)chn, (int)(chn + d),
                (int)_numChannels);
-        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+        return tuple_impl(_numChannels, i, std::make_index_sequence<d>{});
       }
       if (i >= _vectorSize) {
         printf("tilevector ofb! global tieing ele [%lld] out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return tuple_impl(0, 0, typename gen_seq<d>::template uniform<0>{});
+        return tuple_impl(chn, limits<size_type>::max(), std::make_index_sequence<d>{});
       }
 #endif
       return tuple_impl(chn, i, std::make_index_sequence<d>{});

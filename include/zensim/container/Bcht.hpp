@@ -620,13 +620,20 @@ namespace zs {
       return sentinel_v;
     }
 
+    // https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type
     query(const original_key_type &key,
-          cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block>
-              &tile) noexcept {
+          cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+          = cooperative_groups::tiled_partition<bucket_size>(
+              cooperative_groups::this_thread_block())) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
+
+      const int cap = __popc(tile.ballot(1));  // assume active pattern 111110000..
+      // printf("rank[%d] tile size: %d, mask: %x, %d active\n", tile.thread_rank(),
+      //       tile.num_threads(), tile.ballot(1), cap);
+
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto lane_id = tile.thread_rank();
@@ -634,6 +641,24 @@ namespace zs {
       storage_key_type query_key = transKey(key);
 
       for (int iter = 0; iter < 3; ++iter) {
+#  if 1
+        // cg::reduce requires compute capability 8.0+
+        int location = bucket_size;
+        for (int i = lane_id; i < bucket_size; i += cap)
+          if (equal_to{}(query_key, _table.keys[bucket_offset + i])) {
+            location = i;
+            break;
+          }
+        for (int stride = 1; stride < cap; stride <<= 1) {
+          int tmp = tile.shfl(location, lane_id + stride);
+          if (lane_id + stride < cap) location = location < tmp ? location : tmp;
+        }
+        location = tile.shfl(location, 0);
+        if (location != bucket_size) {
+          index_type found_value = _table.indices[bucket_offset + location];
+          return found_value;
+        }
+#  else
         storage_key_type lane_key = _table.keys[bucket_offset + lane_id];
         auto key_exist_bitmap = tile.ballot(equal_to{}(query_key, lane_key));
         int key_lane = __ffs(key_exist_bitmap);
@@ -642,17 +667,60 @@ namespace zs {
           index_type found_value = _table.indices[bucket_offset + location];
           return found_value;
         }
+#  endif
         // check empty slots
-        // failed not because the bucket is full, but because ther is none
-        else if (__popc(tile.ballot(!equal_to{}(lane_key, compare_key_sentinel_v))) < bucket_size)
-          return sentinel_v;
-        else
-          bucket_offset = iter == 0 ? reinterpret_bits<mapped_hashed_key_type>(_hf1(key))
-                                          % _numBuckets * bucket_size
-                                    : reinterpret_bits<mapped_hashed_key_type>(_hf2(key))
-                                          % _numBuckets * bucket_size;
+        // failed not because the bucket is full, but because there is none
+        else {
+#  if 1
+          int load = 0;
+          for (int i = lane_id; i < bucket_size; i += cap)
+            if (!equal_to{}(compare_key_sentinel_v, _table.keys[bucket_offset + i])) ++load;
+          for (int stride = 1; stride < cap; stride <<= 1) {
+            int tmp = tile.shfl(load, lane_id + stride);
+            if (lane_id + stride < cap) load += tmp;
+          }
+          load = tile.shfl(load, 0);
+          if (load < bucket_size) return sentinel_v;
+#  else
+          if (__popc(tile.ballot(!equal_to{}(lane_key, compare_key_sentinel_v))) < bucket_size)
+            return sentinel_v;
+#  endif
+          else
+            bucket_offset = iter == 0 ? reinterpret_bits<mapped_hashed_key_type>(_hf1(key))
+                                            % _numBuckets * bucket_size
+                                      : reinterpret_bits<mapped_hashed_key_type>(_hf2(key))
+                                            % _numBuckets * bucket_size;
+        }
       }
       return sentinel_v;
+    }
+
+    template <typename F, execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[maybe_unused]] __forceinline__ __device__ bool iter_keys(
+        const original_key_type &find_key, F &&f,
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+        = cooperative_groups::tiled_partition<bucket_size>(
+            cooperative_groups::this_thread_block())) noexcept {
+      namespace cg = ::cooperative_groups;
+
+      bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
+      index_type result;
+
+      auto work_queue = tile.ballot(has_work);
+      while (work_queue) {
+        auto cur_rank = __ffs(work_queue) - 1;
+        auto cur_work = tile.shfl(find_key, cur_rank);
+        auto find_result = query(cur_work, tile);
+
+        if (tile.thread_rank() == cur_rank) {
+          result = find_result;
+          has_work = false;
+        }
+        work_queue = tile.ballot(has_work);
+      }
+      // do not let query workflow interleaved with this execution
+      if (result != sentinel_v) f(result);
+      return result != sentinel_v;  // true when successfully finding the key
     }
 #endif
 
@@ -687,38 +755,41 @@ namespace zs {
     namespace cg = ::cooperative_groups;
     constexpr auto space = execspace_e::cuda;
     tb._buildSuccess.setVal(1);
-    pol(range(N), [tb = proxy<space>(tb), f = FWD(f)] __device__(std::size_t id) mutable {
-      using table_t = RM_CVREF_T(tb);
-      auto block = cg::this_thread_block();
-      auto tile = cg::tiled_partition<B>(block);
+    // make sure all tiles (of size B) are fully active throughout
+    pol(range((N + B - 1) / B * B),
+        [tb = proxy<space>(tb), f = FWD(f), N] __device__(std::size_t id) mutable {
+          using table_t = RM_CVREF_T(tb);
+          auto block = cg::this_thread_block();
+          auto tile = cg::tiled_partition<B>(block);
 
-      bool has_work = true;
-      auto work = f(id);
-      static_assert(std::is_convertible_v<RM_CVREF_T(work), typename table_t::key_type>,
-                    "key type not insertable to this bcht.");
+          bool has_work = id < N;
+          const auto work = id < N ? f(id) : f(N - 1);
+          static_assert(std::is_convertible_v<RM_CVREF_T(work), typename table_t::key_type>,
+                        "key type not insertable to this bcht.");
 
-      has_work = true;
+          has_work = true;
 
-      bool success = true;
-      u32 work_queue = tile.ballot(has_work);
-      int iter = 0;
-      while (work_queue) {
-        // off-load one work from the queue
-        auto cur_rank = __ffs(work_queue) - 1;
-        // every worker in the tile works on the work just popped
-        auto cur_work = tile.shfl(work, cur_rank);
+          bool success = true;
+          u32 work_queue = tile.ballot(has_work);
+          while (work_queue) {
+            // off-load one work from the queue
+            auto cur_rank = __ffs(work_queue) - 1;
+            // every worker in the tile works on the work just popped
+            auto cur_work = tile.shfl(work, cur_rank);
 
-        auto status = tb.insert(cur_work, tile);
+            auto status = tb.insert(cur_work, tile);
 
-        if (tile.thread_rank() == cur_rank) {
-          has_work = false;
-          success = status != table_t::failure_token_v;
-        }
-        work_queue = tile.ballot(has_work);
-      }
+            if (tile.thread_rank() == cur_rank) {
+              has_work = false;
+              success = status != table_t::failure_token_v;
+            }
+            work_queue = tile.ballot(has_work);
+          }
 
-      if (!tile.all(success)) *tb._success = false;
-    });
+          if (!tile.all(success)) *tb._success = false;
+        });
+    if (tb._buildSuccess.getVal() == 0)
+      throw std::runtime_error("building bucketed cuckoo hash table failed!\n");
     return;
   }
 #endif

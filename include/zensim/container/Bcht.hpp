@@ -462,16 +462,25 @@ namespace zs {
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type
     insert(const original_key_type &key,
-           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block>
-               &tile) noexcept {
+           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+           = cooperative_groups::tiled_partition<bucket_size>(
+               cooperative_groups::this_thread_block())) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
+
+      const int cap = __popc(tile.ballot(1));  // assume active pattern 0...001111 [15, 14, ..., 0]
+
       mars_rng_32 rng;
       u32 cuckoo_counter = 0;
       // auto bucket_id = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets;
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto lane_id = tile.thread_rank();
+      auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
+        volatile storage_key_type *key_dst
+            = const_cast<volatile storage_key_type *>(keys + bucket_offset + i);
+        return *key_dst;
+      };
 
       index_type no = sentinel_v;
 
@@ -479,17 +488,43 @@ namespace zs {
       index_type insertion_index = sentinel_v;
       int spin_iter = 0;
       do {
+#  if 1
+        int exist = 0;
+        for (int i = lane_id; i < bucket_size; i += cap)
+          if (equal_to{}(insertion_key, load_key(i))) {
+            exist = 1;
+            break;
+          }
+        for (int stride = 1; stride < cap; stride <<= 1) {
+          int tmp = tile.shfl(exist, lane_id + stride);
+          if (lane_id + stride < cap) exist |= tmp;
+        }
+        exist = tile.shfl(exist, 0);
+        if (exist) return sentinel_v;
+#  else
         // simultaneously check every slot in the bucket
         storage_key_type lane_key = _table.keys[bucket_offset + lane_id];
         // if the key already exist, exit early
         // even though it may be moved out of this bucket to another
         if (tile.any(equal_to{}(lane_key, insertion_key))) return sentinel_v;
+#  endif
 
+#  if 1
+        int load = 0;
+        for (int i = lane_id; i < bucket_size; i += cap)
+          if (!equal_to{}(compare_key_sentinel_v, load_key(i))) ++load;
+        for (int stride = 1; stride < cap; stride <<= 1) {
+          int tmp = tile.shfl(load, lane_id + stride);
+          if (lane_id + stride < cap) load += tmp;
+        }
+        load = tile.shfl(load, 0);
+#  else
         // if another tile just inserted the same key during this period,
         // then it shall fail the following insertion procedure
         // compute load
         auto load_bitmap = tile.ballot(!equal_to{}(lane_key, compare_key_sentinel_v));
         int load = __popc(load_bitmap);
+#  endif
 
         // if bucket is not full
         if (load != bucket_size) {
@@ -506,6 +541,24 @@ namespace zs {
             continue;
           }
           thread_fence(exec_cuda);
+#  if 1
+          exist = 0;
+          for (int i = lane_id; i < bucket_size; i += cap)
+            if (equal_to{}(insertion_key, load_key(i))) {
+              exist = 1;
+              break;
+            }
+          for (int stride = 1; stride < cap; stride <<= 1) {
+            int tmp = tile.shfl(exist, lane_id + stride);
+            if (lane_id + stride < cap) exist |= tmp;
+          }
+          exist = tile.shfl(exist, 0);  // implicit tile sync here
+          if (exist) {
+            if (lane_id == 0)  // release lock
+              atomic_exch(exec_cuda, _table.status + bucket_offset / bucket_size, -1);
+            return sentinel_v;
+          }
+#  else
           // read again after locking the bucket
           lane_key = _table.keys[bucket_offset + lane_id];
           if (tile.any(equal_to{}(lane_key, insertion_key))) {  // implicit tile sync here
@@ -513,6 +566,7 @@ namespace zs {
               atomic_exch(exec_cuda, _table.status + bucket_offset / bucket_size, -1);
             return sentinel_v;  // although key found, return sentinel to suggest doing nothing
           }
+#  endif
 
           if (lane_id == 0) {
             if constexpr (compare_key) {
@@ -630,7 +684,7 @@ namespace zs {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
-      const int cap = __popc(tile.ballot(1));  // assume active pattern 111110000..
+      const int cap = __popc(tile.ballot(1));  // assume active pattern 0...001111 [15, 14, ..., 0]
       // printf("rank[%d] tile size: %d, mask: %x, %d active\n", tile.thread_rank(),
       //       tile.num_threads(), tile.ballot(1), cap);
 

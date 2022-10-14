@@ -460,10 +460,9 @@ namespace zs {
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
-    __forceinline__ __device__ index_type
-    tile_insert(const original_key_type &key,
-                cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block>
-                    &tile) noexcept {
+    __forceinline__ __device__ index_type tile_insert(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        const original_key_type &key, index_type insertion_index = sentinel_v) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
@@ -481,10 +480,9 @@ namespace zs {
         return *key_dst;
       };
 
-      index_type no = sentinel_v;
+      index_type no = insertion_index;
 
       storage_key_type insertion_key = transKey(key);
-      index_type insertion_index = sentinel_v;
       int spin_iter = 0;
       do {
 #  if 1
@@ -675,7 +673,7 @@ namespace zs {
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[maybe_unused]] __forceinline__ __device__ index_type
-    insert(const original_key_type &insertion_key,
+    insert(const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
            cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
            = cooperative_groups::tiled_partition<bucket_size>(
                cooperative_groups::this_thread_block())) noexcept {
@@ -692,7 +690,8 @@ namespace zs {
       while (work_queue) {
         auto cur_rank = __ffs(work_queue) - 1;
         auto cur_work = tile.shfl(insertion_key, cur_rank);
-        auto id = tile_insert(cur_work, tile);
+        auto cur_index = tile.shfl(insertion_index, cur_rank);  // gather index as well
+        auto id = tile_insert(tile, cur_work, cur_index);
 
         if (tile.thread_rank() == cur_rank) {
           result = id;
@@ -708,10 +707,9 @@ namespace zs {
 
     // https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
-    __forceinline__ __device__ index_type
-    tile_query(const original_key_type &key,
-               cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block>
-                   &tile) noexcept {
+    __forceinline__ __device__ index_type tile_query(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        const original_key_type &key) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
@@ -795,7 +793,7 @@ namespace zs {
       while (work_queue) {
         auto cur_rank = __ffs(work_queue) - 1;
         auto cur_work = tile.shfl(find_key, cur_rank);
-        auto find_result = tile_query(cur_work, tile);
+        auto find_result = tile_query(tile, cur_work);
 
         if (tile.thread_rank() == cur_rank) {
           result = find_result;

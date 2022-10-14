@@ -459,6 +459,9 @@ namespace zs {
     }
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
+    ///
+    /// insertion
+    ///
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type tile_insert(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
@@ -705,11 +708,15 @@ namespace zs {
       return result;
     }
 
+    ///
+    /// query
+    ///
     // https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <bool retrieve_index = true, execspace_e S = space,
+              enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type tile_query(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
-        const original_key_type &key) noexcept {
+        const original_key_type &key, wrapv<retrieve_index> = {}) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
@@ -738,8 +745,12 @@ namespace zs {
         }
         location = tile.shfl(location, 0);
         if (location != bucket_size) {
-          index_type found_value = _table.indices[bucket_offset + location];
-          return found_value;
+          if constexpr (retrieve_index) {
+            index_type found_value = _table.indices[bucket_offset + location];
+            return found_value;
+          } else {
+            return bucket_offset + location;
+          }
         }
 #  else
         storage_key_type lane_key = _table.keys[bucket_offset + lane_id];
@@ -747,8 +758,12 @@ namespace zs {
         int key_lane = __ffs(key_exist_bitmap);
         int location = key_lane - 1;
         if (location != -1) {
-          index_type found_value = _table.indices[bucket_offset + location];
-          return found_value;
+          if constexpr (retrieve_index) {
+            index_type found_value = _table.indices[bucket_offset + location];
+            return found_value;
+          } else {
+            return bucket_offset + location;
+          }
         }
 #  endif
         // check empty slots
@@ -794,6 +809,35 @@ namespace zs {
         auto cur_rank = __ffs(work_queue) - 1;
         auto cur_work = tile.shfl(find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work);
+
+        if (tile.thread_rank() == cur_rank) {
+          result = find_result;
+          has_work = false;
+        }
+        work_queue = tile.ballot(has_work);
+      }
+      return result;
+    }
+
+    ///
+    /// entry (return the location of the key)
+    ///
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[nodiscard]] __forceinline__ __device__ index_type
+    entry(const original_key_type &find_key,
+          cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+          = cooperative_groups::tiled_partition<bucket_size>(
+              cooperative_groups::this_thread_block())) noexcept {
+      namespace cg = ::cooperative_groups;
+
+      bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
+      index_type result = sentinel_v;
+
+      auto work_queue = tile.ballot(has_work);
+      while (work_queue) {
+        auto cur_rank = __ffs(work_queue) - 1;
+        auto cur_work = tile.shfl(find_key, cur_rank);
+        auto find_result = tile_query(tile, cur_work, wrapv<false>{});
 
         if (tile.thread_rank() == cur_rank) {
           result = find_result;

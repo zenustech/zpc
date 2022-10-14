@@ -461,10 +461,9 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type
-    insert(const original_key_type &key,
-           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
-           = cooperative_groups::tiled_partition<bucket_size>(
-               cooperative_groups::this_thread_block())) noexcept {
+    tile_insert(const original_key_type &key,
+                cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block>
+                    &tile) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
@@ -674,13 +673,45 @@ namespace zs {
       return sentinel_v;
     }
 
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[maybe_unused]] __forceinline__ __device__ index_type
+    insert(const original_key_type &insertion_key,
+           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+           = cooperative_groups::tiled_partition<bucket_size>(
+               cooperative_groups::this_thread_block())) noexcept {
+      namespace cg = ::cooperative_groups;
+
+      bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
+      bool success = true;
+      index_type result = sentinel_v;
+
+      static_assert(std::is_convertible_v<RM_CVREF_T(insertion_key), key_type>,
+                    "key type not insertable to this bcht.");
+
+      u32 work_queue = tile.ballot(has_work);
+      while (work_queue) {
+        auto cur_rank = __ffs(work_queue) - 1;
+        auto cur_work = tile.shfl(insertion_key, cur_rank);
+        auto id = tile_insert(cur_work, tile);
+
+        if (tile.thread_rank() == cur_rank) {
+          result = id;
+          success = id != failure_token_v;
+          has_work = false;
+        }
+        work_queue = tile.ballot(has_work);
+      }
+
+      if (!tile.all(success)) *_success = false;
+      return result;
+    }
+
     // https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type
-    query(const original_key_type &key,
-          cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
-          = cooperative_groups::tiled_partition<bucket_size>(
-              cooperative_groups::this_thread_block())) noexcept {
+    tile_query(const original_key_type &key,
+               cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block>
+                   &tile) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
@@ -749,22 +780,22 @@ namespace zs {
       return sentinel_v;
     }
 
-    template <typename F, execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
-    [[maybe_unused]] __forceinline__ __device__ bool iter_keys(
-        const original_key_type &find_key, F &&f,
-        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
-        = cooperative_groups::tiled_partition<bucket_size>(
-            cooperative_groups::this_thread_block())) noexcept {
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[nodiscard]] __forceinline__ __device__ index_type
+    query(const original_key_type &find_key,
+          cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+          = cooperative_groups::tiled_partition<bucket_size>(
+              cooperative_groups::this_thread_block())) noexcept {
       namespace cg = ::cooperative_groups;
 
       bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
-      index_type result;
+      index_type result = sentinel_v;
 
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
         auto cur_rank = __ffs(work_queue) - 1;
         auto cur_work = tile.shfl(find_key, cur_rank);
-        auto find_result = query(cur_work, tile);
+        auto find_result = tile_query(cur_work, tile);
 
         if (tile.thread_rank() == cur_rank) {
           result = find_result;
@@ -772,9 +803,7 @@ namespace zs {
         }
         work_queue = tile.ballot(has_work);
       }
-      // do not let query workflow interleaved with this execution
-      if (result != sentinel_v) f(result);
-      return result != sentinel_v;  // true when successfully finding the key
+      return result;
     }
 #endif
 
@@ -799,53 +828,5 @@ namespace zs {
       const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
     return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>>{table};
   }
-
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
-  template <typename F, typename KeyT, typename IndexT, bool KeyCompare, typename Hasher, int B,
-            typename AllocatorT>
-  void bucket_hash_insertion(CudaExecutionPolicy &pol, std::size_t N, F &&f,
-                             bcht<KeyT, IndexT, KeyCompare, Hasher, B, AllocatorT> &tb) {
-    using namespace zs;
-    namespace cg = ::cooperative_groups;
-    constexpr auto space = execspace_e::cuda;
-    tb._buildSuccess.setVal(1);
-    // make sure all tiles (of size B) are fully active throughout
-    pol(range((N + B - 1) / B * B),
-        [tb = proxy<space>(tb), f = FWD(f), N] __device__(std::size_t id) mutable {
-          using table_t = RM_CVREF_T(tb);
-          auto block = cg::this_thread_block();
-          auto tile = cg::tiled_partition<B>(block);
-
-          bool has_work = id < N;
-          const auto work = id < N ? f(id) : f(N - 1);
-          static_assert(std::is_convertible_v<RM_CVREF_T(work), typename table_t::key_type>,
-                        "key type not insertable to this bcht.");
-
-          has_work = true;
-
-          bool success = true;
-          u32 work_queue = tile.ballot(has_work);
-          while (work_queue) {
-            // off-load one work from the queue
-            auto cur_rank = __ffs(work_queue) - 1;
-            // every worker in the tile works on the work just popped
-            auto cur_work = tile.shfl(work, cur_rank);
-
-            auto status = tb.insert(cur_work, tile);
-
-            if (tile.thread_rank() == cur_rank) {
-              has_work = false;
-              success = status != table_t::failure_token_v;
-            }
-            work_queue = tile.ballot(has_work);
-          }
-
-          if (!tile.all(success)) *tb._success = false;
-        });
-    if (tb._buildSuccess.getVal() == 0)
-      throw std::runtime_error("building bucketed cuckoo hash table failed!\n");
-    return;
-  }
-#endif
 
 }  // namespace zs

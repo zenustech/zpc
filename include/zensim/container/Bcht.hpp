@@ -377,6 +377,19 @@ namespace zs {
       return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
 
+    inline size_type size() const { return _cnt.getVal(0); }
+
+    void reset(bool clearCnt) {
+      _buildSuccess.setVal(0);
+      _table.keys.reset(0x3f);
+      // no need to worry about clearing indices
+      _table.status.reset(-1);
+      if (clearCnt) _cnt.setVal(0);
+      _buildSuccess.setVal(1);
+    }
+
+    template <typename Policy> void resize(Policy &&, std::size_t newCapacity);
+
     std::size_t _capacity;  // make sure this comes ahead
     size_type _numBuckets;
     Table _table;
@@ -386,6 +399,25 @@ namespace zs {
     u32 _maxCuckooChains;
     hasher_type _hf0, _hf1, _hf2;
   };
+
+  template <typename KeyT, typename IndexT, bool KeyCompare, typename HashT, int B,
+            typename AllocatorT>
+  template <typename Policy>
+  void bcht<KeyT, IndexT, KeyCompare, HashT, B, AllocatorT>::resize(Policy &&pol,
+                                                                    std::size_t newCapacity) {
+    newCapacity = padded_capacity(newCapacity);
+    if (newCapacity <= _capacity) return;
+    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    _capacity = newCapacity;
+    _numBuckets = _capacity / bucket_size;
+    _table.resize(_capacity);
+    reset(false);
+    _activeKeys.resize(_capacity);  // previous records are guaranteed to be preserved
+    const auto numEntries = size();
+    pol(range(numEntries), [tb = proxy<space>(*this)] ZS_LAMBDA(index_type i) mutable {
+      tb.insert(tb._activeKeys[i], i, false);
+    });
+  }
 
   struct mars_rng_32 {
     u32 y;
@@ -461,11 +493,13 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     ///
     /// insertion
+    // @enqueue_key: whether pushing inserted key-index pair into _activeKeys
     ///
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type tile_insert(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
-        const original_key_type &key, index_type insertion_index = sentinel_v) noexcept {
+        const original_key_type &key, index_type insertion_index = sentinel_v,
+        bool enqueueKey = true) noexcept {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
@@ -610,7 +644,7 @@ namespace zs {
           casSuccess = tile.shfl(casSuccess, 0);
           if (casSuccess) {
             no = tile.shfl(no, 0);
-            if (lane_id == 0) _activeKeys[no] = key;
+            if (lane_id == 0 && enqueueKey) _activeKeys[no] = key;
             return no;
           }
         } else {
@@ -677,6 +711,7 @@ namespace zs {
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[maybe_unused]] __forceinline__ __device__ index_type
     insert(const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
+           bool enqueueKey = true,
            cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
            = cooperative_groups::tiled_partition<bucket_size>(
                cooperative_groups::this_thread_block())) noexcept {
@@ -694,7 +729,7 @@ namespace zs {
         auto cur_rank = __ffs(work_queue) - 1;
         auto cur_work = tile.shfl(insertion_key, cur_rank);
         auto cur_index = tile.shfl(insertion_index, cur_rank);  // gather index as well
-        auto id = tile_insert(tile, cur_work, cur_index);
+        auto id = tile_insert(tile, cur_work, cur_index, enqueueKey);
 
         if (tile.thread_rank() == cur_rank) {
           result = id;

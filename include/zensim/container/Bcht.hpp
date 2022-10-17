@@ -754,7 +754,7 @@ namespace zs {
     // https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/
     template <bool retrieve_index = true, execspace_e S = space,
               enable_if_all<S == execspace_e::cuda> = 0>
-    __forceinline__ __device__ index_type tile_query(
+    __forceinline__ __host__ __device__ index_type tile_query(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const original_key_type &key, wrapv<retrieve_index> = {}) const noexcept {
       namespace cg = ::cooperative_groups;
@@ -834,7 +834,7 @@ namespace zs {
     }
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
-    [[nodiscard]] __forceinline__ __device__ index_type
+    [[nodiscard]] __forceinline__ __host__ __device__ index_type
     query(const original_key_type &find_key,
           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
           = cooperative_groups::tiled_partition<bucket_size>(
@@ -863,7 +863,7 @@ namespace zs {
     /// entry (return the location of the key)
     ///
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
-    [[nodiscard]] __forceinline__ __device__ index_type
+    [[nodiscard]] __forceinline__ __host__ __device__ index_type
     entry(const original_key_type &find_key,
           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
           = cooperative_groups::tiled_partition<bucket_size>(

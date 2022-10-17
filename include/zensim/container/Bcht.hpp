@@ -275,7 +275,7 @@ namespace zs {
     }
 
     bcht(const allocator_type &allocator, std::size_t capacity)
-        : _capacity{padded_capacity(capacity)},
+        : _capacity{padded_capacity(capacity) * 2},
           _numBuckets{(size_type)_capacity / bucket_size},
           _table{allocator, _capacity},
           _activeKeys{allocator, _capacity},
@@ -292,7 +292,7 @@ namespace zs {
       _table.status.reset(-1);  // byte-wise init
 
       // maximum number of cuckoo chains
-      double lg_input_size = (float)(std::log((double)capacity) / log(2.0));
+      double lg_input_size = (float)(std::log((double)_capacity) / log(2.0));
       const unsigned max_iter_const = 7;
       _maxCuckooChains = static_cast<u32>(max_iter_const * lg_input_size);
 
@@ -412,7 +412,7 @@ namespace zs {
   template <typename Policy>
   void bcht<KeyT, IndexT, KeyCompare, HashT, B, AllocatorT>::resize(Policy &&pol,
                                                                     std::size_t newCapacity) {
-    newCapacity = padded_capacity(newCapacity);
+    newCapacity = padded_capacity(newCapacity) * 2;
     if (newCapacity <= _capacity) return;
     constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
     _capacity = newCapacity;
@@ -483,7 +483,6 @@ namespace zs {
         : _table{table._table.keys.data(), table._table.indices.data(), table._table.status.data()},
           _activeKeys{table._activeKeys.data()},
           _cnt{table._cnt.data()},
-          _capacity{table._capacity},
           _success{table._buildSuccess.data()},
           _numBuckets{table._numBuckets},
           _maxCuckooChains{table._maxCuckooChains},
@@ -491,6 +490,9 @@ namespace zs {
           _hf1{table._hf1},
           _hf2{table._hf2} {}
 
+    constexpr std::size_t capacity() const noexcept {
+      return (std::size_t)_numBuckets * (std::size_t)bucket_size;
+    }
     constexpr auto transKey(const key_type &key) const noexcept {
       if constexpr (compare_key)
         return key;
@@ -1212,7 +1214,6 @@ namespace zs {
     conditional_t<is_const_structure, const key_type *, key_type *> _activeKeys;
     conditional_t<is_const_structure, const index_type *, index_type *> _cnt;
     conditional_t<is_const_structure, const u8 *, u8 *> _success;
-    std::size_t _capacity;
     size_type _numBuckets;
     u32 _maxCuckooChains;
     hasher_type _hf0, _hf1, _hf2;

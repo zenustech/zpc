@@ -65,7 +65,7 @@ namespace zs {
 
     using SpLs = SparseLevelSet<3, grid_e::collocated>;
 
-    using IV = typename SpLs::table_t::key_t;
+    using IV = typename SpLs::IV;
     using TV = vec<typename SpLs::value_type, 3>;
 
     sdfGridPtr->tree().voxelizeActiveTiles();
@@ -112,7 +112,7 @@ namespace zs {
     auto table = proxy<execspace_e::host>(ret._table);
     // auto tiles = proxy<execspace_e::host>({"sdf", "v"}, ret._tiles);
     auto gridview = proxy<execspace_e::host>(ret._grid);
-    table.clear();
+    ret._table.reset(true);
 
     SDFTreeType::LeafCIter sdfIter = sdfGridPtr->tree().cbeginLeaf();
     // VelTreeType::LeafCIter velIter = velGridPtr->tree().cbeginLeaf();

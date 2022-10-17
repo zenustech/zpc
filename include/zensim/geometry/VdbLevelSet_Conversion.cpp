@@ -28,7 +28,7 @@ namespace zs {
     using SDFPtr = typename GridType::Ptr;
     const SDFPtr &gridPtr = grid.as<SDFPtr>();
     using SpLs = SparseLevelSet<3, grid_e::collocated>;
-    using IV = typename SpLs::table_t::key_t;
+    using IV = typename SpLs::IV;
     using TV = vec<typename SpLs::value_type, 3>;
 
     gridPtr->tree().voxelizeActiveTiles();
@@ -72,7 +72,7 @@ namespace zs {
 #endif
     if constexpr (is_backend_available(exec_omp) && !onwin) {
       auto ompExec = omp_exec();
-      ret._table.reset(ompExec, true);
+      ret._table.reset(true);
       // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
               [&ret, table = proxy<execspace_e::openmp>(ret._table),
@@ -142,7 +142,7 @@ namespace zs {
     } else {  // fall back to serial execution
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);
-      table.clear();
+      ret._table.reset(true);
       for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
         const LeafType &node = *iter;
         if (node.onVoxelCount() <= 0) continue;
@@ -286,7 +286,7 @@ namespace zs {
     using GridPtr = typename GridType::Ptr;
     const GridPtr &gridPtr = grid.as<GridPtr>();
     using SpLs = SparseLevelSet<3, grid_e::collocated>;
-    using IV = typename SpLs::table_t::key_t;
+    using IV = typename SpLs::IV;
     using TV = vec<typename SpLs::value_type, 3>;
 
     gridPtr->tree().voxelizeActiveTiles();
@@ -354,7 +354,7 @@ namespace zs {
 #endif
     if constexpr (is_backend_available(exec_omp) && !onwin) {
       auto ompExec = omp_exec();
-      ret._table.reset(ompExec, true);
+      ret._table.reset(true);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
               [&ret, table = proxy<execspace_e::openmp>(ret._table),
                gridview = proxy<execspace_e::openmp>(ret._grid)](LeafCIterRange &range) mutable {
@@ -429,7 +429,7 @@ namespace zs {
     } else {
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);
-      table.clear();
+      ret._table.reset(true);
       for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
         const TreeType::LeafNodeType &node = *iter;
         if (node.onVoxelCount() > 0) {
@@ -470,7 +470,7 @@ namespace zs {
     using GridPtr = typename GridType::Ptr;
     const GridPtr &gridPtr = grid.as<GridPtr>();
     using SpLs = SparseLevelSet<3, grid_e::staggered>;
-    using IV = typename SpLs::table_t::key_t;
+    using IV = typename SpLs::IV;
     using TV = vec<typename SpLs::value_type, 3>;
 
     assert(gridPtr->getGridClass() == openvdb::GridClass::GRID_STAGGERED);
@@ -518,7 +518,7 @@ namespace zs {
 #endif
     if constexpr (is_backend_available(exec_omp) && !onwin) {
       auto ompExec = omp_exec();
-      ret._table.reset(ompExec, true);
+      ret._table.reset(true);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
               [&ret, table = proxy<execspace_e::openmp>(ret._table),
                gridview = proxy<execspace_e::openmp>(ret._grid)](LeafCIterRange &range) mutable {
@@ -593,7 +593,7 @@ namespace zs {
     } else {
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);
-      table.clear();
+      ret._table.reset(true);
       for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
         const TreeType::LeafNodeType &node = *iter;
         if (node.onVoxelCount() > 0) {

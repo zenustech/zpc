@@ -2,11 +2,13 @@
 #include <utility>
 
 #include "Structure.hpp"
+#include "zensim/container/Bcht.hpp"
 #include "zensim/container/HashTable.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
 #include "zensim/math/Vec.h"
 #include "zensim/math/curve/InterpolationKernel.hpp"
 #include "zensim/math/matrix/Transform.hpp"
+#include "zensim/types/Property.h"
 #include "zensim/zpc_tpls/fmt/color.h"
 
 namespace zs {
@@ -22,9 +24,11 @@ namespace zs {
     using index_type = i32;
     using grid_t = Grid<value_type, dim, side_length, category>;
     using size_type = typename grid_t::size_type;
-    using table_t = HashTable<index_type, dim, size_type>;
+    // using table_t = HashTable<index_type, dim, size_type>;
+    using table_t
+        = bcht<zs::vec<index_type, dim>, int, false, vec_pack_hash<zs::vec<index_type, dim>>, 16>;
 
-    using IV = typename table_t::key_t;
+    using IV = typename table_t::original_key_type;
     using TV = vec<value_type, dim>;
     using TM = vec<value_type, dim, dim>;
     using Affine = vec<value_type, dim + 1, dim + 1>;
@@ -472,7 +476,7 @@ namespace zs {
       auto [bno, cno] = decompose_coord(coord);
       return bno == table_t::sentinel_v ? defaultVal : _grid(chn, (size_type)bno, cno);
     }
-    constexpr value_type value_or(channel_counter_type chn, typename table_t::value_t blockno,
+    constexpr value_type value_or(channel_counter_type chn, typename table_t::index_type blockno,
                                   cell_index_type cellno, value_type defaultVal) const noexcept {
       return blockno == table_t::sentinel_v ? defaultVal : _grid(chn, (size_type)blockno, cellno);
     }

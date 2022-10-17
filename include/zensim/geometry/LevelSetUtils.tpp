@@ -196,8 +196,7 @@ namespace zs {
 
 #if 1
     // shrink table
-    pol(range(ls._table._tableSize),
-        zs::ResetHashTable{proxy<space>(ls._table), false});  // cnt not yet cleared
+    ls._table.reset(false);  // do not clear cnt
     pol(range(newNbs), [blocknos = proxy<space>(preservedBlockNos),
                         blockids = proxy<space>(prevKeys), newTable = proxy<space>(ls._table),
                         newNbs] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
@@ -302,7 +301,7 @@ namespace zs {
 #endif
             for (auto loc : ndrange<3>(3)) {
               auto offset = (make_vec<int>(loc) - 1) * (typename ls_t::size_type)ls_t::side_length;
-              ls._table.insert(coord + offset);
+              ls._table.insert((coord + offset).template cast<int>());
             }
           });
       auto newNbs = ls.numBlocks();

@@ -26,7 +26,7 @@ namespace zs {
     using size_type = typename grid_t::size_type;
     // using table_t = HashTable<index_type, dim, size_type>;
     using table_t
-        = bcht<zs::vec<index_type, dim>, int, false, vec_pack_hash<zs::vec<index_type, dim>>, 16>;
+        = bcht<zs::vec<index_type, dim>, int, true, universal_hash<zs::vec<index_type, dim>>, 16>;
 
     using IV = typename table_t::original_key_type;
     using TV = vec<value_type, dim>;

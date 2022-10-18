@@ -524,7 +524,13 @@ namespace zs {
       auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
         volatile storage_key_type *key_dst
             = const_cast<volatile storage_key_type *>(keys + bucket_offset + i);
-        return *key_dst;
+        if constexpr (compare_key && key_is_vec) {
+          storage_key_type ret{};
+          for (typename original_key_type::index_type i = 0; i != original_key_type::extent; ++i)
+            ret.val(i) = key_dst->data()[i];
+          return ret;
+        } else
+          return *key_dst;
       };
 
       index_type no = insertion_index;
@@ -614,11 +620,12 @@ namespace zs {
 
           if (lane_id == 0) {
             if constexpr (compare_key) {
-              volatile storage_key_type *key_dst
-                  = const_cast<volatile storage_key_type *>(_table.keys + bucket_offset + load);
-              storage_key_type retrieved_val = *const_cast<storage_key_type *>(key_dst);
+              // storage_key_type retrieved_val = *const_cast<storage_key_type *>(key_dst);
+              storage_key_type retrieved_val = load_key(load);
               if (equal_to{}(retrieved_val,
                              compare_key_sentinel_v)) {  // this slot not yet occupied
+                volatile storage_key_type *key_dst
+                    = const_cast<volatile storage_key_type *>(_table.keys + bucket_offset + load);
                 if constexpr (key_is_vec) {
                   for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
                        ++i)
@@ -715,7 +722,7 @@ namespace zs {
           cuckoo_counter++;
         }
       } while (cuckoo_counter < _maxCuckooChains);
-      return sentinel_v;
+      return failure_token_v;
     }
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
@@ -900,9 +907,7 @@ namespace zs {
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
-        volatile storage_key_type *key_dst
-            = const_cast<volatile storage_key_type *>(keys + bucket_offset + i);
-        return *key_dst;
+        return keys[bucket_offset + i];
       };
 
       index_type no = insertion_index;
@@ -928,7 +933,7 @@ namespace zs {
             if constexpr (compare_key) {
               volatile storage_key_type *key_dst
                   = const_cast<volatile storage_key_type *>(_table.keys + bucket_offset + load);
-              storage_key_type retrieved_val = *const_cast<storage_key_type *>(key_dst);
+              storage_key_type retrieved_val = load_key(load);
               if (equal_to{}(retrieved_val,
                              compare_key_sentinel_v)) {  // this slot not yet occupied
                 if constexpr (key_is_vec) {
@@ -997,7 +1002,7 @@ namespace zs {
           cuckoo_counter++;
         }
       } while (cuckoo_counter < _maxCuckooChains);
-      return sentinel_v;
+      return failure_token_v;
     }
 
     template <bool retrieve_index = true, execspace_e S = space,
@@ -1057,7 +1062,13 @@ namespace zs {
       auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
         volatile storage_key_type *key_dst
             = const_cast<volatile storage_key_type *>(keys + bucket_offset + i);
-        return *key_dst;
+        if constexpr (compare_key && key_is_vec) {
+          storage_key_type ret{};
+          for (typename original_key_type::index_type i = 0; i != original_key_type::extent; ++i)
+            ret.val(i) = key_dst->data()[i];
+          return ret;
+        } else
+          return *key_dst;
       };
 
       index_type no = insertion_index;
@@ -1065,7 +1076,7 @@ namespace zs {
       storage_key_type insertion_key = transKey(key);
 
       do {
-#  pragma omp barrier
+#  pragma omp flush
         bool exist = false;
         for (int i = 0; i != bucket_size; ++i)
           if (equal_to{}(insertion_key, load_key(i))) exist = true;
@@ -1083,11 +1094,11 @@ namespace zs {
           {
             // check duplication again
             if constexpr (compare_key) {
-              volatile storage_key_type *key_dst
-                  = const_cast<volatile storage_key_type *>(_table.keys + bucket_offset + load);
-              storage_key_type retrieved_val = *const_cast<storage_key_type *>(key_dst);
+              storage_key_type retrieved_val = load_key(load);
               if (equal_to{}(retrieved_val,
                              compare_key_sentinel_v)) {  // this slot not yet occupied
+                volatile storage_key_type *key_dst
+                    = const_cast<volatile storage_key_type *>(_table.keys + bucket_offset + load);
                 if constexpr (key_is_vec) {
                   for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
                        ++i)
@@ -1112,6 +1123,7 @@ namespace zs {
             }
           }
 
+#  pragma omp flush
           if (casSuccess) {
             if (enqueueKey) _activeKeys[no] = key;
             return no;
@@ -1121,6 +1133,7 @@ namespace zs {
             auto random_location = rng() % bucket_size;
             storage_key_type old_key;
             index_type old_index;
+#  pragma omp flush
 #  pragma omp critical
             {
               // thread_fence(exec_cuda);
@@ -1140,10 +1153,9 @@ namespace zs {
               }
               old_index = atomic_exch(exec_seq, _table.indices + bucket_offset + random_location,
                                       insertion_index);
-
-              // thread_fence(exec_seq);
             }
 
+#  pragma omp flush
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
@@ -1161,7 +1173,7 @@ namespace zs {
           cuckoo_counter++;
         }
       } while (cuckoo_counter < _maxCuckooChains);
-      return sentinel_v;
+      return failure_token_v;
     }
 
     template <bool retrieve_index = true, execspace_e S = space,

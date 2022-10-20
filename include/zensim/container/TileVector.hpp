@@ -540,6 +540,39 @@ namespace zs {
     }
 
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
+    constexpr reference operator()(const channel_counter_type chn, const size_type tileNo,
+                                   const size_type localNo) noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (chn >= _numChannels) {
+        printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn, (int)_numChannels);
+        return *((value_type *)0);
+      }
+      if (localNo >= lane_width) {
+        printf("tilevector ofb! local accessing ele [%lld] out of [0, %lld)\n", (long long)tileNo,
+               (long long)lane_width);
+        return *((value_type *)0);
+      }
+#endif
+      return *(_vector + (tileNo * _numChannels + chn) * lane_width + localNo);
+    }
+    template <bool InTile = WithinTile, enable_if_all<!InTile> = 0>
+    constexpr const_reference operator()(const channel_counter_type chn, const size_type tileNo,
+                                         const size_type localNo) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (chn >= _numChannels) {
+        printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn, (int)_numChannels);
+        return *((const value_type *)0);
+      }
+      if (localNo >= lane_width) {
+        printf("tilevector ofb! local accessing ele [%lld] out of [0, %lld)\n", (long long)tileNo,
+               (long long)lane_width);
+        return *((const value_type *)0);
+      }
+#endif
+      return *(_vector + (tileNo * _numChannels + chn) * lane_width + localNo);
+    }
+
+    template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (long long nt = numTiles(); tileid >= nt) {

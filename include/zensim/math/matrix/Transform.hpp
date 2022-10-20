@@ -1,7 +1,82 @@
 #pragma once
 #include "QRSVD.hpp"
+#include "zensim/math/Rotation.hpp"
 
 namespace zs::math {
+
+  /// ref: openvdb/math/Mat4.h
+  template <typename T_, int dim_> struct Transform : zs::vec<T_, dim_ + 1, dim_ + 1> {
+    using value_type = T_;
+    static constexpr int dim = dim_;
+
+    using mat_type = zs::vec<value_type, dim + 1, dim + 1>;
+
+    constexpr decltype(auto) self() const { return static_cast<const mat_type>(*this); }
+    constexpr decltype(auto) self() { return static_cast<mat_type>(*this); }
+
+    /// translation
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr void setToTranslation(const VecInterface<VecT> &v) noexcept {
+      self() = mat_type::identity();
+      for (int i = 0; i != dim; ++i) self()(dim - 1, i) = v[i];
+    }
+
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr void preTranslate(const VecInterface<VecT> &v) noexcept {
+      Transform tr{};
+      tr.setToTranslation(v);
+      self() = tr * self();
+    }
+
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr void postTranslate(const VecInterface<VecT> &v) noexcept {
+      Transform tr{};
+      tr.setToTranslation(v);
+      self() = self() * tr;
+    }
+
+    /// scale
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr void setToScale(const VecInterface<VecT> &v) noexcept {
+      self() = mat_type::identity();
+      for (int d = 0; d != dim; ++d) self()(d, d) = v[d];
+    }
+
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr void preScale(const VecInterface<VecT> &v) noexcept {
+      for (int i = 0; i != dim; ++i)
+        for (int j = 0; j != dim + 1; ++j) self()(i, j) *= v[i];
+    }
+
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr void postScale(const VecInterface<VecT> &v) noexcept {
+      for (int i = 0; i != dim + 1; ++i)
+        for (int j = 0; j != dim; ++j) self()(i, j) *= v[j];
+    }
+
+    /// rotation
+    template <typename T, enable_if_t<std::is_convertible_v<T, value_type>> = 0>
+    void setToRotation(const Rotation<T, dim> &r) noexcept {
+      self() = mat_type::zeros();
+      for (int i = 0; i != dim; ++i)
+        for (int j = 0; j != dim; ++j) self()(i, j) = r(j, i);
+      self()(dim, dim) = 1;
+    }
+
+    template <typename T, enable_if_t<std::is_convertible_v<T, value_type>> = 0>
+    void preRotate(const Rotation<T, dim> &v) noexcept {
+      Transform rot{};
+      rot.setToRotation(v);
+      self() = rot * self();
+    }
+
+    template <typename T, enable_if_t<std::is_convertible_v<T, value_type>> = 0>
+    void postRotate(const Rotation<T, dim> &v) noexcept {
+      Transform rot{};
+      rot.setToRotation(v);
+      self() = self() * rot;
+    }
+  };
 
   template <typename VecTM,
             enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value

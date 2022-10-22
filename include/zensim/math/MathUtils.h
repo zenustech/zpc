@@ -974,14 +974,9 @@ namespace zs {
   constexpr auto lower_trunc(const T v) noexcept {
     return v;
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr auto lower_trunc(const T v) noexcept {
-    return (conditional_t<sizeof(T) >= sizeof(f64), i64, i32>)zs::floor(v);
-  }
-  template <
-      typename Ti, typename T,
-      enable_if_all<std::is_floating_point_v<T>, std::is_integral_v<Ti>, std::is_signed_v<Ti>> = 0>
-  constexpr auto lower_trunc(wrapt<Ti>, const T v) noexcept {
+  template <typename T, typename Ti = conditional_t<sizeof(T) <= sizeof(f32), i32, i64>,
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr auto lower_trunc(const T v, wrapt<Ti> = {}) noexcept {
     return static_cast<Ti>(zs::floor(v));
   }
 

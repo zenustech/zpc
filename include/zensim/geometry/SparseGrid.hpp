@@ -169,14 +169,14 @@ namespace zs {
     using size_type = typename container_type::size_type;
     using index_type = typename container_type::index_type;
 
-    using integer_coord_component_type = typename container_type::integer_coord_index_type;
+    using integer_coord_component_type = typename container_type::integer_coord_component_type;
     using integer_coord_type = typename container_type::integer_coord_type;
     using coord_component_type = typename container_type::coord_component_type;
     using coord_type = typename container_type::coord_type;
 
     using table_type = typename container_type::table_type;
     using table_view_type = RM_CVREF_T(proxy<space>(
-        {}, std::declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
+        std::declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
     using grid_storage_type = typename container_type::grid_storage_type;
     using grid_view_type = RM_CVREF_T(proxy<space>(
         {},
@@ -270,78 +270,258 @@ namespace zs {
 
     /// sample
     // collocated
-    template <typename VecT, kernel_e kt = kernel_e::linear,
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto iSample(const SmallString &prop, const VecInterface<VecT> &X, size_type chn,
+    constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {}) const {
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      return pad.isample(chn, _background);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iSample(const SmallString &prop, const VecInterface<VecT> &X,
+                           wrapv<kt> = {}) const {
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      return pad.isample(prop, 0, _background);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iSample(const SmallString &prop, size_type chn, const VecInterface<VecT> &X,
                            wrapv<kt> = {}) const {
       auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
       return pad.isample(prop, chn, _background);
     }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto wSample(const SmallString &prop, const VecInterface<VecT> &x) const {
-      return iSample(worldToIndex(x));
+
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wSample(size_type chn, const VecInterface<VecT> &x, wrapv<kt> = {}) const {
+      return iSample(chn, worldToIndex(x), wrapv<kt>{});
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wSample(const SmallString &prop, const VecInterface<VecT> &x,
+                           wrapv<kt> = {}) const {
+      return iSample(prop, worldToIndex(x), wrapv<kt>{});
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wSample(const SmallString &prop, size_type chn, const VecInterface<VecT> &x,
+                           wrapv<kt> = {}) const {
+      return iSample(prop, chn, worldToIndex(x), wrapv<kt>{});
     }
     // staggered
-    template <typename VecT, kernel_e kt = kernel_e::linear,
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto iStaggeredSample(const SmallString &prop, const VecInterface<VecT> &X, int f = 0,
+    constexpr auto iStaggeredSample(size_type chn, int f, const VecInterface<VecT> &X,
+                                    wrapv<kt> = {}) const {
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X, f);
+      return pad.isample(chn + f, _background);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iStaggeredSample(const SmallString &prop, int f, const VecInterface<VecT> &X,
                                     wrapv<kt> = {}) const {
       auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X, f);
       return pad.isample(prop, f, _background);
     }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto wStaggeredSample(const SmallString &prop, const VecInterface<VecT> &x,
-                                    int f = 0) const {
-      return iStaggeredSample(worldToIndex(x), f);
+
+    template <kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wStaggeredSample(size_type chn, int f, const VecInterface<VecT> &x,
+                                    wrapv<kt> = {}) const {
+      return iStaggeredSample(chn, f, worldToIndex(x), wrapv<kt>{});
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wStaggeredSample(const SmallString &prop, int f, const VecInterface<VecT> &x,
+                                    wrapv<kt> = {}) const {
+      return iStaggeredSample(prop, f, worldToIndex(x), wrapv<kt>{});
     }
 
-#if 0
     /// packed sample
     // staggered
-    template <int N, typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto iStaggeredPack(const SmallString &prop, const VecInterface<VecT> &X, int f = 0,
-                                  wrapv<N> = {}) const {
-      ...;
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iStaggeredPack(size_type chnOffset, const VecInterface<VecT> &X, wrapv<N> = {},
+                                  wrapv<kt> = {}) const {
+      zs::vec<value_type, N> ret{};
+      for (int i = 0; i != N; ++i) {
+        const auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X, i);
+        ret.val(i) = pad.isample(chnOffset + i, _background);
+      }
+      return ret;
     }
-    template <int N, typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto wStaggeredPack(const SmallString &prop, const VecInterface<VecT> &x, int f = 0,
-                                  wrapv<N> tag = {}) const {
-      return iStaggeredPack<N>(worldToIndex(x), f, tag);
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iStaggeredPack(const SmallString &prop, const VecInterface<VecT> &X,
+                                  wrapv<N> = {}, wrapv<kt> = {}) const {
+      return iStaggeredPack(_grid.propertyOffset(prop), X, wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iStaggeredPack(const SmallString &prop, size_type chn,
+                                  const VecInterface<VecT> &X, wrapv<N> = {},
+                                  wrapv<kt> = {}) const {
+      return iStaggeredPack(_grid.propertyOffset(prop) + chn, X, wrapv<N>{}, wrapv<kt>{});
+    }
+
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wStaggeredPack(size_type chnOffset, const VecInterface<VecT> &x, wrapv<N> = {},
+                                  wrapv<kt> = {}) const {
+      return iStaggeredPack(chnOffset, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wStaggeredPack(const SmallString &prop, const VecInterface<VecT> &x,
+                                  wrapv<N> = {}, wrapv<kt> = {}) const {
+      return iStaggeredPack(_grid.propertyOffset(prop), worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wStaggeredPack(const SmallString &prop, size_type chn,
+                                  const VecInterface<VecT> &x, wrapv<N> = {},
+                                  wrapv<kt> = {}) const {
+      return iStaggeredPack(_grid.propertyOffset(prop) + chn, worldToIndex(x), wrapv<N>{},
+                            wrapv<kt>{});
     }
     // collocated
-    template <int N, typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto iPack(const SmallString &prop, const VecInterface<VecT> &X,
-                         wrapv<N> = {}) const {
-      iSample(X, )
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iPack(size_type chnOffset, const VecInterface<VecT> &X, wrapv<N> = {},
+                         wrapv<kt> = {}) const {
+      zs::vec<value_type, N> ret{};
+      const auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      for (int i = 0; i != N; ++i) ret.val(i) = pad.isample(chnOffset + i, _background);
+      return ret;
     }
-    template <int N, typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto wPack(const SmallString &prop, const VecInterface<VecT> &x,
-                         wrapv<N> tag = {}) const {
-      return iPack(worldToIndex(x), tag);
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iPack(const SmallString &prop, const VecInterface<VecT> &X, wrapv<N> = {},
+                         wrapv<kt> = {}) const {
+      return iPack(_grid.propertyOffset(prop), X, wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iPack(const SmallString &prop, size_type chn, const VecInterface<VecT> &X,
+                         wrapv<N> = {}, wrapv<kt> = {}) const {
+      return iPack(_grid.propertyOffset(prop) + chn, X, wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wPack(size_type chnOffset, const VecInterface<VecT> &x, wrapv<N> = {},
+                         wrapv<kt> = {}) const {
+      return iPack(chnOffset, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wPack(const SmallString &prop, const VecInterface<VecT> &x, wrapv<N> = {},
+                         wrapv<kt> = {}) const {
+      return iPack(_grid.propertyOffset(prop), worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wPack(const SmallString &prop, size_type chn, const VecInterface<VecT> &x,
+                         wrapv<N> = {}, wrapv<kt> = {}) const {
+      return iPack(_grid.propertyOffset(prop) + chn, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
     }
 
-    // should provide arena-based (instead of x) sampler
-
+    /// node access
     // ref
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, index_type>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr decltype(auto) operator()(size_type chn, size_type blockno, size_type cellno) {
+      return _grid(chn, blockno, cellno);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
     constexpr decltype(auto) operator()(size_type chn, const VecInterface<VecT> &X) {
-      ;
+      auto [blockno, cellno] = decomposeCoord(X);
+      return _grid(chn, blockno, cellno);
     }
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, index_type>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
     constexpr decltype(auto) operator()(const SmallString &prop, const VecInterface<VecT> &X) {
-      ;
+      return this->operator()(_grid.propertyOffset(prop), X);
     }
-#endif
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr decltype(auto) operator()(const SmallString &prop, size_type chn,
+                                        const VecInterface<VecT> &X) {
+      return this->operator()(_grid.propertyOffset(prop) + chn, X);
+    }
+    // value
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr decltype(auto) operator()(size_type chn, size_type blockno, size_type cellno) const {
+      if (blockno) return _grid(chn, blockno, cellno);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr decltype(auto) operator()(size_type chn, const VecInterface<VecT> &X) const {
+      auto [blockno, cellno] = decomposeCoord(X);
+      if (blockno < 0) printf("accessing a block that is not yet active.\n");
+      return _grid(chn, blockno, cellno);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr decltype(auto) operator()(const SmallString &prop,
+                                        const VecInterface<VecT> &X) const {
+      return this->operator()(_grid.propertyOffset(prop), X);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr decltype(auto) operator()(const SmallString &prop, size_type chn,
+                                        const VecInterface<VecT> &X) const {
+      return this->operator()(_grid.propertyOffset(prop) + chn, X);
+    }
 
     table_view_type _table;
     grid_view_type _grid;
     transform_type _transform;
     value_type _background;
   };
+
+  template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
+            typename IntegerCoordT>
+  constexpr decltype(auto) proxy(
+      const std::vector<SmallString> &tagNames,
+      SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+    return SparseGridView<ExecSpace,
+                          SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{spg};
+  }
+  template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
+            typename IntegerCoordT>
+  constexpr decltype(auto) proxy(
+      const std::vector<SmallString> &tagNames,
+      const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+    return SparseGridView<ExecSpace,
+                          const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{
+        spg};
+  }
+
+  template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
+            typename IntegerCoordT>
+  constexpr decltype(auto) proxy(
+      SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+    return SparseGridView<ExecSpace,
+                          SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{spg};
+  }
+  template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
+            typename IntegerCoordT>
+  constexpr decltype(auto) proxy(
+      const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+    return SparseGridView<ExecSpace,
+                          const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{
+        spg};
+  }
 
   template <typename GridViewT, kernel_e kt_ = kernel_e::linear, int drv_order = 0>
   struct GridArena {

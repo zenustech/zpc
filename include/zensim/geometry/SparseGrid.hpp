@@ -39,7 +39,7 @@ namespace zs {
     using grid_storage_type = TileVector<value_type, block_size, allocator_type>;
     ///
     using transform_type = vec<coord_component_type, dim + 1, dim + 1>;
-    using table_type = bcht<coord_type, int, true, universal_hash<coord_type>, 16>;
+    using table_type = bcht<integer_coord_type, int, true, universal_hash<integer_coord_type>, 16>;
 
     constexpr MemoryLocation memoryLocation() const noexcept { return _grid.memoryLocation(); }
     constexpr ProcID devid() const noexcept { return _grid.devid(); }

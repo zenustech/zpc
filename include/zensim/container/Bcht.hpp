@@ -290,7 +290,7 @@ namespace zs {
           _hf2{} {
       _buildSuccess.setVal((index_type)0);
 
-      _cnt.setVal((index_type)0);
+      _cnt.setVal((size_type)0);
       _table.keys.reset(0x3f);  // big enough positive integer
       _table.status.reset(-1);  // byte-wise init
 
@@ -405,7 +405,7 @@ namespace zs {
     Table _table;
     zs::Vector<key_type> _activeKeys;
     zs::Vector<u8> _buildSuccess;
-    zs::Vector<index_type> _cnt;
+    zs::Vector<size_type> _cnt;
     u32 _maxCuckooChains;
     hasher_type _hf0, _hf1, _hf2;
   };
@@ -645,7 +645,7 @@ namespace zs {
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_cuda, _cnt, (index_type)1);
+                no = atomic_add(exec_cuda, _cnt, (size_type)1);
                 insertion_index = no;
               }
 #  if 1
@@ -693,7 +693,7 @@ namespace zs {
             // _table.keys[bucket_offset + random_location] = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(exec_cuda, _cnt, (index_type)1);
+              no = atomic_add(exec_cuda, _cnt, (size_type)1);
               insertion_index = no;
               // casSuccess = true; //not finished yet, evicted key reinsertion is success
             }
@@ -955,7 +955,7 @@ namespace zs {
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_seq, _cnt, (index_type)1);
+                no = atomic_add(exec_seq, _cnt, (size_type)1);
                 insertion_index = no;
               }
               _table.indices[bucket_offset + load] = insertion_index;
@@ -981,7 +981,7 @@ namespace zs {
               *key_dst = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(exec_seq, _cnt, (index_type)1);
+              no = atomic_add(exec_seq, _cnt, (size_type)1);
               insertion_index = no;
             }
             auto old_index = atomic_exch(exec_seq, _table.indices + bucket_offset + random_location,
@@ -1118,7 +1118,7 @@ namespace zs {
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_seq, _cnt, (index_type)1);
+                no = atomic_add(exec_seq, _cnt, (size_type)1);
                 insertion_index = no;
               }
               *const_cast<volatile index_type *>(_table.indices + bucket_offset + load)
@@ -1151,7 +1151,7 @@ namespace zs {
                 *key_dst = insertion_key;
 
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_seq, _cnt, (index_type)1);
+                no = atomic_add(exec_seq, _cnt, (size_type)1);
                 insertion_index = no;
               }
               old_index = atomic_exch(exec_seq, _table.indices + bucket_offset + random_location,
@@ -1227,7 +1227,7 @@ namespace zs {
 
     table_t _table;
     conditional_t<is_const_structure, const key_type *, key_type *> _activeKeys;
-    conditional_t<is_const_structure, const index_type *, index_type *> _cnt;
+    conditional_t<is_const_structure, const size_type *, size_type *> _cnt;
     conditional_t<is_const_structure, const u8 *, u8 *> _success;
     size_type _numBuckets;
     u32 _maxCuckooChains;

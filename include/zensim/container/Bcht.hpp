@@ -15,6 +15,9 @@
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
 #  include <cooperative_groups.h>
 #endif
+#if ZS_ENABLE_OPENMP
+#  include <omp.h>
+#endif
 
 namespace zs {
 
@@ -1050,7 +1053,7 @@ namespace zs {
       return query(find_key, false_c);
     }
 
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     template <execspace_e S = space, enable_if_all<S == execspace_e::openmp> = 0>
     [[maybe_unused]] inline index_type insert(const original_key_type &key,
                                               index_type insertion_index = sentinel_v,

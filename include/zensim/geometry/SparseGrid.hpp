@@ -33,6 +33,8 @@ namespace zs {
     ///
     static constexpr int dim = dim_;
     static constexpr integer_coord_component_type side_length = SideLength;
+    static_assert(((side_length & (side_length - 1)) == 0) && (side_length > 0),
+                  "side length must be power of 2");
     static constexpr integer_coord_component_type block_size = math::pow_integral(side_length, dim);
     using integer_coord_type = vec<integer_coord_component_type, dim>;
     using coord_type = vec<coord_component_type, dim>;
@@ -218,6 +220,8 @@ namespace zs {
     constexpr auto worldToIndex(const VecInterface<VecT> &x) const {
       return x * inverse(_transform);
     }
+    // number of active blocks
+    constexpr size_type numActiveBlocks() const { return _table.size(); }
     // linear index <-> node coordinate
     static constexpr integer_coord_type local_offset_to_coord(
         integer_coord_component_type offset) noexcept {
@@ -278,6 +282,15 @@ namespace zs {
       if (auto f = orientation % (dim + dim); f >= dim) ++coord[f - dim];
       auto [bno, cno] = decomposeCoord(coord);
       return valueOr(chn, bno, cno, defaultVal);
+    }
+
+    /// delegate to bcht
+    template <typename VecT, enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto insert(const VecInterface<VecT> &x) {
+      integer_coord_type X = (worldToIndex(x) + (coord_component_type)0.5)
+                                 .template cast<integer_coord_component_type>();
+      X -= (X % side_length);
+      return _table.insert(X);
     }
 
     /// sample

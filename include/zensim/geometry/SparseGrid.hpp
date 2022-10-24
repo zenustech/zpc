@@ -256,7 +256,7 @@ namespace zs {
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
                                             std::is_integral_v<typename VecTI::index_type>> = 0>
     constexpr auto decomposeCoord(const VecInterface<VecTI> &indexCoord) const noexcept {
-      auto cellid = indexCoord % side_length;
+      auto cellid = indexCoord & (side_length - 1);
       auto blockid = indexCoord - cellid;
       return make_tuple(_table.query(blockid), local_coord_to_offset(cellid));
     }
@@ -289,7 +289,7 @@ namespace zs {
     constexpr auto insert(const VecInterface<VecT> &x) {
       integer_coord_type X = (worldToIndex(x) + (coord_component_type)0.5)
                                  .template cast<integer_coord_component_type>();
-      X -= (X % side_length);
+      X -= (X & (side_length - 1));
       return _table.insert(X);
     }
 
@@ -452,11 +452,16 @@ namespace zs {
 
     /// node access
     // ref
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
     constexpr decltype(auto) operator()(size_type chn, size_type blockno, size_type cellno) {
       return _grid(chn, blockno, cellno);
+    }
+    constexpr decltype(auto) operator()(const SmallString &prop, size_type blockno,
+                                        size_type cellno) {
+      return this->operator()(_grid.propertyOffset(prop), blockno, cellno);
+    }
+    constexpr decltype(auto) operator()(const SmallString &prop, size_type chn, size_type blockno,
+                                        size_type cellno) {
+      return this->operator()(_grid.propertyOffset(prop) + chn, blockno, cellno);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
@@ -479,11 +484,16 @@ namespace zs {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
     }
     // value
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
     constexpr decltype(auto) operator()(size_type chn, size_type blockno, size_type cellno) const {
       if (blockno) return _grid(chn, blockno, cellno);
+    }
+    constexpr decltype(auto) operator()(const SmallString &prop, size_type blockno,
+                                        size_type cellno) const {
+      return this->operator()(_grid.propertyOffset(prop), blockno, cellno);
+    }
+    constexpr decltype(auto) operator()(const SmallString &prop, size_type chn, size_type blockno,
+                                        size_type cellno) const {
+      return this->operator()(_grid.propertyOffset(prop) + chn, blockno, cellno);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,

@@ -115,12 +115,24 @@ namespace zs {
 
     void printTransformation(std::string_view msg = {}) const {
       const auto &a = _transform;
-      fmt::print(fg(fmt::color::aquamarine),
-                 "[{}] inspecting {} transform:\n[{}, {}, {}, {};\n {}, {}, {}, {};\n {}, {}, {}, "
-                 "{};\n {}, {}, {}, {}].\n",
-                 msg, get_type_str<SparseGrid>(), a(0, 0), a(0, 1), a(0, 2), a(0, 3), a(1, 0),
-                 a(1, 1), a(1, 2), a(1, 3), a(2, 0), a(2, 1), a(2, 2), a(2, 3), a(3, 0), a(3, 1),
-                 a(3, 2), a(3, 3));
+      if constexpr (dim == 3) {
+        fmt::print(
+            fg(fmt::color::aquamarine),
+            "[{}] inspecting {} transform:\n[{}, {}, {}, {};\n {}, {}, {}, {};\n {}, {}, {}, "
+            "{};\n {}, {}, {}, {}].\n",
+            msg, get_type_str<SparseGrid>(), a(0, 0), a(0, 1), a(0, 2), a(0, 3), a(1, 0), a(1, 1),
+            a(1, 2), a(1, 3), a(2, 0), a(2, 1), a(2, 2), a(2, 3), a(3, 0), a(3, 1), a(3, 2),
+            a(3, 3));
+      } else if constexpr (dim == 2) {
+        fmt::print(fg(fmt::color::aquamarine),
+                   "[{}] inspecting {} transform:\n[{}, {}, {};\n {}, {}, {};\n {}, {}, {}].\n",
+                   msg, get_type_str<SparseGrid>(), a(0, 0), a(0, 1), a(0, 2), a(1, 0), a(1, 1),
+                   a(1, 2), a(2, 0), a(2, 1), a(2, 2));
+      } else if constexpr (dim == 1) {
+        fmt::print(fg(fmt::color::aquamarine),
+                   "[{}] inspecting {} transform:\n[{}, {};\n {}, {}].\n", msg,
+                   get_type_str<SparseGrid>(), a(0, 0), a(0, 1), a(1, 0), a(1, 1));
+      }
     }
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,

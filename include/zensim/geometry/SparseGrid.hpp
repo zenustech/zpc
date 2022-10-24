@@ -617,7 +617,7 @@ namespace zs {
         : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
-      constexpr auto delta
+      const auto delta
           = coord_type::init([f](int d) { return d != f ? (value_type)0 : (value_type)-0.5; });
       for (int d = 0; d != dim; ++d) iCorner[d] = base_node<lerp_degree>(X[d] - delta[d]);
       iLocalPos = X - (iCorner + delta);
@@ -646,7 +646,7 @@ namespace zs {
       arena_type<value_type> pad{};
       for (auto offset : ndrange<dim>(width)) {
         pad.val(offset) = gridPtr->valueOr(
-            chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
+            false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
       }
       return pad;
     }

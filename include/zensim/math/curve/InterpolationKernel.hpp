@@ -40,13 +40,15 @@ namespace zs {
   }
   // ref: ziran2020
   // https://github.com/penn-graphics-research/ziran2020
-  template <int interpolation_degree, typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr auto base_node(T x) noexcept {
+  template <int interpolation_degree, typename T,
+            typename Ti = conditional_t<sizeof(T) <= sizeof(f32), i32, i64>,
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr auto base_node(T x, wrapt<Ti> tag = {}) noexcept {
     // linear: 0
     // quadratic: 1
     // cubic: 2
     constexpr auto offset = (T)0.5 * interpolation_degree;
-    return lower_trunc(x - offset);
+    return lower_trunc(x - offset, tag);
   }
 
   template <int order, typename VecT,

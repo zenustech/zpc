@@ -41,7 +41,7 @@ namespace zs {
     using packed_value_type = vec<value_type, dim>;
     using grid_storage_type = TileVector<value_type, block_size, allocator_type>;
     ///
-    using transform_type = vec<coord_component_type, dim + 1, dim + 1>;
+    using transform_type = math::Transform<coord_component_type, dim>;
     using table_type = bcht<integer_coord_type, int, true, universal_hash<integer_coord_type>, 16>;
 
     constexpr MemoryLocation memoryLocation() const noexcept { return _grid.memoryLocation(); }
@@ -154,12 +154,11 @@ namespace zs {
     void rotate(const VecInterface<VecT> &r) noexcept {
       _transform.preRotate(r);
     }
-    template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == dim,
-                                           VecT::template range_t<1>::value == dim> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     void scale(const VecInterface<VecT> &s) {
       _transform.preScale(s);
     }
-    void scale(const value_type s) { scale(s * transform_type::identity()); }
+    void scale(const value_type s) { scale(s * coord_type::uniform(1)); }
 
     table_type _table;
     grid_storage_type _grid;

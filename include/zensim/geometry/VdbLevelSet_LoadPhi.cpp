@@ -56,7 +56,7 @@ namespace zs {
     std::vector<openvdb::Vec3I> triangles;
     points.resize(vertList.size());
     triangles.resize(faceList.size());
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
 #  pragma omp parallel for
 #endif
     for (int p = 0; p < vertList.size(); ++p)
@@ -64,7 +64,7 @@ namespace zs {
       // tbb::parallel_for(0, (int)vertList.size(), 1, [&](int p) {
       //  points[p] = openvdb::Vec3s(vertList[p][0], vertList[p][1], vertList[p][2]);
       //});
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
 #  pragma omp parallel for
 #endif
     for (int p = 0; p < faceList.size(); ++p)

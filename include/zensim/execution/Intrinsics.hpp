@@ -31,7 +31,7 @@ namespace zs {
   __forceinline__ __device__ void thread_fence(cuda_exec_tag) { __threadfence(); }
 #endif
 
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
   inline void thread_fence(omp_exec_tag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
@@ -46,7 +46,7 @@ namespace zs {
   __forceinline__ __device__ void sync_threads(cuda_exec_tag) { __syncthreads(); }
 #endif
 
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
   inline void sync_threads(omp_exec_tag) noexcept {
 #  pragma omp barrier
   }

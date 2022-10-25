@@ -1,5 +1,5 @@
 #pragma once
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
 #  include <omp.h>
 #endif
 #include <algorithm>
@@ -163,7 +163,7 @@ namespace zs {
         puts("begin parallel sampling!");
         const auto nworkers = std::thread::hardware_concurrency();
         std::vector<std::vector<std::array<T, dim>>> localSamples(nworkers);
-#  if defined(_OPENMP)
+#  if ZS_ENABLE_OPENMP
         omp_set_num_threads(nworkers);
 #    pragma omp parallel for
 #  endif

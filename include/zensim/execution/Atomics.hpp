@@ -37,11 +37,11 @@ namespace zs {
   inline std::enable_if_t<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
   atomic_add_impl(ExecTag, T *dest, const T val) {
     static_assert(is_same_v<ExecTag, omp_exec_tag>);
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       using TT = conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, u64>>;
       static_assert(sizeof(T) == sizeof(TT));
-      TT oldVal{reinterpret_bits<TT>(*dest)};
+      TT oldVal{reinterpret_bits<TT>(*const_cast<volatile T *>(dest))};
       TT newVal{reinterpret_bits<TT>(reinterpret_bits<T>(oldVal) + val)}, readVal{};
       while ((readVal = atomic_cas(ExecTag{}, (TT *)dest, oldVal, newVal)) != oldVal) {
         oldVal = readVal;
@@ -60,7 +60,7 @@ namespace zs {
       *dest += val;
       return old;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #  if 1
 #    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -136,7 +136,7 @@ namespace zs {
       *dest = val;
       return old;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #  if 1
 #    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -185,7 +185,7 @@ namespace zs {
       if (old == expected) *dest = desired;
       return old;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #  if 1
 
@@ -270,7 +270,7 @@ namespace zs {
       if (old < val) *dest = val;
       return;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
       for (T assumed = old;
@@ -310,7 +310,7 @@ namespace zs {
       if (old > val) *dest = val;
       return;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
       for (T assumed = old;
@@ -343,7 +343,7 @@ namespace zs {
       *dest |= val;
       return old;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #  if 1
 
@@ -388,7 +388,7 @@ namespace zs {
       *dest &= val;
       return old;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #  if 1
 #    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -429,7 +429,7 @@ namespace zs {
       *dest ^= val;
       return old;
     }
-#if defined(_OPENMP) && ZS_ENABLE_OPENMP
+#if ZS_ENABLE_OPENMP
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #  if 1
 #    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))

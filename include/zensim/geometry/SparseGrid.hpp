@@ -252,7 +252,7 @@ namespace zs {
         ret = (ret * side_length) + ((integer_coord_component_type)coord[d] % side_length);
       return ret;
     }
-    // node value access
+    // node value access (used for GridArena::arena_type init)
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
                                             std::is_integral_v<typename VecTI::index_type>> = 0>
     constexpr auto decomposeCoord(const VecInterface<VecTI> &indexCoord) const noexcept {
@@ -282,6 +282,26 @@ namespace zs {
       if (auto f = orientation % (dim + dim); f >= dim) ++coord[f - dim];
       auto [bno, cno] = decomposeCoord(coord);
       return valueOr(chn, bno, cno, defaultVal);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iArena(const VecInterface<VecT> &X, wrapv<kt> = {}) const {
+      return GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wArena(const VecInterface<VecT> &x, wrapv<kt> = {}) const {
+      return GridArena<const SparseGridView, kt, 0>(false_c, *this, worldToIndex(x));
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iArena(const VecInterface<VecT> &X, int f, wrapv<kt> = {}) const {
+      return GridArena<const SparseGridView, kt, 0>(false_c, *this, X, f);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wArena(const VecInterface<VecT> &x, int f, wrapv<kt> = {}) const {
+      return GridArena<const SparseGridView, kt, 0>(false_c, *this, worldToIndex(x), f);
     }
 
     /// delegate to bcht

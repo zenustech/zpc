@@ -17,7 +17,7 @@ namespace zs {
   struct SparseGrid {
     using value_type = ValueT;
     using allocator_type = AllocatorT;
-    using index_type = ssize_t;  // associated with the number of blocks
+    using index_type = sint_t;  // associated with the number of blocks
     using size_type = std::size_t;
 
     using integer_coord_component_type = std::make_signed_t<IntegerCoordT>;
@@ -38,6 +38,7 @@ namespace zs {
     static constexpr integer_coord_component_type block_size = math::pow_integral(side_length, dim);
     using integer_coord_type = vec<integer_coord_component_type, dim>;
     using coord_type = vec<coord_component_type, dim>;
+    using packed_value_type = vec<value_type, dim>;
     using grid_storage_type = TileVector<value_type, block_size, allocator_type>;
     ///
     using transform_type = vec<coord_component_type, dim + 1, dim + 1>;
@@ -187,6 +188,7 @@ namespace zs {
     using integer_coord_type = typename container_type::integer_coord_type;
     using coord_component_type = typename container_type::coord_component_type;
     using coord_type = typename container_type::coord_type;
+    using packed_value_type = typename container_type::packed_value_type;
 
     using table_type = typename container_type::table_type;
     using table_view_type = RM_CVREF_T(proxy<space>(
@@ -261,7 +263,8 @@ namespace zs {
       return make_tuple(_table.query(blockid), local_coord_to_offset(cellid));
     }
     constexpr value_type valueOr(size_type chn, typename table_type::index_type blockno,
-                                 size_type cellno, value_type defaultVal) const noexcept {
+                                 integer_coord_component_type cellno,
+                                 value_type defaultVal) const noexcept {
       return blockno == table_type::sentinel_v ? defaultVal : _grid(chn, blockno, cellno);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
@@ -274,12 +277,12 @@ namespace zs {
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
                                             std::is_integral_v<typename VecTI::value_type>> = 0>
     constexpr value_type valueOr(std::true_type, size_type chn,
-                                 const VecInterface<VecTI> &indexCoord, size_type orientation,
+                                 const VecInterface<VecTI> &indexCoord, int orientation,
                                  value_type defaultVal) const noexcept {
       /// 0, ..., dim-1: within cell
       /// dim, ..., dim+dim-1: neighbor cell
       auto coord = indexCoord.clone();
-      if (auto f = orientation % (dim + dim); f >= dim) ++coord[f - dim];
+      if (int f = orientation % (dim + dim); f >= dim) ++coord[f - dim];
       auto [bno, cno] = decomposeCoord(coord);
       return valueOr(chn, bno, cno, defaultVal);
     }
@@ -304,13 +307,29 @@ namespace zs {
       return GridArena<const SparseGridView, kt, 0>(false_c, *this, worldToIndex(x), f);
     }
 
+#if 0
+    iCoord
+    wCoord
+    iStaggeredCoord
+    voxelSize
+#endif
+
     /// delegate to bcht
     template <typename VecT, enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto insert(const VecInterface<VecT> &x) {
-      integer_coord_type X = (worldToIndex(x) + (coord_component_type)0.5)
-                                 .template cast<integer_coord_component_type>();
+      auto X_ = worldToIndex(x) + (coord_component_type)0.5;
+      auto X = integer_coord_type::init(
+          [&X_](int i) { return lower_trunc(X_[i], wrapt<integer_coord_component_type>{}); });
       X -= (X & (side_length - 1));
       return _table.insert(X);
+    }
+    template <typename VecT, enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    constexpr auto query(const VecInterface<VecT> &x) const {
+      auto X_ = worldToIndex(x) + (coord_component_type)0.5;
+      auto X = integer_coord_type::init(
+          [&X_](int i) { return lower_trunc(X_[i], wrapt<integer_coord_component_type>{}); });
+      X -= (X & (side_length - 1));
+      return _table.query(X);
     }
 
     /// sample
@@ -354,6 +373,37 @@ namespace zs {
       return iSample(prop, chn, worldToIndex(x), wrapv<kt>{});
     }
     // staggered
+    template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+    constexpr value_type iStaggeredCellSample(size_type propOffset, int d,
+                                              const VecInterface<VecT> &X,
+                                              typename table_type::index_type blockno,
+                                              integer_coord_component_type cellno, int f) const {
+      static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
+      using Ti = integer_coord_component_type;
+      if (d == f) return valueOr(propOffset + d, blockno, cellno, _background);
+      return (valueOr(propOffset + d, blockno, cellno, _background)
+              + valueOr(propOffset + d,
+                        X + integer_coord_type::init([d](int i) -> Ti { return i == d ? 1 : 0; }),
+                        _background)
+              + valueOr(propOffset + d,
+                        X + integer_coord_type::init([f](int i) -> Ti { return i == f ? -1 : 0; }),
+                        _background)
+              + valueOr(propOffset + d, X + integer_coord_type::init([d, f](int i) -> Ti {
+                                          return i == d ? 1 : (i == f ? -1 : 0);
+                                        }),
+                        _background))
+             * (coord_component_type)0.25;
+    }
+    template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+    constexpr auto iStaggeredCellSample(const SmallString &prop, int chn,
+                                        const VecInterface<VecT> &X, int f) const {
+      static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
+      auto [bno, cno] = decomposeCoord(X);
+      return iStaggeredCellSample(_grid.propertyOffset(prop), chn, X, bno, cno, f);
+    }
+
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iStaggeredSample(size_type chn, int f, const VecInterface<VecT> &X,
@@ -384,6 +434,45 @@ namespace zs {
 
     /// packed sample
     // staggered
+    template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+    constexpr packed_value_type iStaggeredCellPack(size_type propOffset,
+                                                   const VecInterface<VecT> &X,
+                                                   typename table_type::index_type blockno,
+                                                   integer_coord_component_type cellno,
+                                                   int f) const {
+      static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
+      packed_value_type ret{};
+      using Ti = integer_coord_component_type;
+      for (int d = 0; d != dim; ++d) {
+        if (d == f)
+          ret.val(d) = valueOr(propOffset + d, blockno, cellno, _background);
+        else
+          ret.val(d) = (valueOr(propOffset + d, blockno, cellno, _background)
+                        + valueOr(propOffset + d, X + integer_coord_type::init([d](int i) -> Ti {
+                                                    return i == d ? 1 : 0;
+                                                  }),
+                                  _background)
+                        + valueOr(propOffset + d, X + integer_coord_type::init([f](int i) -> Ti {
+                                                    return i == f ? -1 : 0;
+                                                  }),
+                                  _background)
+                        + valueOr(propOffset + d, X + integer_coord_type::init([d, f](int i) -> Ti {
+                                                    return i == d ? 1 : (i == f ? -1 : 0);
+                                                  }),
+                                  _background))
+                       * (coord_component_type)0.25;
+      }
+      return ret;
+    }
+    template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+    constexpr packed_value_type iStaggeredCellPack(const SmallString &propName,
+                                                   const VecInterface<VecT> &X, int f) const {
+      static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
+      auto [bno, cno] = decomposeCoord(X);
+      return iStaggeredCellPack(_grid.propertyOffset(propName), X, bno, cno, f);
+    }
     template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iStaggeredPack(size_type chnOffset, const VecInterface<VecT> &X, wrapv<N> = {},
@@ -488,6 +577,7 @@ namespace zs {
                                                                  integer_coord_component_type>> = 0>
     constexpr decltype(auto) operator()(size_type chn, const VecInterface<VecT> &X) {
       auto [blockno, cellno] = decomposeCoord(X);
+      if (blockno == table_type::sentinel_v) printf("accessing an inactive voxel (block)!\n");
       return _grid(chn, blockno, cellno);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
@@ -520,7 +610,7 @@ namespace zs {
                                                                  integer_coord_component_type>> = 0>
     constexpr decltype(auto) operator()(size_type chn, const VecInterface<VecT> &X) const {
       auto [blockno, cellno] = decomposeCoord(X);
-      if (blockno < 0) printf("accessing a block that is not yet active.\n");
+      if (blockno == table_type::sentinel_v) printf("accessing an inactive voxel (block)!\n");
       return _grid(chn, blockno, cellno);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,

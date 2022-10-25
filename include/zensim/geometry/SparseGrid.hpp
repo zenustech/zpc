@@ -306,9 +306,18 @@ namespace zs {
       return GridArena<const SparseGridView, kt, 0>(false_c, *this, worldToIndex(x), f);
     }
 
+    constexpr integer_coord_type iCoord(size_type bno, integer_coord_component_type cno) const {
+      return _table._activeKeys[bno] + local_offset_to_coord(cno);
+    }
+    constexpr integer_coord_type iCoord(size_type cellno) const {
+      return _table._activeKeys[cellno / block_size] + local_offset_to_coord(cellno % block_size);
+    }
+    constexpr coord_type wCoord(size_type bno, integer_coord_component_type cno) const {
+      return indexToWorld(iCoord(bno, cno));
+    }
+    constexpr coord_type wCoord(size_type cellno) const { return indexToWorld(iCoord(cellno)); }
+
 #if 0
-    iCoord
-    wCoord
     iStaggeredCoord
     voxelSize
 #endif

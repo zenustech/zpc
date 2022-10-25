@@ -285,6 +285,8 @@ namespace zs {
       auto [bno, cno] = decomposeCoord(coord);
       return valueOr(chn, bno, cno, defaultVal);
     }
+
+    // arena
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iArena(const VecInterface<VecT> &X, wrapv<kt> = {}) const {
@@ -306,6 +308,19 @@ namespace zs {
       return GridArena<const SparseGridView, kt, 0>(false_c, *this, worldToIndex(x), f);
     }
 
+    // voxel size
+    constexpr coord_type voxelSize() const {
+      // does not consider shearing here
+      coord_type ret{};
+      for (int i = 0; i != dim; ++i) {
+        coord_component_type sum = 0;
+        for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
+        ret.val(i) = zs::sqrt(sum);
+      }
+      return ret;
+    }
+
+    // linear index to coordinate
     constexpr integer_coord_type iCoord(size_type bno, integer_coord_component_type cno) const {
       return _table._activeKeys[bno] + local_offset_to_coord(cno);
     }
@@ -317,10 +332,25 @@ namespace zs {
     }
     constexpr coord_type wCoord(size_type cellno) const { return indexToWorld(iCoord(cellno)); }
 
-#if 0
-    iStaggeredCoord
-    voxelSize
-#endif
+    constexpr coord_type iStaggeredCoord(size_type bno, integer_coord_component_type cno,
+                                         int f) const {
+      // f must be within [0, dim)
+      return iCoord(bno, cno) + coord_type::init([f](int d) {
+               return d == f ? (coord_component_type)-0.5 : (coord_component_type)0;
+             });
+    }
+    constexpr coord_type iStaggeredCoord(size_type cellno, int f) const {
+      return iCoord(cellno) + coord_type::init([f](int d) {
+               return d == f ? (coord_component_type)-0.5 : (coord_component_type)0;
+             });
+    }
+    constexpr coord_type wStaggeredCoord(size_type bno, integer_coord_component_type cno,
+                                         int f) const {
+      return indexToWorld(iStaggeredCoord(bno, cno, f));
+    }
+    constexpr coord_type wStaggeredCoord(size_type cellno, int f) const {
+      return indexToWorld(iStaggeredCoord(cellno, f));
+    }
 
     /// delegate to bcht
     template <typename VecT, enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>

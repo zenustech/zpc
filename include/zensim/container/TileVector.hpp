@@ -861,6 +861,12 @@ namespace zs {
                                                             i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr auto tuple(const SmallString &propName, const channel_counter_type chn,
+                         const size_type i) noexcept {
+      return static_cast<base_t &>(*this).template tuple<d>(
+          _tagOffsets[propertyIndex(propName)] + chn, i);
+    }
+    template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto stdtuple(const SmallString &propName, const size_type i) noexcept {
       return static_cast<base_t &>(*this).template stdtuple<d>(_tagOffsets[propertyIndex(propName)],
                                                                i);
@@ -869,6 +875,12 @@ namespace zs {
     constexpr auto tuple(const SmallString &propName, const size_type i) const noexcept {
       return static_cast<const base_t &>(*this).template tuple<d>(
           _tagOffsets[propertyIndex(propName)], i);
+    }
+    template <auto d> constexpr auto tuple(const SmallString &propName,
+                                           const channel_counter_type chn,
+                                           const size_type i) const noexcept {
+      return static_cast<const base_t &>(*this).template tuple<d>(
+          _tagOffsets[propertyIndex(propName)] + chn, i);
     }
     template <auto d>
     constexpr auto stdtuple(const SmallString &propName, const size_type i) const noexcept {

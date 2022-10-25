@@ -408,8 +408,10 @@ namespace zs {
     constexpr auto iStaggeredCellSample(const SmallString &prop, int chn,
                                         const VecInterface<VecT> &X, int f) const {
       static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
-      auto [bno, cno] = decomposeCoord(X);
-      return iStaggeredCellSample(_grid.propertyOffset(prop), chn, X, bno, cno, f);
+      auto coord = X.clone();
+      if (f >= dim) ++coord[f -= dim];
+      auto [bno, cno] = decomposeCoord(coord);
+      return iStaggeredCellSample(_grid.propertyOffset(prop), chn, coord, bno, cno, f);
     }
 
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
@@ -478,11 +480,13 @@ namespace zs {
     constexpr packed_value_type iStaggeredCellPack(const SmallString &propName,
                                                    const VecInterface<VecT> &X, int f) const {
       static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
-      auto [bno, cno] = decomposeCoord(X);
-      return iStaggeredCellPack(_grid.propertyOffset(propName), X, bno, cno, f);
+      auto coord = X.clone();
+      if (f >= dim) ++coord[f -= dim];
+      auto [bno, cno] = decomposeCoord(coord);
+      return iStaggeredCellPack(_grid.propertyOffset(propName), coord, bno, cno, f);
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto iStaggeredPack(size_type chnOffset, const VecInterface<VecT> &X, wrapv<N> = {},
                                   wrapv<kt> = {}) const {
       zs::vec<value_type, N> ret{};
@@ -492,34 +496,34 @@ namespace zs {
       }
       return ret;
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto iStaggeredPack(const SmallString &prop, const VecInterface<VecT> &X,
                                   wrapv<N> = {}, wrapv<kt> = {}) const {
       return iStaggeredPack(_grid.propertyOffset(prop), X, wrapv<N>{}, wrapv<kt>{});
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto iStaggeredPack(const SmallString &prop, size_type chn,
                                   const VecInterface<VecT> &X, wrapv<N> = {},
                                   wrapv<kt> = {}) const {
       return iStaggeredPack(_grid.propertyOffset(prop) + chn, X, wrapv<N>{}, wrapv<kt>{});
     }
 
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto wStaggeredPack(size_type chnOffset, const VecInterface<VecT> &x, wrapv<N> = {},
                                   wrapv<kt> = {}) const {
       return iStaggeredPack(chnOffset, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto wStaggeredPack(const SmallString &prop, const VecInterface<VecT> &x,
                                   wrapv<N> = {}, wrapv<kt> = {}) const {
       return iStaggeredPack(_grid.propertyOffset(prop), worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto wStaggeredPack(const SmallString &prop, size_type chn,
                                   const VecInterface<VecT> &x, wrapv<N> = {},
                                   wrapv<kt> = {}) const {
@@ -527,8 +531,8 @@ namespace zs {
                             wrapv<kt>{});
     }
     // collocated
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto iPack(size_type chnOffset, const VecInterface<VecT> &X, wrapv<N> = {},
                          wrapv<kt> = {}) const {
       zs::vec<value_type, N> ret{};
@@ -536,32 +540,32 @@ namespace zs {
       for (int i = 0; i != N; ++i) ret.val(i) = pad.isample(chnOffset + i, _background);
       return ret;
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto iPack(const SmallString &prop, const VecInterface<VecT> &X, wrapv<N> = {},
                          wrapv<kt> = {}) const {
       return iPack(_grid.propertyOffset(prop), X, wrapv<N>{}, wrapv<kt>{});
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT = int,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto iPack(const SmallString &prop, size_type chn, const VecInterface<VecT> &X,
                          wrapv<N> = {}, wrapv<kt> = {}) const {
       return iPack(_grid.propertyOffset(prop) + chn, X, wrapv<N>{}, wrapv<kt>{});
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto wPack(size_type chnOffset, const VecInterface<VecT> &x, wrapv<N> = {},
                          wrapv<kt> = {}) const {
       return iPack(chnOffset, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto wPack(const SmallString &prop, const VecInterface<VecT> &x, wrapv<N> = {},
                          wrapv<kt> = {}) const {
       return iPack(_grid.propertyOffset(prop), worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
     }
-    template <int N, kernel_e kt = kernel_e::linear, typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
     constexpr auto wPack(const SmallString &prop, size_type chn, const VecInterface<VecT> &x,
                          wrapv<N> = {}, wrapv<kt> = {}) const {
       return iPack(_grid.propertyOffset(prop) + chn, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
@@ -735,8 +739,8 @@ namespace zs {
         : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
-      const auto delta
-          = coord_type::init([f](int d) { return d != f ? (value_type)0 : (value_type)-0.5; });
+      const auto delta = coord_type::init(
+          [f = f % dim](int d) { return d != f ? (value_type)0 : (value_type)-0.5; });
       for (int d = 0; d != dim; ++d) iCorner[d] = base_node<lerp_degree>(X[d] - delta[d]);
       iLocalPos = X - (iCorner + delta);
       if constexpr (kt == kernel_e::linear)

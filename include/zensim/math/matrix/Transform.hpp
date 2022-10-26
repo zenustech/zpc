@@ -11,8 +11,8 @@ namespace zs::math {
 
     using mat_type = zs::vec<value_type, dim + 1, dim + 1>;
 
-    constexpr decltype(auto) self() const { return static_cast<const mat_type>(*this); }
-    constexpr decltype(auto) self() { return static_cast<mat_type>(*this); }
+    constexpr decltype(auto) self() const { return static_cast<const mat_type &>(*this); }
+    constexpr decltype(auto) self() { return static_cast<mat_type &>(*this); }
 
     /// translation
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>

@@ -269,7 +269,7 @@ namespace zs {
     }
     template <typename T, typename VecT = Derived,
               enable_if_t<sizeof(typename VecT::value_type) == sizeof(T)> = 0>
-    constexpr auto reinterpret_bits() const noexcept {
+    constexpr auto reinterpret_bits(wrapt<T> = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<T, extents> r{};
       for (index_type i = 0; i != extent; ++i)

@@ -101,7 +101,7 @@ namespace zs {
       const auto dxinv = (value_type)1.0 / dx;
       typename VecT::template variant_vec<coord_index_type, typename VecT::extents> coord{};
       for (typename VecT::index_type d = 0; d != VecT::extent; ++d)
-        coord[d] = lower_trunc(pos[d] * dxinv + coord_offset, number_v<coord_index_type>);
+        coord[d] = lower_trunc(pos[d] * dxinv + coord_offset, number_c<coord_index_type>);
       return coord;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,

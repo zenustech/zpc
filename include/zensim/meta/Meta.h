@@ -83,17 +83,20 @@ namespace zs {
   constexpr std::false_type false_c{};
 
   /// arithmetic type
-  constexpr wrapt<u8> u8_v{};
-  constexpr wrapt<uint> uint_v{};
-  constexpr wrapt<i16> i16_v{};
-  constexpr wrapt<i32> i32_v{};
-  constexpr wrapt<i64> i64_v{};
-  constexpr wrapt<u16> u16_v{};
-  constexpr wrapt<u32> u32_v{};
-  constexpr wrapt<u64> u64_v{};
-  constexpr wrapt<f32> f32_v{};
-  constexpr wrapt<f64> f64_v{};
-  template <typename T> constexpr wrapt<std::enable_if_t<std::is_arithmetic_v<T>, T>> number_v{};
+  constexpr wrapt<u8> u8_c{};
+  constexpr wrapt<int> int_c{};
+  constexpr wrapt<uint> uint_c{};
+  constexpr wrapt<i16> i16_c{};
+  constexpr wrapt<i32> i32_c{};
+  constexpr wrapt<i64> i64_c{};
+  constexpr wrapt<u16> u16_c{};
+  constexpr wrapt<u32> u32_c{};
+  constexpr wrapt<u64> u64_c{};
+  constexpr wrapt<f32> f32_c{};
+  constexpr wrapt<float> float_c{};
+  constexpr wrapt<f64> f64_c{};
+  constexpr wrapt<double> double_c{};
+  template <typename T> constexpr wrapt<std::enable_if_t<std::is_arithmetic_v<T>, T>> number_c{};
 
   ///
   /// detection

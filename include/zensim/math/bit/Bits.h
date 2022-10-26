@@ -69,9 +69,10 @@ namespace zs {
       Dst out;
     } tmp{FWD(val)};
     return tmp.out;
-#elif 0
+#elif 1
+    // only this implementation proven reliable
     Dst dst{};
-    std::memcpy(&dst, &val, sizeof(Dst));
+    std::memcpy(&dst, const_cast<const Src *>(&val), sizeof(Dst));
     return dst;
 #else
     // unsafe due to strict aliasing rule

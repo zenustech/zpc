@@ -442,6 +442,10 @@ namespace zs {
     }
   }  // namespace index_literals
 
+  template <char... c> constexpr auto operator""_c() noexcept {
+    return index_literals::operator""_th<c...>();
+  }
+
   namespace placeholders {
     using placeholder_type = std::size_t;
     constexpr auto _0 = integral_t<placeholder_type, 0>{};

@@ -446,6 +446,8 @@ namespace zs {
     return index_literals::operator""_th<c...>();
   }
 
+  template <std::size_t... Ns> constexpr value_seq<Ns...> dim_c{};
+
   namespace placeholders {
     using placeholder_type = std::size_t;
     constexpr auto _0 = integral_t<placeholder_type, 0>{};

@@ -621,6 +621,12 @@ namespace zs {
         ret.val(d) = *(_vector + offset);
       return ret;
     }
+    // use dim_c<Ns...> for the first parameter
+    template <auto... Ns> constexpr auto pack(value_seq<Ns...>, channel_counter_type chn,
+                                              const size_type i) const noexcept {
+      return pack<Ns...>(chn, i);
+    }
+
     template <channel_counter_type N, typename VT = value_type>
     constexpr auto array(channel_counter_type chn, const size_type i) const noexcept {
       using RetT = std::array<VT, (std::size_t)N>;
@@ -849,6 +855,21 @@ namespace zs {
     constexpr auto pack(const SmallString &propName, const size_type i) const noexcept {
       return static_cast<const base_t &>(*this).template pack<Ns...>(
           _tagOffsets[propertyIndex(propName)], i);
+    }
+    template <auto... Ns> constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
+                                              const size_type i) const noexcept {
+      return pack<Ns...>(propName, i);
+    }
+    template <auto... Ns> constexpr auto pack(const SmallString &propName,
+                                              const channel_counter_type chn,
+                                              const size_type i) const noexcept {
+      return static_cast<const base_t &>(*this).template pack<Ns...>(
+          _tagOffsets[propertyIndex(propName)] + chn, i);
+    }
+    template <auto... Ns> constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
+                                              const channel_counter_type chn,
+                                              const size_type i) const noexcept {
+      return pack<Ns...>(propName, chn, i);
     }
     template <channel_counter_type N, typename VT = value_type>
     constexpr auto array(const SmallString &propName, const size_type i) const noexcept {

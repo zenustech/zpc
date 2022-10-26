@@ -60,6 +60,16 @@ namespace zs {
     constexpr decltype(auto) numBlocks() const noexcept { return _table.size(); }
     constexpr decltype(auto) numReservedBlocks() const noexcept { return _grid.numReservedTiles(); }
     constexpr auto numChannels() const noexcept { return _grid.numChannels(); }
+    constexpr coord_type voxelSize() const {
+      // does not consider shearing here
+      coord_type ret{};
+      for (int i = 0; i != dim; ++i) {
+        coord_component_type sum = 0;
+        for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
+        ret.val(i) = zs::sqrt(sum);
+      }
+      return ret;
+    }
     static constexpr auto zeroValue() noexcept {
       if constexpr (is_vec<value_type>::value)
         return value_type::zeros();
@@ -636,38 +646,68 @@ namespace zs {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
     }
     // value
-    constexpr decltype(auto) operator()(size_type chn, size_type blockno, size_type cellno) const {
-      if (blockno) return _grid(chn, blockno, cellno);
+    constexpr auto operator()(size_type chn, size_type blockno, size_type cellno) const {
+      return _grid(chn, blockno, cellno);
     }
-    constexpr decltype(auto) operator()(const SmallString &prop, size_type blockno,
-                                        size_type cellno) const {
+    constexpr auto operator()(const SmallString &prop, size_type blockno, size_type cellno) const {
       return this->operator()(_grid.propertyOffset(prop), blockno, cellno);
     }
-    constexpr decltype(auto) operator()(const SmallString &prop, size_type chn, size_type blockno,
-                                        size_type cellno) const {
+    constexpr auto operator()(const SmallString &prop, size_type chn, size_type blockno,
+                              size_type cellno) const {
       return this->operator()(_grid.propertyOffset(prop) + chn, blockno, cellno);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
                                                                  integer_coord_component_type>> = 0>
-    constexpr decltype(auto) operator()(size_type chn, const VecInterface<VecT> &X) const {
+    constexpr auto operator()(size_type chn, const VecInterface<VecT> &X) const {
       auto [blockno, cellno] = decomposeCoord(X);
-      if (blockno == table_type::sentinel_v) printf("accessing an inactive voxel (block)!\n");
+      if (blockno == table_type::sentinel_v) return _background;
       return _grid(chn, blockno, cellno);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
                                                                  integer_coord_component_type>> = 0>
-    constexpr decltype(auto) operator()(const SmallString &prop,
-                                        const VecInterface<VecT> &X) const {
+    constexpr auto operator()(const SmallString &prop, const VecInterface<VecT> &X) const {
       return this->operator()(_grid.propertyOffset(prop), X);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
                                                                  integer_coord_component_type>> = 0>
-    constexpr decltype(auto) operator()(const SmallString &prop, size_type chn,
-                                        const VecInterface<VecT> &X) const {
+    constexpr auto operator()(const SmallString &prop, size_type chn,
+                              const VecInterface<VecT> &X) const {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
+    }
+
+    constexpr auto value(size_type chn, size_type blockno, size_type cellno) const {
+      return _grid(chn, blockno, cellno);
+    }
+    constexpr auto value(const SmallString &prop, size_type blockno, size_type cellno) const {
+      return value(_grid.propertyOffset(prop), blockno, cellno);
+    }
+    constexpr auto value(const SmallString &prop, size_type chn, size_type blockno,
+                         size_type cellno) const {
+      return value(_grid.propertyOffset(prop) + chn, blockno, cellno);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr auto value(size_type chn, const VecInterface<VecT> &X) const {
+      auto [blockno, cellno] = decomposeCoord(X);
+      if (blockno == table_type::sentinel_v) return _background;
+      return _grid(chn, blockno, cellno);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr auto value(const SmallString &prop, const VecInterface<VecT> &X) const {
+      return value(_grid.propertyOffset(prop), X);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr auto value(const SmallString &prop, size_type chn,
+                         const VecInterface<VecT> &X) const {
+      return value(_grid.propertyOffset(prop) + chn, X);
     }
 
     table_view_type _table;

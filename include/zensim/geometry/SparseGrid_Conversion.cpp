@@ -436,4 +436,68 @@ namespace zs {
     return convert_floatgrid_to_sparse_grid(grid).clone(mh);
   }
 
+  OpenVDBStruct convert_sparse_grid_to_floatgrid(const SparseGrid<3, f32, 8> &splsIn) {
+    const auto &spls
+        = splsIn.memspace() != memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
+    openvdb::FloatGrid::Ptr grid
+        = openvdb::FloatGrid::create(/*background value=*/spls._background);
+    // meta
+    grid->insertMeta("zpc_version", openvdb::FloatMetadata(0.f));
+    grid->setName("ZpcLevelSet");
+    // transform
+    openvdb::Mat4R v2w{};
+    auto lsv2w = spls.getIndexToWorldTransformation();
+    for (auto &&[r, c] : ndrange<2>(4)) v2w[r][c] = lsv2w[r][c];
+    grid->setTransform(openvdb::math::Transform::createLinearTransform(v2w));
+
+    // tree
+#ifdef ZS_PLATFORM_WINDOWS
+    constexpr bool onwin = true;
+#else
+    constexpr bool onwin = false;
+#endif
+    if constexpr (is_backend_available(exec_omp) && !onwin) {
+      auto ompExec = omp_exec();
+      auto lsv = proxy<execspace_e::openmp>(spls);
+      using LsT = RM_CVREF_T(lsv);
+      const auto numBlocks = spls.numBlocks();
+      for (typename LsT::size_type bno = 0; bno != numBlocks; ++bno) {
+        const auto blockid = spls._table._activeKeys[bno];
+        grid->tree().touchLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
+      }
+      ompExec(zip(range(spls.numBlocks()), spls._table._activeKeys), [lsv, &grid, &spls](
+                                                                         typename LsT::size_type
+                                                                             blockno,
+                                                                         const typename LsT::
+                                                                             integer_coord_type
+                                                                                 &blockid) mutable {
+        auto nodePtr = grid->tree().probeLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
+        if (nodePtr == nullptr)
+          throw std::runtime_error("strangely this leaf has not yet been allocated.");
+        auto accessor = grid->getUnsafeAccessor();
+        for (typename LsT::integer_coord_component_type cid = 0; cid != lsv.block_size; ++cid) {
+          // const auto sdfVal = lsv.wSample("sdf", lsv.wCoord(blockno, cid));
+          const auto sdfVal = lsv("sdf", blockno, cid);
+          if (sdfVal == lsv._background) continue;
+          const auto coord = blockid + LsT::local_offset_to_coord(cid);
+          accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
+        }
+      });
+    } else {
+      auto lsv = proxy<execspace_e::host>(spls);
+      using LsT = RM_CVREF_T(lsv);
+      auto accessor = grid->getAccessor();
+      for (auto &&[blockno, blockid] : zip(range(spls.numBlocks()), spls._table._activeKeys))
+        for (int cid = 0; cid != lsv.block_size; ++cid) {
+          const auto sdfVal = lsv("sdf", blockno, cid);
+          if (sdfVal == lsv._background) continue;
+          const auto coord = blockid + LsT::local_offset_to_coord(cid);
+          accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
+        }
+    }
+    // grid->setGridClass(openvdb::GridClass::GRID_STAGGERED);
+    grid->setGridClass(openvdb::GridClass::GRID_LEVEL_SET);
+    return OpenVDBStruct{grid};
+  }
+
 }  // namespace zs

@@ -431,15 +431,15 @@ namespace zs {
       using Ti = integer_coord_component_type;
       if (d == f) return valueOr(propOffset + d, blockno, cellno, _background);
       return (valueOr(propOffset + d, blockno, cellno, _background)
-              + valueOr(propOffset + d,
+              + valueOr(false_c, propOffset + d,
                         X + integer_coord_type::init([d](int i) -> Ti { return i == d ? 1 : 0; }),
                         _background)
-              + valueOr(propOffset + d,
+              + valueOr(false_c, propOffset + d,
                         X + integer_coord_type::init([f](int i) -> Ti { return i == f ? -1 : 0; }),
                         _background)
-              + valueOr(propOffset + d, X + integer_coord_type::init([d, f](int i) -> Ti {
-                                          return i == d ? 1 : (i == f ? -1 : 0);
-                                        }),
+              + valueOr(false_c, propOffset + d, X + integer_coord_type::init([d, f](int i) -> Ti {
+                                                   return i == d ? 1 : (i == f ? -1 : 0);
+                                                 }),
                         _background))
              * (coord_component_type)0.25;
     }
@@ -498,20 +498,22 @@ namespace zs {
         if (d == f)
           ret.val(d) = valueOr(propOffset + d, blockno, cellno, _background);
         else
-          ret.val(d) = (valueOr(propOffset + d, blockno, cellno, _background)
-                        + valueOr(propOffset + d, X + integer_coord_type::init([d](int i) -> Ti {
-                                                    return i == d ? 1 : 0;
-                                                  }),
-                                  _background)
-                        + valueOr(propOffset + d, X + integer_coord_type::init([f](int i) -> Ti {
-                                                    return i == f ? -1 : 0;
-                                                  }),
-                                  _background)
-                        + valueOr(propOffset + d, X + integer_coord_type::init([d, f](int i) -> Ti {
-                                                    return i == d ? 1 : (i == f ? -1 : 0);
-                                                  }),
-                                  _background))
-                       * (coord_component_type)0.25;
+          ret.val(d)
+              = (valueOr(propOffset + d, blockno, cellno, _background)
+                 + valueOr(false_c, propOffset + d, X + integer_coord_type::init([d](int i) -> Ti {
+                                                      return i == d ? 1 : 0;
+                                                    }),
+                           _background)
+                 + valueOr(false_c, propOffset + d, X + integer_coord_type::init([f](int i) -> Ti {
+                                                      return i == f ? -1 : 0;
+                                                    }),
+                           _background)
+                 + valueOr(false_c, propOffset + d,
+                           X + integer_coord_type::init([d, f](int i) -> Ti {
+                             return i == d ? 1 : (i == f ? -1 : 0);
+                           }),
+                           _background))
+                * (coord_component_type)0.25;
       }
       return ret;
     }
@@ -646,6 +648,7 @@ namespace zs {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
     }
     // value
+    constexpr auto operator()(size_type chn, size_type cellno) const { return _grid(chn, cellno); }
     constexpr auto operator()(size_type chn, size_type blockno, size_type cellno) const {
       return _grid(chn, blockno, cellno);
     }
@@ -678,6 +681,7 @@ namespace zs {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
     }
 
+    constexpr auto value(size_type chn, size_type cellno) const { return _grid(chn, cellno); }
     constexpr auto value(size_type chn, size_type blockno, size_type cellno) const {
       return _grid(chn, blockno, cellno);
     }
@@ -709,6 +713,25 @@ namespace zs {
                          const VecInterface<VecT> &X) const {
       return value(_grid.propertyOffset(prop) + chn, X);
     }
+    // more delegations
+    template <auto... Ns> constexpr auto pack(size_type chnOffset, size_type cellno) const {
+      return _grid.template pack<Ns...>(chnOffset, cellno);
+    }
+    template <auto... Ns>
+    constexpr auto pack(size_type chnOffset, size_type blockno, size_type cellno) const {
+      return _grid.template pack<Ns...>(chnOffset, blockno, cellno);
+    }
+    template <auto... Ns>
+    constexpr auto pack(value_seq<Ns...>, size_type chnOffset, size_type cellno) const {
+      return pack<Ns...>(chnOffset, cellno);
+    }
+    template <auto... Ns> constexpr auto pack(value_seq<Ns...>, size_type chnOffset,
+                                              size_type blockno, size_type cellno) const {
+      return pack<Ns...>(chnOffset, blockno, cellno);
+    }
+    // acquire block / tile
+    constexpr auto block(size_type blockno) { return _grid.tile(blockno); }
+    constexpr auto block(size_type blockno) const { return _grid.tile(blockno); }
 
     table_view_type _table;
     grid_view_type _grid;

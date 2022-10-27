@@ -3,6 +3,7 @@
 #include <string>
 
 #include "zensim/container/DenseGrid.hpp"
+#include "zensim/geometry/SparseGrid.hpp"
 #include "zensim/geometry/SparseLevelSet.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Tuple.h"
@@ -30,12 +31,16 @@ namespace zs {
   template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_vdbgrid(const SplsT &grid);
   ZPC_API SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);
   ZPC_API SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid,
-                                                         const MemoryHandle mh);
+                                                                 const MemoryHandle mh);
+
+  ZPC_API SparseGrid<3, f32, 8> convert_floatgrid_to_sparse_grid(const OpenVDBStruct &grid);
+  ZPC_API SparseGrid<3, f32, 8> convert_floatgrid_to_sparse_grid(const OpenVDBStruct &grid,
+                                                                 const MemoryHandle mh);
 
   /// float3grid
   ZPC_API SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid);
   ZPC_API SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid,
-                                                         const MemoryHandle mh);
+                                                                 const MemoryHandle mh);
 
   ZPC_API SparseLevelSet<3, grid_e::staggered> convert_vec3fgrid_to_sparse_staggered_grid(
       const OpenVDBStruct &grid);
@@ -44,10 +49,10 @@ namespace zs {
 
   /// floatgrid + float3grid
   ZPC_API SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,
-                                                           const OpenVDBStruct &vel);
+                                                                   const OpenVDBStruct &vel);
   ZPC_API SparseLevelSet<3> convert_vdblevelset_to_sparse_levelset(const OpenVDBStruct &sdf,
-                                                           const OpenVDBStruct &vel,
-                                                           const MemoryHandle mh);
+                                                                   const OpenVDBStruct &vel,
+                                                                   const MemoryHandle mh);
 
   void check_floatgrid(OpenVDBStruct &grid);
   OpenVDBStruct particlearray_to_pointdatagrid(const std::vector<std::array<float, 3>> &);

@@ -615,6 +615,9 @@ namespace zs {
 
     /// node access
     // ref
+    constexpr decltype(auto) operator()(size_type chn, size_type cellno) {
+      return _grid(chn, cellno);
+    }
     constexpr decltype(auto) operator()(size_type chn, size_type blockno, size_type cellno) {
       return _grid(chn, blockno, cellno);
     }
@@ -712,6 +715,13 @@ namespace zs {
     constexpr auto value(const SmallString &prop, size_type chn,
                          const VecInterface<VecT> &X) const {
       return value(_grid.propertyOffset(prop) + chn, X);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr bool hasVoxel(const VecInterface<VecT> &X) const {
+      auto [blockno, cellno] = decomposeCoord(X);
+      return blockno != table_type::sentinel_v;
     }
     // more delegations
     template <auto... Ns> constexpr auto pack(size_type chnOffset, size_type cellno) const {

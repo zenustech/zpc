@@ -504,6 +504,52 @@ namespace zs {
     }
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
+
+    /// helper construct
+    struct CoalescedGroup : cooperative_groups::coalesced_group {
+      using base_t = cooperative_groups::coalesced_group;
+
+      __host__ __device__ CoalescedGroup(const cooperative_groups::coalesced_group &group) noexcept
+          : base_t{group} {}
+      ~CoalescedGroup() = default;
+
+      __forceinline__ __host__ __device__ unsigned long long num_threads() const {
+#  ifdef __CUDA_ARCH__
+        return static_cast<const base_t *>(this)->num_threads();
+#  else
+        return ~(unsigned long long)0;
+#  endif
+      }
+      __forceinline__ __host__ __device__ unsigned long long thread_rank() const {
+#  ifdef __CUDA_ARCH__
+        return static_cast<const base_t *>(this)->thread_rank();
+#  else
+        return ~(unsigned long long)0;
+#  endif
+      }
+      __forceinline__ __host__ __device__ unsigned ballot(int pred) const {
+#  ifdef __CUDA_ARCH__
+        return static_cast<const base_t *>(this)->ballot(pred);
+#  else
+        return ~(unsigned)0;
+#  endif
+      }
+      template <typename T> __forceinline__ __host__ __device__ T shfl(T var, int srcLane) const {
+#  ifdef __CUDA_ARCH__
+        return static_cast<const base_t *>(this)->shfl(var, srcLane);
+#  else
+        return 0;
+#  endif
+      }
+      __forceinline__ __host__ __device__ int ffs(int x) const {
+#  ifdef __CUDA_ARCH__
+        return ::__ffs(x);
+#  else
+        return -1;
+#  endif
+      }
+    };
+
     ///
     /// insertion
     // @enqueue_key: whether pushing inserted key-index pair into _activeKeys
@@ -845,12 +891,105 @@ namespace zs {
       return sentinel_v;
     }
 
+    template <bool retrieve_index = true, execspace_e S = space,
+              enable_if_all<S == execspace_e::cuda> = 0>
+    __forceinline__ __host__ __device__ index_type
+    group_query(CoalescedGroup &tile, const original_key_type &key,
+                wrapv<retrieve_index> = {}) const noexcept {
+      constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
+      const int cap = tile.num_threads();
+      auto bucket_offset
+          = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
+      auto lane_id = tile.thread_rank();
+      storage_key_type query_key = transKey(key);
+      for (int iter = 0; iter < 3; ++iter) {
+#  if 1
+        // cg::reduce requires compute capability 8.0+
+        int location = bucket_size;
+        for (int i = lane_id; i < bucket_size; i += cap)
+          if (equal_to{}(query_key, _table.keys[bucket_offset + i])) {
+            location = i;
+            break;
+          }
+        for (int stride = 1; stride < cap; stride <<= 1) {
+          int tmp = tile.shfl(location, lane_id + stride);
+          if (lane_id + stride < cap) location = location < tmp ? location : tmp;
+        }
+        location = tile.shfl(location, 0);
+        if (location != bucket_size) {
+          if constexpr (retrieve_index) {
+            index_type found_value = _table.indices[bucket_offset + location];
+            return found_value;
+          } else {
+            return bucket_offset + location;
+          }
+        }
+#  else
+        storage_key_type lane_key = _table.keys[bucket_offset + lane_id];
+        auto key_exist_bitmap = tile.ballot(equal_to{}(query_key, lane_key));
+        int key_lane = __ffs(key_exist_bitmap);
+        int location = key_lane - 1;
+        if (location != -1) {
+          if constexpr (retrieve_index) {
+            index_type found_value = _table.indices[bucket_offset + location];
+            return found_value;
+          } else {
+            return bucket_offset + location;
+          }
+        }
+#  endif
+        // check empty slots
+        // failed not because the bucket is full, but because there is none
+        else {
+#  if 1
+          int load = 0;
+          for (int i = lane_id; i < bucket_size; i += cap)
+            if (!equal_to{}(compare_key_sentinel_v, _table.keys[bucket_offset + i])) ++load;
+          for (int stride = 1; stride < cap; stride <<= 1) {
+            int tmp = tile.shfl(load, lane_id + stride);
+            if (lane_id + stride < cap) load += tmp;
+          }
+          load = tile.shfl(load, 0);
+          if (load < bucket_size) return sentinel_v;
+#  else
+          if (__popc(tile.ballot(!equal_to{}(lane_key, compare_key_sentinel_v))) < bucket_size)
+            return sentinel_v;
+#  endif
+          else
+            bucket_offset = iter == 0 ? reinterpret_bits<mapped_hashed_key_type>(_hf1(key))
+                                            % _numBuckets * bucket_size
+                                      : reinterpret_bits<mapped_hashed_key_type>(_hf2(key))
+                                            % _numBuckets * bucket_size;
+        }
+      }
+      return sentinel_v;
+    }
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type
     query(const original_key_type &find_key,
-          cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
-          = cooperative_groups::tiled_partition<bucket_size>(
-              cooperative_groups::this_thread_block())) const noexcept {
+          CoalescedGroup tile = cooperative_groups::coalesced_threads()) const noexcept {
+      bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
+      index_type result = sentinel_v;
+      auto work_queue = tile.ballot(has_work);
+      while (work_queue) {
+        auto cur_rank = tile.ffs(work_queue) - 1;
+        auto cur_work = tile.shfl(find_key, cur_rank);
+        auto find_result = group_query(tile, cur_work);
+        if (tile.thread_rank() == cur_rank) {
+          result = find_result;
+          has_work = false;
+        }
+        work_queue = tile.ballot(has_work);
+      }
+      return result;
+    }
+
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[nodiscard]] __forceinline__ __host__ __device__ index_type queryUnsafe(
+        const original_key_type &find_key,
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+        = cooperative_groups::tiled_partition<bucket_size>(cooperative_groups::this_thread_block()))
+        const noexcept {
       namespace cg = ::cooperative_groups;
 
       bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??

@@ -548,6 +548,12 @@ namespace zs {
         return -1;
 #  endif
       }
+      __forceinline__ __host__ __device__ void thread_fence() const {
+#  ifdef __CUDA_ARCH__
+        ::__threadfence();  // device-scope
+#  else
+#  endif
+      }
     };
 
     ///
@@ -775,12 +781,236 @@ namespace zs {
     }
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
-    [[maybe_unused]] __forceinline__ __device__ index_type
+    __forceinline__ __host__ __device__ index_type
+    group_insert(CoalescedGroup &tile, const original_key_type &key,
+                 index_type insertion_index = sentinel_v, bool enqueueKey = true) noexcept {
+      namespace cg = ::cooperative_groups;
+      constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
+
+      const int cap = math::min((int)tile.num_threads(), (int)bucket_size);
+
+      mars_rng_32 rng;
+      u32 cuckoo_counter = 0;
+      // auto bucket_id = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets;
+      auto bucket_offset
+          = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
+      auto lane_id = tile.thread_rank();
+      auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
+        volatile storage_key_type *key_dst
+            = const_cast<volatile storage_key_type *>(keys + bucket_offset + i);
+        if constexpr (compare_key && key_is_vec) {
+          storage_key_type ret{};
+          for (typename original_key_type::index_type i = 0; i != original_key_type::extent; ++i)
+            ret.val(i) = key_dst->data()[i];
+          return ret;
+        } else
+          return *key_dst;
+      };
+
+      index_type no = insertion_index;
+
+      storage_key_type insertion_key = transKey(key);
+      int spin_iter = 0;
+      do {
+        int exist = 0;
+        for (int i = lane_id; i < bucket_size; i += cap)
+          if (equal_to{}(insertion_key, load_key(i))) {
+            exist = 1;
+            break;
+          }
+        for (int stride = 1; stride < cap; stride <<= 1) {
+          int tmp = tile.shfl(exist, lane_id + stride);
+          if (lane_id + stride < cap) exist |= tmp;
+        }
+        exist = tile.shfl(exist, 0);
+        if (exist) return sentinel_v;
+
+        int load = 0;
+        for (int i = lane_id; i < bucket_size; i += cap)
+          if (!equal_to{}(compare_key_sentinel_v, load_key(i))) ++load;
+        for (int stride = 1; stride < cap; stride <<= 1) {
+          int tmp = tile.shfl(load, lane_id + stride);
+          if (lane_id + stride < cap) load += tmp;
+        }
+        load = tile.shfl(load, 0);
+
+        // if bucket is not full
+        if (load != bucket_size) {
+          bool casSuccess = false;
+          // then only the elected lane is atomically inserting
+          if (lane_id == 0) {
+            spin_iter = 0;
+            while (atomic_cas(exec_cuda, _table.status + bucket_offset / bucket_size, -1, 0) != -1
+                   && ++spin_iter != spin_iter_cap)
+              ;  // acquiring spin lock
+          }
+          if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
+            // check again
+            continue;
+          }
+          tile.thread_fence();
+
+          exist = 0;
+          for (int i = lane_id; i < bucket_size; i += cap)
+            if (equal_to{}(insertion_key, load_key(i))) {
+              exist = 1;
+              break;
+            }
+          for (int stride = 1; stride < cap; stride <<= 1) {
+            int tmp = tile.shfl(exist, lane_id + stride);
+            if (lane_id + stride < cap) exist |= tmp;
+          }
+          exist = tile.shfl(exist, 0);  // implicit tile sync here
+          if (exist) {
+            if (lane_id == 0)  // release lock
+              atomic_exch(exec_cuda, _table.status + bucket_offset / bucket_size, -1);
+            return sentinel_v;
+          }
+
+          if (lane_id == 0) {
+            if constexpr (compare_key) {
+              // storage_key_type retrieved_val = *const_cast<storage_key_type *>(key_dst);
+              storage_key_type retrieved_val = load_key(load);
+              if (equal_to{}(retrieved_val,
+                             compare_key_sentinel_v)) {  // this slot not yet occupied
+                volatile storage_key_type *key_dst
+                    = const_cast<volatile storage_key_type *>(_table.keys + bucket_offset + load);
+                if constexpr (key_is_vec) {
+                  for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
+                       ++i)
+                    key_dst->data()[i] = insertion_key.val(i);
+                } else
+                  *key_dst = insertion_key;
+                casSuccess = true;
+              }
+            } else {
+              casSuccess = atomic_cas(exec_cuda, &_table.keys[bucket_offset + load],
+                                      compare_key_sentinel_v, insertion_key)
+                           == compare_key_sentinel_v;
+            }
+
+            if (casSuccess) {  // process index as well
+              if (insertion_index == sentinel_v) {
+                no = atomic_add(exec_cuda, _cnt, (size_type)1);
+                insertion_index = no;
+              }
+#  if 1
+              *const_cast<volatile index_type *>(_table.indices + bucket_offset + load)
+                  = insertion_index;
+#  else
+              atomic_exch(exec_cuda, _table.indices + bucket_offset + load, insertion_index);
+#  endif
+            }
+            tile.thread_fence();
+            atomic_exch(exec_cuda, _table.status + bucket_offset / bucket_size, -1);
+          }
+
+          // may fail due to the slot taken by another insertion
+          // or fail due to existence check
+          casSuccess = tile.shfl(casSuccess, 0);
+          if (casSuccess) {
+            no = tile.shfl(no, 0);
+            if (lane_id == 0 && enqueueKey) _activeKeys[no] = key;
+            return no;
+          }
+        } else {
+          if (lane_id == 0) {
+            spin_iter = 0;
+            while (atomic_cas(exec_cuda, _table.status + bucket_offset / bucket_size, -1, 0) != -1
+                   && ++spin_iter != spin_iter_cap)
+              ;  // acquiring spin lock
+          }
+          if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
+            // check again
+            continue;
+          }
+          if (lane_id == 0) {
+            auto random_location = rng() % bucket_size;
+            tile.thread_fence();
+            volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
+                _table.keys + bucket_offset + random_location);
+            auto old_key = *const_cast<storage_key_type *>(key_dst);
+            if constexpr (compare_key && key_is_vec) {
+              for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
+                   ++i)
+                key_dst->data()[i] = insertion_key.val(i);
+            } else
+              *key_dst = insertion_key;
+            // _table.keys[bucket_offset + random_location] = insertion_key;
+
+            if (insertion_index == sentinel_v) {
+              no = atomic_add(exec_cuda, _cnt, (size_type)1);
+              insertion_index = no;
+              // casSuccess = true; //not finished yet, evicted key reinsertion is success
+            }
+            auto old_index = atomic_exch(
+                exec_cuda, _table.indices + bucket_offset + random_location, insertion_index);
+            // volatile index_type *index_dst = const_cast<volatile index_type *>(
+            //    _table.indices + bucket_offset + random_location);
+            // auto old_index = *const_cast<index_type *>(index_dst);
+            //*index_dst = insertion_index;
+            // _table.indices[bucket_offset + random_location] = insertion_index;
+
+            tile.thread_fence();
+            atomic_exch(exec_cuda, _table.status + bucket_offset / bucket_size, -1);
+            // should be old keys instead, not (h)ashed keys
+            auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
+            auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
+            auto bucket2 = reinterpret_bits<mapped_hashed_key_type>(_hf2(old_key)) % _numBuckets;
+
+            auto new_bucket_id = bucket0;
+            new_bucket_id = bucket_offset == bucket1 * bucket_size ? bucket2 : new_bucket_id;
+            new_bucket_id = bucket_offset == bucket0 * bucket_size ? bucket1 : new_bucket_id;
+
+            bucket_offset = new_bucket_id * bucket_size;
+
+            insertion_key = old_key;
+            insertion_index = old_index;
+          }
+          bucket_offset = tile.shfl(bucket_offset, 0);  // implicit tile sync
+          cuckoo_counter++;
+        }
+      } while (cuckoo_counter < _maxCuckooChains);
+      return failure_token_v;
+    }
+
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[maybe_unused]] __forceinline__ __host__ __device__ index_type
     insert(const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
            bool enqueueKey = true,
-           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
-           = cooperative_groups::tiled_partition<bucket_size>(
-               cooperative_groups::this_thread_block())) noexcept {
+           CoalescedGroup tile = cooperative_groups::coalesced_threads()) noexcept {
+      namespace cg = ::cooperative_groups;
+
+      bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
+      bool success = true;
+      index_type result = sentinel_v;
+
+      u32 work_queue = tile.ballot(has_work);
+      while (work_queue) {
+        auto cur_rank = tile.ffs(work_queue) - 1;
+        auto cur_work = tile.shfl(insertion_key, cur_rank);
+        auto cur_index = tile.shfl(insertion_index, cur_rank);  // gather index as well
+        auto id = group_insert(tile, cur_work, cur_index, enqueueKey);
+
+        if (tile.thread_rank() == cur_rank) {
+          result = id;
+          success = id != failure_token_v;
+          has_work = false;
+        }
+        work_queue = tile.ballot(has_work);
+      }
+
+      if (!tile.all(success)) *_success = false;
+      return result;
+    }
+
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[maybe_unused]] __forceinline__ __device__ index_type insertUnsafe(
+        const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
+        bool enqueueKey = true,
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
+        = cooperative_groups::tiled_partition<bucket_size>(
+            cooperative_groups::this_thread_block())) noexcept {
       namespace cg = ::cooperative_groups;
 
       bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
@@ -897,13 +1127,12 @@ namespace zs {
     group_query(CoalescedGroup &tile, const original_key_type &key,
                 wrapv<retrieve_index> = {}) const noexcept {
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
-      const int cap = tile.num_threads();
+      const int cap = math::min((int)tile.num_threads(), (int)bucket_size);
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto lane_id = tile.thread_rank();
       storage_key_type query_key = transKey(key);
       for (int iter = 0; iter < 3; ++iter) {
-#  if 1
         // cg::reduce requires compute capability 8.0+
         int location = bucket_size;
         for (int i = lane_id; i < bucket_size; i += cap)
@@ -924,24 +1153,9 @@ namespace zs {
             return bucket_offset + location;
           }
         }
-#  else
-        storage_key_type lane_key = _table.keys[bucket_offset + lane_id];
-        auto key_exist_bitmap = tile.ballot(equal_to{}(query_key, lane_key));
-        int key_lane = __ffs(key_exist_bitmap);
-        int location = key_lane - 1;
-        if (location != -1) {
-          if constexpr (retrieve_index) {
-            index_type found_value = _table.indices[bucket_offset + location];
-            return found_value;
-          } else {
-            return bucket_offset + location;
-          }
-        }
-#  endif
         // check empty slots
         // failed not because the bucket is full, but because there is none
         else {
-#  if 1
           int load = 0;
           for (int i = lane_id; i < bucket_size; i += cap)
             if (!equal_to{}(compare_key_sentinel_v, _table.keys[bucket_offset + i])) ++load;
@@ -950,11 +1164,8 @@ namespace zs {
             if (lane_id + stride < cap) load += tmp;
           }
           load = tile.shfl(load, 0);
-          if (load < bucket_size) return sentinel_v;
-#  else
-          if (__popc(tile.ballot(!equal_to{}(lane_key, compare_key_sentinel_v))) < bucket_size)
+          if (load < bucket_size)
             return sentinel_v;
-#  endif
           else
             bucket_offset = iter == 0 ? reinterpret_bits<mapped_hashed_key_type>(_hf1(key))
                                             % _numBuckets * bucket_size
@@ -964,6 +1175,7 @@ namespace zs {
       }
       return sentinel_v;
     }
+
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type
     query(const original_key_type &find_key,

@@ -38,6 +38,11 @@ namespace zs {
   ZPC_API SparseGrid<3, f32, 8> convert_floatgrid_to_sparse_grid(const OpenVDBStruct &grid,
                                                                  const MemoryHandle mh);
 
+  ZPC_API OpenVDBStruct convert_sparse_grid_to_float3grid(const SparseGrid<3, f32, 8> &grid);
+  ZPC_API SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid);
+  ZPC_API SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid,
+                                                                  const MemoryHandle mh);
+
   /// float3grid
   ZPC_API SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid);
   ZPC_API SparseLevelSet<3> convert_vec3fgrid_to_sparse_levelset(const OpenVDBStruct &grid,

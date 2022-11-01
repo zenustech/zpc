@@ -191,6 +191,10 @@ namespace zs {
       const auto [chn, idx] = index;
       return *(data() + (idx / lane_width * numChannels() + chn) * lane_width + idx % lane_width);
     }
+    /// tile offset
+    constexpr const void *tileOffset(size_type tileNo) const noexcept {
+      return static_cast<const void *>(data() + tileNo * numChannels() * lane_width);
+    }
     /// ctor, assignment operator
     TileVector(const TileVector &o)
         : _allocator{o._allocator},

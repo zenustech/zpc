@@ -15,7 +15,8 @@
 namespace zs {
 
   /// floatgrid -> sparse grid
-  SparseGrid<3, f32, 8> convert_floatgrid_to_sparse_grid(const OpenVDBStruct &grid) {
+  SparseGrid<3, f32, 8> convert_floatgrid_to_sparse_grid(const OpenVDBStruct &grid,
+                                                         SmallString propTag) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;
     using RootType = TreeType::RootNodeType;  // level 3 RootNode
@@ -36,7 +37,8 @@ namespace zs {
     const auto leafCount = gridPtr->tree().leafCount();
     ret._background = gridPtr->background();
     ret._table = typename SpgT::table_type{leafCount, memsrc_e::host, -1};
-    ret._grid = typename SpgT::grid_storage_type{{{"sdf", 1}}, leafCount * 512, memsrc_e::host, -1};
+    ret._grid =
+        typename SpgT::grid_storage_type{{{propTag, 1}}, leafCount * 512, memsrc_e::host, -1};
 
     openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
     gridPtr->transform().print();
@@ -61,7 +63,8 @@ namespace zs {
       // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
               [&ret, table = proxy<execspace_e::openmp>(ret._table),
-               ls = proxy<execspace_e::openmp>(ret), leafCount](LeafCIterRange &range) mutable {
+               ls = proxy<execspace_e::openmp>(ret), leafCount,
+               propTag](LeafCIterRange &range) mutable {
                 const LeafType &node = *range.iterator();
                 if (node.onVoxelCount() <= 0) return;
                 auto cell = node.beginValueAll();
@@ -76,7 +79,7 @@ namespace zs {
                 auto block = ls.block(blockno);
                 int cellid = 0;
                 for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
-                  block("sdf", cellid) = cell.getValue();
+                  block(propTag, cellid) = cell.getValue();
                 }
               });
       /// iterate over all inactive tiles that have negative values
@@ -93,12 +96,12 @@ namespace zs {
       if (newNbs != nbs) {
         ret.resize(ompExec, newNbs);
         // init additional grid blocks
-        ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
-                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+        ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret), nbs,
+                                      propTag](typename RM_CVREF_T(ret)::size_type bi) mutable {
           auto block = ls.block(bi + nbs);
           using spg_t = RM_CVREF_T(ls);
           for (typename spg_t::integer_coord_component_type ci = 0; ci != ls.block_size; ++ci)
-            block("sdf", ci) = -ls._background;
+            block(propTag, ci) = -ls._background;
         });
         // register table
         ompExec(gridPtr->cbeginValueOff(),
@@ -111,14 +114,14 @@ namespace zs {
                   }
                 });
         // write inactive voxels
-        ompExec(gridPtr->cbeginValueOff(),
-                [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
-                  if (iter.getValue() < 0.0) {
-                    auto coord = iter.getCoord();
-                    auto coord_ = IV{coord.x(), coord.y(), coord.z()};
-                    ls("sdf", coord_) = iter.getValue();
-                  }
-                });
+        ompExec(gridPtr->cbeginValueOff(), [ls = proxy<execspace_e::openmp>(ret),
+                                            propTag](GridType::ValueOffCIter &iter) mutable {
+          if (iter.getValue() < 0.0) {
+            auto coord = iter.getCoord();
+            auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+            ls(propTag, coord_) = iter.getValue();
+          }
+        });
       }
     } else {  // fall back to serial execution
       auto table = proxy<execspace_e::host>(ret._table);
@@ -139,7 +142,7 @@ namespace zs {
         auto block = spgv.block(blockno);
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
-          block("sdf", cellid) = cell.getValue();
+          block(propTag, cellid) = cell.getValue();
         }
       }
       /// iterate over all inactive tiles that have negative values
@@ -161,23 +164,25 @@ namespace zs {
             blockno = table.insert(coord_);
             auto block = spgv.block(blockno);
             for (auto cellno = 0; cellno != ret.block_size; ++cellno)
-              block("sdf", cellno) = -ret._background;
+              block(propTag, cellno) = -ret._background;
           }
           auto locOffset = RM_CVREF_T(spgv)::local_coord_to_offset(loc);
           auto block = spgv.block(blockno);
-          block("sdf", locOffset) = iter.getValue();
+          block(propTag, locOffset) = iter.getValue();
         }
       }
     }
     return ret;
   }
   SparseGrid<3, f32, 8> convert_floatgrid_to_sparse_grid(const OpenVDBStruct &grid,
-                                                         const MemoryHandle mh) {
-    return convert_floatgrid_to_sparse_grid(grid).clone(mh);
+                                                         const MemoryHandle mh,
+                                                         SmallString propTag) {
+    return convert_floatgrid_to_sparse_grid(grid, propTag).clone(mh);
   }
 
   /// sparse grid -> floatgrid
-  OpenVDBStruct convert_sparse_grid_to_floatgrid(const SparseGrid<3, f32, 8> &splsIn) {
+  OpenVDBStruct convert_sparse_grid_to_floatgrid(const SparseGrid<3, f32, 8> &splsIn,
+                                                 SmallString propTag, u32 gridClass) {
     const auto &spls
         = splsIn.memspace() != memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
     openvdb::FloatGrid::Ptr grid
@@ -206,7 +211,7 @@ namespace zs {
         const auto blockid = spls._table._activeKeys[bno];
         grid->tree().touchLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
       }
-      ompExec(zip(range(spls.numBlocks()), spls._table._activeKeys), [lsv, &grid, &spls](
+      ompExec(zip(range(spls.numBlocks()), spls._table._activeKeys), [lsv, &grid, &spls, propTag](
                                                                          typename LsT::size_type
                                                                              blockno,
                                                                          const typename LsT::
@@ -217,8 +222,8 @@ namespace zs {
           throw std::runtime_error("strangely this leaf has not yet been allocated.");
         auto accessor = grid->getUnsafeAccessor();
         for (typename LsT::integer_coord_component_type cid = 0; cid != lsv.block_size; ++cid) {
-          // const auto sdfVal = lsv.wSample("sdf", lsv.wCoord(blockno, cid));
-          const auto sdfVal = lsv("sdf", blockno, cid);
+          // const auto sdfVal = lsv.wSample(propTag, lsv.wCoord(blockno, cid));
+          const auto sdfVal = lsv(propTag, blockno, cid);
           if (sdfVal == lsv._background) continue;
           const auto coord = blockid + LsT::local_offset_to_coord(cid);
           accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
@@ -230,18 +235,24 @@ namespace zs {
       auto accessor = grid->getAccessor();
       for (auto &&[blockno, blockid] : zip(range(spls.numBlocks()), spls._table._activeKeys))
         for (int cid = 0; cid != lsv.block_size; ++cid) {
-          const auto sdfVal = lsv("sdf", blockno, cid);
+          const auto sdfVal = lsv(propTag, blockno, cid);
           if (sdfVal == lsv._background) continue;
           const auto coord = blockid + LsT::local_offset_to_coord(cid);
           accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
         }
     }
-    grid->setGridClass(openvdb::GridClass::GRID_LEVEL_SET);
+    // GRID_UNKNOWN: 0
+    // GRID_LEVEL_SET: 1
+    // GRID_FOG_VOLUME: 2
+    // GRID_STAGGERED: 3
+    if (gridClass >= 3) throw std::runtime_error(fmt::format("Unknown gridclass [{}]!", gridClass));
+    grid->setGridClass(static_cast<openvdb::GridClass>(gridClass));
     return OpenVDBStruct{grid};
   }
 
   /// float3grid -> sparse grid
-  SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid) {
+  SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid,
+                                                          SmallString propTag) {
     using GridType = openvdb::Vec3fGrid;
     using TreeType = GridType::TreeType;
     using RootType = TreeType::RootNodeType;  // level 3 RootNode
@@ -262,7 +273,8 @@ namespace zs {
     const auto leafCount = gridPtr->tree().leafCount();
     ret._background = gridPtr->background()[0];
     ret._table = typename SpgT::table_type{leafCount, memsrc_e::host, -1};
-    ret._grid = typename SpgT::grid_storage_type{{{"v", 1}}, leafCount * 512, memsrc_e::host, -1};
+    ret._grid =
+        typename SpgT::grid_storage_type{{{propTag, 3}}, leafCount * 512, memsrc_e::host, -1};
 
     openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
     gridPtr->transform().print();
@@ -287,7 +299,8 @@ namespace zs {
       // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
               [&ret, table = proxy<execspace_e::openmp>(ret._table),
-               ls = proxy<execspace_e::openmp>(ret), leafCount](LeafCIterRange &range) mutable {
+               ls = proxy<execspace_e::openmp>(ret), leafCount,
+               propTag](LeafCIterRange &range) mutable {
                 const LeafType &node = *range.iterator();
                 if (node.onVoxelCount() <= 0) return;
                 auto cell = node.beginValueAll();
@@ -303,7 +316,7 @@ namespace zs {
                 int cellid = 0;
                 for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
                   auto vel = cell.getValue();
-                  block.template tuple<3>("v", cellid) = TV{vel[0], vel[1], vel[2]};
+                  block.template tuple<3>(propTag, cellid) = TV{vel[0], vel[1], vel[2]};
                 }
               });
       /// iterate over all inactive tiles that have negative values
@@ -320,12 +333,12 @@ namespace zs {
       if (newNbs != nbs) {
         ret.resize(ompExec, newNbs);
         // init additional grid blocks
-        ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
-                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+        ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret), nbs,
+                                      propTag](typename RM_CVREF_T(ret)::size_type bi) mutable {
           auto block = ls.block(bi + nbs);
           using spg_t = RM_CVREF_T(ls);
           for (typename spg_t::integer_coord_component_type ci = 0; ci != ls.block_size; ++ci)
-            block.template tuple<3>("v", ci) = TV::uniform(ls._background);
+            block.template tuple<3>(propTag, ci) = TV::uniform(ls._background);
         });
         // register table
         ompExec(gridPtr->cbeginValueOff(),
@@ -338,15 +351,15 @@ namespace zs {
                   }
                 });
         // write inactive voxels
-        ompExec(gridPtr->cbeginValueOff(),
-                [ls = proxy<execspace_e::openmp>(ret)](GridType::ValueOffCIter &iter) mutable {
-                  if (!iter.getValue().isZero()) {
-                    auto coord = iter.getCoord();
-                    auto coord_ = IV{coord.x(), coord.y(), coord.z()};
-                    auto vel = iter.getValue();
-                    for (int d = 0; d != 3; ++d) ls("v", d, coord_) = vel[d];
-                  }
-                });
+        ompExec(gridPtr->cbeginValueOff(), [ls = proxy<execspace_e::openmp>(ret),
+                                            propTag](GridType::ValueOffCIter &iter) mutable {
+          if (!iter.getValue().isZero()) {
+            auto coord = iter.getCoord();
+            auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+            auto vel = iter.getValue();
+            for (int d = 0; d != 3; ++d) ls(propTag, d, coord_) = vel[d];
+          }
+        });
       }
     } else {  // fall back to serial execution
       auto table = proxy<execspace_e::host>(ret._table);
@@ -368,19 +381,21 @@ namespace zs {
         RM_CVREF_T(blockno) cellid = 0;
         for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
           auto vel = cell.getValue();
-          block.template tuple<3>("v", cellid) = TV{vel[0], vel[1], vel[2]};
+          block.template tuple<3>(propTag, cellid) = TV{vel[0], vel[1], vel[2]};
         }
       }
     }
     return ret;
   }
   SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid,
-                                                          const MemoryHandle mh) {
-    return convert_float3grid_to_sparse_grid(grid).clone(mh);
+                                                          const MemoryHandle mh,
+                                                          SmallString propTag) {
+    return convert_float3grid_to_sparse_grid(grid, propTag).clone(mh);
   }
 
   /// sparse grid -> float3grid
-  OpenVDBStruct convert_sparse_grid_to_float3grid(const SparseGrid<3, f32, 8> &splsIn) {
+  OpenVDBStruct convert_sparse_grid_to_float3grid(const SparseGrid<3, f32, 8> &splsIn,
+                                                  SmallString propTag) {
     using TV = openvdb::Vec3f;
     const auto &spls
         = splsIn.memspace() != memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
@@ -410,7 +425,7 @@ namespace zs {
         const auto blockid = spls._table._activeKeys[bno];
         grid->tree().touchLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
       }
-      ompExec(zip(range(spls.numBlocks()), spls._table._activeKeys), [lsv, &grid, &spls](
+      ompExec(zip(range(spls.numBlocks()), spls._table._activeKeys), [lsv, &grid, &spls, propTag](
                                                                          typename LsT::size_type
                                                                              blockno,
                                                                          const typename LsT::
@@ -421,8 +436,8 @@ namespace zs {
           throw std::runtime_error("strangely this leaf has not yet been allocated.");
         auto accessor = grid->getUnsafeAccessor();
         for (typename LsT::integer_coord_component_type cid = 0; cid != lsv.block_size; ++cid) {
-          const auto val
-              = TV{lsv("v", 0, blockno, cid), lsv("v", 1, blockno, cid), lsv("v", 2, blockno, cid)};
+          const auto val = TV{lsv(propTag, 0, blockno, cid), lsv(propTag, 1, blockno, cid),
+                              lsv(propTag, 2, blockno, cid)};
           if (val.isZero()) continue;
           const auto coord = blockid + LsT::local_offset_to_coord(cid);
           accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, val);
@@ -434,8 +449,8 @@ namespace zs {
       auto accessor = grid->getAccessor();
       for (auto &&[blockno, blockid] : zip(range(spls.numBlocks()), spls._table._activeKeys))
         for (int cid = 0; cid != lsv.block_size; ++cid) {
-          const auto val
-              = TV{lsv("v", 0, blockno, cid), lsv("v", 1, blockno, cid), lsv("v", 2, blockno, cid)};
+          const auto val = TV{lsv(propTag, 0, blockno, cid), lsv(propTag, 1, blockno, cid),
+                              lsv(propTag, 2, blockno, cid)};
           if (val.isZero()) continue;
           const auto coord = blockid + LsT::local_offset_to_coord(cid);
           accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, val);

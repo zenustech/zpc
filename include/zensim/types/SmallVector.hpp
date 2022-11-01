@@ -57,7 +57,7 @@ namespace zs {
       return i;
     }
 
-    alignas(nbytes) char_type buf[nbytes];
+    char_type buf[nbytes];
   };
 
   /// property tag

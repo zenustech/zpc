@@ -3,11 +3,12 @@
 
 namespace zs {
 
-  /// @brief stores all leaf nodes of an adaptive octree
-  template <int dim_, typename ValueT = f32, int SideLength = 8,
+  /// @brief stores all leaf blocks of an adaptive octree including halo regions
+  template <int dim_, typename ValueT = f32, int SideLength = 8, int HaloSize = 0,
             typename AllocatorT = ZSPmrAllocator<>, typename IntegerCoordT = i32>
-  struct AdaptiveGrid : SparseGrid<dim_, ValueT, SideLength, AllocatorT, IntegerCoordT> {
-    using base_t = SparseGrid<dim_, ValueT, SideLength, AllocatorT, IntegerCoordT>;
+  struct AdaptiveGrid
+      : SparseGrid<dim_, ValueT, SideLength + HaloSize * 2, AllocatorT, IntegerCoordT> {
+    using base_t = SparseGrid<dim_, ValueT, SideLength + HaloSize * 2, AllocatorT, IntegerCoordT>;
     using value_type = typename base_t::value_type;
     using allocator_type = typename base_t::allocator_type;
     using index_type = typename base_t::index_type;
@@ -18,7 +19,12 @@ namespace zs {
 
     static constexpr int dim = base_t::dim;
     static constexpr integer_coord_component_type side_length = base_t::side_length;
-    static constexpr integer_coord_component_type block_size = base_t::block_size;
+    static constexpr integer_coord_component_type halo_size = HaloSize;
+    static constexpr integer_coord_component_type total_side_length = side_length + halo_size * 2;
+    static constexpr integer_coord_component_type block_size = math::pow_integral(side_length, dim);
+    static constexpr integer_coord_component_type total_block_size = base_t::block_size;
+    static_assert(math::pow_integral(total_side_length, dim) == total_block_size,
+                  "total block size contradicts side length and halo size");
 
     using coord_type = typename base_t::coord_type;
     using integer_coord_type = typename base_t::integer_coord_type;
@@ -28,10 +34,12 @@ namespace zs {
     using transform_type = typename base_t::transform_type;
     using table_type = typename base_t::table_type;
 
-    /// mask
+    /// @note mask storage uses 64-bit word, one bit each cell (or voxel)
     static constexpr integer_coord_component_type block_word_size = block_size / 64;
     static_assert(block_size % 64 == 0, "block size should be a multiple of 64");
     using mask_storage_type = TileVector<u64, block_word_size, allocator_type>;
+    /// @note level 0 means finest grid
+    using level_storage_type = Vector<u8, allocator_type>;
 
     constexpr MemoryLocation memoryLocation() const noexcept { return base_t::memoryLocation(); }
     constexpr ProcID devid() const noexcept { return base_t::devid(); }
@@ -45,6 +53,7 @@ namespace zs {
     // active mask (whether a voxel is active, use background value if inactive)
     // signed mask (indicates inside / outside status according to sdf)
     mask_storage_type _mask;
+    level_storage_type _levels;
   };
 
   // special construct for blockwise access (with halos)

@@ -80,7 +80,7 @@ namespace zs {
     SparseGrid(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
                size_type numBlocks = 0)
         : _table{allocator, numBlocks},
-          _grid{allocator, channelTags, numBlocks * block_size},
+          _grid{allocator, channelTags, numBlocks * (size_type)block_size},
           _transform{transform_type::identity()},
           _background{zeroValue()} {}
     SparseGrid(const std::vector<PropertyTag> &channelTags, size_type numBlocks,
@@ -106,7 +106,7 @@ namespace zs {
 
     template <typename ExecPolicy> void resize(ExecPolicy &&policy, size_type numBlocks) {
       _table.resize(FWD(policy), numBlocks);
-      _grid.resize(numBlocks * block_size);
+      _grid.resize(numBlocks * (size_type)block_size);
     }
     template <typename Policy>
     void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {

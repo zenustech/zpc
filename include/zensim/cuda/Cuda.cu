@@ -43,10 +43,17 @@ namespace zs {
       const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
       const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
       const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+#if 0
       fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
                  "\nCuda Error on Device {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
                  did >= 0 ? std::to_string(did) : "unknown", get_cuda_rt_error_string(errorCode),
                  " cuda api error location ", fileInfo, locInfo, funcInfo, "=");
+#else
+      std::cerr << fmt::format("\nCuda Error on Device {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+                               did >= 0 ? std::to_string(did) : "unknown",
+                               get_cuda_rt_error_string(errorCode), " cuda api error location ",
+                               fileInfo, locInfo, funcInfo, "=");
+#endif
     }
   }
 

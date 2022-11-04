@@ -14,6 +14,7 @@
 // #include <driver_types.h>
 #include <cstdint>
 #include <initializer_list>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
@@ -226,10 +227,17 @@ namespace zs {
       const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
       if (ctx.errorStatus) return;  // there already exists a preceding cuda error
       ctx.errorStatus = true;
+#if 0
       fmt::print(fg(fmt::color::crimson) | fmt::emphasis::italic | fmt::emphasis::bold,
                  "\nCuda Error on Device {}, Stream {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
                  ctx.getDevId(), streamInfo, Cuda::get_cuda_rt_error_string(error),
                  " kernel error location ", fileInfo, locInfo, funcInfo, "=");
+#else
+      std::cerr << fmt::format(
+          "\nCuda Error on Device {}, Stream {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+          ctx.getDevId(), streamInfo, Cuda::get_cuda_rt_error_string(error),
+          " kernel error location ", fileInfo, locInfo, funcInfo, "=");
+#endif
     }
   }
   template <typename... Args> struct cuda_safe_launch {

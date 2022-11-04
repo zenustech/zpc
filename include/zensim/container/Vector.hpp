@@ -363,7 +363,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return (RetT)(*((value_type *)0));
+        return (RetT)(*((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -374,7 +374,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return (RetT)(*((const value_type *)0));
+        return (RetT)(
+            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -387,7 +388,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return (RetT)(*((value_type *)0));
+        return (RetT)(*((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -398,7 +399,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector ofb! accessing %lld out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return (RetT)(*((const value_type *)0));
+        return (RetT)(
+            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];

@@ -484,12 +484,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *((value_type *)0);
+          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= lane_width) {
           printf("tilevector ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)lane_width);
-          return *((value_type *)0);
+          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
 
@@ -499,12 +499,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *((value_type *)0);
+          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= _vectorSize) {
           printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)_vectorSize);
-          return *((value_type *)0);
+          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
         return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
@@ -517,12 +517,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *((const value_type *)0);
+          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= lane_width) {
           printf("tilevector ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)lane_width);
-          return *((const value_type *)0);
+          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
         return *(_vector + (chn * lane_width + i));
@@ -531,12 +531,12 @@ namespace zs {
         if (chn >= _numChannels) {
           printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn,
                  (int)_numChannels);
-          return *((const value_type *)0);
+          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= _vectorSize) {
           printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                  (long long)_vectorSize);
-          return *((const value_type *)0);
+          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
         return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
@@ -549,12 +549,12 @@ namespace zs {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn >= _numChannels) {
         printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn, (int)_numChannels);
-        return *((value_type *)0);
+        return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
       if (localNo >= lane_width) {
         printf("tilevector ofb! local accessing ele [%lld] out of [0, %lld)\n", (long long)tileNo,
                (long long)lane_width);
-        return *((value_type *)0);
+        return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
       return *(_vector + (tileNo * _numChannels + chn) * lane_width + localNo);
@@ -565,12 +565,12 @@ namespace zs {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn >= _numChannels) {
         printf("tilevector ofb! accessing chn [%d] out of [0, %d)\n", (int)chn, (int)_numChannels);
-        return *((const value_type *)0);
+        return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
       if (localNo >= lane_width) {
         printf("tilevector ofb! local accessing ele [%lld] out of [0, %lld)\n", (long long)tileNo,
                (long long)lane_width);
-        return *((const value_type *)0);
+        return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
       return *(_vector + (tileNo * _numChannels + chn) * lane_width + localNo);
@@ -612,12 +612,14 @@ namespace zs {
       if (chn + RetT::extent > _numChannels) {
         printf("tilevector ofb! accessing chn [%d, %d) out of [0, %d)\n", (int)chn,
                (int)(chn + RetT::extent), (int)_numChannels);
-        return RetT::uniform(*(value_type *)0);
+        return RetT::uniform(
+            *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
       if (i >= _vectorSize) {
         printf("tilevector ofb! global accessing ele [%lld] out of [0, %lld)\n", (long long)i,
                (long long)_vectorSize);
-        return RetT::uniform(*(value_type *)0);
+        return RetT::uniform(
+            *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
       offset = (i / lane_width * _numChannels + chn) * lane_width + (i % lane_width);
@@ -752,6 +754,8 @@ namespace zs {
     using size_type = typename base_t::size_type;
     using difference_type = typename base_t::difference_type;
     using channel_counter_type = typename base_t::channel_counter_type;
+    using base_t::_numChannels;
+    using base_t::_vectorSize;
     using whole_view_type = TileVectorView<Space, TileVectorT, false>;
     using tile_view_type = TileVectorView<Space, TileVectorT, true>;
     static constexpr auto lane_width = base_t::lane_width;
@@ -817,23 +821,65 @@ namespace zs {
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr reference operator()(const SmallString &propName, const channel_counter_type chn,
                                    const size_type i) noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (operator()) accessing prop [%s] which is not among %d props (%d "
+            "chns, %lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<base_t &>(*this)(_numChannels, i);
+      }
+#endif
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
     constexpr const_reference operator()(const SmallString &propName,
                                          const channel_counter_type chn,
                                          const size_type i) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (operator()) const accessing prop [%s] which is not among %d props "
+            "(%d chns, %lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<const base_t &>(*this)(_numChannels, i);
+      }
+#endif
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr reference operator()(const SmallString &propName, const size_type i) noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (operator()) accessing prop [%s] which is not among %d props (%d "
+            "chns, %lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<base_t &>(*this)(_numChannels, i);
+      }
+#endif
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     constexpr const_reference operator()(const SmallString &propName,
                                          const size_type i) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (operator()) const accessing prop [%s] which is not among %d props "
+            "(%d chns, %lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<const base_t &>(*this)(_numChannels, i);
+      }
+#endif
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
     }
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (tileid >= (_vectorSize + lane_width - 1) / lane_width) {
+        printf("tilevector ofb! global accessing tile %d out of %d blocks\n", (int)tileid,
+               (int)(_vectorSize + lane_width - 1) / lane_width);
+      }
+#endif
       return TileVectorView<Space, TileVectorT, true>{
           this->_vector + tileid * lane_width * this->_numChannels,
           lane_width,
@@ -845,6 +891,12 @@ namespace zs {
     }
     template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
     constexpr auto tile(const size_type tileid) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (tileid >= (_vectorSize + lane_width - 1) / lane_width) {
+        printf("tilevector ofb! const global accessing tile %d out of %d blocks\n", (int)tileid,
+               (int)(_vectorSize + lane_width - 1) / lane_width);
+      }
+#endif
       return TileVectorView<Space, const_tile_vector_type, true>{
           this->_vector + tileid * lane_width * this->_numChannels,
           lane_width,
@@ -857,6 +909,15 @@ namespace zs {
 
     template <auto... Ns>
     constexpr auto pack(const SmallString &propName, const size_type i) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (pack) accessing prop [%s] which is not among %d props (%d chns, %lld "
+            "eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<const base_t &>(*this).template pack<Ns...>(_numChannels, i);
+      }
+#endif
       return static_cast<const base_t &>(*this).template pack<Ns...>(
           _tagOffsets[propertyIndex(propName)], i);
     }
@@ -867,6 +928,15 @@ namespace zs {
     template <auto... Ns> constexpr auto pack(const SmallString &propName,
                                               const channel_counter_type chn,
                                               const size_type i) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (pack) accessing prop [%s] which is not among %d props (%d chns, %lld "
+            "eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<const base_t &>(*this).template pack<Ns...>(_numChannels, i);
+      }
+#endif
       return static_cast<const base_t &>(*this).template pack<Ns...>(
           _tagOffsets[propertyIndex(propName)] + chn, i);
     }
@@ -877,17 +947,44 @@ namespace zs {
     }
     template <channel_counter_type N, typename VT = value_type>
     constexpr auto array(const SmallString &propName, const size_type i) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (array) accessing prop [%s] which is not among %d props (%d chns, "
+            "%lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<const base_t &>(*this).template array<N, VT>(_numChannels, i);
+      }
+#endif
       return static_cast<const base_t &>(*this).template array<N, VT>(
           _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple(const SmallString &propName, const size_type i) noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (tuple) accessing prop [%s] which is not among %d props (%d chns, "
+            "%lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<base_t &>(*this).template tuple<d>(_numChannels, i);
+      }
+#endif
       return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)],
                                                             i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple(const SmallString &propName, const channel_counter_type chn,
                          const size_type i) noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (tuple) accessing prop [%s] which is not among %d props (%d chns, "
+            "%lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<base_t &>(*this).template tuple<d>(_numChannels, i);
+      }
+#endif
       return static_cast<base_t &>(*this).template tuple<d>(
           _tagOffsets[propertyIndex(propName)] + chn, i);
     }
@@ -898,12 +995,32 @@ namespace zs {
     }
     template <auto d>
     constexpr auto tuple(const SmallString &propName, const size_type i) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (tuple) const accessing prop [%s] which is not among %d props (%d "
+            "chns, "
+            "%lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<const base_t &>(*this).template tuple<d>(_numChannels, i);
+      }
+#endif
       return static_cast<const base_t &>(*this).template tuple<d>(
           _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto d> constexpr auto tuple(const SmallString &propName,
                                            const channel_counter_type chn,
                                            const size_type i) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (!hasProperty(propName)) {
+        printf(
+            "tilevector ofb! (tuple) const accessing prop [%s] which is not among %d props (%d "
+            "chns, "
+            "%lld eles) in total\n",
+            propName.asChars(), (int)_N, (int)_numChannels, (long long int)_vectorSize);
+        return static_cast<const base_t &>(*this).template tuple<d>(_numChannels, i);
+      }
+#endif
       return static_cast<const base_t &>(*this).template tuple<d>(
           _tagOffsets[propertyIndex(propName)] + chn, i);
     }

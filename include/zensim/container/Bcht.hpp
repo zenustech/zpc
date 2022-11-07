@@ -787,7 +787,7 @@ namespace zs {
       namespace cg = ::cooperative_groups;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
-      const int cap = math::min((int)tile.num_threads(), (int)bucket_size);
+      const int cap = math::min((int)tile.size(), (int)bucket_size);
 
       mars_rng_32 rng;
       u32 cuckoo_counter = 0;
@@ -1127,7 +1127,7 @@ namespace zs {
     group_query(CoalescedGroup &tile, const original_key_type &key,
                 wrapv<retrieve_index> = {}) const noexcept {
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
-      const int cap = math::min((int)tile.num_threads(), (int)bucket_size);
+      const int cap = math::min((int)tile.size(), (int)bucket_size);
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto lane_id = tile.thread_rank();

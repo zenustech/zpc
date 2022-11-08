@@ -41,7 +41,7 @@ namespace zs {
         typename SpgT::grid_storage_type{{{propTag, 1}}, leafCount * 512, memsrc_e::host, -1};
 
     openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
-    gridPtr->transform().print();
+    // gridPtr->transform().print();
     vec<float, 4, 4> lsv2w;
     for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
     ret.resetTransformation(lsv2w);
@@ -277,7 +277,7 @@ namespace zs {
         typename SpgT::grid_storage_type{{{propTag, 3}}, leafCount * 512, memsrc_e::host, -1};
 
     openvdb::Mat4R v2w = gridPtr->transform().baseMap()->getAffineMap()->getMat4();
-    gridPtr->transform().print();
+    // gridPtr->transform().print();
     vec<float, 4, 4> lsv2w;
     for (auto &&[r, c] : ndrange<2>(4)) lsv2w(r, c) = v2w[r][c];
     ret.resetTransformation(lsv2w);

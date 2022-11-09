@@ -566,6 +566,7 @@ namespace zs {
         const original_key_type &key, index_type insertion_index = sentinel_v,
         bool enqueueKey = true) noexcept {
       namespace cg = ::cooperative_groups;
+      if (_numBuckets == 0) return failure_token_v;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
       const int cap = __popc(tile.ballot(1));  // assume active pattern 0...001111 [15, 14, ..., 0]
@@ -785,6 +786,7 @@ namespace zs {
     group_insert(CoalescedGroup &tile, const original_key_type &key,
                  index_type insertion_index = sentinel_v, bool enqueueKey = true) noexcept {
       namespace cg = ::cooperative_groups;
+      if (_numBuckets == 0) return failure_token_v;
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
       const int cap = math::min((int)tile.size(), (int)bucket_size);
@@ -1046,6 +1048,12 @@ namespace zs {
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const original_key_type &key, wrapv<retrieve_index> = {}) const noexcept {
       namespace cg = ::cooperative_groups;
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return sentinel_v;
+        else
+          return limits<index_type>::max();
+      }
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
       const int cap = __popc(tile.ballot(1));  // assume active pattern 0...001111 [15, 14, ..., 0]
@@ -1118,7 +1126,10 @@ namespace zs {
                                             % _numBuckets * bucket_size;
         }
       }
-      return sentinel_v;
+      if constexpr (retrieve_index)
+        return sentinel_v;
+      else
+        return limits<index_type>::max();
     }
 
     template <bool retrieve_index = true, execspace_e S = space,
@@ -1126,6 +1137,12 @@ namespace zs {
     __forceinline__ __host__ __device__ index_type
     group_query(CoalescedGroup &tile, const original_key_type &key,
                 wrapv<retrieve_index> = {}) const noexcept {
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return sentinel_v;
+        else
+          return limits<index_type>::max();
+      }
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
       const int cap = math::min((int)tile.size(), (int)bucket_size);
       auto bucket_offset
@@ -1173,7 +1190,10 @@ namespace zs {
                                             % _numBuckets * bucket_size;
         }
       }
-      return sentinel_v;
+      if constexpr (retrieve_index)
+        return sentinel_v;
+      else
+        return limits<index_type>::max();
     }
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
@@ -1256,6 +1276,7 @@ namespace zs {
     [[maybe_unused]] inline index_type insert(const original_key_type &key,
                                               index_type insertion_index = sentinel_v,
                                               const bool enqueueKey = true) noexcept {
+      if (_numBuckets == 0) return failure_token_v;
       mars_rng_32 rng;
       u32 cuckoo_counter = 0;
       auto bucket_offset
@@ -1363,6 +1384,12 @@ namespace zs {
               enable_if_all<S == execspace_e::host> = 0>
     [[nodiscard]] inline index_type query(const original_key_type &key,
                                           wrapv<retrieve_index> = {}) const noexcept {
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return sentinel_v;
+        else
+          return limits<index_type>::max();
+      }
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       storage_key_type query_key = transKey(key);
@@ -1393,7 +1420,10 @@ namespace zs {
                                             % _numBuckets * bucket_size;
         }
       }
-      return sentinel_v;
+      if constexpr (retrieve_index)
+        return sentinel_v;
+      else
+        return limits<index_type>::max();
     }
 
     ///
@@ -1409,6 +1439,7 @@ namespace zs {
     [[maybe_unused]] inline index_type insert(const original_key_type &key,
                                               index_type insertion_index = sentinel_v,
                                               const bool enqueueKey = true) noexcept {
+      if (_numBuckets == 0) return failure_token_v;
       mars_rng_32 rng;
       u32 cuckoo_counter = 0;
       auto bucket_offset
@@ -1534,6 +1565,12 @@ namespace zs {
               enable_if_all<S == execspace_e::openmp> = 0>
     [[nodiscard]] inline index_type query(const original_key_type &key,
                                           wrapv<retrieve_index> = {}) const noexcept {
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return sentinel_v;
+        else
+          return limits<index_type>::max();
+      }
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       storage_key_type query_key = transKey(key);
@@ -1564,7 +1601,10 @@ namespace zs {
                                             % _numBuckets * bucket_size;
         }
       }
-      return sentinel_v;
+      if constexpr (retrieve_index)
+        return sentinel_v;
+      else
+        return limits<index_type>::max();
     }
 
     ///

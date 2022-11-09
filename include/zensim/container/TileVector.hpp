@@ -676,6 +676,11 @@ namespace zs {
 #endif
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
     }
+    template <auto... Ns, bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr auto tuple(value_seq<Ns...>, const channel_counter_type chn,
+                         const size_type i) noexcept {
+      return tuple<(Ns * ...)>(chn, i);
+    }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto stdtuple(const channel_counter_type chn, const size_type i) noexcept {
       return stdtuple_impl(chn, i, std::make_index_sequence<d>{});
@@ -711,6 +716,10 @@ namespace zs {
       }
 #endif
       return tuple_impl(chn, i, std::make_index_sequence<d>{});
+    }
+    template <auto... Ns> constexpr auto tuple(value_seq<Ns...>, const channel_counter_type chn,
+                                               const size_type i) const noexcept {
+      return tuple<(Ns * ...)>(chn, i);
     }
     template <auto d>
     constexpr auto stdtuple(const channel_counter_type chn, const size_type i) const noexcept {
@@ -973,6 +982,11 @@ namespace zs {
       return static_cast<base_t &>(*this).template tuple<d>(_tagOffsets[propertyIndex(propName)],
                                                             i);
     }
+    template <auto... Ns, bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
+                         const size_type i) noexcept {
+      return tuple<(Ns * ...)>(propName, i);
+    }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple(const SmallString &propName, const channel_counter_type chn,
                          const size_type i) noexcept {
@@ -987,6 +1001,11 @@ namespace zs {
 #endif
       return static_cast<base_t &>(*this).template tuple<d>(
           _tagOffsets[propertyIndex(propName)] + chn, i);
+    }
+    template <auto... Ns, bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
+                         const channel_counter_type chn, const size_type i) noexcept {
+      return tuple<(Ns * ...)>(propName, chn, i);
     }
     template <auto d, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto stdtuple(const SmallString &propName, const size_type i) noexcept {
@@ -1008,6 +1027,10 @@ namespace zs {
       return static_cast<const base_t &>(*this).template tuple<d>(
           _tagOffsets[propertyIndex(propName)], i);
     }
+    template <auto... Ns> constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
+                                               const size_type i) const noexcept {
+      return tuple<(Ns * ...)>(propName, i);
+    }
     template <auto d> constexpr auto tuple(const SmallString &propName,
                                            const channel_counter_type chn,
                                            const size_type i) const noexcept {
@@ -1023,6 +1046,11 @@ namespace zs {
 #endif
       return static_cast<const base_t &>(*this).template tuple<d>(
           _tagOffsets[propertyIndex(propName)] + chn, i);
+    }
+    template <auto... Ns> constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
+                                               const channel_counter_type chn,
+                                               const size_type i) const noexcept {
+      return tuple<(Ns * ...)>(propName, chn, i);
     }
     template <auto d>
     constexpr auto stdtuple(const SmallString &propName, const size_type i) const noexcept {

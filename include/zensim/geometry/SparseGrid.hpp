@@ -799,7 +799,7 @@ namespace zs {
     static constexpr int width = (kt == kernel_e::linear ? 2 : (kt == kernel_e::quadratic ? 3 : 4));
     static constexpr int deriv_order = drv_order;
 
-    using TWM = vec<coord_type, dim, width>;
+    using TWM = vec<coord_component_type, dim, width>;
 
     static_assert(deriv_order >= 0 && deriv_order <= 2,
                   "weight derivative order should be an integer within [0, 2]");
@@ -878,6 +878,23 @@ namespace zs {
     constexpr arena_type<value_type> arena(const SmallString &propName, size_type chn = 0,
                                            value_type defaultVal = {}) const noexcept {
       return arena(gridPtr->_grid.propertyOffset(propName) + chn, defaultVal);
+    }
+
+    /// helpers
+    constexpr auto range() const noexcept { return ndrange<dim>(width); }
+
+    template <typename... Tn> constexpr auto offset(const std::tuple<Tn...> &loc) const noexcept {
+      return make_vec<int>(loc);
+    }
+    template <typename... Tn> constexpr auto offset(const tuple<Tn...> &loc) const noexcept {
+      return make_vec<int>(loc);
+    }
+
+    template <typename... Tn> constexpr auto coord(const std::tuple<Tn...> &loc) const noexcept {
+      return iCorner + offset(loc);
+    }
+    template <typename... Tn> constexpr auto coord(const tuple<Tn...> &loc) const noexcept {
+      return iCorner + offset(loc);
     }
 
     /// minimum

@@ -53,8 +53,10 @@ namespace zs {
     void setCounter(index_t newSize) { _cnt.setVal(newSize); }
     void getCounter(index_t newSize) const { _cnt.getVal(); }
     void reserve(index_t newSize) {
-      _primIds.resize(newSize);
-      _nodeIds.resize(newSize);
+      if (newSize > _primIds.size()) {  // not to confuse OFB check
+        _primIds.resize(newSize);
+        _nodeIds.resize(newSize);
+      }
     }
 
     template <typename Policy> void reorder(Policy &&policy);

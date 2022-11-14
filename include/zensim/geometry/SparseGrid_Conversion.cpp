@@ -250,6 +250,69 @@ namespace zs {
     return OpenVDBStruct{grid};
   }
 
+  /// vdbgrid -> sparse grid
+  void assign_floatgrid_to_sparse_grid(const OpenVDBStruct &grid, SparseGrid<3, f32, 8> &spg,
+                                       SmallString propTag) {
+    using GridType = openvdb::FloatGrid;
+    using TreeType = GridType::TreeType;
+    using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
+    using GridPtr = typename GridType::Ptr;
+    const GridPtr &gridPtr = grid.as<GridPtr>();
+    using SpgT = SparseGrid<3, f32, 8>;
+    using IV = typename SpgT::integer_coord_type;
+    using TV = typename SpgT::packed_value_type;
+
+    auto ret = spg.clone({memsrc_e::host, -1});
+
+    static_assert(8 * 8 * 8 == LeafType::SIZE, "leaf node size not 8x8x8!");
+    constexpr auto space = execspace_e::openmp;
+
+    auto ompExec = omp_exec();
+    auto nbs = ret.numBlocks();
+    ompExec(zip(range(nbs), ret._table._activeKeys),
+            [&, spgv = proxy<space>(ret)](int blockno, const zs::vec<int, 3> &bcoord) mutable {
+              auto accessor = gridPtr->getUnsafeAccessor();
+              for (int cid = 0; cid != ret.block_size; ++cid) {
+                const auto coord = bcoord + RM_CVREF_T(spgv)::local_offset_to_coord(cid);
+                auto srcVal = accessor.getValue(openvdb::Coord{coord[0], coord[1], coord[2]});
+                spgv(propTag, blockno, cid) = srcVal;
+              }
+            });
+
+    spg._grid = ret._grid.clone(spg.memoryLocation());
+  }
+  void assign_float3grid_to_sparse_grid(const OpenVDBStruct &grid, SparseGrid<3, f32, 8> &spg,
+                                        SmallString propTag) {
+    using GridType = openvdb::Vec3fGrid;
+    using TreeType = GridType::TreeType;
+    using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
+    using GridPtr = typename GridType::Ptr;
+    const GridPtr &gridPtr = grid.as<GridPtr>();
+    using SpgT = SparseGrid<3, f32, 8>;
+    using IV = typename SpgT::integer_coord_type;
+    using TV = typename SpgT::packed_value_type;
+
+    auto ret = spg.clone({memsrc_e::host, -1});
+
+    // check if GRID_STAGGERED
+    static_assert(8 * 8 * 8 == LeafType::SIZE, "leaf node size not 8x8x8!");
+    constexpr auto space = execspace_e::openmp;
+
+    auto ompExec = omp_exec();
+    auto nbs = ret.numBlocks();
+    ompExec(zip(range(nbs), ret._table._activeKeys),
+            [&, spgv = proxy<space>(ret)](int blockno, const zs::vec<int, 3> &bcoord) mutable {
+              auto accessor = gridPtr->getUnsafeAccessor();
+              for (int cid = 0; cid != ret.block_size; ++cid) {
+                const auto coord = bcoord + RM_CVREF_T(spgv)::local_offset_to_coord(cid);
+                auto srcVal = accessor.getValue(openvdb::Coord{coord[0], coord[1], coord[2]});
+                for (int d = 0; d != 3; ++d) spgv(propTag, d, blockno, cid) = srcVal[d];
+              }
+            });
+
+    spg._grid = ret._grid.clone(spg.memoryLocation());
+  }
+
   /// float3grid -> sparse grid
   SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid,
                                                           SmallString propTag) {

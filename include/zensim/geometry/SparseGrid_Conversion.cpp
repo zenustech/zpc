@@ -269,15 +269,17 @@ namespace zs {
 
     auto ompExec = omp_exec();
     auto nbs = ret.numBlocks();
-    ompExec(zip(range(nbs), ret._table._activeKeys),
-            [&, spgv = proxy<space>(ret)](int blockno, const zs::vec<int, 3> &bcoord) mutable {
-              auto accessor = gridPtr->getUnsafeAccessor();
-              for (int cid = 0; cid != ret.block_size; ++cid) {
-                const auto coord = bcoord + RM_CVREF_T(spgv)::local_offset_to_coord(cid);
-                auto srcVal = accessor.getValue(openvdb::Coord{coord[0], coord[1], coord[2]});
-                spgv(propTag, blockno, cid) = srcVal;
-              }
-            });
+    ompExec(range(nbs), [&, spgv = proxy<space>(ret)](int blockno) mutable {
+      // auto accessor = gridPtr->getUnsafeAccessor();
+      for (int cid = 0; cid != ret.block_size; ++cid) {
+        const auto wcoord = spgv.wStaggeredCoord(blockno, cid);
+        // auto srcVal = accessor.getValue(openvdb::Coord{coord[0], coord[1], coord[2]});
+        auto srcVal = openvdb::tools::BoxSampler::sample(
+            gridPtr->tree(),
+            gridPtr->transform().worldToIndex(openvdb::Vec3R{wcoord[0], wcoord[1], wcoord[2]}));
+        spgv(propTag, blockno, cid) = srcVal;
+      }
+    });
 
     spg._grid = ret._grid.clone(spg.memoryLocation());
   }
@@ -300,15 +302,17 @@ namespace zs {
 
     auto ompExec = omp_exec();
     auto nbs = ret.numBlocks();
-    ompExec(zip(range(nbs), ret._table._activeKeys),
-            [&, spgv = proxy<space>(ret)](int blockno, const zs::vec<int, 3> &bcoord) mutable {
-              auto accessor = gridPtr->getUnsafeAccessor();
-              for (int cid = 0; cid != ret.block_size; ++cid) {
-                const auto coord = bcoord + RM_CVREF_T(spgv)::local_offset_to_coord(cid);
-                auto srcVal = accessor.getValue(openvdb::Coord{coord[0], coord[1], coord[2]});
-                for (int d = 0; d != 3; ++d) spgv(propTag, d, blockno, cid) = srcVal[d];
-              }
-            });
+    ompExec(range(nbs), [&, spgv = proxy<space>(ret)](int blockno) mutable {
+      for (int cid = 0; cid != ret.block_size; ++cid) {
+        for (int d = 0; d != 3; ++d) {
+          const auto wcoord = spgv.wStaggeredCoord(blockno, cid, d);
+          auto srcVal = openvdb::tools::StaggeredBoxSampler::sample(
+              gridPtr->tree(),
+              gridPtr->transform().worldToIndex(openvdb::Vec3R{wcoord[0], wcoord[1], wcoord[2]}));
+          spgv(propTag, d, blockno, cid) = srcVal[d];
+        }
+      }
+    });
 
     spg._grid = ret._grid.clone(spg.memoryLocation());
   }

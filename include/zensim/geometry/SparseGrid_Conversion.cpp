@@ -272,7 +272,7 @@ namespace zs {
     ompExec(range(nbs), [&, spgv = proxy<space>(ret)](int blockno) mutable {
       // auto accessor = gridPtr->getUnsafeAccessor();
       for (int cid = 0; cid != ret.block_size; ++cid) {
-        const auto wcoord = spgv.wStaggeredCoord(blockno, cid);
+        const auto wcoord = spgv.wCoord(blockno, cid);
         // auto srcVal = accessor.getValue(openvdb::Coord{coord[0], coord[1], coord[2]});
         auto srcVal = openvdb::tools::BoxSampler::sample(
             gridPtr->tree(),

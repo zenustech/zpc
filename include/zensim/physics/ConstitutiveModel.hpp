@@ -684,6 +684,27 @@ namespace zs {
     }
     return ret;
   }
+  template <typename VecTM, enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == 3,
+                                          VecTM::template range_t<1>::value == 3> = 0>
+  constexpr auto dFAdF(const VecInterface<VecTM>& A) {
+    using Mat9 =
+        typename VecTM::template variant_vec<typename VecTM::value_type,
+                                             integer_seq<typename VecTM::index_type, 9, 9>>;
+    Mat9 M{};
+    M(0, 0) = M(1, 1) = M(2, 2) = A(0, 0);
+    M(3, 0) = M(4, 1) = M(5, 2) = A(0, 1);
+    M(6, 0) = M(7, 1) = M(8, 2) = A(0, 2);
+
+    M(0, 3) = M(1, 4) = M(2, 5) = A(1, 0);
+    M(3, 3) = M(4, 4) = M(5, 5) = A(1, 1);
+    M(6, 3) = M(7, 4) = M(8, 5) = A(1, 2);
+
+    M(0, 6) = M(1, 7) = M(2, 8) = A(2, 0);
+    M(3, 6) = M(4, 7) = M(5, 8) = A(2, 1);
+    M(6, 6) = M(7, 7) = M(8, 8) = A(2, 2);
+
+    return M;
+  }
 
   struct MaterialConfig {
     float rho{1e3};

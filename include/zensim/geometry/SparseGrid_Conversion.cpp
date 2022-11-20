@@ -145,9 +145,46 @@ namespace zs {
           block(propTag, cellid) = cell.getValue();
         }
       }
-      /// iterate over all inactive tiles that have negative values
-      // Visit all of the grid's inactive tile and voxel values and update the values
-      // that correspond to the interior region.
+      auto seqExec = seq_exec();
+      auto nbs = ret._table.size();
+      i64 valueOffCount{0};
+      seqExec(gridPtr->cbeginValueOff(), [&valueOffCount](GridType::ValueOffCIter &iter) {
+        if (iter.getValue() < 0) valueOffCount++;
+      });
+      fmt::print("{} more off-value voxels to be appended to {} blocks.\n", valueOffCount,
+                 nbs);
+      auto newNbs = nbs + valueOffCount;  // worst-case scenario
+      if (newNbs == nbs) return ret;
+      ret.resize(seqExec, newNbs);
+      // init additional grid blocks
+      seqExec(range(newNbs - nbs), [ls = proxy<execspace_e::host>(ret), nbs,
+                                    propTag](typename RM_CVREF_T(ret)::size_type bi) mutable {
+        auto block = ls.block(bi + nbs);
+        using spg_t = RM_CVREF_T(ls);
+        for (typename spg_t::integer_coord_component_type ci = 0; ci != ls.block_size; ++ci)
+          block(propTag, ci) = -ls._background;
+      });
+      // register table
+      seqExec(gridPtr->cbeginValueOff(),
+            [ls = proxy<execspace_e::host>(ret)](GridType::ValueOffCIter &iter) mutable {
+                if (iter.getValue() < 0.0) {
+                  auto coord = iter.getCoord();
+                  auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+                  coord_ -= (coord_ & (ls.side_length - 1));
+                  ls._table.insert(coord_);
+                }
+              });
+      // write inactive voxels
+      seqExec(gridPtr->cbeginValueOff(), [ls = proxy<execspace_e::host>(ret),
+                                          propTag](GridType::ValueOffCIter &iter) mutable {
+        if (iter.getValue() < 0.0) {
+          auto coord = iter.getCoord();
+          auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+          ls(propTag, coord_) = iter.getValue();
+        }
+      });
+#if 0
+      // following impl contains bugs
       for (GridType::ValueOffCIter iter = gridPtr->cbeginValueOff(); iter; ++iter) {
         if (iter.getValue() < 0.0) {
           auto coord = iter.getCoord();
@@ -157,7 +194,7 @@ namespace zs {
           auto blockno = table.query(coord_);
           if (blockno < 0) {
             auto nbs = ret._table.size();
-            ret._table.resize(seq_exec(), nbs + 1);
+            ret._table.resize(seqExec, nbs + 1);
             ret._grid.resize(nbs + 1);
             table = proxy<execspace_e::host>(ret._table);
 
@@ -171,6 +208,7 @@ namespace zs {
           block(propTag, locOffset) = iter.getValue();
         }
       }
+#endif
     }
     return ret;
   }

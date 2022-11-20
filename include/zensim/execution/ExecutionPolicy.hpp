@@ -89,15 +89,32 @@ namespace zs {
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
     using exec_tag = host_exec_tag;
     template <typename Range, typename F> constexpr void operator()(Range &&range, F &&f) const {
-      using fts = function_traits<F>;
-      if constexpr (fts::arity == 0)
-        for (auto &&it : range) f();
-      else {
-        for (auto &&it : range) {
-          if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
-            std::apply(f, it);
-          else
-            std::invoke(f, it);
+      constexpr auto hasBegin = is_valid(
+          [](auto t) -> decltype((void)std::begin(std::declval<typename decltype(t)::type>())) {});
+      constexpr auto hasEnd = is_valid(
+          [](auto t) -> decltype((void)std::end(std::declval<typename decltype(t)::type>())) {});
+      if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
+        /// for iterator-like range (e.g. openvdb)
+        /// for openvdb parallel iteration...
+        auto iter = FWD(range);  // otherwise fails on win
+        for (; iter; ++iter) {
+          if constexpr (std::is_invocable_v<F>) {
+            f();
+          } else {
+            std::invoke(f, iter);
+          }
+        }
+      } else {
+        using fts = function_traits<F>;
+        if constexpr (fts::arity == 0)
+          for (auto &&it : range) f();
+        else {
+          for (auto &&it : range) {
+            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+              std::apply(f, it);
+            else
+              std::invoke(f, it);
+          }
         }
       }
     }

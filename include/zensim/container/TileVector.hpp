@@ -773,7 +773,9 @@ namespace zs {
   template <execspace_e Space, typename TileVectorT, bool WithinTile, typename = void>
   struct TileVectorView : TileVectorUnnamedView<Space, TileVectorT, WithinTile> {
     using base_t = TileVectorUnnamedView<Space, TileVectorT, WithinTile>;
+#if ZS_ENABLE_OFB_ACCESS_CHECK
     using base_t::_nameTag;
+#endif
 
     static constexpr bool is_const_structure = base_t::is_const_structure;
     using tile_vector_type = typename base_t::tile_vector_type;

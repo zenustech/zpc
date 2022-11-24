@@ -118,6 +118,29 @@ namespace zs {
 
     constexpr bv_t getNodeBV(index_t node) const { return _orderedBvs[node]; }
 
+    template <typename VecT, class F> constexpr void ray_intersect(const VecInterface<VecT> &ro,
+                                                                   const VecInterface<VecT> &rd,
+                                                                   F &&f) const {  // hit distance
+      if (auto nl = numLeaves(); nl <= 2) {
+        for (index_t i = 0; i != nl; ++i) {
+          if (ray_box_intersect(ro, rd, getNodeBV(i))) f(_auxIndices[i]);
+        }
+        return;
+      }
+      index_t node = 0;
+      while (node != -1 && node != _numNodes) {
+        index_t level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (!ray_box_intersect(ro, rd, getNodeBV(node))) break;
+        // leaf node check
+        if (level == 0) {
+          if (ray_box_intersect(ro, rd, getNodeBV(node))) f(_auxIndices[node]);
+          node++;
+        } else  // separate at internal nodes
+          node = _auxIndices[node];
+      }
+    }
     // BV can be either VecInterface<VecT> or AABBBox<dim, T>
     template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
       if (auto nl = numLeaves(); nl <= 2) {

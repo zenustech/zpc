@@ -300,6 +300,67 @@ namespace zs {
     abv._max += dist;
     return overlaps(abv, bbv);
   }
+
+  template <typename VecT> constexpr typename VecT::value_type ray_tri_intersect(
+      VecInterface<VecT> const &ro, VecInterface<VecT> const &rd, VecInterface<VecT> const &v0,
+      VecInterface<VecT> const &v1, VecInterface<VecT> const &v2) {
+    using T = typename VecT::value_type;
+    constexpr T eps = limits<T>::epsilon() * 10;
+    auto u = v1 - v0;
+    auto v = v2 - v0;
+    auto n = u.cross(v);
+    T b = n.dot(rd);
+    if (zs::abs(b) > eps) {
+      T a = n.dot(v0 - ro);
+      T r = a / b;
+      {  // could provide predicates here
+        auto ip = ro + r * rd;
+        T uu = u.dot(u);
+        T uv = u.dot(v);
+        T vv = v.dot(v);
+        auto w = ip - v0;
+        T wu = w.dot(u);
+        T wv = w.dot(v);
+        T d = uv * uv - uu * vv;
+        T s = uv * wv - vv * wu;
+        T t = uv * wu - uu * wv;
+        d = (T)1 / d;
+        s *= d;
+        t *= d;
+        if (-eps <= s && s <= 1 + eps && -eps <= t && s + t <= 1 + eps * 2) return r;
+      }
+    }
+    return limits<T>::infinity();
+  }
+
+  /// ref: An Efficient and Robust Ray-Box Intersection Algorithm, 2005
+  template <typename VecT, int dim, typename T_,
+            enable_if_all<VecT::dim == 1, VecT::extent == 3> = 0>
+  constexpr bool ray_box_intersect(VecInterface<VecT> const &ro, VecInterface<VecT> const &rd,
+                                   AABBBox<dim, T_> const &box) noexcept {
+    static_assert(std::is_floating_point_v<typename VecT::value_type>,
+                  "ray direction should be in floating point");
+    using T = math::op_result_t<typename VecT::value_type, T_>;
+    // if (rd.l2NormSqr() < limits<T>::epsilon() * 10) return false;
+    T invd[3] = {1 / rd[0], 1 / rd[1], 1 / rd[2]};  // allow div 0, assuming IEEE standard
+    int sign[3] = {invd[0] < 0, invd[1] < 0, invd[2] < 0};
+    T tmin{}, tmax{}, tymin{}, tymax{}, tzmin{}, tzmax{};
+
+    tmin = ((sign[0] ? box._max : box._min)[0] - ro[0]) * invd[0];
+    tmax = ((sign[0] ? box._min : box._max)[0] - ro[0]) * invd[0];
+    tymin = ((sign[1] ? box._max : box._min)[1] - ro[1]) * invd[1];
+    tymax = ((sign[1] ? box._min : box._max)[1] - ro[1]) * invd[1];
+    if (tmin > tymax || tymin > tmax) return false;
+    if (tymin > tmin) tmin = tymin;
+    if (tymax < tmax) tmax = tymax;
+    tzmin = ((sign[2] ? box._max : box._min)[2] - ro[2]) * invd[2];
+    tzmax = ((sign[2] ? box._min : box._max)[2] - ro[2]) * invd[2];
+    if (tmin > tzmax || tzmin > tmax) return false;
+    if (tzmin > tmin) tmin = tzmin;
+    if (tzmax < tmax) tmax = tzmax;
+    return tmax >= (T)0;
+  }
+
   /// Sphere
   template <int dim, typename T = float> using BoundingSphere
       = AnalyticLevelSet<analytic_geometry_e::Sphere, T, dim>;

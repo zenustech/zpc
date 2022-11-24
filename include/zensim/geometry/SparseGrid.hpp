@@ -104,10 +104,15 @@ namespace zs {
       return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
 
-    template <typename ExecPolicy> void resize(ExecPolicy &&policy, size_type numBlocks) {
+    template <typename ExecPolicy>
+    void resize(ExecPolicy &&policy, size_type numBlocks, bool resizeGrid = true) {
       _table.resize(FWD(policy), numBlocks);
-      _grid.resize(numBlocks * (size_type)block_size);
+      if (resizeGrid) _grid.resize(numBlocks * (size_type)block_size);
     }
+    template <typename ExecPolicy> void resizePartition(ExecPolicy &&policy, size_type numBlocks) {
+      _table.resize(FWD(policy), numBlocks);
+    }
+    void resizeGrid(size_type numBlocks) { _grid.resize(numBlocks * (size_type)block_size); }
     template <typename Policy>
     void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
       _grid.append_channels(FWD(policy), tags);

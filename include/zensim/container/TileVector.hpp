@@ -295,6 +295,10 @@ namespace zs {
       }
     }
     template <typename Policy> void reset(Policy &&policy, value_type val);
+    void reset(int ch) {
+      Resource::memset(MemoryEntity{memoryLocation(), (void *)data()}, ch,
+                       numTiles() * tileBytes());
+    }
 
     constexpr size_type geometric_size_growth(size_type newSize,
                                               size_type capacity) const noexcept {
@@ -464,8 +468,7 @@ namespace zs {
     explicit constexpr TileVectorUnnamedView(TileVectorT &tilevector)
         : _vector{tilevector.data()},
           _vectorSize{tilevector.size()},
-          _numChannels{tilevector.numChannels()}
-           {}
+          _numChannels{tilevector.numChannels()} {}
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     explicit constexpr TileVectorUnnamedView(pointer base, const size_type s,
                                              const channel_counter_type nchns)
@@ -483,13 +486,13 @@ namespace zs {
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(), (int)chn,
-                 (int)_numChannels);
+          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+                 (int)chn, (int)_numChannels);
           return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= lane_width) {
-          printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)i,
-                 (long long)lane_width);
+          printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)lane_width);
           return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
@@ -498,13 +501,13 @@ namespace zs {
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(), (int)chn,
-                 (int)_numChannels);
+          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+                 (int)chn, (int)_numChannels);
           return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= _vectorSize) {
-          printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)i,
-                 (long long)_vectorSize);
+          printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
           return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
@@ -516,13 +519,13 @@ namespace zs {
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(), (int)chn,
-                 (int)_numChannels);
+          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+                 (int)chn, (int)_numChannels);
           return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= lane_width) {
-          printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)i,
-                 (long long)lane_width);
+          printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)lane_width);
           return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
@@ -530,13 +533,13 @@ namespace zs {
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(), (int)chn,
-                 (int)_numChannels);
+          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+                 (int)chn, (int)_numChannels);
           return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
         if (i >= _vectorSize) {
-          printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)i,
-                 (long long)_vectorSize);
+          printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
           return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
@@ -549,12 +552,13 @@ namespace zs {
                                    const size_type localNo) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn >= _numChannels) {
-        printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(), (int)chn, (int)_numChannels);
+        printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)_numChannels);
         return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
       if (localNo >= lane_width) {
-        printf("tilevector [%s] ofb! local accessing ele [%lld] out of [0, %lld)\n",_nameTag.asChars(),  (long long)tileNo,
-               (long long)lane_width);
+        printf("tilevector [%s] ofb! local accessing ele [%lld] out of [0, %lld)\n",
+               _nameTag.asChars(), (long long)tileNo, (long long)lane_width);
         return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
@@ -565,12 +569,13 @@ namespace zs {
                                          const size_type localNo) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn >= _numChannels) {
-        printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(), (int)chn, (int)_numChannels);
+        printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)_numChannels);
         return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
       if (localNo >= lane_width) {
-        printf("tilevector [%s] ofb! local accessing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)tileNo,
-               (long long)lane_width);
+        printf("tilevector [%s] ofb! local accessing ele [%lld] out of [0, %lld)\n",
+               _nameTag.asChars(), (long long)tileNo, (long long)lane_width);
         return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
@@ -581,8 +586,8 @@ namespace zs {
     constexpr auto tile(const size_type tileid) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (long long nt = numTiles(); tileid >= nt) {
-        printf("tilevector [%s] ofb! global accessing tile [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)tileid,
-               nt);
+        printf("tilevector [%s] ofb! global accessing tile [%lld] out of [0, %lld)\n",
+               _nameTag.asChars(), (long long)tileid, nt);
         return TileVectorUnnamedView<Space, tile_vector_type, true>{(value_type *)0, lane_width,
                                                                     _numChannels};
       }
@@ -594,8 +599,8 @@ namespace zs {
     constexpr auto tile(const size_type tileid) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (long long nt = numTiles(); tileid >= nt) {
-        printf("tilevector [%s] ofb! global accessing tile [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)tileid,
-               nt);
+        printf("tilevector [%s] ofb! global accessing tile [%lld] out of [0, %lld)\n",
+               _nameTag.asChars(), (long long)tileid, nt);
         return TileVectorUnnamedView<Space, const_tile_vector_type, true>{(const value_type *)0,
                                                                           lane_width, _numChannels};
       }
@@ -611,14 +616,14 @@ namespace zs {
       size_type offset{};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn + RetT::extent > _numChannels) {
-        printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(), (int)chn,
-               (int)(chn + RetT::extent), (int)_numChannels);
+        printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)(chn + RetT::extent), (int)_numChannels);
         return RetT::uniform(
             *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
       if (i >= _vectorSize) {
-        printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)i,
-               (long long)_vectorSize);
+        printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
+               _nameTag.asChars(), (long long)i, (long long)_vectorSize);
         return RetT::uniform(
             *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
@@ -665,13 +670,13 @@ namespace zs {
     constexpr auto tuple(const channel_counter_type chn, const size_type i) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn + d > _numChannels) {
-        printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(), (int)chn, (int)(chn + d),
-               (int)_numChannels);
+        printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)(chn + d), (int)_numChannels);
         return tuple_impl(_numChannels, i, std::make_index_sequence<d>{});
       }
       if (i >= _vectorSize) {
-        printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)i,
-               (long long)_vectorSize);
+        printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n",
+               _nameTag.asChars(), (long long)i, (long long)_vectorSize);
         return tuple_impl(chn, limits<size_type>::max(), std::make_index_sequence<d>{});
       }
 #endif
@@ -706,13 +711,13 @@ namespace zs {
     constexpr auto tuple(const channel_counter_type chn, const size_type i) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn + d > _numChannels) {
-        printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(), (int)chn, (int)(chn + d),
-               (int)_numChannels);
+        printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)(chn + d), (int)_numChannels);
         return tuple_impl(_numChannels, i, std::make_index_sequence<d>{});
       }
       if (i >= _vectorSize) {
-        printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n", _nameTag.asChars(), (long long)i,
-               (long long)_vectorSize);
+        printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n",
+               _nameTag.asChars(), (long long)i, (long long)_vectorSize);
         return tuple_impl(chn, limits<size_type>::max(), std::make_index_sequence<d>{});
       }
 #endif
@@ -753,7 +758,8 @@ namespace zs {
   }
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
+  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec,
+                                 const SmallString &tagName) {
     auto ret = TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;
@@ -761,8 +767,8 @@ namespace zs {
     return ret;
   }
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(
-                                 TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
+  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec,
+                                 const SmallString &tagName) {
     auto ret = TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;

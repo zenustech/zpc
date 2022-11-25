@@ -664,7 +664,7 @@ namespace zs {
              orderedBvs[node] = bv;
              node = parents[node];
              while (node != -1) {
-               if (atomic_cas(wrapv<space>{}, &flags[node], 0, 1) == 0) break;
+               if (atomic_cas(execTag, &flags[node], 1, 1) == 0) break;
                auto lc = node + 1;
                auto rc = levels[lc] ? auxIndices[lc] : lc + 1;
                auto bv = orderedBvs[lc];

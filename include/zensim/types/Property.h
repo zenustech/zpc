@@ -70,19 +70,25 @@ namespace zs {
             layout_aos_tag> || is_same_v<Tag, layout_soa_tag> || is_same_v<Tag, layout_aosoa_tag>);
   }
 
-  enum struct kernel_e { linear = 2, quadratic = 3, cubic = 4 };
+  enum struct kernel_e { linear, quadratic, cubic, delta2, delta3, delta4 };
   using kernel_linear_tag = wrapv<kernel_e::linear>;
   using kernel_quadratic_tag = wrapv<kernel_e::quadratic>;
   using kernel_cubic_tag = wrapv<kernel_e::cubic>;
+  using kernel_delta2_tag = wrapv<kernel_e::delta2>;
+  using kernel_delta3_tag = wrapv<kernel_e::delta3>;
+  using kernel_delta4_tag = wrapv<kernel_e::delta4>;
   constexpr auto kernel_linear_c = kernel_linear_tag{};
   constexpr auto kernel_quad_c = kernel_quadratic_tag{};
   constexpr auto kernel_cubic_c = kernel_cubic_tag{};
+  constexpr auto kernel_delta2_c = kernel_delta2_tag{};
+  constexpr auto kernel_delta3_c = kernel_delta3_tag{};
+  constexpr auto kernel_delta4_c = kernel_delta4_tag{};
 
   template <typename Tag> constexpr bool is_kernel_tag(Tag = {}) noexcept {
     return (
         is_same_v<
             Tag,
-            kernel_linear_tag> || is_same_v<Tag, kernel_quadratic_tag> || is_same_v<Tag, kernel_cubic_tag>);
+            kernel_linear_tag> || is_same_v<Tag, kernel_quadratic_tag> || is_same_v<Tag, kernel_cubic_tag> || is_same_v<Tag, kernel_delta2_tag> || is_same_v<Tag, kernel_delta3_tag> || is_same_v<Tag, kernel_delta4_tag>);
   }
 
   enum struct grid_e : unsigned char { collocated = 0, cellcentered, staggered, total };

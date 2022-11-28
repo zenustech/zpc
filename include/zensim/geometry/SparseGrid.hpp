@@ -801,13 +801,25 @@ namespace zs {
 
     static constexpr int dim = grid_view_type::dim;
     static constexpr kernel_e kt = kt_;
-    static constexpr int width = (kt == kernel_e::linear ? 2 : (kt == kernel_e::quadratic ? 3 : 4));
+    static constexpr int width = [](kernel_e kt) {
+      if (kt == kernel_e::linear || kt == kernel_e::delta2)
+        return 2;
+      else if (kt == kernel_e::quadratic || kt == kernel_e::delta3)
+        return 3;
+      else if (kt == kernel_e::cubic || kt == kernel_e::delta4)
+        return 4;
+    }(kt);
     static constexpr int deriv_order = drv_order;
 
     using TWM = vec<coord_component_type, dim, width>;
 
     static_assert(deriv_order >= 0 && deriv_order <= 2,
                   "weight derivative order should be an integer within [0, 2]");
+    static_assert(((kt == kernel_e::delta2 || kt == kernel_e::delta3 || kt == kernel_e::delta4)
+                   && deriv_order == 0)
+                      || (kt == kernel_e::linear || kt == kernel_e::quadratic
+                          || kt == kernel_e::cubic),
+                  "weight derivative order should be 0 when using delta kernel");
 
     using WeightScratchPad
         = conditional_t<deriv_order == 0, tuple<TWM>,
@@ -829,7 +841,9 @@ namespace zs {
     constexpr GridArena(std::false_type, grid_view_type &sgv, const VecInterface<VecT> &X) noexcept
         : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
-          = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
+          = ((kt == kernel_e::linear || kt == kernel_e::delta2)
+                 ? 0
+                 : ((kt == kernel_e::quadratic || kt == kernel_e::delta3) ? 1 : 2));
       for (int d = 0; d != dim; ++d)
         iCorner[d] = base_node<lerp_degree>(X[d], wrapt<integer_coord_component_type>{});
       iLocalPos = X - iCorner;
@@ -839,6 +853,12 @@ namespace zs {
         weights = quadratic_bspline_weights<deriv_order>(iLocalPos);
       else if constexpr (kt == kernel_e::cubic)
         weights = cubic_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::delta2)
+        weights = delta_2point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta3)
+        weights = delta_3point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta4)
+        weights = delta_4point_weights(iLocalPos);
     }
     // staggered grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
@@ -846,7 +866,9 @@ namespace zs {
                         int f) noexcept
         : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
-          = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
+          = ((kt == kernel_e::linear || kt == kernel_e::delta2)
+                 ? 0
+                 : ((kt == kernel_e::quadratic || kt == kernel_e::delta3) ? 1 : 2));
       const auto delta = coord_type::init([f = f % dim](int d) {
         return d != f ? (coord_component_type)0 : (coord_component_type)-0.5;
       });
@@ -858,6 +880,12 @@ namespace zs {
         weights = quadratic_bspline_weights<deriv_order>(iLocalPos);
       else if constexpr (kt == kernel_e::cubic)
         weights = cubic_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::delta2)
+        weights = delta_2point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta3)
+        weights = delta_3point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta4)
+        weights = delta_4point_weights(iLocalPos);
     }
     /// world-space ctors
     // collocated grid

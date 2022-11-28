@@ -1,7 +1,6 @@
 #pragma once
 #include "zensim/math/Vec.h"
 #include "zensim/math/curve/InterpolationKernel.hpp"
-#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Property.h"
 
@@ -64,7 +63,10 @@ namespace zs {
     using value_type = T;
     using index_type = Ti;
     static constexpr int dim = dim_;
-    static constexpr index_type width = magic_enum::enum_integer(kt);
+    static constexpr index_type width
+        = ((kt == kernel_e::linear || kt == kernel_e::delta2)
+               ? 2
+               : ((kt == kernel_e::quadratic || kt == kernel_e::delta3) ? 3 : 4));
     static constexpr int deriv_order = drv_order;
     using TV = vec<value_type, dim>;
     using TM = vec<value_type, dim, width>;

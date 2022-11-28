@@ -174,4 +174,93 @@ namespace zs {
     return weights;
   }
 
+  template <typename VecT,
+            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+  constexpr auto delta_2point_weights(const VecInterface<VecT>& x) noexcept {
+    using T = typename VecT::value_type;
+    constexpr auto dim = VecT::extent;
+
+    using Pad =
+        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 2>>;
+    using RetT = tuple<Pad>;
+
+    RetT weights{};
+    auto& w{get<0>(weights)};
+    for (int i = 0; i != dim; ++i) {
+      T base = base_node<0>(x(i));
+
+      for (int off = 0; off < 2; ++off) {
+        T r = abs(x(i) - (base + (T)off));
+        w(i, off) = 0;
+
+        if (r < (T)1) {
+          w(i, off) = 1 - r;
+        }
+      }
+    }
+    return weights;
+  }
+
+  template <typename VecT,
+            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+  constexpr auto delta_3point_weights(const VecInterface<VecT>& x) noexcept {
+    using T = typename VecT::value_type;
+    constexpr auto dim = VecT::extent;
+
+    using Pad =
+        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 3>>;
+    using RetT = tuple<Pad>;
+
+    RetT weights{};
+    auto& w{get<0>(weights)};
+
+    for (int i = 0; i != dim; ++i) {
+      T base = base_node<1>(x(i));
+
+      for (int off = 0; off < 3; ++off) {
+        T r = abs(x(i) - (base + (T)off));
+        w(i, off) = 0;
+
+        if (r <= (T)0.5) {
+          w(i, off) = (T)1. / (T)3. * ((T)1. + sqrt((T)-3. * r * r + (T)1.));
+        } else if (r > (T)0.5 && r < (T)1.5) {
+          w(i, off) = (T)1. / (T)6.
+                      * ((T)5. - (T)3. * r - sqrt((T)-3. * ((T)1. - r) * ((T)1. - r) + (T)1.));
+        }
+      }
+    }
+    return weights;
+  }
+
+  template <typename VecT,
+            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+  constexpr auto delta_4point_weights(const VecInterface<VecT>& x) noexcept {
+    using T = typename VecT::value_type;
+    constexpr auto dim = VecT::extent;
+
+    using Pad =
+        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 4>>;
+    using RetT = tuple<Pad>;
+
+    RetT weights{};
+    auto& w{get<0>(weights)};
+
+    for (int i = 0; i != dim; ++i) {
+      T base = base_node<1>(x(i));
+
+      for (int off = 0; off < 4; ++off) {
+        T r = abs(x(i) - (base + (T)off));
+        w(i, off) = 0;
+
+        if (r <= (T)1.) {
+          w(i, off) = (T)1. / (T)8. * ((T)3. - (T)2. * r + sqrt((T)1. + (T)4. * r - (T)4. * r * r));
+        } else if (r > (T)1. && r < (T)2.) {
+          w(i, off)
+              = (T)1. / (T)8. * ((T)5. - (T)2. * r - sqrt((T)-7. + (T)12. * r - (T)4. * r * r));
+        }
+      }
+    }
+    return weights;
+  }
+
 }  // namespace zs

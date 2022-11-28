@@ -267,7 +267,7 @@ set_target_properties(zpccore
               # CXX_VISIBILITY_PRESET default
 )
 
-target_link_libraries(zpc_cxx_deps INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>, synchronization.lib, >)
+# target_link_libraries(zpc_cxx_deps INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>, synchronization.lib, >)
 if (ZS_BUILD_SHARED_LIBS)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZPC_PRIVATE=1)
 else()

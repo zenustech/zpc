@@ -107,8 +107,9 @@ namespace zs {
         f(*std::get<Is>(iter.iters)...);
       }
     }
-    template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
-    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, char *shmem, Tn i,
+    template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
+              std::size_t... Is>
+    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, ShmT *shmem, Tn i,
                                                   F &&f, ZipIter &&iter, index_seq<Is...>) {
       (std::get<Is>(iter.iters).advance(i), ...);
       using func_traits = detail::deduce_fts<remove_cvref_t<F>, RM_CVREF_T(iter.iters)>;

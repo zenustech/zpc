@@ -259,6 +259,27 @@ namespace zs {
     }
   }
 
+  template <int dim, typename T_, typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim, (dim > 0)> = 0>
+  constexpr auto distance(const AABBBox<dim, T_> &b, const VecInterface<VecT> &p) noexcept {
+    using T = math::op_result_t<T_, typename VecT::value_type>;
+    const auto &[mi, ma] = b;
+    auto center = (mi + ma) / 2;
+    auto point = (p - center).abs() - (ma - mi) / 2;
+    T max = limits<T>::lowest();
+    for (int d = 0; d != dim; ++d) {
+      if (point[d] > max)
+        max = point[d];
+      if (point[d] < 0)
+        point[d] = 0;
+    }
+    return (max < 0 ? max : 0) + point.length();
+  }
+
+  template <typename VecT, int dim, typename T>
+  constexpr auto distance(const VecInterface<VecT> &p, const AABBBox<dim, T> &b) noexcept {
+    return distance(b, p);
+  }
+
   template <typename VecT>
   constexpr bool pt_ccd_broadphase(const VecInterface<VecT> &p, const VecInterface<VecT> &t0,
                                    const VecInterface<VecT> &t1, const VecInterface<VecT> &t2,

@@ -141,6 +141,35 @@ namespace zs {
           node = _auxIndices[node];
       }
     }
+    /// @note dist must be updated within 'f'
+    template <typename VecT, class F> constexpr auto find_nearest(const VecInterface<VecT> &p, F &&f) const {
+      using T = typename VecT::value_type;
+      index_t idx = -1;
+      T dist = limits<T>::max();
+      if (auto nl = numLeaves(); nl <= 2) {
+        for (index_t i = 0; i != nl; ++i) {
+          if (auto d = distance(p, getNodeBV(i)); d < dist) {
+            f(_auxIndices[i], dist, idx);
+          }
+        }
+        return dist;
+      }
+      index_t node = 0;
+      while (node != -1 && node != _numNodes) {
+        index_t level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (auto d = distance(p, getNodeBV(node)); d > dist) break;
+        // leaf node check
+        if (level == 0) {
+          if (auto d = distance(p, getNodeBV(node)); d < dist) 
+            f(_auxIndices[node], dist, idx);
+          node++;
+        } else  // separate at internal nodes
+          node = _auxIndices[node];
+      }
+      return dist;
+    }
     // BV can be either VecInterface<VecT> or AABBBox<dim, T>
     template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
       if (auto nl = numLeaves(); nl <= 2) {

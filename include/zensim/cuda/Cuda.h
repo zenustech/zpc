@@ -192,7 +192,7 @@ namespace zs {
       std::vector<void *> streams;  ///< CUstream
       std::vector<void *> events;   ///< CUevents
       std::set<StreamExecutionTimer *> timers;
-      int maxThreadsPerBlock, maxThreadsPerMultiprocessor, regsPerMultiprocessor,
+      int maxThreadsPerBlock, maxThreadsPerMultiprocessor, regsPerMultiprocessor, numMultiprocessor,
           sharedMemPerMultiprocessor, sharedMemPerBlock, maxBlocksPerMultiprocessor;
       bool supportConcurrentUmAccess;
 

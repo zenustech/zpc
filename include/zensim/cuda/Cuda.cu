@@ -216,11 +216,9 @@ namespace zs {
       for (auto &event : context.events) cuEventCreate((CUevent *)&event, CU_EVENT_BLOCKING_SYNC);
 
       {  ///< device properties
-        int major, minor, multiGpuBoardGroupID, multiProcessorCount, regsPerBlock;
+        int major, minor, multiGpuBoardGroupID, regsPerBlock;
         int supportUnifiedAddressing, supportUm, supportConcurrentUmAccess;
         cuDeviceGetAttribute(&regsPerBlock, CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_BLOCK, dev);
-        cuDeviceGetAttribute(&multiProcessorCount, CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
-                             (CUdevice)dev);
         cuDeviceGetAttribute(&multiGpuBoardGroupID, CU_DEVICE_ATTRIBUTE_MULTI_GPU_BOARD_GROUP_ID,
                              (CUdevice)dev);
         cuDeviceGetAttribute(&textureAlignment, CU_DEVICE_ATTRIBUTE_TEXTURE_ALIGNMENT, dev);
@@ -231,6 +229,8 @@ namespace zs {
         cuDeviceGetAttribute(&supportUm, CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, (CUdevice)dev);
         cuDeviceGetAttribute(&supportConcurrentUmAccess,
                              CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS, (CUdevice)dev);
+        cuDeviceGetAttribute(&context.numMultiprocessor, CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT,
+                             (CUdevice)dev);
         cuDeviceGetAttribute(&context.regsPerMultiprocessor,
                              CU_DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR, (CUdevice)dev);
         cuDeviceGetAttribute(&context.sharedMemPerMultiprocessor,
@@ -252,9 +252,9 @@ namespace zs {
             "{},\n\t\tMulti-Processor count: {},\n\t\tSM compute capabilities: "
             "{}.{}.\n\t\tTexture alignment: {} bytes\n\t\tUVM support: allocation({}), unified "
             "addressing({}), concurrent access({})\n",
-            i, multiGpuBoardGroupID, context.sharedMemPerBlock, regsPerBlock, multiProcessorCount,
-            major, minor, textureAlignment, supportUm, supportUnifiedAddressing,
-            supportConcurrentUmAccess);
+            i, multiGpuBoardGroupID, context.sharedMemPerBlock, regsPerBlock,
+            context.numMultiprocessor, major, minor, textureAlignment, supportUm,
+            supportUnifiedAddressing, supportConcurrentUmAccess);
       }
     }
 

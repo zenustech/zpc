@@ -250,9 +250,9 @@ namespace zs {
     }
 #endif
 
-    void syncCtx() const {
+    void syncCtx(const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
-      context.syncStreamSpare(streamid);
+      context.syncStreamSpare(streamid, loc);
     }
 
     template <typename Ts, typename Is, typename F>
@@ -628,6 +628,8 @@ namespace zs {
     void *getStream() const noexcept {
       return Cuda::context(getProcid()).streamSpare(getStreamid());
     }
+    decltype(auto) context() { return Cuda::context(getProcid()); }
+    decltype(auto) context() const { return Cuda::context(getProcid()); }
 
     constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
     constexpr StreamID getIncomingStreamid() const noexcept { return incomingStreamid; }

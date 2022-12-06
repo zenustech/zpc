@@ -248,6 +248,8 @@ namespace zs {
     lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                       \
                                       [shmem = lc.shmem](int) -> std::size_t { return shmem; }); \
     lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                                   \
+    lc.shmem = (lc.shmem + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t)              \
+               * sizeof(std::max_align_t);                                                       \
   }
     explicit cuda_safe_launch(const source_location &loc, const Cuda::CudaContext &ctx,
                               LaunchConfig &&lc, void (*f)(remove_cvref_t<Args>...),

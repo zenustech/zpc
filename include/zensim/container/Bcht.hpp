@@ -1196,6 +1196,57 @@ namespace zs {
         return limits<index_type>::max();
     }
 
+    template <bool retrieve_index = true, execspace_e S = space,
+              enable_if_all<S == execspace_e::cuda> = 0>
+    __forceinline__ __host__ __device__ index_type
+    single_query(const original_key_type &key, wrapv<retrieve_index> = {}) const noexcept {
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return sentinel_v;
+        else
+          return limits<index_type>::max();
+      }
+      constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
+      auto bucket_offset
+          = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
+      storage_key_type query_key = transKey(key);
+      for (int iter = 0; iter < 3; ++iter) {
+        // cg::reduce requires compute capability 8.0+
+        int location = bucket_size;
+        for (int i = 0; i < bucket_size; ++i)
+          if (equal_to{}(query_key, _table.keys[bucket_offset + i])) {
+            location = i;
+            break;
+          }
+        if (location != bucket_size) {
+          if constexpr (retrieve_index) {
+            index_type found_value = _table.indices[bucket_offset + location];
+            return found_value;
+          } else {
+            return bucket_offset + location;
+          }
+        }
+        // check empty slots
+        // failed not because the bucket is full, but because there is none
+        else {
+          int load = 0;
+          for (int i = 0; i < bucket_size; ++i)
+            if (!equal_to{}(compare_key_sentinel_v, _table.keys[bucket_offset + i])) ++load;
+          if (load < bucket_size)
+            return sentinel_v;
+          else
+            bucket_offset = iter == 0 ? reinterpret_bits<mapped_hashed_key_type>(_hf1(key))
+                                            % _numBuckets * bucket_size
+                                      : reinterpret_bits<mapped_hashed_key_type>(_hf2(key))
+                                            % _numBuckets * bucket_size;
+        }
+      }
+      if constexpr (retrieve_index)
+        return sentinel_v;
+      else
+        return limits<index_type>::max();
+    }
+
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type
     query(const original_key_type &find_key,

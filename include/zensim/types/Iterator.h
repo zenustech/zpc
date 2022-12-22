@@ -409,6 +409,8 @@ namespace zs {
     template <std::size_t I> using index_t = std::tuple_element_t<I, std::tuple<Tn...>>;
     static constexpr std::size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
+    template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
+    constexpr Collapse(const VecInterface<VecT> &v) : ns{v.to_tuple()} {}
 
     template <std::size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
       return std::get<I>(ns);
@@ -447,7 +449,11 @@ namespace zs {
       = Collapse<typename gen_seq<dim>::template uniform_types_t<type_seq, int>,
                  std::make_index_sequence<dim>>;
 
-  template <typename... Tn> Collapse(Tn...)
+  template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
+  Collapse(const VecInterface<VecT> &) -> Collapse<
+      typename gen_seq<VecT::extent>::template uniform_types_t<type_seq, typename VecT::value_type>,
+      std::make_index_sequence<VecT::extent>>;
+  template <typename... Tn, enable_if_all<std::is_integral_v<Tn>...> = 0> Collapse(Tn...)
       -> Collapse<type_seq<Tn...>, std::index_sequence_for<Tn...>>;
 
   template <typename... Tn> constexpr auto ndrange(Tn &&...ns) { return Collapse{FWD(ns)...}; }

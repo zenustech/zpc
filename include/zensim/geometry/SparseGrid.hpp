@@ -66,7 +66,7 @@ namespace zs {
       for (int i = 0; i != dim; ++i) {
         coord_component_type sum = 0;
         for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
-        ret.val(i) = zs::sqrt(sum);
+        ret.val(i) = std::sqrt(sum);
       }
       return ret;
     }
@@ -173,7 +173,7 @@ namespace zs {
     void scale(const VecInterface<VecT> &s) {
       _transform.preScale(s);
     }
-    void scale(const value_type s) { scale(s * coord_type::uniform(1)); }
+    void scale(const value_type s) { scale(s * coord_type::constant(1)); }
 
     table_type _table;
     grid_storage_type _grid;
@@ -330,7 +330,7 @@ namespace zs {
       for (int i = 0; i != dim; ++i) {
         coord_component_type sum = 0;
         for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
-        ret.val(i) = zs::sqrt(sum);
+        ret.val(i) = zs::sqrt(sum, wrapv<space>{});
       }
       return ret;
     }

@@ -74,6 +74,7 @@ namespace zs {
   using base_t::identity;                                                                         \
   using base_t::ones;                                                                             \
   using base_t::uniform;                                                                          \
+  using base_t::constant;                                                                         \
   using base_t::zeros;                                                                            \
   template <typename OtherVecT,                                                                   \
             enable_if_all<OtherVecT::extent == extent,                                            \
@@ -209,13 +210,27 @@ namespace zs {
     ///
     /// construction
     ///
+    template <std::size_t... Is, typename VecT = Derived,
+              enable_if_t<sizeof...(Is) == VecT::extent> = 0>
+    constexpr auto to_tuple(index_seq<Is...>) const noexcept {
+      // using RetT = typename gen_seq<extent>::template uniform_types_t<std::tuple, value_type>;
+      return std::make_tuple(val(Is)...);
+    }
+    template <typename VecT = Derived> constexpr auto to_tuple() const noexcept {
+      return to_tuple(std::make_index_sequence<VecT::extent>{});
+    }
     template <typename T, typename VecT = Derived,
               enable_if_all<std::is_convertible_v<T, typename VecT::value_type>> = 0>
-    static constexpr auto uniform(const T& v) noexcept {
+    static constexpr auto constant(const T& v) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
       for (index_type i = 0; i != extent; ++i) r.val(i) = v;
       return r;
+    }
+    template <typename T, typename VecT = Derived,
+              enable_if_all<std::is_convertible_v<T, typename VecT::value_type>> = 0>
+    static constexpr auto uniform(const T& v) noexcept {
+      return constant(v);
     }
     template <typename F, typename VecT = Derived,
               enable_if_all<std::is_convertible_v<
@@ -230,12 +245,12 @@ namespace zs {
     template <typename VecT = Derived,
               enable_if_all<std::is_convertible_v<int, typename VecT::value_type>> = 0>
     static constexpr auto zeros() noexcept {
-      return uniform(0);
+      return constant(0);
     }
     template <typename VecT = Derived,
               enable_if_all<std::is_convertible_v<int, typename VecT::value_type>> = 0>
     static constexpr auto ones() noexcept {
-      return uniform(1);
+      return constant(1);
     }
     template <typename VecT = Derived, enable_if_all<same_extent_each_dimension<VecT>()> = 0>
     static constexpr auto identity() noexcept {
@@ -397,13 +412,13 @@ namespace zs {
       return res;
     }
 
-    template <typename VecT = Derived,
+    template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
-    constexpr auto length() const noexcept {
+    constexpr auto length(wrapv<space> tag = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
                               conditional_t<(sizeof(value_type) >= 8), double, float>>;
-      return zs::sqrt((T)l2NormSqr());
+      return zs::sqrt((T)l2NormSqr(), tag);
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
@@ -525,36 +540,36 @@ namespace zs {
                                                          : (value_type)1 / derivedPtr()->val(i);
       return r;
     }
-    template <typename VecT = Derived,
+    template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
               enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto exp() const noexcept {
+    constexpr auto exp(wrapv<space> tag = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::exp(derivedPtr()->val(i));
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::exp(derivedPtr()->val(i), tag);
       return r;
     }
-    template <typename VecT = Derived,
+    template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
               enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto log() const noexcept {
+    constexpr auto log(wrapv<space> tag = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::log(derivedPtr()->val(i));
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::log(derivedPtr()->val(i), tag);
       return r;
     }
-    template <typename VecT = Derived,
+    template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
               enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto log1p() const noexcept {
+    constexpr auto log1p(wrapv<space> tag = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::log1p(derivedPtr()->val(i));
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::log1p(derivedPtr()->val(i), tag);
       return r;
     }
-    template <typename VecT = Derived,
+    template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = -1>
-    constexpr auto sqrt() const noexcept {
+    constexpr auto sqrt(wrapv<space> tag = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::sqrt(derivedPtr()->val(i));
+      for (index_type i = 0; i != extent; ++i) r.val(i) = zs::sqrt(derivedPtr()->val(i), tag);
       return r;
     }
     template <typename VecT = Derived,

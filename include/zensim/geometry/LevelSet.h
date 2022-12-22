@@ -44,7 +44,7 @@ namespace zs {
       vel = v;
     }
     template <typename V, enable_if_t<std::is_floating_point_v<V>> = 0>
-    constexpr UniformVelocityLevelSet(V v) noexcept : vel{vec<T, d>::uniform(v)} {}
+    constexpr UniformVelocityLevelSet(V v) noexcept : vel{vec<T, d>::constant(v)} {}
 
     constexpr auto do_getMaterialVelocity(...) const noexcept { return vel; }
 

@@ -228,7 +228,7 @@ namespace zs {
           if (srcSdf < 0 || refSdf < 0)
             fmt::print("at ({}, {}, {}). stored sdf: {}, ref sdf: {} ({})\n", p[0], p[1], p[2],
                        srcSdf, refSdf, refSdf_);
-          if ((pp + TV::uniform(0.005)).l2NormSqr() < 1e-6) {
+          if ((pp + TV::constant(0.005)).l2NormSqr() < 1e-6) {
             fmt::print("chk ({}, {}, {}) -> sdf [{}]; ref [{}]\n", pp[0], pp[1], pp[2], srcSdf,
                        refSdf);
             getchar();

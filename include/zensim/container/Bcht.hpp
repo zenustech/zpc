@@ -174,7 +174,7 @@ namespace zs {
       if constexpr (KeyIsVec) {
         typename key_type::value_type v{0};
         for (int i = 0; i != sizeof(typename key_type::value_type); ++i) v = (v << 8) | 0x3f;
-        return key_type::uniform(v);
+        return key_type::constant(v);
       } else {
         key_type v{0};
         for (int i = 0; i != sizeof(key_type); ++i) v = (v << 8) | 0x3f;

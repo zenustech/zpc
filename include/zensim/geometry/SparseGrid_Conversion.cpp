@@ -443,7 +443,7 @@ namespace zs {
           auto block = ls.block(bi + nbs);
           using spg_t = RM_CVREF_T(ls);
           for (typename spg_t::integer_coord_component_type ci = 0; ci != ls.block_size; ++ci)
-            block.template tuple<3>(propTag, ci) = TV::uniform(ls._background);
+            block.template tuple<3>(propTag, ci) = TV::constant(ls._background);
         });
         // register table
         ompExec(gridPtr->cbeginValueOff(),

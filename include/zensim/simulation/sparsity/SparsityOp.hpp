@@ -45,7 +45,7 @@ namespace zs {
 
     constexpr void operator()(typename Table::value_t entry) noexcept {
       using namespace placeholders;
-      table._table.keys[entry] = Table::key_t::uniform(Table::key_scalar_sentinel_v);
+      table._table.keys[entry] = Table::key_t::constant(Table::key_scalar_sentinel_v);
       table._table.indices[entry] = Table::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
       if (entry == 0) *table._cnt = 0;

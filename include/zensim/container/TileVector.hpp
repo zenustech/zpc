@@ -618,13 +618,13 @@ namespace zs {
       if (chn + RetT::extent > _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)(chn + RetT::extent), (int)_numChannels);
-        return RetT::uniform(
+        return RetT::constant(
             *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
       if (i >= _vectorSize) {
         printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
                _nameTag.asChars(), (long long)i, (long long)_vectorSize);
-        return RetT::uniform(
+        return RetT::constant(
             *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif

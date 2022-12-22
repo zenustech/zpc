@@ -53,6 +53,14 @@ namespace zs {
     std::function<void()> func;
   };
 
+  // granularity between thread and block (cuda:thread_block/ rocm:work_group)
+  // cuda: thread_block_tile<B, cg::thread_block>
+  // rocm: wavefront<32/64>
+  // cpu: core (SIMD)
+  struct Worker {
+    ;
+  };
+
 #define assert_with_msg(exp, msg) assert(((void)msg, exp))
 
   /// execution policy

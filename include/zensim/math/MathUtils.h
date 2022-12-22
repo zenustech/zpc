@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cmath>
+
+#include "zensim/types/Property.h"
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
 #  include "math.h"  // CUDA math library
 #endif
@@ -73,346 +75,499 @@ namespace zs {
     template <typename T, typename... Ts> struct op_result<T, Ts...> {
       using type = binary_op_result_t<T, typename op_result<Ts...>::type>;
     };
+    /// @brief determine the most appropriate resulting type of a binary operation
     template <typename... Args> using op_result_t = typename op_result<Args...>::type;
   }  // namespace math
 
   /**
    *  math intrinsics (not constexpr at all! just cheating the compiler)
    */
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T copysign(T mag, T sgn) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T copysign(T mag, T sgn, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::copysignf(mag, sgn);
-    else
-      return ::copysign((double)mag, (double)sgn);
+      if constexpr (is_same_v<T, float>)
+        return ::copysignf(mag, sgn);
+      else
+        return ::copysign((double)mag, (double)sgn);
 #else
-    return std::copysign(mag, sgn);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [copysign] is missing!");
+      return 0;
 #endif
+    } else
+      return std::copysign(mag, sgn);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T abs(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T abs(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::fabsf(v);
-    else
-      return ::fabs((double)v);
+      if constexpr (is_same_v<T, float>)
+        return ::fabsf(v);
+      else
+        return ::fabs((double)v);
 #else
-    return std::abs(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [abs] is missing!");
+      return 0;
 #endif
+    } else
+      return std::abs(v);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T max(T x, T y) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T max(T x, T y, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::fmaxf(x, y);
-    else
-      return ::fmax((double)x, (double)y);
+      if constexpr (is_same_v<T, float>)
+        return ::fmaxf(x, y);
+      else
+        return ::fmax((double)x, (double)y);
 #else
-    return std::max(x, y);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [max] is missing!");
+      return 0;
 #endif
+    } else
+      return std::max(x, y);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T min(T x, T y) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T min(T x, T y, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::fminf(x, y);
-    else
-      return ::fmin((double)x, (double)y);
+      if constexpr (is_same_v<T, float>)
+        return ::fminf(x, y);
+      else
+        return ::fmin((double)x, (double)y);
 #else
-    return std::min(x, y);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [min] is missing!");
+      return 0;
 #endif
+    } else
+      return std::min(x, y);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T fma(T x, T y, T z) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T fma(T x, T y, T z, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::fmaf(x, y, z);
-    else
-      return ::fma((double)x, (double)y, (double)z);
+      if constexpr (is_same_v<T, float>)
+        return ::fmaf(x, y, z);
+      else
+        return ::fma((double)x, (double)y, (double)z);
 #else
-    return std::fma(x, y, z);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [fma] is missing!");
+      return 0;
 #endif
+    } else
+      return std::fma(x, y, z);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T fmod(T x, T y) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T fmod(T x, T y, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::fmodf(x, y);
-    else
-      return ::fmod((double)x, (double)y);
+      if constexpr (is_same_v<T, float>)
+        return ::fmodf(x, y);
+      else
+        return ::fmod((double)x, (double)y);
 #else
-    return std::fmod(x, y);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [fmod] is missing!");
+      return 0;
 #endif
+    } else
+      return std::fmod(x, y);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T ceil(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T ceil(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::ceilf(v);
-    else
-      return ::ceil((double)v);
+      if constexpr (is_same_v<T, float>)
+        return ::ceilf(v);
+      else
+        return ::ceil((double)v);
 #else
-    return std::ceil(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [ceil] is missing!");
+      return 0;
 #endif
+    } else
+      return std::ceil(v);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T floor(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T floor(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::floorf(v);
-    else
-      return ::floor((double)v);
+      if constexpr (is_same_v<T, float>)
+        return ::floorf(v);
+      else
+        return ::floor((double)v);
 #else
-    return std::floor(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [floor] is missing!");
+      return 0;
 #endif
+    } else
+      return std::floor(v);
   }
 
   // different from math::sqrt
   template <typename T, enable_if_t<std::is_arithmetic_v<T>> = 0> constexpr T sqr(T v) noexcept {
     return v * v;
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T sqrt(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T sqrt(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::sqrtf(v);
-    else
-      return ::sqrt((double)v);
+      if constexpr (is_same_v<T, float>)
+        return ::sqrtf(v);
+      else
+        return ::sqrt((double)v);
 #else
-    return std::sqrt(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [sqrt] is missing!");
+      return 0;
 #endif
+    } else
+      return std::sqrt(v);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T rsqrt(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T rsqrt(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::rsqrtf(v);
-    else
-      return ::rsqrt((double)v);
+      if constexpr (is_same_v<T, float>)
+        return ::rsqrtf(v);
+      else
+        return ::rsqrt((double)v);
 #else
-    return (T)1 / (T)std::sqrt(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [rsqrt] is missing!");
+      return 0;
 #endif
-  }
-
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T log(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::logf(v);
-    else
-      return ::log((double)v);
-#else
-    return std::log(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T log1p(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::log1pf(v);
-    else
-      return ::log1p((double)v);
-#else
-    return std::log1p(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T exp(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::expf(v);
-    else
-      return ::exp((double)v);
-#else
-    return std::exp(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T pow(T base, T exp) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::powf(base, exp);
-    else
-      return ::pow((double)base, (double)exp);
-#else
-    return std::pow(base, exp);
-#endif
+    } else
+      return (T)1 / (T)std::sqrt(v);
   }
 
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  ZS_FUNCTION T add_ru(T x, T y) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T log(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::__fadd_ru(x, y);
-    else
-      return ::__dadd_ru((double)x, (double)y);
+      if constexpr (is_same_v<T, float>)
+        return ::logf(v);
+      else
+        return ::log((double)v);
 #else
-    return (x + y);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [log] is missing!");
+      return 0;
 #endif
+    } else
+      return std::log(v);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  ZS_FUNCTION T sub_ru(T x, T y) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T log1p(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::__fsub_ru(x, y);
-    else
-      return ::__dsub_ru((double)x, (double)y);
+      if constexpr (is_same_v<T, float>)
+        return ::log1pf(v);
+      else
+        return ::log1p((double)v);
 #else
-    return (x - y);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [log1p] is missing!");
+      return 0;
 #endif
+    } else
+      return std::log1p(v);
   }
-
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T sinh(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T exp(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::sinhf(v);
-    else
-      return ::sinh((double)v);
+      if constexpr (is_same_v<T, float>)
+        return ::expf(v);
+      else
+        return ::exp((double)v);
 #else
-    return std::sinh(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [exp] is missing!");
+      return 0;
 #endif
+    } else
+      return std::exp(v);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T sin(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T pow(T base, T exp, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::sinf(v);
-    else
-      return ::sin((double)v);
+      if constexpr (is_same_v<T, float>)
+        return ::powf(base, exp);
+      else
+        return ::pow((double)base, (double)exp);
 #else
-    return std::sin(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [pow] is missing!");
+      return 0;
 #endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T asinh(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::asinhf(v);
-    else
-      return ::asinh((double)v);
-#else
-    return std::asinh(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T asin(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::asinf(v);
-    else
-      return ::asin((double)v);
-#else
-    return std::asin(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T cosh(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::coshf(v);
-    else
-      return ::cosh((double)v);
-#else
-    return std::cosh(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T cos(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::cosf(v);
-    else
-      return ::cos((double)v);
-#else
-    return std::cos(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T acosh(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::acoshf(v);
-    else
-      return ::acosh((double)v);
-#else
-    return std::acosh(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T acos(T v) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::acosf(v);
-    else
-      return ::acos((double)v);
-#else
-    return std::acos(v);
-#endif
-  }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T atan2(T y, T x) noexcept {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::atan2f(y, x);
-    else
-      return ::atan2((double)y, (double)x);
-#else
-    return std::atan2(y, x);
-#endif
+    } else
+      return std::pow(base, exp);
   }
 
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr bool isnan(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  ZS_FUNCTION T add_ru(T x, T y, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    return ::isnan(v) != 0;  // due to msvc
+      if constexpr (is_same_v<T, float>)
+        return ::__fadd_ru(x, y);
+      else
+        return ::__dadd_ru((double)x, (double)y);
 #else
-    return std::isnan(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [add_ru] is missing!");
+      return 0;
 #endif
+    } else
+      /// @note refer to https://en.cppreference.com/w/cpp/numeric/fenv/FE_round
+      return (x + y);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr bool isinf(T v) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  ZS_FUNCTION T sub_ru(T x, T y, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    return ::isinf(v) != 0;  // due to msvc
+      if constexpr (is_same_v<T, float>)
+        return ::__fsub_ru(x, y);
+      else
+        return ::__dsub_ru((double)x, (double)y);
 #else
-    return std::isinf(v);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [sub_ru] is missing!");
+      return 0;
 #endif
+    } else
+      /// @note refer to https://en.cppreference.com/w/cpp/numeric/fenv/FE_round
+      return (x - y);
   }
 
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T modf(T x, T *iptr) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T sinh(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    static_assert(is_same_v<T, float> || is_same_v<T, double>, "modf only supports float/double");
-    if constexpr (is_same_v<T, float>)
-      return ::modff(x, iptr);
-    else if constexpr (is_same_v<T, double>)
-      return ::modf(x, iptr);
+      if constexpr (is_same_v<T, float>)
+        return ::sinhf(v);
+      else
+        return ::sinh((double)v);
 #else
-    return std::modf(x, iptr);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [sinh] is missing!");
+      return 0;
 #endif
+    } else
+      return std::sinh(v);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T frexp(T x, int *exp) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T sin(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::frexpf(x, exp);
-    else
-      return ::frexp((double)x, exp);
+      if constexpr (is_same_v<T, float>)
+        return ::sinf(v);
+      else
+        return ::sin((double)v);
 #else
-    return std::frexp(x, exp);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [sin] is missing!");
+      return 0;
 #endif
+    } else
+      return std::sin(v);
   }
-  template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
-  constexpr T ldexp(T x, int exp) noexcept {
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T asinh(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-    if constexpr (is_same_v<T, float>)
-      return ::ldexpf(x, exp);  // scalbnf(x, exp)
-    else
-      return ::ldexp((double)x, exp);
+      if constexpr (is_same_v<T, float>)
+        return ::asinhf(v);
+      else
+        return ::asinh((double)v);
 #else
-    return std::ldexp(x, exp);
+      static_assert(space != execspace_e::cuda, "cuda implementation of [asinh] is missing!");
+      return 0;
 #endif
+    } else
+      return std::asinh(v);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T asin(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::asinf(v);
+      else
+        return ::asin((double)v);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [asin] is missing!");
+      return 0;
+#endif
+    } else
+      return std::asin(v);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T cosh(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::coshf(v);
+      else
+        return ::cosh((double)v);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [cosh] is missing!");
+      return 0;
+#endif
+    } else
+      return std::cosh(v);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T cos(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::cosf(v);
+      else
+        return ::cos((double)v);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [cos] is missing!");
+      return 0;
+#endif
+    } else
+      return std::cos(v);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T acosh(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::acoshf(v);
+      else
+        return ::acosh((double)v);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [acosh] is missing!");
+      return 0;
+#endif
+    } else
+      return std::acosh(v);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T acos(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::acosf(v);
+      else
+        return ::acos((double)v);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [acos] is missing!");
+      return 0;
+#endif
+    } else
+      return std::acos(v);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T atan2(T y, T x, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::atan2f(y, x);
+      else
+        return ::atan2((double)y, (double)x);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [atan2] is missing!");
+      return 0;
+#endif
+    } else
+      return std::atan2(y, x);
+  }
+
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr bool isnan(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      return ::isnan(v) != 0;  // due to msvc
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [isnan] is missing!");
+      return 0;
+#endif
+    } else
+      return std::isnan(v);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr bool isinf(T v, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      return ::isinf(v) != 0;  // due to msvc
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [isinf] is missing!");
+      return 0;
+#endif
+    } else
+      return std::isinf(v);
+  }
+
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T modf(T x, T *iptr, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      static_assert(is_same_v<T, float> || is_same_v<T, double>, "modf only supports float/double");
+      if constexpr (is_same_v<T, float>)
+        return ::modff(x, iptr);
+      else if constexpr (is_same_v<T, double>)
+        return ::modf(x, iptr);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [modf] is missing!");
+      return 0;
+#endif
+    } else
+      return std::modf(x, iptr);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T frexp(T x, int *exp, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::frexpf(x, exp);
+      else
+        return ::frexp((double)x, exp);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [frexp] is missing!");
+      return 0;
+#endif
+    } else
+      return std::frexp(x, exp);
+  }
+  template <typename T, execspace_e space = deduce_execution_space(),
+            enable_if_t<std::is_floating_point_v<T>> = 0>
+  constexpr T ldexp(T x, int exp, wrapv<space> = {}) noexcept {
+    if constexpr (space == execspace_e::cuda) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      if constexpr (is_same_v<T, float>)
+        return ::ldexpf(x, exp);  // scalbnf(x, exp)
+      else
+        return ::ldexp((double)x, exp);
+#else
+      static_assert(space != execspace_e::cuda, "cuda implementation of [ldexp] is missing!");
+      return 0;
+#endif
+    } else
+      return std::ldexp(x, exp);
   }
 
   // 26.2.7/3 abs(__z):  Returns the magnitude of __z.

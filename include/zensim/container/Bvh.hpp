@@ -70,8 +70,8 @@ namespace zs {
       Vector<Box> box{orderedBvs.get_allocator(), 1};
       if (numLeaves <= 2) {
         using TV = typename Box::TV;
-        box.setVal(
-            Box{TV::uniform(limits<value_type>::max()), TV::uniform(limits<value_type>::lowest())});
+        box.setVal(Box{TV::constant(limits<value_type>::max()),
+                       TV::constant(limits<value_type>::lowest())});
         pol(Collapse{numLeaves},
             [bvh = proxy<space>(*this), box = proxy<space>(box)] ZS_LAMBDA(int vi) mutable {
               auto bv = bvh.getNodeBV(vi);
@@ -142,7 +142,8 @@ namespace zs {
       }
     }
     /// @note dist must be updated within 'f'
-    template <typename VecT, class F> constexpr auto find_nearest(const VecInterface<VecT> &p, F &&f) const {
+    template <typename VecT, class F>
+    constexpr auto find_nearest(const VecInterface<VecT> &p, F &&f) const {
       using T = typename VecT::value_type;
       index_t idx = -1;
       T dist = limits<T>::max();
@@ -162,8 +163,7 @@ namespace zs {
           if (auto d = distance(p, getNodeBV(node)); d > dist) break;
         // leaf node check
         if (level == 0) {
-          if (auto d = distance(p, getNodeBV(node)); d < dist) 
-            f(_auxIndices[node], dist, idx);
+          if (auto d = distance(p, getNodeBV(node)); d < dist) f(_auxIndices[node], dist, idx);
           node++;
         } else  // separate at internal nodes
           node = _auxIndices[node];
@@ -319,7 +319,7 @@ namespace zs {
 
     // total bounding volume
     const auto defaultBox
-        = Box{TV::uniform(limits<value_type>::max()), TV::uniform(limits<value_type>::lowest())};
+        = Box{TV::constant(limits<value_type>::max()), TV::constant(limits<value_type>::lowest())};
     Vector<Box> wholeBox{primBvs.get_allocator(), 1};
     wholeBox.setVal(defaultBox);
     policy(primBvs, [box = proxy<space>(wholeBox), execTag] ZS_LAMBDA(const Box &bv) mutable {

@@ -59,8 +59,9 @@ namespace zs {
         static_cast<sint_t>(N0) + static_cast<sint_t>(Is) * static_cast<sint_t>(Step))...>;
     using ascend = arithmetic<0, 1>;
     using descend = arithmetic<sizeof...(Is) - 1, -1>;
-    template <auto J> using uniform = integer_seq<decltype(J), (Is == Is ? J : J)...>;
-    template <auto J> using uniform_vseq = value_seq<(Is == Is ? J : J)...>;
+    template <auto J> using uniform = integer_seq<decltype(J), (Is, J)...>;
+    template <auto J> using constant = integer_seq<decltype(J), (Is, J)...>;
+    template <auto J> using uniform_vseq = value_seq<(Is, J)...>;
     /// types with uniform type/value params
     template <template <typename...> typename T, typename Arg> using uniform_types_t
         = T<std::enable_if_t<Is >= 0, Arg>...>;

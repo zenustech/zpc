@@ -226,7 +226,7 @@ namespace zs {
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
       using namespace placeholders;
       table._table.keys[entry]
-          = hash_table_type::key_t::uniform(hash_table_type::key_scalar_sentinel_v);
+          = hash_table_type::key_t::constant(hash_table_type::key_scalar_sentinel_v);
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
@@ -254,7 +254,7 @@ namespace zs {
       if (entry == hash_table_type::sentinel_v)
         printf("%llu-th key does not exist in the table??\n", (unsigned long long)blockno);
       table._table.keys[entry]
-          = hash_table_type::key_t::uniform(hash_table_type::key_scalar_sentinel_v);
+          = hash_table_type::key_t::constant(hash_table_type::key_scalar_sentinel_v);
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
@@ -366,7 +366,7 @@ namespace zs {
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
     __forceinline__ __device__ value_t insert(const VecInterface<VecT> &key) noexcept {
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       key_t storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
       for (; !(storedKey == key_sentinel_v || storedKey == key);) {
@@ -389,7 +389,7 @@ namespace zs {
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
     inline value_t insert(const VecInterface<VecT> &key) {
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       key_t storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
       for (; !(storedKey == key_sentinel_v || storedKey == key);) {
@@ -413,7 +413,7 @@ namespace zs {
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
     __forceinline__ __device__ bool insert(const VecInterface<VecT> &key, value_t id) noexcept {
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       key_t storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
       for (; !(storedKey == key_sentinel_v || storedKey == key);) {
@@ -432,7 +432,7 @@ namespace zs {
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
     inline bool insert(const VecInterface<VecT> &key, value_t id) {
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
       key_t storedKey = atomicKeyCAS(&_table.status[hashedentry], &_table.keys[hashedentry], key);
       for (; !(storedKey == key_sentinel_v || storedKey == key);) {
@@ -480,7 +480,7 @@ namespace zs {
       // reset counter
       *_cnt = 0;
       // reset table
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
       for (value_t entry = 0; entry < _tableSize; ++entry) {
         _table.keys[entry] = key_sentinel_v;
         _table.indices[entry] = HashTableT::sentinel_v;
@@ -512,7 +512,7 @@ namespace zs {
                                                   const VecInterface<VecT> &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
       key_t return_val{};
       int done = 0;
       unsigned int mask = active_mask(execTag);             // __activemask();
@@ -549,7 +549,7 @@ namespace zs {
                               const VecInterface<VecT> &val) {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      constexpr key_t key_sentinel_v = key_t::uniform(HashTableT::key_scalar_sentinel_v);
+      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
       key_t return_val{};
       bool done = false;
       while (!done) {

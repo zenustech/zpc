@@ -41,7 +41,7 @@ namespace zs {
       // [alpha] kinematic hardening (dim), position of the centroid of the yield function
       constexpr auto P = ([]() noexcept {  // only works in 3d
         constexpr auto dim = VecT::template range_t<0>::value;
-        auto m = mat_type::uniform((T)-1);
+        auto m = mat_type::constant((T)-1);
         for (int d = 0; d != dim; ++d) m(d, d) = (T)2;
         return m;
       })();

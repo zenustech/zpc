@@ -63,8 +63,8 @@ namespace zs {
           _backgroundVecValue{TV::zeros()},
           _table{allocator, count},
           _grid{allocator, channelTags, dx, count},
-          _min{TV::uniform(limits<value_type>::max())},
-          _max{TV::uniform(limits<value_type>::lowest())},
+          _min{TV::constant(limits<value_type>::max())},
+          _max{TV::constant(limits<value_type>::lowest())},
           _i2wSinv{TM::identity() / dx},
           _i2wRinv{TM::identity()},
           _i2wT{TV::zeros()},  // origin offset
@@ -189,8 +189,8 @@ namespace zs {
     TV _backgroundVecValue{TV::zeros()};
     table_t _table{};
     grid_t _grid{};
-    TV _min{TV::uniform(limits<value_type>::max())},
-        _max{TV::uniform(limits<value_type>::lowest())};
+    TV _min{TV::constant(limits<value_type>::max())},
+        _max{TV::constant(limits<value_type>::lowest())};
     // initial index-to-world affine transformation
     TM _i2wSinv{TM::identity()}, _i2wRinv{TM::identity()};
     TV _i2wT{TV::zeros()};
@@ -350,8 +350,8 @@ namespace zs {
     constexpr auto numChannels() const noexcept { return _grid.numChannels(); }
 
     constexpr auto do_getBoundingBox() const noexcept {
-      auto mi = TV::uniform(limits<value_type>::max());
-      auto ma = TV::uniform(limits<value_type>::lowest());
+      auto mi = TV::constant(limits<value_type>::max());
+      auto ma = TV::constant(limits<value_type>::lowest());
       auto length = _max - _min;
       for (auto loc : ndrange<dim>(2)) {
         auto coord = _min + make_vec<value_type>(loc) * length;
@@ -437,7 +437,7 @@ namespace zs {
         enable_if_all<VecT::dim == 1, VecT::extent == dim,
                       std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &coord, int orientation) const noexcept {
-      auto offset = TV::uniform((value_type)0.5);
+      auto offset = TV::constant((value_type)0.5);
       offset(orientation) = (value_type)0;
       return indexToWorld(coord + offset);
     }
@@ -527,7 +527,7 @@ namespace zs {
     constexpr TV ipack(const SmallString &propName, const VecInterface<VecT> &X,
                        const value_type defaultVal, wrapv<kt> = {}) const noexcept {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
-      if (!_grid.hasProperty(propName)) return TV::uniform(defaultVal);
+      if (!_grid.hasProperty(propName)) return TV::constant(defaultVal);
       const auto propOffset = _grid.propertyOffset(propName);
 #if 0
       IV loc{};
@@ -559,7 +559,7 @@ namespace zs {
     constexpr TV ipack(const SmallString &propName, const VecInterface<VecT> &coord, int f,
                        const value_type defaultVal, wrapv<kt> = {}) const noexcept {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
-      if (!_grid.hasProperty(propName)) return TV::uniform(defaultVal);
+      if (!_grid.hasProperty(propName)) return TV::constant(defaultVal);
       const auto propOffset = _grid.propertyOffset(propName);
       /// world to local
       auto [blockno, cellno] = decompose_coord(coord);
@@ -640,7 +640,7 @@ namespace zs {
     constexpr auto ipack(const SmallString &propName, const VecInterface<VecT> &X,
                          const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
       using RetT = decltype(ipack<Ns...>(0, X, defaultVal, ktTag));
-      if (!_grid.hasProperty(propName)) return RetT::uniform(defaultVal);
+      if (!_grid.hasProperty(propName)) return RetT::constant(defaultVal);
       const auto propOffset = _grid.propertyOffset(propName);
       return ipack<Ns...>(propOffset, X, defaultVal, ktTag);
     }
@@ -649,7 +649,7 @@ namespace zs {
     constexpr auto wpack(const SmallString &propName, const VecInterface<VecT> &x,
                          const value_type defaultVal, wrapv<kt> ktTag = {}) const noexcept {
       using RetT = decltype(ipack<Ns...>(0, worldToIndex(x), defaultVal, ktTag));
-      if (!_grid.hasProperty(propName)) return RetT::uniform(defaultVal);
+      if (!_grid.hasProperty(propName)) return RetT::constant(defaultVal);
       const auto propOffset = _grid.propertyOffset(propName);
       return ipack<Ns...>(propOffset, worldToIndex(x), defaultVal, ktTag);
     }
@@ -761,8 +761,8 @@ namespace zs {
     table_view_t _table{};
     grid_view_t _grid{};
     T _backgroundValue{limits<T>::max()};
-    TV _backgroundVecValue{TV::uniform(limits<T>::max())};
-    TV _min{TV::uniform(limits<T>::max())}, _max{TV::uniform(limits<T>::lowest())};
+    TV _backgroundVecValue{TV::constant(limits<T>::max())};
+    TV _min{TV::constant(limits<T>::max())}, _max{TV::constant(limits<T>::lowest())};
 
     TV _i2wT{TV::zeros()};
     TM _i2wRinv{TM::identity()}, _i2wSinv{TM::identity()};

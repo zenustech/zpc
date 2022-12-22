@@ -211,7 +211,7 @@ namespace zs {
       return TV::zeros();
     }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
-      auto diffR = TV::uniform(_radius);
+      auto diffR = TV::constant(_radius);
       diffR[_d] = (T)0;
       auto diffL = TV::zeros();
       diffL[_d] = _length;

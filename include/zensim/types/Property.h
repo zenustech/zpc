@@ -38,6 +38,19 @@ namespace zs {
             host_exec_tag> || is_same_v<Tag, omp_exec_tag> || is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, hip_exec_tag>);
   }
 
+  ///
+  /// execution space deduction
+  ///
+  constexpr execspace_e deduce_execution_space() noexcept {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+    return execspace_e::cuda;
+#elif ZS_ENABLE_OPENMP && defined(_OPENMP)
+    return execspace_e::openmp;
+#else
+    return execspace_e::host;
+#endif
+  }
+
   enum struct attrib_e : unsigned char { scalar = 0, vector, matrix, affine };
   using attrib_scalar_tag = wrapv<attrib_e::scalar>;
   using attrib_vector_tag = wrapv<attrib_e::vector>;

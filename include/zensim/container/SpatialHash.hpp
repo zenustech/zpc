@@ -177,48 +177,48 @@ namespace zs {
     indices_type counts{primBvs.get_allocator(), numCells + 1};
     counts.reset(0);
 
-    policy(range(primBvs.size()),
-           [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
-            counts = proxy<space>(counts), dxinv = 1 / _dx] ZS_LAMBDA(size_type i) mutable {
-             using table_t = RM_CVREF_T(table);
-             auto bv = primBvs[i];
-             auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
-               return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
-             });
-             auto ma = integer_coord_type::init(
-                 [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
-             auto range = Collapse(ma - mi + 1);
-             for (auto loc : range) {
-               auto cno = table.query(mi + make_vec<int>(loc));
-               if (cno < 0) printf("\n\tshould not miss spatial hashing here!\t\n");
-               atomic_add(wrapv<space>{}, &counts[cno], (Ti)1);
-             }
-           });
+    policy(range(primBvs.size()), [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
+                                   counts = proxy<space>(counts), dxinv = 1 / _dx,
+                                   tag = wrapv<space>{}] ZS_LAMBDA(size_type i) mutable {
+      using table_t = RM_CVREF_T(table);
+      auto bv = primBvs[i];
+      auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
+        return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
+      });
+      auto ma = integer_coord_type::init(
+          [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
+      auto range = Collapse(ma - mi + 1);
+      for (auto loc : range) {
+        auto cno = table.query(mi + make_vec<int>(loc));
+        if (cno < 0) printf("\n\tshould not miss spatial hashing here!\t\n");
+        atomic_add(tag, &counts[cno], (Ti)1);
+      }
+    });
 
     _offsets = indices_type{primBvs.get_allocator(), numCells + 1};
     exclusive_scan(policy, std::begin(counts), std::end(counts), std::begin(_offsets));
 
     _indices = indices_type{primBvs.get_allocator(), primBvs.size()};
 
-    policy(range(primBvs.size()),
-           [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
-            offsets = proxy<space>(_offsets), counts = proxy<space>(counts),
-            indices = proxy<space>(_indices), dxinv = 1 / _dx] ZS_LAMBDA(size_type i) mutable {
-             using table_t = RM_CVREF_T(table);
-             auto bv = primBvs[i];
-             auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
-               return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
-             });
-             auto ma = integer_coord_type::init(
-                 [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
-             auto range = Collapse(ma - mi + 1);
-             for (auto loc : range) {
-               auto cno = table.query(mi + make_vec<int>(loc));
-               auto offset = offsets[cno];
-               auto no = atomic_add(wrapv<space>{}, &counts[cno], (Ti)-1) - 1;
-               indices[offset + no] = i;
-             }
-           });
+    policy(range(primBvs.size()), [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
+                                   offsets = proxy<space>(_offsets), counts = proxy<space>(counts),
+                                   indices = proxy<space>(_indices), dxinv = 1 / _dx,
+                                   tag = wrapv<space>{}] ZS_LAMBDA(size_type i) mutable {
+      using table_t = RM_CVREF_T(table);
+      auto bv = primBvs[i];
+      auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
+        return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
+      });
+      auto ma = integer_coord_type::init(
+          [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
+      auto range = Collapse(ma - mi + 1);
+      for (auto loc : range) {
+        auto cno = table.query(mi + make_vec<int>(loc));
+        auto offset = offsets[cno];
+        auto no = atomic_add(tag, &counts[cno], (Ti)-1) - 1;
+        indices[offset + no] = i;
+      }
+    });
 
     return;
   }

@@ -14,9 +14,16 @@ namespace zs {
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_add(
-      ExecTag, T *dest, const T val) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_add(ExecTag, T *dest, const T val) {
     if constexpr (is_same_v<T, double>) {
+#  ifdef __CUDA_ARCH__
+
+#    if __CUDA_ARCH__ >= 600
+      /// @note use native implementation if available
+      return atomicAdd(dest, val);
+#    else
+      /// @note fallback to manual implementation
       unsigned long long int *address_as_ull = (unsigned long long int *)dest;
       unsigned long long int old = *address_as_ull, assumed;
 
@@ -28,6 +35,13 @@ namespace zs {
         // Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
       } while (assumed != old);
       return __longlong_as_double(old);
+#    endif
+
+#  else
+      static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                    "error in compiling cuda implementation of [atomic_add]!");
+      return 0;
+#  endif
     } else
       return atomicAdd(dest, val);
   }
@@ -96,9 +110,10 @@ namespace zs {
   // https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_inc(
-      ExecTag, T *dest) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_inc(ExecTag, T *dest) {
     if constexpr (std::is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
+#  ifdef __CUDA_ARCH__
       unsigned int active = __activemask();
       int leader = __ffs(active) - 1;
       int change = __popc(active);
@@ -108,6 +123,11 @@ namespace zs {
       if (rank == 0) warp_res = atomicAdd(dest, (T)change);
       warp_res = __shfl_sync(active, warp_res, leader);
       return warp_res + rank;
+#  else
+      static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                    "error in compiling cuda implementation of [atomic_add]!");
+      return 0;
+#  endif
     }
     return atomic_add(ExecTag{}, dest, (T)1);
   }
@@ -163,8 +183,8 @@ namespace zs {
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_cas(
-      ExecTag, T *dest, T expected, T desired) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_cas(ExecTag, T *dest, T expected, T desired) {
     if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T))
       return reinterpret_bits<float>(atomicCAS((unsigned int *)dest,
                                                reinterpret_bits<unsigned int>(expected),
@@ -247,8 +267,8 @@ namespace zs {
   // https://herbsutter.com/2012/08/31/reader-qa-how-to-write-a-cas-loop-using-stdatomics/
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> atomic_max(
-      ExecTag execTag, T *const dest, const T val) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>>
+  atomic_max(ExecTag execTag, T *const dest, const T val) {
     if constexpr (std::is_integral_v<T>) {
       atomicMax(dest, val);
       return;
@@ -287,8 +307,8 @@ namespace zs {
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>> atomic_min(
-      ExecTag execTag, T *const dest, const T val) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>>
+  atomic_min(ExecTag execTag, T *const dest, const T val) {
     if constexpr (std::is_integral_v<T>) {
       atomicMin(dest, val);
       return;
@@ -330,8 +350,8 @@ namespace zs {
   ///
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_or(
-      ExecTag, T *dest, const T val) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_or(ExecTag, T *dest, const T val) {
     return atomicOr(dest, val);
   }
 #endif
@@ -373,8 +393,8 @@ namespace zs {
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_and(
-      ExecTag, T *dest, const T val) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_and(ExecTag, T *dest, const T val) {
     if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
       return atomicAnd(dest, val);
     }
@@ -416,8 +436,8 @@ namespace zs {
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_xor(
-      ExecTag, T *dest, const T val) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_xor(ExecTag, T *dest, const T val) {
     return atomicXor(dest, val);
   }
 #endif

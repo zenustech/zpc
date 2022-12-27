@@ -28,7 +28,16 @@ namespace zs {
 
   // __threadfence
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-  __forceinline__ __device__ void thread_fence(cuda_exec_tag) { __threadfence(); }
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>>
+  thread_fence(ExecTag) {
+#  ifdef __CUDA_ARCH__
+    __threadfence();
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [thread_fence]!");
+#  endif
+  }
 #endif
 
 #if ZS_ENABLE_OPENMP
@@ -43,7 +52,16 @@ namespace zs {
 
   // __syncthreads
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-  __forceinline__ __device__ void sync_threads(cuda_exec_tag) { __syncthreads(); }
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>>
+  sync_threads(ExecTag) {
+#  ifdef __CUDA_ARCH__
+    __syncthreads();
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [sync_threads]!");
+#  endif
+  }
 #endif
 
 #if ZS_ENABLE_OPENMP
@@ -67,13 +85,31 @@ namespace zs {
 
   // __activemask
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-  __forceinline__ __device__ unsigned active_mask(cuda_exec_tag) { return __activemask(); }
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
+  active_mask(ExecTag) {
+#  ifdef __CUDA_ARCH__
+    return __activemask();
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [active_mask]!");
+    return 0;
+#  endif
+  }
 #endif
 
   // __ballot_sync
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-  __forceinline__ __device__ unsigned ballot_sync(cuda_exec_tag, unsigned mask, int predicate) {
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
+  ballot_sync(ExecTag, unsigned mask, int predicate) {
+#  ifdef __CUDA_ARCH__
     return __ballot_sync(mask, predicate);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [ballot_sync]!");
+    return 0;
+#  endif
   }
 #endif
 
@@ -81,17 +117,25 @@ namespace zs {
 
   /// count leading zeros
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-  template <typename T> __forceinline__ __device__ int count_lz(cuda_exec_tag, T x) {
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int>
+  count_lz(ExecTag, T x) {
+#  ifdef __CUDA_ARCH__
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
       return __clz((int)x);
     else if constexpr (sizeof(long long int) == nbytes)
       return __clzll((long long int)x);
     else {
-      static_assert(sizeof(long long int) != nbytes || sizeof(int) != nbytes,
+      static_assert(sizeof(long long int) != nbytes && sizeof(int) != nbytes,
                     "count_lz(tag CUDA, [?] bytes) not viable\n");
     }
     return -1;
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [count_lz]!");
+    return -1;
+#  endif
   }
 #endif
 
@@ -121,16 +165,24 @@ namespace zs {
 
   /// reverse bits
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-  template <typename T> __forceinline__ __device__ T reverse_bits(cuda_exec_tag, T x) {
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  reverse_bits(ExecTag, T x) {
+#  ifdef __CUDA_ARCH__
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)
       return __brev((unsigned int)x);
     else if constexpr (sizeof(unsigned long long int) == nbytes)
       return __brevll((unsigned long long int)x);
     else
-      static_assert(sizeof(unsigned long long int) != nbytes || sizeof(unsigned int) != nbytes,
+      static_assert(sizeof(unsigned long long int) != nbytes && sizeof(unsigned int) != nbytes,
                     "reverse_bits(tag [?], [?] bytes) not viable\n");
     return x;
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [reverse_bits]!");
+    return x;
+#  endif
   }
 #endif
 

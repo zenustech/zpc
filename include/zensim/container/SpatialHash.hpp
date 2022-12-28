@@ -96,13 +96,13 @@ namespace zs {
 
     template <class F> constexpr void iter_neighbors(const bv_t &bv, F &&f) const {
       auto mi = integer_coord_type::init([&mi = bv._min, dxinv = 1 / _dx](int d) -> index_type {
-        return lower_trunc(mi[d] * dxinv, zs::wrapt<index_type>{}) - 1;
+        return lower_trunc(mi[d] * dxinv, zs::wrapt<index_type>{});
       });
       auto ma = integer_coord_type::init([&ma = bv._max, dxinv = 1 / _dx](int d) -> index_type {
-        return zs::ceil(ma[d] * dxinv) + 1;
+        return zs::ceil(ma[d] * dxinv);
       });
-      auto range = Collapse(ma - mi + 1);
-      for (auto loc : ndrange<dim>(3)) {
+      auto range = Collapse(ma - mi);
+      for (auto loc : range) {
         auto cno = _table.query(mi + make_vec<int>(loc));
         if (cno < 0) continue;
 
@@ -114,17 +114,15 @@ namespace zs {
 
     template <typename VecT, class F>
     constexpr void iter_neighbors(const VecInterface<VecT> &p, F &&f) const {
-      auto base = integer_coord_type::init([&p, dxinv = 1 / _dx](int d) -> index_type {
-        return lower_trunc(p[d] * dxinv, zs::wrapt<index_type>{}) - 1;
+      auto loc = integer_coord_type::init([&p, dxinv = 1 / _dx](int d) -> index_type {
+        return lower_trunc(p[d] * dxinv, zs::wrapt<index_type>{});
       });
-      for (auto loc : ndrange<dim>(3)) {
-        auto cno = _table.query(base + make_vec<int>(loc));
-        if (cno < 0) continue;
+      auto cno = _table.query(loc);
+      if (cno < 0) return;
 
-        auto st = _offsets[cno];
-        auto ed = _offsets[cno + 1];
-        for (size_type no = st; no != ed; ++no) f(_indices[no]);
-      }
+      auto st = _offsets[cno];
+      auto ed = _offsets[cno + 1];
+      for (size_type no = st; no != ed; ++no) f(_indices[no]);
     }
 
     value_type _dx;
@@ -150,28 +148,36 @@ namespace zs {
     if (_dx < limits<value_type>::epsilon() * 10)
       throw std::runtime_error("cell side_length for spatial hashing should be greater than zero.");
 
-    _table = table_type{primBvs.get_allocator(), primBvs.size()};
     if (primBvs.size() == 0) return;
 
-    _indices = indices_type{primBvs.get_allocator(), primBvs.size()};
+    auto prevStatus = _table._buildSuccess.getVal();
+    auto expectedNumEntries = primBvs.size();
+    int numTrialIters = 0;
+    _table = table_type{primBvs.get_allocator(), expectedNumEntries};
 
-    policy(range(primBvs.size()), [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
-                                   dxinv = 1 / _dx] ZS_LAMBDA(size_type i) mutable {
-      using table_t = RM_CVREF_T(table);
-      auto bv = primBvs[i];
-      auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
-        return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
+    do {
+      policy(range(primBvs.size()), [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
+                                     dxinv = 1 / _dx] ZS_LAMBDA(size_type i) mutable {
+        using table_t = RM_CVREF_T(table);
+        auto bv = primBvs[i];
+        auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
+          return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
+        });
+        auto ma = integer_coord_type::init(
+            [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
+        auto range = Collapse(ma - mi);
+        for (auto loc : range) table.insert(mi + make_vec<int>(loc));
       });
-      auto ma = integer_coord_type::init(
-          [&ma = bv._max, dxinv](int d) -> int { return (Ti)zs::ceil(ma[d] * dxinv); });
-      auto range = Collapse(ma - mi + 1);
-      for (auto loc : range) table.insert(mi + make_vec<int>(loc));
-    });
 
-    auto buildSuccess = _table._buildSuccess.getVal();
-    fmt::print("build success state: {}\n", buildSuccess);
-
-    if (buildSuccess == 0) throw std::runtime_error("failed to complete spatial hashing.");
+      if (auto buildSuccess = _table._buildSuccess.getVal(); buildSuccess) break;
+      if (++numTrialIters > 4)
+        throw std::runtime_error(
+            fmt::format("using dx[{}] as the cell side_length results in excessive ({}) spatial "
+                        "hashing table size!",
+                        dx, expectedNumEntries));
+      expectedNumEntries *= 4;
+      _table.resize(policy, expectedNumEntries);
+    } while (true);
 
     const auto numCells = _table.size();
     indices_type counts{primBvs.get_allocator(), numCells + 1};
@@ -187,7 +193,7 @@ namespace zs {
       });
       auto ma = integer_coord_type::init(
           [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
-      auto range = Collapse(ma - mi + 1);
+      auto range = Collapse(ma - mi);
       for (auto loc : range) {
         auto cno = table.query(mi + make_vec<int>(loc));
         if (cno < 0) printf("\n\tshould not miss spatial hashing here!\t\n");
@@ -198,27 +204,32 @@ namespace zs {
     _offsets = indices_type{primBvs.get_allocator(), numCells + 1};
     exclusive_scan(policy, std::begin(counts), std::end(counts), std::begin(_offsets));
 
-    _indices = indices_type{primBvs.get_allocator(), primBvs.size()};
+    const std::size_t numEntries = _offsets.getVal(numCells);
+    _indices = indices_type{primBvs.get_allocator(), numEntries};
 
-    policy(range(primBvs.size()), [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
-                                   offsets = proxy<space>(_offsets), counts = proxy<space>(counts),
-                                   indices = proxy<space>(_indices), dxinv = 1 / _dx,
-                                   tag = wrapv<space>{}] ZS_LAMBDA(size_type i) mutable {
-      using table_t = RM_CVREF_T(table);
-      auto bv = primBvs[i];
-      auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
-        return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
-      });
-      auto ma = integer_coord_type::init(
-          [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
-      auto range = Collapse(ma - mi + 1);
-      for (auto loc : range) {
-        auto cno = table.query(mi + make_vec<int>(loc));
-        auto offset = offsets[cno];
-        auto no = atomic_add(tag, &counts[cno], (Ti)-1) - 1;
-        indices[offset + no] = i;
-      }
-    });
+    policy(range(primBvs.size()),
+           [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),
+            offsets = proxy<space>(_offsets), counts = proxy<space>(counts),
+            indices = proxy<space>(_indices), dxinv = 1 / _dx, tag = wrapv<space>{},
+            n = numEntries] ZS_LAMBDA(size_type i) mutable {
+             using table_t = RM_CVREF_T(table);
+             auto bv = primBvs[i];
+             auto mi = integer_coord_type::init([&mi = bv._min, dxinv](int d) -> int {
+               return lower_trunc(mi[d] * dxinv, zs::wrapt<int>{});
+             });
+             auto ma = integer_coord_type::init(
+                 [&ma = bv._max, dxinv](int d) -> int { return (int)zs::ceil(ma[d] * dxinv); });
+             auto range = Collapse(ma - mi);
+             for (auto loc : range) {
+               auto cno = table.query(mi + make_vec<int>(loc));
+               auto offset = offsets[cno];
+               auto no = atomic_add(tag, &counts[cno], (Ti)-1) - 1;
+               if (no >= n)
+                 printf("what the fuck??? accessing [offset: %d, no: %d] exceeding %d\n",
+                        (int)offset, (int)no, (int)n);
+               indices[offset + no] = i;
+             }
+           });
 
     return;
   }

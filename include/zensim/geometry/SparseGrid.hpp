@@ -689,6 +689,7 @@ namespace zs {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
     }
 
+    /// @brief access value by index
     constexpr auto value(size_type chn, size_type cellno) const { return _grid(chn, cellno); }
     constexpr auto value(size_type chn, size_type blockno, size_type cellno) const {
       return _grid(chn, blockno, cellno);
@@ -700,6 +701,7 @@ namespace zs {
                          size_type cellno) const {
       return value(_grid.propertyOffset(prop) + chn, blockno, cellno);
     }
+    /// @brief access value by coord
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
                                                                  integer_coord_component_type>> = 0>
@@ -720,6 +722,30 @@ namespace zs {
     constexpr auto value(const SmallString &prop, size_type chn,
                          const VecInterface<VecT> &X) const {
       return value(_grid.propertyOffset(prop) + chn, X);
+    }
+    /// @note default value override
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr auto value(size_type chn, const VecInterface<VecT> &X,
+                         value_type backgroundVal) const {
+      auto [blockno, cellno] = decomposeCoord(X);
+      if (blockno == table_type::sentinel_v) return backgroundVal;
+      return _grid(chn, blockno, cellno);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr auto value(const SmallString &prop, const VecInterface<VecT> &X,
+                         value_type backgroundVal) const {
+      return value(_grid.propertyOffset(prop), X, backgroundVal);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type,
+                                                                 integer_coord_component_type>> = 0>
+    constexpr auto value(const SmallString &prop, size_type chn, const VecInterface<VecT> &X,
+                         value_type backgroundVal) const {
+      return value(_grid.propertyOffset(prop) + chn, X, backgroundVal);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,

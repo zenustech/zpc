@@ -224,9 +224,6 @@ namespace zs {
                auto cno = table.query(mi + make_vec<int>(loc));
                auto offset = offsets[cno];
                auto no = atomic_add(tag, &counts[cno], (Ti)-1) - 1;
-               if (no >= n)
-                 printf("what the fuck??? accessing [offset: %d, no: %d] exceeding %d\n",
-                        (int)offset, (int)no, (int)n);
                indices[offset + no] = i;
              }
            });

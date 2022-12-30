@@ -63,6 +63,7 @@ option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" OFF)
 option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend" OFF)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
 option(ZS_PROPAGATE_DEPS "Pass on dependencies" ON)
+option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically decides target cuda architecture" ON)
 
 option(ZS_ENABLE_INSTALL "Install targets" Off)
 option(ZS_ENABLE_PACKAGE "Build package" Off)
@@ -181,7 +182,7 @@ set(ZS_ENABLE_MSHIO ${ZS_ENABLE_MSHIO} PARENT_SCOPE)
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}, omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
+message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
 # =================

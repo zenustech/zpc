@@ -373,11 +373,13 @@ if(ZS_ENABLE_CUDA)
 
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES LANGUAGE CUDA)
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+
   target_compile_options(zpccuda
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" -dlto >
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" >
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
-    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
+    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=per-thread $<IF:$<AND:$<BOOL:${ZS_AUTO_DETECT_CUDA_ARCH}>,$<VERSION_GREATER_EQUAL:${CUDAToolkit_VERSION},11.5.1>>,-arch=native,>
+    >
   )
 
   # https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#implicit-cuda-host-code

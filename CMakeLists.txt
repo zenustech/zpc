@@ -63,7 +63,7 @@ option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" OFF)
 option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend" OFF)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
 option(ZS_PROPAGATE_DEPS "Pass on dependencies" ON)
-option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically decides target cuda architecture" ON)
+option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda architecture" ON)
 
 option(ZS_ENABLE_INSTALL "Install targets" Off)
 option(ZS_ENABLE_PACKAGE "Build package" Off)
@@ -178,6 +178,15 @@ set(ZS_ENABLE_OPENMP ${ZS_ENABLE_OPENMP} PARENT_SCOPE)
 set(ZS_ENABLE_OPENVDB ${ZS_ENABLE_OPENVDB} PARENT_SCOPE)
 set(ZS_ENABLE_PARTIO ${ZS_ENABLE_PARTIO} PARENT_SCOPE)
 set(ZS_ENABLE_MSHIO ${ZS_ENABLE_MSHIO} PARENT_SCOPE)
+
+if(ZS_ENABLE_CUDA)
+  # propagate cmake zs variables about cuda
+  set(ZS_CUDA_ARCH ${ZS_CUDA_ARCH} PARENT_SCOPE)
+
+  if(ZS_AUTO_DETECT_CUDA_ARCH)
+    set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} PARENT_SCOPE)
+  endif(ZS_AUTO_DETECT_CUDA_ARCH)
+endif(ZS_ENABLE_CUDA)
 
 message("cmake configure summary")
 message("project name: ${project_name}")

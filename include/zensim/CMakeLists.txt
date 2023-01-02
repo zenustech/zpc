@@ -375,23 +375,23 @@ if(ZS_ENABLE_CUDA)
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" >
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" -dlto>
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
-    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=per-thread $<IF:$<AND:$<BOOL:${ZS_AUTO_DETECT_CUDA_ARCH}>,$<VERSION_GREATER_EQUAL:${CUDAToolkit_VERSION},11.5.1>>,-arch=native,>
-    >
+    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=per-thread>
   )
 
+  # -dlto $<IF:$<AND:$<BOOL:${ZS_AUTO_DETECT_CUDA_ARCH}>,$<VERSION_GREATER_EQUAL:${CUDAToolkit_VERSION},11.5.1>>,-arch=native,>>
+
   # https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#implicit-cuda-host-code
+  # https://gitlab.kitware.com/cmake/cmake/-/issues/18265
   target_link_options(zpccuda
-    PUBLIC $<DEVICE_LINK:-dlto> # LINK_LANGUAGE
+    PRIVATE $<DEVICE_LINK:-dlto>
   )
   set_target_properties(zpccuda
     PROPERTIES # LINKER_LANGUAGE CUDA
-    CUDA_EXTENSIONS ON
     CUDA_SEPARABLE_COMPILATION OFF
     CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
-    CUDA_ARCHITECTURES OFF
 
     # CUDA_VISIBILITY_PRESET default
   )
@@ -527,7 +527,7 @@ if(ZS_ENABLE_CUDA)
     PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES}
   )
   target_compile_options(zs_cu_wrangler
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-ptx -lineinfo --ptxas-options=-allow-expensive-optimizations=true> # -ptx --keep
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-lineinfo --ptxas-options=-allow-expensive-optimizations=true> # -ptx --keep
   )
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
 
@@ -537,11 +537,9 @@ if(ZS_ENABLE_CUDA)
   # set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})  # not valid for win platform
   set(ZS_PTX_INCLUDE_DIR ${PROJECT_BINARY_DIR}/${ZS_PTX_SOURCE_DIR})
   set_target_properties(zs_cu_wrangler
-    PROPERTIES LINKER_LANGUAGE CUDA
-    CUDA_EXTENSIONS ON
+    PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
-    CUDA_ARCHITECTURES OFF
     CUDA_PTX_COMPILATION ON # https://stackoverflow.com/questions/55993745/how-should-i-get-cmake-to-also-create-ptx-files-for-my-kernels
 
     # CUDA_VISIBILITY_PRESET default

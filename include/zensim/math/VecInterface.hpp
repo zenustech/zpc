@@ -420,21 +420,21 @@ namespace zs {
                               conditional_t<(sizeof(value_type) >= 8), double, float>>;
       return zs::sqrt((T)l2NormSqr(), tag);
     }
-    template <typename VecT = Derived,
+    template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
-    constexpr auto norm() const noexcept {
-      return length();
+    constexpr auto norm(wrapv<space> tag = {}) const noexcept {
+      return length(tag);
     }
     template <typename VecT = Derived,
               enable_if_t<std::is_fundamental_v<typename VecT::value_type>> = 0>
     constexpr auto infNorm() const noexcept {
       return abs().max();
     }
-    template <typename VecT = Derived,
+    template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
               enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
-    constexpr auto normalized() const noexcept {
+    constexpr auto normalized(wrapv<space> tag = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
-      const auto len = length();
+      const auto len = length(tag);
       typename Derived::template variant_vec<RM_CVREF_T(len), extents> r{};
       for (index_type i = 0; i != extent; ++i) r.val(i) = derivedPtr()->val(i) / len;
       return r;

@@ -13,6 +13,9 @@
 #  include <linux/futex.h>
 #  include <sys/syscall.h> /* Definition of SYS_* constants */
 #  include <unistd.h>
+#elif defined(__APPLE__)
+#  include <sys/syscall.h>
+#  include <unistd.h>
 #endif
 
 namespace zs {
@@ -62,6 +65,10 @@ namespace zs {
     return result_t::interrupted;
 
 #elif defined(__clang__) || defined(__GNUC__)
+#ifdef ZS_PLATFORM_OSX
+    throw std::runtime_error("no futex implementation for now on macos.");
+    return result_t::timedout;
+#else
     /// linux
     struct timespec tm {};
     struct timespec *timeout = nullptr;
@@ -88,6 +95,7 @@ namespace zs {
       }
     }
 #endif
+#endif
   }
   // wake up the thread if (wakeMask & waitMask == true)
   // WakeByAddressSingle/All
@@ -103,10 +111,16 @@ namespace zs {
       return 0;
 
 #elif defined(__clang__) || defined(__GNUC__)
+#ifdef ZS_PLATFORM_OSX
+    long rc{0};
+    throw std::runtime_error("no futex implementation for now on macos.");
+    return rc;
+#else
     int const op = FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG;
     long rc = syscall(SYS_futex, reinterpret_cast<i32 *>(v), op, count, nullptr, nullptr, wakeMask);
     if (rc < 0) return 0;
     return rc;
+#endif
 #endif
   }
 
@@ -205,8 +219,12 @@ namespace zs {
     // cannot find win32 alternative for FUTEX_REQUEUE
     WakeByAddressAll((void *)&seq);
 #elif defined(__clang__) || defined(__GNUC__)
+#ifdef ZS_PLATFORM_OSX
+    throw std::runtime_error("no futex implementation for now on macos.");
+#else
     syscall(SYS_futex, reinterpret_cast<i32 *>(&seq), FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1,
             limits<i32>::max(), m, 0);
+#endif
 #endif
   }
 

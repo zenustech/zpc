@@ -349,7 +349,7 @@ if(ZS_ENABLE_OPENMP)
 
   target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
   target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
-    PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, -fopenmp $<IF:$<CXX_COMPILER_ID:Clang>, , > >>
+    PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, $<IF:$<CXX_COMPILER_ID:AppleClang>, -Xpreprocessor -fopenmp, -fopenmp> >>
   )
 endif(ZS_ENABLE_OPENMP)
 

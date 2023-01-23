@@ -22,6 +22,10 @@
 #  include <linux/futex.h>
 #  include <sys/syscall.h> /* Definition of SYS_* constants */
 #  include <unistd.h>
+
+#elif defined(__APPLE__)
+#  include <arm_neon.h>
+#  include <unistd.h>
 #endif
 
 namespace zs {
@@ -79,7 +83,11 @@ namespace zs {
 #if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     YieldProcessor();
 #elif defined(__clang__) || defined(__GNUC__)
+#ifdef ZS_PLATFORM_OSX
+    pause();
+#else
     _mm_pause();
+#endif
 #endif
   }
 

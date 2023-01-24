@@ -182,7 +182,7 @@ namespace zs {
     template <class InputIt, class OutputIt> constexpr void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8) const {
+        = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8) const {
       using IterT = remove_cvref_t<InputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
       using InputValueT = typename std::iterator_traits<IterT>::value_type;
@@ -245,12 +245,12 @@ namespace zs {
       }
     }
     template <class KeyIter, class ValueIter,
-              typename Tn = typename std::iterator_traits<remove_cvref_t<KeyIter>>::difference_type>
+              typename Tn = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
     void radix_sort_pair(
         KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
         int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type) * 8) const {
+        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8) const {
       using KeyT = typename std::iterator_traits<KeyIter>::value_type;
       using ValueT = typename std::iterator_traits<ValueIter>::value_type;
       using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
@@ -422,20 +422,20 @@ namespace zs {
   }
   /// sort
   template <class ExecutionPolicy, class KeyIter, class ValueIter,
-            typename Tn = typename std::iterator_traits<remove_cvref_t<KeyIter>>::difference_type>
+            typename Tn = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
   constexpr std::enable_if_t<std::is_convertible_v<
-      typename std::iterator_traits<remove_cvref_t<KeyIter>>::iterator_category,
+      typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
       std::random_access_iterator_tag>>
   radix_sort_pair(ExecutionPolicy &&policy, KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut,
                   ValueIter &&valsOut, Tn count, int sbit = 0,
                   int ebit
-                  = sizeof(typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type)
+                  = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type)
                     * 8) {
     policy.radix_sort_pair(FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit);
   }
   template <class ExecutionPolicy, class InputIt, class OutputIt> constexpr void radix_sort(
       ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-      int ebit = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8) {
+      int ebit = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8) {
     policy.radix_sort(FWD(first), FWD(last), FWD(d_first), sbit, ebit);
   }
   /// gather/ select (flagged, if, unique)

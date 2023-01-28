@@ -8,7 +8,8 @@ namespace zs {
 #ifdef _MSC_VER
     ret = _aligned_malloc(size, alignment);
 #else
-    ret = std::aligned_alloc(alignment, size);
+    // ret = std::aligned_alloc(alignment, size);
+    ret = std::malloc(size);
 #endif
     return ret;
   }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -202,24 +203,27 @@ namespace zs {
                 if constexpr (is_memory_source_available(tag)
                               || is_same_v<RM_CVREF_T(tag), mem_tags>)
                   ret.setOwningUpstream<advisor_memory_resource>(tag, devid, "READ_MOSTLY");
-              },
-              [](...) {})(tag);
+                else
+                  std::cerr << fmt::format("invalid allocations of memory resource \"{}\" with advice \"READ_MOSTLY\"", get_var_type_str(tag)) << std::endl;
+              })(tag);
         else
           match(
               [&ret, devid](auto tag) {
                 if constexpr (is_memory_source_available(tag)
                               || is_same_v<RM_CVREF_T(tag), mem_tags>)
                   ret.setOwningUpstream<advisor_memory_resource>(tag, devid, "PREFERRED_LOCATION");
-              },
-              [](...) {})(tag);
+                else
+                  std::cerr << fmt::format("invalid allocations of memory resource \"{}\" with advice \"PREFERRED_LOCATION\"", get_var_type_str(tag)) << std::endl;
+              })(tag);
       } else {
         // match([&ret](auto &tag) { ret.setNonOwningUpstream<raw_memory_resource>(tag); })(tag);
         match(
             [&ret, devid](auto tag) {
               if constexpr (is_memory_source_available(tag) || is_same_v<RM_CVREF_T(tag), mem_tags>)
                 ret.setOwningUpstream<default_memory_resource>(tag, devid);
-            },
-            [](...) {})(tag);
+              else
+                std::cerr << fmt::format("invalid default allocations of memory resource \"{}\"", get_var_type_str(tag)) << std::endl;
+            })(tag);
         // ret.setNonOwningUpstream<raw_memory_resource>(tag);
       }
     } else
@@ -227,8 +231,9 @@ namespace zs {
           [&ret, &advice, devid](auto tag) {
             if constexpr (is_memory_source_available(tag) || is_same_v<RM_CVREF_T(tag), mem_tags>)
               ret.setOwningUpstream<advisor_memory_resource>(tag, devid, advice);
-          },
-          [](...) {})(tag);
+            else
+              std::cerr << fmt::format("invalid advice \"{}\" for allocations of memory resource \"{}\"", advice, get_var_type_str(tag)) << std::endl;
+          })(tag);
     return ret;
   }
 
@@ -249,9 +254,10 @@ namespace zs {
                 ret.setOwningUpstream<stack_virtual_memory_resource>(tag, devid, bytes);
               else
                 throw std::runtime_error(fmt::format("unkonwn vmr option [{}]\n", option));
+              return;
             }
-        },
-        [](...) {})(tag);
+          std::cerr << fmt::format("invalid option \"{}\" for allocations of virtual memory resource \"{}\".", option, get_var_type_str(tag)) << std::endl;
+        })(tag);
     return ret;
   }
 

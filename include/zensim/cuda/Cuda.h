@@ -27,7 +27,6 @@
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
-#include "zensim/zpc_tpls/fmt/color.h"
 
 namespace zs {
 

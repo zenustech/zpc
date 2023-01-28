@@ -7,15 +7,15 @@
 
 namespace zs {
 
-  template <typename T, std::size_t Length = 8, typename AllocatorT = ZSPmrAllocator<>>
+  template <typename T_, std::size_t Length = 8, typename AllocatorT = ZSPmrAllocator<>>
   struct TileVector {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "TileVector only works with zspmrallocator for now.");
-    static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
-    static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
+    static_assert(is_same_v<T_, remove_cvref_t<T_>>, "T is not cvref-unqualified type!");
+    static_assert(std::is_default_constructible_v<T_> && std::is_trivially_copyable_v<T_>,
                   "element is not default-constructible or trivially-copyable!");
 
-    using value_type = T;
+    using value_type = T_;
     using allocator_type = AllocatorT;
     using size_type = std::size_t;
     using difference_type = std::make_signed_t<size_type>;
@@ -104,12 +104,19 @@ namespace zs {
       for (std::size_t i = 0; i != tags.size(); ++i) cnt += tags[i].numChannels;
       return cnt;
     }
-    struct iterator_impl : IteratorInterface<iterator_impl> {
+
+    template <typename T = value_type, typename Dims = value_seq<1>, typename Pred = void>
+    struct iterator_impl : IteratorInterface<iterator_impl<T, Dims, Pred>> {
+      static constexpr bool is_const_structure = std::is_const_v<T>;
       constexpr iterator_impl(pointer base, size_type idx, channel_counter_type chn,
                               channel_counter_type nchns)
           : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
 
       constexpr reference dereference() {
+        return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
+                 + _idx % lane_width);
+      }
+      constexpr const_reference dereference() const {
         return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
                  + _idx % lane_width);
       }
@@ -126,43 +133,29 @@ namespace zs {
       size_type _idx{0};
       channel_counter_type _chn{0}, _numChannels{1};
     };
-    struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
-      constexpr const_iterator_impl(const_pointer base, size_type idx, channel_counter_type chn,
-                                    channel_counter_type nchns)
-          : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
+    template <typename T = value_type, typename Dims = value_seq<1>> using iterator
+        = LegacyIterator<iterator_impl<T, Dims>>;
+    template <typename T = const value_type, typename Dims = value_seq<1>> using const_iterator
+        = LegacyIterator<iterator_impl<std::add_const_t<T>, Dims>>;
 
-      constexpr const_reference dereference() const {
-        return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
-                 + _idx % lane_width);
-      }
-      constexpr bool equal_to(const_iterator_impl it) const noexcept {
-        return it._idx == _idx && it._chn == _chn;
-      }
-      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
-      constexpr difference_type distance_to(const_iterator_impl it) const noexcept {
-        return it._idx - _idx;
-      }
-
-    protected:
-      const_pointer _base{nullptr};
-      size_type _idx{0};
-      channel_counter_type _chn{0}, _numChannels{1};
-    };
-    using iterator = LegacyIterator<iterator_impl>;
-    using const_iterator = LegacyIterator<const_iterator_impl>;
-
-    constexpr auto begin(channel_counter_type chn = 0) noexcept {
-      return make_iterator<iterator_impl>(_base, static_cast<size_type>(0), chn, numChannels());
+    template <typename T = value_type, typename Dims = value_seq<1>>
+    constexpr auto begin(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), chn,
+                                                   numChannels());
     }
-    constexpr auto end(channel_counter_type chn = 0) noexcept {
-      return make_iterator<iterator_impl>(_base, size(), chn, numChannels());
+    template <typename T = value_type, typename Dims = value_seq<1>>
+    constexpr auto end(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, size(), chn, numChannels());
     }
-    constexpr auto begin(channel_counter_type chn = 0) const noexcept {
-      return make_iterator<const_iterator_impl>(_base, static_cast<size_type>(0), chn,
-                                                numChannels());
+    template <typename T = const value_type, typename Dims = value_seq<1>>
+    constexpr auto begin(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
+          _base, static_cast<size_type>(0), chn, numChannels());
     }
-    constexpr auto end(channel_counter_type chn = 0) const noexcept {
-      return make_iterator<const_iterator_impl>(_base, size(), chn, numChannels());
+    template <typename T = const value_type, typename Dims = value_seq<1>>
+    constexpr auto end(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), chn,
+                                                                     numChannels());
     }
 
     /// capacity

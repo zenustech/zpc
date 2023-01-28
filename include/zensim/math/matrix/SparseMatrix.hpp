@@ -43,17 +43,6 @@ namespace zs {
       else
         return get_memory_source(mre, devid);
     }
-    pointer allocate(std::size_t bytes) {
-      /// virtual memory way
-      auto &allocator = _ptrs;
-      if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
-        allocator.commit(0, bytes);
-        return (pointer)allocator.address(0);
-      }
-      /// conventional way
-      else
-        return (pointer)allocator.allocate(bytes, std::alignment_of_v<value_type>);
-    }
 
     /// allocator-aware
     SparseMatrix(const allocator_type &allocator, Ti ni, Ti nj)
@@ -83,9 +72,8 @@ namespace zs {
 
     /// @brief iterators
     struct iterator_impl : IteratorInterface<iterator_impl> {
-      template <typename Ti>
       constexpr iterator_impl(index_type line, index_type *ptrs, index_type *inds, value_type *vals)
-          : _st{ptrs[line]}, _ed{ptrs[line + 1]}, _idx{_st}, _inds{inds}, _vals{vals} {}
+          : _idx{ptrs[line]}, _inds{inds}, _vals{vals} {}
 
       constexpr tuple<index_type &, value_type &> dereference() {
         return forward_as_tuple(_inds[_idx], _vals[_idx]);
@@ -96,13 +84,11 @@ namespace zs {
         return it._idx - _idx;
       }
 
-      constexpr operator bool() const { return _idx != _ed; }
       constexpr index_type index() const { return _inds[_idx]; }
       constexpr value_type value() const { return _vals[_idx]; }
       constexpr value_type &value() { return _vals[_idx]; }
 
     protected:
-      size_type _st{0}, _ed{0};
       size_type _idx{0};
       index_type *_inds;
       value_type *_vals;
@@ -110,10 +96,9 @@ namespace zs {
     using iterator = LegacyIterator<iterator_impl>;
 
     struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
-      template <typename Ti>
       constexpr const_iterator_impl(index_type line, const index_type *ptrs, const index_type *inds,
                                     const value_type *vals)
-          : _st{ptrs[line]}, _ed{ptrs[line + 1]}, _idx{_st}, _inds{inds}, _vals{vals} {}
+          : _idx{ptrs[line]}, _inds{inds}, _vals{vals} {}
 
       constexpr tuple<const index_type &, const value_type &> dereference() {
         return forward_as_tuple(_inds[_idx], _vals[_idx]);
@@ -124,23 +109,22 @@ namespace zs {
         return it._idx - _idx;
       }
 
-      constexpr operator bool() const { return _idx != _ed; }
       constexpr index_type index() const { return _inds[_idx]; }
       constexpr value_type value() const { return _vals[_idx]; }
 
     protected:
-      size_type _st{0}, _ed{0};
       size_type _idx{0};
       const index_type *_inds;
       const value_type *_vals;
     };
     using const_iterator = LegacyIterator<const_iterator_impl>;
 
-    constexpr auto begin(index_type no) const {
-      return const_iterator{no, _ptrs.data(), _inds.data(), _vals.data()};
-    }
-    constexpr auto begin(index_type no) {
-      return iterator{no, _ptrs.data(), _inds.data(), _vals.data()};
+    constexpr auto begin(index_type no) noexcept { return make_iterator<iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data()); }
+    constexpr auto end(index_type no) noexcept { return make_iterator<iterator_impl>(no + 1, _ptrs.data(), _inds.data(), _vals.data()); }
+
+    constexpr auto begin(index_type no) const noexcept { return make_iterator<const_iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data()); }
+    constexpr auto end(index_type no) const noexcept {
+      return make_iterator<const_iterator_impl>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
     }
 
     index_type _nrows = 0, _ncols = 0;  // for square matrix, nrows = ncols
@@ -195,10 +179,20 @@ namespace zs {
       return
           typename sparse_matrix_type::const_iterator{no, _ptrs.data(), _inds.data(), _vals.data()};
     }
+    constexpr auto end(index_type no) const {
+      return
+          typename sparse_matrix_type::const_iterator{no + 1, _ptrs.data(), _inds.data(), _vals.data()};
+    }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto begin(index_type no) {
       return conditional_t<is_const_structure, typename sparse_matrix_type::const_iterator,
                            typename sparse_matrix_type::iterator>{no, _ptrs.data(), _inds.data(),
+                                                                  _vals.data()};
+    }
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr auto end(index_type no) {
+      return conditional_t<is_const_structure, typename sparse_matrix_type::const_iterator,
+                           typename sparse_matrix_type::iterator>{no + 1, _ptrs.data(), _inds.data(),
                                                                   _vals.data()};
     }
 

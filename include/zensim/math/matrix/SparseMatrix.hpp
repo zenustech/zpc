@@ -1,6 +1,6 @@
 #pragma once
-#include "zensim/container/Vector.hpp"
 #include "zensim/container/Bcht.hpp"
+#include "zensim/container/Vector.hpp"
 
 namespace zs {
 
@@ -46,8 +46,8 @@ namespace zs {
 
     /// allocator-aware
     SparseMatrix(const allocator_type &allocator, Ti ni, Ti nj)
-        : _nrows{ni}, _ncols{nj}, _ptrs{allocator, 1}, _inds{allocator, 0}, _vals{allocator, 0} {
-      _ptrs.setVal(0);
+        : _nrows{ni}, _ncols{nj}, _ptrs{allocator, 2}, _inds{allocator, 0}, _vals{allocator, 0} {
+      _ptrs.reset(0);
     }
     explicit SparseMatrix(Ti ni, Ti nj, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : SparseMatrix{get_default_allocator(mre, devid), ni, nj} {}
@@ -119,10 +119,16 @@ namespace zs {
     };
     using const_iterator = LegacyIterator<const_iterator_impl>;
 
-    constexpr auto begin(index_type no) noexcept { return make_iterator<iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data()); }
-    constexpr auto end(index_type no) noexcept { return make_iterator<iterator_impl>(no + 1, _ptrs.data(), _inds.data(), _vals.data()); }
+    constexpr auto begin(index_type no) noexcept {
+      return make_iterator<iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data());
+    }
+    constexpr auto end(index_type no) noexcept {
+      return make_iterator<iterator_impl>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
+    }
 
-    constexpr auto begin(index_type no) const noexcept { return make_iterator<const_iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data()); }
+    constexpr auto begin(index_type no) const noexcept {
+      return make_iterator<const_iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data());
+    }
     constexpr auto end(index_type no) const noexcept {
       return make_iterator<const_iterator_impl>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
     }
@@ -180,8 +186,8 @@ namespace zs {
           typename sparse_matrix_type::const_iterator{no, _ptrs.data(), _inds.data(), _vals.data()};
     }
     constexpr auto end(index_type no) const {
-      return
-          typename sparse_matrix_type::const_iterator{no + 1, _ptrs.data(), _inds.data(), _vals.data()};
+      return typename sparse_matrix_type::const_iterator{no + 1, _ptrs.data(), _inds.data(),
+                                                         _vals.data()};
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto begin(index_type no) {
@@ -189,11 +195,10 @@ namespace zs {
                            typename sparse_matrix_type::iterator>{no, _ptrs.data(), _inds.data(),
                                                                   _vals.data()};
     }
-    template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr auto end(index_type no) {
+    template <bool V = is_const_structure, enable_if_t<!V> = 0> constexpr auto end(index_type no) {
       return conditional_t<is_const_structure, typename sparse_matrix_type::const_iterator,
-                           typename sparse_matrix_type::iterator>{no + 1, _ptrs.data(), _inds.data(),
-                                                                  _vals.data()};
+                           typename sparse_matrix_type::iterator>{no + 1, _ptrs.data(),
+                                                                  _inds.data(), _vals.data()};
     }
 
     constexpr index_type rows() const noexcept { return _nrows; }

@@ -46,9 +46,9 @@ static_assert(false, "32-bit Windows systems are not supported")
 
 #if defined(__clang__)
 #  define ZS_COMPILER_CLANG
-#if defined(ZS_PLATFORM_OSX)
-#  define ZS_COMPILER_APPLE_CLANG
-#endif
+#  if defined(ZS_PLATFORM_OSX)
+#    define ZS_COMPILER_APPLE_CLANG
+#  endif
 #endif
 
 #if defined(_MSC_VER)

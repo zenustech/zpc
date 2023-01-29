@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <utility>
 
 #include "zensim/Reflection.h"
@@ -52,6 +53,12 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_value &operator=(tuple_value &&) = default;
     constexpr tuple_value &operator=(const tuple_value &) = default;
 
+    template <typename V, enable_if_t<std::is_assignable_v<T, V>> = 0>
+    constexpr tuple_value &operator=(V &&o) noexcept(std::is_nothrow_assignable_v<T, V>) {
+      static_cast<T &>(*this) = FWD(o);
+      return *this;
+    }
+
     /// by index
     constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept { return *this; }
     constexpr decltype(auto) get(integral_t<std::size_t, I>) &&noexcept { return std::move(*this); }
@@ -73,6 +80,12 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_value(const tuple_value &) = default;
     constexpr tuple_value &operator=(tuple_value &&) = default;
     constexpr tuple_value &operator=(const tuple_value &) = default;
+
+    template <typename V, enable_if_t<std::is_assignable_v<T, V>> = 0>
+    constexpr tuple_value &operator=(V &&o) noexcept(std::is_nothrow_assignable_v<T, V>) {
+      value = FWD(o);
+      return *this;
+    }
 
     /// by index
     constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept {
@@ -129,6 +142,13 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_base(const tuple_base &) = default;
     constexpr tuple_base &operator=(tuple_base &&) = default;
     constexpr tuple_base &operator=(const tuple_base &) = default;
+
+    template <typename... Vs, enable_if_all<std::is_assignable_v<Ts, Vs>...> = 0>
+    constexpr tuple_base &operator=(const tuple<Vs...> &o) noexcept(
+        (std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
+      ((static_cast<tuple_value<Is, Ts> &>(*this) = o.get(integral_t<std::size_t, Is>{})), ...);
+      return *this;
+    }
 
     using tuple_value<Is, Ts>::get...;
     template <std::size_t I> constexpr decltype(auto) get() noexcept {
@@ -212,8 +232,6 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr operator tuple<Ts...>() const noexcept { return *this; }
   };
 
-  template <class... Types> struct tuple;
-
   template <typename... Ts> struct tuple
       : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
     using base_t = tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>;
@@ -227,7 +245,12 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple(const tuple &) = default;
     constexpr tuple &operator=(tuple &&) = default;
     constexpr tuple &operator=(const tuple &) = default;
-
+    /// @note this is more specialized than the above assign ctor
+    template <typename... Vs, enable_if_all<std::is_assignable_v<Ts, Vs>...> = 0>
+    constexpr tuple &operator=(const tuple<Vs...> &o) {
+      static_cast<base_t &>(*this) = o;
+      return *this;
+    }
     // vec
     template <typename VecT>
     constexpr std::enable_if_t<VecT::extent == sizeof...(Ts), tuple &> operator=(

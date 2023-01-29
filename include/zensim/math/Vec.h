@@ -195,6 +195,12 @@ namespace zs {
     constexpr const T &operator[](Index index) const noexcept {
       return _data[index];
     }
+    template <typename TT, enable_if_t<sizeof(value_type) == sizeof(TT)> = 0>
+    constexpr auto reinterpret_bits(wrapt<TT> = {}) const noexcept {
+      variant_vec<TT, extents> r{};
+      std::memcpy(r.data(), data(), sizeof(TT) * extent);
+      return r;
+    }
     template <typename Index> constexpr T &do_val(Index index) noexcept { return _data[index]; }
     template <typename Index> constexpr const T &do_val(Index index) const noexcept {
       return _data[index];

@@ -107,11 +107,18 @@ namespace zs {
 
     template <typename T = value_type, typename Dims = value_seq<1>, typename Pred = void>
     struct iterator_impl : IteratorInterface<iterator_impl<T, Dims, Pred>> {
+      static_assert(
+          is_same_v<T, value_type>,
+          "default iterator implementation only supports original \'value_type\' access.");
+      static_assert(is_same_v<Dims, value_seq<1>>,
+                    "default iterator implementation only supports scalar access.");
+
       static constexpr bool is_const_structure = std::is_const_v<T>;
       constexpr iterator_impl(pointer base, size_type idx, channel_counter_type chn,
-                              channel_counter_type nchns)
+                              channel_counter_type nchns) noexcept
           : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
 
+      template <auto V = is_const_structure, enable_if_t<!V> = 0>
       constexpr reference dereference() {
         return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
                  + _idx % lane_width);
@@ -129,7 +136,7 @@ namespace zs {
       }
 
     protected:
-      pointer _base{nullptr};
+      conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
       size_type _idx{0};
       channel_counter_type _chn{0}, _numChannels{1};
     };
@@ -382,6 +389,76 @@ namespace zs {
   EXTERN_TILEVECTOR_INSTANTIATIONS(64)
   EXTERN_TILEVECTOR_INSTANTIATIONS(512)
 
+  /// @brief tilevector iterator specializations
+  template <typename T, std::size_t L, typename Allocator> template <typename ValT, auto... Ns>
+  struct TileVector<T, L, Allocator>::iterator_impl<ValT, value_seq<Ns...>,
+                                                    std::enable_if_t<sizeof(T) == sizeof(ValT)>>
+      : IteratorInterface<TileVector<T, L, Allocator>::iterator_impl<
+            ValT, value_seq<Ns...>, std::enable_if_t<sizeof(T) == sizeof(ValT)>>> {
+    static_assert(!std::is_reference_v<ValT>,
+                  "the access type of the iterator should not be a reference.");
+    static constexpr auto extent = (Ns * ...);
+    static_assert(extent > 0, "the access extent of the iterator should be positive.");
+
+    using iter_value_type = remove_cvref_t<ValT>;
+    static constexpr bool is_const_structure = std::is_const_v<ValT>;
+    static constexpr bool is_native_value_type = is_same_v<value_type, iter_value_type>;
+    static constexpr bool is_scalar_access = (extent == 1);
+
+    constexpr iterator_impl(pointer base, size_type idx, channel_counter_type chn,
+                            channel_counter_type nchns) noexcept
+        : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
+
+    template <typename VecT, enable_if_t<is_vec<remove_cvref_t<VecT>>::value> = 0>
+    static constexpr decltype(auto) interpret(VecT &&v) noexcept {
+      if constexpr (is_native_value_type)
+        return FWD(v);
+      else
+        return v.reinterpret_bits(wrapt<iter_value_type>{});
+    }
+    template <typename VT, enable_if_t<std::is_fundamental_v<remove_cvref_t<VT>>> = 0>
+    static constexpr decltype(auto) interpret(VT &&v) noexcept {
+      if constexpr (is_native_value_type)
+        return FWD(v);
+      else
+        return reinterpret_bits<iter_value_type>(FWD(v));
+    }
+
+    constexpr decltype(auto) dereference() const {
+      if constexpr (is_scalar_access)
+        return interpret(
+            *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width + _idx % lane_width));
+      else {
+        using RetT = vec<value_type, Ns...>;
+        RetT ret{};
+        auto ptr
+            = _base + (_idx / lane_width * _numChannels + _chn) * lane_width + (_idx % lane_width);
+        for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
+        return interpret(ret);
+      }
+    }
+    constexpr bool equal_to(iterator_impl it) const noexcept {
+      return it._idx == _idx && it._chn == _chn;
+    }
+    constexpr void advance(difference_type offset) noexcept { _idx += offset; }
+    constexpr difference_type distance_to(iterator_impl it) const noexcept {
+      return it._idx - _idx;
+    }
+
+    /// customized methods
+#if 0
+    template <auto V = is_const_structure, enable_if_t<!V> = 0> constexpr decltype(auto) tuple() {
+      ;
+    }
+    constexpr decltype(auto) tuple() const { ; }
+#endif
+
+  protected:
+    conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
+    size_type _idx{0};
+    channel_counter_type _chn{0}, _numChannels{1};
+  };
+
   template <typename TileVectorView> struct TileVectorCopy {
     using size_type = typename TileVectorView::size_type;
     using channel_counter_type = typename TileVectorView::channel_counter_type;
@@ -504,7 +581,7 @@ namespace zs {
           return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
-        return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+        return *(_vector + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
       }
     }
     constexpr const_reference operator()(const channel_counter_type chn,
@@ -536,7 +613,7 @@ namespace zs {
           return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
         }
 #endif
-        return *(_vector + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width);
+        return *(_vector + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
       }
     }
 
@@ -555,7 +632,7 @@ namespace zs {
         return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
-      return *(_vector + (tileNo * _numChannels + chn) * lane_width + localNo);
+      return *(_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
     }
     template <bool InTile = WithinTile, enable_if_all<!InTile> = 0>
     constexpr const_reference operator()(const channel_counter_type chn, const size_type tileNo,
@@ -572,7 +649,7 @@ namespace zs {
         return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
-      return *(_vector + (tileNo * _numChannels + chn) * lane_width + localNo);
+      return *(_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
     }
 
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
@@ -606,7 +683,7 @@ namespace zs {
     constexpr auto pack(channel_counter_type chn, const size_type i) const noexcept {
       using RetT = vec<value_type, Ns...>;
       RetT ret{};
-      size_type offset{};
+      auto ptr = _vector + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn + RetT::extent > _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
@@ -621,9 +698,7 @@ namespace zs {
             *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
       }
 #endif
-      offset = (i / lane_width * _numChannels + chn) * lane_width + (i % lane_width);
-      for (channel_counter_type d = 0; d != RetT::extent; ++d, offset += lane_width)
-        ret.val(d) = *(_vector + offset);
+      for (channel_counter_type d = 0; d != RetT::extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
       return ret;
     }
     // use dim_c<Ns...> for the first parameter
@@ -636,10 +711,8 @@ namespace zs {
     constexpr auto array(channel_counter_type chn, const size_type i) const noexcept {
       using RetT = std::array<VT, (std::size_t)N>;
       RetT ret{};
-      size_type offset{};
-      offset = (i / lane_width * _numChannels + chn) * lane_width + (i % lane_width);
-      for (channel_counter_type d = 0; d != N; ++d, offset += lane_width)
-        ret[d] = *(_vector + offset);
+      auto ptr = _vector + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
+      for (channel_counter_type d = 0; d != N; ++d, ptr += lane_width) ret[d] = *ptr;
       return ret;
     }
     /// tuple
@@ -959,8 +1032,8 @@ namespace zs {
         return static_cast<const base_t &>(*this).template pack<Ns...>(_numChannels, i);
       }
 #endif
-      return static_cast<const base_t &>(*this).template pack<Ns...>(
-          _tagOffsets[propertyIndex(propName)], i);
+      return static_cast<const base_t &>(*this).pack(dim_c<Ns...>,
+                                                     _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto... Ns> constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
                                               const size_type i) const noexcept {
@@ -980,8 +1053,8 @@ namespace zs {
         return static_cast<const base_t &>(*this).template pack<Ns...>(_numChannels, i);
       }
 #endif
-      return static_cast<const base_t &>(*this).template pack<Ns...>(
-          _tagOffsets[propertyIndex(propName)] + chn, i);
+      return static_cast<const base_t &>(*this).pack(dim_c<Ns...>,
+                                                     _tagOffsets[propertyIndex(propName)] + chn, i);
     }
     template <auto... Ns> constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
                                               const channel_counter_type chn,
@@ -1039,8 +1112,8 @@ namespace zs {
         return static_cast<base_t &>(*this).template tuple<d>(_numChannels, i);
       }
 #endif
-      return static_cast<base_t &>(*this).template tuple<d>(
-          _tagOffsets[propertyIndex(propName)] + chn, i);
+      return static_cast<base_t &>(*this).tuple(dim_c<d>,
+                                                _tagOffsets[propertyIndex(propName)] + chn, i);
     }
     template <auto... Ns, bool V = is_const_structure, enable_if_t<!V> = 0>
     constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
@@ -1066,8 +1139,8 @@ namespace zs {
         return static_cast<const base_t &>(*this).template tuple<d>(_numChannels, i);
       }
 #endif
-      return static_cast<const base_t &>(*this).template tuple<d>(
-          _tagOffsets[propertyIndex(propName)], i);
+      return static_cast<const base_t &>(*this).tuple(dim_c<d>,
+                                                      _tagOffsets[propertyIndex(propName)], i);
     }
     template <auto... Ns> constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
                                                const size_type i) const noexcept {

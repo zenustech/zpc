@@ -202,8 +202,9 @@ namespace zs {
       return false;
     }
     friend constexpr bool operator!=(const Derived &left, const Derived &right) {
-      static_assert(detail::has_equal_to<Derived>::value,
-                    "Iterator should implement \"bool equal_to(Iter)\" or \"Integral distance_to(Iter)\"");
+      static_assert(
+          detail::has_equal_to<Derived>::value,
+          "Iterator should implement \"bool equal_to(Iter)\" or \"Integral distance_to(Iter)\"");
       return !left.equal_to(right);
     }
     /// increment (forward iterator)
@@ -273,7 +274,7 @@ namespace zs {
       return it + (-std::make_signed_t<D>(offset));
     }
     template <typename D, typename Self = Derived,
-              enable_if_all<detail::has_advance<Self>::value, 
+              enable_if_all<detail::has_advance<Self>::value,
                             std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
     friend constexpr Derived &operator-=(Derived &it, D offset) {
       return it = it - offset;
@@ -321,53 +322,51 @@ namespace zs {
 
     template <typename... Args> constexpr LegacyIterator(Args &&...args) : Iterator{FWD(args)...} {}
 
+    /// @brief dereference
+    constexpr decltype(auto) operator*() { return *(*static_cast<base_t *>(this)); }
+
     /// @brief prefix-increment
     constexpr LegacyIterator &operator++() {
-      ++(*static_cast<base_t*>(this));
+      ++(*static_cast<base_t *>(this));
       return *this;
     }
     /// @brief post-increment
     constexpr LegacyIterator operator++(int) {
-      return LegacyIterator{(*static_cast<base_t*>(this))++};
+      return LegacyIterator{(*static_cast<base_t *>(this))++};
     }
     /// @brief prefix-decrement
     constexpr LegacyIterator &operator--() {
-      --(*static_cast<base_t*>(this));
+      --(*static_cast<base_t *>(this));
       return *this;
     }
     /// @brief post-decrement
     constexpr LegacyIterator operator--(int) {
-      return LegacyIterator{(*static_cast<base_t*>(this))--};
+      return LegacyIterator{(*static_cast<base_t *>(this))--};
     }
     /// @brief advance (random access iterator)
-    template <typename D,
-              enable_if_all<detail::has_advance<base_t>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <typename D, enable_if_all<detail::has_advance<base_t>::value,
+                                        std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator &operator+=(LegacyIterator &it, D offset) {
       it.advance(offset);
       return it;
     }
-    template <typename D,
-              enable_if_all<detail::has_advance<base_t>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <typename D, enable_if_all<detail::has_advance<base_t>::value,
+                                        std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator+(LegacyIterator it, D offset) {
       return it += offset;
     }
-    template <typename D,
-              enable_if_all<detail::has_advance<base_t>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <typename D, enable_if_all<detail::has_advance<base_t>::value,
+                                        std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator+(D offset, LegacyIterator it) {
       return it += offset;
     }
-    template <typename D, 
-              enable_if_all<detail::has_advance<base_t>::value, 
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <typename D, enable_if_all<detail::has_advance<base_t>::value,
+                                        std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator-(LegacyIterator it, D offset) {
       return it + (-std::make_signed_t<D>(offset));
     }
-    template <typename D, 
-              enable_if_all<detail::has_advance<base_t>::value, 
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <typename D, enable_if_all<detail::has_advance<base_t>::value,
+                                        std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator &operator-=(LegacyIterator &it, D offset) {
       return it = it - offset;
     }

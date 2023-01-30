@@ -220,14 +220,15 @@ namespace zs {
 
   /// sparse grid -> floatgrid
   OpenVDBStruct convert_sparse_grid_to_floatgrid(const SparseGrid<3, f32, 8> &splsIn,
-                                                 SmallString propTag, u32 gridClass) {
+                                                 SmallString propTag, u32 gridClass,
+                                                 SmallString gridName) {
     const auto &spls
         = splsIn.memspace() != memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
     openvdb::FloatGrid::Ptr grid
         = openvdb::FloatGrid::create(/*background value=*/spls._background);
     // meta
     grid->insertMeta("zpc_version", openvdb::FloatMetadata(0.f));
-    grid->setName("ZpcLevelSet");
+    grid->setName(gridName.asString());
     // transform
     openvdb::Mat4R v2w{};
     auto lsv2w = spls.getIndexToWorldTransformation();
@@ -500,7 +501,7 @@ namespace zs {
 
   /// sparse grid -> float3grid
   OpenVDBStruct convert_sparse_grid_to_float3grid(const SparseGrid<3, f32, 8> &splsIn,
-                                                  SmallString propTag) {
+                                                  SmallString propTag, SmallString gridName) {
     using TV = openvdb::Vec3f;
     const auto &spls
         = splsIn.memspace() != memsrc_e::host ? splsIn.clone({memsrc_e::host, -1}) : splsIn;
@@ -508,7 +509,7 @@ namespace zs {
         = openvdb::Vec3fGrid::create(/*background value=*/TV{spls._background});
     // meta
     grid->insertMeta("zpc_version", openvdb::FloatMetadata(0.f));
-    grid->setName("ZpcStaggeredGrid");
+    grid->setName(gridName.asString());
     // transform
     openvdb::Mat4R v2w{};
     auto lsv2w = spls.getIndexToWorldTransformation();

@@ -35,7 +35,8 @@ namespace zs {
 
   ZPC_API OpenVDBStruct convert_sparse_grid_to_floatgrid(const SparseGrid<3, f32, 8> &grid,
                                                          SmallString propTag = "sdf",
-                                                         u32 gridClass = 1);
+                                                         u32 gridClass = 1,
+                                                         SmallString gridName = "SparseGrid");
   ZPC_API void assign_floatgrid_to_sparse_grid(const OpenVDBStruct &grid,
                                                 SparseGrid<3, f32, 8> &spg,
                                                 SmallString propTag = "sdf");
@@ -49,7 +50,8 @@ namespace zs {
                                                                  SmallString propTag = "sdf");
   // Staggered only
   ZPC_API OpenVDBStruct convert_sparse_grid_to_float3grid(const SparseGrid<3, f32, 8> &grid,
-                                                          SmallString propTag = "v");
+                                                          SmallString propTag = "v",
+                                                          SmallString gridName = "SparseGrid");
   ZPC_API SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid,
                                                                   SmallString propTag = "v");
   ZPC_API SparseGrid<3, f32, 8> convert_float3grid_to_sparse_grid(const OpenVDBStruct &grid,

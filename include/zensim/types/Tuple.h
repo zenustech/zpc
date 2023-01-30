@@ -54,15 +54,15 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_value &operator=(const tuple_value &) = default;
 
     template <typename V, enable_if_t<std::is_assignable_v<T, V>> = 0>
-    constexpr tuple_value &operator=(V &&o) noexcept(std::is_nothrow_assignable_v<T, V>) {
-      static_cast<T &>(*this) = FWD(o);
+    constexpr tuple_value &operator=(V &&o) {
+      T::operator=(FWD(o));
       return *this;
     }
 
     /// by index
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept { return *this; }
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) &&noexcept { return std::move(*this); }
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) const &noexcept { return *this; }
+    constexpr decltype(auto) get(index_t<I>) &noexcept { return *this; }
+    constexpr decltype(auto) get(index_t<I>) &&noexcept { return std::move(*this); }
+    constexpr decltype(auto) get(index_t<I>) const &noexcept { return *this; }
     /// by type
     constexpr decltype(auto) get(wrapt<T>) &noexcept { return *this; }
     constexpr decltype(auto) get(wrapt<T>) &&noexcept { return std::move(*this); }
@@ -82,21 +82,21 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_value &operator=(const tuple_value &) = default;
 
     template <typename V, enable_if_t<std::is_assignable_v<T, V>> = 0>
-    constexpr tuple_value &operator=(V &&o) noexcept(std::is_nothrow_assignable_v<T, V>) {
+    constexpr tuple_value &operator=(V &&o) {
       value = FWD(o);
       return *this;
     }
 
     /// by index
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) &noexcept {
+    constexpr decltype(auto) get(index_t<I>) &noexcept {
       if constexpr (std::is_rvalue_reference_v<T>)
         return std::move(value);
       else
         return value;
     }
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) &&noexcept { return std::move(value); }
+    constexpr decltype(auto) get(index_t<I>) &&noexcept { return std::move(value); }
     template <bool NonRValRef = !std::is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
-    constexpr decltype(auto) get(integral_t<std::size_t, I>) const &noexcept {
+    constexpr decltype(auto) get(index_t<I>) const &noexcept {
       return value;
     }
     /// by type
@@ -134,6 +134,29 @@ template <std::size_t I, typename T> struct tuple_value {
     using tuple_types = type_seq<Ts...>;
     static constexpr std::size_t tuple_size = sizeof...(Ts);
 
+    template <typename T> struct is_assignable {
+      template <typename... Vs> static constexpr bool test(type_seq<Vs...>) {
+        if constexpr (sizeof...(Vs) == sizeof...(Ts))
+          /// @note (std::is_assignable<Ts, Vs>::value && ...) will cause compiler error here
+          return (is_valid([](auto t) -> decltype((std::declval<Ts>()
+                                                   = std::declval<typename RM_CVREF_T(t)::type>()),
+                                                  void()) {})(wrapt<Vs>{})
+                  && ...);
+        else
+          return false;
+      }
+      template <typename U> static constexpr auto test(char) {
+        if constexpr (is_type_seq_v<U>)
+          return integral_t<bool, test(U{})>{};
+        else
+          return std::false_type{};
+      }
+
+    public:
+      static constexpr bool value = test<T>(0);
+    };
+    template <typename T> static constexpr auto is_assignable_v = is_assignable<T>::value;
+
     constexpr tuple_base() = default;
     ~tuple_base() = default;
     template <typename... Vs, enable_if_t<sizeof...(Vs) == tuple_size> = 0>
@@ -144,28 +167,24 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_base &operator=(const tuple_base &) = default;
 
     template <typename... Vs, enable_if_all<std::is_assignable_v<Ts, Vs>...> = 0>
-    constexpr tuple_base &operator=(const tuple<Vs...> &o) noexcept(
-        (std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
-      ((static_cast<tuple_value<Is, Ts> &>(*this) = o.get(integral_t<std::size_t, Is>{})), ...);
+    constexpr tuple_base &operator=(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &
+                                        o) noexcept((std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
+      ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);
       return *this;
     }
 
     using tuple_value<Is, Ts>::get...;
-    template <std::size_t I> constexpr decltype(auto) get() noexcept {
-      return get(integral_t<std::size_t, I>{});
-    }
+    template <std::size_t I> constexpr decltype(auto) get() noexcept { return get(index_t<I>{}); }
     template <std::size_t I> constexpr decltype(auto) get() const noexcept {
-      return get(integral_t<std::size_t, I>{});
+      return get(index_t<I>{});
     }
     template <typename T> constexpr decltype(auto) get() noexcept { return get(wrapt<T>{}); }
     template <typename T> constexpr decltype(auto) get() const noexcept { return get(wrapt<T>{}); }
     /// custom
-    constexpr auto &head() noexcept { return get(integral_t<std::size_t, 0>{}); }
-    constexpr auto const &head() const noexcept { return get(integral_t<std::size_t, 0>{}); }
-    constexpr auto &tail() noexcept { return get(integral_t<std::size_t, tuple_size - 1>{}); }
-    constexpr auto const &tail() const noexcept {
-      return get(integral_t<std::size_t, tuple_size - 1>{});
-    }
+    constexpr auto &head() noexcept { return get(index_t<0>{}); }
+    constexpr auto const &head() const noexcept { return get(index_t<0>{}); }
+    constexpr auto &tail() noexcept { return get(index_t<tuple_size - 1>{}); }
+    constexpr auto const &tail() const noexcept { return get(index_t<tuple_size - 1>{}); }
     constexpr decltype(auto) std() const noexcept { return std::forward_as_tuple(get<Is>()...); }
     constexpr decltype(auto) std() noexcept { return std::forward_as_tuple(get<Is>()...); }
     /// iterator
@@ -183,8 +202,7 @@ template <std::size_t I, typename T> struct tuple_value {
       // https://en.cppreference.com/w/cpp/language/eval_order
       // In the evaluation of each of the following four expressions, using
       // the built-in (non-overloaded) operators, there is a sequence point
-      // after the evaluation of the expression a. a && b a || b a ? b : c a ,
-      // b
+      // after the evaluation of the expression a. a && b a || b a ? b : c a , b
       return (op(get<Is>()), ...);
     }
     /// map
@@ -245,10 +263,12 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple(const tuple &) = default;
     constexpr tuple &operator=(tuple &&) = default;
     constexpr tuple &operator=(const tuple &) = default;
-    /// @note this is more specialized than the above assign ctor
-    template <typename... Vs, enable_if_all<std::is_assignable_v<Ts, Vs>...> = 0>
-    constexpr tuple &operator=(const tuple<Vs...> &o) {
-      static_cast<base_t &>(*this) = o;
+    template <typename Tup> constexpr std::enable_if_t<
+        is_tuple_v<remove_cvref_t<
+            Tup>> && base_t::template is_assignable_v<typename remove_cvref_t<Tup>::tuple_types>,
+        tuple &>
+    operator=(Tup &&o) {
+      base_t::operator=(FWD(o));
       return *this;
     }
     // vec

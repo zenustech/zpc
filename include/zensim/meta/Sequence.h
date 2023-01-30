@@ -93,7 +93,7 @@ namespace zs {
 
     // index
     template <typename, typename = void> struct locator {
-      using index = integral_t<std::size_t, limits<std::size_t>::max()>;
+      using index = index_t<limits<std::size_t>::max()>;
     };
     template <typename T> static constexpr std::size_t count_occurencies() noexcept {
       if constexpr (sizeof...(Ts) == 0)

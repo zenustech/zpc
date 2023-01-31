@@ -328,17 +328,17 @@ namespace zs {
     constexpr const channel_counter_type *tagOffsetHandle() const noexcept {
       return _tagOffsets.data();
     }
-    [[deprecated]] constexpr channel_counter_type getChannelSize(const SmallString &str) const {
+    [[deprecated]] channel_counter_type getChannelSize(const SmallString &str) const {
       for (auto &&tag : _tags)
         if (str == tag.name) return tag.numChannels;
       return 0;
     }
-    constexpr channel_counter_type getPropertySize(const SmallString &str) const {
+    channel_counter_type getPropertySize(const SmallString &str) const {
       for (auto &&tag : _tags)
         if (str == tag.name) return tag.numChannels;
       return 0;
     }
-    [[deprecated]] constexpr channel_counter_type getChannelOffset(const SmallString &str) const {
+    [[deprecated]] channel_counter_type getChannelOffset(const SmallString &str) const {
       channel_counter_type offset = 0;
       for (auto &&tag : _tags) {
         if (str == tag.name) return offset;
@@ -346,7 +346,7 @@ namespace zs {
       }
       return 0;
     }
-    constexpr channel_counter_type getPropertyOffset(const SmallString &str) const {
+    channel_counter_type getPropertyOffset(const SmallString &str) const {
       channel_counter_type offset = 0;
       for (auto &&tag : _tags) {
         if (str == tag.name) return offset;
@@ -393,7 +393,7 @@ namespace zs {
   template <typename T, std::size_t L, typename Allocator> template <typename ValT, auto... Ns>
   struct TileVector<T, L, Allocator>::iterator_impl<ValT, value_seq<Ns...>,
                                                     std::enable_if_t<sizeof(T) == sizeof(ValT)>>
-      : IteratorInterface<TileVector<T, L, Allocator>::iterator_impl<
+      : IteratorInterface<typename TileVector<T, L, Allocator>::template iterator_impl<
             ValT, value_seq<Ns...>, std::enable_if_t<sizeof(T) == sizeof(ValT)>>> {
     static_assert(!std::is_reference_v<ValT>,
                   "the access type of the iterator should not be a reference.");
@@ -1182,7 +1182,7 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  const TileVector<T, Length, Allocator> &vec) {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
@@ -1191,7 +1191,7 @@ namespace zs {
     return TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false>{tagNames, vec};
   }
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  TileVector<T, Length, Allocator> &vec) {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
@@ -1202,7 +1202,7 @@ namespace zs {
 
   /// tagged tilevector for debug
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  const TileVector<T, Length, Allocator> &vec,
                                  const SmallString &tagName) {
     auto ret = TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false>{{}, vec};
@@ -1212,7 +1212,7 @@ namespace zs {
     return ret;
   }
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  TileVector<T, Length, Allocator> &vec,
                                  const SmallString &tagName) {
     auto ret = TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false>{{}, vec};

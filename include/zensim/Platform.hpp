@@ -75,7 +75,7 @@ static_assert(false, "32-bit Windows systems are not supported")
 #  define ZPC_EXPORT __attribute__((visibility("default")))
 #  define ZPC_IMPORT __attribute__((visibility("default")))
 #endif
-#ifdef ZS_COMPILER_MSVC
+#if defined(ZS_COMPILER_MSVC) && !defined(ZS_COMPILER_CLANG)
 #  if ZS_BUILD_SHARED_LIBS
 #    define ZPC_EXPORT __declspec(dllexport)
 #    define ZPC_IMPORT __declspec(dllimport)

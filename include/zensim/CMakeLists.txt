@@ -277,7 +277,7 @@ endif()
 
 target_link_libraries(zpccore PUBLIC zpc_cxx_deps)
 target_compile_options(zpccore
-  PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /EHsc, -O3 $<IF:$<CXX_COMPILER_ID:Clang>, , > >> # -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi
+  PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /O2 /EHsc, $<IF:$<CXX_COMPILER_ID:Clang>, -Xclang -O3, -O3> >> # -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi
 )
 target_link_options(zpccore
   PUBLIC $<HOST_LINK:
@@ -348,9 +348,15 @@ if(ZS_ENABLE_OPENMP)
   endif()
 
   target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
-  target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
-    PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /openmp:llvm /openmp:experimental, $<IF:$<CXX_COMPILER_ID:AppleClang>, -Xpreprocessor -fopenmp, -fopenmp> >>
-  )
+  if(WIN32)
+    target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
+      PUBLIC $<$<COMPILE_LANGUAGE:CXX>: /openmp:llvm /openmp:experimental>
+    )
+  else()
+    target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
+      PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:AppleClang>, -Xpreprocessor -fopenmp, -fopenmp> >
+    )
+  endif()
 endif(ZS_ENABLE_OPENMP)
 
 # ############

@@ -31,16 +31,16 @@ namespace zs {
     NumPlasticityModels
   };
 
-  template <typename T> constexpr std::tuple<T, T> lame_parameters(T E, T nu) {
+  template <typename T> constexpr zs::tuple<T, T> lame_parameters(T E, T nu) {
     T mu = 0.5 * E / (1 + nu);
     T lam = E * nu / ((1 + nu) * (1 - 2 * nu));
-    return std::make_tuple(mu, lam);
+    return zs::make_tuple(mu, lam);
   }
-  template <typename T> constexpr std::tuple<T, T> E_nu_from_lame_parameters(T mu, T lam) {
+  template <typename T> constexpr zs::tuple<T, T> E_nu_from_lame_parameters(T mu, T lam) {
     T lam_mu = lam + mu;
     T E = mu * (3 * lam + 2 * mu) / lam_mu;
     T nu = lam / (2 * lam_mu);
-    return std::make_tuple(E, nu);
+    return zs::make_tuple(E, nu);
   }
 
   template <typename Model> struct IsotropicConstitutiveModelInterface {

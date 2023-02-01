@@ -122,7 +122,7 @@ namespace zs {
 
     template <std::size_t I, std::size_t... Is, typename... Iters, typename... Policies,
               typename... Ranges, typename... Bodies>
-    void exec(index_seq<Is...> indices, std::tuple<Iters...> prefixIters,
+    void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
               const Bodies &...bodies) const {
       // using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
@@ -134,8 +134,8 @@ namespace zs {
         for (auto &&it : range)
 #pragma omp task firstprivate(it)
         {
-          const auto args = shuffle(indices, std::tuple_cat(prefixIters, std::make_tuple(it)));
-          (std::apply(FWD(bodies), args), ...);
+          const auto args = shuffle(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)));
+          (zs::apply(bodies, args), ...);
         }
       } else if constexpr (I + 1 < sizeof...(Ranges)) {
         auto &policy = zs::get<I + 1>(policies);
@@ -144,7 +144,7 @@ namespace zs {
         for (auto &&it : range)
 #pragma omp task firstprivate(it)
         {
-          policy.template exec<I + 1>(indices, std::tuple_cat(prefixIters, std::make_tuple(it)),
+          policy.template exec<I + 1>(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)),
                                       policies, ranges, bodies...);
         }
       }

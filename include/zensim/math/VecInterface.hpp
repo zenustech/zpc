@@ -214,7 +214,7 @@ namespace zs {
               enable_if_t<sizeof...(Is) == VecT::extent> = 0>
     constexpr auto to_tuple(index_seq<Is...>) const noexcept {
       // using RetT = typename gen_seq<extent>::template uniform_types_t<std::tuple, value_type>;
-      return std::make_tuple(val(Is)...);
+      return zs::make_tuple(val(Is)...);
     }
     template <typename VecT = Derived> constexpr auto to_tuple() const noexcept {
       return to_tuple(std::make_index_sequence<VecT::extent>{});

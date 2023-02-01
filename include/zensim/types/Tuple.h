@@ -60,13 +60,13 @@ template <std::size_t I, typename T> struct tuple_value {
     }
 
     /// by index
-    constexpr decltype(auto) get(index_t<I>) &noexcept { return *this; }
-    constexpr decltype(auto) get(index_t<I>) &&noexcept { return std::move(*this); }
-    constexpr decltype(auto) get(index_t<I>) const &noexcept { return *this; }
+    constexpr T &get(index_t<I>) &noexcept { return *this; }
+    constexpr T &&get(index_t<I>) &&noexcept { return std::move(*this); }
+    constexpr const T &get(index_t<I>) const &noexcept { return *this; }
     /// by type
-    constexpr decltype(auto) get(wrapt<T>) &noexcept { return *this; }
-    constexpr decltype(auto) get(wrapt<T>) &&noexcept { return std::move(*this); }
-    constexpr decltype(auto) get(wrapt<T>) const &noexcept { return *this; }
+    constexpr T &get(wrapt<T>) &noexcept { return *this; }
+    constexpr T &&get(wrapt<T>) &&noexcept { return std::move(*this); }
+    constexpr const T &get(wrapt<T>) const &noexcept { return *this; }
   };
   template <std::size_t I, typename T> struct tuple_value<
       I, T,
@@ -88,25 +88,25 @@ template <std::size_t I, typename T> struct tuple_value {
     }
 
     /// by index
-    constexpr decltype(auto) get(index_t<I>) &noexcept {
+    constexpr conditional_t<std::is_rvalue_reference_v<T>, T, T &> get(index_t<I>) &noexcept {
       if constexpr (std::is_rvalue_reference_v<T>)
         return std::move(value);
       else
         return value;
     }
-    constexpr decltype(auto) get(index_t<I>) &&noexcept { return std::move(value); }
+    constexpr T &&get(index_t<I>) &&noexcept { return std::move(value); }
     template <bool NonRValRef = !std::is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
     constexpr decltype(auto) get(index_t<I>) const &noexcept {
       return value;
     }
     /// by type
-    constexpr decltype(auto) get(wrapt<T>) &noexcept {
+    constexpr conditional_t<std::is_rvalue_reference_v<T>, T, T &> get(wrapt<T>) &noexcept {
       if constexpr (std::is_rvalue_reference_v<T>)
         return std::move(value);
       else
         return value;
     }
-    constexpr decltype(auto) get(wrapt<T>) &&noexcept { return std::move(value); }
+    constexpr T &&get(wrapt<T>) &&noexcept { return std::move(value); }
     template <bool NonRValRef = !std::is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
     constexpr decltype(auto) get(wrapt<T>) const &noexcept {
       return value;
@@ -263,6 +263,7 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple(const tuple &) = default;
     constexpr tuple &operator=(tuple &&) = default;
     constexpr tuple &operator=(const tuple &) = default;
+
     template <typename Tup> constexpr std::enable_if_t<
         is_tuple_v<remove_cvref_t<
             Tup>> && base_t::template is_assignable_v<typename remove_cvref_t<Tup>::tuple_types>,
@@ -271,6 +272,7 @@ template <std::size_t I, typename T> struct tuple_value {
       base_t::operator=(FWD(o));
       return *this;
     }
+
     // vec
     template <typename VecT>
     constexpr std::enable_if_t<VecT::extent == sizeof...(Ts), tuple &> operator=(
@@ -398,8 +400,8 @@ template <std::size_t I, typename T> struct tuple_value {
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<std::size_t>{}).value;
       using indices = typename gen_seq<length>::ascend;
-      using outer = decltype(counts{}.template scan<1, plus<std::size_t>>().map(count_leq{},
-                                                                                wrapv<length>{}));
+      using outer = decltype(
+          counts{}.template scan<1, plus<std::size_t>>().map(count_leq{}, wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
           std::minus<std::size_t>{},
           counts{}.template scan<0, std::plus<std::size_t>>().shuffle(outer{})));

@@ -462,43 +462,43 @@ namespace zs {
   }
   template <typename... Tn, std::size_t... Is> struct Collapse<type_seq<Tn...>, index_seq<Is...>> {
     static_assert(all_integral<Tn...>(), "not all types in Collapse is integral!");
-    template <std::size_t I> using index_t = std::tuple_element_t<I, std::tuple<Tn...>>;
+    template <std::size_t I> using index_t = zs::tuple_element_t<I, zs::tuple<Tn...>>;
     static constexpr std::size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
     template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
     constexpr Collapse(const VecInterface<VecT> &v) : ns{v.to_tuple()} {}
 
     template <std::size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
-      return std::get<I>(ns);
+      return zs::get<I>(ns);
     }
 
     struct iterator : IteratorInterface<iterator> {
-      constexpr iterator(wrapv<0>, const std::tuple<Tn...> &ns)
+      constexpr iterator(wrapv<0>, const zs::tuple<Tn...> &ns)
           : ns{ns}, it{(Is + 1 > 0 ? 0 : 0)...} {}
-      constexpr iterator(wrapv<1>, const std::tuple<Tn...> &ns)
-          : ns{ns}, it{(Is == 0 ? std::get<0>(ns) : 0)...} {}
+      constexpr iterator(wrapv<1>, const zs::tuple<Tn...> &ns)
+          : ns{ns}, it{(Is == 0 ? zs::get<0>(ns) : 0)...} {}
 
       constexpr auto dereference() { return it; }
       constexpr bool equal_to(iterator o) const noexcept {
-        return ((std::get<Is>(it) == std::get<Is>(o.it)) && ...);
+        return ((zs::get<Is>(it) == zs::get<Is>(o.it)) && ...);
       }
       template <std::size_t I> constexpr void increment_impl() noexcept {
-        index_t<I> n = ++std::get<I>(it);
+        index_t<I> n = ++zs::get<I>(it);
         if constexpr (I > 0)
-          if (n >= std::get<I>(ns)) {
-            std::get<I>(it) = 0;
+          if (n >= zs::get<I>(ns)) {
+            zs::get<I>(it) = 0;
             increment_impl<I - 1>();
           }
       }
       constexpr void increment() noexcept { increment_impl<dim - 1>(); }
 
-      std::tuple<Tn...> ns, it;
+      zs::tuple<Tn...> ns, it;
     };
 
     constexpr auto begin() const noexcept { return make_iterator<iterator>(wrapv<0>{}, ns); }
     constexpr auto end() const noexcept { return make_iterator<iterator>(wrapv<1>{}, ns); }
 
-    std::tuple<Tn...> ns;
+    zs::tuple<Tn...> ns;
   };
 
   template <typename Tn, int dim> using collapse_t

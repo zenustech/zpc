@@ -102,6 +102,7 @@ namespace zs {
     constexpr auto range() const noexcept { return ndrange<dim>(width); }
 
   protected:
+    // std tuple
     template <typename... Tn, std::size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr T weight_impl(const std::tuple<Tn...> &loc, index_seq<Is...>) const noexcept {
@@ -124,24 +125,58 @@ namespace zs {
                                       index_seq<Is...>) const noexcept {
       return TV{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
     }
+    // zs tuple
+    template <typename... Tn, std::size_t... Is,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
+    constexpr T weight_impl(const zs::tuple<Tn...> &loc, index_seq<Is...>) const noexcept {
+      value_type ret{1};
+      ((void)(ret *= get<0>(weights)(Is, zs::get<Is>(loc))), ...);
+      return ret;
+    }
+    template <std::size_t I, typename... Tn, std::size_t... Is, auto ord = deriv_order,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
+    constexpr T weightGradient_impl(const zs::tuple<Tn...> &loc, index_seq<Is...>) const noexcept {
+      value_type ret{1};
+      ((void)(ret *= (I == Is ? get<1>(weights)(Is, zs::get<Is>(loc))
+                              : get<0>(weights)(Is, zs::get<Is>(loc)))),
+       ...);
+      return ret;
+    }
+    template <typename... Tn, std::size_t... Is, auto ord = deriv_order,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
+    constexpr TV weightGradients_impl(const zs::tuple<Tn...> &loc,
+                                      index_seq<Is...>) const noexcept {
+      return TV{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
+    }
 
   public:
     template <typename... Tn> constexpr IV offset(const std::tuple<Tn...> &loc) const noexcept {
+      return make_vec<index_type>(loc);
+    }
+    template <typename... Tn> constexpr IV offset(const zs::tuple<Tn...> &loc) const noexcept {
       return make_vec<index_type>(loc);
     }
 
     template <typename... Tn,
               enable_if_all<(!is_std_tuple<Tn>() && ... && (sizeof...(Tn) == dim))> = 0>
     constexpr auto weight(Tn &&...is) const noexcept {
-      return weight(std::forward_as_tuple(FWD(is)...));
+      return weight(zs::forward_as_tuple(FWD(is)...));
     }
 
     template <typename... Tn> constexpr T weight(const std::tuple<Tn...> &loc) const noexcept {
       return weight_impl(loc, std::index_sequence_for<Tn...>{});
     }
+    template <typename... Tn> constexpr T weight(const zs::tuple<Tn...> &loc) const noexcept {
+      return weight_impl(loc, std::index_sequence_for<Tn...>{});
+    }
     template <std::size_t I, typename... Tn, auto ord = deriv_order>
     constexpr std::enable_if_t<(ord > 0), T> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
+      return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
+    }
+    template <std::size_t I, typename... Tn, auto ord = deriv_order>
+    constexpr std::enable_if_t<(ord > 0), T> weightGradient(
+        const zs::tuple<Tn...> &loc) const noexcept {
       return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
     }
 
@@ -150,10 +185,21 @@ namespace zs {
         const std::tuple<Tn...> &loc) const noexcept {
       return weightGradients_impl(loc, std::index_sequence_for<Tn...>{});
     }
+    template <typename... Tn, auto ord = deriv_order>
+    constexpr std::enable_if_t<(ord > 0), TV> weightGradients(
+        const zs::tuple<Tn...> &loc) const noexcept {
+      return weightGradients_impl(loc, std::index_sequence_for<Tn...>{});
+    }
     template <typename... Tn> constexpr TV diff(const std::tuple<Tn...> &pos) const noexcept {
       return offset(pos) * dx - localPos;
     }
+    template <typename... Tn> constexpr TV diff(const zs::tuple<Tn...> &pos) const noexcept {
+      return offset(pos) * dx - localPos;
+    }
     template <typename... Tn> constexpr IV coord(const std::tuple<Tn...> &pos) const noexcept {
+      return offset(pos) + corner;
+    }
+    template <typename... Tn> constexpr IV coord(const zs::tuple<Tn...> &pos) const noexcept {
       return offset(pos) + corner;
     }
 

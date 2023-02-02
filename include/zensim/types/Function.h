@@ -14,7 +14,7 @@ namespace zs {
     template <typename R, typename... Args> struct function_traits_impl<R(Args...)> {
       static constexpr std::size_t arity = sizeof...(Args);
       using return_t = R;
-      using arguments_t = std::tuple<Args...>;
+      using arguments_t = type_seq<Args...>;
     };
     template <typename R, typename... Args> struct function_traits_impl<R (*)(Args...)>
         : function_traits_impl<R(Args...)> {};
@@ -49,8 +49,8 @@ namespace zs {
     protected:
       using calltype = function_traits_impl<decltype(&Functor::operator())>;
       template <typename... Ts, std::size_t... Is>
-      static auto extract_arguments(std::tuple<Ts...>, std::index_sequence<Is...>)
-          -> std::tuple<std::tuple_element_t<Is + 1, typename calltype::arguments_t>...>;
+      static auto extract_arguments(type_seq<Ts...>, std::index_sequence<Is...>)
+          -> type_seq<select_type<Is + 1, typename calltype::arguments_t>...>;
 
     public:
       static constexpr std::size_t arity = calltype::arity - 1;

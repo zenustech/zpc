@@ -45,7 +45,7 @@ namespace zs {
         static constexpr bool all_deref_available = (deref_available<Args> && ...);
         static constexpr auto deduce_args_t() noexcept {
           if constexpr (fts_available)
-            return wrapt<typename function_traits<F>::arguments_t>{};
+            return wrapt<typename function_traits<F>::arguments_t::template functor<std::tuple>>{};
           else if constexpr (all_deref_available) {
             if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
               return wrapt<std::tuple<int, iter_arg_t<Args>...>>{};

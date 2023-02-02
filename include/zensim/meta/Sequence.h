@@ -109,6 +109,10 @@ namespace zs {
                            std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::value>;
     };
     template <typename T> using index = typename locator<T>::index;
+
+    // functor
+    template <template <typename...> class T> using functor = T<Ts...>;
+
     ///
     /// operations
     ///

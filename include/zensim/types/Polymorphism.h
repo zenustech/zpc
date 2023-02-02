@@ -46,11 +46,11 @@ namespace zs {
     template <typename Fn, typename... Args> struct CheckCallable {
     private:
       template <typename F, typename... Ts> static constexpr std::false_type test(...) {
-        return std::false_type{};
+        return false_c;
       }
       template <typename F, typename... Ts> static constexpr std::true_type test(
           void_t<decltype(std::declval<Fn>()(std::declval<Args>()...))> *) {
-        return std::true_type{};
+        return true_c;
       }
 
     public:

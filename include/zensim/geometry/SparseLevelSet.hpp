@@ -955,8 +955,8 @@ namespace zs {
     constexpr value_type weight(const std::tuple<Tn...> &loc) const noexcept {
       return weight_impl(loc, std::index_sequence_for<Tn...>{});
     }
-    template <typename... Tn,
-              enable_if_all<(!is_std_tuple<Tn>() && ... && (sizeof...(Tn) == dim))> = 0>
+    template <typename... Tn, enable_if_all<((!is_tuple_v<Tn> && !is_std_tuple<Tn>()) && ...
+                                             && (sizeof...(Tn) == dim))> = 0>
     constexpr auto weight(Tn &&...is) const noexcept {
       return weight(std::forward_as_tuple(FWD(is)...));
     }

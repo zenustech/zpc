@@ -47,7 +47,7 @@ template <std::size_t I, typename T> struct tuple_value {
   template <std::size_t I, typename T, typename = void> struct tuple_value : T {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
-    template <typename V> constexpr tuple_value(V &&v) noexcept : T{FWD(v)} {}
+    template <typename V> constexpr tuple_value(V &&v) noexcept : T(FWD(v)) {}
     constexpr tuple_value(tuple_value &&) = default;
     constexpr tuple_value(const tuple_value &) = default;
     constexpr tuple_value &operator=(tuple_value &&) = default;
@@ -75,7 +75,7 @@ template <std::size_t I, typename T> struct tuple_value {
               T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>)>> {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
-    template <typename V> constexpr tuple_value(V &&v) noexcept : value{FWD(v)} {}
+    template <typename V> constexpr tuple_value(V &&v) noexcept : value(FWD(v)) {}
     constexpr tuple_value(tuple_value &&) = default;
     constexpr tuple_value(const tuple_value &) = default;
     constexpr tuple_value &operator=(tuple_value &&) = default;
@@ -149,7 +149,7 @@ template <std::size_t I, typename T> struct tuple_value {
         if constexpr (is_type_seq_v<U>)
           return integral_t<bool, test(U{})>{};
         else
-          return std::false_type{};
+          return false_c;
       }
 
     public:

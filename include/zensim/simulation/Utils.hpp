@@ -157,8 +157,8 @@ namespace zs {
       return make_vec<index_type>(loc);
     }
 
-    template <typename... Tn,
-              enable_if_all<(!is_std_tuple<Tn>() && ... && (sizeof...(Tn) == dim))> = 0>
+    template <typename... Tn, enable_if_all<((!is_std_tuple<Tn>() && !is_tuple_v<Tn>)&&...
+                                             && (sizeof...(Tn) == dim))> = 0>
     constexpr auto weight(Tn &&...is) const noexcept {
       return weight(zs::forward_as_tuple(FWD(is)...));
     }

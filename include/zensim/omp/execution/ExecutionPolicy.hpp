@@ -91,8 +91,10 @@ namespace zs {
               f();
             else {
               auto &&it = *(iter + i);
-              if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
                 std::apply(f, it);
+              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+                zs::apply(f, it);
               else
                 std::invoke(f, it);
             }
@@ -107,8 +109,10 @@ namespace zs {
             if constexpr (std::is_invocable_v<F>) {
               f();
             } else {
-              if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
                 std::apply(f, it);
+              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+                zs::apply(f, it);
               else
                 std::invoke(f, it);
             }
@@ -668,19 +672,22 @@ namespace zs {
                                loc.column()));
     }
     template <class KeyIter, class ValueIter,
-              typename Tn = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
+              typename Tn
+              = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
     void radix_sort_pair(
         KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
         int sbit = 0,
-        int ebit = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+        int ebit
+        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       static_assert(
-          is_same_v<typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
-                    typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category>,
+          is_same_v<
+              typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
+              typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category>,
           "Key Iterator and Val Iterator should be from the same category");
       radix_sort_pair_impl(
-          typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category{}, FWD(keysIn),
-          FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit, loc);
+          typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category{},
+          FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit, loc);
     }
 
     OmpExecutionPolicy &threads(int numThreads) noexcept {

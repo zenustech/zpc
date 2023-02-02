@@ -146,11 +146,11 @@ namespace zs {
   //////////////////////////////////////////////////////////////////////////
   namespace detail {
     template <typename F, typename... Args> constexpr auto is_valid_impl(int) noexcept
-        -> decltype(std::declval<F &&>()(std::declval<Args &&>()...), std::true_type{}) {
-      return std::true_type{};
+        -> decltype(std::declval<F &&>()(std::declval<Args &&>()...), true_c) {
+      return true_c;
     }
     template <typename F, typename... Args> constexpr auto is_valid_impl(...) noexcept {
-      return std::false_type{};
+      return false_c;
     }
     template <typename F> struct is_valid_fun {
       template <typename... Args> constexpr auto operator()(Args &&...) const noexcept {

@@ -2,6 +2,8 @@
 #include <functional>
 #include <tuple>
 
+#include "zensim/meta/Sequence.h"
+
 namespace zs {
 
   namespace detail {

@@ -6,8 +6,6 @@
 #include "Meta.h"
 #include "Relationship.h"
 #include "zensim/zpc_tpls/tl/function_ref.hpp"
-#include "zensim/types/Function.h"
-#include "zensim/types/Optional.h"
 
 namespace zs {
 
@@ -174,10 +172,5 @@ namespace zs {
   }  // namespace view
 
   namespace action {}  // namespace action
-
-  template <typename T> struct add_optional { using type = optional<T>; };
-  template <typename T> struct add_optional<optional<T>> { using type = optional<T>; };
-
-  template <typename T> using add_optional_t = typename add_optional<T>::type;
 
 }  // namespace zs

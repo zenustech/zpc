@@ -41,7 +41,7 @@ namespace zs {
       template <typename Iter> using iter_arg_t = decltype(*std::declval<Iter>());
 
       template <typename Seq> struct impl;
-      template <typename... Args> struct impl<std::tuple<Args...>> {
+      template <typename... Args> struct impl<zs::tuple<Args...>> {
         static constexpr bool all_deref_available = (deref_available<Args> && ...);
         static constexpr auto deduce_args_t() noexcept {
           if constexpr (fts_available)
@@ -100,24 +100,24 @@ namespace zs {
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F &&f,
                                                   ZipIter &&iter, index_seq<Is...>) {
-      (std::get<Is>(iter.iters).advance(i), ...);
+      (zs::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
-        f(i, *std::get<Is>(iter.iters)...);
+        f(i, *zs::get<Is>(iter.iters)...);
       else {
-        f(*std::get<Is>(iter.iters)...);
+        f(*zs::get<Is>(iter.iters)...);
       }
     }
     template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
               std::size_t... Is>
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, ShmT *shmem, Tn i,
                                                   F &&f, ZipIter &&iter, index_seq<Is...>) {
-      (std::get<Is>(iter.iters).advance(i), ...);
+      (zs::get<Is>(iter.iters).advance(i), ...);
       using func_traits = detail::deduce_fts<remove_cvref_t<F>, RM_CVREF_T(iter.iters)>;
       using shmem_ptr_t = std::tuple_element_t<0, typename func_traits::arguments_t>;
       if constexpr (withIndex)
-        f(reinterpret_cast<shmem_ptr_t>(shmem), i, *std::get<Is>(iter.iters)...);
+        f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)...);
       else
-        f(reinterpret_cast<shmem_ptr_t>(shmem), *std::get<Is>(iter.iters)...);
+        f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)...);
     }
   }  // namespace detail
 
@@ -127,7 +127,7 @@ namespace zs {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = detail::deduce_fts<F, std::tuple<RM_CVREF_T(id)>>;
+      using func_traits = detail::deduce_fts<F, zs::tuple<RM_CVREF_T(id)>>;
       if constexpr (func_traits::arity == 1)
         f(id);
       else if constexpr (func_traits::arity == 2
@@ -139,7 +139,7 @@ namespace zs {
   template <typename F> __global__ void block_thread_launch(F f) {
     extern __shared__ std::max_align_t shmem[];
     using func_traits
-        = detail::deduce_fts<F, std::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(threadIdx.x)>>;
+        = detail::deduce_fts<F, zs::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(threadIdx.x)>>;
     if constexpr (func_traits::arity == 2
                   && !std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
       f(blockIdx.x, threadIdx.x);
@@ -154,7 +154,7 @@ namespace zs {
       std::is_convertible_v<
           typename std::iterator_traits<ZipIter>::iterator_category,
           std::
-              random_access_iterator_tag> && is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value>
+              random_access_iterator_tag> && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
   range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -164,22 +164,22 @@ namespace zs {
       constexpr auto indices = std::make_index_sequence<numArgs>{};
 
       if constexpr (func_traits::arity == numArgs) {
-        detail::range_foreach(std::false_type{}, id, f, iter, indices);
+        detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         if constexpr (std::is_integral_v<
                           std::tuple_element_t<0, typename func_traits::arguments_t>>)
-          detail::range_foreach(std::true_type{}, id, f, iter, indices);
+          detail::range_foreach(true_c, id, f, iter, indices);
         else if constexpr (std::is_pointer_v<
                                std::tuple_element_t<0, typename func_traits::arguments_t>>)
           detail::range_foreach(
-              std::false_type{},
+              false_c,
               reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
               id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 2
                            && std::is_pointer_v<
                                std::tuple_element_t<0, typename func_traits::arguments_t>>)
         detail::range_foreach(
-            std::true_type{},
+            true_c,
             reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem), id,
             f, iter, indices);
     }
@@ -190,8 +190,8 @@ namespace zs {
     cg::thread_block block = cg::this_thread_block();
     cg::thread_group tile = cg::tiled_partition(block, tileSize);
     using func_traits = detail::deduce_fts<
-        F, std::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(block.thread_rank() / tileSize),
-                      RM_CVREF_T(tile.thread_rank())>>;
+        F, zs::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(block.thread_rank() / tileSize),
+                     RM_CVREF_T(tile.thread_rank())>>;
     if constexpr (func_traits::arity == 3
                   && !std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
       f(blockIdx.x, block.thread_rank() / tileSize, tile.thread_rank());
@@ -273,7 +273,7 @@ namespace zs {
       if constexpr (dim == 1) {
         LaunchConfig lc{};
         if (blockSize == 0)
-          lc = LaunchConfig{std::true_type{}, dims.get(0_th), shmemBytes};
+          lc = LaunchConfig{true_c, dims.get(0_th), shmemBytes};
         else
           lc = LaunchConfig{(dims.get(0_th) + blockSize - 1) / blockSize, blockSize, shmemBytes};
         ec = cuda_safe_launch(loc, context, streamid, std::move(lc), thread_launch, dims.get(0_th),
@@ -318,7 +318,7 @@ namespace zs {
 
       LaunchConfig lc{};
       if (blockSize == 0)
-        lc = LaunchConfig{std::true_type{}, dist, shmemBytes};
+        lc = LaunchConfig{true_c, dist, shmemBytes};
       else
         lc = LaunchConfig{(dist + blockSize - 1) / blockSize, blockSize, shmemBytes};
 
@@ -326,7 +326,9 @@ namespace zs {
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
 
       u32 ec = 0;
-      if constexpr (is_std_tuple<RefT>::value) {
+      if constexpr (is_std_tuple_v<RefT>) {
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
+      } else if constexpr (is_tuple_v<RefT>) {
         ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
       } else if constexpr (is_zip_iterator_v<IterT>) {
         ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
@@ -367,8 +369,9 @@ namespace zs {
     template <class ForwardIt, class UnaryFunction>
     void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
                   const source_location &loc = source_location::current()) const {
-      for_each_impl(typename std::iterator_traits<std::remove_reference_t<ForwardIt>>::iterator_category{},
-                    FWD(first), FWD(last), FWD(f), loc);
+      for_each_impl(
+          typename std::iterator_traits<std::remove_reference_t<ForwardIt>>::iterator_category{},
+          FWD(first), FWD(last), FWD(f), loc);
     }
     /// inclusive scan
     template <class InputIt, class OutputIt, class BinaryOperation>
@@ -412,12 +415,13 @@ namespace zs {
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
       static_assert(
-          is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+          is_same_v<
+              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       inclusive_scan_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), FWD(binary_op), loc);
+          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          FWD(first), FWD(last), FWD(d_first), FWD(binary_op), loc);
     }
     /// exclusive scan
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
@@ -461,12 +465,13 @@ namespace zs {
                         T init = monoid_op<BinaryOperation>::e, BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
       static_assert(
-          is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+          is_same_v<
+              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       exclusive_scan_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// reduce
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
@@ -511,25 +516,28 @@ namespace zs {
                 T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
       static_assert(
-          is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+          is_same_v<
+              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
-      reduce_impl(typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
-                  FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+      reduce_impl(
+          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// histogram sort
     /// radix sort pair
     template <class KeyIter, class ValueIter,
-              typename Tn = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
+              typename Tn
+              = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
     std::enable_if_t<std::is_convertible_v<
         typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
         std::random_access_iterator_tag>>
-    radix_sort_pair(KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut,
-                    Tn count = 0, int sbit = 0,
-                    int ebit
-                    = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type)
-                      * 8,
-                    const source_location &loc = source_location::current()) const {
+    radix_sort_pair(
+        KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
+        int sbit = 0,
+        int ebit
+        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+        const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -610,17 +618,21 @@ namespace zs {
     }
     template <class InputIt, class OutputIt> void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-        int ebit = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
+        int ebit
+        = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       static_assert(
-          is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+          is_same_v<
+              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
-      static_assert(is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::pointer,
-                              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::pointer>,
-                    "Input iterator pointer different from output iterator\'s");
-      radix_sort_impl(typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
-                      FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
+      static_assert(
+          is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::pointer,
+                    typename std::iterator_traits<std::remove_reference_t<OutputIt>>::pointer>,
+          "Input iterator pointer different from output iterator\'s");
+      radix_sort_impl(
+          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
     }
 
     constexpr ProcID getProcid() const noexcept { return procid; }

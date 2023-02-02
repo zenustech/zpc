@@ -214,7 +214,9 @@ namespace zs {
   };
 
   /// make vec
-  template <typename... Args, enable_if_all<(!is_std_tuple<remove_cvref_t<Args>>::value, ...)> = 0>
+  template <typename... Args, enable_if_all<((!is_std_tuple<remove_cvref_t<Args>>::value
+                                              && !is_tuple_v<remove_cvref_t<Args>>),
+                                             ...)> = 0>
   constexpr auto make_vec(Args &&...args) noexcept {
     using Tn = math::op_result_t<remove_cvref_t<Args>...>;
     return vec<Tn, sizeof...(Args)>{FWD(args)...};

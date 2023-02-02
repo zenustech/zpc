@@ -159,9 +159,9 @@ namespace zs {
     explicit constexpr SparseMatrixView(SpMatT &spmat)
         : _nrows{spmat._nrows},
           _ncols{spmat._ncols},
-          _ptrs{proxy<space>(std::true_type{}, spmat._ptrs)},
-          _inds{proxy<space>(std::true_type{}, spmat._inds)},
-          _vals{proxy<space>(std::true_type{}, spmat._vals)} {}
+          _ptrs{proxy<space>(true_c, spmat._ptrs)},
+          _inds{proxy<space>(true_c, spmat._inds)},
+          _vals{proxy<space>(true_c, spmat._vals)} {}
 
     constexpr auto operator()(index_type i, index_type j) const {
       size_type offset{}, ed{};

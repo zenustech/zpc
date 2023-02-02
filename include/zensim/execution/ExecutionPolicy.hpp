@@ -131,20 +131,20 @@ namespace zs {
 
     template <std::size_t I, std::size_t... Is, typename... Iters, typename... Policies,
               typename... Ranges, typename... Bodies>
-    constexpr void exec(index_seq<Is...> indices, std::tuple<Iters...> prefixIters,
+    constexpr void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
                         const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
                         const Bodies &...bodies) const {
       // using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
       const auto &range = zs::get<I>(ranges);
       if constexpr (I + 1 == sizeof...(Ranges)) {
         for (auto &&it : range) {
-          const auto args = shuffle(indices, std::tuple_cat(prefixIters, std::make_tuple(it)));
-          (std::apply(FWD(bodies), args), ...);
+          const auto args = shuffle(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)));
+          (zs::apply(FWD(bodies), args), ...);
         }
       } else if constexpr (I + 1 < sizeof...(Ranges)) {
         auto &policy = zs::get<I + 1>(policies);
         for (auto &&it : range)
-          policy.template exec<I + 1>(indices, std::tuple_cat(prefixIters, std::make_tuple(it)),
+          policy.template exec<I + 1>(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)),
                                       policies, ranges, bodies...);
       }
     }
@@ -360,8 +360,8 @@ namespace zs {
     if constexpr (sizeof...(Policies) == 0)
       return;
     else {
-      auto &policy = policies.template get<0>();
-      policy.template exec<0>(Indices{}, std::tuple<>{}, policies, ranges, bodies...);
+      auto &policy = zs::get<0>(policies);
+      policy.template exec<0>(Indices{}, zs::tuple<>{}, policies, ranges, bodies...);
     }
   }
 

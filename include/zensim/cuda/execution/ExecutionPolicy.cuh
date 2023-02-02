@@ -159,7 +159,7 @@ namespace zs {
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
       using func_traits = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types>;
-      constexpr auto numArgs = std::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
+      constexpr auto numArgs = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
       constexpr auto indices = std::make_index_sequence<numArgs>{};
       static_assert(func_traits::arity >= numArgs && func_traits::arity <= numArgs + 2,
                     "range_launch arity does not match with numArgs");

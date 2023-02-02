@@ -89,7 +89,7 @@ namespace zs {
 
     // type
     template <std::size_t I> using type = typename decltype(type_impl::extract_type<I>(
-        std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::type;
+        std::declval<std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::type;
 
     // index
     template <typename, typename = void> struct locator {
@@ -104,9 +104,9 @@ namespace zs {
     template <typename T> using occurencies_t = wrapv<count_occurencies<T>()>;
     template <typename T> struct locator<T, std::enable_if_t<count_occurencies<T>() == 1>> {
       using index
-          = integral_t<std::size_t,
-                       decltype(type_impl::extract_index<T>(
-                           std::add_pointer_t<type_impl::indexed_types<indices, Ts...>>{}))::value>;
+          = integral_t<std::size_t, decltype(type_impl::extract_index<T>(
+                                        std::declval<std::add_pointer_t<
+                                            type_impl::indexed_types<indices, Ts...>>>()))::value>;
     };
     template <typename T> using index = typename locator<T>::index;
 

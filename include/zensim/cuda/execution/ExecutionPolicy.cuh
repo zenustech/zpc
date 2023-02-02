@@ -35,61 +35,53 @@ namespace zs {
       static constexpr bool fts_available
           = is_valid([](auto t) -> decltype(zs::function_traits<typename decltype(t)::type>{},
                                             void()) {})(zs::wrapt<F>{});
-      template <typename IterOrIndex> static constexpr bool deref_available
-          = is_valid([](auto t) -> decltype((void)(*std::declval<typename decltype(t)::type>())) {
-            })(zs::wrapt<IterOrIndex>{});
-      template <typename Iter> using iter_arg_t = decltype(*std::declval<Iter>());
+
+      template <typename IterOrIndex, typename = void> struct iter_arg {
+        using type = IterOrIndex;
+      };
+      template <typename Iter> struct iter_arg<Iter, void_t<decltype(*std::declval<Iter>())>> {
+        using type = decltype(*std::declval<Iter>());
+      };
+      template <typename IterOrIndex> using iter_arg_t = typename iter_arg<IterOrIndex>::type;
 
       template <typename Seq> struct impl;
-      template <typename... Args> struct impl<zs::tuple<Args...>> {
-        static constexpr bool all_deref_available = (deref_available<Args> && ...);
+      template <typename... Args> struct impl<type_seq<Args...>> {
         static constexpr auto deduce_args_t() noexcept {
           if constexpr (fts_available)
-            return wrapt<typename function_traits<F>::arguments_t::template functor<std::tuple>>{};
-          else if constexpr (all_deref_available) {
+            return typename function_traits<F>::arguments_t{};
+          else {
             if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
-              return wrapt<std::tuple<int, iter_arg_t<Args>...>>{};
+              return type_seq<int, iter_arg_t<Args>...>{};
             else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
-              return wrapt<std::tuple<void *, iter_arg_t<Args>...>>{};
+              return type_seq<void *, iter_arg_t<Args>...>{};
             else
-              return wrapt<std::tuple<iter_arg_t<Args>...>>{};
-          } else {
-            if constexpr (std::is_invocable_v<F, int, Args...>)
-              return wrapt<std::tuple<int, Args...>>{};
-            else if constexpr (std::is_invocable_v<F, void *, Args...>)
-              return wrapt<std::tuple<void *, Args...>>{};
-            else
-              return wrapt<std::tuple<Args...>>{};
+              return type_seq<iter_arg_t<Args>...>{};
           }
         }
         static constexpr auto deduce_return_t() noexcept {
           if constexpr (fts_available)
             return wrapt<typename function_traits<F>::return_t>{};
-          else if constexpr (all_deref_available) {
+          else {
             if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
               return wrapt<std::invoke_result_t<F, int, iter_arg_t<Args>...>>{};
             else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
               return wrapt<std::invoke_result_t<F, void *, iter_arg_t<Args>...>>{};
             else
               return wrapt<std::invoke_result_t<F, iter_arg_t<Args>...>>{};
-          } else {
-            if constexpr (std::is_invocable_v<F, int, Args...>)
-              return wrapt<std::invoke_result_t<F, int, Args...>>{};
-            else if constexpr (std::is_invocable_v<F, void *, Args...>)
-              return wrapt<std::invoke_result_t<F, void *, Args...>>{};
-            else
-              return wrapt<std::invoke_result_t<F, Args...>>{};
           }
         }
         static constexpr std::size_t deduce_arity() noexcept {
           if constexpr (fts_available)
             return function_traits<F>::arity;
           else
-            return std::tuple_size_v<typename decltype(deduce_args_t())::type>;
+            return decltype(deduce_args_t())::count;
         }
       };
 
-      using arguments_t = typename decltype(impl<ArgSeq>::deduce_args_t())::type;
+      using arguments_t =
+          typename decltype(impl<ArgSeq>::deduce_args_t())::template functor<zs::tuple>;
+      using first_argument_t = typename decltype(impl<ArgSeq>::deduce_args_t())::template type<0>;
+
       using return_t = typename decltype(impl<ArgSeq>::deduce_return_t())::type;
       static constexpr std::size_t arity = impl<ArgSeq>::deduce_arity();
 
@@ -112,8 +104,9 @@ namespace zs {
     __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, ShmT *shmem, Tn i,
                                                   F &&f, ZipIter &&iter, index_seq<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
-      using func_traits = detail::deduce_fts<remove_cvref_t<F>, RM_CVREF_T(iter.iters)>;
-      using shmem_ptr_t = std::tuple_element_t<0, typename func_traits::arguments_t>;
+      using func_traits
+          = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;
+      using shmem_ptr_t = typename func_traits::first_argument_t;
       if constexpr (withIndex)
         f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)...);
       else
@@ -127,27 +120,33 @@ namespace zs {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = detail::deduce_fts<F, zs::tuple<RM_CVREF_T(id)>>;
+      using func_traits = detail::deduce_fts<F, type_seq<RM_CVREF_T(id)>>;
+      static_assert(func_traits::arity >= 1 && func_traits::arity <= 2,
+                    "thread_launch requires arity to be within [1, 2]");
       if constexpr (func_traits::arity == 1)
         f(id);
-      else if constexpr (func_traits::arity == 2
-                         && std::is_pointer_v<
-                             std::tuple_element_t<0, typename func_traits::arguments_t>>)
-        f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem), id);
+      else if constexpr (func_traits::arity == 2) {
+        static_assert(std::is_pointer_v<typename func_traits::first_argument_t>,
+                      "the first argument must be a shmem pointer");
+        f(reinterpret_cast<typename func_traits::first_argument_t>(shmem), id);
+      }
     }
   }
   template <typename F> __global__ void block_thread_launch(F f) {
     extern __shared__ std::max_align_t shmem[];
     using func_traits
-        = detail::deduce_fts<F, zs::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(threadIdx.x)>>;
-    if constexpr (func_traits::arity == 2
-                  && !std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
+        = detail::deduce_fts<F, type_seq<RM_CVREF_T(blockIdx.x), RM_CVREF_T(threadIdx.x)>>;
+    static_assert(func_traits::arity >= 2 && func_traits::arity <= 3,
+                  "block_thread_launch requires arity to be within [2, 3]");
+    if constexpr (func_traits::arity == 2) {
+      static_assert(!std::is_pointer_v<typename func_traits::first_argument_t>,
+                    "the first argument must NOT be a shmem pointer");
       f(blockIdx.x, threadIdx.x);
-    else if constexpr (func_traits::arity == 3
-                       && std::is_pointer_v<
-                           std::tuple_element_t<0, typename func_traits::arguments_t>>)
-      f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
-        blockIdx.x, threadIdx.x);
+    } else if constexpr (func_traits::arity == 3) {
+      static_assert(std::is_pointer_v<typename func_traits::first_argument_t>,
+                    "the first argument must be a shmem pointer");
+      f(reinterpret_cast<typename func_traits::first_argument_t>(shmem), blockIdx.x, threadIdx.x);
+    }
   }
 
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
@@ -159,29 +158,33 @@ namespace zs {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = detail::deduce_fts<F, RM_CVREF_T(iter.iters)>;
+      using func_traits = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types>;
       constexpr auto numArgs = std::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
       constexpr auto indices = std::make_index_sequence<numArgs>{};
-
+      static_assert(func_traits::arity >= numArgs && func_traits::arity <= numArgs + 2,
+                    "range_launch arity does not match with numArgs");
       if constexpr (func_traits::arity == numArgs) {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
-        if constexpr (std::is_integral_v<
-                          std::tuple_element_t<0, typename func_traits::arguments_t>>)
+        static_assert(
+            std::is_integral_v<
+                typename func_traits::
+                    first_argument_t> || std::is_pointer_v<typename func_traits::first_argument_t>,
+            "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
+            "integer");
+        if constexpr (std::is_integral_v<typename func_traits::first_argument_t>)
           detail::range_foreach(true_c, id, f, iter, indices);
-        else if constexpr (std::is_pointer_v<
-                               std::tuple_element_t<0, typename func_traits::arguments_t>>)
-          detail::range_foreach(
-              false_c,
-              reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
-              id, f, iter, indices);
-      } else if constexpr (func_traits::arity == numArgs + 2
-                           && std::is_pointer_v<
-                               std::tuple_element_t<0, typename func_traits::arguments_t>>)
-        detail::range_foreach(
-            true_c,
-            reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem), id,
-            f, iter, indices);
+        else if constexpr (std::is_pointer_v<typename func_traits::first_argument_t>)
+          detail::range_foreach(false_c,
+                                reinterpret_cast<typename func_traits::first_argument_t>(shmem), id,
+                                f, iter, indices);
+      } else if constexpr (func_traits::arity == numArgs + 2) {
+        static_assert(std::is_pointer_v<typename func_traits::first_argument_t>,
+                      "when arity equals numArgs+2, the first argument should be a shmem pointer");
+        detail::range_foreach(true_c,
+                              reinterpret_cast<typename func_traits::first_argument_t>(shmem), id,
+                              f, iter, indices);
+      }
     }
   }
   namespace cg = cooperative_groups;
@@ -190,16 +193,20 @@ namespace zs {
     cg::thread_block block = cg::this_thread_block();
     cg::thread_group tile = cg::tiled_partition(block, tileSize);
     using func_traits = detail::deduce_fts<
-        F, zs::tuple<RM_CVREF_T(blockIdx.x), RM_CVREF_T(block.thread_rank() / tileSize),
-                     RM_CVREF_T(tile.thread_rank())>>;
-    if constexpr (func_traits::arity == 3
-                  && !std::is_pointer_v<std::tuple_element_t<0, typename func_traits::arguments_t>>)
+        F, type_seq<RM_CVREF_T(blockIdx.x), RM_CVREF_T(block.thread_rank() / tileSize),
+                    RM_CVREF_T(tile.thread_rank())>>;
+    static_assert(func_traits::arity >= 3 && func_traits::arity <= 4,
+                  "block_tile_lane_launch requires arity to be within [3, 4]");
+    if constexpr (func_traits::arity == 3) {
+      static_assert(!std::is_pointer_v<typename func_traits::first_argument_t>,
+                    "the first argument must NOT be a shmem pointer");
       f(blockIdx.x, block.thread_rank() / tileSize, tile.thread_rank());
-    else if constexpr (func_traits::arity == 4
-                       && std::is_pointer_v<
-                           std::tuple_element_t<0, typename func_traits::arguments_t>>)
-      f(reinterpret_cast<std::tuple_element_t<0, typename func_traits::arguments_t>>(shmem),
-        blockIdx.x, block.thread_rank() / tileSize, tile.thread_rank());
+    } else if constexpr (func_traits::arity == 4) {
+      static_assert(std::is_pointer_v<typename func_traits::first_argument_t>,
+                    "the first argument must be a shmem pointer");
+      f(reinterpret_cast<typename func_traits::first_argument_t>(shmem), blockIdx.x,
+        block.thread_rank() / tileSize, tile.thread_rank());
+    }
   }
 
   namespace detail {
@@ -209,7 +216,7 @@ namespace zs {
     struct function_traits_impl<__nv_dl_tag<R (*)(Args...), F, I>> {
       static constexpr std::size_t arity = sizeof...(Args);
       using return_t = R;
-      using arguments_t = std::tuple<Args...>;
+      using arguments_t = zs::tuple<Args...>;
     };
     template <class Tag, class... CapturedVarTypePack>
     struct function_traits_impl<__nv_dl_wrapper_t<Tag, CapturedVarTypePack...>>
@@ -245,7 +252,7 @@ namespace zs {
       unsigned res{0};
       if constexpr (FTraits::arity != 0)
         res = FTraits::arity
-              - (std::is_pointer_v<std::tuple_element_t<0, typename FTraits::arguments_t>> ? 1 : 0);
+              - (std::is_pointer_v<zs::tuple_element_t<0, typename FTraits::arguments_t>> ? 1 : 0);
       return res;
     }
 #endif

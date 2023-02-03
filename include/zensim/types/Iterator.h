@@ -540,7 +540,6 @@ namespace zs {
     zip_iterator() = default;
     constexpr zip_iterator(Iters &&...its) : iters{zs::make_tuple<Iters...>(FWD(its)...)} {}
 
-    // constexpr auto dereference() { return std::forward_as_tuple((*std::get<Is>(iters))...); }
     template <typename DerefT, enable_if_t<std::is_reference_v<DerefT>> = 0>
     constexpr auto getRef(DerefT &&deref) {
       return std::ref(deref);

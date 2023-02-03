@@ -126,46 +126,48 @@ namespace zs {
 
     /// owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
-    void setOwningUpstream(mem_tags tag, ProcID devid, std::tuple<Args &&...> args,
-                           index_seq<Is...>) {
-      match(
-          [&](auto t) {
-            if constexpr (is_memory_source_available(t)) {
-              using MemT = RM_CVREF_T(t);
-              res = std::make_unique<ResourceT<MemT>>(devid, std::get<Is>(args)...);
-              location = MemoryLocation{t.value, devid};
-              cloner = [devid, args]() -> std::unique_ptr<resource_type> {
-                std::unique_ptr<resource_type> ret{};
-                std::apply(
-                    [&ret](auto &&...ctorArgs) {
-                      ret = std::make_unique<ResourceT<decltype(t)>>(FWD(ctorArgs)...);
-                    },
-                    std::tuple_cat(std::make_tuple(devid), args));
-                return ret;
-              };
-            }
-          },
-          [](...) {})(tag);
+    void setOwningUpstream(mem_tags tag, ProcID devid, zs::tuple<Args...> args, index_seq<Is...>) {
+      match([&](auto t) {
+        if constexpr (is_memory_source_available(t)) {
+          using MemT = RM_CVREF_T(t);
+          res = std::make_unique<ResourceT<MemT>>(devid, zs::get<Is>(args)...);
+          location = MemoryLocation{t.value, devid};
+          cloner = [devid, args]() -> std::unique_ptr<resource_type> {
+            std::unique_ptr<resource_type> ret{};
+            zs::apply(
+                [&ret](auto &&...ctorArgs) {
+                  ret = std::make_unique<ResourceT<decltype(t)>>(FWD(ctorArgs)...);
+                },
+                zs::tuple_cat(zs::make_tuple(devid), args));
+            return ret;
+          };
+        } else
+          std::cerr << fmt::format("memory resource \"{}\" not available", get_var_type_str(t))
+                    << std::endl;
+      })(tag);
     }
     template <template <typename Tag> class ResourceT, typename MemTag, typename... Args>
     void setOwningUpstream(MemTag tag, ProcID devid, Args &&...args) {
       if constexpr (is_same_v<MemTag, mem_tags>)
-        setOwningUpstream<ResourceT>(tag, devid, std::forward_as_tuple(FWD(args)...),
+        setOwningUpstream<ResourceT>(tag, devid, zs::forward_as_tuple(FWD(args)...),
                                      std::index_sequence_for<Args...>{});
       else {
         if constexpr (is_memory_source_available(tag)) {
-          res = std::make_unique<ResourceT<MemTag>>(devid, FWD(args)...);
+          res = std::make_unique<ResourceT<MemTag>>(devid, args...);
           location = MemoryLocation{MemTag::value, devid};
-          cloner = [devid, args = std::make_tuple(args...)]() -> std::unique_ptr<resource_type> {
+          cloner
+              = [devid, args = zs::make_tuple(FWD(args)...)]() -> std::unique_ptr<resource_type> {
             std::unique_ptr<resource_type> ret{};
-            std::apply(
+            zs::apply(
                 [&ret](auto &&...ctorArgs) {
                   ret = std::make_unique<ResourceT<MemTag>>(FWD(ctorArgs)...);
                 },
-                std::tuple_cat(std::make_tuple(devid), args));
+                zs::tuple_cat(zs::make_tuple(devid), args));
             return ret;
           };
-        }
+        } else
+          std::cerr << fmt::format("memory resource \"{}\" not available", get_var_type_str(tag))
+                    << std::endl;
       }
     }
 

@@ -26,7 +26,7 @@ namespace zs {
     auto lsv = proxy<execspace_e::host>(spls);
 
     PoissonDisk<float, 3> pd{};
-    std::tie(pd.minCorner, pd.maxCorner) = lsv.getBoundingBox();
+    zs::tie(pd.minCorner, pd.maxCorner) = lsv.getBoundingBox();
     pd.setDistanceByPpc(dx, ppc);
 
     auto sample = [&lsv](const auto &x) -> float { return lsv.getSignedDistance(x); };

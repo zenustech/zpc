@@ -39,7 +39,7 @@ namespace zs {
       return TV::zeros();
     }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
-      return std::make_tuple(_origin, _origin);
+      return zs::make_tuple(_origin, _origin);
     }
 
     TV _origin{}, _normal{};
@@ -107,7 +107,7 @@ namespace zs {
       return TV::zeros();
     }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
-      return std::make_tuple(_min, _max);
+      return zs::make_tuple(_min, _max);
     }
 
     TV _min{}, _max{};
@@ -141,7 +141,7 @@ namespace zs {
       return TV::zeros();
     }
     constexpr decltype(auto) do_getBoundingBox() const noexcept {
-      return std::make_tuple(_center - _radius, _center + _radius);
+      return zs::make_tuple(_center - _radius, _center + _radius);
     }
 
     TV _center{};
@@ -215,7 +215,7 @@ namespace zs {
       diffR[_d] = (T)0;
       auto diffL = TV::zeros();
       diffL[_d] = _length;
-      return std::make_tuple(_bottom - diffR, _bottom + diffR + diffL);
+      return zs::make_tuple(_bottom - diffR, _bottom + diffR + diffL);
     }
 
     TV _bottom{};
@@ -259,7 +259,8 @@ namespace zs {
     }
   }
 
-  template <int dim, typename T_, typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim, (dim > 0)> = 0>
+  template <int dim, typename T_, typename VecT,
+            enable_if_all<VecT::dim == 1, VecT::extent == dim, (dim > 0)> = 0>
   constexpr auto distance(const AABBBox<dim, T_> &b, const VecInterface<VecT> &p) noexcept {
     using T = math::op_result_t<T_, typename VecT::value_type>;
     const auto &[mi, ma] = b;
@@ -267,10 +268,8 @@ namespace zs {
     auto point = (p - center).abs() - (ma - mi) / 2;
     T max = limits<T>::lowest();
     for (int d = 0; d != dim; ++d) {
-      if (point[d] > max)
-        max = point[d];
-      if (point[d] < 0)
-        point[d] = 0;
+      if (point[d] > max) max = point[d];
+      if (point[d] < 0) point[d] = 0;
     }
     return (max < 0 ? max : 0) + point.length();
   }

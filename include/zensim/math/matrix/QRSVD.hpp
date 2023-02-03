@@ -387,16 +387,17 @@ namespace zs {
       using index_type = typename VecT::index_type;
       constexpr auto N = VecT::template range_t<0>::value;
       typename VecT::template variant_vec<value_type, typename VecT::extents> U{}, V{};
+      static_assert(N >= 1 && N <= 3, "dimension of A must be 1, 2 or 3.");
       if constexpr (N == 1) {
         typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{A(0, 0)};
         U(0, 0) = V(0, 0) = 1;
-        return std::make_tuple(U, S, V);
+        return zs::make_tuple(U, S, V);
       } else if constexpr (N == 2) {
         GivensRotation<value_type> gu{0, 1}, gv{0, 1};
         auto S = qr_svd(A, gu, gv);
         gu.fill(U);
         gv.fill(V);
-        return std::make_tuple(U, S, V);
+        return zs::make_tuple(U, S, V);
       } else if constexpr (N == 3) {
         typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{};
         auto B = A.clone();
@@ -562,8 +563,7 @@ namespace zs {
           detail::process<1>(B, U, S, V);
           detail::sort_sigma<1>(U, S, V);
         }
-        return std::make_tuple(U, S, V);
-      } else {
+        return zs::make_tuple(U, S, V);
       }
     }
 
@@ -577,21 +577,21 @@ namespace zs {
     constexpr auto polar_decomposition(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto N = VecT::template range_t<0>::value;
+      static_assert(N >= 1 && N <= 3, "dimension of A must be 1, 2 or 3.");
       typename VecT::template variant_vec<value_type, typename VecT::extents> R{};
       if constexpr (N == 1) {
         R(0, 0) = 1;
-        return std::make_tuple(R, A.clone());
+        return zs::make_tuple(R, A.clone());
       } else if constexpr (N == 2) {
         GivensRotation<value_type> r{0, 1};
         auto S = polar_decomposition(A, r);
         r.fill(R);
-        return std::make_tuple(R, S);
+        return zs::make_tuple(R, S);
       } else if constexpr (N == 3) {
         auto [U, S, V] = qr_svd(A);
         R = U * V.transpose();
         auto Ssym = ::zs::diag_mul(V, S) * V.transpose();
-        return std::make_tuple(R, Ssym);
-      } else {
+        return zs::make_tuple(R, Ssym);
       }
     }
 

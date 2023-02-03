@@ -109,8 +109,8 @@ namespace zs::math {
         S(i, j) = S_(i, j);
       }
     R(dim, dim) = S(dim, dim) = (ValT)1;
-    if (applyOnColumn) return std::make_tuple(T, R, S);
-    return std::make_tuple(S.transpose(), R.transpose(), T.transpose());
+    if (applyOnColumn) return zs::make_tuple(T, R, S);
+    return zs::make_tuple(S.transpose(), R.transpose(), T.transpose());
   }
 
   template <

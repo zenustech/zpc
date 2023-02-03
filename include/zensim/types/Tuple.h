@@ -166,7 +166,8 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_base &operator=(tuple_base &&) = default;
     constexpr tuple_base &operator=(const tuple_base &) = default;
 
-    template <typename... Vs, enable_if_all<std::is_assignable_v<Ts, Vs>...> = 0>
+    template <typename... Vs,
+              enable_if_all<is_assignable_v<type_seq<Vs...>>, !(is_same_v<Ts, Vs> && ...)> = 0>
     constexpr tuple_base &operator=(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &
                                         o) noexcept((std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
       ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);
@@ -258,15 +259,17 @@ template <std::size_t I, typename T> struct tuple_value {
 
     constexpr tuple() = default;
     ~tuple() = default;
-    template <typename... Vs> constexpr tuple(Vs &&...vs) noexcept : base_t{FWD(vs)...} {}
+    template <typename... Vs> constexpr tuple(Vs &&...vs) noexcept : base_t(FWD(vs)...) {}
     constexpr tuple(tuple &&) = default;
     constexpr tuple(const tuple &) = default;
     constexpr tuple &operator=(tuple &&) = default;
     constexpr tuple &operator=(const tuple &) = default;
 
     template <typename Tup> constexpr std::enable_if_t<
-        is_tuple_v<remove_cvref_t<
-            Tup>> && base_t::template is_assignable_v<typename remove_cvref_t<Tup>::tuple_types>,
+        !is_same_v<
+            tuple,
+            remove_cvref_t<
+                Tup>> && is_tuple_v<remove_cvref_t<Tup>> && base_t::template is_assignable_v<typename remove_cvref_t<Tup>::tuple_types>,
         tuple &>
     operator=(Tup &&o) {
       base_t::operator=(FWD(o));

@@ -33,8 +33,8 @@ namespace zs {
     }
 
     template <typename Self = Derived, typename TV = TV<Self>>
-    constexpr std::tuple<TV, TV> do_getBoundingBox() const noexcept {
-      return std::make_tuple(TV::zeros(), TV::zeros());
+    constexpr zs::tuple<TV, TV> do_getBoundingBox() const noexcept {
+      return zs::make_tuple(TV::zeros(), TV::zeros());
     }
   };
 

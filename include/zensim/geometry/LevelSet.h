@@ -309,7 +309,7 @@ namespace zs {
       auto dstBvp = _lsvDst.getBoundingBox();
       using TV = RM_CVREF_T(get<0>(srcBvp));  // ADL
       using Ti = typename TV::index_type;
-      return std::make_tuple(
+      return zs::make_tuple(
           TV::init([&](Ti i) {
             return get<0>(srcBvp)[i] < get<0>(dstBvp)[i] ? get<0>(srcBvp)[i] : get<0>(dstBvp)[i];
           }),

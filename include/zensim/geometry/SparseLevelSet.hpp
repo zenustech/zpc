@@ -361,7 +361,7 @@ namespace zs {
           ma[d] = pos[d] > ma[d] ? pos[d] : ma[d];
         }
       }
-      return std::make_tuple(mi, ma);
+      return zs::make_tuple(mi, ma);
     }
 
     /// coordinate transformation

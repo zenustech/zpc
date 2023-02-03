@@ -403,8 +403,7 @@ template <std::size_t I, typename T> struct tuple_value {
       using outer = decltype(
           counts{}.template scan<1, plus<std::size_t>>().map(count_leq{}, wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
-          std::minus<std::size_t>{},
-          counts{}.template scan<0, std::plus<std::size_t>>().shuffle(outer{})));
+          minus<std::size_t>{}, counts{}.template scan<0, plus<std::size_t>>().shuffle(outer{})));
       // using types = decltype(type_seq<typename
       // remove_cvref_t<Tuples>::tuple_types...>{}.shuffle(outer{}).shuffle_join(inner{}));
       template <auto... Os, auto... Is>

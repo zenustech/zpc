@@ -127,18 +127,16 @@ namespace zs {
       return value_seq<index<type_seq<integral_t<Ti, 1>, integral_t<Ti, Is>>>::value...>{};
     }
     template <typename... Args> constexpr auto pair(type_seq<Args...>) const noexcept;
-    template <auto... Is> constexpr auto shuffle(value_seq<Is...>) const noexcept {
-      return type_seq<typename type_seq<Ts...>::template type<Is>...>{};
-    }
     template <typename Ti, Ti... Is> constexpr auto shuffle(integer_seq<Ti, Is...>) const noexcept {
-      return shuffle(value_seq<Is...>{});
-    }
-    template <auto... Is> constexpr auto shuffle_join(value_seq<Is...>) const noexcept {
-      return type_seq<typename Ts::template type<Is>...>{};
+      if constexpr (all_values)
+        return value_seq<type<Is>::value...>{};
+      else
+        return type_seq<type<Is>...>{};
     }
     template <typename Ti, Ti... Is>
     constexpr auto shuffle_join(integer_seq<Ti, Is...>) const noexcept {
-      return shuffle_join(value_seq<Is...>{});
+      static_assert((is_type_seq_v<Ts> && ...), "");
+      return type_seq<typename Ts::template type<Is>...>{};
     }
   };
   // template <typename... Ts> struct type_seq<type_seq<Ts...>> : type_seq<Ts...> {};
@@ -221,12 +219,8 @@ namespace zs {
       return value_seq<Ns..., Is...>{};
     }
     /// shuffle
-    constexpr auto shuffle(value_seq<>) const noexcept { return value_seq<>{}; }
     template <auto... Is> constexpr auto shuffle(value_seq<Is...>) const noexcept {
-      return value_seq<base_t::template type<Is>::type::value...>{};
-    }
-    template <typename Ti, Ti... Is> constexpr auto shuffle(integer_seq<Ti, Is...>) const noexcept {
-      return shuffle(value_seq<Is...>{});
+      return base_t::shuffle(index_seq<Is...>{});
     }
     /// transform
     template <typename UnaryOp> constexpr auto transform(UnaryOp) const noexcept {
@@ -235,10 +229,10 @@ namespace zs {
     /// for_each
     template <typename F> constexpr void for_each(F &&f) const noexcept { (f(Ns), ...); }
     /// scan
+    template <auto Cate, typename BinaryOp, typename Indices> struct scan_impl;
     template <auto Cate, typename BinaryOp, std::size_t... Is>
-    constexpr auto scan_impl(BinaryOp, index_seq<Is...>) const noexcept {
-      constexpr auto get_sum = [](auto I_) noexcept {
-        constexpr auto I = decltype(I_)::value;
+    struct scan_impl<Cate, BinaryOp, index_seq<Is...>> {
+      template <auto I> static constexpr auto get_sum(wrapv<I>) noexcept {
         if constexpr (Cate == 0)
           return wrapv<monoid_op<BinaryOp>{}((Is < I ? Ns : monoid_op<BinaryOp>::e)...)>{};
         else if constexpr (Cate == 1)
@@ -247,12 +241,12 @@ namespace zs {
           return wrapv<monoid_op<BinaryOp>{}((Is > I ? Ns : monoid_op<BinaryOp>::e)...)>{};
         else
           return wrapv<monoid_op<BinaryOp>{}((Is >= I ? Ns : monoid_op<BinaryOp>::e)...)>{};
-      };
-      return value_seq<RM_CVREF_T(get_sum(wrapv<Is>{}))::value...>{};
-    }
+      }
+      using type = value_seq<decltype(get_sum(wrapv<Is>{}))::value...>;
+    };
     template <auto Cate = 0, typename BinaryOp = plus<value_type>>
     constexpr auto scan(BinaryOp bop = {}) const noexcept {
-      return scan_impl<Cate>(bop, indices{});
+      return typename scan_impl<Cate, BinaryOp, indices>::type{};
     }
   };
   template <typename Ti, Ti... Ns> value_seq(integer_seq<Ti, Ns...>) -> value_seq<Ns...>;

@@ -61,7 +61,7 @@ namespace zs {
     constexpr auto extractAxisRotation(wrapv<unit> = {}) const noexcept {
       const auto cosAlpha = (value_type)0.5 * (trace(self()) - 1);
       value_type alpha = zs::acos(cosAlpha);
-      if (math::near_zero(cosAlpha - 1)) return std::make_tuple(TV{0, 1, 0}, (value_type)0);
+      if (math::near_zero(cosAlpha - 1)) return zs::make_tuple(TV{0, 1, 0}, (value_type)0);
 
       TV p{};
       if (math::near_zero(cosAlpha + 1)) {
@@ -81,9 +81,9 @@ namespace zs {
         p(2) = ((*this)(1, 0) - (*this)(0, 1)) * (value_type)0.5 / sinAlpha;
       }
       if constexpr (unit == angle_unit_e::radian)
-        return std::make_tuple(p, alpha);
+        return zs::make_tuple(p, alpha);
       else if constexpr (unit == angle_unit_e::degree)
-        return std::make_tuple(p, alpha * (value_type)180 / (value_type)g_pi);
+        return zs::make_tuple(p, alpha * (value_type)180 / (value_type)g_pi);
     }
 
     /// euler angles
@@ -176,11 +176,11 @@ namespace zs {
         }
       }
       if constexpr (unit == angle_unit_e::radian)
-        return std::make_tuple(psi, theta, phi);
+        return zs::make_tuple(psi, theta, phi);
       else if constexpr (unit == angle_unit_e::degree)
-        return std::make_tuple(psi * (value_type)180 / (value_type)g_pi,
-                               theta * (value_type)180 / (value_type)g_pi,
-                               phi * (value_type)180 / (value_type)g_pi);
+        return zs::make_tuple(psi * (value_type)180 / (value_type)g_pi,
+                              theta * (value_type)180 / (value_type)g_pi,
+                              phi * (value_type)180 / (value_type)g_pi);
     }
     template <typename VecT,
               enable_if_all<std::is_convertible_v<typename VecT::value_type, T>, VecT::dim == 1,

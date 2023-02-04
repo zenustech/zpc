@@ -160,7 +160,7 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_base() = default;
     ~tuple_base() = default;
     template <typename... Vs, enable_if_t<sizeof...(Vs) == tuple_size> = 0>
-    constexpr tuple_base(Vs &&...vs) noexcept : tuple_value<Is, Ts>{FWD(vs)}... {}
+    constexpr tuple_base(Vs &&...vs) noexcept : tuple_value<Is, Ts>(FWD(vs))... {}
     constexpr tuple_base(tuple_base &&) = default;
     constexpr tuple_base(const tuple_base &) = default;
     constexpr tuple_base &operator=(tuple_base &&) = default;

@@ -159,15 +159,12 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   physics/constitutive_models/StvkWithHencky.hpp
   physics/constitutive_models/FixedCorotated.h
   physics/constitutive_models/NeoHookean.hpp
-  physics/constitutive_models/DirichletDamping.hpp
   physics/plasticity_models/SnowPlasticity.hpp
   physics/plasticity_models/VonMisesCapped.hpp
   physics/plasticity_models/NonAssociativeDruckerPrager.hpp
-  physics/ConstitutiveModelHelper.hpp
   physics/ConstitutiveModel_Vol_dP.hpp
   physics/ConstitutiveModel.hpp
   physics/SoundSpeedCfl.hpp
-  simulation/fem/ElementToDof.hpp
   simulation/mpm/Simulator.hpp
   simulation/transfer/P2G.hpp
   simulation/transfer/G2P.hpp
@@ -348,6 +345,7 @@ if(ZS_ENABLE_OPENMP)
   endif()
 
   target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
+
   if(WIN32)
     target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
       PUBLIC $<$<COMPILE_LANGUAGE:CXX>: /openmp:llvm /openmp:experimental>

@@ -280,7 +280,7 @@ namespace zs {
           auto [grid_block, local_index]
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
           auto xixp = arena.diff(loc);
-          value_type W = Wpi(std::get<0>(loc), std::get<1>(loc), std::get<2>(loc));
+          value_type W = Wpi(zs::get<0>(loc), zs::get<1>(loc), zs::get<2>(loc));
           const auto cellid = grids_t::coord_to_cellid(local_index);
           atomic_add(wrapv<space>{}, &grid_block(0, cellid), mass * W);
           for (int d = 0; d != particles_t::dim; ++d) {
@@ -483,7 +483,7 @@ namespace zs {
           auto [grid_block, local_index]
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
           auto xixp = arena.diff(loc);
-          value_type W = Wpi(std::get<0>(loc), std::get<1>(loc), std::get<2>(loc));
+          value_type W = Wpi(zs::get<0>(loc), zs::get<1>(loc), zs::get<2>(loc));
           const auto cellid = grids_t::coord_to_cellid(local_index);
           atomic_add(wrapv<space>{}, &grid_block(0, cellid), mass * W);
           for (int d = 0; d != particles_t::dim; ++d) {
@@ -770,7 +770,7 @@ namespace zs {
           auto [grid_block, local_index]
               = unpack_coord_in_grid(arena.coord(loc), grids_t::side_length, partition, grids);
           auto xixp = arena.diff(loc);
-          value_type W = Wpi(std::get<0>(loc), std::get<1>(loc), std::get<2>(loc));
+          value_type W = Wpi(zs::get<0>(loc), zs::get<1>(loc), zs::get<2>(loc));
           const auto cellid = grids_t::coord_to_cellid(local_index);
           for (int d = 0; d != particles_t::dim; ++d) {
             atomic_add(

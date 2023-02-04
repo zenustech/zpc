@@ -140,7 +140,7 @@ namespace zs {
     using const_sdf_ls_ptr_t = typename basic_level_set_t::const_sdf_ls_ptr_t;
     using const_vel_ls_ptr_t = typename basic_level_set_t::const_vel_ls_ptr_t;
 
-    template <typename TSeq> using tseq_to_tuple = assemble_t<std::tuple, TSeq>;
+    template <typename TSeq> using tseq_to_tuple = assemble_t<zs::tuple, TSeq>;
     template <execspace_e space> using const_sdf_ls_view_tl
         = map_op_t<detail::ls_view_helper<space>, get_ttal_t<const_sdf_ls_ptr_t>>;
     template <execspace_e space> using const_vel_ls_view_tl
@@ -152,7 +152,7 @@ namespace zs {
     template <execspace_e space> using const_field_view_t
         = assemble_t<variant, field_view_tl<space>>;
 
-    template <typename TT> using duplicate_t = std::tuple<TT, TT>;
+    template <typename TT> using duplicate_t = zs::tuple<TT, TT>;
     template <execspace_e space> using const_field_seq_view_t
         = assemble_t<variant, map_t<duplicate_t, field_view_tl<space>>>;
 
@@ -176,17 +176,17 @@ namespace zs {
             _sdfConstPtr = sdfPtr;
             _velConstPtr = velPtr;
           },
-          [this](...) {})(sdf._ls, vel._ls);
+          [this](...) { throw std::runtime_error("sdf-velocity field construction failed."); })(
+          sdf._ls, vel._ls);
     }
 
     /// view
     template <execspace_e space = execspace_e::host>
     constexpr const_field_view_t<space> getView(wrapv<space> = {}) const noexcept {
-      return match(
-          [](const auto &sdfPtr, const auto &velPtr) noexcept -> const_field_view_t<space> {
-            return std::make_tuple(get_level_set_view<space>(sdfPtr),
-                                   get_level_set_view<space>(velPtr));
-          })(_sdfConstPtr, _velConstPtr);
+      return match([](const auto &sdfPtr,
+                      const auto &velPtr) noexcept -> const_field_view_t<space> {
+        return zs::make_tuple(get_level_set_view<space>(sdfPtr), get_level_set_view<space>(velPtr));
+      })(_sdfConstPtr, _velConstPtr);
     }
     const_sdf_ls_ptr_t _sdfConstPtr{};
     const_vel_ls_ptr_t _velConstPtr{};
@@ -227,13 +227,12 @@ namespace zs {
       } else
         throw std::runtime_error("the levelset transition queue is empty.");
       // only allows a pair of the same type of levelsets
-      match(
-          [&ret](auto &&src,
-                 auto &&dst) -> std::enable_if_t<is_same_v<RM_CVREF_T(src), RM_CVREF_T(dst)>> {
-            ret = std::make_tuple(std::move(src), std::move(dst));
-          },
-          [](...) { throw std::runtime_error("heterogeneous levelset queue is not supported."); })(
-          std::move(ls0), std::move(ls1));
+      match([&ret](auto &&src, auto &&dst) {
+        if constexpr (is_same_v<RM_CVREF_T(src), RM_CVREF_T(dst)>)
+          ret = zs::make_tuple(std::move(src), std::move(dst));
+        else
+          throw std::runtime_error("heterogeneous levelset queue is not supported.");
+      })(std::move(ls0), std::move(ls1));
       return ret;
     }
 
@@ -260,8 +259,8 @@ namespace zs {
     ~SdfVelFieldView() noexcept = default;
     constexpr SdfVelFieldView(const SdfLsView &sdf, const VelLsView &vel) noexcept
         : _sdf(sdf), _vel(vel) {}
-    constexpr SdfVelFieldView(const std::tuple<SdfLsView, VelLsView> &field) noexcept
-        : _sdf(std::get<0>(field)), _vel(std::get<1>(field)) {}
+    constexpr SdfVelFieldView(const zs::tuple<SdfLsView, VelLsView> &field) noexcept
+        : _sdf(zs::get<0>(field)), _vel(zs::get<1>(field)) {}
 
     /// bounding volume interface
     constexpr auto do_getBoundingBox() const noexcept { return _sdf.getBoundingBox(); }

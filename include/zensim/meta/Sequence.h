@@ -417,6 +417,30 @@ namespace zs {
   };
   template <typename Seq> using seq_tail_t = typename seq_tail<Seq>::type;
 
+  template <typename TT, typename T> struct is_assignable {
+    template <typename... Ts, typename... Vs>
+    static constexpr bool test(type_seq<Ts...>, type_seq<Vs...>) {
+      if constexpr (sizeof...(Vs) == sizeof...(Ts))
+        /// @note (std::is_assignable<Ts, Vs>::value && ...) may cause nvcc compiler error
+        return (is_valid([](auto t) -> decltype((std::declval<Ts>()
+                                                 = std::declval<typename RM_CVREF_T(t)::type>()),
+                                                void()) {})(wrapt<Vs>{})
+                && ...);
+      else
+        return false;
+    }
+    template <typename UU, typename U> static constexpr auto test(char) {
+      if constexpr (is_type_seq_v<UU> && is_type_seq_v<U>)
+        return integral_t<bool, test(UU{}, U{})>{};
+      else
+        return false_c;
+    }
+
+  public:
+    static constexpr bool value = test<TT, T>(0);
+  };
+  template <typename TT, typename T> constexpr auto is_assignable_v = is_assignable<TT, T>::value;
+
   /** placeholder */
   namespace index_literals {
     // ref: numeric UDL

@@ -27,7 +27,7 @@ namespace zs {
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto I4_sign(const VecInterface<VecTM>& F,
                            const VecInterface<VecTV>& a) const noexcept {
-      const auto I4 = std::get<0>(base_t::I_wrt_F_a<4, 0>(F, a));
+      const auto I4 = zs::get<0>(base_t::I_wrt_F_a<4, 0>(F, a));
       return math::near_zero(I4) ? (value_type)0 : (I4 > 0 ? (value_type)1 : (value_type)-1);
     }
     template <typename VecTM, typename VecTV,
@@ -38,7 +38,7 @@ namespace zs {
                             std::is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_psi(const VecInterface<VecTM>& F,
                           const VecInterface<VecTV>& a) const noexcept {
-      const auto v = zs::sqrt(std::get<0>(base_t::I_wrt_F_a<5, 0>(F, a))) - I4_sign(F, a);
+      const auto v = zs::sqrt(zs::get<0>(base_t::I_wrt_F_a<5, 0>(F, a))) - I4_sign(F, a);
       return (value_type)0.5 * mu * v * v;
     }
     template <typename VecTM, typename VecTV,
@@ -52,7 +52,7 @@ namespace zs {
       const auto A = dyadic_prod(a, a);
       const auto coeff
           = (value_type)0.5 * mu
-            * ((value_type)1 - I4_sign(F, a) / zs::sqrt(std::get<0>(base_t::I_wrt_F_a<5, 0>(F, a))));
+            * ((value_type)1 - I4_sign(F, a) / zs::sqrt(zs::get<0>(base_t::I_wrt_F_a<5, 0>(F, a))));
       return coeff * F * A;
     }
     template <typename VecTM, typename VecTV,

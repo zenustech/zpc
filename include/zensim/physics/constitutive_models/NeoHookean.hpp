@@ -205,9 +205,9 @@ namespace zs {
 
       auto [U, S, V] = math::qr_svd(F);
 
-      Is[0] = std::get<0>(base_t::I_wrt_F<0, 0>(F));
-      Is[1] = std::get<0>(base_t::I_wrt_F<1, 0>(F));
-      Is[2] = std::get<0>(base_t::I_wrt_F<2, 0>(F));
+      Is[0] = zs::get<0>(base_t::I_wrt_F<0, 0>(F));
+      Is[1] = zs::get<0>(base_t::I_wrt_F<1, 0>(F));
+      Is[2] = zs::get<0>(base_t::I_wrt_F<2, 0>(F));
 
       auto A = eval_stretching_matrix(Is, S);
       auto [A_eigvals, A_eigvecs] = zs::eigen_decomposition(A.template cast<double>());

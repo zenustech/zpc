@@ -251,9 +251,9 @@ namespace zs {
         integer_seq<typename VecT::index_type, dim_t<VecT>::value * dim_t<VecT>::value,
                     dim_t<VecT>::value * dim_t<VecT>::value>>;
     template <typename VecT, int deriv_order = 0> using pack_t = conditional_t<
-        deriv_order == 0, std::tuple<typename VecT::value_type>,
-        conditional_t<deriv_order == 1, std::tuple<typename VecT::value_type, gradient_t<VecT>>,
-                      std::tuple<typename VecT::value_type, gradient_t<VecT>, hessian_t<VecT>>>>;
+        deriv_order == 0, zs::tuple<typename VecT::value_type>,
+        conditional_t<deriv_order == 1, zs::tuple<typename VecT::value_type, gradient_t<VecT>>,
+                      zs::tuple<typename VecT::value_type, gradient_t<VecT>, hessian_t<VecT>>>>;
 
     // isotropic invariants
     // I_1 = tr(S)
@@ -281,22 +281,22 @@ namespace zs {
       if constexpr (I == 0) {
         if constexpr (deriv_order == 0) {
           auto [R, S] = math::polar_decomposition(F);
-          std::get<0>(ret) = trace(S);
+          zs::get<0>(ret) = trace(S);
         } else if constexpr (deriv_order == 1) {
           auto [R, S] = math::polar_decomposition(F);
-          std::get<0>(ret) = trace(S);
+          zs::get<0>(ret) = trace(S);
           // ref: Dynamic Deformables: Implementations and Production Practices
           // Sec 7.3.2, P96
-          std::get<1>(ret) = vectorize(R);
+          zs::get<1>(ret) = vectorize(R);
         } else if constexpr (deriv_order == 2) {
           auto [U, S, V] = math::qr_svd(F);
-          std::get<0>(ret) = S.sum();
+          zs::get<0>(ret) = S.sum();
           auto R = U * V.transpose();
           // ref: Dynamic Deformables: Implementations and Production Practices
           // Sec 7.3.2, P96
-          std::get<1>(ret) = vectorize(R);
+          zs::get<1>(ret) = vectorize(R);
           // auto Ssym = diag_mul(V, S) * V.transpose();
-          auto& dRdF = std::get<2>(ret);
+          auto& dRdF = zs::get<2>(ret);
           dRdF = HessianT::zeros();
           constexpr auto sqrt2Inv = (ScalarT)1 / g_sqrt2;
           if constexpr (dim == 2) {
@@ -323,48 +323,48 @@ namespace zs {
       }
       ///  I2 (area)
       else if constexpr (I == 1) {
-        std::get<0>(ret) = trace(F.transpose() * F);
+        zs::get<0>(ret) = trace(F.transpose() * F);
         if constexpr (deriv_order > 0) {
           // ref: Dynamic Deformables: Implementations and Production Practices
           // Sec 7.3.2, P96
-          std::get<1>(ret) = vectorize(F + F);
+          zs::get<1>(ret) = vectorize(F + F);
           if constexpr (deriv_order > 1) {
             constexpr auto I9x9 = HessianT::identity();
-            std::get<2>(ret) = I9x9 + I9x9;
+            zs::get<2>(ret) = I9x9 + I9x9;
           }
         }
       }
       ///  I3 (volume)
       else if constexpr (I == 2) {
-        std::get<0>(ret) = determinant(F);
+        zs::get<0>(ret) = determinant(F);
         auto f0 = col(F, 0);
         auto f1 = col(F, 1);
         auto f2 = col(F, 2);
         // gradient
         if constexpr (deriv_order > 0) {
           if constexpr (dim == 1)
-            std::get<1>(ret) = GradientT{1};
+            zs::get<1>(ret) = GradientT{1};
           else if constexpr (dim == 2)
-            std::get<1>(ret) = GradientT{F(1, 1), -F(0, 1), -F(1, 0), F(0, 0)};
+            zs::get<1>(ret) = GradientT{F(1, 1), -F(0, 1), -F(1, 0), F(0, 0)};
           else if constexpr (dim == 3) {
             // ref: Dynamic Deformables: Implementations and Production Practices
             // Sec 7.3.2, P96
             const auto f1f2 = cross(f1, f2);
             const auto f2f0 = cross(f2, f0);
             const auto f0f1 = cross(f0, f1);
-            std::get<1>(ret) = GradientT{f1f2(0), f1f2(1), f1f2(2), f2f0(0), f2f0(1),
-                                         f2f0(2), f0f1(0), f0f1(1), f0f1(2)};
+            zs::get<1>(ret) = GradientT{f1f2(0), f1f2(1), f1f2(2), f2f0(0), f2f0(1),
+                                        f2f0(2), f0f1(0), f0f1(1), f0f1(2)};
           }
           // hessian
           // ref: Dynamic Deformables: Implementations and Production Practices
           // Sec 7.3.2 (7.10), P95
           if constexpr (deriv_order > 1) {
             if constexpr (dim == 1)
-              std::get<2>(ret) = HessianT{0};
+              zs::get<2>(ret) = HessianT{0};
             else if constexpr (dim == 2)
-              std::get<2>(ret) = HessianT{0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, 1, 0, 0, 0};
+              zs::get<2>(ret) = HessianT{0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, 1, 0, 0, 0};
             else if constexpr (dim == 3) {
-              auto& H = std::get<2>(ret);
+              auto& H = zs::get<2>(ret);
               H = HessianT::zeros();
               auto asym = cross_matrix(f0);
               for (index_type i = 0; i != 3; ++i)
@@ -414,7 +414,7 @@ namespace zs {
       ///  I4 = a^T S a
       if constexpr (I == 4) {
         auto [R, S] = math::polar_decomposition(F);
-        std::get<0>(ret) = dot(a, S * a);
+        zs::get<0>(ret) = dot(a, S * a);
         static_assert(
             !(I == 4 && deriv_order > 0),
             "the author haven\'t figure it out yet how to compute derivative and hessian of I4.");
@@ -426,7 +426,7 @@ namespace zs {
             auto gi = (VT * a).sum() * (S(0) - S(1)) / math::max(S(0) + S(1), (ScalarT)1e-6) * U
                           * MatT{0, -1, 1, 0} * VT
                       + R * A;
-            std::get<1>(ret) = vectorize(gi);
+            zs::get<1>(ret) = vectorize(gi);
           }
         }
 #endif
@@ -434,13 +434,13 @@ namespace zs {
       ///  I5 = a^T S^T S a
       if constexpr (I == 5) {
         const auto Fa = F * a;  // equal to (Sa)^T Sa
-        std::get<0>(ret) = dot(Fa, Fa);
+        zs::get<0>(ret) = dot(Fa, Fa);
         if constexpr (deriv_order > 0) {
           const auto A = dyadic_prod(a, a);
           auto FA = F * A;
-          std::get<1>(ret) = vectorize(FA + FA);
+          zs::get<1>(ret) = vectorize(FA + FA);
           if constexpr (deriv_order > 1) {
-            auto& H = std::get<2>(ret);
+            auto& H = zs::get<2>(ret);
             H = HessianT::zeros();
             for (index_type i = 0; i != dim; ++i)
               for (index_type j = 0; j != dim; ++j) {
@@ -504,9 +504,9 @@ namespace zs {
       typename VecT::template variant_vec<typename VecT::value_type,
                                           integer_seq<typename VecT::index_type, 3>>
           Is{};
-      Is[0] = std::get<0>(I_wrt_F<0, 0>(F));
-      Is[1] = std::get<0>(I_wrt_F<1, 0>(F));
-      Is[2] = std::get<0>(I_wrt_F<2, 0>(F));
+      Is[0] = zs::get<0>(I_wrt_F<0, 0>(F));
+      Is[1] = zs::get<0>(I_wrt_F<1, 0>(F));
+      Is[2] = zs::get<0>(I_wrt_F<2, 0>(F));
       return psi_I(Is);
     }
     // first piola

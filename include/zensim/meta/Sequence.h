@@ -418,14 +418,18 @@ namespace zs {
   template <typename Seq> using seq_tail_t = typename seq_tail<Seq>::type;
 
   template <typename TT, typename T> struct is_assignable {
+    template <typename A, typename B, typename = void> struct pred {
+      static constexpr bool value = false;
+    };
+    template <typename A, typename B>
+    struct pred<A, B, void_t<decltype(std::declval<A>() = std::declval<B>())>> {
+      static constexpr bool value = true;
+    };
     template <typename... Ts, typename... Vs>
     static constexpr bool test(type_seq<Ts...>, type_seq<Vs...>) {
       if constexpr (sizeof...(Vs) == sizeof...(Ts))
         /// @note (std::is_assignable<Ts, Vs>::value && ...) may cause nvcc compiler error
-        return (is_valid([](auto t) -> decltype((std::declval<Ts>()
-                                                 = std::declval<typename RM_CVREF_T(t)::type>()),
-                                                void()) {})(wrapt<Vs>{})
-                && ...);
+        return (pred<Ts, Vs>::value && ...);
       else
         return false;
     }
@@ -433,13 +437,13 @@ namespace zs {
       if constexpr (is_type_seq_v<UU> && is_type_seq_v<U>)
         return integral_t<bool, test(UU{}, U{})>{};
       else
-        return false_c;
+        return integral_t<bool, pred<UU, U>::value>{};
     }
 
   public:
-    static constexpr bool value = test<TT, T>(0);
+    static constexpr bool value = decltype(test<TT, T>(0))::value;
   };
-  template <typename TT, typename T> constexpr auto is_assignable_v = is_assignable<TT, T>::value;
+  template <typename TT, typename T> constexpr bool is_assignable_v = is_assignable<TT, T>::value;
 
   /** placeholder */
   namespace index_literals {

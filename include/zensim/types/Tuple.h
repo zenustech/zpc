@@ -47,7 +47,8 @@ template <std::size_t I, typename T> struct tuple_value {
   template <std::size_t I, typename T, typename = void> struct tuple_value : T {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
-    template <typename V> constexpr tuple_value(V &&v) noexcept : T(FWD(v)) {}
+    template <typename V, enable_if_t<std::is_constructible_v<T, V>> = 0>
+    constexpr tuple_value(V &&v) noexcept : T(FWD(v)) {}
     constexpr tuple_value(tuple_value &&) = default;
     constexpr tuple_value(const tuple_value &) = default;
     constexpr tuple_value &operator=(tuple_value &&) = default;
@@ -75,7 +76,8 @@ template <std::size_t I, typename T> struct tuple_value {
               T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>)>> {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
-    template <typename V> constexpr tuple_value(V &&v) noexcept : value(FWD(v)) {}
+    template <typename V, enable_if_t<std::is_constructible_v<T, V>> = 0>
+    constexpr tuple_value(V &&v) noexcept : value(FWD(v)) {}
     constexpr tuple_value(tuple_value &&) = default;
     constexpr tuple_value(const tuple_value &) = default;
     constexpr tuple_value &operator=(tuple_value &&) = default;
@@ -148,8 +150,8 @@ template <std::size_t I, typename T> struct tuple_value {
                             !(is_same_v<Ts, Vs> && ...)> = 0>
     constexpr tuple_base(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &o)
         : tuple_value<Is, Ts>(o.get(index_t<Is>{}))... {}
-    template <typename... Vs, enable_if_all<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>,
-                                            !(is_same_v<Ts, Vs> && ...)> = 0>
+    template <typename... Vs,
+              enable_if_all<(is_assignable_v<Ts, Vs> && ...), !(is_same_v<Ts, Vs> && ...)> = 0>
     constexpr tuple_base &operator=(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &
                                         o) noexcept((std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
       ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);

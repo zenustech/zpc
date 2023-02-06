@@ -613,13 +613,20 @@ namespace zs {
     constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
                                                          const size_type i,
                                                          wrapt<TT> = {}) noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if ((TT *)_vector == nullptr) {
+        /// @note TBD : insert type reflection info here
+        printf("tilevector [%s] operator() reinterpret_cast failed!\n", _nameTag.asChars());
+        return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+      }
+      if (chn >= _numChannels) {
+        printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)_numChannels);
+        return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+      }
+#endif
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-                 (int)chn, (int)_numChannels);
-          return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
-        }
         if (i >= lane_width) {
           printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)lane_width);
@@ -630,11 +637,6 @@ namespace zs {
         return *((TT *)_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-                 (int)chn, (int)_numChannels);
-          return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
-        }
         if (i >= _vectorSize) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)_vectorSize);
@@ -650,13 +652,20 @@ namespace zs {
                             (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
     constexpr TT operator()(const channel_counter_type chn, const size_type i,
                             wrapt<TT> = {}) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if ((const TT *)_vector == nullptr) {
+        /// @note TBD : insert type reflection info here
+        printf("tilevector [%s] operator() reinterpret_cast failed!\n", _nameTag.asChars());
+        return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+      }
+      if (chn >= _numChannels) {
+        printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)_numChannels);
+        return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+      }
+#endif
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-                 (int)chn, (int)_numChannels);
-          return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
-        }
         if (i >= lane_width) {
           printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)lane_width);
@@ -666,11 +675,6 @@ namespace zs {
         return *((const TT *)_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (chn >= _numChannels) {
-          printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-                 (int)chn, (int)_numChannels);
-          return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
-        }
         if (i >= _vectorSize) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)_vectorSize);
@@ -691,6 +695,11 @@ namespace zs {
                                                          const size_type localNo,
                                                          wrapt<TT> = {}) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
+      if ((TT *)_vector == nullptr) {
+        /// @note TBD : insert type reflection info here
+        printf("tilevector [%s] operator()[tile] reinterpret_cast failed!\n", _nameTag.asChars());
+        return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+      }
       if (chn >= _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)_numChannels);
@@ -711,6 +720,11 @@ namespace zs {
     constexpr TT operator()(const channel_counter_type chn, const size_type tileNo,
                             const size_type localNo, wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
+      if ((const TT *)_vector == nullptr) {
+        /// @note TBD : insert type reflection info here
+        printf("tilevector [%s] operator()[tile] reinterpret_cast failed!\n", _nameTag.asChars());
+        return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+      }
       if (chn >= _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)_numChannels);
@@ -760,27 +774,42 @@ namespace zs {
                         wrapt<TT> = {}) const noexcept {
       using RetT = vec<TT, Ns...>;
       RetT ret{};
-      auto ptr = (const TT *)_vector
-                 + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       /// @brief check reinterpret_cast result validity (bit_cast should be more robust)
       if ((const TT *)_vector == nullptr) {
         /// @note TBD : insert type reflection info here
         printf("tilevector [%s] packing reinterpret_cast failed!\n", _nameTag.asChars());
+        return RetT::constant(*(const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
       /// @brief check channel access overflow
       if (chn + RetT::extent > _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)(chn + RetT::extent), (int)_numChannels);
-        return RetT::constant(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
-      }
-      /// @brief check vector size overflow
-      if (i >= _vectorSize) {
-        printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
-               _nameTag.asChars(), (long long)i, (long long)_vectorSize);
-        return RetT::constant(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+        return RetT::constant(*(const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
+      const TT *ptr = nullptr;
+      if constexpr (WithinTile) {
+        ptr = (const TT *)_vector + (chn * lane_width + i);
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+        if (i >= lane_width) {
+          printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)lane_width);
+          return RetT::constant(*(const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+        }
+#endif
+      } else {
+        ptr = (const TT *)_vector
+              + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+        /// @brief check vector size overflow
+        if (i >= _vectorSize) {
+          printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
+          return RetT::constant(*(const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
+        }
+#endif
+      }
       for (channel_counter_type d = 0; d != RetT::extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
       return ret;
     }
@@ -806,10 +835,42 @@ namespace zs {
                             (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_seq<Is...>, wrapt<TT>) const noexcept {
-      size_type a{}, b{};
-      a = i / lane_width * _numChannels;
-      b = i % lane_width;
-      return zs::tie(*((TT *)_vector + (a + (chnOffset + Is)) * lane_width + b)...);
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if ((TT *)_vector == nullptr) {
+        /// @note TBD : insert type reflection info here
+        printf("tilevector [%s] tieing reinterpret_cast failed!\n", _nameTag.asChars());
+        return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+      }
+      if (chn + d > _numChannels) {
+        printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
+               (int)chn, (int)(chn + d), (int)_numChannels);
+        return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+      }
+      if constexpr (WithinTile) {
+        if (i >= lane_width) {
+          printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)lane_width);
+          return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+        }
+      } else {
+        if (i >= _vectorSize) {
+          printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n",
+                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
+          return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+        }
+      }
+#endif
+      if constexpr (WithinTile)
+        return zs::tie(*((TT *)_vector
+                         + ((size_type)chnOffset + (size_type)Is) * (size_type)lane_width + i)...);
+      else {
+        size_type a{}, b{};
+        a = i / lane_width * _numChannels;
+        b = i % lane_width;
+        return zs::tie(*((TT *)_vector
+                         + (a + ((size_type)chnOffset + (size_type)Is)) * (size_type)lane_width
+                         + b)...);
+      }
     }
 
     template <auto... Ns, typename TT = value_type,
@@ -817,25 +878,7 @@ namespace zs {
                             (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
     constexpr auto tuple(value_seq<Ns...>, const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
-      constexpr channel_counter_type d = (Ns * ...);
-#if ZS_ENABLE_OFB_ACCESS_CHECK
-      if ((TT *)_vector == nullptr) {
-        /// @note TBD : insert type reflection info here
-        printf("tilevector [%s] tieing reinterpret_cast failed!\n", _nameTag.asChars());
-      }
-      if (chn + d > _numChannels) {
-        printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
-               (int)chn, (int)(chn + d), (int)_numChannels);
-        return tuple_impl(_numChannels, i, std::make_index_sequence<d>{}, wrapt<TT>{});
-      }
-      if (i >= _vectorSize) {
-        printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n",
-               _nameTag.asChars(), (long long)i, (long long)_vectorSize);
-        return tuple_impl(chn, limits<size_type>::max(), std::make_index_sequence<d>{},
-                          wrapt<TT>{});
-      }
-#endif
-      return tuple_impl(chn, i, std::make_index_sequence<d>{}, wrapt<TT>{});
+      return tuple_impl(chn, i, std::make_index_sequence<(Ns * ...)>{}, wrapt<TT>{});
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,

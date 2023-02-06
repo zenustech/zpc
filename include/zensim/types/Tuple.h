@@ -44,6 +44,7 @@ template <std::size_t I, typename T> struct tuple_value {
   T value;
 };
 #else
+#  if !defined(ZS_COMPILER_MSVC)
   template <std::size_t I, typename T, typename = void> struct tuple_value : T {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
@@ -69,6 +70,35 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr T &&get(wrapt<T>) &&noexcept { return std::move(*this); }
     constexpr const T &get(wrapt<T>) const &noexcept { return *this; }
   };
+#  else
+  template <std::size_t I, typename T, typename = void> struct tuple_value {
+    constexpr tuple_value() = default;
+    ~tuple_value() = default;
+    template <typename V, enable_if_t<std::is_constructible_v<T, V>> = 0>
+    constexpr tuple_value(V &&v) noexcept : base(FWD(v)) {}
+    constexpr tuple_value(tuple_value &&) = default;
+    constexpr tuple_value(const tuple_value &) = default;
+    constexpr tuple_value &operator=(tuple_value &&) = default;
+    constexpr tuple_value &operator=(const tuple_value &) = default;
+
+    template <typename V, enable_if_t<std::is_assignable_v<T, V>> = 0>
+    constexpr tuple_value &operator=(V &&o) {
+      base = (FWD(o));
+      return *this;
+    }
+
+    /// by index
+    constexpr T &get(index_t<I>) &noexcept { return base; }
+    constexpr T &&get(index_t<I>) &&noexcept { return std::move(base); }
+    constexpr const T &get(index_t<I>) const &noexcept { return base; }
+    /// by type
+    constexpr T &get(wrapt<T>) &noexcept { return base; }
+    constexpr T &&get(wrapt<T>) &&noexcept { return std::move(base); }
+    constexpr const T &get(wrapt<T>) const &noexcept { return base; }
+
+    T base;
+  };
+#  endif
   template <std::size_t I, typename T> struct tuple_value<
       I, T,
       std::enable_if_t<(
@@ -145,15 +175,21 @@ template <std::size_t I, typename T> struct tuple_value {
     constexpr tuple_base &operator=(tuple_base &&) = default;
     constexpr tuple_base &operator=(const tuple_base &) = default;
 
-    template <typename... Vs,
-              enable_if_all<sizeof...(Vs) == tuple_size, (std::is_constructible_v<Ts, Vs> && ...),
-                            !(is_same_v<Ts, Vs> && ...)> = 0>
+    template <typename... Vs, enable_if_all<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple_base(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &o)
         : tuple_value<Is, Ts>(o.get(index_t<Is>{}))... {}
-    template <typename... Vs,
-              enable_if_all<(is_assignable_v<Ts, Vs> && ...), !(is_same_v<Ts, Vs> && ...)> = 0>
+    template <typename... Vs, enable_if_all<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
+    constexpr tuple_base(tuple_base<index_seq<Is...>, type_seq<Vs...>> &&o)
+        : tuple_value<Is, Ts>(o.get(index_t<Is>{}))... {}
+    template <typename... Vs, enable_if_all<(is_assignable_v<Ts, Vs> && ...)> = 0>
     constexpr tuple_base &operator=(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &
                                         o) noexcept((std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
+      ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);
+      return *this;
+    }
+    template <typename... Vs, enable_if_all<(is_assignable_v<Ts, Vs> && ...)> = 0>
+    constexpr tuple_base &operator=(tuple_base<index_seq<Is...>, type_seq<Vs...>> &&o) noexcept(
+        (std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
       ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);
       return *this;
     }
@@ -252,14 +288,16 @@ template <std::size_t I, typename T> struct tuple_value {
 
     template <typename... Vs, enable_if_t<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple(const tuple<Vs...> &o) : base_t(o) {}
-    template <typename Tup> constexpr std::enable_if_t<
-        !is_same_v<
-            tuple,
-            remove_cvref_t<
-                Tup>> && is_tuple_v<remove_cvref_t<Tup>> && is_assignable_v<type_seq<Ts...>, typename remove_cvref_t<Tup>::tuple_types>,
-        tuple &>
-    operator=(Tup &&o) {
-      base_t::operator=(FWD(o));
+    template <typename... Vs, enable_if_t<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
+    constexpr tuple(tuple<Vs...> &&o) : base_t(std::move(o)) {}
+    template <typename... Vs, enable_if_t<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>> = 0>
+    constexpr tuple &operator=(const tuple<Vs...> &o) {
+      base_t::operator=(o);
+      return *this;
+    }
+    template <typename... Vs, enable_if_t<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>> = 0>
+    constexpr tuple &operator=(tuple<Vs...> &&o) {
+      base_t::operator=(std::move(o));
       return *this;
     }
 

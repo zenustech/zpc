@@ -333,11 +333,7 @@ namespace zs {
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
 
       u32 ec = 0;
-      if constexpr (is_std_tuple_v<RefT>) {
-        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
-      } else if constexpr (is_tuple_v<RefT>) {
-        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f, iter);
-      } else if constexpr (is_zip_iterator_v<IterT>) {
+      if constexpr (is_zip_iterator_v<IterT>) {
         ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
                               std::begin(FWD(range)));
       } else {  // wrap the non-zip range in a zip range

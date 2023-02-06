@@ -1,4 +1,6 @@
 #pragma once
+#include <type_traits>
+
 #include "Vector.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/resource/Resource.h"
@@ -605,105 +607,122 @@ namespace zs {
     constexpr size_type numTiles() const noexcept {
       return (_vectorSize + lane_width - 1) / lane_width;
     }
-    template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr reference operator()(const channel_counter_type chn, const size_type i) noexcept {
+    template <bool V = is_const_structure, typename TT = value_type,
+              enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
+                                                         const size_type i,
+                                                         wrapt<TT> = {}) noexcept {
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
           printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                  (int)chn, (int)_numChannels);
-          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
         if (i >= lane_width) {
           printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)lane_width);
-          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
 #endif
 
-        return *(_vector + (chn * lane_width + i));
+        return *((TT *)_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
           printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                  (int)chn, (int)_numChannels);
-          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
         if (i >= _vectorSize) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)_vectorSize);
-          return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
 #endif
-        return *(_vector + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
+        return *((TT *)_vector
+                 + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
       }
     }
-    constexpr const_reference operator()(const channel_counter_type chn,
-                                         const size_type i) const noexcept {
+    template <typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr TT operator()(const channel_counter_type chn, const size_type i,
+                            wrapt<TT> = {}) const noexcept {
       if constexpr (WithinTile) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
           printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                  (int)chn, (int)_numChannels);
-          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
         if (i >= lane_width) {
           printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)lane_width);
-          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
 #endif
-        return *(_vector + (chn * lane_width + i));
+        return *((const TT *)_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         if (chn >= _numChannels) {
           printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                  (int)chn, (int)_numChannels);
-          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
         if (i >= _vectorSize) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)_vectorSize);
-          return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+          return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
 #endif
-        return *(_vector + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
+        return *((const TT *)_vector
+                 + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
       }
     }
 
-    template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
-    constexpr reference operator()(const channel_counter_type chn, const size_type tileNo,
-                                   const size_type localNo) noexcept {
+    template <typename TT = value_type, bool V = is_const_structure, bool InTile = WithinTile,
+              enable_if_all<!V, !InTile, sizeof(TT) == sizeof(value_type),
+                            is_same_v<TT, remove_cvref_t<TT>>,
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
+                                                         const size_type tileNo,
+                                                         const size_type localNo,
+                                                         wrapt<TT> = {}) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn >= _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)_numChannels);
-        return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+        return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
       if (localNo >= lane_width) {
         printf("tilevector [%s] ofb! local accessing ele [%lld] out of [0, %lld)\n",
                _nameTag.asChars(), (long long)tileNo, (long long)lane_width);
-        return *((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+        return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
-      return *(_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
+      return *((TT *)_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
     }
-    template <bool InTile = WithinTile, enable_if_all<!InTile> = 0>
-    constexpr const_reference operator()(const channel_counter_type chn, const size_type tileNo,
-                                         const size_type localNo) const noexcept {
+    template <
+        typename TT = value_type, bool InTile = WithinTile,
+        enable_if_all<!InTile, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                      (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr TT operator()(const channel_counter_type chn, const size_type tileNo,
+                            const size_type localNo, wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (chn >= _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)_numChannels);
-        return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+        return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
       if (localNo >= lane_width) {
         printf("tilevector [%s] ofb! local accessing ele [%lld] out of [0, %lld)\n",
                _nameTag.asChars(), (long long)tileNo, (long long)lane_width);
-        return *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+        return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
-      return *(_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
+      return *((const TT *)_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
     }
 
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
@@ -951,9 +970,13 @@ namespace zs {
     ///
     /// have to make sure that char type (might be channel_counter_type) not fit into this overload
     ///
-    template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr reference operator()(const SmallString &propName, const channel_counter_type chn,
-                                   const size_type i) noexcept {
+    template <bool V = is_const_structure, typename TT = value_type,
+              enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
+                                                         const channel_counter_type chn,
+                                                         const size_type i,
+                                                         wrapt<TT> = {}) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
@@ -961,14 +984,17 @@ namespace zs {
             "chns, %lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
             (long long int)_vectorSize);
-        return static_cast<base_t &>(*this)(_numChannels, i);
+        return static_cast<base_t &>(*this)(_numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
+      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i,
+                                          wrapt<TT>{});
     }
-    constexpr const_reference operator()(const SmallString &propName,
-                                         const channel_counter_type chn,
-                                         const size_type i) const noexcept {
+    template <typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr TT operator()(const SmallString &propName, const channel_counter_type chn,
+                            const size_type i, wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
@@ -976,13 +1002,18 @@ namespace zs {
             "props (%d chns, %lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
             (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this)(_numChannels, i);
+        return static_cast<const base_t &>(*this)(_numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i);
+      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i,
+                                                wrapt<TT>{});
     }
-    template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr reference operator()(const SmallString &propName, const size_type i) noexcept {
+    template <bool V = is_const_structure, typename TT = value_type,
+              enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
+                                                         const size_type i,
+                                                         wrapt<TT> = {}) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
@@ -990,13 +1021,16 @@ namespace zs {
             "chns, %lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
             (long long int)_vectorSize);
-        return static_cast<base_t &>(*this)(_numChannels, i);
+        return static_cast<base_t &>(*this)(_numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
+      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i, wrapt<TT>{});
     }
-    constexpr const_reference operator()(const SmallString &propName,
-                                         const size_type i) const noexcept {
+    template <typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr TT operator()(const SmallString &propName, const size_type i,
+                            wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
@@ -1004,10 +1038,11 @@ namespace zs {
             "props (%d chns, %lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
             (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this)(_numChannels, i);
+        return static_cast<const base_t &>(*this)(_numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i);
+      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i,
+                                                wrapt<TT>{});
     }
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {

@@ -733,32 +733,44 @@ namespace zs {
           _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
     }
 
-    template <auto... Ns>
-    constexpr auto pack(channel_counter_type chn, const size_type i) const noexcept {
-      using RetT = vec<value_type, Ns...>;
+    // use dim_c<Ns...> for the first parameter
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type),
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr auto pack(value_seq<Ns...>, channel_counter_type chn, const size_type i,
+                        wrapt<TT> = {}) const noexcept {
+      using RetT = vec<TT, Ns...>;
       RetT ret{};
-      auto ptr = _vector + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
+      auto ptr = (const TT *)_vector
+                 + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
 #if ZS_ENABLE_OFB_ACCESS_CHECK
+      /// @brief check reinterpret_cast result validity (bit_cast should be more robust)
+      if ((const TT *)_vector == nullptr) {
+        /// @note TBD : insert type reflection info here
+        printf("tilevector [%s] reinterpret_cast failed!\n", _nameTag.asChars());
+      }
+      /// @brief check channel access overflow
       if (chn + RetT::extent > _numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)(chn + RetT::extent), (int)_numChannels);
-        return RetT::constant(
-            *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+        return RetT::constant(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
+      /// @brief check vector size overflow
       if (i >= _vectorSize) {
         printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
                _nameTag.asChars(), (long long)i, (long long)_vectorSize);
-        return RetT::constant(
-            *(value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1));
+        return RetT::constant(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
       for (channel_counter_type d = 0; d != RetT::extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
       return ret;
     }
-    // use dim_c<Ns...> for the first parameter
-    template <auto... Ns> constexpr auto pack(value_seq<Ns...>, channel_counter_type chn,
-                                              const size_type i) const noexcept {
-      return pack<Ns...>(chn, i);
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type),
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr auto pack(channel_counter_type chn, const size_type i,
+                        wrapt<TT> = {}) const noexcept {
+      return pack(dim_c<Ns...>, chn, i, wrapt<TT>{});
     }
 
     template <channel_counter_type N, typename VT = value_type>
@@ -1073,8 +1085,11 @@ namespace zs {
           _N};
     }
 
-    template <auto... Ns>
-    constexpr auto pack(const SmallString &propName, const size_type i) const noexcept {
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type),
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr auto pack(value_seq<Ns...>, const SmallString &propName, const size_type i,
+                        wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
@@ -1083,19 +1098,30 @@ namespace zs {
             "eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
             (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this).template pack<Ns...>(_numChannels, i);
+        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _numChannels, i,
+        // wrapt<TT>{});
+        using RetT = decltype(static_cast<const base_t &>(*this).pack(
+            dim_c<Ns...>, _tagOffsets[propertyIndex(propName)], i, wrapt<TT>{}));
+        return RetT::zeros();
       }
 #endif
-      return static_cast<const base_t &>(*this).pack(dim_c<Ns...>,
-                                                     _tagOffsets[propertyIndex(propName)], i);
+      return static_cast<const base_t &>(*this).pack(
+          dim_c<Ns...>, _tagOffsets[propertyIndex(propName)], i, wrapt<TT>{});
     }
-    template <auto... Ns> constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
-                                              const size_type i) const noexcept {
-      return pack<Ns...>(propName, i);
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type),
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr auto pack(const SmallString &propName, const size_type i,
+                        wrapt<TT> = {}) const noexcept {
+      return pack(dim_c<Ns...>, propName, i, wrapt<TT>{});
     }
-    template <auto... Ns> constexpr auto pack(const SmallString &propName,
-                                              const channel_counter_type chn,
-                                              const size_type i) const noexcept {
+
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type),
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
+                        const channel_counter_type chn, const size_type i,
+                        wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
@@ -1104,17 +1130,24 @@ namespace zs {
             "eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
             (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this).template pack<Ns...>(_numChannels, i);
+        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _numChannels, i,
+        // wrapt<TT>{});
+        using RetT = decltype(static_cast<const base_t &>(*this).pack(
+            dim_c<Ns...>, _tagOffsets[propertyIndex(propName)] + chn, i, wrapt<TT>{}));
+        return RetT::zeros();
       }
 #endif
-      return static_cast<const base_t &>(*this).pack(dim_c<Ns...>,
-                                                     _tagOffsets[propertyIndex(propName)] + chn, i);
+      return static_cast<const base_t &>(*this).pack(
+          dim_c<Ns...>, _tagOffsets[propertyIndex(propName)] + chn, i, wrapt<TT>{});
     }
-    template <auto... Ns> constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
-                                              const channel_counter_type chn,
-                                              const size_type i) const noexcept {
-      return pack<Ns...>(propName, chn, i);
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type),
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+    constexpr auto pack(const SmallString &propName, const channel_counter_type chn,
+                        const size_type i, wrapt<TT> = {}) const noexcept {
+      return pack(dim_c<Ns...>, propName, chn, i, wrapt<TT>{});
     }
+
     template <channel_counter_type N, typename VT = value_type>
     constexpr auto array(const SmallString &propName, const size_type i) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK

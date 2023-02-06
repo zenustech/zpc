@@ -835,28 +835,29 @@ namespace zs {
                             (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_seq<Is...>, wrapt<TT>) const noexcept {
+      constexpr channel_counter_type d = sizeof...(Is);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if ((TT *)_vector == nullptr) {
         /// @note TBD : insert type reflection info here
         printf("tilevector [%s] tieing reinterpret_cast failed!\n", _nameTag.asChars());
-        return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+        return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
       }
-      if (chn + d > _numChannels) {
+      if (chnOffset + d > _numChannels) {
         printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
-               (int)chn, (int)(chn + d), (int)_numChannels);
-        return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+               (int)chnOffset, (int)(chnOffset + d), (int)_numChannels);
+        return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
       }
       if constexpr (WithinTile) {
         if (i >= lane_width) {
           printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)lane_width);
-          return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+          return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
         }
       } else {
         if (i >= _vectorSize) {
           printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)_vectorSize);
-          return zs::tie(*(const TT *)(Is, limits<std::uintptr_t>::max() - sizeof(TT) + 1)...);
+          return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
         }
       }
 #endif

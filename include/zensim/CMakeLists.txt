@@ -179,7 +179,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
   # tpp
   simulation/sparsity/SparsityCompute.tpp
-  container/BvhImpl.tpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
   io/IO.h

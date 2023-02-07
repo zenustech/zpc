@@ -208,7 +208,7 @@ namespace zs {
     using table_view_type = RM_CVREF_T(proxy<space>(
         std::declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
     using grid_storage_type = typename container_type::grid_storage_type;
-    using grid_view_type = RM_CVREF_T(proxy<space>(
+    using grid_view_type = RM_CVREF_T(view<space>(
         {},
         std::declval<
             conditional_t<is_const_structure, const grid_storage_type &, grid_storage_type &>>()));
@@ -222,7 +222,7 @@ namespace zs {
     ~SparseGridView() noexcept = default;
     constexpr SparseGridView(SparseGridT &sg)
         : _table{proxy<space>(sg._table)},
-          _grid{proxy<space>({}, sg._grid)},
+          _grid{view<space>({}, sg._grid)},
           _transform{sg._transform},
           _background{sg._background} {}
 

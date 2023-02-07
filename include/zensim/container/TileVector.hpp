@@ -573,7 +573,8 @@ namespace zs {
     policy(range(size()), TileVectorReset{proxy<space>(*this), val});
   }
 
-  template <execspace_e Space, typename TileVectorT, bool WithinTile, typename = void>
+  template <execspace_e Space, typename TileVectorT, bool WithinTile, bool Base = false,
+            typename = void>
   struct TileVectorUnnamedView {
     static constexpr bool is_const_structure = std::is_const_v<TileVectorT>;
     using tile_vector_type = std::remove_const_t<TileVectorT>;
@@ -586,26 +587,25 @@ namespace zs {
     using size_type = typename tile_vector_type::size_type;
     using difference_type = typename tile_vector_type::difference_type;
     using channel_counter_type = typename tile_vector_type::channel_counter_type;
-    using whole_view_type = TileVectorUnnamedView<Space, TileVectorT, false>;
-    using tile_view_type = TileVectorUnnamedView<Space, TileVectorT, true>;
+    using whole_view_type = TileVectorUnnamedView<Space, TileVectorT, false, Base>;
+    using tile_view_type = TileVectorUnnamedView<Space, TileVectorT, true, Base>;
     static constexpr auto lane_width = tile_vector_type::lane_width;
 
     TileVectorUnnamedView() noexcept = default;
     explicit constexpr TileVectorUnnamedView(TileVectorT &tilevector)
-        : _vector{tilevector.data()},
-          _vectorSize{tilevector.size()},
-          _numChannels{tilevector.numChannels()} {}
+        : _vector{tilevector.data()}, _dims{tilevector.size(), tilevector.numChannels()} {}
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     explicit constexpr TileVectorUnnamedView(pointer base, const size_type s,
                                              const channel_counter_type nchns)
-        : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
+        : _vector{base}, _dims{s, nchns} {}
     template <bool V = is_const_structure, enable_if_t<V> = 0>
     explicit constexpr TileVectorUnnamedView(const_pointer base, const size_type s,
                                              const channel_counter_type nchns)
-        : _vector{base}, _vectorSize{s}, _numChannels{nchns} {}
+        : _vector{base}, _dims{s, nchns} {}
 
+    template <bool Pred = (!Base && !WithinTile), enable_if_t<Pred> = 0>
     constexpr size_type numTiles() const noexcept {
-      return (_vectorSize + lane_width - 1) / lane_width;
+      return (_dims.size() + lane_width - 1) / lane_width;
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
@@ -619,9 +619,9 @@ namespace zs {
         printf("tilevector [%s] operator() reinterpret_cast failed!\n", _nameTag.asChars());
         return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
-      if (chn >= _numChannels) {
+      if (chn >= _dims._numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-               (int)chn, (int)_numChannels);
+               (int)chn, (int)_dims._numChannels);
         return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
@@ -637,14 +637,14 @@ namespace zs {
         return *((TT *)_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (i >= _vectorSize) {
+        if (i >= _dims.size()) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
-                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
+                 _nameTag.asChars(), (long long)i, (long long)_dims.size());
           return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
 #endif
         return *((TT *)_vector
-                 + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
+                 + ((i / lane_width * _dims._numChannels + chn) * lane_width + i % lane_width));
       }
     }
     template <typename TT = value_type,
@@ -658,9 +658,9 @@ namespace zs {
         printf("tilevector [%s] operator() reinterpret_cast failed!\n", _nameTag.asChars());
         return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
-      if (chn >= _numChannels) {
+      if (chn >= _dims._numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-               (int)chn, (int)_numChannels);
+               (int)chn, (int)_dims._numChannels);
         return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
@@ -675,14 +675,14 @@ namespace zs {
         return *((const TT *)_vector + (chn * lane_width + i));
       } else {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (i >= _vectorSize) {
+        if (i >= _dims.size()) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
-                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
+                 _nameTag.asChars(), (long long)i, (long long)_dims.size());
           return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
 #endif
         return *((const TT *)_vector
-                 + ((i / lane_width * _numChannels + chn) * lane_width + i % lane_width));
+                 + ((i / lane_width * _dims._numChannels + chn) * lane_width + i % lane_width));
       }
     }
 
@@ -700,9 +700,9 @@ namespace zs {
         printf("tilevector [%s] operator()[tile] reinterpret_cast failed!\n", _nameTag.asChars());
         return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
-      if (chn >= _numChannels) {
+      if (chn >= _dims._numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-               (int)chn, (int)_numChannels);
+               (int)chn, (int)_dims._numChannels);
         return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
       if (localNo >= lane_width) {
@@ -711,7 +711,7 @@ namespace zs {
         return *((TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
-      return *((TT *)_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
+      return *((TT *)_vector + ((tileNo * _dims._numChannels + chn) * lane_width + localNo));
     }
     template <
         typename TT = value_type, bool InTile = WithinTile,
@@ -725,9 +725,9 @@ namespace zs {
         printf("tilevector [%s] operator()[tile] reinterpret_cast failed!\n", _nameTag.asChars());
         return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
-      if (chn >= _numChannels) {
+      if (chn >= _dims._numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d] out of [0, %d)\n", _nameTag.asChars(),
-               (int)chn, (int)_numChannels);
+               (int)chn, (int)_dims._numChannels);
         return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
       if (localNo >= lane_width) {
@@ -736,7 +736,7 @@ namespace zs {
         return *((const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
-      return *((const TT *)_vector + ((tileNo * _numChannels + chn) * lane_width + localNo));
+      return *((const TT *)_vector + ((tileNo * _dims._numChannels + chn) * lane_width + localNo));
     }
 
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
@@ -745,12 +745,12 @@ namespace zs {
       if (long long nt = numTiles(); tileid >= nt) {
         printf("tilevector [%s] ofb! global accessing tile [%lld] out of [0, %lld)\n",
                _nameTag.asChars(), (long long)tileid, nt);
-        return TileVectorUnnamedView<Space, tile_vector_type, true>{(value_type *)0, lane_width,
-                                                                    _numChannels};
+        return TileVectorUnnamedView<Space, tile_vector_type, true, Base>{
+            (value_type *)0, lane_width, _dims._numChannels};
       }
 #endif
-      return TileVectorUnnamedView<Space, tile_vector_type, true>{
-          _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
+      return TileVectorUnnamedView<Space, tile_vector_type, true, Base>{
+          _vector + tileid * lane_width * _dims._numChannels, lane_width, _dims._numChannels};
     }
     template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
     constexpr auto tile(const size_type tileid) const noexcept {
@@ -758,12 +758,12 @@ namespace zs {
       if (long long nt = numTiles(); tileid >= nt) {
         printf("tilevector [%s] ofb! global accessing tile [%lld] out of [0, %lld)\n",
                _nameTag.asChars(), (long long)tileid, nt);
-        return TileVectorUnnamedView<Space, const_tile_vector_type, true>{(const value_type *)0,
-                                                                          lane_width, _numChannels};
+        return TileVectorUnnamedView<Space, const_tile_vector_type, true, Base>{
+            (const value_type *)0, lane_width, _dims._numChannels};
       }
 #endif
-      return TileVectorUnnamedView<Space, const_tile_vector_type, true>{
-          _vector + tileid * lane_width * _numChannels, lane_width, _numChannels};
+      return TileVectorUnnamedView<Space, const_tile_vector_type, true, Base>{
+          _vector + tileid * lane_width * _dims._numChannels, lane_width, _dims._numChannels};
     }
 
     // use dim_c<Ns...> for the first parameter
@@ -782,9 +782,9 @@ namespace zs {
         return RetT::constant(*(const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
       /// @brief check channel access overflow
-      if (chn + RetT::extent > _numChannels) {
+      if (chn + RetT::extent > _dims._numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
-               (int)chn, (int)(chn + RetT::extent), (int)_numChannels);
+               (int)chn, (int)(chn + RetT::extent), (int)_dims._numChannels);
         return RetT::constant(*(const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
       }
 #endif
@@ -800,12 +800,12 @@ namespace zs {
 #endif
       } else {
         ptr = (const TT *)_vector
-              + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
+              + ((i / lane_width * _dims._numChannels + chn) * lane_width + (i % lane_width));
 #if ZS_ENABLE_OFB_ACCESS_CHECK
         /// @brief check vector size overflow
-        if (i >= _vectorSize) {
+        if (i >= _dims.size()) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
-                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
+                 _nameTag.asChars(), (long long)i, (long long)_dims.size());
           return RetT::constant(*(const TT *)(limits<std::uintptr_t>::max() - sizeof(TT) + 1));
         }
 #endif
@@ -825,7 +825,8 @@ namespace zs {
     constexpr auto array(channel_counter_type chn, const size_type i) const noexcept {
       using RetT = std::array<VT, (std::size_t)N>;
       RetT ret{};
-      auto ptr = _vector + ((i / lane_width * _numChannels + chn) * lane_width + (i % lane_width));
+      auto ptr
+          = _vector + ((i / lane_width * _dims._numChannels + chn) * lane_width + (i % lane_width));
       for (channel_counter_type d = 0; d != N; ++d, ptr += lane_width) ret[d] = *ptr;
       return ret;
     }
@@ -842,9 +843,9 @@ namespace zs {
         printf("tilevector [%s] tieing reinterpret_cast failed!\n", _nameTag.asChars());
         return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
       }
-      if (chnOffset + d > _numChannels) {
+      if (chnOffset + d > _dims._numChannels) {
         printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
-               (int)chnOffset, (int)(chnOffset + d), (int)_numChannels);
+               (int)chnOffset, (int)(chnOffset + d), (int)_dims._numChannels);
         return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
       }
       if constexpr (WithinTile) {
@@ -854,9 +855,9 @@ namespace zs {
           return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
         }
       } else {
-        if (i >= _vectorSize) {
+        if (i >= _dims.size()) {
           printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n",
-                 _nameTag.asChars(), (long long)i, (long long)_vectorSize);
+                 _nameTag.asChars(), (long long)i, (long long)_dims.size());
           return zs::tie(*(TT *)(limits<std::uintptr_t>::max() - sizeof(TT) * (Is + 1) + 1)...);
         }
       }
@@ -866,7 +867,7 @@ namespace zs {
                          + ((size_type)chnOffset + (size_type)Is) * (size_type)lane_width + i)...);
       else {
         size_type a{}, b{};
-        a = i / lane_width * _numChannels;
+        a = i / lane_width * _dims._numChannels;
         b = i % lane_width;
         return zs::tie(*((TT *)_vector
                          + (a + ((size_type)chnOffset + (size_type)Is)) * (size_type)lane_width
@@ -889,17 +890,39 @@ namespace zs {
       return tuple(dim_c<d>, chn, i, wrapt<TT>{});
     }
 
-    constexpr size_type size() const noexcept {
-      if constexpr (WithinTile)
-        return lane_width;
-      else
-        return _vectorSize;
-    }
-    constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
+    constexpr size_type size() const noexcept { return _dims.size(); }
+    constexpr channel_counter_type numChannels() const noexcept { return _dims._numChannels; }
 
+  protected:
+    /// @note explicit specialization within nested class not allowed, thus add 'Dummy'
+    template <bool WithSize = false, typename Dummy = void> struct Dims {
+      constexpr Dims() noexcept = default;
+      ~Dims() noexcept = default;
+      constexpr Dims(size_type s, channel_counter_type c) noexcept : _numChannels{c} {}
+      constexpr size_type size() const noexcept {
+        if constexpr (WithinTile)
+          return lane_width;
+        else
+          return limits<size_type>::max();
+      }
+      channel_counter_type _numChannels{0};
+    };
+    template <typename Dummy> struct Dims<true, Dummy> {
+      constexpr Dims() noexcept = default;
+      ~Dims() noexcept = default;
+      constexpr Dims(size_type s, channel_counter_type c) noexcept
+          : _vectorSize{s}, _numChannels{c} {}
+      constexpr size_type size() const noexcept { return _vectorSize; }
+      size_type _vectorSize{0};
+      channel_counter_type _numChannels{0};
+    };
+
+  public:
     conditional_t<is_const_structure, const_pointer, pointer> _vector{nullptr};
-    size_type _vectorSize{0};
-    channel_counter_type _numChannels{0};
+
+    Dims<(!Base && !WithinTile), void> _dims;
+    // size_type _vectorSize{0};
+    // channel_counter_type _numChannels{0};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     SmallString _nameTag{};
 #endif
@@ -907,17 +930,20 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false>{vec};
+    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{
+        vec};
   }
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false>{vec};
+    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{vec};
   }
 
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec,
                                  const SmallString &tagName) {
-    auto ret = TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false>{vec};
+    auto ret
+        = TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{
+            vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;
 #endif
@@ -926,16 +952,53 @@ namespace zs {
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec,
                                  const SmallString &tagName) {
-    auto ret = TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false>{vec};
+    auto ret
+        = TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;
 #endif
     return ret;
   }
 
-  template <execspace_e Space, typename TileVectorT, bool WithinTile, typename = void>
-  struct TileVectorView : TileVectorUnnamedView<Space, TileVectorT, WithinTile> {
-    using base_t = TileVectorUnnamedView<Space, TileVectorT, WithinTile>;
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  constexpr decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
+    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, Base>{
+        vec};
+  }
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  constexpr decltype(auto) view(TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
+    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, Base>{vec};
+  }
+
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  constexpr decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base>,
+                                const SmallString &tagName) {
+    auto ret
+        = TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, Base>{
+            vec};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret._nameTag = tagName;
+#endif
+    return ret;
+  }
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  constexpr decltype(auto) view(TileVector<T, Length, Allocator> &vec, wrapv<Base>,
+                                const SmallString &tagName) {
+    auto ret = TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, Base>{vec};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret._nameTag = tagName;
+#endif
+    return ret;
+  }
+
+  template <execspace_e Space, typename TileVectorT, bool WithinTile, bool Base = false,
+            typename = void>
+  struct TileVectorView : TileVectorUnnamedView<Space, TileVectorT, WithinTile, Base> {
+    using base_t = TileVectorUnnamedView<Space, TileVectorT, WithinTile, Base>;
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     using base_t::_nameTag;
 #endif
@@ -951,10 +1014,9 @@ namespace zs {
     using size_type = typename base_t::size_type;
     using difference_type = typename base_t::difference_type;
     using channel_counter_type = typename base_t::channel_counter_type;
-    using base_t::_numChannels;
-    using base_t::_vectorSize;
-    using whole_view_type = TileVectorView<Space, TileVectorT, false>;
-    using tile_view_type = TileVectorView<Space, TileVectorT, true>;
+    using base_t::_dims;
+    using whole_view_type = TileVectorView<Space, TileVectorT, false, Base>;
+    using tile_view_type = TileVectorView<Space, TileVectorT, true, Base>;
     static constexpr auto lane_width = base_t::lane_width;
 
     TileVectorView() noexcept = default;
@@ -1026,9 +1088,9 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (operator()) accessing prop [%s] which is not among %d props (%d "
             "chns, %lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        return static_cast<base_t &>(*this)(_numChannels, i, wrapt<TT>{});
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        return static_cast<base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i,
@@ -1044,9 +1106,9 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (operator()) const accessing prop [%s] which is not among %d "
             "props (%d chns, %lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this)(_numChannels, i, wrapt<TT>{});
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        return static_cast<const base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i,
@@ -1063,9 +1125,9 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (operator()) accessing prop [%s] which is not among %d props (%d "
             "chns, %lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        return static_cast<base_t &>(*this)(_numChannels, i, wrapt<TT>{});
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        return static_cast<base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
       return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i, wrapt<TT>{});
@@ -1080,9 +1142,9 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (operator()) const accessing prop [%s] which is not among %d "
             "props (%d chns, %lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this)(_numChannels, i, wrapt<TT>{});
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        return static_cast<const base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
       return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i,
@@ -1091,15 +1153,15 @@ namespace zs {
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (tileid >= (_vectorSize + lane_width - 1) / lane_width) {
+      if (tileid >= (_dims.size() + lane_width - 1) / lane_width) {
         printf("tilevector [%s] ofb! global accessing tile %d out of %d blocks\n",
-               _nameTag.asChars(), (int)tileid, (int)(_vectorSize + lane_width - 1) / lane_width);
+               _nameTag.asChars(), (int)tileid, (int)(_dims.size() + lane_width - 1) / lane_width);
       }
 #endif
-      return TileVectorView<Space, TileVectorT, true>{
-          this->_vector + tileid * lane_width * this->_numChannels,
+      return TileVectorView<Space, tile_vector_type, true, Base>{
+          this->_vector + tileid * lane_width * _dims._numChannels,
           lane_width,
-          this->_numChannels,
+          _dims._numChannels,
           _tagNames,
           _tagOffsets,
           _tagSizes,
@@ -1108,15 +1170,15 @@ namespace zs {
     template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
     constexpr auto tile(const size_type tileid) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (tileid >= (_vectorSize + lane_width - 1) / lane_width) {
+      if (tileid >= (_dims.size() + lane_width - 1) / lane_width) {
         printf("tilevector [%s] ofb! const global accessing tile %d out of %d blocks\n",
-               _nameTag.asChars(), (int)tileid, (int)(_vectorSize + lane_width - 1) / lane_width);
+               _nameTag.asChars(), (int)tileid, (int)(_dims.size() + lane_width - 1) / lane_width);
       }
 #endif
-      return TileVectorView<Space, const_tile_vector_type, true>{
-          this->_vector + tileid * lane_width * this->_numChannels,
+      return TileVectorView<Space, const_tile_vector_type, true, Base>{
+          this->_vector + tileid * lane_width * _dims._numChannels,
           lane_width,
-          this->_numChannels,
+          _dims._numChannels,
           _tagNames,
           _tagOffsets,
           _tagSizes,
@@ -1133,9 +1195,9 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d chns, "
             "%lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _numChannels, i,
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _dims._numChannels, i,
         // wrapt<TT>{});
         using RetT = decltype(static_cast<const base_t &>(*this).pack(
             dim_c<Ns...>, _tagOffsets[propertyIndex(propName)], i, wrapt<TT>{}));
@@ -1164,9 +1226,9 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d chns, "
             "%lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _numChannels, i,
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _dims._numChannels, i,
         // wrapt<TT>{});
         using RetT = decltype(static_cast<const base_t &>(*this).pack(
             dim_c<Ns...>, _tagOffsets[propertyIndex(propName)] + chn, i, wrapt<TT>{}));
@@ -1191,9 +1253,9 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (array) accessing prop [%s] which is not among %d props (%d "
             "chns, %lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this).template array<N, VT>(_numChannels, i);
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        return static_cast<const base_t &>(*this).template array<N, VT>(_dims._numChannels, i);
       }
 #endif
       return static_cast<const base_t &>(*this).template array<N, VT>(
@@ -1211,9 +1273,10 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (tuple) const accessing prop [%s] which is not among %d props "
             "(%d chns, %lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this).tuple(dim_c<Ns...>, _numChannels, i, wrapt<TT>{});
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        return static_cast<const base_t &>(*this).tuple(dim_c<Ns...>, _dims._numChannels, i,
+                                                        wrapt<TT>{});
       }
 #endif
       return static_cast<const base_t &>(*this).tuple(
@@ -1238,9 +1301,10 @@ namespace zs {
         printf(
             "tilevector [%s] ofb! (tuple) const accessing prop [%s] which is not among %d props "
             "(%d chns, %lld eles) in total\n",
-            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_numChannels,
-            (long long int)_vectorSize);
-        return static_cast<const base_t &>(*this).tuple(dim_c<Ns...>, _numChannels, i, wrapt<TT>{});
+            _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
+            (long long int)_dims.size());
+        return static_cast<const base_t &>(*this).tuple(dim_c<Ns...>, _dims._numChannels, i,
+                                                        wrapt<TT>{});
       }
 #endif
       return static_cast<const base_t &>(*this).tuple(
@@ -1267,7 +1331,8 @@ namespace zs {
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
             fmt::format("tilevector attribute [\"{}\"] not exists", (std::string)tag));
-    return TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false>{tagNames, vec};
+    return TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{tagNames,
+                                                                                           vec};
   }
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   decltype(auto) proxy(const std::vector<SmallString> &tagNames,
@@ -1276,14 +1341,15 @@ namespace zs {
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
             fmt::format("tilevector attribute [\"{}\"] not exists\n", (std::string)tag));
-    return TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false>{tagNames, vec};
+    return TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{tagNames, vec};
   }
 
   /// tagged tilevector for debug
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                        const TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
-    auto ret = TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false>{{}, vec};
+    auto ret
+        = TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{{}, vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;
 #endif
@@ -1292,7 +1358,46 @@ namespace zs {
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
   decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                        TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
-    auto ret = TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false>{{}, vec};
+    auto ret = TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{{}, vec};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret._nameTag = tagName;
+#endif
+    return ret;
+  }
+
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  decltype(auto) view(const std::vector<SmallString> &tagNames,
+                      const TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
+    return TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false, Base>{{}, vec};
+  }
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  decltype(auto) view(const std::vector<SmallString> &tagNames,
+                      TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
+    return TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false, Base>{tagNames, vec};
+  }
+
+  /// tagged tilevector for debug
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  decltype(auto) view(const std::vector<SmallString> &tagNames,
+                      const TileVector<T, Length, Allocator> &vec, wrapv<Base>,
+                      const SmallString &tagName) {
+    auto ret = TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false, Base>{
+        tagNames, vec};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret._nameTag = tagName;
+#endif
+    return ret;
+  }
+  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
+            bool Base = true>
+  decltype(auto) view(const std::vector<SmallString> &tagNames,
+                      TileVector<T, Length, Allocator> &vec, wrapv<Base>,
+                      const SmallString &tagName) {
+    auto ret
+        = TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false, Base>{tagNames, vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;
 #endif

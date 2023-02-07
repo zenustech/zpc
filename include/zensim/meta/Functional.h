@@ -162,14 +162,14 @@ namespace zs {
 
   /// monad : construct (T -> M<T>), mbind
   /// functor: mcompose, map, transform
-  namespace view {
+  namespace vw {
     template <template <typename> class Functor, typename T, typename R>
     constexpr auto map(const Functor<T> &functor, tl::function_ref<R(T)> f) -> Functor<R> {
       Functor<R> res{functor};
       for (auto &e : res) e = f(e);
       return res;
     }
-  }  // namespace view
+  }  // namespace vw
 
   namespace action {}  // namespace action
 

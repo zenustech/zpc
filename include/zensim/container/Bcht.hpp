@@ -236,8 +236,7 @@ namespace zs {
       void reset(bool resetIndex = false) {
         keys.reset(0x3f);  // big enough positive integer
         status.reset(-1);  // byte-wise init
-        if (resetIndex)
-          indices.reset(-1);
+        if (resetIndex) indices.reset(-1);
       }
       friend void swap(Table &a, Table &b) { a.swap(b); }
 
@@ -487,11 +486,11 @@ namespace zs {
     static constexpr index_type failure_token_v = hash_table_type::failure_token_v;
 
     struct table_t {
-      #if 0
+#if 0
       conditional_t<is_const_structure, const storage_key_type *, storage_key_type *> keys{nullptr};
       conditional_t<is_const_structure, const index_type *, index_type *> indices{nullptr};
       conditional_t<is_const_structure, const int *, int *> status{nullptr};
-      #else
+#else
       conditional_t<is_const_structure,
                     VectorView<space, const Vector<storage_key_type, allocator_type>>,
                     VectorView<space, Vector<storage_key_type, allocator_type>>>
@@ -502,12 +501,13 @@ namespace zs {
       conditional_t<is_const_structure, VectorView<space, const Vector<int, allocator_type>>,
                     VectorView<space, Vector<int, allocator_type>>>
           status{};
-      #endif
+#endif
     };
 
     BCHTView() noexcept = default;
     explicit constexpr BCHTView(BCHT &table)
-        : _table{proxy<space>(table._table.keys), proxy<space>(table._table.indices), proxy<space>(table._table.status)},
+        : _table{proxy<space>(table._table.keys), proxy<space>(table._table.indices),
+                 proxy<space>(table._table.status)},
           _activeKeys{table._activeKeys.data()},
           _cnt{table._cnt.data()},
           _success{table._buildSuccess.data()},
@@ -601,7 +601,7 @@ namespace zs {
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto lane_id = tile.thread_rank();
-      auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
+      auto load_key = [&bucket_offset, &keys = _table.keys](index_type i) -> storage_key_type {
         volatile storage_key_type *key_dst
             = const_cast<volatile storage_key_type *>(&keys[bucket_offset + i]);
         if constexpr (compare_key && key_is_vec) {
@@ -705,7 +705,8 @@ namespace zs {
               if (equal_to{}(retrieved_val,
                              compare_key_sentinel_v)) {  // this slot not yet occupied
                 volatile storage_key_type *key_dst
-                    = const_cast<volatile storage_key_type *>(&_table.keys[bucket_offset + load]);                if constexpr (key_is_vec) {
+                    = const_cast<volatile storage_key_type *>(&_table.keys[bucket_offset + load]);
+                if constexpr (key_is_vec) {
                   for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
                        ++i)
                     key_dst->data()[i] = insertion_key.val(i);
@@ -820,7 +821,7 @@ namespace zs {
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto lane_id = tile.thread_rank();
-      auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
+      auto load_key = [&bucket_offset, &keys = _table.keys](index_type i) -> storage_key_type {
         volatile storage_key_type *key_dst
             = const_cast<volatile storage_key_type *>(&keys[bucket_offset + i]);
         if constexpr (compare_key && key_is_vec) {
@@ -898,8 +899,8 @@ namespace zs {
               storage_key_type retrieved_val = load_key(load);
               if (equal_to{}(retrieved_val,
                              compare_key_sentinel_v)) {  // this slot not yet occupied
-                volatile storage_key_type *key_dst
-                    = const_cast<volatile storage_key_type *>(&_table.keys[bucket_offset + (u32)load]);
+                volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
+                    &_table.keys[bucket_offset + (u32)load]);
                 if constexpr (key_is_vec) {
                   for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
                        ++i)
@@ -1355,7 +1356,7 @@ namespace zs {
       u32 cuckoo_counter = 0;
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
-      auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
+      auto load_key = [&bucket_offset, &keys = _table.keys](index_type i) -> storage_key_type {
         return keys[bucket_offset + i];
       };
 
@@ -1518,7 +1519,7 @@ namespace zs {
       u32 cuckoo_counter = 0;
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
-      auto load_key = [&bucket_offset, keys = _table.keys](index_type i) -> storage_key_type {
+      auto load_key = [&bucket_offset, &keys = _table.keys](index_type i) -> storage_key_type {
         volatile storage_key_type *key_dst
             = const_cast<volatile storage_key_type *>(&keys[bucket_offset + i]);
         if constexpr (compare_key && key_is_vec) {

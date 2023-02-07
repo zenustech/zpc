@@ -331,8 +331,7 @@ namespace zs {
 
   template <typename T,
             enable_if_all<is_same_v<T, remove_cvref_t<T>>, std::is_default_constructible_v<T>,
-                          std::is_trivially_copyable_v<T>>
-            = 0>
+                          std::is_trivially_copyable_v<T>> = 0>
   auto from_std_vector(const std::vector<T> &vs,
                        const MemoryLocation &mloc = {memsrc_e::host, -1}) {
     auto allocator = get_memory_source(mloc.memspace(), mloc.devid());
@@ -375,8 +374,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (
-            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (RetT)(
+            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -400,8 +399,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (
-            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (RetT)(
+            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -476,24 +475,24 @@ namespace zs {
     return ret;
   }
 
-  template <execspace_e ExecSpace, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(std::true_type, Vector<T, Allocator> &vec) {
-    return VectorView<ExecSpace, Vector<T, Allocator>, true>{vec};
+  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  constexpr decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base> = {}) {
+    return VectorView<ExecSpace, Vector<T, Allocator>, Base>{vec};
   }
-  template <execspace_e ExecSpace, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(std::true_type, const Vector<T, Allocator> &vec) {
-    return VectorView<ExecSpace, const Vector<T, Allocator>, true>{vec};
+  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  constexpr decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base> = {}) {
+    return VectorView<ExecSpace, const Vector<T, Allocator>, Base>{vec};
   }
 
-  template <execspace_e ExecSpace, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(std::true_type, Vector<T, Allocator> &vec,
-                                 const SmallString &tagName) {
-    return proxy(true_c, vec);
+  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  constexpr decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base>,
+                                const SmallString &tagName) {
+    return proxy(vec, wrapv<Base>{});
   }
-  template <execspace_e ExecSpace, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(std::true_type, const Vector<T, Allocator> &vec,
-                                 const SmallString &tagName) {
-    return proxy(true_c, vec);
+  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  constexpr decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base>,
+                                const SmallString &tagName) {
+    return proxy(vec, wrapv<Base>{});
   }
 
 }  // namespace zs

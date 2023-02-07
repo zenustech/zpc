@@ -115,44 +115,109 @@ namespace zs {
     template <typename T = const value_type, typename Dims = value_seq<1>> using const_iterator
         = LegacyIterator<iterator_impl<std::add_const_t<T>, Dims>>;
 
-    template <typename Dims = value_seq<1>, typename T = const value_type>
+    // size-identical value iterator
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), chn,
                                                    numChannels());
     }
-    template <typename Dims = value_seq<1>, typename T = const value_type>
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, size(), chn, numChannels());
     }
-    template <typename Dims = value_seq<1>, typename T = const value_type>
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
           _base, static_cast<size_type>(0), chn, numChannels());
     }
-    template <typename Dims = value_seq<1>, typename T = const value_type>
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), chn,
                                                                      numChannels());
     }
-    template <typename Dims = value_seq<1>, typename T = value_type>
+    template <typename Dims = value_seq<1>, typename T = value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(const SmallString &prop, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0),
                                                    getPropertyOffset(prop), numChannels());
     }
-    template <typename Dims = value_seq<1>, typename T = value_type>
+    template <typename Dims = value_seq<1>, typename T = value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(const SmallString &prop, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, size(), getPropertyOffset(prop),
                                                    numChannels());
     }
-    template <typename Dims = value_seq<1>, typename T = const value_type>
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(const SmallString &prop, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
           _base, static_cast<size_type>(0), getPropertyOffset(prop), numChannels());
     }
-    template <typename Dims = value_seq<1>, typename T = const value_type>
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(const SmallString &prop, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
           _base, size(), getPropertyOffset(prop), numChannels());
+    }
+    // size-varying value iterator
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto begin(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+                         wrapt<T> = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), segNo, chn,
+                                                   numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto end(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+                       wrapt<T> = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, size(), segNo, chn, numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto begin(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+                         wrapt<T> = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
+          _base, static_cast<size_type>(0), segNo, chn, numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto end(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+                       wrapt<T> = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), segNo, chn,
+                                                                     numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto begin(const SmallString &prop, size_type segNo, Dims = {},
+                         wrapt<T> = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), segNo,
+                                                   getPropertyOffset(prop), numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto end(const SmallString &prop, size_type segNo, Dims = {},
+                       wrapt<T> = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, size(), segNo, getPropertyOffset(prop),
+                                                   numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto begin(const SmallString &prop, size_type segNo, Dims = {},
+                         wrapt<T> = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
+          _base, static_cast<size_type>(0), segNo, getPropertyOffset(prop), numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
+    constexpr auto end(const SmallString &prop, size_type segNo, Dims = {},
+                       wrapt<T> = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
+          _base, size(), segNo, getPropertyOffset(prop), numChannels());
     }
 
     /// capacity
@@ -466,7 +531,7 @@ namespace zs {
         = sizeof(value_type) * lane_width / sizeof(iter_value_type);
 
     constexpr iterator_impl(conditional_t<is_const_structure, const_pointer, pointer> base,
-                            size_type idx, channel_counter_type segNo, channel_counter_type chn,
+                            size_type idx, size_type segNo, channel_counter_type chn,
                             channel_counter_type nchns) noexcept
         : _base{base}, _idx{idx}, _segOffset{segNo * lane_width}, _chn{chn}, _numChannels{nchns} {
       if (segNo >= num_segments) throw std::runtime_error("not a valid segment index.");
@@ -506,8 +571,8 @@ namespace zs {
 
   protected:
     conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
-    size_type _idx{0};
-    channel_counter_type _chn{0}, _numChannels{1}, _segOffset{0};
+    size_type _idx{0}, _segOffset{0};
+    channel_counter_type _chn{0}, _numChannels{1};
   };
 
   template <typename TileVectorView> struct TileVectorCopy {

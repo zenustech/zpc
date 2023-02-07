@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/container/Bcht.hpp"
 #include "zensim/container/Vector.hpp"
+#include "zensim/math/Vec.h"
 
 namespace zs {
 
@@ -9,6 +10,8 @@ namespace zs {
   struct SparseMatrix {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "SparseMatrix only works with zspmrallocator for now.");
+    static_assert(std::is_fundamental_v<T> || is_vec<T>::value,
+                  "only fundamental types and vec are allowed to be used as value_type.");
     static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
                   "element is not default-constructible or trivially-copyable!");
 
@@ -71,12 +74,15 @@ namespace zs {
     }
 
     /// @brief iterators
-    struct iterator_impl : IteratorInterface<iterator_impl> {
-      constexpr iterator_impl(index_type line, index_type *ptrs, index_type *inds, value_type *vals)
+    template <bool is_const = false> struct iterator_impl
+        : IteratorInterface<iterator_impl<is_const>> {
+      template <typename TT> using decorated_t = conditional_t<is_const, std::add_const_t<TT>, TT>;
+      constexpr iterator_impl(index_type line, decorated_t<index_type> *ptrs,
+                              decorated_t<index_type> *inds, decorated_t<value_type> *vals)
           : _idx{ptrs[line]}, _inds{inds}, _vals{vals} {}
 
       constexpr tuple<index_type &, value_type &> dereference() {
-        return forward_as_tuple(_inds[_idx], _vals[_idx]);
+        return tie(_inds[_idx], _vals[_idx]);
       }
       constexpr bool equal_to(iterator_impl it) const noexcept { return it._idx == _idx; }
       constexpr void advance(difference_type offset) noexcept { _idx += offset; }
@@ -86,58 +92,128 @@ namespace zs {
 
       constexpr index_type index() const { return _inds[_idx]; }
       constexpr value_type value() const { return _vals[_idx]; }
-      constexpr value_type &value() { return _vals[_idx]; }
+      constexpr decorated_t<value_type> &value() { return _vals[_idx]; }
 
     protected:
       size_type _idx{0};
-      index_type *_inds;
-      value_type *_vals;
+      decorated_t<index_type> *_inds;
+      decorated_t<value_type> *_vals;
     };
-    using iterator = LegacyIterator<iterator_impl>;
-
-    struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
-      constexpr const_iterator_impl(index_type line, const index_type *ptrs, const index_type *inds,
-                                    const value_type *vals)
-          : _idx{ptrs[line]}, _inds{inds}, _vals{vals} {}
-
-      constexpr tuple<const index_type &, const value_type &> dereference() {
-        return forward_as_tuple(_inds[_idx], _vals[_idx]);
-      }
-      constexpr bool equal_to(const_iterator_impl it) const noexcept { return it._idx == _idx; }
-      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
-      constexpr difference_type distance_to(const_iterator_impl it) const noexcept {
-        return it._idx - _idx;
-      }
-
-      constexpr index_type index() const { return _inds[_idx]; }
-      constexpr value_type value() const { return _vals[_idx]; }
-
-    protected:
-      size_type _idx{0};
-      const index_type *_inds;
-      const value_type *_vals;
-    };
-    using const_iterator = LegacyIterator<const_iterator_impl>;
+    using iterator = LegacyIterator<iterator_impl<false>>;
+    using const_iterator = LegacyIterator<iterator_impl<true>>;
 
     constexpr auto begin(index_type no) noexcept {
-      return make_iterator<iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data());
+      return make_iterator<iterator_impl<true>>(no, _ptrs.data(), _inds.data(), _vals.data());
     }
     constexpr auto end(index_type no) noexcept {
-      return make_iterator<iterator_impl>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
+      return make_iterator<iterator_impl<true>>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
     }
 
     constexpr auto begin(index_type no) const noexcept {
-      return make_iterator<const_iterator_impl>(no, _ptrs.data(), _inds.data(), _vals.data());
+      return make_iterator<iterator_impl<true>>(no, _ptrs.data(), _inds.data(), _vals.data());
     }
     constexpr auto end(index_type no) const noexcept {
-      return make_iterator<const_iterator_impl>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
+      return make_iterator<iterator_impl<true>>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
     }
+
+    template <typename Policy, typename IRange, typename JRange, typename VRange>
+    void build(Policy &&policy, index_type nrows, index_type ncols, IRange &&is, JRange &&js,
+               VRange &&vs);
 
     index_type _nrows = 0, _ncols = 0;  // for square matrix, nrows = ncols
     zs::Vector<size_type, allocator_type> _ptrs{};
     zs::Vector<index_type, allocator_type> _inds{};
     zs::Vector<value_type, allocator_type> _vals{};  // maybe empty, e.g. bidirectional graph
   };
+
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy, typename IRange, typename JRange, typename VRange>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::build(Policy &&policy, Ti nrows, Ti ncols,
+                                                            IRange &&is, JRange &&js, VRange &&vs) {
+    using Tr = RM_CVREF_T(*std::begin(is));
+    using Tc = RM_CVREF_T(*std::begin(js));
+    using Tv = RM_CVREF_T(*std::begin(vs));
+    static_assert(
+        std::is_convertible_v<Tr,
+                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
+        "input triplets types are not convertible to types of this sparse matrix.");
+
+    auto size = range_size(is);
+    if (size != range_size(js) || size != range_size(vs))
+      throw std::runtime_error(fmt::format("is size: {}, while js size ({}), vs size ({})\n", size,
+                                           range_size(js), range_size(vs)));
+
+    /// @brief
+    _nrows = nrows;
+    _ncols = ncols;
+    Ti nsegs = is_row_major ? nrows : ncols;
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr auto execTag = wrapv<space>{};
+    using ICoord = zs::vec<Ti, 2>;
+
+    zs::bcht<ICoord, index_type, true, zs::universal_hash<ICoord>, 16> tab{get_allocator(), size};
+    Vector<size_type> cnts{get_allocator(), nsegs + 1};
+    Vector<index_type> localOffsets{get_allocator(), size};
+    cnts.reset(0);
+    policy(range(size),
+           [tab = proxy<space>(tab), cnts = view(cnts), localOffsets = view(localOffsets),
+            is = std::begin(is), js = std::begin(js), execTag] ZS_LAMBDA(size_type k) mutable {
+             using tab_t = RM_CVREF_T(tab);
+             Ti i = is[k], j = js[k];
+             // insertion success
+             if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
+               if constexpr (RowMajor)
+                 localOffsets[id] = atomic_add(execTag, &cnts[i], 1);
+               else
+                 localOffsets[id] = atomic_add(execTag, &cnts[j], 1);
+             }
+           });
+
+    /// @brief _ptrs
+    _ptrs.resize(nsegs + 1);
+    exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
+
+    auto numEntries = _ptrs.getVal(nsegs);
+    fmt::print("{} entries activated in total from {} triplets.", numEntries, size);
+
+    /// @brief _inds, _vals
+    static_assert(std::is_fundamental_v<value_type> || is_vec<value_type>::value,
+                  "value_type not supported");
+    _inds.resize(numEntries);
+    _vals.resize(numEntries);
+    if constexpr (std::is_fundamental_v<value_type>)
+      _vals.reset(0);
+    else if constexpr (is_vec<value_type>::value) {
+      policy(range(numEntries), [vals = view(_vals)] ZS_LAMBDA(size_type k) mutable {
+        vals[k] = value_type::zeros();
+      });
+    }
+    policy(range(size),
+           [tab = proxy<space>(tab), localOffsets = view(localOffsets), is = std::begin(is),
+            js = std::begin(js), vs = std::begin(vs), ptrs = view(_ptrs), inds = view(_inds),
+            vals = view(_vals), execTag] ZS_LAMBDA(size_type k) mutable {
+             using tab_t = RM_CVREF_T(tab);
+             Ti i = is[k], j = js[k];
+             auto id = tab.query(ICoord{i, j});
+             auto loc = localOffsets[id];
+             size_type offset = 0;
+             if constexpr (RowMajor) {
+               offset = ptrs[i] + loc;
+               inds[offset] = j;
+             } else {
+               offset = ptrs[j] + loc;
+               inds[offset] = i;
+             }
+             if constexpr (std::is_fundamental_v<value_type>)
+               atomic_add(execTag, &vals[offset], (value_type)vs[k]);
+             else if constexpr (is_vec<value_type>::value) {
+               auto &val = vals[offset];
+               const auto &e = vs[k];
+               for (typename value_type::index_type i = 0; i != value_type::extent; ++i)
+                 atomic_add(execTag, &val.val(i), e.val(i));
+             }
+           });
+  }
 
   template <execspace_e Space, typename SpMatT, typename = void> struct SparseMatrixView {
     static constexpr bool is_const_structure = std::is_const_v<SpMatT>;
@@ -219,6 +295,43 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT>
+  constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat) {
+    return SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
+  }
+  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+            typename AllocatorT>
+  constexpr decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat) {
+    return SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
+  }
+
+  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+            typename AllocatorT>
+  constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
+                                const SmallString &tagName) {
+    auto ret = SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
+    ret._inds._nameTag = tagName + SmallString{":inds"};
+    ret._vals._nameTag = tagName + SmallString{":vals"};
+#endif
+    return ret;
+  }
+  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+            typename AllocatorT>
+  constexpr decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
+                                const SmallString &tagName) {
+    auto ret
+        = SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
+    ret._inds._nameTag = tagName + SmallString{":inds"};
+    ret._vals._nameTag = tagName + SmallString{":vals"};
+#endif
+    return ret;
+  }
+
+  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+            typename AllocatorT>
   constexpr decltype(auto) proxy(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat) {
     return SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
   }
@@ -253,5 +366,4 @@ namespace zs {
 #endif
     return ret;
   }
-
 }  // namespace zs

@@ -267,7 +267,6 @@ namespace zs {
   void LBvh<dim, Index, Value, Allocator>::build(Policy &&policy,
                                                  const zs::Vector<zs::AABBBox<dim, Value>> &primBvs,
                                                  zs::wrapv<Refit>) {
-    using namespace zs;
     using T = value_type;
     using Ti = index_type;
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;

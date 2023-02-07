@@ -590,18 +590,29 @@ namespace zs {
   /// ranges
   ///
   // index range
-  template <typename T> constexpr auto range(T begin, T end, T increment) {
+  template <typename T, enable_if_t<std::is_integral_v<T>> = 0>
+  constexpr auto range(T begin, T end, T increment) {
     auto actualEnd = end - ((end - begin) % increment);
     using DiffT = std::make_signed_t<T>;
     return detail::iter_range(
         make_iterator<IndexIterator>(begin, static_cast<DiffT>(increment)),
         make_iterator<IndexIterator>(actualEnd, static_cast<DiffT>(increment)));
   }
-  template <typename T> constexpr auto range(T begin, T end) {
+  template <typename T, enable_if_t<std::is_integral_v<T>> = 0>
+  constexpr auto range(T begin, T end) {
     using DiffT = std::make_signed_t<T>;
     return range<DiffT>(begin, end, begin < end ? 1 : -1);
   }
-  template <typename T> constexpr auto range(T end) { return range<T>(0, end); }
+  template <typename T, enable_if_t<std::is_integral_v<T>> = 0> constexpr auto range(T end) {
+    return range<T>(0, end);
+  }
+
+  // container
+  template <typename Container, typename... Args>
+  constexpr auto range(Container &&container, Args &&...args)
+      -> decltype(detail::iter_range(container.begin(args...), container.end(args...))) {
+    return detail::iter_range(container.begin(args...), container.end(args...));
+  }
 
   // zip range
   template <typename... Args> constexpr auto zip(Args &&...args) {
@@ -619,16 +630,10 @@ namespace zs {
     return detail::iter_range(std::move(begin), std::move(end));
   }
 
-  template <typename Iter,
-            enable_if_t<std::is_convertible_v<
-                typename std::iterator_traits<remove_cvref_t<Iter>>::iterator_category,
-                std::random_access_iterator_tag>> = 0>
-  constexpr decltype(auto) deref_if_raiter(
-      Iter &&iter, typename std::iterator_traits<remove_cvref_t<Iter>>::difference_type i) {
-    return *(iter + i);
-  }
-  template <typename Value> constexpr decltype(auto) deref_if_raiter(Value &&v, ...) noexcept {
-    return FWD(v);
+  // helper
+  template <typename Range> constexpr auto range_size(const Range &range)
+      -> decltype(std::end(range) - std::begin(range)) {
+    return std::end(range) - std::begin(range);
   }
 
 }  // namespace zs

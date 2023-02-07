@@ -108,63 +108,51 @@ namespace zs {
     }
 
     template <typename T = value_type, typename Dims = value_seq<1>, typename Pred = void>
-    struct iterator_impl : IteratorInterface<iterator_impl<T, Dims, Pred>> {
-      static_assert(
-          is_same_v<T, value_type>,
-          "default iterator implementation only supports original \'value_type\' access.");
-      static_assert(is_same_v<Dims, value_seq<1>>,
-                    "default iterator implementation only supports scalar access.");
+    struct iterator_impl;
 
-      static constexpr bool is_const_structure = std::is_const_v<T>;
-      constexpr iterator_impl(pointer base, size_type idx, channel_counter_type chn,
-                              channel_counter_type nchns) noexcept
-          : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
-
-      template <auto V = is_const_structure, enable_if_t<!V> = 0>
-      constexpr reference dereference() {
-        return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
-                 + _idx % lane_width);
-      }
-      constexpr const_reference dereference() const {
-        return *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width
-                 + _idx % lane_width);
-      }
-      constexpr bool equal_to(iterator_impl it) const noexcept {
-        return it._idx == _idx && it._chn == _chn;
-      }
-      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
-      constexpr difference_type distance_to(iterator_impl it) const noexcept {
-        return it._idx - _idx;
-      }
-
-    protected:
-      conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
-      size_type _idx{0};
-      channel_counter_type _chn{0}, _numChannels{1};
-    };
     template <typename T = value_type, typename Dims = value_seq<1>> using iterator
         = LegacyIterator<iterator_impl<T, Dims>>;
     template <typename T = const value_type, typename Dims = value_seq<1>> using const_iterator
         = LegacyIterator<iterator_impl<std::add_const_t<T>, Dims>>;
 
-    template <typename T = value_type, typename Dims = value_seq<1>>
-    constexpr auto begin(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) noexcept {
+    template <typename Dims = value_seq<1>, typename T = const value_type>
+    constexpr auto begin(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), chn,
                                                    numChannels());
     }
-    template <typename T = value_type, typename Dims = value_seq<1>>
-    constexpr auto end(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) noexcept {
+    template <typename Dims = value_seq<1>, typename T = const value_type>
+    constexpr auto end(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, size(), chn, numChannels());
     }
-    template <typename T = const value_type, typename Dims = value_seq<1>>
-    constexpr auto begin(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) const noexcept {
+    template <typename Dims = value_seq<1>, typename T = const value_type>
+    constexpr auto begin(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
           _base, static_cast<size_type>(0), chn, numChannels());
     }
-    template <typename T = const value_type, typename Dims = value_seq<1>>
-    constexpr auto end(channel_counter_type chn = 0, wrapt<T> = {}, Dims = {}) const noexcept {
+    template <typename Dims = value_seq<1>, typename T = const value_type>
+    constexpr auto end(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), chn,
                                                                      numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = value_type>
+    constexpr auto begin(const SmallString &prop, Dims = {}, wrapt<T> = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0),
+                                                   getPropertyOffset(prop), numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = value_type>
+    constexpr auto end(const SmallString &prop, Dims = {}, wrapt<T> = {}) noexcept {
+      return make_iterator<iterator_impl<T, Dims>>(_base, size(), getPropertyOffset(prop),
+                                                   numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = const value_type>
+    constexpr auto begin(const SmallString &prop, Dims = {}, wrapt<T> = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
+          _base, static_cast<size_type>(0), getPropertyOffset(prop), numChannels());
+    }
+    template <typename Dims = value_seq<1>, typename T = const value_type>
+    constexpr auto end(const SmallString &prop, Dims = {}, wrapt<T> = {}) const noexcept {
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
+          _base, size(), getPropertyOffset(prop), numChannels());
     }
 
     /// capacity
@@ -427,17 +415,21 @@ namespace zs {
         return reinterpret_bits<iter_value_type>(FWD(v));
     }
 
-    constexpr decltype(auto) dereference() const {
+    constexpr conditional_t<is_scalar_access,
+                            conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
+                            vec<iter_value_type, Ns...>>
+    dereference() const {
       if constexpr (is_scalar_access)
-        return interpret(
-            *(_base + (_idx / lane_width * _numChannels + _chn) * lane_width + _idx % lane_width));
+        return *(
+            (conditional_t<is_const_structure, const iter_value_type *, iter_value_type *>)_base
+            + (_idx / lane_width * _numChannels + _chn) * lane_width + _idx % lane_width);
       else {
-        using RetT = vec<value_type, Ns...>;
+        using RetT = vec<iter_value_type, Ns...>;
         RetT ret{};
-        auto ptr
-            = _base + (_idx / lane_width * _numChannels + _chn) * lane_width + (_idx % lane_width);
+        auto ptr = (const iter_value_type *)_base
+                   + (_idx / lane_width * _numChannels + _chn) * lane_width + (_idx % lane_width);
         for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
-        return interpret(ret);
+        return ret;
       }
     }
     constexpr bool equal_to(iterator_impl it) const noexcept {
@@ -480,7 +472,10 @@ namespace zs {
       if (segNo >= num_segments) throw std::runtime_error("not a valid segment index.");
     }
 
-    constexpr decltype(auto) dereference() const {
+    constexpr conditional_t<is_scalar_access,
+                            conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
+                            vec<iter_value_type, Ns...>>
+    dereference() const {
       /// @note ref: https://en.cppreference.com/w/cpp/language/reinterpret_cast
       if constexpr (is_scalar_access) {
         return *((conditional_t<is_const_structure, const iter_value_type *,

@@ -608,6 +608,15 @@ namespace zs {
   }
 
   // container
+  template <typename IB, typename IE, typename... Args>
+  constexpr decltype(auto) range(const detail::WrappedIterator<IB, IE> &r, Args &&...args) {
+    return r;
+  }
+  template <typename IB, typename IE, typename... Args>
+  constexpr decltype(auto) range(detail::WrappedIterator<IB, IE> &&r, Args &&...args) {
+    return std::move(r);
+  }
+
   template <typename Container, typename... Args>
   constexpr auto range(Container &&container, Args &&...args)
       -> decltype(detail::iter_range(container.begin(args...), container.end(args...))) {

@@ -60,6 +60,12 @@ namespace zs {
     constexpr index_type rows() const noexcept { return _nrows; }
     constexpr index_type cols() const noexcept { return _ncols; }
     constexpr size_type size() const noexcept { return rows() * cols(); }
+    constexpr size_type outerSize() const noexcept {
+      if constexpr (is_row_major)
+        return rows();
+      else
+        return cols();
+    }
     constexpr size_type nnz() const noexcept { return _inds.size(); }
 
     /// @note invalidates all entries
@@ -364,6 +370,12 @@ namespace zs {
     constexpr index_type rows() const noexcept { return _nrows; }
     constexpr index_type cols() const noexcept { return _ncols; }
     constexpr size_type size() const noexcept { return rows() * cols(); }
+    constexpr size_type outerSize() const noexcept {
+      if constexpr (is_row_major)
+        return rows();
+      else
+        return cols();
+    }
     constexpr size_type nnz() const noexcept {
       if constexpr (is_row_major)
         return _ptrs[_nrows];

@@ -110,6 +110,136 @@ namespace zs {
     template <typename T = value_type, typename Dims = value_seq<1>, typename Pred = void>
     struct iterator_impl;
 
+    /// @brief tilevector iterator specializations
+    template <typename ValT, auto... Ns>
+    struct iterator_impl<ValT, value_seq<Ns...>, std::enable_if_t<sizeof(value_type) == sizeof(ValT)>>
+        : IteratorInterface<iterator_impl<ValT, value_seq<Ns...>,
+                                          std::enable_if_t<sizeof(value_type) == sizeof(ValT)>>> {
+      static_assert(!std::is_reference_v<ValT>,
+                    "the access type of the iterator should not be a reference.");
+      static constexpr auto extent = (Ns * ...);
+      static_assert(extent > 0, "the access extent of the iterator should be positive.");
+
+      using iter_value_type = remove_cvref_t<ValT>;
+      static constexpr bool is_const_structure = std::is_const_v<ValT>;
+      static constexpr bool is_native_value_type = is_same_v<value_type, iter_value_type>;
+      static constexpr bool is_scalar_access = (extent == 1);
+
+      constexpr iterator_impl(conditional_t<is_const_structure, const_pointer, pointer> base,
+                              size_type idx, channel_counter_type chn,
+                              channel_counter_type nchns) noexcept
+          : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
+
+      template <typename VecT, enable_if_t<is_vec<remove_cvref_t<VecT>>::value> = 0>
+      static constexpr decltype(auto) interpret(VecT &&v) noexcept {
+        if constexpr (is_native_value_type)
+          return FWD(v);
+        else
+          return v.reinterpret_bits(wrapt<iter_value_type>{});
+      }
+      template <typename VT, enable_if_t<std::is_fundamental_v<remove_cvref_t<VT>>> = 0>
+      static constexpr decltype(auto) interpret(VT &&v) noexcept {
+        if constexpr (is_native_value_type)
+          return FWD(v);
+        else
+          return reinterpret_bits<iter_value_type>(FWD(v));
+      }
+
+      constexpr conditional_t<is_scalar_access,
+                              conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
+                              vec<iter_value_type, Ns...>>
+      dereference() const {
+        if constexpr (is_scalar_access)
+          return *(
+              (conditional_t<is_const_structure, const iter_value_type *, iter_value_type *>)_base
+              + (_idx / lane_width * _numChannels + _chn) * lane_width + _idx % lane_width);
+        else {
+          using RetT = vec<iter_value_type, Ns...>;
+          RetT ret{};
+          auto ptr = (const iter_value_type *)_base
+                     + (_idx / lane_width * _numChannels + _chn) * lane_width + (_idx % lane_width);
+          for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
+          return ret;
+        }
+      }
+      constexpr bool equal_to(iterator_impl it) const noexcept {
+        return it._idx == _idx && it._chn == _chn;
+      }
+      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
+      constexpr difference_type distance_to(iterator_impl it) const noexcept {
+        return it._idx - _idx;
+      }
+
+    protected:
+      conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
+      size_type _idx{0};
+      channel_counter_type _chn{0}, _numChannels{1};
+    };
+
+    template <typename ValT, auto... Ns> struct iterator_impl<
+        ValT, value_seq<Ns...>,
+                         std::enable_if_t<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
+                                          && (sizeof(value_type) > sizeof(ValT))>>
+        : IteratorInterface<iterator_impl<ValT, value_seq<Ns...>,
+                            std::enable_if_t<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
+                                                           && (sizeof(value_type) > sizeof(ValT))>>> {
+      static_assert(!std::is_reference_v<ValT>,
+                    "the access type of the iterator should not be a reference.");
+      static constexpr auto extent = (Ns * ...);
+      static_assert(extent > 0, "the access extent of the iterator should be positive.");
+
+      using iter_value_type = remove_cvref_t<ValT>;
+      static constexpr bool is_const_structure = std::is_const_v<ValT>;
+      static constexpr bool is_scalar_access = (extent == 1);
+
+      static constexpr std::size_t num_segments
+          = sizeof(value_type) * lane_width / sizeof(iter_value_type);
+
+      constexpr iterator_impl(conditional_t<is_const_structure, const_pointer, pointer> base,
+                              size_type idx, size_type segNo, channel_counter_type chn,
+                              channel_counter_type nchns) noexcept
+          : _base{base}, _idx{idx}, _segOffset{segNo * lane_width}, _chn{chn}, _numChannels{nchns} {
+        if (segNo >= num_segments) throw std::runtime_error("not a valid segment index.");
+      }
+
+      constexpr conditional_t<is_scalar_access,
+                              conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
+                              vec<iter_value_type, Ns...>>
+      dereference() const {
+        /// @note ref: https://en.cppreference.com/w/cpp/language/reinterpret_cast
+        if constexpr (is_scalar_access) {
+          return *((conditional_t<is_const_structure, const iter_value_type *,
+                                  iter_value_type *>)(_base
+                                                      + (_idx / lane_width * _numChannels + _chn)
+                                                            * lane_width)
+                   + _segOffset + _idx % lane_width);
+        } else {
+          using RetT = vec<iter_value_type, Ns...>;
+          RetT ret{};
+          auto ptr = (conditional_t<is_const_structure, const iter_value_type *,
+                                    iter_value_type *>)(_base
+                                                        + (_idx / lane_width * _numChannels + _chn)
+                                                              * lane_width)
+                     + _segOffset + _idx % lane_width;
+          for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width * num_segments)
+            ret.val(d) = *ptr;
+          return ret;
+        }
+      }
+      constexpr bool equal_to(iterator_impl it) const noexcept {
+        return it._idx == _idx && it._chn == _chn;
+      }
+      constexpr void advance(difference_type offset) noexcept { _idx += offset; }
+      constexpr difference_type distance_to(iterator_impl it) const noexcept {
+        return it._idx - _idx;
+      }
+
+    protected:
+      conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
+      size_type _idx{0}, _segOffset{0};
+      channel_counter_type _chn{0}, _numChannels{1};
+    };
+
     template <typename T = value_type, typename Dims = value_seq<1>> using iterator
         = LegacyIterator<iterator_impl<T, Dims>>;
     template <typename T = const value_type, typename Dims = value_seq<1>> using const_iterator
@@ -444,136 +574,6 @@ namespace zs {
   EXTERN_TILEVECTOR_INSTANTIATIONS(64)
   EXTERN_TILEVECTOR_INSTANTIATIONS(512)
 
-  /// @brief tilevector iterator specializations
-  template <typename T, std::size_t L, typename Allocator> template <typename ValT, auto... Ns>
-  struct TileVector<T, L, Allocator>::iterator_impl<ValT, value_seq<Ns...>,
-                                                    std::enable_if_t<sizeof(T) == sizeof(ValT)>>
-      : IteratorInterface<typename TileVector<T, L, Allocator>::template iterator_impl<
-            ValT, value_seq<Ns...>, std::enable_if_t<sizeof(T) == sizeof(ValT)>>> {
-    static_assert(!std::is_reference_v<ValT>,
-                  "the access type of the iterator should not be a reference.");
-    static constexpr auto extent = (Ns * ...);
-    static_assert(extent > 0, "the access extent of the iterator should be positive.");
-
-    using iter_value_type = remove_cvref_t<ValT>;
-    static constexpr bool is_const_structure = std::is_const_v<ValT>;
-    static constexpr bool is_native_value_type = is_same_v<value_type, iter_value_type>;
-    static constexpr bool is_scalar_access = (extent == 1);
-
-    constexpr iterator_impl(conditional_t<is_const_structure, const_pointer, pointer> base,
-                            size_type idx, channel_counter_type chn,
-                            channel_counter_type nchns) noexcept
-        : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
-
-    template <typename VecT, enable_if_t<is_vec<remove_cvref_t<VecT>>::value> = 0>
-    static constexpr decltype(auto) interpret(VecT &&v) noexcept {
-      if constexpr (is_native_value_type)
-        return FWD(v);
-      else
-        return v.reinterpret_bits(wrapt<iter_value_type>{});
-    }
-    template <typename VT, enable_if_t<std::is_fundamental_v<remove_cvref_t<VT>>> = 0>
-    static constexpr decltype(auto) interpret(VT &&v) noexcept {
-      if constexpr (is_native_value_type)
-        return FWD(v);
-      else
-        return reinterpret_bits<iter_value_type>(FWD(v));
-    }
-
-    constexpr conditional_t<is_scalar_access,
-                            conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
-                            vec<iter_value_type, Ns...>>
-    dereference() const {
-      if constexpr (is_scalar_access)
-        return *(
-            (conditional_t<is_const_structure, const iter_value_type *, iter_value_type *>)_base
-            + (_idx / lane_width * _numChannels + _chn) * lane_width + _idx % lane_width);
-      else {
-        using RetT = vec<iter_value_type, Ns...>;
-        RetT ret{};
-        auto ptr = (const iter_value_type *)_base
-                   + (_idx / lane_width * _numChannels + _chn) * lane_width + (_idx % lane_width);
-        for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
-        return ret;
-      }
-    }
-    constexpr bool equal_to(iterator_impl it) const noexcept {
-      return it._idx == _idx && it._chn == _chn;
-    }
-    constexpr void advance(difference_type offset) noexcept { _idx += offset; }
-    constexpr difference_type distance_to(iterator_impl it) const noexcept {
-      return it._idx - _idx;
-    }
-
-  protected:
-    conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
-    size_type _idx{0};
-    channel_counter_type _chn{0}, _numChannels{1};
-  };
-
-  template <typename T, std::size_t L, typename Allocator> template <typename ValT, auto... Ns>
-  struct TileVector<T, L, Allocator>::iterator_impl<
-      ValT, value_seq<Ns...>,
-      std::enable_if_t<(sizeof(T) * L % sizeof(ValT) == 0) && (sizeof(T) > sizeof(ValT))>>
-      : IteratorInterface<typename TileVector<T, L, Allocator>::template iterator_impl<
-            ValT, value_seq<Ns...>,
-            std::enable_if_t<(sizeof(T) * L % sizeof(ValT) == 0) && (sizeof(T) > sizeof(ValT))>>> {
-    static_assert(!std::is_reference_v<ValT>,
-                  "the access type of the iterator should not be a reference.");
-    static constexpr auto extent = (Ns * ...);
-    static_assert(extent > 0, "the access extent of the iterator should be positive.");
-
-    using iter_value_type = remove_cvref_t<ValT>;
-    static constexpr bool is_const_structure = std::is_const_v<ValT>;
-    static constexpr bool is_scalar_access = (extent == 1);
-
-    static constexpr std::size_t num_segments
-        = sizeof(value_type) * lane_width / sizeof(iter_value_type);
-
-    constexpr iterator_impl(conditional_t<is_const_structure, const_pointer, pointer> base,
-                            size_type idx, size_type segNo, channel_counter_type chn,
-                            channel_counter_type nchns) noexcept
-        : _base{base}, _idx{idx}, _segOffset{segNo * lane_width}, _chn{chn}, _numChannels{nchns} {
-      if (segNo >= num_segments) throw std::runtime_error("not a valid segment index.");
-    }
-
-    constexpr conditional_t<is_scalar_access,
-                            conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
-                            vec<iter_value_type, Ns...>>
-    dereference() const {
-      /// @note ref: https://en.cppreference.com/w/cpp/language/reinterpret_cast
-      if constexpr (is_scalar_access) {
-        return *((conditional_t<is_const_structure, const iter_value_type *,
-                                iter_value_type *>)(_base
-                                                    + (_idx / lane_width * _numChannels + _chn)
-                                                          * lane_width)
-                 + _segOffset + _idx % lane_width);
-      } else {
-        using RetT = vec<iter_value_type, Ns...>;
-        RetT ret{};
-        auto ptr = (conditional_t<is_const_structure, const iter_value_type *,
-                                  iter_value_type *>)(_base
-                                                      + (_idx / lane_width * _numChannels + _chn)
-                                                            * lane_width)
-                   + _segOffset + _idx % lane_width;
-        for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width * num_segments)
-          ret.val(d) = *ptr;
-        return ret;
-      }
-    }
-    constexpr bool equal_to(iterator_impl it) const noexcept {
-      return it._idx == _idx && it._chn == _chn;
-    }
-    constexpr void advance(difference_type offset) noexcept { _idx += offset; }
-    constexpr difference_type distance_to(iterator_impl it) const noexcept {
-      return it._idx - _idx;
-    }
-
-  protected:
-    conditional_t<is_const_structure, const_pointer, pointer> _base{nullptr};
-    size_type _idx{0}, _segOffset{0};
-    channel_counter_type _chn{0}, _numChannels{1};
-  };
 
   template <typename TileVectorView> struct TileVectorCopy {
     using size_type = typename TileVectorView::size_type;

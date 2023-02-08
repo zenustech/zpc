@@ -133,17 +133,16 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(
-        std::is_convertible_v<Tr,
-                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
-        "input triplets types are not convertible to types of this sparse matrix.");
+    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
+                      && std::is_convertible_v<Tv, T>,
+                  "input triplets types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
       throw std::runtime_error(fmt::format("is size: {}, while js size ({}), vs size ({})\n", size,
                                            range_size(js), range_size(vs)));
 
-    /// @brief
+    /// @brief initial hashing
     _nrows = nrows;
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
@@ -152,8 +151,8 @@ namespace zs {
     using ICoord = zs::vec<Ti, 2>;
 
     zs::bcht<ICoord, index_type, true, zs::universal_hash<ICoord>, 16> tab{get_allocator(),
-                                                                           (index_type)size};
-    Vector<size_type> cnts{get_allocator(), nsegs + 1};
+                                                                           (std::size_t)size};
+    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
     Vector<index_type> localOffsets{get_allocator(), (std::size_t)size};
     cnts.reset(0);
     policy(range(size), [tab = proxy<space>(tab), cnts = view<space>(cnts),

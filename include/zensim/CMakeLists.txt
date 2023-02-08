@@ -57,21 +57,6 @@ set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 # # headers
 set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
-  # container
-  container/DenseGrid.hpp
-  container/RingBuffer.hpp
-  container/TileVector.hpp
-  container/HashTable.hpp
-  container/Vector.hpp
-  container/Bvh.hpp
-  container/Bvtt.hpp
-  container/IndexBuckets.hpp
-  geometry/PointDataGrid.hpp
-  geometry/OverlayGrid.hpp
-  geometry/AdaptiveGrid.hpp
-  geometry/Structure.hpp
-  geometry/Structurefree.hpp
-
   # execution
   execution/Concurrency.h
   execution/ExecutionPolicy.hpp
@@ -131,9 +116,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
   # profile
   profile/CppTimers.hpp
-
-  # resource
-  resource/Resource.h
 
   # types
   types/Pointers.hpp
@@ -223,6 +205,26 @@ set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
   omp/math/matrix/MatrixTransform.hpp
 )
 set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
+  # container
+  container/DenseGrid.hpp
+  container/RingBuffer.hpp
+  container/TileVector.hpp
+  container/HashTable.hpp
+  container/Vector.hpp
+  container/Bvh.hpp
+  container/Bvtt.hpp
+  container/IndexBuckets.hpp
+  geometry/PointDataGrid.hpp
+  geometry/OverlayGrid.hpp
+  geometry/AdaptiveGrid.hpp
+  geometry/Structure.hpp
+  geometry/Structurefree.hpp
+  geometry/SparseGrid.hpp
+  math/matrix/SparseMatrix.hpp
+
+  # resource
+  resource/Resource.h
+
 )
 
 if(ZS_ENABLE_CUDA)

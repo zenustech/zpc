@@ -448,7 +448,7 @@ namespace zs {
     }
   };
 
-  template <execspace_e space, typename BCHT, typename = void> struct BCHTView {
+  template <execspace_e space, typename BCHT, bool Base = false, typename = void> struct BCHTView {
     static constexpr bool is_const_structure = std::is_const_v<BCHT>;
     using hash_table_type = std::remove_const_t<BCHT>;
     static constexpr auto exectag = wrapv<space>{};
@@ -492,23 +492,24 @@ namespace zs {
       conditional_t<is_const_structure, const int *, int *> status{nullptr};
 #else
       conditional_t<is_const_structure,
-                    VectorView<space, const Vector<storage_key_type, allocator_type>>,
-                    VectorView<space, Vector<storage_key_type, allocator_type>>>
+                    VectorView<space, const Vector<storage_key_type, allocator_type>, Base>,
+                    VectorView<space, Vector<storage_key_type, allocator_type>, Base>>
           keys{};
-      conditional_t<is_const_structure, VectorView<space, const Vector<index_type, allocator_type>>,
-                    VectorView<space, Vector<index_type, allocator_type>>>
+      conditional_t<is_const_structure, VectorView<space, const Vector<index_type, allocator_type>, Base>,
+                    VectorView<space, Vector<index_type, allocator_type>, Base>>
           indices{};
-      conditional_t<is_const_structure, VectorView<space, const Vector<int, allocator_type>>,
-                    VectorView<space, Vector<int, allocator_type>>>
+      conditional_t<is_const_structure, VectorView<space, const Vector<int, allocator_type>, Base>,
+                    VectorView<space, Vector<int, allocator_type>, Base>>
           status{};
 #endif
     };
 
     BCHTView() noexcept = default;
     explicit constexpr BCHTView(BCHT &table)
-        : _table{proxy<space>(table._table.keys), proxy<space>(table._table.indices),
-                 proxy<space>(table._table.status)},
-          _activeKeys{table._activeKeys.data()},
+        : _table{view<space>(table._table.keys, wrapv<Base>{}),
+                 view<space>(table._table.indices, wrapv<Base>{}),
+                 view<space>(table._table.status, wrapv<Base>{})},
+          _activeKeys{view<space>(table._activeKeys, wrapv<Base>{})},
           _cnt{table._cnt.data()},
           _success{table._buildSuccess.data()},
           _numBuckets{table._numBuckets},
@@ -1692,7 +1693,9 @@ namespace zs {
 #endif
 
     table_t _table;
-    conditional_t<is_const_structure, const key_type *, key_type *> _activeKeys;
+    conditional_t<is_const_structure, VectorView<space, const Vector<key_type, allocator_type>, Base>,
+                    VectorView<space, Vector<key_type, allocator_type>, Base>> _activeKeys;
+    // conditional_t<is_const_structure, const key_type *, key_type *> _activeKeys;
     conditional_t<is_const_structure, const size_type *, size_type *> _cnt;
     conditional_t<is_const_structure, const u8 *, u8 *> _success;
     size_type _numBuckets;
@@ -1701,15 +1704,27 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
-            int B, typename AllocatorT>
-  constexpr decltype(auto) proxy(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
-    return BCHTView<ExecSpace, bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>>{table};
+            int B, typename AllocatorT, bool Base = true>
+  constexpr decltype(auto) view(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table, wrapv<Base> = {}) {
+    return BCHTView<ExecSpace, bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{table};
   }
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
+            int B, typename AllocatorT, bool Base = true>
+  constexpr decltype(auto) view(
+      const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table, wrapv<Base> = {}) {
+    return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{table};
+  }
+
+  template <execspace_e space, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
+            int B, typename AllocatorT>
+  constexpr decltype(auto) proxy(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
+    return view<space>(table, false_c);
+  }
+  template <execspace_e space, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT>
   constexpr decltype(auto) proxy(
       const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
-    return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>>{table};
+    return view<space>(table, false_c);
   }
 
 }  // namespace zs

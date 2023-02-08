@@ -215,7 +215,8 @@ namespace zs {
     });
   }
 
-  template <execspace_e Space, typename SpMatT, typename = void> struct SparseMatrixView {
+  template <execspace_e Space, typename SpMatT, bool Base = false, typename = void>
+  struct SparseMatrixView {
     static constexpr bool is_const_structure = std::is_const_v<SpMatT>;
     static constexpr auto space = Space;
     template <typename T> using decorate_t
@@ -235,9 +236,9 @@ namespace zs {
     explicit constexpr SparseMatrixView(SpMatT &spmat)
         : _nrows{spmat._nrows},
           _ncols{spmat._ncols},
-          _ptrs{view<space>(spmat._ptrs, true_c)},
-          _inds{view<space>(spmat._inds, true_c)},
-          _vals{view<space>(spmat._vals, true_c)} {}
+          _ptrs{view<space>(spmat._ptrs, wrapv<Base>{})},
+          _inds{view<space>(spmat._inds, wrapv<Base>{})},
+          _vals{view<space>(spmat._vals, wrapv<Base>{})} {}
 
     constexpr auto operator()(index_type i, index_type j) const {
       size_type offset{}, ed{};
@@ -288,82 +289,76 @@ namespace zs {
     }
 
     index_type _nrows, _ncols;
-    zs::VectorView<space, decorate_t<Vector<size_type, allocator_type>>, true> _ptrs;
-    zs::VectorView<space, decorate_t<Vector<index_type, allocator_type>>, true> _inds;
-    zs::VectorView<space, decorate_t<Vector<value_type, allocator_type>>, true> _vals;
+    zs::VectorView<space, decorate_t<Vector<size_type, allocator_type>>, Base> _ptrs;
+    zs::VectorView<space, decorate_t<Vector<index_type, allocator_type>>, Base> _inds;
+    zs::VectorView<space, decorate_t<Vector<value_type, allocator_type>>, Base> _vals;
   };
 
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT>
-  constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat) {
+            typename AllocatorT, bool Base = true>
+  constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
+                                wrapv<Base> = {}) {
     return SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
   }
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT>
-  constexpr decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat) {
+            typename AllocatorT, bool Base = true>
+  constexpr decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
+                                wrapv<Base> = {}) {
     return SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
   }
 
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT>
-  constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
+            typename AllocatorT, bool Base = true>
+  constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
-    ret._inds._nameTag = tagName + SmallString{":inds"};
-    ret._vals._nameTag = tagName + SmallString{":vals"};
+    if constexpr (!Base) {
+      ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
+      ret._inds._nameTag = tagName + SmallString{":inds"};
+      ret._vals._nameTag = tagName + SmallString{":vals"};
+    }
 #endif
     return ret;
   }
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT>
+            typename AllocatorT, bool Base = true>
   constexpr decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
-                                const SmallString &tagName) {
+                                wrapv<Base>, const SmallString &tagName) {
     auto ret
         = SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
-    ret._inds._nameTag = tagName + SmallString{":inds"};
-    ret._vals._nameTag = tagName + SmallString{":vals"};
+    if constexpr (!Base) {
+      ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
+      ret._inds._nameTag = tagName + SmallString{":inds"};
+      ret._vals._nameTag = tagName + SmallString{":vals"};
+    }
 #endif
     return ret;
   }
 
-  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+  template <execspace_e space, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT>
   constexpr decltype(auto) proxy(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat) {
-    return SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
+    return view<space>(spmat, false_c);
   }
-  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+  template <execspace_e space, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT>
   constexpr decltype(auto) proxy(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat) {
-    return SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
+    return view<space>(spmat, false_c);
   }
 
-  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+  template <execspace_e space, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT>
   constexpr decltype(auto) proxy(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
                                  const SmallString &tagName) {
-    auto ret = SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
-#if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
-    ret._inds._nameTag = tagName + SmallString{":inds"};
-    ret._vals._nameTag = tagName + SmallString{":vals"};
-#endif
-    return ret;
+    return view<space>(spmat, false_c, tagName);
   }
-  template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
+  template <execspace_e space, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT>
   constexpr decltype(auto) proxy(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
                                  const SmallString &tagName) {
-    auto ret
-        = SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
-#if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
-    ret._inds._nameTag = tagName + SmallString{":inds"};
-    ret._vals._nameTag = tagName + SmallString{":vals"};
-#endif
-    return ret;
+    return view<space>(spmat, false_c, tagName);
   }
+
 }  // namespace zs

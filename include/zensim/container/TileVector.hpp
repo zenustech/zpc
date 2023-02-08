@@ -988,38 +988,6 @@ namespace zs {
 #endif
   };
 
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{
-        vec};
-  }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec) {
-    return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{vec};
-  }
-
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec,
-                                 const SmallString &tagName) {
-    auto ret
-        = TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{
-            vec};
-#if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._nameTag = tagName;
-#endif
-    return ret;
-  }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec,
-                                 const SmallString &tagName) {
-    auto ret
-        = TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{vec};
-#if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._nameTag = tagName;
-#endif
-    return ret;
-  }
-
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
             bool Base = true>
   constexpr decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
@@ -1054,6 +1022,27 @@ namespace zs {
 #endif
     return ret;
   }
+
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec) {
+    return view<space>(vec, false_c);
+  }
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec) {
+    return view<space>(vec, false_c);
+  }
+
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec,
+                                 const SmallString &tagName) {
+    return view<space>(vec, false_c, tagName);
+  }
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec,
+                                 const SmallString &tagName) {
+    return view<space>(vec, false_c, tagName);
+  }
+
 
   template <execspace_e Space, typename TileVectorT, bool WithinTile, bool Base = false,
             typename = void>
@@ -1384,47 +1373,6 @@ namespace zs {
     channel_counter_type _N{0};
   };
 
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                       const TileVector<T, Length, Allocator> &vec) {
-    for (auto &&tag : tagNames)
-      if (!vec.hasProperty(tag))
-        throw std::runtime_error(
-            fmt::format("tilevector attribute [\"{}\"] not exists", (std::string)tag));
-    return TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{tagNames,
-                                                                                           vec};
-  }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                       TileVector<T, Length, Allocator> &vec) {
-    for (auto &&tag : tagNames)
-      if (!vec.hasProperty(tag))
-        throw std::runtime_error(
-            fmt::format("tilevector attribute [\"{}\"] not exists\n", (std::string)tag));
-    return TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{tagNames, vec};
-  }
-
-  /// tagged tilevector for debug
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                       const TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
-    auto ret
-        = TileVectorView<ExecSpace, const TileVector<T, Length, Allocator>, false, false>{{}, vec};
-#if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._nameTag = tagName;
-#endif
-    return ret;
-  }
-  template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator>
-  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                       TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
-    auto ret = TileVectorView<ExecSpace, TileVector<T, Length, Allocator>, false, false>{{}, vec};
-#if ZS_ENABLE_OFB_ACCESS_CHECK
-    ret._nameTag = tagName;
-#endif
-    return ret;
-  }
-
   template <execspace_e ExecSpace, typename T, std::size_t Length, typename Allocator,
             bool Base = true>
   decltype(auto) view(const std::vector<SmallString> &tagNames,
@@ -1463,5 +1411,45 @@ namespace zs {
 #endif
     return ret;
   }
+
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                       const TileVector<T, Length, Allocator> &vec) {
+    for (auto &&tag : tagNames)
+      if (!vec.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("tilevector property [\"{}\"] not exists", (std::string)tag));
+    return view<space>(tagNames, vec, false_c);
+  }
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                       TileVector<T, Length, Allocator> &vec) {
+    for (auto &&tag : tagNames)
+      if (!vec.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("tilevector property [\"{}\"] not exists\n", (std::string)tag));
+    return view<space>(tagNames, vec, false_c);
+  }
+
+  /// tagged tilevector for debug
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                       const TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
+    for (auto &&tag : tagNames)
+      if (!vec.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("tilevector property [\"{}\"] not exists\n", (std::string)tag));
+    return view<space>(tagNames, vec, tagName);
+  }
+  template <execspace_e space, typename T, std::size_t Length, typename Allocator>
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                       TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
+    for (auto &&tag : tagNames)
+      if (!vec.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("tilevector property [\"{}\"] not exists\n", (std::string)tag));
+    return view<space>(tagNames, vec, tagName);
+  }
+
 
 }  // namespace zs

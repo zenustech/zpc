@@ -90,10 +90,11 @@ namespace zs {
     indices_t parents{}, levels{}, leafInds{}, auxIndices{};  // escape ids/ prim ids
   };
 
-  template <zs::execspace_e, typename LBvhT, typename = void> struct LBvhView;
+  template <zs::execspace_e, typename LBvhT, bool Base = false, typename = void> struct LBvhView;
 
   /// proxy to work within each backends
-  template <zs::execspace_e space, typename LBvhT> struct LBvhView<space, const LBvhT> {
+  template <zs::execspace_e space, typename LBvhT, bool Base>
+  struct LBvhView<space, const LBvhT, Base> {
     static constexpr int dim = LBvhT::dim;
     using index_t = typename LBvhT::index_type;
     using bv_t = typename LBvhT::Box;
@@ -104,11 +105,11 @@ namespace zs {
     ~LBvhView() = default;
 
     explicit constexpr LBvhView(const LBvhT &lbvh)
-        : _orderedBvs{zs::proxy<space>(lbvh.orderedBvs)},
-          _parents{zs::proxy<space>(lbvh.parents)},
-          _levels{zs::proxy<space>(lbvh.levels)},
-          _leafInds{zs::proxy<space>(lbvh.leafInds)},
-          _auxIndices{zs::proxy<space>(lbvh.auxIndices)},
+        : _orderedBvs{zs::view<space>(lbvh.orderedBvs, wrapv<Base>{})},
+          _parents{zs::view<space>(lbvh.parents, wrapv<Base>{})},
+          _levels{zs::view<space>(lbvh.levels, wrapv<Base>{})},
+          _leafInds{zs::view<space>(lbvh.leafInds, wrapv<Base>{})},
+          _auxIndices{zs::view<space>(lbvh.auxIndices, wrapv<Base>{})},
           _numNodes{static_cast<index_t>(lbvh.getNumNodes())} {}
 
     constexpr auto numNodes() const noexcept { return _numNodes; }
@@ -247,14 +248,20 @@ namespace zs {
       }
     }
 
-    zs::VectorView<space, const bvs_t> _orderedBvs;
-    zs::VectorView<space, const indices_t> _parents, _levels, _leafInds, _auxIndices;
+    zs::VectorView<space, const bvs_t, Base> _orderedBvs;
+    zs::VectorView<space, const indices_t, Base> _parents, _levels, _leafInds, _auxIndices;
     index_t _numNodes;
   };
 
+  template <zs::execspace_e space, int dim, typename Ti, typename T, typename Allocator,
+            bool Base = true>
+  constexpr decltype(auto) view(const LBvh<dim, Ti, T, Allocator> &lbvh, wrapv<Base> = {}) {
+    return LBvhView<space, const LBvh<dim, Ti, T, Allocator>, Base>{lbvh};
+  }
+
   template <zs::execspace_e space, int dim, typename Ti, typename T, typename Allocator>
   constexpr decltype(auto) proxy(const LBvh<dim, Ti, T, Allocator> &lbvh) {
-    return LBvhView<space, const LBvh<dim, Ti, T, Allocator>>{lbvh};
+    return view<space>(lbvh, false_c);
   }
 
   template <typename BvhView, typename BV, class F>

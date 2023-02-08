@@ -151,23 +151,24 @@ namespace zs {
     constexpr auto execTag = wrapv<space>{};
     using ICoord = zs::vec<Ti, 2>;
 
-    zs::bcht<ICoord, index_type, true, zs::universal_hash<ICoord>, 16> tab{get_allocator(), size};
+    zs::bcht<ICoord, index_type, true, zs::universal_hash<ICoord>, 16> tab{get_allocator(),
+                                                                           (index_type)size};
     Vector<size_type> cnts{get_allocator(), nsegs + 1};
-    Vector<index_type> localOffsets{get_allocator(), size};
+    Vector<index_type> localOffsets{get_allocator(), (std::size_t)size};
     cnts.reset(0);
-    policy(range(size),
-           [tab = proxy<space>(tab), cnts = view(cnts), localOffsets = view(localOffsets),
-            is = std::begin(is), js = std::begin(js), execTag] ZS_LAMBDA(size_type k) mutable {
-             using tab_t = RM_CVREF_T(tab);
-             Ti i = is[k], j = js[k];
-             // insertion success
-             if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
-               if constexpr (RowMajor)
-                 localOffsets[id] = atomic_add(execTag, &cnts[i], 1);
-               else
-                 localOffsets[id] = atomic_add(execTag, &cnts[j], 1);
-             }
-           });
+    policy(range(size), [tab = proxy<space>(tab), cnts = view<space>(cnts),
+                         localOffsets = view<space>(localOffsets), is = std::begin(is),
+                         js = std::begin(js), execTag] ZS_LAMBDA(size_type k) mutable {
+      using tab_t = RM_CVREF_T(tab);
+      Ti i = is[k], j = js[k];
+      // insertion success
+      if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
+        if constexpr (RowMajor)
+          localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
+        else
+          localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
+      }
+    });
 
     /// @brief _ptrs
     _ptrs.resize(nsegs + 1);
@@ -184,35 +185,35 @@ namespace zs {
     if constexpr (std::is_fundamental_v<value_type>)
       _vals.reset(0);
     else if constexpr (is_vec<value_type>::value) {
-      policy(range(numEntries), [vals = view(_vals)] ZS_LAMBDA(size_type k) mutable {
+      policy(range(numEntries), [vals = view<space>(_vals)] ZS_LAMBDA(size_type k) mutable {
         vals[k] = value_type::zeros();
       });
     }
-    policy(range(size),
-           [tab = proxy<space>(tab), localOffsets = view(localOffsets), is = std::begin(is),
-            js = std::begin(js), vs = std::begin(vs), ptrs = view(_ptrs), inds = view(_inds),
-            vals = view(_vals), execTag] ZS_LAMBDA(size_type k) mutable {
-             using tab_t = RM_CVREF_T(tab);
-             Ti i = is[k], j = js[k];
-             auto id = tab.query(ICoord{i, j});
-             auto loc = localOffsets[id];
-             size_type offset = 0;
-             if constexpr (RowMajor) {
-               offset = ptrs[i] + loc;
-               inds[offset] = j;
-             } else {
-               offset = ptrs[j] + loc;
-               inds[offset] = i;
-             }
-             if constexpr (std::is_fundamental_v<value_type>)
-               atomic_add(execTag, &vals[offset], (value_type)vs[k]);
-             else if constexpr (is_vec<value_type>::value) {
-               auto &val = vals[offset];
-               const auto &e = vs[k];
-               for (typename value_type::index_type i = 0; i != value_type::extent; ++i)
-                 atomic_add(execTag, &val.val(i), e.val(i));
-             }
-           });
+    policy(range(size), [tab = proxy<space>(tab), localOffsets = view<space>(localOffsets),
+                         is = std::begin(is), js = std::begin(js), vs = std::begin(vs),
+                         ptrs = view<space>(_ptrs), inds = view<space>(_inds),
+                         vals = view<space>(_vals), execTag] ZS_LAMBDA(size_type k) mutable {
+      using tab_t = RM_CVREF_T(tab);
+      Ti i = is[k], j = js[k];
+      auto id = tab.query(ICoord{i, j});
+      auto loc = localOffsets[id];
+      size_type offset = 0;
+      if constexpr (RowMajor) {
+        offset = ptrs[i] + loc;
+        inds[offset] = j;
+      } else {
+        offset = ptrs[j] + loc;
+        inds[offset] = i;
+      }
+      if constexpr (std::is_fundamental_v<value_type>)
+        atomic_add(execTag, &vals[offset], (value_type)vs[k]);
+      else if constexpr (is_vec<value_type>::value) {
+        auto &val = vals[offset];
+        const auto &e = vs[k];
+        for (typename value_type::index_type i = 0; i != value_type::extent; ++i)
+          atomic_add(execTag, &val.val(i), (typename value_type::value_type)e.val(i));
+      }
+    });
   }
 
   template <execspace_e Space, typename SpMatT, typename = void> struct SparseMatrixView {

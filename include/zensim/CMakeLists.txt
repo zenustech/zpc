@@ -221,6 +221,7 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
   geometry/Structurefree.hpp
   geometry/SparseGrid.hpp
   math/matrix/SparseMatrix.hpp
+  graph/ConnectedComponents.hpp
 
   # resource
   resource/Resource.h

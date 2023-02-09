@@ -3,6 +3,7 @@
 
 namespace zs {
 
+  /// @note ref: https://userweb.cs.txstate.edu/~burtscher/research/ECL-CC/
   template <typename Policy, typename SpMatT, typename FaRange>
   void union_find(Policy&& pol, const SpMatT& spm, FaRange&& faRange) {
     using SpmvT = RM_CVREF_T(spm);

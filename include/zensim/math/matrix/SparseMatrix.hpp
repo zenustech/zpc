@@ -121,6 +121,15 @@ namespace zs {
     constexpr auto end(index_type no) const noexcept {
       return make_iterator<iterator_impl<true>>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
     }
+    void print() {
+      size_type offset = 0;
+      for (index_type i = 0; i != outerSize(); ++i) {
+        auto ed = _ptrs[i + 1];
+        fmt::print("#\tline [{}] ({} entries):\t", i, ed - offset);
+        for (; offset != ed; ++offset) fmt::print("{}\t", _inds[offset]);
+        fmt::print("\n");
+      }
+    }
 
     template <typename Policy, typename IRange, typename JRange, typename VRange>
     void build(Policy &&policy, index_type nrows, index_type ncols, IRange &&is, JRange &&js,
@@ -185,7 +194,7 @@ namespace zs {
     exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
 
     auto numEntries = _ptrs.getVal(nsegs);
-    fmt::print("{} entries activated in total from {} triplets.", numEntries, size);
+    fmt::print("{} entries activated in total from {} triplets.\n", numEntries, size);
 
     /// @brief _inds, _vals
     static_assert(std::is_fundamental_v<value_type> || is_vec<value_type>::value,
@@ -287,7 +296,7 @@ namespace zs {
     exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
 
     auto numEntries = _ptrs.getVal(nsegs);
-    fmt::print("{} entries activated in total from {} doublets.", numEntries, size);
+    fmt::print("{} entries activated in total from {} doublets.\n", numEntries, size);
 
     /// @brief _inds
     _inds.resize(numEntries);

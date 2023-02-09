@@ -50,7 +50,7 @@ namespace zs {
     }
     template <bool isVec = is_vec<key_type>::value, enable_if_t<isVec> = 0>
     constexpr result_type operator()(const key_type &key) const noexcept {
-      static_assert(key_type::extent > 1, "should at least have one element");
+      static_assert(key_type::extent >= 1, "should at least have one element");
       const universal_hash<typename key_type::value_type> subhasher{_hashx, _hashy};
       u32 ret = subhasher(key[0]);
       for (typename key_type::index_type d = 1; d != key_type::extent; ++d)
@@ -495,7 +495,8 @@ namespace zs {
                     VectorView<space, const Vector<storage_key_type, allocator_type>, Base>,
                     VectorView<space, Vector<storage_key_type, allocator_type>, Base>>
           keys{};
-      conditional_t<is_const_structure, VectorView<space, const Vector<index_type, allocator_type>, Base>,
+      conditional_t<is_const_structure,
+                    VectorView<space, const Vector<index_type, allocator_type>, Base>,
                     VectorView<space, Vector<index_type, allocator_type>, Base>>
           indices{};
       conditional_t<is_const_structure, VectorView<space, const Vector<int, allocator_type>, Base>,
@@ -1535,9 +1536,9 @@ namespace zs {
       index_type no = insertion_index;
 
       storage_key_type insertion_key = transKey(key);
+      int spin_iter = 0;
 
       do {
-#  pragma omp flush
         bool exist = false;
         for (int i = 0; i != bucket_size; ++i)
           if (equal_to{}(insertion_key, load_key(i))) exist = true;
@@ -1551,7 +1552,21 @@ namespace zs {
         if (load != bucket_size) {
           bool casSuccess = false;
 
-#  pragma omp critical
+          spin_iter = 0;
+          while (atomic_cas(exec_omp, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+                 && ++spin_iter != spin_iter_cap)
+            ;
+          if (spin_iter == spin_iter_cap) continue;
+          thread_fence(exec_omp);
+
+          exist = false;
+          for (int i = 0; i != bucket_size; ++i)
+            if (equal_to{}(insertion_key, load_key(i))) exist = true;
+          if (exist) {
+            atomic_exch(exec_omp, &_table.status[bucket_offset / bucket_size], -1);
+            return sentinel_v;
+          }
+
           {
             // check duplication again
             if constexpr (compare_key) {
@@ -1569,54 +1584,56 @@ namespace zs {
                 casSuccess = true;
               }
             } else {
-              casSuccess = atomic_cas(exec_seq, &_table.keys[bucket_offset + load],
+              casSuccess = atomic_cas(exec_omp, &_table.keys[bucket_offset + load],
                                       compare_key_sentinel_v, insertion_key)
                            == compare_key_sentinel_v;
             }
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_seq, _cnt, (size_type)1);
+                no = atomic_add(exec_omp, _cnt, (size_type)1);
                 insertion_index = no;
               }
               *const_cast<volatile index_type *>(&_table.indices[bucket_offset + load])
                   = insertion_index;
             }
+            thread_fence(exec_omp);
+            atomic_exch(exec_omp, &_table.status[bucket_offset / bucket_size], -1);
           }
 
-#  pragma omp flush
           if (casSuccess) {
             if (enqueueKey) _activeKeys[no] = key;
             return no;
           }
         } else {
           {
+            spin_iter = 0;
+            while (atomic_cas(exec_omp, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+                   && ++spin_iter != spin_iter_cap)
+              ;
+            if (spin_iter == spin_iter_cap) continue;
+
             auto random_location = rng() % bucket_size;
-            storage_key_type old_key;
-            index_type old_index;
-#  pragma omp flush
-#  pragma omp critical
-            {
-              // thread_fence(exec_cuda);
-              volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
-                  &_table.keys[bucket_offset + random_location]);
-              old_key = *const_cast<storage_key_type *>(key_dst);
-              if constexpr (compare_key && key_is_vec) {
-                for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
-                     ++i)
-                  key_dst->data()[i] = insertion_key.val(i);
-              } else
-                *key_dst = insertion_key;
+            thread_fence(exec_omp);
+            volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
+                &_table.keys[bucket_offset + random_location]);
+            storage_key_type old_key = *const_cast<storage_key_type *>(key_dst);
+            if constexpr (compare_key && key_is_vec) {
+              for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
+                   ++i)
+                key_dst->data()[i] = insertion_key.val(i);
+            } else
+              *key_dst = insertion_key;
 
-              if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_seq, _cnt, (size_type)1);
-                insertion_index = no;
-              }
-              old_index = atomic_exch(exec_seq, &_table.indices[bucket_offset + random_location],
-                                      insertion_index);
+            if (insertion_index == sentinel_v) {
+              no = atomic_add(exec_omp, _cnt, (size_type)1);
+              insertion_index = no;
             }
+            auto old_index = atomic_exch(exec_omp, &_table.indices[bucket_offset + random_location],
+                                         insertion_index);
 
-#  pragma omp flush
+            thread_fence(exec_omp);
+            atomic_exch(exec_omp, &_table.status[bucket_offset / bucket_size], -1);
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
@@ -1693,8 +1710,10 @@ namespace zs {
 #endif
 
     table_t _table;
-    conditional_t<is_const_structure, VectorView<space, const Vector<key_type, allocator_type>, Base>,
-                    VectorView<space, Vector<key_type, allocator_type>, Base>> _activeKeys;
+    conditional_t<is_const_structure,
+                  VectorView<space, const Vector<key_type, allocator_type>, Base>,
+                  VectorView<space, Vector<key_type, allocator_type>, Base>>
+        _activeKeys;
     // conditional_t<is_const_structure, const key_type *, key_type *> _activeKeys;
     conditional_t<is_const_structure, const size_type *, size_type *> _cnt;
     conditional_t<is_const_structure, const u8 *, u8 *> _success;
@@ -1705,14 +1724,16 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT, bool Base = true>
-  constexpr decltype(auto) view(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table, wrapv<Base> = {}) {
+  constexpr decltype(auto) view(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
+                                wrapv<Base> = {}) {
     return BCHTView<ExecSpace, bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{table};
   }
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT, bool Base = true>
-  constexpr decltype(auto) view(
-      const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table, wrapv<Base> = {}) {
-    return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{table};
+  constexpr decltype(auto) view(const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
+                                wrapv<Base> = {}) {
+    return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{
+        table};
   }
 
   template <execspace_e space, typename KeyT, typename Index, bool KeyCompare, typename Hasher,

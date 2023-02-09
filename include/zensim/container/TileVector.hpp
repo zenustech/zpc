@@ -130,21 +130,6 @@ namespace zs {
                               channel_counter_type nchns) noexcept
           : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
 
-      template <typename VecT, enable_if_t<is_vec<remove_cvref_t<VecT>>::value> = 0>
-      static constexpr decltype(auto) interpret(VecT &&v) noexcept {
-        if constexpr (is_native_value_type)
-          return FWD(v);
-        else
-          return v.reinterpret_bits(wrapt<iter_value_type>{});
-      }
-      template <typename VT, enable_if_t<std::is_fundamental_v<remove_cvref_t<VT>>> = 0>
-      static constexpr decltype(auto) interpret(VT &&v) noexcept {
-        if constexpr (is_native_value_type)
-          return FWD(v);
-        else
-          return reinterpret_bits<iter_value_type>(FWD(v));
-      }
-
       constexpr conditional_t<is_scalar_access,
                               conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
                               vec<iter_value_type, Ns...>>

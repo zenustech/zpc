@@ -816,6 +816,7 @@ namespace zs {
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
       const int cap = math::min((int)tile.size(), (int)bucket_size);
+      const int syncCap = math::max((int)tile.size(), (int)bucket_size);
 
       mars_rng_32 rng;
       u32 cuckoo_counter = 0;
@@ -846,7 +847,7 @@ namespace zs {
             exist = 1;
             break;
           }
-        for (int stride = 1; stride < cap; stride <<= 1) {
+        for (int stride = 1; stride < syncCap; stride <<= 1) {
           int tmp = tile.shfl(exist, lane_id + stride);
           if (lane_id + stride < cap) exist |= tmp;
         }
@@ -856,7 +857,7 @@ namespace zs {
         int load = 0;
         for (int i = lane_id; i < bucket_size; i += cap)
           if (!equal_to{}(compare_key_sentinel_v, load_key(i))) ++load;
-        for (int stride = 1; stride < cap; stride <<= 1) {
+        for (int stride = 1; stride < syncCap; stride <<= 1) {
           int tmp = tile.shfl(load, lane_id + stride);
           if (lane_id + stride < cap) load += tmp;
         }
@@ -884,7 +885,7 @@ namespace zs {
               exist = 1;
               break;
             }
-          for (int stride = 1; stride < cap; stride <<= 1) {
+          for (int stride = 1; stride < syncCap; stride <<= 1) {
             int tmp = tile.shfl(exist, lane_id + stride);
             if (lane_id + stride < cap) exist |= tmp;
           }
@@ -1006,29 +1007,29 @@ namespace zs {
     [[maybe_unused]] __forceinline__ __host__ __device__ index_type
     insert(const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
            bool enqueueKey = true,
-           CoalescedGroup tile = cooperative_groups::coalesced_threads()) noexcept {
+           CoalescedGroup group = cooperative_groups::coalesced_threads()) noexcept {
       namespace cg = ::cooperative_groups;
 
       bool has_work = true;  // is this visible to rest threads in tile cuz of __forceinline__ ??
       bool success = true;
       index_type result = sentinel_v;
 
-      u32 work_queue = tile.ballot(has_work);
+      u32 work_queue = group.ballot(has_work);
       while (work_queue) {
-        auto cur_rank = tile.ffs(work_queue) - 1;
-        auto cur_work = tile.shfl(insertion_key, cur_rank);
-        auto cur_index = tile.shfl(insertion_index, cur_rank);  // gather index as well
-        auto id = group_insert(tile, cur_work, cur_index, enqueueKey);
+        auto cur_rank = group.ffs(work_queue) - 1;
+        auto cur_work = group.shfl(insertion_key, cur_rank);
+        auto cur_index = group.shfl(insertion_index, cur_rank);  // gather index as well
+        auto id = group_insert(group, cur_work, cur_index, enqueueKey);
 
-        if (tile.thread_rank() == cur_rank) {
+        if (group.thread_rank() == cur_rank) {
           result = id;
           success = id != failure_token_v;
           has_work = false;
         }
-        work_queue = tile.ballot(has_work);
+        work_queue = group.ballot(has_work);
       }
 
-      if (!tile.all(success)) *_success = false;
+      if (!group.all(success)) *_success = false;
       return result;
     }
 
@@ -1171,6 +1172,7 @@ namespace zs {
       }
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
       const int cap = math::min((int)tile.size(), (int)bucket_size);
+      const int syncCap = math::max((int)tile.size(), (int)bucket_size);
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
       auto lane_id = tile.thread_rank();
@@ -1183,7 +1185,7 @@ namespace zs {
             location = i;
             break;
           }
-        for (int stride = 1; stride < cap; stride <<= 1) {
+        for (int stride = 1; stride < syncCap; stride <<= 1) {
           int tmp = tile.shfl(location, lane_id + stride);
           if (lane_id + stride < cap) location = location < tmp ? location : tmp;
         }
@@ -1202,7 +1204,7 @@ namespace zs {
           int load = 0;
           for (int i = lane_id; i < bucket_size; i += cap)
             if (!equal_to{}(compare_key_sentinel_v, _table.keys[bucket_offset + i])) ++load;
-          for (int stride = 1; stride < cap; stride <<= 1) {
+          for (int stride = 1; stride < syncCap; stride <<= 1) {
             int tmp = tile.shfl(load, lane_id + stride);
             if (lane_id + stride < cap) load += tmp;
           }

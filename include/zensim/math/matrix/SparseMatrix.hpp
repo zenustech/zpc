@@ -298,12 +298,17 @@ namespace zs {
     auto numEntries = _ptrs.getVal(nsegs);
     fmt::print("{} entries activated in total from {} doublets.\n", numEntries, size);
 
+    if (auto ntab = tab.size(); numEntries != ntab) {
+      throw std::runtime_error(fmt::format(
+          "computed number of entries {} not equal to the number of active table entries {}\n",
+          numEntries, ntab));
+    }
+
     /// @brief _inds
     _inds.resize(numEntries);
     policy(range(numEntries),
            [tab = proxy<space>(tab), localOffsets = view<space>(localOffsets),
             ptrs = view<space>(_ptrs), inds = view<space>(_inds)] ZS_LAMBDA(size_type k) mutable {
-             using tab_t = RM_CVREF_T(tab);
              auto ij = tab._activeKeys[k];
              auto loc = localOffsets[k];
              if constexpr (RowMajor)
@@ -417,11 +422,9 @@ namespace zs {
                                 const SmallString &tagName) {
     auto ret = SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    if constexpr (!Base) {
-      ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
-      ret._inds._nameTag = tagName + SmallString{":inds"};
-      ret._vals._nameTag = tagName + SmallString{":vals"};
-    }
+    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
+    ret._inds._nameTag = tagName + SmallString{":inds"};
+    ret._vals._nameTag = tagName + SmallString{":vals"};
 #endif
     return ret;
   }
@@ -432,11 +435,9 @@ namespace zs {
     auto ret
         = SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    if constexpr (!Base) {
-      ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
-      ret._inds._nameTag = tagName + SmallString{":inds"};
-      ret._vals._nameTag = tagName + SmallString{":vals"};
-    }
+    ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
+    ret._inds._nameTag = tagName + SmallString{":inds"};
+    ret._vals._nameTag = tagName + SmallString{":vals"};
 #endif
     return ret;
   }

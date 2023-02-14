@@ -331,8 +331,7 @@ namespace zs {
 
   template <typename T,
             enable_if_all<is_same_v<T, remove_cvref_t<T>>, std::is_default_constructible_v<T>,
-                          std::is_trivially_copyable_v<T>>
-            = 0>
+                          std::is_trivially_copyable_v<T>> = 0>
   auto from_std_vector(const std::vector<T> &vs,
                        const MemoryLocation &mloc = {memsrc_e::host, -1}) {
     auto allocator = get_memory_source(mloc.memspace(), mloc.devid());
@@ -375,8 +374,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (
-            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (RetT)(
+            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -400,8 +399,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (
-            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (RetT)(
+            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -448,6 +447,9 @@ namespace zs {
     constexpr typename vector_type::const_pointer data() const noexcept { return _vector; }
 
     pointer _vector{nullptr};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    SmallString _nameTag{};
+#endif
   };
 
   template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
@@ -464,7 +466,7 @@ namespace zs {
                                 const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, Vector<T, Allocator>, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    if constexpr (!Base) ret._nameTag = tagName;
+    ret._nameTag = tagName;
 #endif
     return ret;
   }
@@ -473,7 +475,7 @@ namespace zs {
                                 const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, const Vector<T, Allocator>, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    if constexpr (!Base) ret._nameTag = tagName;
+    ret._nameTag = tagName;
 #endif
     return ret;
   }

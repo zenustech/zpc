@@ -560,11 +560,25 @@ namespace zs {
         return ~(unsigned)0;
 #  endif
       }
-      template <typename T> __forceinline__ __host__ __device__ T shfl(T var, int srcLane) const {
+      /// @note ref:
+      /// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
+      template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0>
+      __forceinline__ __host__ __device__ T shfl(T var, int srcLane) const {
 #  ifdef __CUDA_ARCH__
         return static_cast<const base_t *>(this)->shfl(var, srcLane);
 #  else
         return 0;
+#  endif
+      }
+      template <typename VecT, auto V = key_is_vec, enable_if_t<V> = 0>
+      __forceinline__ __host__ __device__ VecT shfl(const VecT &var, int srcLane) const {
+#  ifdef __CUDA_ARCH__
+        VecT ret{};
+        for (typename VecT::index_type i = 0; i != VecT::extent; ++i)
+          ret.val(i) = this->shfl(var.val(i), srcLane);
+        return ret;
+#  else
+        return VecT::zeros();
 #  endif
       }
       __forceinline__ __host__ __device__ int ffs(int x) const {
@@ -1033,6 +1047,30 @@ namespace zs {
       return result;
     }
 
+    /// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
+    template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0>
+    __forceinline__ __host__ __device__ T tile_shfl(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        T var, int srcLane) const {
+#  ifdef __CUDA_ARCH__
+      return tile.shfl(var, srcLane);
+#  else
+      return 0;
+#  endif
+    }
+    template <typename VecT, auto V = key_is_vec, enable_if_t<V> = 0>
+    __forceinline__ __host__ __device__ VecT tile_shfl(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        const VecT &var, int srcLane) const {
+#  ifdef __CUDA_ARCH__
+      VecT ret{};
+      for (typename VecT::index_type i = 0; i != VecT::extent; ++i)
+        ret.val(i) = tile_shfl(tile, var.val(i), srcLane);
+      return ret;
+#  else
+      return VecT::zeros();
+#  endif
+    }
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[maybe_unused]] __forceinline__ __device__ index_type insertUnsafe(
         const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
@@ -1049,7 +1087,7 @@ namespace zs {
       u32 work_queue = tile.ballot(has_work);
       while (work_queue) {
         auto cur_rank = __ffs(work_queue) - 1;
-        auto cur_work = tile.shfl(insertion_key, cur_rank);
+        auto cur_work = tile_shfl(tile, insertion_key, cur_rank);
         auto cur_index = tile.shfl(insertion_index, cur_rank);  // gather index as well
         auto id = tile_insert(tile, cur_work, cur_index, enqueueKey);
 

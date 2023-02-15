@@ -570,7 +570,7 @@ namespace zs {
         return 0;
 #  endif
       }
-      template <typename VecT, auto V = key_is_vec, enable_if_t<V> = 0>
+      template <typename VecT, enable_if_t<is_vec<VecT>::value> = 0>
       __forceinline__ __host__ __device__ VecT shfl(const VecT &var, int srcLane) const {
 #  ifdef __CUDA_ARCH__
         VecT ret{};
@@ -1058,7 +1058,7 @@ namespace zs {
       return 0;
 #  endif
     }
-    template <typename VecT, auto V = key_is_vec, enable_if_t<V> = 0>
+    template <typename VecT, enable_if_t<is_vec<VecT>::value> = 0>
     __forceinline__ __host__ __device__ VecT tile_shfl(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const VecT &var, int srcLane) const {
@@ -1347,7 +1347,7 @@ namespace zs {
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
         auto cur_rank = __ffs(work_queue) - 1;
-        auto cur_work = tile.shfl(find_key, cur_rank);
+        auto cur_work = tile_shfl(tile, find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work);
 
         if (tile.thread_rank() == cur_rank) {

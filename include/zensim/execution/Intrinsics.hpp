@@ -30,7 +30,8 @@
 
 namespace zs {
 
-  // __threadfence
+/// @brief synchronization funcs
+// __threadfence
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag>
   __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>>
@@ -83,15 +84,77 @@ namespace zs {
 #if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     YieldProcessor();
 #elif defined(__clang__) || defined(__GNUC__)
-#ifdef ZS_PLATFORM_OSX
+#  ifdef ZS_PLATFORM_OSX
     pause();
-#else
+#  else
     _mm_pause();
-#endif
+#  endif
 #endif
   }
 
-  // __activemask
+/// @brief warp shuffle funcs
+// __shfl_sync
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_sync(ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
+#  ifdef __CUDA_ARCH__
+    return __shfl_sync(mask, var, srcLane, width);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [shfl_sync]!");
+    return 0;
+#  endif
+  }
+#endif
+
+// __shfl_up_sync
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_up_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+#  ifdef __CUDA_ARCH__
+    return __shfl_up_sync(mask, var, delta, width);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [shfl_up_sync]!");
+    return 0;
+#  endif
+  }
+#endif
+
+// __shfl_down_sync
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_down_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+#  ifdef __CUDA_ARCH__
+    return __shfl_down_sync(mask, var, delta, width);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [shfl_down_sync]!");
+    return 0;
+#  endif
+  }
+#endif
+
+// __shfl_xor_sync
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_xor_sync(ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
+#  ifdef __CUDA_ARCH__
+    return __shfl_xor_sync(mask, var, laneMask, width);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [shfl_xor_sync]!");
+    return 0;
+#  endif
+  }
+#endif
+
+/// @brief warp vote funcs
+// __activemask
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag>
   __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
@@ -106,7 +169,7 @@ namespace zs {
   }
 #endif
 
-  // __ballot_sync
+// __ballot_sync
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag>
   __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
@@ -121,9 +184,99 @@ namespace zs {
   }
 #endif
 
-  // ref: https://graphics.stanford.edu/~seander/bithacks.html
+// __all_sync
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int>
+  all_sync(ExecTag, unsigned mask, int predicate) {
+#  ifdef __CUDA_ARCH__
+    return __all_sync(mask, predicate);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [all_sync]!");
+    return 0;
+#  endif
+  }
+#endif
 
-  /// count leading zeros
+// __any_sync
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int>
+  any_sync(ExecTag, unsigned mask, int predicate) {
+#  ifdef __CUDA_ARCH__
+    return __any_sync(mask, predicate);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [any_sync]!");
+    return 0;
+#  endif
+  }
+#endif
+
+/// @brief math intrinsics
+// ffs
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int> ffs(
+      ExecTag, int x) {
+#  ifdef __CUDA_ARCH__
+    return __ffs(x);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [ffs]!");
+    return -1;
+#  endif
+  }
+#endif
+
+// ffsll
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int>
+  ffsll(ExecTag, long long int x) {
+#  ifdef __CUDA_ARCH__
+    return __ffsll(x);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [ffsll]!");
+    return -1;
+#  endif
+  }
+#endif
+
+  // popc
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int> popc(
+      ExecTag, unsigned int x) {
+#  ifdef __CUDA_ARCH__
+    return __popc(x);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [popc]!");
+    return -1;
+#  endif
+  }
+#endif
+
+  // popcll
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  template <typename ExecTag>
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int>
+  popcll(ExecTag, unsigned long long int x) {
+#  ifdef __CUDA_ARCH__
+    return __popcll(x);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [popcll]!");
+    return -1;
+#  endif
+  }
+#endif
+
+// ref: https://graphics.stanford.edu/~seander/bithacks.html
+// count leading zeros
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, int>

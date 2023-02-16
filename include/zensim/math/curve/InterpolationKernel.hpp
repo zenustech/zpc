@@ -246,7 +246,7 @@ namespace zs {
     auto& w{get<0>(weights)};
 
     for (int i = 0; i != dim; ++i) {
-      T base = base_node<1>(x(i));
+      T base = base_node<2>(x(i));
 
       for (int off = 0; off < 4; ++off) {
         T r = abs(x(i) - (base + (T)off));

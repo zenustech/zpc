@@ -204,9 +204,12 @@ namespace zs {
     if constexpr (std::is_fundamental_v<value_type>)
       _vals.reset(0);
     else if constexpr (is_vec<value_type>::value) {
+      _vals.reset(0);
+#if 0
       policy(range(numEntries), [vals = view<space>(_vals)] ZS_LAMBDA(size_type k) mutable {
         vals[k] = value_type::zeros();
       });
+#endif
     }
     policy(range(size), [tab = proxy<space>(tab), localOffsets = view<space>(localOffsets),
                          is = std::begin(is), js = std::begin(js), vs = std::begin(vs),

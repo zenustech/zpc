@@ -143,9 +143,15 @@ namespace zs {
   ///
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T> atomic_exch(
-      ExecTag, T *dest, const T val) {
+  __forceinline__ __host__ __device__ std::enable_if_t<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_exch(ExecTag, T *dest, const T val) {
+#  ifdef __CUDA_ARCH__
     return atomicExch(dest, val);
+#  else
+    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+                  "error in compiling cuda implementation of [atomic_exch]!");
+    return 0;
+#  endif
   }
 #endif
   template <typename ExecTag, typename T>

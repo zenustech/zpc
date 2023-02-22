@@ -63,6 +63,7 @@ namespace zs {
                   "Both types should be trivially copyable.");
     static_assert(std::alignment_of_v<Src> % std::alignment_of_v<Dst> == 0,
                   "The original type should at least have an alignment as strict.");
+    if constexpr (std::is_same_v<Src, Dst>) return FWD(val);
 #if 0
     union {
       Src in;

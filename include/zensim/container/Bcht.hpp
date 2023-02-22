@@ -530,6 +530,122 @@ namespace zs {
     }
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
+    /// helper function
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_all<S == execspace_e::cuda, !V> = 0>
+    __forceinline__ __host__ __device__ index_type
+    tryInsertKeyValue(mapped_hashed_key_type bucketOffset, storage_key_type insertion_key,
+                      index_type insertion_index) noexcept {
+      constexpr storage_key_type compare_key_sentinel_v
+          = hash_table_type::deduce_compare_key_sentinel();
+      using namespace placeholders;
+
+      int done = 0;
+      int load = 0;
+      int exist = 0;
+
+      index_type res;
+      u32 cuckoo_counter = 0;
+      mars_rng_32 rng;
+
+      index_type no = insertion_index;
+      storage_key_type readKey;
+
+      unsigned int mask = active_mask(exec_cuda);             // __activemask();
+      unsigned int active = ballot_sync(exec_cuda, mask, 1);  //__ballot_sync(mask, 1);
+      unsigned int done_active = 0;
+      while (active != done_active) {
+        if (!done) {
+          int *lock = &_table.status[bucketOffset / bucket_size];
+          if (atomic_cas(exec_cuda, lock, -1, 0) == -1) {
+            thread_fence(exec_cuda);
+
+            volatile storage_key_type *curBucket
+                = const_cast<volatile storage_key_type *>(_table.keys.data() + bucketOffset);
+            volatile index_type *curIndexBucket
+                = const_cast<volatile index_type *>(_table.indices.data() + bucketOffset);
+
+            exist = 0;
+            /// examine
+            for (load = 0; load < bucket_size; ++load) {
+              if constexpr (compare_key && key_is_vec) {
+                for (typename storage_key_type::index_type j = 0; j != storage_key_type::extent;
+                     ++j)
+                  (void)(readKey.val(j) = curBucket[load].data()[j]);
+              } else
+                (void)(readKey = curBucket[load]);
+
+              if (insertion_key == readKey) {
+                exist = 1;
+                break;
+              } else if (compare_key_sentinel_v == readKey)
+                break;
+            }
+            if (exist) {
+              res = sentinel_v;
+              done = 1;
+            } else {
+              if (load != bucket_size) {
+                bool casSuccess = false;
+                if constexpr (compare_key) {
+                  if constexpr (key_is_vec) {
+                    for (typename storage_key_type::index_type i = 0; i != storage_key_type::extent;
+                         ++i)
+                      (void)(readKey.val(i) = curBucket[load].data()[i]);
+                  } else {
+                    (void)(readKey = curBucket[load]);
+                  }
+                  if (readKey == compare_key_sentinel_v) {  // this slot not yet occupied
+                    volatile storage_key_type *key_dst = &curBucket[load];
+                    if constexpr (key_is_vec) {
+                      for (typename original_key_type::index_type i = 0;
+                           i != original_key_type::extent; ++i)
+                        (void)(key_dst->data()[i] = insertion_key.val(i));
+                    } else
+                      (void)(*key_dst = insertion_key);
+                    casSuccess = true;
+                  }
+                } else {
+                  casSuccess = atomic_cas(exec_cuda, &curBucket[load], compare_key_sentinel_v,
+                                          insertion_key)
+                               == compare_key_sentinel_v;
+                }
+
+                if (!casSuccess) {
+                  printf("this should not happen!!!! inserting into an occupied slot!\n");
+                } else {
+                  if (insertion_index == sentinel_v)
+                    insertion_index = atomic_add(exec_cuda, _cnt, (size_type)1);
+
+                  curIndexBucket[load] = insertion_index;
+
+                  res = insertion_index;
+                  done = 1;
+                }
+              } else {
+                if (cuckoo_counter == 0) {
+                  bucketOffset = _hf1(insertion_key) % _numBuckets * bucket_size;
+                } else if (cuckoo_counter == 1)
+                  bucketOffset = _hf2(insertion_key) % _numBuckets * bucket_size;
+
+                if (++cuckoo_counter == 3) {
+                  res = failure_token_v;
+                  done = 1;
+                }
+              }
+            }
+
+            thread_fence(exec_cuda);
+            atomic_exch(exec_cuda, lock, -1);
+          }  // acquire bucket lock
+        }
+        done_active = ballot_sync(exec_cuda, mask, done);  //__ballot_sync(mask, done);
+      }
+      ///////////////////////////////////////
+      ///////////////////////////////////////
+
+      return res;
+    }
 
     /// helper construct
     struct CoalescedGroup : cooperative_groups::coalesced_group {
@@ -1017,6 +1133,7 @@ namespace zs {
       return failure_token_v;
     }
 
+#  if 0
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[maybe_unused]] __forceinline__ __host__ __device__ index_type
     insert(const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
@@ -1046,6 +1163,25 @@ namespace zs {
       if (!group.all(success)) *_success = false;
       return result;
     }
+#  else
+    /// use this simplified hash insertion
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[maybe_unused]] __forceinline__ __host__ __device__ index_type
+    insert(const original_key_type &insertion_key_, index_type insertion_index = sentinel_v,
+           bool enqueueKey = true) noexcept {
+      if (_numBuckets == 0) return failure_token_v;
+
+      storage_key_type insertion_key = transKey(insertion_key_);
+      auto bucket_offset = reinterpret_bits<mapped_hashed_key_type>(_hf0(insertion_key))
+                           % _numBuckets * bucket_size;
+      auto res = tryInsertKeyValue(bucket_offset, insertion_key, insertion_index);
+      if (res == failure_token_v)
+        *_success = false;
+      else if (res != sentinel_v && enqueueKey)
+        _activeKeys[res] = insertion_key_;
+      return res;
+    }
+#  endif
 
     /// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
     template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0>
@@ -1346,7 +1482,7 @@ namespace zs {
 
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
-        auto cur_rank = __ffs(work_queue) - 1;
+        auto cur_rank = ffs(exec_cuda, work_queue) - 1;
         auto cur_work = tile_shfl(tile, find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work);
 
@@ -1375,7 +1511,7 @@ namespace zs {
 
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
-        auto cur_rank = __ffs(work_queue) - 1;
+        auto cur_rank = ffs(exec_cuda, work_queue) - 1;
         auto cur_work = tile.shfl(find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work, wrapv<false>{});
 

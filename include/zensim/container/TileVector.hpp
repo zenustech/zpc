@@ -112,7 +112,8 @@ namespace zs {
 
     /// @brief tilevector iterator specializations
     template <typename ValT, auto... Ns>
-    struct iterator_impl<ValT, value_seq<Ns...>, std::enable_if_t<sizeof(value_type) == sizeof(ValT)>>
+    struct iterator_impl<ValT, value_seq<Ns...>,
+                         std::enable_if_t<sizeof(value_type) == sizeof(ValT)>>
         : IteratorInterface<iterator_impl<ValT, value_seq<Ns...>,
                                           std::enable_if_t<sizeof(value_type) == sizeof(ValT)>>> {
       static_assert(!std::is_reference_v<ValT>,
@@ -161,13 +162,14 @@ namespace zs {
       channel_counter_type _chn{0}, _numChannels{1};
     };
 
-    template <typename ValT, auto... Ns> struct iterator_impl<
-        ValT, value_seq<Ns...>,
+    template <typename ValT, auto... Ns>
+    struct iterator_impl<ValT, value_seq<Ns...>,
                          std::enable_if_t<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
                                           && (sizeof(value_type) > sizeof(ValT))>>
-        : IteratorInterface<iterator_impl<ValT, value_seq<Ns...>,
+        : IteratorInterface<
+              iterator_impl<ValT, value_seq<Ns...>,
                             std::enable_if_t<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
-                                                           && (sizeof(value_type) > sizeof(ValT))>>> {
+                                             && (sizeof(value_type) > sizeof(ValT))>>> {
       static_assert(!std::is_reference_v<ValT>,
                     "the access type of the iterator should not be a reference.");
       static constexpr auto extent = (Ns * ...);
@@ -559,7 +561,6 @@ namespace zs {
   EXTERN_TILEVECTOR_INSTANTIATIONS(64)
   EXTERN_TILEVECTOR_INSTANTIATIONS(512)
 
-
   template <typename TileVectorView> struct TileVectorCopy {
     using size_type = typename TileVectorView::size_type;
     using channel_counter_type = typename TileVectorView::channel_counter_type;
@@ -648,9 +649,12 @@ namespace zs {
                                              const channel_counter_type nchns)
         : _vector{base}, _dims{s, nchns} {}
 
-    template <bool Pred = (!Base && !WithinTile), enable_if_t<Pred> = 0>
+    template <bool Pred = (!WithinTile), enable_if_t<Pred> = 0>
     constexpr size_type numTiles() const noexcept {
-      return (_dims.size() + lane_width - 1) / lane_width;
+      /// @note size can be as large as limits<size_type>::max()!
+      /// @note therefore might be inaccurate when Base==true
+      const auto s = _dims.size();
+      return s / lane_width + (s % lane_width > 0 ? 1 : 0);
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
@@ -1028,7 +1032,6 @@ namespace zs {
     return view<space>(vec, false_c, tagName);
   }
 
-
   template <execspace_e Space, typename TileVectorT, bool WithinTile, bool Base = false,
             typename = void>
   struct TileVectorView : TileVectorUnnamedView<Space, TileVectorT, WithinTile, Base> {
@@ -1105,6 +1108,7 @@ namespace zs {
     }
 
     using base_t::operator();
+    using base_t::numTiles;
     using base_t::pack;
     using base_t::tuple;
     ///
@@ -1187,9 +1191,9 @@ namespace zs {
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (tileid >= (_dims.size() + lane_width - 1) / lane_width) {
-        printf("tilevector [%s] ofb! global accessing tile %d out of %d blocks\n",
-               _nameTag.asChars(), (int)tileid, (int)(_dims.size() + lane_width - 1) / lane_width);
+      if (long long nt = numTiles(); tileid >= nt) {
+        printf("tilevector [%s] ofb! global accessing tile %lld out of %lld blocks\n",
+               _nameTag.asChars(), (long long)tileid, nt);
       }
 #endif
       return TileVectorView<Space, tile_vector_type, true, Base>{
@@ -1204,9 +1208,9 @@ namespace zs {
     template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
     constexpr auto tile(const size_type tileid) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (tileid >= (_dims.size() + lane_width - 1) / lane_width) {
-        printf("tilevector [%s] ofb! const global accessing tile %d out of %d blocks\n",
-               _nameTag.asChars(), (int)tileid, (int)(_dims.size() + lane_width - 1) / lane_width);
+      if (long long nt = numTiles(); tileid >= nt) {
+        printf("tilevector [%s] ofb! const global accessing tile %lld out of %lld blocks\n",
+               _nameTag.asChars(), (long long)tileid, nt);
       }
 #endif
       return TileVectorView<Space, const_tile_vector_type, true, Base>{
@@ -1227,7 +1231,8 @@ namespace zs {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
-            "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d chns, "
+            "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d "
+            "chns, "
             "%lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
             (long long int)_dims.size());
@@ -1258,7 +1263,8 @@ namespace zs {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (!hasProperty(propName)) {
         printf(
-            "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d chns, "
+            "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d "
+            "chns, "
             "%lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
             (long long int)_dims.size());
@@ -1435,6 +1441,5 @@ namespace zs {
             fmt::format("tilevector property [\"{}\"] not exists\n", (std::string)tag));
     return view<space>(tagNames, vec, tagName);
   }
-
 
 }  // namespace zs

@@ -23,10 +23,8 @@ namespace zs {
     static_assert(std::is_fundamental_v<Tn_>, "Key component should be fundamental!");
 
     using index_type = std::make_signed_t<Tn_>;
-    using key_t = vec<index_type, dim_>;
     using key_type = vec<index_type, dim_>;
-    using value_t = std::make_signed_t<Index>;
-    using status_t = int;
+    using value_type = std::make_signed_t<Index>;
     using status_type = int;
     using size_type = std::make_unsigned_t<Index>;
 
@@ -40,26 +38,47 @@ namespace zs {
       static constexpr std::size_t num_padded_bytes
           = next_2pow(sizeof(index_type) * dim) - sizeof(index_type) * dim;
       constexpr storage_key_type() noexcept = default;
-      constexpr storage_key_type(const key_t &k) noexcept : val{k} {}
-      constexpr storage_key_type(key_t &&k) noexcept : val{std::move(k)} {}
+      constexpr storage_key_type(const key_type &k) noexcept : val{k} {}
+      constexpr storage_key_type(key_type &&k) noexcept : val{std::move(k)} {}
       ~storage_key_type() = default;
-      constexpr operator key_t &() { return val; }
-      constexpr operator const key_t &() const { return val; }
-      constexpr operator volatile key_t &() volatile { return val; }
-      constexpr operator const volatile key_t &() const volatile { return val; }
-      key_t val;
+      constexpr operator key_type &() { return val; }
+      constexpr operator const key_type &() const { return val; }
+      constexpr operator volatile key_type &() volatile { return val; }
+      constexpr operator const volatile key_type &() const volatile { return val; }
+
+      template <typename Key = key_type, typename T = typename Key::value_type,
+                enable_if_all<is_vec<Key>::value, Key::extent == 1> = 0>
+      constexpr operator T &() {
+        return val.val(0);
+      }
+      template <typename Key = key_type, typename T = typename Key::value_type,
+                enable_if_all<is_vec<Key>::value, Key::extent == 1> = 0>
+      constexpr operator const T &() const {
+        return val.val(0);
+      }
+      template <typename Key = key_type, typename T = typename Key::value_type,
+                enable_if_all<is_vec<Key>::value, Key::extent == 1> = 0>
+      constexpr operator volatile T &() volatile {
+        return val.data()[0];
+      }
+      template <typename Key = key_type, typename T = typename Key::value_type,
+                enable_if_all<is_vec<Key>::value, Key::extent == 1> = 0>
+      constexpr operator const volatile T &() const volatile {
+        return val.data()[0];
+      }
+
+      key_type val;
     };
 
-    using value_type = key_t;
     using allocator_type = AllocatorT;
     using difference_type = std::make_signed_t<size_type>;
-    using reference = value_type &;
-    using const_reference = const value_type &;
-    using pointer = value_type *;
-    using const_pointer = const value_type *;
+    using reference = tuple<key_type &, value_type &>;
+    using const_reference = tuple<const key_type &, const value_type &>;
+    using pointer = tuple<key_type *, value_type *>;
+    using const_pointer = tuple<const key_type *, const value_type *>;
 
-    using hasher_type = universal_hash<key_t>;
-    using pair_type = zs::tuple<key_t, value_t>;
+    using hasher_type = universal_hash<key_type>;
+    using pair_type = tuple<key_type, value_type>;
 
     struct Table {
       Table() = default;
@@ -78,8 +97,8 @@ namespace zs {
       }
 
       Vector<storage_key_type, allocator_type> keys;
-      Vector<value_t, allocator_type> indices;
-      Vector<status_t, allocator_type> status;
+      Vector<value_type, allocator_type> indices;
+      Vector<status_type, allocator_type> status;
     };
 
     static_assert(
@@ -89,8 +108,8 @@ namespace zs {
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
     static constexpr index_type key_scalar_sentinel_v = limits<index_type>::max();
-    static constexpr index_type sentinel_v{-1};  // this requires value_t to be signed type
-    static constexpr status_t status_sentinel_v{-1};
+    static constexpr value_type sentinel_v{-1};  // this requires key_type to be signed type
+    static constexpr status_type status_sentinel_v{-1};
 
     constexpr decltype(auto) memoryLocation() const noexcept {
       return _cnt.get_allocator().location;
@@ -115,7 +134,7 @@ namespace zs {
     }
     bht(const allocator_type &allocator, std::size_t numExpectedEntries)
         : _table{allocator, evaluateTableSize(numExpectedEntries)},
-          _tableSize{static_cast<value_t>(evaluateTableSize(numExpectedEntries))},
+          _tableSize{static_cast<size_type>(evaluateTableSize(numExpectedEntries))},
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(numExpectedEntries)},
           _buildSuccess{allocator, 1} {
@@ -125,9 +144,9 @@ namespace zs {
       _hf1 = hasher_type(rng);
       _hf2 = hasher_type(rng);
 
-      _buildSuccess.setVal((value_t)1);
+      _buildSuccess.setVal(1);
 
-      _cnt.setVal((value_t)0);
+      _cnt.setVal((value_type)0);
     }
     bht(std::size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : bht{get_default_allocator(mre, devid), numExpectedEntries} {}
@@ -152,19 +171,19 @@ namespace zs {
       return *this;
     }
     bht clone(const allocator_type &allocator) const {
-      bht ret{allocator, _tableSize / bucket_size};
-      if (_cnt.size() > 0) ret._cnt.setVal(_cnt.getVal());
+      bht ret{};
+      // table
+      ret.self().keys = self().keys.clone(allocator);
+      ret.self().indices = self().indices.clone(allocator);
+      ret.self().status = self().status.clone(allocator);
+
+      ret._cnt = _cnt.clone(allocator);
       ret._tableSize = _tableSize;
       ret._activeKeys = _activeKeys.clone(allocator);
       ret._buildSuccess = _buildSuccess.clone(allocator);
       ret._hf0 = _hf0;
       ret._hf1 = _hf1;
       ret._hf2 = _hf2;
-      if (_tableSize > 0) {
-        ret.self().keys = self().keys.clone(allocator);
-        ret.self().indices = self().indices.clone(allocator);
-        ret.self().status = self().status.clone(allocator);
-      }
       return ret;
     }
     bht clone(const MemoryLocation &mloc) const {
@@ -174,9 +193,8 @@ namespace zs {
     bht(bht &&o) noexcept {
       const bht defaultTable{};
       self() = std::exchange(o.self(), defaultTable.self());
-      _tableSize = std::exchange(o._tableSize, defaultTable._tableSize);
-      /// critical! use user-defined move assignment constructor!
       _cnt = std::exchange(o._cnt, defaultTable._cnt);
+      _tableSize = std::exchange(o._tableSize, defaultTable._tableSize);
       _activeKeys = std::exchange(o._activeKeys, defaultTable._activeKeys);
       _buildSuccess = std::exchange(o._buildSuccess, defaultTable._buildSuccess);
       _hf0 = std::exchange(o._hf0, defaultTable._hf0);
@@ -191,8 +209,8 @@ namespace zs {
     }
     void swap(bht &o) noexcept {
       std::swap(self(), o.self());
-      std::swap(_tableSize, o._tableSize);
       std::swap(_cnt, o._cnt);
+      std::swap(_tableSize, o._tableSize);
       std::swap(_activeKeys, o._activeKeys);
       std::swap(_buildSuccess, o._buildSuccess);
       std::swap(_hf0, o._hf0);
@@ -201,7 +219,7 @@ namespace zs {
     }
     friend void swap(bht &a, bht &b) noexcept { a.swap(b); }
 
-    inline value_t size() const { return _cnt.getVal(0); }
+    size_type size() const { return _cnt.getVal(0); }
 
 #if 0
     template <typename Policy>
@@ -212,9 +230,9 @@ namespace zs {
     template <typename Policy> void reset(Policy &&, bool clearCnt);
 
     Table _table;
-    value_t _tableSize;
-    Vector<value_t, allocator_type> _cnt;
-    Vector<key_t, allocator_type> _activeKeys;
+    size_type _tableSize;
+    Vector<value_type, allocator_type> _cnt;
+    Vector<key_type, allocator_type> _activeKeys;
     Vector<int, allocator_type> _buildSuccess;
     hasher_type _hf0, _hf1, _hf2;
   };
@@ -240,7 +258,7 @@ namespace zs {
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
       using namespace placeholders;
       table._table.keys[entry]
-          = hash_table_type::key_t::constant(hash_table_type::key_scalar_sentinel_v);
+          = hash_table_type::key_type::constant(hash_table_type::key_scalar_sentinel_v);
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
@@ -261,36 +279,41 @@ namespace zs {
 
   /// proxy to work within each backends
   template <execspace_e space, typename HashTableT, typename = void> struct BHTView {
+    static constexpr auto exectag = wrapv<space>{};
     static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
     using hash_table_type = std::remove_const_t<HashTableT>;
-    static constexpr auto exectag = wrapv<space>{};
-    using pointer = typename hash_table_type::pointer;
+    using hasher_type = typename hash_table_type::hasher_type;
+
+    using storage_key_type = typename hash_table_type::storage_key_type;
+    using key_type = typename hash_table_type::key_type;
+    using index_type = typename hash_table_type::index_type;
     using value_type = typename hash_table_type::value_type;
+
     using reference = typename hash_table_type::reference;
     using const_reference = typename hash_table_type::const_reference;
+    using pointer = typename hash_table_type::pointer;
+    using const_pointer = typename hash_table_type::const_pointer;
+
     using size_type = typename hash_table_type::size_type;
     using difference_type = typename hash_table_type::difference_type;
     using Tn = typename hash_table_type::index_type;
-    using index_type = typename hash_table_type::index_type;
-    using storage_key_type = typename hash_table_type::storage_key_type;
-    using key_t = typename hash_table_type::key_t;
-    using value_t = typename hash_table_type::value_t;
-    using unsigned_value_t
-        = conditional_t<sizeof(value_t) == 2, u16, conditional_t<sizeof(value_t) == 4, u32, u64>>;
-    using status_t = typename hash_table_type::status_t;
-    static_assert(sizeof(value_t) == sizeof(unsigned_value_t),
-                  "value_t and unsigned_value_t of different sizes");
+
+    using status_type = typename hash_table_type::status_type;
+
+    using unsigned_value_t = conditional_t<sizeof(value_type) == 2, u16,
+                                           conditional_t<sizeof(value_type) == 4, u32, u64>>;
+
+    static_assert(sizeof(unsigned_value_t) == sizeof(value_type),
+                  "unsigned version of value_type not as expected");
 
     static constexpr int dim = hash_table_type::dim;
     static constexpr size_type bucket_size = hash_table_type::bucket_size;
     static constexpr size_type threshold = hash_table_type::threshold;
 
-    using hasher_type = typename hash_table_type::hasher_type;
-
     struct table_t {
       conditional_t<is_const_structure, const storage_key_type *, storage_key_type *> keys{nullptr};
-      conditional_t<is_const_structure, const value_t *, value_t *> indices{nullptr};
-      conditional_t<is_const_structure, const status_t *, status_t *> status{nullptr};
+      conditional_t<is_const_structure, const value_type *, value_type *> indices{nullptr};
+      conditional_t<is_const_structure, const status_type *, status_type *> status{nullptr};
     };
 
     static constexpr auto key_scalar_sentinel_v = hash_table_type::key_scalar_sentinel_v;
@@ -312,15 +335,15 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
-    __forceinline__ __host__ __device__ value_t insert(const key_t &key) noexcept {
-      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
+    __forceinline__ __host__ __device__ value_type insert(const key_type &key) noexcept {
+      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
 
       int iter = 0;
       int load = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
       while (iter < 3) {
         for (; load != bucket_size; ++load) {
-          key_t curKey = atomicLoad(
+          key_type curKey = atomicLoad(
               &_table.status[bucketOffset + load],
               const_cast<const volatile storage_key_type *>(&_table.keys[bucketOffset + load]));
           if (curKey == key) {
@@ -332,13 +355,13 @@ namespace zs {
         if (load < 0)
           return HashTableT::sentinel_v;
         else if (load <= threshold) {
-          key_t storedKey = key_sentinel_v;
+          key_type storedKey = key_sentinel_v;
           if (atomicSwitchIfEqual(
                   &_table.status[bucketOffset + load],
                   const_cast<volatile storage_key_type *>(&_table.keys[bucketOffset + load]),
                   key)) {
             auto localno
-                = (value_t)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+                = (value_type)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
             _table.indices[bucketOffset + load] = localno;
             _activeKeys[localno] = key;
             if (localno >= _tableSize - 20)
@@ -362,16 +385,15 @@ namespace zs {
 #endif
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V> = 0>
-    inline value_t insert(const key_t &key) noexcept {
-      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
-      constexpr value_t sentinel_v = HashTableT::sentinel_v;
+    inline value_type insert(const key_type &key) noexcept {
+      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
 
       int iter = 0;
       int load = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
       while (iter < 3) {
         for (; load != bucket_size; ++load) {
-          key_t curKey = atomicLoad(
+          key_type curKey = atomicLoad(
               &_table.status[bucketOffset + load],
               const_cast<const volatile storage_key_type *>(&_table.keys[bucketOffset + load]));
           if (curKey == key) {
@@ -381,15 +403,15 @@ namespace zs {
             break;
         }
         if (load < 0)
-          return sentinel_v;
+          return HashTableT::sentinel_v;
         else if (load <= threshold) {
-          key_t storedKey = key_sentinel_v;
+          key_type storedKey = key_sentinel_v;
           if (atomicSwitchIfEqual(
                   &_table.status[bucketOffset + load],
                   const_cast<volatile storage_key_type *>(&_table.keys[bucketOffset + load]),
                   key)) {
             auto localno
-                = (value_t)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+                = (value_type)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
             _table.indices[bucketOffset + load] = localno;
             _activeKeys[localno] = key;
             if (localno >= _tableSize - 20)
@@ -413,7 +435,7 @@ namespace zs {
 
     /// make sure no one else is inserting in the same time!
     template <bool retrieve_index = false>
-    constexpr value_t query(const key_t &key, wrapv<retrieve_index> = {}) const noexcept {
+    constexpr value_type query(const key_type &key, wrapv<retrieve_index> = {}) const noexcept {
       using namespace placeholders;
       int iter = 0;
       int loc = 0;
@@ -436,9 +458,9 @@ namespace zs {
       }
       return HashTableT::sentinel_v;
     }
-    constexpr size_type entry(const key_t &key) const noexcept {
+    constexpr size_type entry(const key_type &key) const noexcept {
       using namespace placeholders;
-      return (size_type)query(key, true_c);
+      return static_cast<size_type>(query(key, true_c));
     }
 
     template <execspace_e S = space, bool V = is_const_structure,
@@ -448,8 +470,8 @@ namespace zs {
       // reset counter
       *_cnt = 0;
       // reset table
-      constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
-      for (value_t entry = 0; entry < _tableSize; ++entry) {
+      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
+      for (key_type entry = 0; entry < _tableSize; ++entry) {
         _table.keys[entry] = key_sentinel_v;
         _table.indices[entry] = HashTableT::sentinel_v;
         _table.status[entry] = HashTableT::status_sentinel_v;
@@ -459,31 +481,23 @@ namespace zs {
     constexpr auto size() const noexcept { return *_cnt; }
 
     table_t _table{};
-    conditional_t<is_const_structure, const key_t *, key_t *> _activeKeys{nullptr};
-    value_t _tableSize{0};  // constness makes non-trivial
-    conditional_t<is_const_structure, const value_t *, value_t *> _cnt{nullptr};
+    conditional_t<is_const_structure, const key_type *, key_type *> _activeKeys{nullptr};
+    size_type _tableSize{0}, _numBuckets{};  // constness makes non-trivial
+    conditional_t<is_const_structure, const value_type *, value_type *> _cnt{nullptr};
     conditional_t<is_const_structure, const int *, int *> _success{nullptr};
-    size_type _numBuckets;
     hasher_type _hf0, _hf1, _hf2;
 
   protected:
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, index_type>> = 0>
-    constexpr value_t do_hash(const VecInterface<VecT> &key) const noexcept {
-      std::size_t ret = key[0];
-      for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
-      return static_cast<value_t>(ret);
-    }
+    /// @brief helper methods: atomicSwitchIfEqual, atomicLoad
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __host__ __device__ bool atomicSwitchIfEqual(
-        status_t *lock, volatile storage_key_type *const dest,
+        status_type *lock, volatile storage_key_type *const dest,
         const storage_key_type &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      const storage_key_type key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
+      const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
       if constexpr (sizeof(storage_key_type) == 8) {
         static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
                       "storage key type alignment is not the same as u64");
@@ -539,13 +553,15 @@ namespace zs {
       atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
       return eqn;
     }
+    /// @ref https://stackoverflow.com/questions/32341081/how-to-have-atomic-load-in-cuda
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
-    __forceinline__ __host__ __device__ key_t
-    atomicLoad(status_t *lock, const volatile storage_key_type *const dest) noexcept {
+    __forceinline__ __host__ __device__ key_type
+    atomicLoad(status_type *lock, const volatile storage_key_type *const dest) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
+        thread_fence(exec_cuda);
         static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
                       "storage key type alignment is not the same as u64");
         union {
@@ -559,9 +575,13 @@ namespace zs {
           u64 *const ptr64;
         } dst = {&result};
 
+        /// @note beware of the potential torn read issue
+        // *dst.ptr64 = atomic_or(exec_cuda, const_cast<u64 *>(src.ptr64), (u64)0);
         *dst.ptr64 = *src.ptr64;
+        thread_fence(exec_cuda);
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
+        thread_fence(exec_cuda);
         static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
                       "storage key type alignment is not the same as u32");
         union {
@@ -575,7 +595,10 @@ namespace zs {
           u32 *const ptr32;
         } dst = {&result};
 
+        /// @note beware of the potential torn read issue
+        // *dst.ptr32 = atomic_or(exec_cuda, const_cast<u32 *>(src.ptr32), (u32)0);
         *dst.ptr32 = *src.ptr32;
+        thread_fence(exec_cuda);
         return *dst.ptr;
       }
       /// lock
@@ -583,7 +606,7 @@ namespace zs {
         ;
       thread_fence(exec_cuda);
       ///
-      key_t return_val;
+      key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
       thread_fence(exec_cuda);
       /// unlock
@@ -593,11 +616,11 @@ namespace zs {
 #endif
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V> = 0>
-    inline bool atomicSwitchIfEqual(status_t *lock, volatile storage_key_type *const dest,
+    inline bool atomicSwitchIfEqual(status_type *lock, volatile storage_key_type *const dest,
                                     const storage_key_type &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      const storage_key_type key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
+      const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
       if constexpr (sizeof(storage_key_type) == 8) {
         static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
                       "storage key type alignment is not the same as u64");
@@ -655,7 +678,8 @@ namespace zs {
     }
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V> = 0>
-    inline key_t atomicLoad(status_t *lock, const volatile storage_key_type *const dest) noexcept {
+    inline key_type atomicLoad(status_type *lock,
+                               const volatile storage_key_type *const dest) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
@@ -696,7 +720,7 @@ namespace zs {
         ;
       thread_fence(execTag);
       ///
-      key_t return_val;
+      key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
       thread_fence(execTag);
       /// unlock

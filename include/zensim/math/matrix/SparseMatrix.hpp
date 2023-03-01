@@ -173,8 +173,6 @@ namespace zs {
     std::size_t tabSize = size;
     bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
     tab.reset(policy, true);
-    HashTable<Ti, 2, size_type> refTab{get_allocator(), (std::size_t)tabSize};
-    refTab.reset(policy, true);
     Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
     Vector<index_type> localOffsets{get_allocator(), (std::size_t)size};
     bool success = false;
@@ -216,7 +214,7 @@ namespace zs {
       throw std::runtime_error(
           fmt::format("computed number of entries {} not equal to the number of active table "
                       "entries {}\n",
-                      numEntries, ntab, counter.getVal(), refTab.size()));
+                      numEntries, ntab));
 
     /// @brief _inds, _vals
     static_assert(std::is_fundamental_v<value_type> || is_vec<value_type>::value,

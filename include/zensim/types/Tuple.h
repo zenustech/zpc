@@ -201,6 +201,11 @@ template <std::size_t I, typename T> struct tuple_value {
     }
     template <typename T> constexpr decltype(auto) get() noexcept { return get(wrapt<T>{}); }
     template <typename T> constexpr decltype(auto) get() const noexcept { return get(wrapt<T>{}); }
+    /// compare
+    constexpr bool operator==(const tuple_base &o) const noexcept {
+      return ((get<Is>() == o.get<Is>()) && ...);
+    }
+    constexpr bool operator!=(const tuple_base &o) const noexcept { return !(operator==(o)); }
     /// custom
     constexpr auto &head() noexcept { return get(index_t<0>{}); }
     constexpr auto const &head() const noexcept { return get(index_t<0>{}); }
@@ -428,8 +433,8 @@ template <std::size_t I, typename T> struct tuple_value {
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<std::size_t>{}).value;
       using indices = typename gen_seq<length>::ascend;
-      using outer = decltype(
-          counts{}.template scan<1, plus<std::size_t>>().map(count_leq{}, wrapv<length>{}));
+      using outer = decltype(counts{}.template scan<1, plus<std::size_t>>().map(count_leq{},
+                                                                                wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
           minus<std::size_t>{}, counts{}.template scan<0, plus<std::size_t>>().shuffle(outer{})));
       // using types = decltype(type_seq<typename

@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/container/Bcht.hpp"
+#include "zensim/container/Bht.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
 
@@ -170,24 +170,40 @@ namespace zs {
     constexpr auto execTag = wrapv<space>{};
     using ICoord = zs::vec<Ti, 2>;
 
-    zs::bcht<ICoord, index_type, true, zs::universal_hash<ICoord>, 16> tab{get_allocator(),
-                                                                           (std::size_t)size};
+    std::size_t tabSize = size;
+    bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
+    tab.reset(policy, true);
+    HashTable<Ti, 2, size_type> refTab{get_allocator(), (std::size_t)tabSize};
+    refTab.reset(policy, true);
     Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
     Vector<index_type> localOffsets{get_allocator(), (std::size_t)size};
-    cnts.reset(0);
-    policy(range(size), [tab = proxy<space>(tab), cnts = view<space>(cnts),
-                         localOffsets = view<space>(localOffsets), is = std::begin(is),
-                         js = std::begin(js), execTag] ZS_LAMBDA(size_type k) mutable {
-      using tab_t = RM_CVREF_T(tab);
-      Ti i = is[k], j = js[k];
-      // insertion success
-      if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
-        if constexpr (RowMajor)
-          localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-        else
-          localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
+    bool success = false;
+
+    do {
+      cnts.reset(0);
+      policy(range(size), [tab = proxy<space>(tab), cnts = view<space>(cnts),
+                           localOffsets = view<space>(localOffsets), is = std::begin(is),
+                           js = std::begin(js), execTag] ZS_LAMBDA(size_type k) mutable {
+        using tab_t = RM_CVREF_T(tab);
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
+          if constexpr (RowMajor)
+            localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
+          else
+            localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
+        }
+      });
+      success = tab._buildSuccess.getVal();
+      if (!success) {
+        tabSize *= 2;
+        tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
+        tab.reset(policy, true);
+        fmt::print(fg(fmt::color::light_golden_rod_yellow),
+                   "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2,
+                   tabSize);
       }
-    });
+    } while (!success);
 
     /// @brief _ptrs
     _ptrs.resize(nsegs + 1);
@@ -195,6 +211,12 @@ namespace zs {
 
     auto numEntries = _ptrs.getVal(nsegs);
     fmt::print("{} entries activated in total from {} triplets.\n", numEntries, size);
+
+    if (auto ntab = tab.size(); numEntries != ntab)
+      throw std::runtime_error(
+          fmt::format("computed number of entries {} not equal to the number of active table "
+                      "entries {}\n",
+                      numEntries, ntab, counter.getVal(), refTab.size()));
 
     /// @brief _inds, _vals
     static_assert(std::is_fundamental_v<value_type> || is_vec<value_type>::value,
@@ -261,38 +283,50 @@ namespace zs {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     using ICoord = zs::vec<Ti, 2>;
 
-    zs::bcht<ICoord, index_type, true, zs::universal_hash<ICoord>, 16> tab{
-        get_allocator(), Mirror ? (std::size_t)size * 2 : (std::size_t)size};
-    Vector<index_type> localOffsets{get_allocator(),
-                                    Mirror ? (std::size_t)size * 2 : (std::size_t)size};
+    std::size_t tabSize = Mirror ? (std::size_t)size * 2 : (std::size_t)size;
+    bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
+    tab.reset(policy, true);
+    Vector<index_type> localOffsets{get_allocator(), tabSize};
     Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
-    cnts.reset(0);
-    policy(range(size),
-           [tab = proxy<space>(tab), cnts = view<space>(cnts),
-            localOffsets = view<space>(localOffsets), is = std::begin(is), js = std::begin(js),
-            execTag = wrapv<space>{}] ZS_LAMBDA(size_type k) mutable {
-             using tab_t = RM_CVREF_T(tab);
-             Ti i = is[k], j = js[k];
-             // insertion success
-             if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
-               if constexpr (RowMajor)
-                 localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-               else
-                 localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
+    bool success = false;
+    do {
+      cnts.reset(0);
+      policy(range(size),
+             [tab = proxy<space>(tab), cnts = view<space>(cnts),
+              localOffsets = view<space>(localOffsets), is = std::begin(is), js = std::begin(js),
+              execTag = wrapv<space>{}] ZS_LAMBDA(size_type k) mutable {
+               using tab_t = RM_CVREF_T(tab);
+               Ti i = is[k], j = js[k];
+               // insertion success
+               if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
+                 if constexpr (RowMajor)
+                   localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
+                 else
+                   localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
 
-               /// @note spawn symmetric entries
-               if constexpr (Mirror) {
-                 if (i != j) {
-                   if (id = tab.insert(ICoord{j, i}); id != tab_t::sentinel_v) {
-                     if constexpr (RowMajor)
-                       localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
-                     else
-                       localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
+                 /// @note spawn symmetric entries
+                 if constexpr (Mirror) {
+                   if (i != j) {
+                     if (id = tab.insert(ICoord{j, i}); id != tab_t::sentinel_v) {
+                       if constexpr (RowMajor)
+                         localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
+                       else
+                         localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
+                     }
                    }
                  }
                }
-             }
-           });
+             });
+      success = tab._buildSuccess.getVal();
+      if (!success) {
+        tabSize *= 2;
+        tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
+        tab.reset(policy, true);
+        fmt::print(fg(fmt::color::light_golden_rod_yellow),
+                   "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2,
+                   tabSize);
+      }
+    } while (!success);
 
     /// @brief _ptrs
     _ptrs.resize(nsegs + 1);

@@ -105,8 +105,13 @@ namespace zs {
   public:
     /// expose internal
     constexpr auto data() noexcept -> T * { return _data; }
-    constexpr auto data() volatile noexcept -> volatile T * { return (volatile T *)_data; }
-    constexpr auto data() const noexcept -> const T * { return _data; }
+    constexpr auto data() const volatile noexcept -> const volatile T * {
+      return const_cast<const volatile T *>(_data);
+    }
+    constexpr auto data() volatile noexcept -> volatile T * {
+      return const_cast<volatile T *>(_data);
+    }
+    constexpr auto data() const noexcept -> const T * { return const_cast<const T *>(_data); }
 
     /// think this does not break rule of five
     constexpr vec_impl() noexcept = default;

@@ -48,6 +48,15 @@ namespace zs {
     constexpr result_type operator()(const key_type &key) const noexcept {
       return (((_hashx ^ key) + _hashy) % prime_divisor);
     }
+    template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
+    constexpr result_type operator()(const VecInterface<VecT> &key) const noexcept {
+      static_assert(VecT::extent >= 1, "should at least have one element");
+      const universal_hash<typename VecT::value_type> subhasher{_hashx, _hashy};
+      u32 ret = subhasher(key.val(0));
+      for (typename VecT::index_type d = 1; d != VecT::extent; ++d)
+        hash_combine(ret, subhasher(key.val(d)));
+      return ret;
+    }
     template <bool isVec = is_vec<key_type>::value, enable_if_t<isVec> = 0>
     constexpr result_type operator()(const key_type &key) const noexcept {
       static_assert(key_type::extent >= 1, "should at least have one element");
@@ -266,7 +275,7 @@ namespace zs {
       }
       // more specialized than the above
       template <typename T0, typename T1>
-      constexpr bool operator()(const VecInterface<T0> &lhs, const VecInterface<T1> rhs) const {
+      constexpr bool operator()(const VecInterface<T0> &lhs, const VecInterface<T1> &rhs) const {
         return lhs == rhs;
       }
     };
@@ -568,12 +577,16 @@ namespace zs {
             exist = 0;
             /// examine
             for (load = 0; load < bucket_size; ++load) {
+#  if 0
               if constexpr (compare_key && key_is_vec) {
                 for (typename storage_key_type::index_type j = 0; j != storage_key_type::extent;
                      ++j)
                   (void)(readKey.val(j) = curBucket[load].data()[j]);
               } else
                 (void)(readKey = curBucket[load]);
+#  else
+              readKey = volatile_load(const_cast<volatile storage_key_type *>(&curBucket[load]));
+#  endif
 
               if (insertion_key == readKey) {
                 exist = 1;
@@ -588,6 +601,7 @@ namespace zs {
               if (load != bucket_size) {
                 bool casSuccess = false;
                 if constexpr (compare_key) {
+#  if 0
                   if constexpr (key_is_vec) {
                     for (typename storage_key_type::index_type i = 0; i != storage_key_type::extent;
                          ++i)
@@ -595,7 +609,14 @@ namespace zs {
                   } else {
                     (void)(readKey = curBucket[load]);
                   }
+
+#  else
+                  readKey
+                      = volatile_load(const_cast<volatile storage_key_type *>(&curBucket[load]));
+#  endif
+
                   if (readKey == compare_key_sentinel_v) {  // this slot not yet occupied
+#  if 0
                     volatile storage_key_type *key_dst = &curBucket[load];
                     if constexpr (key_is_vec) {
                       for (typename original_key_type::index_type i = 0;
@@ -603,6 +624,9 @@ namespace zs {
                         (void)(key_dst->data()[i] = insertion_key.val(i));
                     } else
                       (void)(*key_dst = insertion_key);
+#  else
+                    volatile_store(&curBucket[load], insertion_key);
+#  endif
                     casSuccess = true;
                   }
                 } else {
@@ -617,16 +641,22 @@ namespace zs {
                   if (insertion_index == sentinel_v)
                     insertion_index = atomic_add(exec_cuda, _cnt, (size_type)1);
 
+#  if 0
                   curIndexBucket[load] = insertion_index;
+#  else
+                  volatile_store(&curIndexBucket[load], insertion_index);
+#  endif
 
                   res = insertion_index;
                   done = 1;
                 }
               } else {
                 if (cuckoo_counter == 0) {
-                  bucketOffset = _hf1(insertion_key) % _numBuckets * bucket_size;
+                  bucketOffset = reinterpret_bits<mapped_hashed_key_type>(_hf1(insertion_key))
+                                 % _numBuckets * bucket_size;
                 } else if (cuckoo_counter == 1)
-                  bucketOffset = _hf2(insertion_key) % _numBuckets * bucket_size;
+                  bucketOffset = reinterpret_bits<mapped_hashed_key_type>(_hf2(insertion_key))
+                                 % _numBuckets * bucket_size;
 
                 if (++cuckoo_counter == 3) {
                   res = failure_token_v;
@@ -712,10 +742,11 @@ namespace zs {
       }
     };
 
-    ///
-    /// insertion
-    // @enqueue_key: whether pushing inserted key-index pair into _activeKeys
-    ///
+///
+/// insertion
+// @enqueue_key: whether pushing inserted key-index pair into _activeKeys
+///
+#  if 0
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __device__ index_type tile_insert(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
@@ -750,7 +781,7 @@ namespace zs {
       storage_key_type insertion_key = transKey(key);
       int spin_iter = 0;
       do {
-#  if 1
+#    if 1
         int exist = 0;
         for (int i = lane_id; i < bucket_size; i += cap)
           if (equal_to{}(insertion_key, load_key(i))) {
@@ -763,15 +794,15 @@ namespace zs {
         }
         exist = tile.shfl(exist, 0);
         if (exist) return sentinel_v;
-#  else
+#    else
         // simultaneously check every slot in the bucket
         storage_key_type lane_key = _table.keys[bucket_offset + lane_id];
         // if the key already exist, exit early
         // even though it may be moved out of this bucket to another
         if (tile.any(equal_to{}(lane_key, insertion_key))) return sentinel_v;
-#  endif
+#    endif
 
-#  if 1
+#    if 1
         int load = 0;
         for (int i = lane_id; i < bucket_size; i += cap)
           if (!equal_to{}(compare_key_sentinel_v, load_key(i))) ++load;
@@ -780,13 +811,13 @@ namespace zs {
           if (lane_id + stride < cap) load += tmp;
         }
         load = tile.shfl(load, 0);
-#  else
+#    else
         // if another tile just inserted the same key during this period,
         // then it shall fail the following insertion procedure
         // compute load
         auto load_bitmap = tile.ballot(!equal_to{}(lane_key, compare_key_sentinel_v));
         int load = __popc(load_bitmap);
-#  endif
+#    endif
 
         // if bucket is not full
         if (load != bucket_size) {
@@ -803,7 +834,7 @@ namespace zs {
             continue;
           }
           thread_fence(exec_cuda);
-#  if 1
+#    if 1
           exist = 0;
           for (int i = lane_id; i < bucket_size; i += cap)
             if (equal_to{}(insertion_key, load_key(i))) {
@@ -820,7 +851,7 @@ namespace zs {
               atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;
           }
-#  else
+#    else
           // read again after locking the bucket
           lane_key = _table.keys[bucket_offset + lane_id];
           if (tile.any(equal_to{}(lane_key, insertion_key))) {  // implicit tile sync here
@@ -828,7 +859,7 @@ namespace zs {
               atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;  // although key found, return sentinel to suggest doing nothing
           }
-#  endif
+#    endif
 
           if (lane_id == 0) {
             if constexpr (compare_key) {
@@ -857,12 +888,12 @@ namespace zs {
                 no = atomic_add(exec_cuda, _cnt, (size_type)1);
                 insertion_index = no;
               }
-#  if 1
+#    if 1
               *const_cast<volatile index_type *>(&_table.indices[bucket_offset + load])
                   = insertion_index;
-#  else
+#    else
               atomic_exch(exec_cuda, &_table.indices[bucket_offset + load], insertion_index);
-#  endif
+#    endif
             }
             thread_fence(exec_cuda);
             atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
@@ -878,64 +909,31 @@ namespace zs {
           }
         } else {
           if (lane_id == 0) {
-            spin_iter = 0;
-            while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
-                   && ++spin_iter != spin_iter_cap)
-              ;  // acquiring spin lock
-          }
-          if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
-            // check again
-            continue;
-          }
-          if (lane_id == 0) {
-            auto random_location = rng() % bucket_size;
-            thread_fence(exec_cuda);
-            volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
-                &_table.keys[bucket_offset + random_location]);
-            auto old_key = *const_cast<storage_key_type *>(key_dst);
-            if constexpr (compare_key && key_is_vec) {
-              for (typename original_key_type::index_type i = 0; i != original_key_type::extent;
-                   ++i)
-                key_dst->data()[i] = insertion_key.val(i);
-            } else
-              *key_dst = insertion_key;
-            // _table.keys[bucket_offset + random_location] = insertion_key;
-
-            if (insertion_index == sentinel_v) {
-              no = atomic_add(exec_cuda, _cnt, (size_type)1);
-              insertion_index = no;
-              // casSuccess = true; //not finished yet, evicted key reinsertion is success
-            }
-            auto old_index = atomic_exch(
-                exec_cuda, &_table.indices[bucket_offset + random_location], insertion_index);
-            // volatile index_type *index_dst = const_cast<volatile index_type *>(
-            //    &_table.indices[bucket_offset + random_location]);
-            // auto old_index = *const_cast<index_type *>(index_dst);
-            //*index_dst = insertion_index;
-            // _table.indices[bucket_offset + random_location] = insertion_index;
-
-            thread_fence(exec_cuda);
-            atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
-            // should be old keys instead, not (h)ashed keys
-            auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
-            auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
-            auto bucket2 = reinterpret_bits<mapped_hashed_key_type>(_hf2(old_key)) % _numBuckets;
-
-            auto new_bucket_id = bucket0;
-            new_bucket_id = bucket_offset == bucket1 * bucket_size ? bucket2 : new_bucket_id;
-            new_bucket_id = bucket_offset == bucket0 * bucket_size ? bucket1 : new_bucket_id;
-
-            bucket_offset = new_bucket_id * bucket_size;
-
-            insertion_key = old_key;
-            insertion_index = old_index;
+            if (cuckoo_counter == 0) {
+              bucket_offset = reinterpret_bits<mapped_hashed_key_type>(_hf1(insertion_key))
+                              % _numBuckets * bucket_size;
+            } else if (cuckoo_counter == 1)
+              bucket_offset = reinterpret_bits<mapped_hashed_key_type>(_hf2(insertion_key))
+                              % _numBuckets * bucket_size;
           }
           bucket_offset = tile.shfl(bucket_offset, 0);  // implicit tile sync
           cuckoo_counter++;
         }
-      } while (cuckoo_counter < _maxCuckooChains);
+      } while (cuckoo_counter < 3);
       return failure_token_v;
     }
+#  else
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    __forceinline__ __device__ index_type tile_insert(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        const original_key_type &key, index_type insertion_index = sentinel_v,
+        bool enqueueKey = true) noexcept {
+      index_type ret = sentinel_v;
+      if (tile.thread_rank() == 0) ret = insert(key, insertion_index, enqueueKey);
+      tile.sync();
+      return tile.shfl(ret, 0);
+    }
+#  endif
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     __forceinline__ __host__ __device__ index_type
@@ -1449,6 +1447,7 @@ namespace zs {
         return limits<index_type>::max();
     }
 
+#  if 0
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type
     query(const original_key_type &find_key,
@@ -1468,6 +1467,58 @@ namespace zs {
       }
       return result;
     }
+#  else
+    template <bool retrieve_index = true, execspace_e S = space,
+              enable_if_all<S == execspace_e::cuda> = 0>
+    __forceinline__ __host__ __device__ index_type
+    query(const original_key_type &key, wrapv<retrieve_index> = {}) const noexcept {
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return sentinel_v;
+        else
+          return limits<index_type>::max();
+      }
+      constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
+      auto bucket_offset
+          = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
+      storage_key_type query_key = transKey(key);
+      for (int iter = 0; iter < 3; ++iter) {
+        // cg::reduce requires compute capability 8.0+
+        int location = bucket_size;
+        for (int i = 0; i < bucket_size; ++i)
+          if (equal_to{}(query_key, _table.keys[bucket_offset + i])) {
+            location = i;
+            break;
+          }
+        if (location != bucket_size) {
+          if constexpr (retrieve_index) {
+            index_type found_value = _table.indices[bucket_offset + location];
+            return found_value;
+          } else {
+            return bucket_offset + location;
+          }
+        }
+        // check empty slots
+        // failed not because the bucket is full, but because there is none
+        else {
+          int load = 0;
+          for (int i = 0; i < bucket_size; ++i)
+            if (!equal_to{}(compare_key_sentinel_v, _table.keys[bucket_offset + i])) ++load;
+          if (load < bucket_size)
+            return sentinel_v;
+          else
+            bucket_offset = iter == 0 ? reinterpret_bits<mapped_hashed_key_type>(_hf1(key))
+                                            % _numBuckets * bucket_size
+                                      : reinterpret_bits<mapped_hashed_key_type>(_hf2(key))
+                                            % _numBuckets * bucket_size;
+        }
+      }
+      if constexpr (retrieve_index)
+        return sentinel_v;
+      else
+        return limits<index_type>::max();
+    }
+#  endif
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type queryUnsafe(
@@ -1495,9 +1546,10 @@ namespace zs {
       return result;
     }
 
-    ///
-    /// entry (return the location of the key)
-    ///
+///
+/// entry (return the location of the key)
+///
+#  if 0
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type
     entry(const original_key_type &find_key,
@@ -1523,6 +1575,13 @@ namespace zs {
       }
       return result;
     }
+#  else
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    [[nodiscard]] __forceinline__ __host__ __device__ index_type
+    entry(const original_key_type &find_key) const noexcept {
+      return query(find_key, false_c);
+    }
+#  endif
 #endif
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::host> = 0>

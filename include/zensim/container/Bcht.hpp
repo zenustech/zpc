@@ -1026,7 +1026,7 @@ namespace zs {
       return failure_token_v;
     }
 
-#  if 0
+#  if 1
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
     [[maybe_unused]] __forceinline__ __host__ __device__ index_type
     insert(const original_key_type &insertion_key, index_type insertion_index = sentinel_v,

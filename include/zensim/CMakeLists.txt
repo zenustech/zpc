@@ -386,7 +386,8 @@ if(ZS_ENABLE_CUDA)
     PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" -dlto>
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
-    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=per-thread> # -Xptxas -dlcm=cg
+    # https://docs.nvidia.com/cuda/cuda-driver-api/stream-sync-behavior.html#stream-sync-behavior
+    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=legacy> # -Xptxas -dlcm=cg
   )
 
   # -dlto $<IF:$<AND:$<BOOL:${ZS_AUTO_DETECT_CUDA_ARCH}>,$<VERSION_GREATER_EQUAL:${CUDAToolkit_VERSION},11.5.1>>,-arch=native,>>

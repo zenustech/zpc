@@ -36,22 +36,30 @@ namespace zs {
   }
 
   void memset(device_mem_tag, void *addr, int chval, std::size_t size, const source_location &loc) {
+    /// @note this is asynchronous with respect to host, cuz of using 'per-thread' default stream!!!
     cuMemsetD8((CUdeviceptr)addr, chval, size);
+    // cudaDeviceSynchronize();
   }
   void copy(device_mem_tag, void *dst, void *src, std::size_t size, const source_location &loc) {
+    /// @note
+    /// https://docs.nvidia.com/cuda/cuda-driver-api/api-sync-behavior.html#api-sync-behavior__memcpy-sync
     cuMemcpy((CUdeviceptr)dst, (CUdeviceptr)src, size);
+    // cudaDeviceSynchronize();
   }
   void copyHtoD(device_mem_tag, void *dst, void *src, std::size_t size,
                 const source_location &loc) {
     cuMemcpyHtoD((CUdeviceptr)dst, (void *)src, size);
+    // cudaDeviceSynchronize();
   }
   void copyDtoH(device_mem_tag, void *dst, void *src, std::size_t size,
                 const source_location &loc) {
     cuMemcpyDtoH((void *)dst, (CUdeviceptr)src, size);
+    // cudaDeviceSynchronize();
   }
   void copyDtoD(device_mem_tag, void *dst, void *src, std::size_t size,
                 const source_location &loc) {
     cuMemcpyDtoD((CUdeviceptr)dst, (CUdeviceptr)src, size);
+    // cudaDeviceSynchronize();
   }
 
   bool prepare_context(um_mem_tag, ProcID did) {

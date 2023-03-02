@@ -346,32 +346,32 @@ namespace zs {
     /// @brief advance (random access iterator)
     template <typename D, typename Self = base_t,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, typename Self::difference_type>> = 0>
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator &operator+=(LegacyIterator &it, D offset) {
       it.advance(offset);
       return it;
     }
     template <typename D, typename Self = base_t,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, typename Self::difference_type>> = 0>
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator+(LegacyIterator it, D offset) {
       return it += offset;
     }
     template <typename D, typename Self = base_t,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, typename Self::difference_type>> = 0>
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator+(D offset, LegacyIterator it) {
       return it += offset;
     }
     template <typename D, typename Self = base_t,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, typename Self::difference_type>> = 0>
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator-(LegacyIterator it, D offset) {
       return it + (-std::make_signed_t<D>(offset));
     }
     template <typename D, typename Self = base_t,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, typename Self::difference_type>> = 0>
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator &operator-=(LegacyIterator &it, D offset) {
       return it = it - offset;
     }

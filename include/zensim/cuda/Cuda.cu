@@ -90,12 +90,12 @@ namespace zs {
     checkError(cudaEventRecord((cudaEvent_t)eventCompute(), (cudaStream_t)streamCompute()), loc);
     // cuEventRecord((CUevent)eventCompute(), (CUstream)streamCompute());
   }
-  void Cuda::CudaContext::recordEventSpare(unsigned id, const source_location &loc) {
+  void Cuda::CudaContext::recordEventSpare(StreamID id, const source_location &loc) {
     checkError(cudaEventRecord((cudaEvent_t)eventSpare(id), (cudaStream_t)streamSpare(id)), loc);
     // cuEventRecord((CUevent)eventSpare(id), (CUstream)streamSpare(id));
   }
   // sync
-  void Cuda::CudaContext::syncStream(unsigned sid, const source_location &loc) const {
+  void Cuda::CudaContext::syncStream(StreamID sid, const source_location &loc) const {
     checkError(cudaStreamSynchronize((cudaStream_t)stream(sid)), loc);
     // cuStreamSynchronize((CUstream)stream(sid));
   }
@@ -103,7 +103,7 @@ namespace zs {
     checkError(cudaStreamSynchronize((cudaStream_t)streamCompute()), loc);
     // cuStreamSynchronize((CUstream)streamCompute());
   }
-  void Cuda::CudaContext::syncStreamSpare(unsigned sid, const source_location &loc) const {
+  void Cuda::CudaContext::syncStreamSpare(StreamID sid, const source_location &loc) const {
     checkError(cudaStreamSynchronize((cudaStream_t)streamSpare(sid)), loc);
     // cuStreamSynchronize((CUstream)streamSpare(sid));
   }
@@ -112,7 +112,7 @@ namespace zs {
     checkError(cudaStreamWaitEvent((cudaStream_t)streamCompute(), (cudaEvent_t)event, 0), loc);
     // cuStreamWaitEvent((CUstream)streamCompute(), (CUevent)event, 0);
   }
-  void Cuda::CudaContext::spareStreamWaitForEvent(unsigned sid, void *event,
+  void Cuda::CudaContext::spareStreamWaitForEvent(StreamID sid, void *event,
                                                   const source_location &loc) {
     checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0), loc);
     // cuStreamWaitEvent((CUstream)streamSpare(sid), (CUevent)event, 0);
@@ -212,6 +212,7 @@ namespace zs {
       context.streams.resize((int)StreamIndex::Total);
       for (auto &stream : context.streams)
         cuStreamCreate((CUstream *)&stream, CU_STREAM_DEFAULT);  // safer to sync with stream 0
+      /// @note event for default stream is the last
       context.events.resize((int)EventIndex::Total);
       for (auto &event : context.events) cuEventCreate((CUevent *)&event, CU_EVENT_BLOCKING_SYNC);
 

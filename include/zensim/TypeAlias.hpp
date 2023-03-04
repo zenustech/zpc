@@ -76,7 +76,8 @@ namespace zs {
 
   using NodeID = i32;
   using ProcID = char;
-  using StreamID = u32;
+  /// @note negative stream identified as the default stream
+  using StreamID = i32;
   using EventID = u32;
 
   constexpr void do_nothing(...) noexcept {}

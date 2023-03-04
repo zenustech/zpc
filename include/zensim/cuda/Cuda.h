@@ -39,7 +39,15 @@ namespace zs {
 
     /// kernel launching
     enum class StreamIndex { Compute = 0, H2DCopy, D2HCopy, D2DCopy, Spare, Total = 32 };
-    enum class EventIndex { Compute = 0, H2DCopy, D2HCopy, D2DCopy, Spare, Total = 32 };
+    enum class EventIndex {
+      Compute = 0,
+      H2DCopy,
+      D2HCopy,
+      D2DCopy,
+      Spare,
+      Default = 32,
+      Total = Default + 1
+    };
 
     static auto &driver() noexcept { return instance(); }
     static auto &context(int devid) { return driver().contexts[devid]; }
@@ -76,37 +84,44 @@ namespace zs {
       void setContext(const source_location &loc = source_location::current()) const;
       /// stream & event
       // stream
-      template <StreamIndex sid> auto stream() const {
-        return streams[static_cast<unsigned int>(sid)];
+      template <StreamIndex sid> auto stream() const { return streams[static_cast<StreamID>(sid)]; }
+      void *stream(StreamID sid) const {
+        if (sid >= 0)
+          return streams[sid];
+        else
+          return nullptr;
       }
-      auto stream(unsigned sid) const { return streams[sid]; }
-      auto streamCompute() const {
-        return streams[static_cast<unsigned int>(StreamIndex::Compute)];
-      }
-      auto streamSpare(unsigned sid = 0) const {
-        return streams[static_cast<unsigned int>(StreamIndex::Spare) + sid];
+      auto streamCompute() const { return streams[static_cast<StreamID>(StreamIndex::Compute)]; }
+      void *streamSpare(StreamID sid = 0) const {
+        if (sid >= 0)
+          return streams[static_cast<StreamID>(StreamIndex::Spare) + sid];
+        else
+          return nullptr;
       }
 
       // event
-      auto eventCompute() const { return events[static_cast<unsigned int>(EventIndex::Compute)]; }
-      auto eventSpare(unsigned eid = 0) const {
-        return events[static_cast<unsigned int>(EventIndex::Spare) + eid];
+      void *eventCompute() const { return events[static_cast<StreamID>(EventIndex::Compute)]; }
+      void *eventSpare(StreamID eid = 0) const {
+        if (eid >= 0)
+          return events[static_cast<StreamID>(EventIndex::Spare) + eid];
+        else
+          return events[static_cast<StreamID>(EventIndex::Default)];
       }
 
       // record
       void recordEventCompute(const source_location &loc = source_location::current());
-      void recordEventSpare(unsigned id = 0,
+      void recordEventSpare(StreamID id = 0,
                             const source_location &loc = source_location::current());
       // sync
-      void syncStream(unsigned sid, const source_location &loc = source_location::current()) const;
+      void syncStream(StreamID sid, const source_location &loc = source_location::current()) const;
       void syncCompute(const source_location &loc = source_location::current()) const;
       template <StreamIndex sid> void syncStream() const { syncStream(stream<sid>()); }
-      void syncStreamSpare(unsigned sid = 0,
+      void syncStreamSpare(StreamID sid = 0,
                            const source_location &loc = source_location::current()) const;
       // stream-event sync
       void computeStreamWaitForEvent(void *event,
                                      const source_location &loc = source_location::current());
-      void spareStreamWaitForEvent(unsigned sid, void *event,
+      void spareStreamWaitForEvent(StreamID sid, void *event,
                                    const source_location &loc = source_location::current());
       // stream ordered memory allocator
       void *streamMemAlloc(std::size_t size, void *stream,

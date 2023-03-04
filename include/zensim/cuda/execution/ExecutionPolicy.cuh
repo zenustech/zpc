@@ -655,8 +655,8 @@ namespace zs {
     // template <auto flagbit> friend struct CudaLibHandle<flagbit>;
 
     // std::size_t blockGranularity{128};
-    StreamID incomingStreamid{0};
-    StreamID streamid{0};
+    StreamID incomingStreamid{-1};
+    StreamID streamid{-1};      ///< @note use CUDA default stream by default
     std::size_t shmemBytes{0};  ///< amount of shared memory passed
     int blockSize{0};           ///< 0 to enable auto configure
     ProcID incomingProc{0};

@@ -137,6 +137,7 @@ namespace zs {
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
     void build(Policy &&policy, index_type nrows, index_type ncols, IRange &&is, JRange &&js,
                wrapv<Mirror> = {});
+    // template <typename Policy> void localOrdering(Policy &&policy);
 
     index_type _nrows = 0, _ncols = 0;  // for square matrix, nrows = ncols
     zs::Vector<size_type, allocator_type> _ptrs{};
@@ -152,10 +153,9 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(
-        std::is_convertible_v<Tr,
-                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
-        "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
+                      && std::is_convertible_v<Tv, T>,
+                  "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -430,6 +430,29 @@ namespace zs {
         return _ptrs[_nrows];
       else
         return _ptrs[_ncols];
+    }
+    constexpr size_type locate(index_type i, index_type j) const noexcept {
+      size_type id{}, ed{};
+      if constexpr (is_row_major) {
+        id = _inds[i];
+        ed = _inds[i + 1];
+      } else {
+        id = _inds[j];
+        ed = _inds[j + 1];
+      }
+      for (; id != ed; ++id) {
+        if constexpr (is_row_major) {
+          if (j == _inds[id]) break;
+        } else {
+          if (i == _inds[id]) break;
+        }
+      }
+      if (id != ed)
+        return id;
+      else {
+        printf("cannot find the spmat entry at (%d, %d)\n", (int)i, (int)j);
+        limits<index_type>::max();
+      }
     }
 
     index_type _nrows, _ncols;

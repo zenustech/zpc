@@ -649,6 +649,8 @@ namespace zs {
     constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
     constexpr StreamID getIncomingStreamid() const noexcept { return incomingStreamid; }
 
+    constexpr std::size_t getShmemSize() const noexcept { return shmemBytes; }
+
   protected:
     // bool do_launch(const ParallelTask &) const noexcept;
     friend struct ExecutionPolicyInterface<CudaExecutionPolicy>;

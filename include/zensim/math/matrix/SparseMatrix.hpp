@@ -2,6 +2,10 @@
 #include "zensim/container/Bht.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#include "zensim/cuda/execution/ExecutionPolicy.cuh"
+#include <cooperative_groups/scan.h>
+#endif
 
 namespace zs {
 
@@ -137,7 +141,10 @@ namespace zs {
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
     void build(Policy &&policy, index_type nrows, index_type ncols, IRange &&is, JRange &&js,
                wrapv<Mirror> = {});
-    // template <typename Policy> void localOrdering(Policy &&policy);
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+    void localOrdering(CudaExecutionPolicy &policy, int groupSize = 512);
+#endif
+    template <typename Policy> void localOrdering(Policy &&policy);
 
     index_type _nrows = 0, _ncols = 0;  // for square matrix, nrows = ncols
     zs::Vector<size_type, allocator_type> _ptrs{};
@@ -352,6 +359,97 @@ namespace zs {
                inds[ptrs[ij[1]] + loc] = ij[0];
            });
   }
+
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+  // ref:
+  // https://stackoverflow.com/questions/26206544/parallel-radix-sort-how-would-this-implementation-actually-work-are-there-some/26229897#26229897
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol,
+                                                                    int groupSize) {
+    Ti nsegs = is_row_major ? _nrows : _ncols;
+    Ti innerSize = is_row_major ? _ncols : _nrows;
+    constexpr execspace_e space = execspace_e::cuda;
+    groupSize = (groupSize + 31) / 32 * 32;  // make this a multiple of 32
+    using Tu = std::make_unsigned_t<Ti>;
+    static_assert(sizeof(Tu) * 8 >= 9,
+                  "unsigned version of index_type should have at least 2 bytes.");
+    if (groupSize > 512) {
+      throw std::runtime_error(
+          fmt::format("The maximum nnz per [{}] exceeds 512. Not fit for this routine.\n",
+                      is_row_major ? "row" : "col", groupSize));
+    }
+    auto prevShmemSize = pol.getShmemSize();
+    /// layout:
+    /// [0, ..., n-1; n, ..., 2n - 1; n / 32]
+    /// double buffers; inter-warp offset communication
+    pol.shmem(sizeof(index_type) * (groupSize * 2 + groupSize / 32));
+    pol(Collapse{(nsegs + groupSize - 1) / groupSize, groupSize},
+        [ptrs = view<space>(_ptrs), inds = view<space>(_inds), stride = groupSize,
+         numIters = bit_count(innerSize)] __device__(index_type * shmem, index_type segNo,
+                                                     int loc) mutable {
+          /// @note inclScanBuffer [0, stride / 32) stores the inclusive scan of zeros of all warps
+          auto inclScanBuffer = reinterpret_cast<Tu *>(shmem + stride * 2);
+          const auto nWarpsPerBlock = stride / 32;
+          /// @note make sure "nWarpsPerBlock <= 32" !
+          /// @note inclScanBuffer[nWarpsPerBlock  - 1] stores the total zeros
+          auto &numTotalZeros = inclScanBuffer[nWarpsPerBlock - 1];
+          auto st = ptrs[segNo];
+          auto ed = ptrs[segNo + 1];
+          cg::thread_block block = cg::this_thread_block();
+          cg::thread_block_tile<32> tile = cg::tiled_partition<32>(block);
+          // bit 0 ... 31
+          // thread[0]: 1000..000
+          // thread[1]: 1100..000
+          // thread[31]: 1111..111
+          const u32 mask = 0xffffffff >> (31 - tile.thread_rank());
+          const u32 localTileNo = loc / 32;
+          bool valid = st + loc < ed;
+          if (valid)
+            shmem[loc] = inds[st + loc];
+          else
+            shmem[loc] = limits<index_type>::max();
+          block.sync();
+          /// @note indicates the offset of the current buffer in the double buffer
+          int offset = 0;
+          for (int bit = 0; bit != numIters; ++bit) {
+            thread_fence(exec_cuda);
+            auto key = shmem[offset + loc];
+            offset = offset ? 0 : stride;  // switch double buffer
+            int isBitSet = valid ? (key & (1u << bit) ? 1 : 0) : 1;
+            u32 ones = tile.ballot(isBitSet);
+            u32 zeros = ~ones;
+            if (tile.thread_rank() == 0) inclScanBuffer[localTileNo] = __popc(zeros);
+            block.sync();
+            if (localTileNo == 0) {
+              index_type val = 0;
+              if (tile.thread_rank() < nWarpsPerBlock) val = inclScanBuffer[tile.thread_rank()];
+              thread_fence(exec_cuda);
+              auto res = inclusive_scan(tile, val, cg::plus<index_type>());
+              if (tile.thread_rank() < nWarpsPerBlock) inclScanBuffer[tile.thread_rank()] = res;
+            }
+            block.sync();
+            thread_fence(exec_cuda);
+            // the number of ones is then "groupSize - nzeros"
+            u32 dst{};
+            u32 precedingZeros = 0;
+            if (localTileNo) precedingZeros = inclScanBuffer[localTileNo - 1];
+            if (isBitSet) {
+              dst = numTotalZeros + ((localTileNo * 32) - precedingZeros) + __popc(ones & mask);
+            } else {
+              dst = precedingZeros + __popc(zeros & mask);
+            }
+            shmem[dst - 1 + offset] = key;
+            // if (valid && segNo==0 && localTileNo == 0) printf("moving key %d from %d to %d\n",
+            // key, loc, dst - 1);
+            block.sync();
+          }
+          thread_fence(exec_cuda);
+          /// @note write back sorted keys (indices)
+          if (valid) inds[st + loc] = shmem[loc + offset];
+        });
+    pol.shmem(prevShmemSize);  // revert to previous setting
+  }
+#endif
 
   template <execspace_e Space, typename SpMatT, bool Base = false, typename = void>
   struct SparseMatrixView {

@@ -549,7 +549,42 @@ namespace zs {
         return id;
       else {
         printf("cannot find the spmat entry at (%d, %d)\n", (int)i, (int)j);
-        limits<index_type>::max();
+        return limits<index_type>::max();
+      }
+    }
+    /// @note binary search
+    constexpr size_type locate(index_type i, index_type j, std::true_type) const noexcept {
+      size_type st{}, ed{}, mid{};
+      if constexpr (is_row_major) {
+        st = _inds[i];
+        ed = _inds[i + 1];
+      } else {
+        st = _inds[j];
+        ed = _inds[j + 1];
+      }
+      while (ed >= st) {
+        mid = st + (ed - st) / 2;
+        if constexpr (is_row_major) {
+          if (j == _inds[mid]) break;
+          if (j < _inds[mid])
+            ed = mid - 1;
+          else 
+            st = mid + 1;
+        } else {
+          if (i == _inds[mid]) break;
+          if (i < _inds[mid])
+            ed = mid - 1;
+          else 
+            st = mid + 1;
+        }
+      }
+      if (ed >= st)
+        return mid;
+      else {
+        /// @note probably forget to sort
+        // printf("cannot find the spmat entry at (%d, %d)\n", (int)i, (int)j);
+        // return limits<index_type>::max();
+        return locate(i, j);
       }
     }
 

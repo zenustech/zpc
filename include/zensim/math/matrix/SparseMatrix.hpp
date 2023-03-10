@@ -3,8 +3,9 @@
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
-#include "zensim/cuda/execution/ExecutionPolicy.cuh"
-#include <cooperative_groups/scan.h>
+#  include <cooperative_groups/scan.h>
+
+#  include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #endif
 
 namespace zs {
@@ -60,6 +61,19 @@ namespace zs {
         : SparseMatrix{get_default_allocator(mre, devid), ni, nj} {}
     SparseMatrix(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : SparseMatrix{get_default_allocator(mre, devid), 0, 0} {}
+
+    SparseMatrix clone(const allocator_type &allocator) const {
+      SparseMatrix ret{};
+      ret._nrows = _nrows;
+      ret._ncols = _ncols;
+      ret._ptrs = _ptrs.clone(allocator);
+      ret._inds = _inds.clone(allocator);
+      ret._vals = _vals.clone(allocator);
+      return ret;
+    }
+    SparseMatrix clone(const zs::MemoryLocation &mloc) const {
+      return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
+    }
 
     constexpr index_type rows() const noexcept { return _nrows; }
     constexpr index_type cols() const noexcept { return _ncols; }
@@ -144,7 +158,7 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     void localOrdering(CudaExecutionPolicy &policy, int groupSize = 512);
 #endif
-    template <typename Policy> void localOrdering(Policy &&policy);
+    // template <typename Policy> void localOrdering(Policy &&policy);
 
     index_type _nrows = 0, _ncols = 0;  // for square matrix, nrows = ncols
     zs::Vector<size_type, allocator_type> _ptrs{};
@@ -532,11 +546,11 @@ namespace zs {
     constexpr size_type locate(index_type i, index_type j) const noexcept {
       size_type id{}, ed{};
       if constexpr (is_row_major) {
-        id = _inds[i];
-        ed = _inds[i + 1];
+        id = _ptrs[i];
+        ed = _ptrs[i + 1];
       } else {
-        id = _inds[j];
-        ed = _inds[j + 1];
+        id = _ptrs[j];
+        ed = _ptrs[j + 1];
       }
       for (; id != ed; ++id) {
         if constexpr (is_row_major) {
@@ -556,11 +570,11 @@ namespace zs {
     constexpr size_type locate(index_type i, index_type j, std::true_type) const noexcept {
       size_type st{}, ed{}, mid{};
       if constexpr (is_row_major) {
-        st = _inds[i];
-        ed = _inds[i + 1];
+        st = _ptrs[i];
+        ed = _ptrs[i + 1];
       } else {
-        st = _inds[j];
-        ed = _inds[j + 1];
+        st = _ptrs[j];
+        ed = _ptrs[j + 1];
       }
       while (ed >= st) {
         mid = st + (ed - st) / 2;
@@ -568,13 +582,13 @@ namespace zs {
           if (j == _inds[mid]) break;
           if (j < _inds[mid])
             ed = mid - 1;
-          else 
+          else
             st = mid + 1;
         } else {
           if (i == _inds[mid]) break;
           if (i < _inds[mid])
             ed = mid - 1;
-          else 
+          else
             st = mid + 1;
         }
       }

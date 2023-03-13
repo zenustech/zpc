@@ -150,10 +150,10 @@ namespace zs {
   }
 
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
-      std::is_convertible_v<
-          typename std::iterator_traits<ZipIter>::iterator_category,
-          std::
-              random_access_iterator_tag> && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      std::is_convertible_v<typename std::iterator_traits<ZipIter>::iterator_category,
+                            std::random_access_iterator_tag>
+      && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
+          || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
   range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -167,9 +167,8 @@ namespace zs {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(
-            std::is_integral_v<
-                typename func_traits::
-                    first_argument_t> || std::is_pointer_v<typename func_traits::first_argument_t>,
+            std::is_integral_v<typename func_traits::first_argument_t>
+                || std::is_pointer_v<typename func_traits::first_argument_t>,
             "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
             "integer");
         if constexpr (std::is_integral_v<typename func_traits::first_argument_t>)
@@ -400,12 +399,10 @@ namespace zs {
 #else
       cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      binary_op, dist, stream);
-      context.syncStreamSpare(streamid, loc);
 
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      binary_op, dist, stream);
-      context.syncStreamSpare(streamid, loc);
       context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
@@ -450,11 +447,9 @@ namespace zs {
       std::size_t temp_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      context.syncStreamSpare(streamid, loc);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceScan::ExclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
-      context.syncStreamSpare(streamid, loc);
       context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
@@ -502,10 +497,8 @@ namespace zs {
           loc);
 #else
       cub::DeviceReduce::Reduce(nullptr, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      context.syncStreamSpare(streamid, loc);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceReduce::Reduce(d_tmp, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      context.syncStreamSpare(streamid, loc);
       context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
@@ -567,7 +560,7 @@ namespace zs {
         cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        context.syncStreamSpare(streamid, loc);
+        // context.syncStreamSpare(streamid, loc);
         void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
 #  if 0
         void *d_tmp;
@@ -576,7 +569,7 @@ namespace zs {
         cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, keysIn.operator->(),
                                         keysOut.operator->(), valsIn.operator->(),
                                         valsOut.operator->(), count, sbit, ebit, stream);
-        context.syncStreamSpare(streamid, loc);
+        // context.syncStreamSpare(streamid, loc);
         // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
         context.streamMemFree(d_tmp, stream, loc);
 #endif
@@ -608,11 +601,9 @@ namespace zs {
       std::size_t temp_bytes = 0;
       cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      context.syncStreamSpare(streamid, loc);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
-      context.syncStreamSpare(streamid, loc);
       context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);

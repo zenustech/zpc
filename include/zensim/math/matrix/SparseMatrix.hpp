@@ -583,38 +583,34 @@ namespace zs {
       size_type st{}, ed{}, mid{};
       if constexpr (is_row_major) {
         st = _ptrs[i];
-        ed = _ptrs[i + 1];
+        ed = _ptrs[i + 1] - 1;
       } else {
         st = _ptrs[j];
-        ed = _ptrs[j + 1];
+        ed = _ptrs[j + 1] - 1;
       }
       while (ed >= st) {
         mid = st + (ed - st) / 2;
         if constexpr (is_row_major) {
-          if (j == _inds[mid]) break;
+          if (j == _inds[mid]) return mid;
           if (j < _inds[mid])
             ed = mid - 1;
           else
             st = mid + 1;
         } else {
-          if (i == _inds[mid]) break;
+          if (i == _inds[mid]) return mid;
           if (i < _inds[mid])
             ed = mid - 1;
           else
             st = mid + 1;
         }
       }
-      if (ed >= st)
-        return mid;
-      else {
 #if 0
-        /// @note probably forget to sort
-        // printf("cannot find the spmat entry at (%d, %d)\n", (int)i, (int)j);
-        // return limits<index_type>::max();
-        return locate(i, j);
+      /// @note probably forget to sort
+      // printf("cannot find the spmat entry at (%d, %d)\n", (int)i, (int)j);
+      // return limits<index_type>::max();
+      return locate(i, j);
 #endif
-        return limits<size_type>::max();
-      }
+      return limits<size_type>::max();
     }
     constexpr bool exist(index_type i, index_type j, std::true_type) const noexcept {
       size_type st{}, ed{}, mid{};

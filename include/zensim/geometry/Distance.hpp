@@ -2557,7 +2557,7 @@ namespace zs {
                                         const VecInterface<VecTB> &eb0Rest,
                                         const VecInterface<VecTB> &eb1Rest) noexcept {
     using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
-    return (T)1e-3 * (ea0Rest - ea1Rest).l2NormSqr() * (eb0Rest - eb1Rest).l2NormSqr();
+    return (T)1e-2 * (ea0Rest - ea1Rest).l2NormSqr() * (eb0Rest - eb1Rest).l2NormSqr();
   }
 
   template <

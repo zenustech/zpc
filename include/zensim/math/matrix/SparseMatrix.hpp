@@ -413,11 +413,11 @@ namespace zs {
     std::size_t temp_storage_bytes = 0;
     cub::DeviceSegmentedRadixSort::SortKeys(
         nullptr, temp_storage_bytes, _inds.data(), orderedIndices.data(), (int)nnz, (int)nsegs,
-        _ptrs.data(), _ptrs.data() + 1, 0, (int)bit_count(innerSize), stream);
+        _ptrs.data(), _ptrs.data() + 1, 0, (int)bit_length(innerSize), stream);
     void *d_tmp = context.streamMemAlloc(temp_storage_bytes, stream);
     cub::DeviceSegmentedRadixSort::SortKeys(
         d_tmp, temp_storage_bytes, _inds.data(), orderedIndices.data(), (int)nnz, (int)nsegs,
-        _ptrs.data(), _ptrs.data() + 1, 0, (int)bit_count(innerSize), stream);
+        _ptrs.data(), _ptrs.data() + 1, 0, (int)bit_length(innerSize), stream);
     context.streamMemFree(d_tmp, stream);
 
     context.syncStreamSpare(pol.getStreamid());
@@ -456,12 +456,12 @@ namespace zs {
     cub::DeviceSegmentedRadixSort::SortPairs(
         nullptr, temp_storage_bytes, _inds.data(), orderedIndices.data(), indices.data(),
         srcIndices.data(), (int)nnz, (int)nsegs, _ptrs.data(), _ptrs.data() + 1, 0,
-        (int)bit_count(innerSize), stream);
+        (int)bit_length(innerSize), stream);
     void *d_tmp = context.streamMemAlloc(temp_storage_bytes, stream);
     cub::DeviceSegmentedRadixSort::SortPairs(
         d_tmp, temp_storage_bytes, _inds.data(), orderedIndices.data(), indices.data(),
         srcIndices.data(), (int)nnz, (int)nsegs, _ptrs.data(), _ptrs.data() + 1, 0,
-        (int)bit_count(innerSize), stream);
+        (int)bit_length(innerSize), stream);
     context.streamMemFree(d_tmp, stream);
 
     pol(range(nnz), [vals = view<space>(_vals), orderedVals = view<space>(orderedVals),
@@ -616,10 +616,10 @@ namespace zs {
       size_type st{}, ed{}, mid{};
       if constexpr (is_row_major) {
         st = _ptrs[i];
-        ed = _ptrs[i + 1];
+        ed = _ptrs[i + 1] - 1;
       } else {
         st = _ptrs[j];
-        ed = _ptrs[j + 1];
+        ed = _ptrs[j + 1] - 1;
       }
       while (ed >= st) {
         mid = st + (ed - st) / 2;

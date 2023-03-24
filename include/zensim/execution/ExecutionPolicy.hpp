@@ -380,14 +380,25 @@ namespace zs {
     return false;
   }
 
-  template <typename ExecTag> constexpr bool is_backend_activated(ExecTag) noexcept {
-    if constexpr (is_same_v<ExecTag, omp_exec_tag>)
-      return ZS_ENABLE_OPENMP;
-    else if constexpr (is_same_v<ExecTag, cuda_exec_tag>)
-      return ZS_ENABLE_CUDA;
-    else if constexpr (is_same_v<ExecTag, host_exec_tag>)
-      return true;
-    return false;
+  template <typename ExecTag> constexpr void assert_backend_presence(ExecTag) noexcept {
+    if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+#if ZS_ENABLE_OPENMP && defined(_OPENMP)
+      static_assert(is_same_v<ExecTag, omp_exec_tag>, "zs openmp compiler not activated here");
+#else
+      static_assert(!is_same_v<ExecTag, omp_exec_tag>, "openmp compiler not activated here");
+#endif
+    } else if constexpr (is_same_v<ExecTag, cuda_exec_tag>) {
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      static_assert(is_same_v<ExecTag, cuda_exec_tag>, "zs openmp compiler not activated here");
+#else
+      static_assert(!is_same_v<ExecTag, cuda_exec_tag>, "cuda compiler not activated here");
+#endif
+    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+      // always present
+    }
+  }
+  template <execspace_e space> constexpr void assert_backend_presence() noexcept {
+    assert_backend_presence<space>();
   }
 
   // ===================== parallel pattern wrapper ====================

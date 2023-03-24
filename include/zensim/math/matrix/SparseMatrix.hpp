@@ -34,8 +34,6 @@ namespace zs {
 
     using index_type = Ti;
     using subscript_type = zs::vec<index_type, 2>;
-    using table_type
-        = zs::bcht<subscript_type, sint_t, true, zs::universal_hash<subscript_type>, 16>;
 
     static_assert(
         std::allocator_traits<allocator_type>::propagate_on_container_move_assignment::value
@@ -86,7 +84,16 @@ namespace zs {
       else
         return cols();
     }
+    constexpr size_type innerSize() const noexcept {
+      if constexpr (is_row_major)
+        return cols();
+      else
+        return rows();
+    }
     constexpr size_type nnz() const noexcept { return _inds.size(); }
+    constexpr bool hasValues() const noexcept {
+      return _vals.size() == _inds.size() && _vals.size() > 0;
+    }
 
     /// @note invalidates all entries
     void resize(Ti ni, Ti nj) {
@@ -157,6 +164,19 @@ namespace zs {
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
     void build(Policy &&policy, index_type nrows, index_type ncols, IRange &&is, JRange &&js,
                wrapv<Mirror> = {});
+    /// @brief in-place
+    template <typename Policy, bool ORowMajor, bool PostOrder = true> void transposeFrom(
+        Policy &&policy,
+        const SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o,
+        wrapv<PostOrder> = {});
+    template <typename Policy> void transpose(Policy &&policy) {
+      transposeFrom(FWD(policy), *this);
+    }
+    template <typename Policy, bool ORowMajor> void transposeTo(
+        Policy &&policy,
+        SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o) const {
+      o.transposeFrom(FWD(policy), *this);
+    }
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     void localOrdering(CudaExecutionPolicy &policy);
     /// @note do NOT sort _vals
@@ -378,6 +398,100 @@ namespace zs {
              else
                inds[ptrs[ij[1]] + loc] = ij[0];
            });
+  }
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy, bool ORowMajor, bool PostOrder>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::transposeFrom(
+      Policy &&policy,
+      const SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o,
+      wrapv<PostOrder>) {
+    constexpr execspace_e space = execspace_e::cuda;
+    /// @note compilation checks
+    if (!valid_memspace_for_execution(policy, o.get_allocator()))
+      throw std::runtime_error("current memory location not compatible with the execution policy");
+    assert_backend_presence<space>();
+
+    if (RowMajor != ORowMajor) {  // cihou msvc, no constexpr
+      bool distinct = this != &o;
+      auto oNRows = o.rows();
+      auto oNCols = o.cols();
+      _nrows = oNCols;
+      _ncols = oNRows;
+      if (distinct) {
+        _ptrs = o._ptrs;
+        _inds = o._inds;
+      }
+      if (o.hasValues())
+        if constexpr (std::is_fundamental_v<value_type>) {
+          if (distinct) _vals = o._vals;
+        } else if constexpr (is_vec<value_type>::value) {
+          static_assert(value_type::dim == 2
+                            && value_type::template range_t<0>::value
+                                   == value_type::template range_t<1>::value,
+                        "the transpose of the matrix is not the same as the original type.");
+          if (value_type::template range_t<0>::value > 0)
+            policy(zip(_vals, o._vals),
+                   [] ZS_LAMBDA(auto &val, const auto &oval) { val = oval.transpose(); });
+        }
+    } else {
+      /// @note beware: spmat 'o' might be myself
+      auto nnz = o.nnz();
+      auto nOuter = o.outerSize();
+      auto nInner = o.innerSize();
+      Vector<index_type> localOffsets{get_allocator(), (std::size_t)nnz};
+      Vector<size_type> cnts{get_allocator(), (std::size_t)(nInner + 1)};
+      cnts.reset(0);
+      policy(range(nOuter), [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets),
+                             ptrs = view<space>(o._ptrs), inds = view<space>(o._inds),
+                             execTag = wrapv<space>{}] ZS_LAMBDA(size_type outerId) mutable {
+        auto bg = ptrs[outerId];
+        auto ed = ptrs[outerId + 1];
+        for (int k = bg; k != ed; ++k) {
+          auto innerId = inds[k];
+          localOffsets[k] = atomic_add(execTag, &cnts[innerId], 1);
+        }
+      });
+      _ptrs = zs::Vector<size_type, allocator_type>{o.get_allocator(), (std::size_t)(nInner + 1)};
+      /// _ptrs
+      exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
+
+      /// _inds, _vals (optional)
+      _inds = zs::Vector<index_type, allocator_type>{o.get_allocator(), (std::size_t)nnz};
+      bool valActivated = o.hasValues();
+      if (valActivated)
+        _vals = zs::Vector<value_type, allocator_type>{o.get_allocator(), (std::size_t)nnz};
+
+      policy(range(nOuter), [localOffsets = view<space>(localOffsets), oinds = view<space>(o._inds),
+                             optrs = view<space>(o._ptrs), ovals = view<space>(o._vals),
+                             ptrs = view<space>(_ptrs), inds = view<space>(_inds),
+                             vals = view<space>(_vals),
+                             valActivated] ZS_LAMBDA(size_type outerId) mutable {
+        auto bg = optrs[outerId];
+        auto ed = optrs[outerId + 1];
+        for (int k = bg; k != ed; ++k) {
+          auto innerId = oinds[k];
+          auto dst = ptrs[innerId] + localOffsets[k];
+          //
+          inds[dst] = outerId;
+          if (valActivated) {
+            //
+            if constexpr (std::is_fundamental_v<value_type>) {
+              vals[dst] = ovals[k];
+            } else if constexpr (is_vec<value_type>::value) {
+              static_assert(value_type::dim == 2
+                                && value_type::template range_t<0>::value
+                                       == value_type::template range_t<1>::value,
+                            "the transpose of the matrix is not the same as the original type.");
+              if constexpr (value_type::template range_t<0>::value > 0)
+                vals[dst] = ovals[k].transpose();
+              else
+                vals[dst] = ovals[k];
+            }
+          }
+        }
+      });
+    }
+    if constexpr (PostOrder) localOrdering(policy);
   }
 
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA

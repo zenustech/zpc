@@ -176,6 +176,24 @@ namespace zs {
     MemoryLocation location{memsrc_e::host, -1};
   };
 
+  /// @note might not be sufficient for multi-GPU-context scenarios
+  template <typename Policy, bool is_virtual, typename T>
+  bool valid_memspace_for_execution(const Policy &pol,
+                                    const ZSPmrAllocator<is_virtual, T> &allocator) {
+    constexpr execspace_e space = Policy::exec_tag::value;
+#if ZS_ENABLE_CUDA
+    if constexpr (space == execspace_e::cuda)
+      return allocator.location.memspace() == memsrc_e::device
+             || allocator.location.memspace() == memsrc_e::um;
+#endif
+#if ZS_ENABLE_OPENMP
+    if constexpr (space == execspace_e::openmp)
+      return allocator.location.memspace() == memsrc_e::host;
+#endif
+    /// @note sequential (host)
+    return allocator.location.memspace() == memsrc_e::host;
+  }
+
   template <typename Allocator> struct is_zs_allocator : std::false_type {};
   template <bool is_virtual, typename T> struct is_zs_allocator<ZSPmrAllocator<is_virtual, T>>
       : std::true_type {};

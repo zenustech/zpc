@@ -405,10 +405,10 @@ namespace zs {
       Policy &&policy,
       const SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o,
       wrapv<PostOrder>) {
-    constexpr execspace_e space = execspace_e::cuda;
-    /// @note compilation checks
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     if (!valid_memspace_for_execution(policy, o.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
+    /// @note compilation checks
     assert_backend_presence<space>();
 
     if (RowMajor != ORowMajor) {  // cihou msvc, no constexpr
@@ -506,8 +506,6 @@ namespace zs {
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol,
                                                                     std::false_type) {
-    constexpr execspace_e space = execspace_e::cuda;
-
     Ti nsegs = is_row_major ? _nrows : _ncols;
     Ti innerSize = is_row_major ? _ncols : _nrows;
     auto nnz = _inds.size();

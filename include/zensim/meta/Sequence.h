@@ -31,7 +31,7 @@ namespace zs {
   }  // namespace type_impl
 
   /******************************************************************/
-  /** declaration: monoid_op, gen_seq, gather */
+  /** declaration: monoid, gen_seq, gather */
   /******************************************************************/
 
   /// generate index sequence declaration
@@ -50,7 +50,7 @@ namespace zs {
   template <typename SeqT> static constexpr bool is_type_seq_v = is_type_seq<SeqT>::value;
 
   /******************************************************************/
-  /** definition: monoid_op, type_seq, value_seq, gen_seq, gather */
+  /** definition: monoid, type_seq, value_seq, gen_seq, gather */
   /******************************************************************/
   /// static uniform non-types
   template <std::size_t... Is> struct gen_seq_impl<index_seq<Is...>> {
@@ -185,15 +185,15 @@ namespace zs {
       return integer_seq<Ti, (Ti)Ns...>{};
     }
     template <typename BinaryOp> constexpr auto reduce(BinaryOp) const noexcept {
-      return wrapv<monoid_op<BinaryOp>{}(Ns...)>{};
+      return wrapv<monoid<BinaryOp>{}(Ns...)>{};
     }
     template <typename UnaryOp, typename BinaryOp>
     constexpr auto reduce(UnaryOp, BinaryOp) const noexcept {
-      return wrapv<monoid_op<BinaryOp>{}(UnaryOp{}(Ns)...)>{};
+      return wrapv<monoid<BinaryOp>{}(UnaryOp{}(Ns)...)>{};
     }
     template <typename UnaryOp, typename BinaryOp, std::size_t... Is>
     constexpr auto map_reduce(UnaryOp, BinaryOp, index_seq<Is...> = indices{}) noexcept {
-      return wrapv<monoid_op<BinaryOp>{}(UnaryOp{}(Is, Ns)...)>{};
+      return wrapv<monoid<BinaryOp>{}(UnaryOp{}(Is, Ns)...)>{};
     }
     template <typename BinaryOp, auto... Ms>
     constexpr auto compwise(BinaryOp, value_seq<Ms...>) const noexcept {
@@ -234,13 +234,13 @@ namespace zs {
     struct scan_impl<Cate, BinaryOp, index_seq<Is...>> {
       template <auto I> static constexpr auto get_sum(wrapv<I>) noexcept {
         if constexpr (Cate == 0)
-          return wrapv<monoid_op<BinaryOp>{}((Is < I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is < I ? Ns : monoid<BinaryOp>::e)...)>{};
         else if constexpr (Cate == 1)
-          return wrapv<monoid_op<BinaryOp>{}((Is <= I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is <= I ? Ns : monoid<BinaryOp>::e)...)>{};
         else if constexpr (Cate == 2)
-          return wrapv<monoid_op<BinaryOp>{}((Is > I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is > I ? Ns : monoid<BinaryOp>::e)...)>{};
         else
-          return wrapv<monoid_op<BinaryOp>{}((Is >= I ? Ns : monoid_op<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is >= I ? Ns : monoid<BinaryOp>::e)...)>{};
       }
       using type = value_seq<decltype(get_sum(wrapv<Is>{}))::value...>;
     };

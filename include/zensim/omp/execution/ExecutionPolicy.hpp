@@ -314,7 +314,7 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        T init = monoid_op<BinaryOperation>::e, BinaryOperation &&binary_op = {},
+                        T init = monoid<BinaryOperation>::e, BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
@@ -383,8 +383,8 @@ namespace zs {
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
-    void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {},
+    void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first, T init = monoid<BinaryOp>::e,
+                BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,

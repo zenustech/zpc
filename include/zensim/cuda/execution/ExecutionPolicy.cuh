@@ -150,10 +150,10 @@ namespace zs {
   }
 
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
-      std::is_convertible_v<typename std::iterator_traits<ZipIter>::iterator_category,
-                            std::random_access_iterator_tag>
-      && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
-          || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      std::is_convertible_v<
+          typename std::iterator_traits<ZipIter>::iterator_category,
+          std::
+              random_access_iterator_tag> && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
   range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -167,8 +167,9 @@ namespace zs {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(
-            std::is_integral_v<typename func_traits::first_argument_t>
-                || std::is_pointer_v<typename func_traits::first_argument_t>,
+            std::is_integral_v<
+                typename func_traits::
+                    first_argument_t> || std::is_pointer_v<typename func_traits::first_argument_t>,
             "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
             "integer");
         if constexpr (std::is_integral_v<typename func_traits::first_argument_t>)
@@ -460,7 +461,7 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        T init = monoid_op<BinaryOperation>::e, BinaryOperation &&binary_op = {},
+                        T init = monoid<BinaryOperation>::e, BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<
@@ -508,8 +509,8 @@ namespace zs {
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
-    void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                T init = monoid_op<BinaryOp>::e, BinaryOp &&binary_op = {},
+    void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first, T init = monoid<BinaryOp>::e,
+                BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<

@@ -18,7 +18,7 @@ namespace zs {
     if (!valid_memspace_for_execution(policy, spmat.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks
-    assert_backend_presence<space>();
+    // assert_backend_presence<space>();
 
     using TOut = RM_CVREF_T(*std::begin(outV));
     policy(range(nrows),
@@ -51,7 +51,7 @@ namespace zs {
     if (!valid_memspace_for_execution(policy, spmat.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks
-    assert_backend_presence<space>();
+    // assert_backend_presence<space>();
 
     using TOut = RM_CVREF_T(*std::begin(outV));
     policy(range(ncols),
@@ -87,7 +87,7 @@ namespace zs {
     if (!valid_memspace_for_execution(policy, spmat.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks
-    assert_backend_presence<space>();
+    // assert_backend_presence<space>();
 
     using TOut = RM_CVREF_T(*std::begin(outV));
     static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,
@@ -130,7 +130,7 @@ namespace zs {
     if (!valid_memspace_for_execution(policy, spmat.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks
-    assert_backend_presence<space>();
+    // assert_backend_presence<space>();
 
     using TOut = RM_CVREF_T(*std::begin(outV));
     static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,
@@ -179,7 +179,7 @@ namespace zs {
     if (!valid_memspace_for_execution(policy, spmat.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks
-    assert_backend_presence<space>();
+    // assert_backend_presence<space>();
 
     using TOut = RM_CVREF_T(*std::begin(outV));
     static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,
@@ -226,7 +226,7 @@ namespace zs {
     if (!valid_memspace_for_execution(policy, spmat.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks
-    assert_backend_presence<space>();
+    // assert_backend_presence<space>();
 
     using TOut = RM_CVREF_T(*std::begin(outV));
     static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,

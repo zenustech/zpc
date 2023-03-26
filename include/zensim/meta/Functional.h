@@ -109,44 +109,155 @@ namespace zs {
     }
   };
 
-  /// monoid operation for value sequence declaration
-  template <typename BinaryOp> struct monoid_op;
-  template <typename T> struct monoid_op<plus<T>> {
+  /// @brief monoid
+  /// @note BinaryOp should be commutative
+  template <typename BinaryOp, typename = void> struct monoid_op;
+  template <typename T> struct monoid_op<plus<T>, std::enable_if_t<std::is_fundamental_v<T>>> {
     static constexpr T e{0};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       return (std::forward<Args>(args) + ...);
     }
   };
-  template <typename T> struct monoid_op<multiplies<T>> {
+  template <typename T>
+  struct monoid_op<multiplies<T>, std::enable_if_t<std::is_fundamental_v<T>>> {
     static constexpr T e{1};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       return (std::forward<Args>(args) * ...);
     }
   };
-  template <typename T> struct monoid_op<logical_or<T>> {
+  template <typename T>
+  struct monoid_op<logical_or<T>, std::enable_if_t<std::is_fundamental_v<T>>> {
     static constexpr bool e{false};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       return (std::forward<Args>(args) || ...);
     }
   };
-  template <typename T> struct monoid_op<logical_and<T>> {
+  template <typename T>
+  struct monoid_op<logical_and<T>, std::enable_if_t<std::is_fundamental_v<T>>> {
     static constexpr bool e{true};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       return (std::forward<Args>(args) && ...);
     }
   };
-  template <typename T> struct monoid_op<getmax<T>> {
+  template <typename T> struct monoid_op<getmax<T>, std::enable_if_t<std::is_fundamental_v<T>>> {
+    // -infinity() only for floating point
     static constexpr T e{limits<T>::lowest()};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       T res{e};
       return ((res = res > args ? res : args), ...);
     }
   };
-  template <typename T> struct monoid_op<getmin<T>> {
+  template <typename T> struct monoid_op<getmin<T>, std::enable_if_t<std::is_fundamental_v<T>>> {
+    // infinity() only for floating point
     static constexpr T e{limits<T>::max()};
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       T res{e};
       return ((res = res < args ? res : args), ...);
+    }
+  };
+
+  /// @brief semiring for graph
+  /// @note ref: Linear Algebra is the Right Way to Think About Graphs
+  enum struct semiring_e {
+    // classic linear algebra
+    real_field = 0,
+    plus_times = 0,
+    // graph connectivity
+    boolean = 1,
+    // shortest path
+    tropical = 2,
+    min_plus = 2,
+    // graph matching
+    max_plus = 3,
+    // maximal independent set
+    min_times = 4
+  };
+  /// @note Derived class should provide: domain_type/ value_type/ bindary_op/ multiply(domain_type,
+  /// domain_type)
+  template <typename Derived> struct SemiringInterface {
+    /// the identity of \"add\" is not the annihilator of \"multiply\"
+    template <typename T = Derived> static constexpr auto identity() {
+      using monoid = monoid_op<typename T::binary_op>;
+      return monoid::e;
+    }
+    template <typename T = Derived>
+    static constexpr auto add(const typename T::value_type &a, const typename T::value_type &b) {
+      using monoid = monoid_op<typename T::binary_op>;
+      return monoid{}(a, b);
+    }
+  };
+  template <semiring_e category, typename Domain, typename = void> struct semiring_op;
+
+  /// @brief plus_times/ real_field, +.*
+  template <typename DomainT> struct semiring_op<semiring_e::plus_times, DomainT,
+                                                 std::enable_if_t<std::is_fundamental_v<DomainT>>>
+      : SemiringInterface<semiring_op<semiring_e::plus_times, DomainT,
+                                      std::enable_if_t<std::is_fundamental_v<DomainT>>>> {
+    using domain_type = DomainT;
+    using value_type = domain_type;
+    using binary_op = plus<value_type>;
+    static constexpr value_type multiply(const domain_type &a, const domain_type &b) {
+      return a * b;
+    }
+  };
+  /// @brief boolean, ||.&&
+  template <typename DomainT>
+  struct semiring_op<semiring_e::boolean, DomainT, std::enable_if_t<std::is_integral_v<DomainT>>>
+      : SemiringInterface<semiring_op<semiring_e::boolean, DomainT,
+                                      std::enable_if_t<std::is_integral_v<DomainT>>>> {
+    using domain_type = DomainT;
+    using value_type = bool;
+    using binary_op = logical_or<value_type>;
+    static constexpr value_type multiply(const domain_type &a, const domain_type &b) {
+      return a && b;
+    }
+  };
+  /// @brief min_plus/ tropical
+  template <typename DomainT> struct semiring_op<semiring_e::min_plus, DomainT,
+                                                 std::enable_if_t<std::is_fundamental_v<DomainT>>>
+      : SemiringInterface<semiring_op<semiring_e::min_plus, DomainT,
+                                      std::enable_if_t<std::is_fundamental_v<DomainT>>>> {
+    using domain_type = DomainT;
+    using value_type = domain_type;
+    using binary_op = getmin<value_type>;
+    static constexpr value_type multiply(const domain_type &a, const domain_type &b) {
+      constexpr auto e = monoid_op<getmin<domain_type>>::e;
+      if (a == e || b == e)
+        return e;
+      else
+        return a + b;
+    }
+  };
+  /// @brief max_plus
+  template <typename DomainT> struct semiring_op<semiring_e::max_plus, DomainT,
+                                                 std::enable_if_t<std::is_fundamental_v<DomainT>>>
+      : SemiringInterface<semiring_op<semiring_e::max_plus, DomainT,
+                                      std::enable_if_t<std::is_fundamental_v<DomainT>>>> {
+    using domain_type = DomainT;
+    using value_type = domain_type;
+    using binary_op = getmax<value_type>;
+    static constexpr value_type multiply(const domain_type &a, const domain_type &b) {
+      constexpr auto e = monoid_op<getmax<domain_type>>::e;
+      if (a == e || b == e)
+        return e;
+      else
+        return a + b;
+    }
+  };
+  /// @brief min_times
+  template <typename DomainT> struct semiring_op<semiring_e::min_times, DomainT,
+                                                 std::enable_if_t<std::is_fundamental_v<DomainT>>>
+      : SemiringInterface<semiring_op<semiring_e::min_times, DomainT,
+                                      std::enable_if_t<std::is_fundamental_v<DomainT>>>> {
+    using domain_type = DomainT;
+    using value_type = domain_type;
+    using binary_op = getmin<value_type>;
+    static constexpr value_type multiply(const domain_type &a, const domain_type &b) {
+      constexpr auto e = monoid_op<getmin<domain_type>>::e;
+      if (a == e || b == e)
+        return e;
+      else
+        return a * b;
     }
   };
 

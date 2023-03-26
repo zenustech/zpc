@@ -1792,13 +1792,13 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
-            int B, typename AllocatorT, bool Base = true>
+            int B, typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
                                 wrapv<Base> = {}) {
     return BCHTView<ExecSpace, bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{table};
   }
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
-            int B, typename AllocatorT, bool Base = true>
+            int B, typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
                                 wrapv<Base> = {}) {
     return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{

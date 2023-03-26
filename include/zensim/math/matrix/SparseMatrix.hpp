@@ -77,6 +77,9 @@ namespace zs {
 
     constexpr index_type rows() const noexcept { return _nrows; }
     constexpr index_type cols() const noexcept { return _ncols; }
+    constexpr zs::tuple<index_type, index_type> shape() const noexcept {
+      return zs::make_tuple(rows(), cols());
+    }
     constexpr size_type size() const noexcept { return rows() * cols(); }
     constexpr size_type outerSize() const noexcept {
       if constexpr (is_row_major)
@@ -200,9 +203,10 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
-                      && std::is_convertible_v<Tv, T>,
-                  "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(
+        std::is_convertible_v<Tr,
+                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
+        "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -654,12 +658,21 @@ namespace zs {
 
     constexpr index_type rows() const noexcept { return _nrows; }
     constexpr index_type cols() const noexcept { return _ncols; }
+    constexpr zs::tuple<index_type, index_type> shape() const noexcept {
+      return zs::make_tuple(rows(), cols());
+    }
     constexpr size_type size() const noexcept { return rows() * cols(); }
     constexpr size_type outerSize() const noexcept {
       if constexpr (is_row_major)
         return rows();
       else
         return cols();
+    }
+    constexpr size_type innerSize() const noexcept {
+      if constexpr (is_row_major)
+        return cols();
+      else
+        return rows();
     }
     constexpr size_type nnz() const noexcept {
       if constexpr (is_row_major)
@@ -759,20 +772,20 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT, bool Base = true>
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
                                 wrapv<Base> = {}) {
     return SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
   }
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT, bool Base = true>
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
                                 wrapv<Base> = {}) {
     return SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
   }
 
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT, bool Base = true>
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
@@ -784,7 +797,7 @@ namespace zs {
     return ret;
   }
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
-            typename AllocatorT, bool Base = true>
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
                                 wrapv<Base>, const SmallString &tagName) {
     auto ret

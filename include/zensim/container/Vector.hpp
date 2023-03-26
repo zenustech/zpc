@@ -452,16 +452,19 @@ namespace zs {
 #endif
   };
 
-  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base> = {}) {
     return VectorView<ExecSpace, Vector<T, Allocator>, Base>{vec};
   }
-  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base> = {}) {
     return VectorView<ExecSpace, const Vector<T, Allocator>, Base>{vec};
   }
 
-  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, Vector<T, Allocator>, Base>{vec};
@@ -470,7 +473,8 @@ namespace zs {
 #endif
     return ret;
   }
-  template <execspace_e ExecSpace, typename T, typename Allocator, bool Base = true>
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   constexpr decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, const Vector<T, Allocator>, Base>{vec};

@@ -77,8 +77,9 @@ namespace zs {
             typename InVRangeT, typename OutVRangeT, semiring_e category = semiring_e::plus_times>
   inline void spmv(Policy &&policy, const SparseMatrix<T, true, Ti, Tn, AllocatorT> &spmat,
                    InVRangeT &&inV, OutVRangeT &&outV, wrapv<category> = {}) {
+    using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, T> sr;
+    constexpr semiring<category, TOut> sr;
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -89,9 +90,7 @@ namespace zs {
     /// @note compilation checks
     // assert_backend_presence<space>();
 
-    using TOut = RM_CVREF_T(*std::begin(outV));
-    static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,
-                  "output type incompatible with semiring");
+    static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
     policy(range(nrows),
            [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
     policy(range(nrows),
@@ -120,8 +119,9 @@ namespace zs {
             typename InVRangeT, typename OutVRangeT, semiring_e category = semiring_e::plus_times>
   inline void spmv(Policy &&policy, const SparseMatrix<T, false, Ti, Tn, AllocatorT> &spmat,
                    InVRangeT &&inV, OutVRangeT &&outV, wrapv<category> = {}) {
+    using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, T> sr;
+    constexpr semiring<category, TOut> sr;
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -132,9 +132,7 @@ namespace zs {
     /// @note compilation checks
     // assert_backend_presence<space>();
 
-    using TOut = RM_CVREF_T(*std::begin(outV));
-    static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,
-                  "output type incompatible with semiring");
+    static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
     policy(range(nrows),
            [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
     policy(range(ncols),
@@ -169,8 +167,9 @@ namespace zs {
   inline void spmv_mask(Policy &&policy, const SparseMatrix<T, true, Ti, Tn, AllocatorT> &spmat,
                         InVRangeT &&inV, MaskRangeT &&mask, OutVRangeT &&outV,
                         wrapv<category> = {}) {
+    using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, T> sr;
+    constexpr semiring<category, TOut> sr;
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -181,9 +180,7 @@ namespace zs {
     /// @note compilation checks
     // assert_backend_presence<space>();
 
-    using TOut = RM_CVREF_T(*std::begin(outV));
-    static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,
-                  "output type incompatible with semiring");
+    static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
     policy(range(nrows),
            [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
     policy(range(nrows),
@@ -216,8 +213,9 @@ namespace zs {
   inline void spmv_mask(Policy &&policy, const SparseMatrix<T, false, Ti, Tn, AllocatorT> &spmat,
                         InVRangeT &&inV, MaskRangeT &&mask, OutVRangeT &&outV,
                         wrapv<category> = {}) {
+    using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, T> sr;
+    constexpr semiring<category, TOut> sr;
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -228,9 +226,7 @@ namespace zs {
     /// @note compilation checks
     // assert_backend_presence<space>();
 
-    using TOut = RM_CVREF_T(*std::begin(outV));
-    static_assert(std::is_convertible_v<decltype(sr.identity()), TOut>,
-                  "output type incompatible with semiring");
+    static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
     policy(range(nrows),
            [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
     policy(range(ncols),

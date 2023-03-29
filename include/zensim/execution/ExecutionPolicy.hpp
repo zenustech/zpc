@@ -61,6 +61,15 @@ namespace zs {
     ;
   };
 
+  template <typename BinaryOp, typename T> constexpr auto deduce_identity() {
+    constexpr auto canExtractIdentity = is_valid(
+        [](auto t) -> decltype((void)monoid<remove_cvref_t<decltype(t)>>::e) {});
+    if constexpr (canExtractIdentity(wrapt<BinaryOp>{}))
+      return monoid<remove_cvref_t<BinaryOp>>::identity();
+    else
+      return T{};
+  }
+
 #define assert_with_msg(exp, msg) assert(((void)msg, exp))
 
   /// execution policy
@@ -166,7 +175,7 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     constexpr void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                                  T init = monoid<remove_cvref_t<BinaryOperation>>::e,
+                                  T init = deduce_identity<BinaryOperation, T>(),
                                   BinaryOperation &&binary_op = {}) const {
       *(d_first++) = init;
       do {
@@ -177,7 +186,7 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
     constexpr void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                          T init = monoid<remove_cvref_t<BinaryOp>>::e,
+                          T init = deduce_identity<BinaryOp, T>(),
                           BinaryOp &&binary_op = {}) const {
       for (; first != last;) init = binary_op(init, *(first++));
       *d_first = init;
@@ -426,8 +435,7 @@ namespace zs {
             class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
             class BinaryOperation = std::plus<T>>
   constexpr void exclusive_scan(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
-                                OutputIt &&d_first,
-                                T init = monoid<remove_cvref_t<BinaryOperation>>::e,
+                                OutputIt &&d_first, T init = deduce_identity<BinaryOperation, T>(),
                                 BinaryOperation &&binary_op = {}) {
     policy.exclusive_scan(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
   }

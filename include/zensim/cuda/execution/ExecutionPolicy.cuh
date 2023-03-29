@@ -460,7 +460,7 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        T init = monoid<remove_cvref_t<BinaryOperation>>::e,
+                        T init = deduce_identity<BinaryOperation, T>(),
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
       static_assert(
@@ -510,7 +510,7 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                T init = monoid<remove_cvref_t<BinaryOp>>::e, BinaryOp &&binary_op = {},
+                T init = deduce_identity<BinaryOp, T>(), BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<

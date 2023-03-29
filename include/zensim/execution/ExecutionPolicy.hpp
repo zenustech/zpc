@@ -166,7 +166,7 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     constexpr void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                                  T init = monoid<BinaryOperation>::e,
+                                  T init = monoid<remove_cvref_t<BinaryOperation>>::e,
                                   BinaryOperation &&binary_op = {}) const {
       *(d_first++) = init;
       do {
@@ -177,7 +177,8 @@ namespace zs {
               class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
               class BinaryOp = std::plus<T>>
     constexpr void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                          T init = monoid<BinaryOp>::e, BinaryOp &&binary_op = {}) const {
+                          T init = monoid<remove_cvref_t<BinaryOp>>::e,
+                          BinaryOp &&binary_op = {}) const {
       for (; first != last;) init = binary_op(init, *(first++));
       *d_first = init;
     }
@@ -425,7 +426,8 @@ namespace zs {
             class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
             class BinaryOperation = std::plus<T>>
   constexpr void exclusive_scan(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
-                                OutputIt &&d_first, T init = monoid<BinaryOperation>::e,
+                                OutputIt &&d_first,
+                                T init = monoid<remove_cvref_t<BinaryOperation>>::e,
                                 BinaryOperation &&binary_op = {}) {
     policy.exclusive_scan(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
   }

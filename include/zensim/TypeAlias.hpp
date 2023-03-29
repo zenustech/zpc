@@ -75,7 +75,8 @@ namespace zs {
   // template <typename T> using SharedHolder = ::std::shared_ptr<T>;
 
   using NodeID = i32;
-  using ProcID = char;
+  /// @note processor index in the residing node
+  using ProcID = i8;
   /// @note negative stream identified as the default stream
   using StreamID = i32;
   using EventID = u32;

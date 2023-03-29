@@ -79,7 +79,7 @@ namespace zs {
                    InVRangeT &&inV, OutVRangeT &&outV, wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, TOut> sr;
+    constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -91,25 +91,26 @@ namespace zs {
     // assert_backend_presence<space>();
 
     static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
-    policy(range(nrows),
-           [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
+    policy(range(nrows), [vout = std::begin(outV), sr = sr] ZS_LAMBDA(Ti row) mutable {
+      vout[row] = sr.identity();
+    });
     policy(range(nrows),
            [spmat = proxy<space>(spmat), vin = std::begin(inV), vout = std::begin(outV),
-            execTag = wrapv<space>{}, sr] ZS_LAMBDA(Ti row) mutable {
+            execTag = wrapv<space>{}, sr = sr] ZS_LAMBDA(Ti row) mutable {
              auto bg = spmat._ptrs[row];
              auto ed = spmat._ptrs[row + 1];
              auto sum = sr.identity();
              for (auto i = bg; i < ed; ++i)
                sum = sr.add(sum, sr.multiply(spmat._vals[i], vin[spmat._inds[i]]));
 
-             using BinaryOp = typename RM_CVREF_T(sr)::binary_op;
-             if constexpr (is_same_v<BinaryOp, plus<T>>)
+             using monoid_type = typename RM_CVREF_T(sr)::monoid_type;
+             if constexpr (is_same_v<monoid_type, monoid<plus<TOut>>>)
                atomic_add(execTag, &vout[row], (TOut)sum);
-             else if constexpr (is_same_v<BinaryOp, logical_or<bool>>)
+             else if constexpr (is_same_v<monoid_type, monoid<logical_or<TOut>>>)
                atomic_or(execTag, &vout[row], (TOut)sum);
-             else if constexpr (is_same_v<BinaryOp, getmin<T>>)
+             else if constexpr (is_same_v<monoid_type, monoid<getmin<TOut>>>)
                atomic_min(execTag, &vout[row], (TOut)sum);
-             else if constexpr (is_same_v<BinaryOp, getmax<T>>)
+             else if constexpr (is_same_v<monoid_type, monoid<getmax<TOut>>>)
                atomic_max(execTag, &vout[row], (TOut)sum);
            });
   }
@@ -121,7 +122,7 @@ namespace zs {
                    InVRangeT &&inV, OutVRangeT &&outV, wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, TOut> sr;
+    constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -133,11 +134,12 @@ namespace zs {
     // assert_backend_presence<space>();
 
     static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
-    policy(range(nrows),
-           [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
+    policy(range(nrows), [vout = std::begin(outV), sr = sr] ZS_LAMBDA(Ti row) mutable {
+      vout[row] = sr.identity();
+    });
     policy(range(ncols),
            [spmat = proxy<space>(spmat), vin = std::begin(inV), vout = std::begin(outV),
-            execTag = wrapv<space>{}, sr] ZS_LAMBDA(Ti col) mutable {
+            execTag = wrapv<space>{}, sr = sr] ZS_LAMBDA(Ti col) mutable {
              auto bg = spmat._ptrs[col];
              auto ed = spmat._ptrs[col + 1];
              auto v = vin[col];
@@ -145,14 +147,14 @@ namespace zs {
                auto delta = sr.multiply(spmat._vals[i], v);
                auto row = spmat._inds[i];
 
-               using BinaryOp = typename RM_CVREF_T(sr)::binary_op;
-               if constexpr (is_same_v<BinaryOp, plus<T>>)
+               using monoid_type = typename RM_CVREF_T(sr)::monoid_type;
+               if constexpr (is_same_v<monoid_type, monoid<plus<TOut>>>)
                  atomic_add(execTag, &vout[row], (TOut)delta);
-               else if constexpr (is_same_v<BinaryOp, logical_or<bool>>)
+               else if constexpr (is_same_v<monoid_type, monoid<logical_or<TOut>>>)
                  atomic_or(execTag, &vout[row], (TOut)delta);
-               else if constexpr (is_same_v<BinaryOp, getmin<T>>)
+               else if constexpr (is_same_v<monoid_type, monoid<getmin<TOut>>>)
                  atomic_min(execTag, &vout[row], (TOut)delta);
-               else if constexpr (is_same_v<BinaryOp, getmax<T>>)
+               else if constexpr (is_same_v<monoid_type, monoid<getmax<TOut>>>)
                  atomic_max(execTag, &vout[row], (TOut)delta);
              }
            });
@@ -169,7 +171,7 @@ namespace zs {
                         wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, TOut> sr;
+    constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -181,11 +183,12 @@ namespace zs {
     // assert_backend_presence<space>();
 
     static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
-    policy(range(nrows),
-           [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
+    policy(range(nrows), [vout = std::begin(outV), sr = sr] ZS_LAMBDA(Ti row) mutable {
+      vout[row] = sr.identity();
+    });
     policy(range(nrows),
            [spmat = proxy<space>(spmat), vin = std::begin(inV), mask = std::begin(mask),
-            vout = std::begin(outV), execTag = wrapv<space>{}, sr] ZS_LAMBDA(Ti row) mutable {
+            vout = std::begin(outV), execTag = wrapv<space>{}, sr = sr] ZS_LAMBDA(Ti row) mutable {
              if (mask[row]) return;
 
              auto bg = spmat._ptrs[row];
@@ -194,14 +197,14 @@ namespace zs {
              for (auto i = bg; i < ed; ++i)
                sum = sr.add(sum, sr.multiply(spmat._vals[i], vin[spmat._inds[i]]));
 
-             using BinaryOp = typename RM_CVREF_T(sr)::binary_op;
-             if constexpr (is_same_v<BinaryOp, plus<T>>)
+             using monoid_type = typename RM_CVREF_T(sr)::monoid_type;
+             if constexpr (is_same_v<monoid_type, monoid<plus<TOut>>>)
                atomic_add(execTag, &vout[row], (TOut)sum);
-             else if constexpr (is_same_v<BinaryOp, logical_or<bool>>)
+             else if constexpr (is_same_v<monoid_type, monoid<logical_or<TOut>>>)
                atomic_or(execTag, &vout[row], (TOut)sum);
-             else if constexpr (is_same_v<BinaryOp, getmin<T>>)
+             else if constexpr (is_same_v<monoid_type, monoid<getmin<TOut>>>)
                atomic_min(execTag, &vout[row], (TOut)sum);
-             else if constexpr (is_same_v<BinaryOp, getmax<T>>)
+             else if constexpr (is_same_v<monoid_type, monoid<getmax<TOut>>>)
                atomic_max(execTag, &vout[row], (TOut)sum);
            });
   }
@@ -215,7 +218,7 @@ namespace zs {
                         wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr semiring<category, TOut> sr;
+    constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -227,27 +230,28 @@ namespace zs {
     // assert_backend_presence<space>();
 
     static_assert(std::is_convertible_v<T, TOut>, "output type incompatible with spmat value_type");
-    policy(range(nrows),
-           [vout = std::begin(outV), sr] ZS_LAMBDA(Ti row) mutable { vout[row] = sr.identity(); });
+    policy(range(nrows), [vout = std::begin(outV), sr = sr] ZS_LAMBDA(Ti row) mutable {
+      vout[row] = sr.identity();
+    });
     policy(range(ncols),
            [spmat = proxy<space>(spmat), vin = std::begin(inV), mask = std::begin(mask),
-            vout = std::begin(outV), execTag = wrapv<space>{}, sr] ZS_LAMBDA(Ti col) mutable {
+            vout = std::begin(outV), execTag = wrapv<space>{}, sr = sr] ZS_LAMBDA(Ti col) mutable {
              auto bg = spmat._ptrs[col];
              auto ed = spmat._ptrs[col + 1];
              auto v = vin[col];
              for (auto i = bg; i < ed; ++i) {
-               auto delta = sr.multiply(spmat._vals[i], v);
                auto row = spmat._inds[i];
                if (mask[row]) continue;
 
-               using BinaryOp = typename RM_CVREF_T(sr)::binary_op;
-               if constexpr (is_same_v<BinaryOp, plus<T>>)
+               auto delta = sr.multiply(spmat._vals[i], v);
+               using monoid_type = typename RM_CVREF_T(sr)::monoid_type;
+               if constexpr (is_same_v<monoid_type, monoid<plus<TOut>>>)
                  atomic_add(execTag, &vout[row], (TOut)delta);
-               else if constexpr (is_same_v<BinaryOp, logical_or<bool>>)
+               else if constexpr (is_same_v<monoid_type, monoid<logical_or<TOut>>>)
                  atomic_or(execTag, &vout[row], (TOut)delta);
-               else if constexpr (is_same_v<BinaryOp, getmin<T>>)
+               else if constexpr (is_same_v<monoid_type, monoid<getmin<TOut>>>)
                  atomic_min(execTag, &vout[row], (TOut)delta);
-               else if constexpr (is_same_v<BinaryOp, getmax<T>>)
+               else if constexpr (is_same_v<monoid_type, monoid<getmax<TOut>>>)
                  atomic_max(execTag, &vout[row], (TOut)delta);
              }
            });

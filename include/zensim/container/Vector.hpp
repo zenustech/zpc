@@ -72,6 +72,10 @@ namespace zs {
                      MemoryEntity{memoryLocation(), (void *)(data() + i)}, sizeof(value_type));
       return res[0];
     }
+    inline void retrieveVals(value_type *dst) const {
+      Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)dst},
+                     MemoryEntity{memoryLocation(), (void *)data()}, sizeof(value_type) * size());
+    }
     inline void setVal(value_type v, size_type i = 0) const {
       Resource::copy(MemoryEntity{memoryLocation(), (void *)(data() + i)},
                      MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v},
@@ -331,7 +335,8 @@ namespace zs {
 
   template <typename T,
             enable_if_all<is_same_v<T, remove_cvref_t<T>>, std::is_default_constructible_v<T>,
-                          std::is_trivially_copyable_v<T>> = 0>
+                          std::is_trivially_copyable_v<T>>
+            = 0>
   auto from_std_vector(const std::vector<T> &vs,
                        const MemoryLocation &mloc = {memsrc_e::host, -1}) {
     auto allocator = get_memory_source(mloc.memspace(), mloc.devid());
@@ -374,8 +379,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (RetT)(
-            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (
+            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -399,8 +404,8 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (RetT)(
-            *((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (
+            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];

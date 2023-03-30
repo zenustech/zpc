@@ -72,9 +72,7 @@ namespace zs {
   }  // namespace detail
 
   namespace detail {
-    template <typename T> struct extract_template_type_argument2 {
-      using type = void;
-    };
+    template <typename T> struct extract_template_type_argument2 { using type = void; };
     template <template <class, class> class TT, typename T0, typename T1>
     struct extract_template_type_argument2<TT<T0, T1>> {
       using type0 = T0;
@@ -82,15 +80,13 @@ namespace zs {
     };
   }  // namespace detail
 
-  template <typename BinaryOp,
-            typename T = typename detail::extract_template_type_argument<BinaryOp>::type,
-            typename = void>
-  struct monoid;
-
   /// @brief monoid
   /// @brief custom monoid, user should guarantee that the operator is commutative and
   /// compatible with the identity
-  template <typename BinaryOp, typename T> struct monoid<BinaryOp, T> {
+  template <typename BinaryOp,
+            typename T = typename detail::extract_template_type_argument<BinaryOp>::type,
+            typename = void>
+  struct monoid {
     template <typename BOp, typename TT> constexpr monoid(BOp &&op, TT &&e)
         : bop{FWD(op)}, e{FWD(e)} {}
     ~monoid() = default;
@@ -195,6 +191,11 @@ namespace zs {
     using multiply_op = MultiplyOp;
     using monoid_type = Monoid;
     using value_type = decltype(monoid_type::identity());
+
+    template <typename MultiplyOpT, typename MonoidT>
+    constexpr SemiringImpl(MultiplyOpT &&mulop, MonoidT &&monoid) noexcept
+        : multiply_op(FWD(mulop)), monoid_type(FWD(monoid)) {}
+    ~SemiringImpl() = default;
     // identity
     constexpr value_type identity() noexcept { return monoid_type::identity(); }
     // add
@@ -221,7 +222,7 @@ namespace zs {
 
     template <typename MultiplyOpT, typename MonoidT>
     constexpr semiring(MultiplyOpT &&mulop, MonoidT &&monoid) noexcept
-        : base_t{FWD(mulop), FWD(monoid)} {}
+        : base_t(FWD(mulop), FWD(monoid)) {}
     ~semiring() = default;
   };
   template <typename MultiplyOpT, typename MonoidT> semiring(MultiplyOpT &&, MonoidT &&)

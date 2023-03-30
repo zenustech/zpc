@@ -59,11 +59,9 @@ namespace zs {
         }
         if (colorMax) {
           colors[row] = color + 1;
-          maskOut[row] = 1;
           done[0] = 1;
         } else if (colorMin) {
           colors[row] = color + 2;
-          maskOut[row] = 1;
           done[1] = 1;
         }
       });
@@ -74,6 +72,11 @@ namespace zs {
         color++;
         break;
       }
+      policy(range(n), [colors = std::begin(colors), maskOut = view<space>(maskOut),
+                        color] ZS_LAMBDA(Ti row) mutable {
+        if (maskOut[row]) return;
+        if (colors[row] == color + 1 || colors[row] == color + 2) maskOut[row] = 1;
+      });
     }
 
     policy.sync(shouldSync);
@@ -140,11 +143,16 @@ namespace zs {
         }
         if (colorMin) {
           colors[row] = color + 1;
-          maskOut[row] = 1;
           expanded[0] = 1;
         }
       });
       if (expanded.getVal() == 0) break;
+
+      policy(range(n), [colors = std::begin(colors), maskOut = view<space>(maskOut),
+                        color] ZS_LAMBDA(Ti row) mutable {
+        if (maskOut[row]) return;
+        if (colors[row] == color + 1) maskOut[row] = 1;
+      });
 
       /// iterative expansion
       do {
@@ -183,10 +191,16 @@ namespace zs {
           }
           if (colorMin) {
             colors[row] = color + 1;
-            maskOut[row] = 1;
             expanded[0] = 1;
           }
         });
+
+        policy(range(n), [colors = std::begin(colors), maskOut = view<space>(maskOut),
+                          color] ZS_LAMBDA(Ti row) mutable {
+          if (maskOut[row]) return;
+          if (colors[row] == color + 1) maskOut[row] = 1;
+        });
+
       } while (expanded.getVal() == 1);
 
       /// reset maskOut with 2

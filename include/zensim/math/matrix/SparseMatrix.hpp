@@ -203,10 +203,9 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(
-        std::is_convertible_v<Tr,
-                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
-        "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
+                      && std::is_convertible_v<Tv, T>,
+                  "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -248,9 +247,8 @@ namespace zs {
         tabSize *= 2;
         tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
         tab.reset(policy, true);
-        fmt::print(fg(fmt::color::light_golden_rod_yellow),
-                   "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2,
-                   tabSize);
+        fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
+            "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }
     } while (!success);
 
@@ -371,9 +369,8 @@ namespace zs {
         tabSize *= 2;
         tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
         tab.reset(policy, true);
-        fmt::print(fg(fmt::color::light_golden_rod_yellow),
-                   "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2,
-                   tabSize);
+        fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
+            "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }
     } while (!success);
 

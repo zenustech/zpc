@@ -3,6 +3,9 @@
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#  include <cooperative_groups.h>
+#endif
 
 namespace zs {
 
@@ -101,6 +104,8 @@ namespace zs {
     using bvs_t = typename LBvhT::bvs_t;
     using indices_t = typename LBvhT::indices_t;
 
+    using value_type = typename LBvhT::value_type;
+
     constexpr LBvhView() = default;
     ~LBvhView() = default;
 
@@ -171,7 +176,51 @@ namespace zs {
       }
       return dist;
     }
-    // BV can be either VecInterface<VecT> or AABBBox<dim, T>
+// BV can be either VecInterface<VecT> or AABBBox<dim, T>
+#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+    template <typename T, int d_ = dim, enable_if_t<d_ == 3> = 0>
+    __forceinline__ __device__ bool intersect(
+        cooperative_groups::thread_block_tile<8, cooperative_groups::thread_block> &tile,
+        index_t node, const AABBBox<3, T> &b) const noexcept {
+      const value_type *bvPtr = reinterpret_cast<const value_type *>(_orderedBvs.data() + node);
+      int nonOverlap = 0;
+      if (auto laneId = tile.thread_rank(); laneId < 6) {
+        auto v = bvPtr[tile.thread_rank()];
+        // min
+        if (laneId < 3)
+          nonOverlap = v > b._max(laneId);
+        else
+          nonOverlap = v < b._min(laneId - 3);
+      }
+      return tile.any(nonOverlap);
+    }
+    template <typename BV, class F, int d_ = dim> __forceinline__ __device__ auto iter_neighbors(
+        cooperative_groups::thread_block_tile<8, cooperative_groups::thread_block> &tile,
+        const BV &bv, F &&f) const
+        -> std::enable_if_t<
+            d_ == 3
+            && is_same_v<decltype(std::declval<F>()(tile, std::declval<index_t>())), void>> {
+      if (auto nl = numLeaves(); nl <= 2) {
+        for (index_t i = 0; i != nl; ++i) {
+          if (intersect(tile, i, bv)) f(tile, _auxIndices[i]);
+        }
+        return;
+      }
+      index_t node = 0;
+      while (node != -1 && node != _numNodes) {
+        index_t level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (!intersect(tile, node, bv)) break;
+        // leaf node check
+        if (level == 0) {
+          if (intersect(tile, node, bv)) f(tile, _auxIndices[node]);
+          node++;
+        } else  // separate at internal nodes
+          node = _auxIndices[node];
+      }
+    }
+#endif
     template <
         typename BV, class F,
         enable_if_t<is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>> = 0>

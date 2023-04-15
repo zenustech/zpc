@@ -162,11 +162,15 @@ namespace zs {
     }
 
     template <typename Policy, typename IRange, typename JRange, typename VRange>
-    void build(Policy &&policy, index_type nrows, index_type ncols, IRange &&is, JRange &&js,
-               VRange &&vs);
+    void build(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
+               const JRange &js, VRange &&vs);
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
-    void build(Policy &&policy, index_type nrows, index_type ncols, IRange &&is, JRange &&js,
-               wrapv<Mirror> = {});
+    void build(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
+               const JRange &js, wrapv<Mirror> = {});
+    /// @note assume no duplicated entries
+    template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
+    void fastBuild(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
+                   const JRange &js, wrapv<Mirror> = {});
     /// @brief in-place
     template <typename Policy, bool ORowMajor, bool PostOrder = true> void transposeFrom(
         Policy &&policy,
@@ -199,13 +203,15 @@ namespace zs {
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   template <typename Policy, typename IRange, typename JRange, typename VRange>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::build(Policy &&policy, Ti nrows, Ti ncols,
-                                                            IRange &&is, JRange &&js, VRange &&vs) {
+                                                            const IRange &is, const JRange &js,
+                                                            VRange &&vs) {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
-                      && std::is_convertible_v<Tv, T>,
-                  "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(
+        std::is_convertible_v<Tr,
+                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
+        "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -257,7 +263,7 @@ namespace zs {
     exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
 
     auto numEntries = _ptrs.getVal(nsegs);
-    fmt::print("{} entries activated in total from {} triplets.\n", numEntries, size);
+    // fmt::print("{} entries activated in total from {} triplets.\n", numEntries, size);
 
     if (auto ntab = tab.size(); numEntries != ntab)
       throw std::runtime_error(
@@ -311,7 +317,7 @@ namespace zs {
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   template <typename Policy, typename IRange, typename JRange, bool Mirror>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::build(Policy &&policy, Ti nrows, Ti ncols,
-                                                            IRange &&is, JRange &&js,
+                                                            const IRange &is, const JRange &js,
                                                             wrapv<Mirror>) {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
@@ -398,6 +404,82 @@ namespace zs {
                inds[ptrs[ij[0]] + loc] = ij[1];
              else
                inds[ptrs[ij[1]] + loc] = ij[0];
+           });
+  }
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy, typename IRange, typename JRange, bool Mirror>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::fastBuild(Policy &&policy, Ti nrows, Ti ncols,
+                                                                const IRange &is, const JRange &js,
+                                                                wrapv<Mirror>) {
+    using Tr = RM_CVREF_T(*std::begin(is));
+    using Tc = RM_CVREF_T(*std::begin(js));
+    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>,
+                  "input doublet types are not convertible to types of this sparse matrix.");
+
+    auto size = range_size(is);
+    if (size != range_size(js))
+      throw std::runtime_error(
+          fmt::format("is size: {}, while js size ({})\n", size, range_size(js)));
+
+    /// @brief initial hashing
+    _nrows = nrows;
+    _ncols = ncols;
+    Ti nsegs = is_row_major ? nrows : ncols;
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    using ICoord = zs::vec<Ti, 2>;
+
+    Vector<index_type> localOffsets{get_allocator(), size * 2};
+    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
+    bool success = false;
+    cnts.reset(0);
+    policy(range(size),
+           [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets), is = std::begin(is),
+            js = std::begin(js), execTag = wrapv<space>{}] ZS_LAMBDA(size_type k) mutable {
+             Ti i = is[k], j = js[k];
+             // insertion success
+             if constexpr (RowMajor)
+               localOffsets[k * 2] = atomic_add(execTag, &cnts[i], (size_type)1);
+             else
+               localOffsets[k * 2] = atomic_add(execTag, &cnts[j], (size_type)1);
+
+             /// @note spawn symmetric entries
+             if constexpr (Mirror) {
+               if (i != j) {
+                 if constexpr (RowMajor)
+                   localOffsets[k * 2 + 1] = atomic_add(execTag, &cnts[j], (size_type)1);
+                 else
+                   localOffsets[k * 2 + 1] = atomic_add(execTag, &cnts[i], (size_type)1);
+               }
+             }
+           });
+
+    /// @brief _ptrs
+    _ptrs.resize(nsegs + 1);
+    exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
+
+    auto numEntries = _ptrs.getVal(nsegs);
+
+    /// @brief _inds
+    _inds.resize(numEntries);
+    policy(range(size),
+           [localOffsets = view<space>(localOffsets), is = std::begin(is), js = std::begin(js),
+            ptrs = view<space>(_ptrs), inds = view<space>(_inds)] ZS_LAMBDA(size_type k) mutable {
+             Ti i = is[k], j = js[k];
+             // insertion success
+             if constexpr (RowMajor)
+               inds[ptrs[i] + localOffsets[k * 2]] = j;
+             else
+               inds[ptrs[j] + localOffsets[k * 2]] = i;
+
+             /// @note spawn symmetric entries
+             if constexpr (Mirror) {
+               if (i != j) {
+                 if constexpr (RowMajor)
+                   inds[ptrs[j] + localOffsets[k * 2 + 1]] = i;
+                 else
+                   inds[ptrs[i] + localOffsets[k * 2 + 1]] = j;
+               }
+             }
            });
   }
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>

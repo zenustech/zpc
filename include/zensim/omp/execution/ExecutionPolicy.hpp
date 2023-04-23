@@ -375,7 +375,7 @@ namespace zs {
 #pragma omp barrier
         }
 
-        if (tid == 0) *d_first = res;
+        if (tid == 0) *d_first = tmp;
       }
       if (shouldProfile())
         timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),

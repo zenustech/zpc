@@ -62,8 +62,8 @@ namespace zs {
   };
 
   template <typename BinaryOp, typename T> constexpr auto deduce_identity() {
-    constexpr auto canExtractIdentity = is_valid(
-        [](auto t) -> decltype((void)monoid<remove_cvref_t<decltype(t)>>::e) {});
+    constexpr auto canExtractIdentity
+        = is_valid([](auto t) -> decltype((void)monoid<remove_cvref_t<decltype(t)>>::e) {});
     if constexpr (canExtractIdentity(wrapt<BinaryOp>{}))
       return monoid<remove_cvref_t<BinaryOp>>::identity();
     else
@@ -183,11 +183,12 @@ namespace zs {
       } while (++first != last);
     }
     template <class InputIt, class OutputIt,
-              class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
-              class BinaryOp = std::plus<T>>
-    constexpr void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                          T init = deduce_identity<BinaryOp, T>(),
-                          BinaryOp &&binary_op = {}) const {
+              class BinaryOp = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+    constexpr void reduce(
+        InputIt &&first, InputIt &&last, OutputIt &&d_first,
+        remove_cvref_t<decltype(*std::declval<InputIt>())> init
+        = deduce_identity<BinaryOp, remove_cvref_t<decltype(*std::declval<InputIt>())>>(),
+        BinaryOp &&binary_op = {}) const {
       for (; first != last;) init = binary_op(init, *(first++));
       *d_first = init;
     }
@@ -426,24 +427,33 @@ namespace zs {
   }
   /// scan
   template <class ExecutionPolicy, class InputIt, class OutputIt,
-            class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+            class BinaryOperation
+            = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
   constexpr void inclusive_scan(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
                                 OutputIt &&d_first, BinaryOperation &&binary_op = {}) {
     policy.inclusive_scan(FWD(first), FWD(last), FWD(d_first), FWD(binary_op));
   }
   template <class ExecutionPolicy, class InputIt, class OutputIt,
-            class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
-            class BinaryOperation = std::plus<T>>
-  constexpr void exclusive_scan(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
-                                OutputIt &&d_first, T init = deduce_identity<BinaryOperation, T>(),
-                                BinaryOperation &&binary_op = {}) {
+            class BinaryOperation
+            = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+  constexpr void exclusive_scan(
+      ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first,
+      typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
+      = deduce_identity<BinaryOperation,
+                        typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
+      BinaryOperation &&binary_op = {}) {
     policy.exclusive_scan(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
   }
   /// reduce
-  template <class ExecutionPolicy, class InputIt, class OutputIt, class T,
-            class BinaryOp = std::plus<T>>
-  constexpr void reduce(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
-                        OutputIt &&d_first, T init, BinaryOp &&binary_op = {}) {
+  template <class ExecutionPolicy, class InputIt, class OutputIt,
+            class BinaryOp
+            = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+  constexpr void reduce(
+      ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first,
+      typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
+      = deduce_identity<BinaryOp,
+                        typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
+      BinaryOp &&binary_op = {}) {
     policy.reduce(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
   }
   /// sort

@@ -457,12 +457,15 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
-              class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
-              class BinaryOperation = std::plus<T>>
-    void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        T init = deduce_identity<BinaryOperation, T>(),
-                        BinaryOperation &&binary_op = {},
-                        const source_location &loc = source_location::current()) const {
+              class BinaryOperation
+              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+    void exclusive_scan(
+        InputIt &&first, InputIt &&last, OutputIt &&d_first,
+        typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
+        = deduce_identity<BinaryOperation,
+                          typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
+        BinaryOperation &&binary_op = {},
+        const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<
               typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
@@ -507,10 +510,14 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
-              class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
-              class BinaryOp = std::plus<T>>
+              // class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
+              class BinaryOp
+              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                T init = deduce_identity<BinaryOp, T>(), BinaryOp &&binary_op = {},
+                typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
+                = deduce_identity<
+                    BinaryOp, typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
+                BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<

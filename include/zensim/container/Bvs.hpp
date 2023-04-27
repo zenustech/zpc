@@ -17,11 +17,12 @@ namespace zs {
     static_assert(std::is_floating_point_v<value_type>, "value_type should be floating point");
     static_assert(std::is_integral_v<index_type>, "index_type should be an integral");
 
-    using mc_t = conditional_t<is_same_v<value_type, f64>, u64, u32>;
+    using mc_t = conditional_t<(sizeof(value_type) > sizeof(f64)), u64, u32>;
     using Box = AABBBox<dim, value_type>;
     using TV = vec<value_type, dim>;
     using IV = vec<index_type, dim>;
-    using bvs_t = Vector<Box, allocator_type>;
+    // using bvs_t = Vector<Box, allocator_type>;
+    using bvs_t = TileVector<value_type, 32, allocator_type>;
     using vector_t = Vector<value_type, allocator_type>;
     using indices_t = Vector<index_type, allocator_type>;
 
@@ -51,25 +52,16 @@ namespace zs {
     constexpr auto getNumNodes() const noexcept { return bvs.size(); }
     constexpr auto getNumLeaves() const noexcept { return bvs.size(); }
 
-    template <typename Policy>
-    void build(Policy &&pol, const Vector<AABBBox<dim, value_type>> &primBvs) {
+    template <typename Policy> void updateBox(Policy &&pol) {
       constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      // ZS_LAMBDA -> __device__
-      static_assert(space == execspace_e::cuda, "specialized policy and compiler not match");
-#else
-      static_assert(space != execspace_e::cuda, "specialized policy and compiler not match");
-#endif
-      bvs = primBvs;
-      // total bounding box
       Vector<value_type> ret{bvs.get_allocator(), 1};
+      Vector<value_type> gmins{bvs.get_allocator(), bvs.size()},
+          gmaxs{bvs.get_allocator(), bvs.size()};
       for (int d = 0; d != dim; ++d) {
-        Vector<value_type> gmins{bvs.get_allocator(), bvs.size()},
-            gmaxs{bvs.get_allocator(), bvs.size()};
-        pol(zip(range(bvs.size()), bvs), [gmins = proxy<space>(gmins), gmaxs = proxy<space>(gmaxs),
-                                          d] ZS_LAMBDA(index_type i, const Box &bv) mutable {
-          gmins[i] = bv._min[d];
-          gmaxs[i] = bv._max[d];
+        pol(range(bvs.size()), [bvs = view<space>(bvs), gmins = proxy<space>(gmins),
+                                gmaxs = proxy<space>(gmaxs), d] ZS_LAMBDA(index_type i) mutable {
+          gmins[i] = bvs(d, i);
+          gmaxs[i] = bvs(dim + d, i);
         });
         reduce(pol, std::begin(gmins), std::end(gmins), std::begin(ret), limits<value_type>::max(),
                getmin<value_type>{});
@@ -78,22 +70,56 @@ namespace zs {
                limits<value_type>::lowest(), getmax<value_type>{});
         gbv._max[d] = ret.getVal();
       }
-      axis = 0;  // x-axis by default
-      auto dis = gbv._max[0] - gbv._min[0];
-      for (int d = 1; d < dim; ++d) {
-        if (auto tmp = gbv._max[d] - gbv._min[d]; tmp > dis) {  // select the longest orientation
-          dis = tmp;
-          axis = d;
+    }
+
+    template <typename Policy> void build(Policy &&pol,
+                                          const zs::Vector<zs::AABBBox<dim, value_type>> &primBvs,
+                                          int axis = -1, bool computeBox = true) {
+      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
+      // ZS_LAMBDA -> __device__
+      static_assert(space == execspace_e::cuda, "specialized policy and compiler not match");
+#else
+      static_assert(space != execspace_e::cuda, "specialized policy and compiler not match");
+#endif
+
+      // must call this in the beginning
+      bvs = bvs_t{primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, range_size(primBvs)};
+      pol(enumerate(range(bvs, value_seq<dim>{}), primBvs),
+          [bvs = view<space>(bvs)](std::size_t i, auto bv) mutable {
+            for (int d = 0; d != dim; ++d) {
+              bvs(d, i) = bv._min[d];
+              bvs(dim + d, i) = bv._max[d];
+            }
+          });
+
+      /// @note whole bounding box
+      if (computeBox || !(axis >= 0 && axis < dim)) {
+        updateBox();
+      }
+
+      // total bounding box
+      if (!(axis >= 0 && axis < dim)) {
+        axis = 0;  // x-axis by default
+        auto dis = gbv._max[0] - gbv._min[0];
+        for (int d = 1; d < dim; ++d) {
+          if (auto tmp = gbv._max[d] - gbv._min[d]; tmp > dis) {  // select the longest orientation
+            dis = tmp;
+            axis = d;
+          }
         }
       }
+
+      this->axis = axis;
+
       Vector<value_type> keys{bvs.get_allocator(), bvs.size()},
           sortedKeys{bvs.get_allocator(), bvs.size()};
       indices_t indices{bvs.get_allocator(), bvs.size()},
           sortedIndices{bvs.get_allocator(), bvs.size()};
-      pol(zip(range(bvs.size()), bvs, keys, indices),
-          [axis = axis] ZS_LAMBDA(index_type i, const Box &bv, value_type &key,
-                                  index_type &index) mutable {
-            key = bv._min[axis];
+      pol(enumerate(keys, indices),
+          [bvs = view<space>(bvs), axis = axis] ZS_LAMBDA(index_type i, value_type & key,
+                                                          index_type & index) mutable {
+            key = bvs(axis, i);
             index = i;
           });
       // sort in ascending order
@@ -114,7 +140,6 @@ namespace zs {
     bvs_t bvs;
     int axis;
     Box gbv;
-    // escape index for internal nodes, primitive index for leaf nodes
     vector_t sts;
     indices_t auxIndices;
   };
@@ -123,11 +148,14 @@ namespace zs {
 
   /// proxy to work within each backends
   template <execspace_e space, typename LBvsT> struct LBvsView<space, const LBvsT> {
+    static constexpr bool is_const_structure = true;
     static constexpr int dim = LBvsT::dim;
     static constexpr auto exectag = wrapv<space>{};
     using index_t = typename LBvsT::index_type;
     using bv_t = typename LBvsT::Box;
     using bvs_t = typename LBvsT::bvs_t;
+    using bvs_view_type = RM_CVREF_T(
+        view<space>(std::declval<conditional_t<is_const_structure, const bvs_t &, bvs_t &>>()));
     using vector_t = typename LBvsT::vector_t;
     using indices_t = typename LBvsT::indices_t;
 
@@ -135,7 +163,7 @@ namespace zs {
     ~LBvsView() = default;
 
     explicit constexpr LBvsView(const LBvsT &lbvs)
-        : _bvs{proxy<space>(lbvs.bvs)},
+        : _bvs{view<space>(lbvs.bvs)},
           _sts{proxy<space>(lbvs.sts)},
           _auxIndices{proxy<space>(lbvs.auxIndices)},
           _axis{lbvs.axis},
@@ -144,7 +172,9 @@ namespace zs {
     constexpr auto numNodes() const noexcept { return _numNodes; }
     constexpr auto numLeaves() const noexcept { return numNodes(); }
 
-    constexpr bv_t getNodeBV(index_t node) const { return _bvs[node]; }
+    constexpr bv_t getNodeBV(index_t node) const {
+      return bv_t{_bvs.pack(dim_c<dim>, node), _bvs.pack(dim_c<dim>, dim, node)};
+    }
 
     // BV can be either VecInterface<VecT> or AABBBox<dim, T>
     template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
@@ -158,7 +188,7 @@ namespace zs {
       return;
     }
 
-    VectorView<space, const bvs_t> _bvs;
+    bvs_view_type _bvs;
     VectorView<space, const vector_t> _sts;
     VectorView<space, const indices_t> _auxIndices;
     int _axis;

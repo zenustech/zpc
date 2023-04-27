@@ -85,17 +85,16 @@ namespace zs {
 
       // must call this in the beginning
       bvs = bvs_t{primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, range_size(primBvs)};
-      pol(enumerate(range(bvs, value_seq<dim>{}), primBvs),
-          [bvs = view<space>(bvs)](std::size_t i, auto bv) mutable {
-            for (int d = 0; d != dim; ++d) {
-              bvs(d, i) = bv._min[d];
-              bvs(dim + d, i) = bv._max[d];
-            }
-          });
+      pol(enumerate(primBvs), [bvs = view<space>(bvs)] ZS_LAMBDA(index_type i, auto bv) mutable {
+        for (int d = 0; d != dim; ++d) {
+          bvs(d, i) = bv._min[d];
+          bvs(dim + d, i) = bv._max[d];
+        }
+      });
 
       /// @note whole bounding box
       if (computeBox || !(axis >= 0 && axis < dim)) {
-        updateBox();
+        updateBox(pol);
       }
 
       // total bounding box
@@ -112,8 +111,7 @@ namespace zs {
 
       this->axis = axis;
 
-      Vector<value_type> keys{bvs.get_allocator(), bvs.size()},
-          sortedKeys{bvs.get_allocator(), bvs.size()};
+      vector_t keys{bvs.get_allocator(), bvs.size()}, sortedKeys{bvs.get_allocator(), bvs.size()};
       indices_t indices{bvs.get_allocator(), bvs.size()},
           sortedIndices{bvs.get_allocator(), bvs.size()};
       pol(enumerate(keys, indices),
@@ -135,6 +133,37 @@ namespace zs {
     template <typename Policy>
     void refit(Policy &&pol, const Vector<AABBBox<dim, value_type>> &primBvs) {
       build(pol, primBvs);
+
+      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+      if (range_size(primBvs) != bvs.size())
+        throw std::runtime_error("the count of bounding volumes mismatch");
+      if (!valid_memspace_for_execution(pol, primBvs.get_allocator()))
+        throw std::runtime_error(
+            "current memory location not compatible with the execution policy");
+
+      if (bvs.memoryLocation() != primBvs.memoryLocation())
+        bvs = bvs_t{primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, range_size(primBvs)};
+      pol(range(primBvs.size()),
+          [bvs = view<space>(bvs), primBvs = view<space>(primBvs),
+           auxIndices = view<space>(auxIndices)] ZS_LAMBDA(index_type i) mutable {
+            index_type src = auxIndices[i];
+            auto bv = primBvs[src];
+            for (int d = 0; d != dim; ++d) {
+              bvs(d, i) = bv._min[d];
+              bvs(dim + d, i) = bv._max[d];
+            }
+          });
+
+      pol(enumerate(sts), [bvs = view<space>(bvs), axis = axis] ZS_LAMBDA(
+                              index_type i, value_type & key) mutable { key = bvs(axis, i); });
+
+      vector_t sortedKeys{bvs.get_allocator(), bvs.size()};
+      indices_t sortedIndices{bvs.get_allocator(), bvs.size()};
+      radix_sort_pair(pol, std::begin(sts), std::begin(auxIndices), std::begin(sortedKeys),
+                      std::begin(sortedIndices), bvs.size());
+
+      sts = std::move(sortedKeys);
+      auxIndices = std::move(sortedIndices);
     }
 
     bvs_t bvs;

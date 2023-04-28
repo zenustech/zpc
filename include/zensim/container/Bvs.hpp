@@ -84,7 +84,8 @@ namespace zs {
 #endif
 
       // must call this in the beginning
-      bvs = bvs_t{primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, range_size(primBvs)};
+      bvs = bvs_t{
+          primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, (std::size_t)range_size(primBvs)};
       pol(enumerate(primBvs), [bvs = view<space>(bvs)] ZS_LAMBDA(index_type i, auto bv) mutable {
         for (int d = 0; d != dim; ++d) {
           bvs(d, i) = bv._min[d];
@@ -142,7 +143,9 @@ namespace zs {
             "current memory location not compatible with the execution policy");
 
       if (bvs.memoryLocation() != primBvs.memoryLocation())
-        bvs = bvs_t{primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, range_size(primBvs)};
+        bvs = bvs_t{primBvs.get_allocator(),
+                    {{"min", dim}, {"max", dim}},
+                    (std::size_t)range_size(primBvs)};
       pol(range(primBvs.size()),
           [bvs = view<space>(bvs), primBvs = view<space>(primBvs),
            auxIndices = view<space>(auxIndices)] ZS_LAMBDA(index_type i) mutable {
@@ -180,6 +183,7 @@ namespace zs {
     static constexpr bool is_const_structure = true;
     static constexpr int dim = LBvsT::dim;
     static constexpr auto exectag = wrapv<space>{};
+    using value_type = typename LBvsT::value_type;
     using index_t = typename LBvsT::index_type;
     using bv_t = typename LBvsT::Box;
     using bvs_t = typename LBvsT::bvs_t;

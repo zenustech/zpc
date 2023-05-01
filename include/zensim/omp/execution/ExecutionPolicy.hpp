@@ -14,7 +14,6 @@
 #include "zensim/math/bit/Bits.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
-#include "zensim/types/SourceLocation.hpp"
 
 namespace zs {
 

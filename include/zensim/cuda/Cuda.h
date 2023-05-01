@@ -12,6 +12,7 @@
 #endif
 
 // #include <driver_types.h>
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <iostream>
@@ -27,6 +28,7 @@
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
+#include "zensim/zpc_tpls/fmt/format.h"
 
 namespace zs {
 

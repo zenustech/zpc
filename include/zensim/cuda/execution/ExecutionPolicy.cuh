@@ -8,6 +8,7 @@
 #include <thrust/sort.h>
 
 #include <cub/device/device_histogram.cuh>
+#include <cub/device/device_merge_sort.cuh>
 #include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_scan.cuh>
@@ -21,7 +22,6 @@
 #include <type_traits>
 
 #include "zensim/types/Function.h"
-#include "zensim/types/SourceLocation.hpp"
 
 /// extracted from compiler error message...
 template <class Tag, class... CapturedVarTypePack> struct __nv_dl_wrapper_t;
@@ -150,10 +150,10 @@ namespace zs {
   }
 
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
-      std::is_convertible_v<typename std::iterator_traits<ZipIter>::iterator_category,
-                            std::random_access_iterator_tag>
-      && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
-          || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      std::is_convertible_v<
+          typename std::iterator_traits<ZipIter>::iterator_category,
+          std::
+              random_access_iterator_tag> && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
   range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -167,8 +167,9 @@ namespace zs {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(
-            std::is_integral_v<typename func_traits::first_argument_t>
-                || std::is_pointer_v<typename func_traits::first_argument_t>,
+            std::is_integral_v<
+                typename func_traits::
+                    first_argument_t> || std::is_pointer_v<typename func_traits::first_argument_t>,
             "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
             "integer");
         if constexpr (std::is_integral_v<typename func_traits::first_argument_t>)
@@ -527,6 +528,65 @@ namespace zs {
       reduce_impl(
           typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
           FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+    }
+    /// merge sort
+    template <class KeyIter, class ValueIter, typename CompareOpT> std::enable_if_t<
+        std::is_convertible_v<
+            typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
+            std::
+                random_access_iterator_tag> && std::is_convertible_v<typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category, std::random_access_iterator_tag>>
+    merge_sort_pair(
+        KeyIter &&keys, ValueIter &&vals,
+        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+        CompareOpT &&compOp, const source_location &loc = source_location::current()) const {
+      auto &context = Cuda::context(procid);
+      context.setContext();
+      if (this->shouldWait())
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
+      if (count) {
+        std::size_t temp_bytes = 0;
+        auto stream = (cudaStream_t)context.streamSpare(streamid);
+        Cuda::CudaContext::StreamExecutionTimer *timer{};
+        if (this->shouldProfile()) timer = context.tick(stream, loc);
+        cub::DeviceMergeSort::StableSortPairs(nullptr, temp_bytes, keys, vals, count, compOp,
+                                              stream);
+        // context.syncStreamSpare(streamid, loc);
+        void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
+        // cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
+        cub::DeviceMergeSort::StableSortPairs(d_tmp, temp_bytes, keys, vals, count, compOp, stream);
+        // context.syncStreamSpare(streamid, loc);
+        // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
+        context.streamMemFree(d_tmp, stream, loc);
+        if (this->shouldProfile()) context.tock(timer, loc);
+      }
+      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
+      context.recordEventSpare(streamid, loc);
+    }
+    template <class KeyIter, typename CompareOpT> std::enable_if_t<std::is_convertible_v<
+        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
+        std::random_access_iterator_tag>>
+    merge_sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
+               const source_location &loc = source_location::current()) const {
+      auto &context = Cuda::context(procid);
+      context.setContext();
+      if (this->shouldWait())
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
+      const auto dist = last - first;
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      auto stream = (cudaStream_t)context.streamSpare(streamid);
+      if (this->shouldProfile()) timer = context.tick(stream, loc);
+
+      std::size_t temp_bytes = 0;
+      cub::DeviceMergeSort::StableSortKeys(nullptr, temp_bytes, first, dist, compOp, stream);
+      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
+      cub::DeviceMergeSort::StableSortKeys(d_tmp, temp_bytes, first, dist, compOp, stream);
+      context.streamMemFree(d_tmp, stream, loc);
+
+      if (this->shouldProfile()) context.tock(timer, loc);
+      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
+      context.recordEventSpare(streamid, loc);
     }
     /// histogram sort
     /// radix sort pair

@@ -72,6 +72,40 @@ namespace zs {
            });
   }
 
+#if 0
+  ///@note spmm
+  template <typename Policy, typename TA, typename TiA, typename TnA, typename AllocatorTA,
+            typename TB, bool RowMajorB, typename TiB, typename TnB, typename AllocatorTB>
+  inline auto spgemm_classic(Policy &&policy,
+                             const SparseMatrix<TA, true, TiA, TnA, AllocatorTA> &A,
+                             const SparseMatrix<TB, RowMajorB, TiB, TnB, AllocatorTB> &B) {
+    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+
+    auto nrows = spmat.rows();
+    auto ncols = spmat.cols();
+    if (range_size(inV) != ncols || range_size(outV) != nrows)
+      throw std::runtime_error("spmv size mismatch");
+    if (!valid_memspace_for_execution(policy, spmat.get_allocator()))
+      throw std::runtime_error("current memory location not compatible with the execution policy");
+
+    using TOut = RM_CVREF_T(*std::begin(outV));
+    policy(range(nrows),
+           [spmat = proxy<space>(spmat), vin = std::begin(inV), vout = std::begin(outV),
+            execTag = wrapv<space>{}] ZS_LAMBDA(Ti row) mutable {
+             auto bg = spmat._ptrs[row];
+             auto ed = spmat._ptrs[row + 1];
+             T sum = 0;
+             for (auto i = bg; i < ed; ++i) sum += spmat._vals[i] * vin[spmat._inds[i]];
+
+             if constexpr (is_vec<TOut>::value)
+               for (typename TOut::index_type d = 0; d != TOut::extent; ++d)
+                 atomic_add(execTag, &vout[row].val(d), (typename TOut::value_type)sum.val(d));
+             else
+               atomic_add(execTag, &vout[row], (TOut)sum);
+           });
+  }
+#endif
+
   ///@note spmv (semiring) row major
   template <typename Policy, typename T, typename Ti, typename Tn, typename AllocatorT,
             typename InVRangeT, typename OutVRangeT, semiring_e category = semiring_e::plus_times>

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../TypeAlias.hpp"
-#include "zensim/execution/Intrinsics.hpp"
 
 namespace zs {
 

@@ -40,7 +40,6 @@ namespace zs {
       LBvs ret{};
       ret.bvs = bvs.clone(allocator);
       ret.axis = axis;
-      ret.gbv = gbv;
       ret.sts = sts;
       ret.auxIndices = auxIndices.clone(allocator);
       return ret;
@@ -52,16 +51,17 @@ namespace zs {
     constexpr auto getNumNodes() const noexcept { return bvs.size(); }
     constexpr auto getNumLeaves() const noexcept { return bvs.size(); }
 
-    template <typename Policy> void updateBox(Policy &&pol) {
+    template <typename Policy> Box getBox(Policy &&pol) const {
+      Box gbv;
       constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
       Vector<value_type> ret{bvs.get_allocator(), 1};
       Vector<value_type> gmins{bvs.get_allocator(), bvs.size()},
           gmaxs{bvs.get_allocator(), bvs.size()};
       for (int d = 0; d != dim; ++d) {
-        pol(range(bvs.size()), [bvs = view<space>(bvs), gmins = proxy<space>(gmins),
-                                gmaxs = proxy<space>(gmaxs), d] ZS_LAMBDA(index_type i) mutable {
-          gmins[i] = bvs(d, i);
-          gmaxs[i] = bvs(dim + d, i);
+        pol(enumerate(gmins, gmaxs), [bvs = view<space>(bvs), d] ZS_LAMBDA(
+                                         index_type i, value_type & gmin, value_type & gmax) {
+          gmin = bvs(d, i);
+          gmax = bvs(dim + d, i);
         });
         reduce(pol, std::begin(gmins), std::end(gmins), std::begin(ret), limits<value_type>::max(),
                getmin<value_type>{});
@@ -70,11 +70,12 @@ namespace zs {
                limits<value_type>::lowest(), getmax<value_type>{});
         gbv._max[d] = ret.getVal();
       }
+      return gbv;
     }
 
     template <typename Policy> void build(Policy &&pol,
                                           const zs::Vector<zs::AABBBox<dim, value_type>> &primBvs,
-                                          int axis = -1, bool computeBox = true) {
+                                          int axis = -1) {
       constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
       // ZS_LAMBDA -> __device__
@@ -86,20 +87,17 @@ namespace zs {
       // must call this in the beginning
       bvs = bvs_t{
           primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, (std::size_t)range_size(primBvs)};
-      pol(enumerate(primBvs), [bvs = view<space>(bvs)] ZS_LAMBDA(index_type i, auto bv) mutable {
-        for (int d = 0; d != dim; ++d) {
-          bvs(d, i) = bv._min[d];
-          bvs(dim + d, i) = bv._max[d];
-        }
-      });
 
-      /// @note whole bounding box
-      if (computeBox || !(axis >= 0 && axis < dim)) {
-        updateBox(pol);
-      }
-
-      // total bounding box
       if (!(axis >= 0 && axis < dim)) {
+        // compute bvs and global bv
+        pol(enumerate(primBvs), [bvs = view<space>(bvs)] ZS_LAMBDA(index_type i, auto bv) mutable {
+          for (int d = 0; d != dim; ++d) {
+            bvs(d, i) = bv._min[d];
+            bvs(dim + d, i) = bv._max[d];
+          }
+        });
+        auto gbv = getBox(pol);
+        // pick the longest dimension
         axis = 0;  // x-axis by default
         auto dis = gbv._max[0] - gbv._min[0];
         for (int d = 1; d < dim; ++d) {
@@ -112,13 +110,15 @@ namespace zs {
 
       this->axis = axis;
 
+#if 1
+      /// radix sort based
       vector_t keys{bvs.get_allocator(), bvs.size()}, sortedKeys{bvs.get_allocator(), bvs.size()};
       indices_t indices{bvs.get_allocator(), bvs.size()},
           sortedIndices{bvs.get_allocator(), bvs.size()};
       pol(enumerate(keys, indices),
-          [bvs = view<space>(bvs), axis = axis] ZS_LAMBDA(index_type i, value_type & key,
-                                                          index_type & index) mutable {
-            key = bvs(axis, i);
+          [primBvs = view<space>(primBvs), axis = axis] ZS_LAMBDA(index_type i, value_type & key,
+                                                                  index_type & index) mutable {
+            key = primBvs[i]._min[axis];
             index = i;
           });
       // sort in ascending order
@@ -126,15 +126,34 @@ namespace zs {
                       std::begin(sortedIndices), bvs.size());
       sts = std::move(sortedKeys);
       auxIndices = std::move(sortedIndices);
-#if 0
-      fmt::print("[{}, {}, {}] - [{}, {}, {}], axis: {}\n", gbv._min[0], gbv._min[1], gbv._min[2],
-                 gbv._max[0], gbv._max[1], gbv._max[2], axis);
+
+#else
+      /// merge sort based
+      sts = vector_t{bvs.get_allocator(), bvs.size()};
+      auxIndices = indices_t{bvs.get_allocator(), bvs.size()};
+      pol(enumerate(sts, auxIndices),
+          [primBvs = view<space>(primBvs), axis = axis] ZS_LAMBDA(index_type i, value_type & key,
+                                                                  index_type & index) mutable {
+            key = primBvs[i]._min[axis];
+            index = i;
+          });
+      pol.merge_sort_pair(std::begin(sts), std::begin(auxIndices), bvs.size(),
+                          std::less<value_type>{});
+
 #endif
+      pol(enumerate(auxIndices), [bvs = view<space>(bvs), primBvs = view<space>(primBvs)] ZS_LAMBDA(
+                                     size_type i, size_type src) mutable {
+        auto bv = primBvs[src];
+        for (int d = 0; d != dim_; ++d) {
+          bvs(d, i) = bv._min[d];
+          bvs(dim_ + d, i) = bv._max[d];
+        }
+      });
     }
+
     template <typename Policy>
     void refit(Policy &&pol, const Vector<AABBBox<dim, value_type>> &primBvs) {
-      build(pol, primBvs);
-
+      // build(pol, primBvs);
       constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
       if (range_size(primBvs) != bvs.size())
         throw std::runtime_error("the count of bounding volumes mismatch");
@@ -142,36 +161,24 @@ namespace zs {
         throw std::runtime_error(
             "current memory location not compatible with the execution policy");
 
-      if (bvs.memoryLocation() != primBvs.memoryLocation())
-        bvs = bvs_t{primBvs.get_allocator(),
-                    {{"min", dim}, {"max", dim}},
-                    (std::size_t)range_size(primBvs)};
-      pol(range(primBvs.size()),
-          [bvs = view<space>(bvs), primBvs = view<space>(primBvs),
-           auxIndices = view<space>(auxIndices)] ZS_LAMBDA(index_type i) mutable {
-            index_type src = auxIndices[i];
-            auto bv = primBvs[src];
-            for (int d = 0; d != dim; ++d) {
-              bvs(d, i) = bv._min[d];
-              bvs(dim + d, i) = bv._max[d];
-            }
-          });
+      pol(enumerate(sts, auxIndices),
+          [primBvs = view<space>(primBvs), axis = axis] ZS_LAMBDA(
+              size_type i, value_type & key, size_type src) { key = primBvs[src]._min[axis]; });
+      pol.merge_sort_pair(std::begin(sts), std::begin(auxIndices), bvs.size(),
+                          std::less<value_type>{});
 
-      pol(enumerate(sts), [bvs = view<space>(bvs), axis = axis] ZS_LAMBDA(
-                              index_type i, value_type & key) mutable { key = bvs(axis, i); });
-
-      vector_t sortedKeys{bvs.get_allocator(), bvs.size()};
-      indices_t sortedIndices{bvs.get_allocator(), bvs.size()};
-      radix_sort_pair(pol, std::begin(sts), std::begin(auxIndices), std::begin(sortedKeys),
-                      std::begin(sortedIndices), bvs.size());
-
-      sts = std::move(sortedKeys);
-      auxIndices = std::move(sortedIndices);
+      pol(enumerate(auxIndices), [bvs = view<space>(bvs), primBvs = view<space>(primBvs)] ZS_LAMBDA(
+                                     size_type i, size_type src) mutable {
+        auto bv = primBvs[src];
+        for (int d = 0; d != dim_; ++d) {
+          bvs(d, i) = bv._min[d];
+          bvs(dim_ + d, i) = bv._max[d];
+        }
+      });
     }
 
     bvs_t bvs;
     int axis;
-    Box gbv;
     vector_t sts;
     indices_t auxIndices;
   };
@@ -184,6 +191,8 @@ namespace zs {
     static constexpr int dim = LBvsT::dim;
     static constexpr auto exectag = wrapv<space>{};
     using value_type = typename LBvsT::value_type;
+    using index_type = typename LBvsT::index_type;
+    using size_type = typename LBvsT::size_type;
     using index_t = typename LBvsT::index_type;
     using bv_t = typename LBvsT::Box;
     using bvs_t = typename LBvsT::bvs_t;
@@ -197,7 +206,6 @@ namespace zs {
 
     explicit constexpr LBvsView(const LBvsT &lbvs)
         : _bvs{view<space>(lbvs.bvs)},
-          _sts{proxy<space>(lbvs.sts)},
           _auxIndices{proxy<space>(lbvs.auxIndices)},
           _axis{lbvs.axis},
           _numNodes{static_cast<index_t>(lbvs.getNumNodes())} {}
@@ -206,23 +214,44 @@ namespace zs {
     constexpr auto numLeaves() const noexcept { return numNodes(); }
 
     constexpr bv_t getNodeBV(index_t node) const {
-      return bv_t{_bvs.pack(dim_c<dim>, node), _bvs.pack(dim_c<dim>, dim, node)};
+      return bv_t{_bvs.pack(dim_c<dim>, 0, node), _bvs.pack(dim_c<dim>, dim, node)};
+    }
+
+    constexpr index_type locate(value_type v) const {
+      // vs[i - 1] (if exist) < vs[i] <= v <= vs[i + 1]
+      index_type left = 0, right = numNodes();
+      while (left < right) {
+        auto mid = left + (right - left) / 2;
+        if (_bvs(_axis, mid) > v)
+          right = mid;
+        else
+          left = mid + 1;
+      }
+      if (_bvs(_axis, left) > v) left--;
+      // left could be -1
+      return left;
     }
 
     // BV can be either VecInterface<VecT> or AABBBox<dim, T>
     template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
-      index_t i = 0;
-      auto ed = bv._max[_axis];
-      while (ed < _sts[i] && i != _numNodes) ++i;
-      for (; i != _numNodes; ++i) {
+      auto ed = locate(bv._max[_axis]);
+      for (index_t i = 0; i <= ed; ++i) {
         auto primid = _auxIndices[i];
-        if (overlaps(getNodeBV(primid), bv)) f(primid);
+        if (overlaps(getNodeBV(i), bv)) f(primid);
+      }
+      return;
+    }
+    template <class F> constexpr void self_iter_neighbors(index_t node, F &&f) const {
+      auto bv = bv_t{_bvs.pack(dim_c<dim>, 0, node), _bvs.pack(dim_c<dim>, dim, node)};
+      auto ed = locate(bv._max[_axis]);
+      for (index_t i = node + 1; i <= ed; ++i) {
+        auto primid = _auxIndices[i];
+        if (overlaps(getNodeBV(i), bv)) f(primid);
       }
       return;
     }
 
     bvs_view_type _bvs;
-    VectorView<space, const vector_t> _sts;
     VectorView<space, const indices_t> _auxIndices;
     int _axis;
     index_t _numNodes;

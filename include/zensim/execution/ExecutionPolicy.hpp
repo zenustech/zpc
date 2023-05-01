@@ -10,6 +10,7 @@
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
+#include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 namespace zs {
@@ -160,14 +161,16 @@ namespace zs {
 
     /// serial version of several parallel primitives
     template <class ForwardIt, class UnaryFunction>
-    constexpr void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f) const {
+    constexpr void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
+                            const source_location &loc = source_location::current()) const {
       (*this)(detail::iter_range(FWD(first), FWD(last)), FWD(f));
     }
 
     template <class InputIt, class OutputIt,
               class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
     constexpr void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                                  BinaryOperation &&binary_op = {}) const {
+                                  BinaryOperation &&binary_op = {},
+                                  const source_location &loc = source_location::current()) const {
       auto prev = *(d_first++) = *(first++);
       while (first != last) *(d_first++) = prev = binary_op(prev, *(first++));
     }
@@ -176,7 +179,8 @@ namespace zs {
               class BinaryOperation = std::plus<T>>
     constexpr void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                                   T init = deduce_identity<BinaryOperation, T>(),
-                                  BinaryOperation &&binary_op = {}) const {
+                                  BinaryOperation &&binary_op = {},
+                                  const source_location &loc = source_location::current()) const {
       *(d_first++) = init;
       do {
         *(d_first++) = init = binary_op(init, *first);
@@ -188,15 +192,15 @@ namespace zs {
         InputIt &&first, InputIt &&last, OutputIt &&d_first,
         remove_cvref_t<decltype(*std::declval<InputIt>())> init
         = deduce_identity<BinaryOp, remove_cvref_t<decltype(*std::declval<InputIt>())>>(),
-        BinaryOp &&binary_op = {}) const {
+        BinaryOp &&binary_op = {}, const source_location &loc = source_location::current()) const {
       for (; first != last;) init = binary_op(init, *(first++));
       *d_first = init;
     }
     template <class InputIt, class OutputIt> constexpr void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type)
-          * 8) const {
+        = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
+        const source_location &loc = source_location::current()) const {
       using IterT = remove_cvref_t<InputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
       using InputValueT = typename std::iterator_traits<IterT>::value_type;
@@ -265,8 +269,8 @@ namespace zs {
         KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
         int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type)
-          * 8) const {
+        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+        const source_location &loc = source_location::current()) const {
       using KeyT = typename std::iterator_traits<KeyIter>::value_type;
       using ValueT = typename std::iterator_traits<ValueIter>::value_type;
       using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
@@ -416,22 +420,25 @@ namespace zs {
   /// for_each
   template <class ExecutionPolicy, class ForwardIt, class UnaryFunction>
   constexpr void for_each(ExecutionPolicy &&policy, ForwardIt &&first, ForwardIt &&last,
-                          UnaryFunction &&f) {
-    policy.for_each(FWD(first), FWD(last), FWD(f));
+                          UnaryFunction &&f,
+                          const source_location &loc = source_location::current()) {
+    policy.for_each(FWD(first), FWD(last), FWD(f), loc);
   }
   /// transform
   template <class ExecutionPolicy, class ForwardIt, class UnaryFunction>
   constexpr void transform(ExecutionPolicy &&policy, ForwardIt &&first, ForwardIt &&last,
-                           UnaryFunction &&f) {
-    policy.for_each(FWD(first), FWD(last), FWD(f));
+                           UnaryFunction &&f,
+                           const source_location &loc = source_location::current()) {
+    policy.for_each(FWD(first), FWD(last), FWD(f), loc);
   }
   /// scan
   template <class ExecutionPolicy, class InputIt, class OutputIt,
             class BinaryOperation
             = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
   constexpr void inclusive_scan(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
-                                OutputIt &&d_first, BinaryOperation &&binary_op = {}) {
-    policy.inclusive_scan(FWD(first), FWD(last), FWD(d_first), FWD(binary_op));
+                                OutputIt &&d_first, BinaryOperation &&binary_op = {},
+                                const source_location &loc = source_location::current()) {
+    policy.inclusive_scan(FWD(first), FWD(last), FWD(d_first), FWD(binary_op), loc);
   }
   template <class ExecutionPolicy, class InputIt, class OutputIt,
             class BinaryOperation
@@ -441,8 +448,8 @@ namespace zs {
       typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
       = deduce_identity<BinaryOperation,
                         typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
-      BinaryOperation &&binary_op = {}) {
-    policy.exclusive_scan(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
+      BinaryOperation &&binary_op = {}, const source_location &loc = source_location::current()) {
+    policy.exclusive_scan(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
   }
   /// reduce
   template <class ExecutionPolicy, class InputIt, class OutputIt,
@@ -453,8 +460,26 @@ namespace zs {
       typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
       = deduce_identity<BinaryOp,
                         typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
-      BinaryOp &&binary_op = {}) {
-    policy.reduce(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op));
+      BinaryOp &&binary_op = {}, const source_location &loc = source_location::current()) {
+    policy.reduce(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+  }
+  /// merge sort
+  template <typename ExecutionPolicy, class KeyIter, class ValueIter,
+            typename CompareOpT
+            = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+  void merge_sort_pair(
+      ExecutionPolicy &&policy, KeyIter &&keys, ValueIter &&vals,
+      typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+      CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) {
+    policy.merge_sort_pair(FWD(keys), FWD(vals), count, FWD(compOp), loc);
+  }
+  template <typename ExecutionPolicy, class KeyIter,
+            typename CompareOpT
+            = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+  void merge_sort(ExecutionPolicy &&policy, KeyIter &&first, KeyIter &&last,
+                  CompareOpT &&compOp = {},
+                  const source_location &loc = source_location::current()) {
+    policy.merge_sort(FWD(first), FWD(last), FWD(compOp), loc);
   }
   /// sort
   template <class ExecutionPolicy, class KeyIter, class ValueIter,
@@ -467,14 +492,17 @@ namespace zs {
       ExecutionPolicy &&policy, KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut,
       ValueIter &&valsOut, Tn count, int sbit = 0,
       int ebit
-      = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8) {
-    policy.radix_sort_pair(FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit);
+      = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+      const source_location &loc = source_location::current()) {
+    policy.radix_sort_pair(FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit,
+                           loc);
   }
   template <class ExecutionPolicy, class InputIt, class OutputIt> constexpr void radix_sort(
       ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
       int ebit
-      = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8) {
-    policy.radix_sort(FWD(first), FWD(last), FWD(d_first), sbit, ebit);
+      = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
+      const source_location &loc = source_location::current()) {
+    policy.radix_sort(FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
   }
   /// gather/ select (flagged, if, unique)
 

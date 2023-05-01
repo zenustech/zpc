@@ -137,8 +137,8 @@ namespace zs {
             key = primBvs[i]._min[axis];
             index = i;
           });
-      pol.merge_sort_pair(std::begin(sts), std::begin(auxIndices), bvs.size(),
-                          std::less<value_type>{});
+      merge_sort_pair(pol, std::begin(sts), std::begin(auxIndices), bvs.size(),
+                      std::less<value_type>{});
 
 #endif
       pol(enumerate(auxIndices), [bvs = view<space>(bvs), primBvs = view<space>(primBvs)] ZS_LAMBDA(
@@ -164,8 +164,8 @@ namespace zs {
       pol(enumerate(sts, auxIndices),
           [primBvs = view<space>(primBvs), axis = axis] ZS_LAMBDA(
               size_type i, value_type & key, size_type src) { key = primBvs[src]._min[axis]; });
-      pol.merge_sort_pair(std::begin(sts), std::begin(auxIndices), bvs.size(),
-                          std::less<value_type>{});
+      merge_sort_pair(pol, std::begin(sts), std::begin(auxIndices), bvs.size(),
+                      std::less<value_type>{});
 
       pol(enumerate(auxIndices), [bvs = view<space>(bvs), primBvs = view<space>(primBvs)] ZS_LAMBDA(
                                      size_type i, size_type src) mutable {

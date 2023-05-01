@@ -176,84 +176,17 @@ namespace zs {
       }
       return dist;
     }
-// BV can be either VecInterface<VecT> or AABBBox<dim, T>
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
-    template <typename T, int d_ = dim, enable_if_t<d_ == 3> = 0>
-    __forceinline__ __device__ bool intersect(
-        cooperative_groups::thread_block_tile<8, cooperative_groups::thread_block> &tile,
-        index_t node, const AABBBox<3, T> &b) const noexcept {
-      const value_type *bvPtr = reinterpret_cast<const value_type *>(_orderedBvs.data() + node);
-      int nonOverlap = 0;
-      if (auto laneId = tile.thread_rank(); laneId < 6) {
-        auto v = bvPtr[tile.thread_rank()];
-        // min
-        if (laneId < 3)
-          nonOverlap = v > b._max(laneId);
-        else
-          nonOverlap = v < b._min(laneId - 3);
-      }
-      return tile.any(nonOverlap);
-    }
-    template <typename BV, class F, int d_ = dim> __forceinline__ __device__ auto iter_neighbors(
-        cooperative_groups::thread_block_tile<8, cooperative_groups::thread_block> &tile,
-        const BV &bv, F &&f) const
-        -> std::enable_if_t<
-            d_ == 3
-            && is_same_v<decltype(std::declval<F>()(tile, std::declval<index_t>())), void>> {
-      if (auto nl = numLeaves(); nl <= 2) {
-        for (index_t i = 0; i != nl; ++i) {
-          if (intersect(tile, i, bv)) f(tile, _auxIndices[i]);
-        }
-        return;
-      }
-      index_t node = 0;
-      while (node != -1 && node != _numNodes) {
-        index_t level = _levels[node];
-        // level and node are always in sync
-        for (; level; --level, ++node)
-          if (!intersect(tile, node, bv)) break;
-        // leaf node check
-        if (level == 0) {
-          if (intersect(tile, node, bv)) f(tile, _auxIndices[node]);
-          node++;
-        } else  // separate at internal nodes
-          node = _auxIndices[node];
-      }
-    }
-#endif
-    template <
-        typename BV, class F,
-        enable_if_t<is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>> = 0>
-    constexpr void iter_neighbors(const BV &bv, F &&f) const {
-      if (auto nl = numLeaves(); nl <= 2) {
-        for (index_t i = 0; i != nl; ++i) {
-          if (overlaps(getNodeBV(i), bv)) f(_auxIndices[i]);
-        }
-        return;
-      }
-      index_t node = 0;
-      while (node != -1 && node != _numNodes) {
-        index_t level = _levels[node];
-        // level and node are always in sync
-        for (; level; --level, ++node)
-          if (!overlaps(getNodeBV(node), bv)) break;
-        // leaf node check
-        if (level == 0) {
-          if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
-          node++;
-        } else  // separate at internal nodes
-          node = _auxIndices[node];
-      }
-    }
     /// @note F return_value indicates early exit
-    template <
-        typename BV, class F,
-        enable_if_t<is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), bool>> = 0>
-    constexpr void iter_neighbors(const BV &bv, F &&f) const {
+    template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
       if (auto nl = numLeaves(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
-          if (overlaps(getNodeBV(i), bv))
-            if (f(_auxIndices[i])) return;
+          if (overlaps(getNodeBV(i), bv)) {
+            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+              f(_auxIndices[i]);
+            else {
+              if (f(_auxIndices[i])) return;
+            }
+          }
         }
         return;
       }
@@ -266,7 +199,46 @@ namespace zs {
         // leaf node check
         if (level == 0) {
           if (overlaps(getNodeBV(node), bv)) {
-            if (f(_auxIndices[node])) return;
+            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+              f(_auxIndices[node]);
+            else {
+              if (f(_auxIndices[node])) return;
+            }
+          }
+          node++;
+        } else  // separate at internal nodes
+          node = _auxIndices[node];
+      }
+    }
+    template <class F> constexpr void self_iter_neighbors(index_t leafId, F &&f) const {
+      if (auto nl = numLeaves(); nl <= 2) {
+        const auto bv = getNodeBV(leafId);
+        for (index_t i = leafId + 1; i != nl; ++i) {
+          if (overlaps(getNodeBV(i), bv)) {
+            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+              f(_auxIndices[i]);
+            else {
+              if (f(_auxIndices[i])) return;
+            }
+          }
+        }
+        return;
+      }
+      index_t node = _leafInds[leafId];
+      const auto bv = getNodeBV(node);
+      while (node != -1 && node != _numNodes) {
+        index_t level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (!overlaps(getNodeBV(node), bv)) break;
+        // leaf node check
+        if (level == 0) {
+          if (overlaps(getNodeBV(node), bv)) {
+            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+              f(_auxIndices[node]);
+            else {
+              if (f(_auxIndices[node])) return;
+            }
           }
           node++;
         } else  // separate at internal nodes

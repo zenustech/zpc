@@ -477,6 +477,23 @@ namespace zs {
       BinaryOp &&binary_op = {}, const source_location &loc = source_location::current()) {
     policy.reduce(FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
   }
+  /// sort
+  template <typename ExecutionPolicy, class KeyIter, class ValueIter,
+            typename CompareOpT
+            = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+  void sort_pair(
+      ExecutionPolicy &&policy, KeyIter &&keys, ValueIter &&vals,
+      typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+      CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) {
+    policy.sort_pair(FWD(keys), FWD(vals), count, FWD(compOp), loc);
+  }
+  template <typename ExecutionPolicy, class KeyIter,
+            typename CompareOpT
+            = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+  void sort(ExecutionPolicy &&policy, KeyIter &&first, KeyIter &&last, CompareOpT &&compOp = {},
+            const source_location &loc = source_location::current()) {
+    policy.sort(FWD(first), FWD(last), FWD(compOp), loc);
+  }
   /// merge sort
   template <typename ExecutionPolicy, class KeyIter, class ValueIter,
             typename CompareOpT

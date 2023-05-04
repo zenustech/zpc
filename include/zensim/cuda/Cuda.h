@@ -86,6 +86,7 @@ namespace zs {
       void setContext(const source_location &loc = source_location::current()) const;
       /// stream & event
       // stream
+      /// @note https://stackoverflow.com/questions/31458016/in-cuda-is-it-guaranteed-that-the-default-stream-equals-nullptr
       template <StreamIndex sid> auto stream() const { return streams[static_cast<StreamID>(sid)]; }
       void *stream(StreamID sid) const {
         if (sid >= 0)

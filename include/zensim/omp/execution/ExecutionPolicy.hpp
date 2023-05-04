@@ -401,6 +401,148 @@ namespace zs {
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
 
+    template <typename KeyIter, typename ValueIter, typename CompareOpT, bool Stable>
+    void merge_sort_pair_impl(
+        KeyIter &&keys, ValueIter &&vals,
+        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type dist,
+        CompareOpT &&compOp, wrapv<Stable>, const source_location &loc) const {
+      using KeyIterT = remove_cvref_t<KeyIter>;
+      using ValueIterT = remove_cvref_t<ValueIter>;
+      using DiffT = typename std::iterator_traits<KeyIterT>::difference_type;
+      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
+      using ValueT = typename std::iterator_traits<ValueIterT>::value_type;
+
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
+
+      std::vector<KeyT> okeys_(dist);
+      std::vector<ValueT> ovals_(dist);
+      auto okeys = std::begin(okeys_);
+      auto ovals = std::begin(ovals_);
+
+      DiffT nths{}, nwork{};
+      bool switched = false;
+#pragma omp parallel if (_dop * 256 < dist) num_threads(_dop) \
+    shared(switched, nths, nwork, keys, vals, okeys, ovals, compOp)
+      {
+#pragma omp single
+        {
+          nths = omp_get_num_threads();
+          nwork = (dist + nths - 1) / nths;
+        }
+#pragma omp barrier
+        DiffT tid = omp_get_thread_num();
+        const DiffT l = nwork * tid;
+        const DiffT r = (l + nwork) > dist ? dist : (l + nwork);
+
+        bool flipped = false;
+
+        // if constexpr (Stable)
+        /// @note currently [unstable] adopts the [stable] routine
+        {
+          //  bottom-up fashion
+          for (DiffT halfStride = 1; halfStride < (r - l);) {
+            DiffT stride = halfStride * 2;
+            auto bgCur = flipped ? okeys : keys;
+            auto bgCurVals = flipped ? ovals : vals;
+            auto bgNext = flipped ? keys : okeys;
+            auto bgNextVals = flipped ? vals : ovals;
+            for (DiffT ll = l; ll < r; ll += stride) {
+              DiffT mid = std::min(ll + halfStride, r);
+              DiffT rr = std::min(ll + stride, r);
+              // [ll, mid) [mid, rr)
+              DiffT left = ll, right = mid, k = ll;
+              while (left < mid && right < rr) {
+                const auto &a = bgCur[left];
+                const auto &b = bgCur[right];
+                if (!compOp(b, a)) {
+                  bgNext[k] = a;
+                  bgNextVals[k++] = bgCurVals[left++];
+                } else {
+                  bgNext[k] = b;
+                  bgNextVals[k++] = bgCurVals[right++];
+                }
+              }
+              while (left < mid) {
+                bgNext[k] = bgCur[left];
+                bgNextVals[k++] = bgCurVals[left++];
+              }
+              while (right < rr) {
+                bgNext[k] = bgCur[right];
+                bgNextVals[k++] = bgCurVals[right++];
+              }
+            }
+            flipped = !flipped;
+            halfStride = stride;
+          }
+        }
+
+        for (DiffT halfStride = 1; halfStride < nths; halfStride *= 2) {
+          DiffT stride = halfStride * 2;
+#pragma omp barrier
+          if (tid % stride == 0) {
+            auto bgCur = flipped ? okeys : keys;
+            auto bgCurVals = flipped ? ovals : vals;
+            auto bgNext = flipped ? keys : okeys;
+            auto bgNextVals = flipped ? vals : ovals;
+            DiffT mid = std::min(nwork * (tid + halfStride), dist);
+            DiffT rr = std::min(nwork * (tid + stride), dist);
+            // std::inplace_merge(first + l, first + mid, first + r, compOp);
+            DiffT left = l, right = mid, k = l;
+            while (left < mid && right < rr) {
+              const auto &a = bgCur[left];
+              const auto &b = bgCur[right];
+              if (!compOp(b, a)) {
+                bgNext[k] = a;
+                bgNextVals[k++] = bgCurVals[left++];
+              } else {
+                bgNext[k] = b;
+                bgNextVals[k++] = bgCurVals[right++];
+              }
+            }
+            while (left < mid) {
+              bgNext[k] = bgCur[left];
+              bgNextVals[k++] = bgCurVals[left++];
+            }
+            while (right < rr) {
+              bgNext[k] = bgCur[right];
+              bgNextVals[k++] = bgCurVals[right++];
+            }
+            flipped = !flipped;
+          }
+        }
+        if (tid == 0) switched = flipped;
+#pragma omp barrier
+        if (switched) {
+          for (DiffT k = l; k < r; ++k) {
+            keys[k] = okeys[k];
+            vals[k] = ovals[k];
+          }
+        }
+      }
+
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp merge_sort | File {}, Ln {}, Col {}]", loc.file_name(),
+                               loc.line(), loc.column()));
+    }
+    template <typename KeyIter, typename ValueIter,
+              typename CompareOpT
+              = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+    void sort_pair(
+        KeyIter &&keys, ValueIter &&vals,
+        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+        CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) const {
+      merge_sort_pair_impl(FWD(keys), FWD(vals), count, FWD(compOp), false_c, loc);  // unstable
+    }
+    template <typename KeyIter, typename ValueIter,
+              typename CompareOpT
+              = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+    void merge_sort_pair(
+        KeyIter &&keys, ValueIter &&vals,
+        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+        CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) const {
+      merge_sort_pair_impl(FWD(keys), FWD(vals), count, FWD(compOp), true_c, loc);  // stable
+    }
     template <class KeyIter, typename CompareOpT, bool Stable>
     void merge_sort_impl(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp, wrapv<Stable>,
                          const source_location &loc) const {
@@ -418,7 +560,7 @@ namespace zs {
       DiffT nths{}, nwork{};
       bool switched = false;
 #pragma omp parallel if (_dop * 256 < dist) num_threads(_dop) \
-    shared(switched, nths, nwork, first, last, compOp)
+    shared(switched, nths, nwork, first, ofirst, compOp)
       {
 #pragma omp single
         {
@@ -507,7 +649,7 @@ namespace zs {
               = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
     void sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp = {},
               const source_location &loc = source_location::current()) const {
-      merge_sort_impl(FWD(first), FWD(last), FWD(compOp), false_c, loc);  // stable
+      merge_sort_impl(FWD(first), FWD(last), FWD(compOp), false_c, loc);  // unstable
     }
     template <class KeyIter,
               typename CompareOpT
@@ -517,6 +659,7 @@ namespace zs {
       merge_sort_impl(FWD(first), FWD(last), FWD(compOp), true_c, loc);  // stable
     }
 
+    /// radix sort
     template <class InputIt, class OutputIt>
     void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
                          OutputIt &&d_first, int sbit, int ebit, const source_location &loc) const {
@@ -644,7 +787,6 @@ namespace zs {
         timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
-    /// radix sort
     template <class InputIt, class OutputIt> void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8,

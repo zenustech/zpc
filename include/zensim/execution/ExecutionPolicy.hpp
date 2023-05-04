@@ -196,6 +196,20 @@ namespace zs {
       for (; first != last;) init = binary_op(init, *(first++));
       *d_first = init;
     }
+    template <class KeyIter,
+              typename CompareOpT
+              = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+    void sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp = {},
+              const source_location &loc = source_location::current()) {
+      std::sort(FWD(first), FWD(last), FWD(compOp));
+    }
+    template <class KeyIter,
+              typename CompareOpT
+              = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+    void merge_sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp = {},
+                    const source_location &loc = source_location::current()) {
+      std::stable_sort(FWD(first), FWD(last), FWD(compOp));
+    }
     template <class InputIt, class OutputIt> constexpr void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit

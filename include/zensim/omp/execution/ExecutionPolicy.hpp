@@ -478,7 +478,7 @@ namespace zs {
             while (left < mid && right < rr) {
               const auto &a = bgCur[left];
               const auto &b = bgCur[right];
-              if (a <= b) {
+              if (!compOp(b, a)) {
                 bgNext[k++] = a;
                 left++;
               } else {
@@ -494,7 +494,7 @@ namespace zs {
         if (tid == 0) switched = flipped;
 #pragma omp barrier
         if (switched)
-          for (int k = l; k < r; ++k) first[k] = ofirst[k];
+          for (DiffT k = l; k < r; ++k) first[k] = ofirst[k];
       }
 
       if (shouldProfile())

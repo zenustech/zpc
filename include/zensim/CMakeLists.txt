@@ -384,7 +384,7 @@ if(ZS_ENABLE_CUDA)
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" -dlto>
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642"> # -dlto>
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
     # https://docs.nvidia.com/cuda/cuda-driver-api/stream-sync-behavior.html#stream-sync-behavior
@@ -395,9 +395,8 @@ if(ZS_ENABLE_CUDA)
 
   # https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#implicit-cuda-host-code
   # https://gitlab.kitware.com/cmake/cmake/-/issues/18265
-  target_link_options(zpccuda
-    PRIVATE $<DEVICE_LINK:-dlto>
-  )
+  # target_link_options(zpccuda PRIVATE $<DEVICE_LINK:-dlto>)
+
   set_target_properties(zpccuda
     PROPERTIES # LINKER_LANGUAGE CUDA
     CUDA_SEPARABLE_COMPILATION OFF
@@ -537,7 +536,7 @@ if(ZS_ENABLE_CUDA)
     PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES}
   )
   target_compile_options(zs_cu_wrangler
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-ptx -lineinfo --ptxas-options=-allow-expensive-optimizations=true> # -ptx --keep
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -lineinfo --ptxas-options=-allow-expensive-optimizations=true> # -ptx --keep
   )
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
 

@@ -658,7 +658,8 @@ namespace zs {
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
                                                          const size_type i,
                                                          wrapt<TT> = {}) noexcept {
@@ -698,7 +699,8 @@ namespace zs {
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr TT operator()(const channel_counter_type chn, const size_type i,
                             wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -738,7 +740,8 @@ namespace zs {
     template <typename TT = value_type, bool V = is_const_structure, bool InTile = WithinTile,
               enable_if_all<!V, !InTile, sizeof(TT) == sizeof(value_type),
                             is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
                                                          const size_type tileNo,
                                                          const size_type localNo,
@@ -765,7 +768,8 @@ namespace zs {
     template <
         typename TT = value_type, bool InTile = WithinTile,
         enable_if_all<!InTile, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                      (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                      (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+        = 0>
     constexpr TT operator()(const channel_counter_type chn, const size_type tileNo,
                             const size_type localNo, wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -818,7 +822,8 @@ namespace zs {
     // use dim_c<Ns...> for the first parameter
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto pack(value_seq<Ns...>, channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
       using RetT = vec<TT, Ns...>;
@@ -864,7 +869,8 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto pack(channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
       return pack(dim_c<Ns...>, chn, i, wrapt<TT>{});
@@ -882,7 +888,8 @@ namespace zs {
     /// tuple
     template <std::size_t... Is, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_seq<Is...>, wrapt<TT>) const noexcept {
       constexpr channel_counter_type d = sizeof...(Is);
@@ -926,14 +933,16 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto tuple(value_seq<Ns...>, const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return tuple_impl(chn, i, std::make_index_sequence<(Ns * ...)>{}, wrapt<TT>{});
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto tuple(const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return tuple(dim_c<d>, chn, i, wrapt<TT>{});
@@ -1116,13 +1125,15 @@ namespace zs {
     ///
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
                                                          const channel_counter_type chn,
                                                          const size_type i,
                                                          wrapt<TT> = {}) noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (operator()) accessing prop [%s] which is not among %d props (%d "
             "chns, %lld eles) in total\n",
@@ -1131,16 +1142,17 @@ namespace zs {
         return static_cast<base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i,
-                                          wrapt<TT>{});
+      return static_cast<base_t &>(*this)(_tagOffsets[propNo] + chn, i, wrapt<TT>{});
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr TT operator()(const SmallString &propName, const channel_counter_type chn,
                             const size_type i, wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (operator()) const accessing prop [%s] which is not among %d "
             "props (%d chns, %lld eles) in total\n",
@@ -1149,17 +1161,18 @@ namespace zs {
         return static_cast<const base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)] + chn, i,
-                                                wrapt<TT>{});
+      return static_cast<const base_t &>(*this)(_tagOffsets[propNo] + chn, i, wrapt<TT>{});
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
                                                          const size_type i,
                                                          wrapt<TT> = {}) noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (operator()) accessing prop [%s] which is not among %d props (%d "
             "chns, %lld eles) in total\n",
@@ -1168,15 +1181,17 @@ namespace zs {
         return static_cast<base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i, wrapt<TT>{});
+      return static_cast<base_t &>(*this)(_tagOffsets[propNo], i, wrapt<TT>{});
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr TT operator()(const SmallString &propName, const size_type i,
                             wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (operator()) const accessing prop [%s] which is not among %d "
             "props (%d chns, %lld eles) in total\n",
@@ -1185,8 +1200,7 @@ namespace zs {
         return static_cast<const base_t &>(*this)(_dims._numChannels, i, wrapt<TT>{});
       }
 #endif
-      return static_cast<const base_t &>(*this)(_tagOffsets[propertyIndex(propName)], i,
-                                                wrapt<TT>{});
+      return static_cast<const base_t &>(*this)(_tagOffsets[propNo], i, wrapt<TT>{});
     }
     template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
     constexpr auto tile(const size_type tileid) noexcept {
@@ -1225,30 +1239,32 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto pack(value_seq<Ns...>, const SmallString &propName, const size_type i,
                         wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d "
-            "chns, "
-            "%lld eles) in total\n",
+            "chns, %lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
             (long long int)_dims.size());
-        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _dims._numChannels, i,
-        // wrapt<TT>{});
-        using RetT = decltype(static_cast<const base_t &>(*this).pack(
-            dim_c<Ns...>, _tagOffsets[propertyIndex(propName)], i, wrapt<TT>{}));
-        return RetT::zeros();
+        return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _dims._numChannels, i,
+                                                       wrapt<TT>{});
+        // using RetT = decltype(static_cast<const base_t &>(*this).pack(
+        //     dim_c<Ns...>, _tagOffsets[propertyIndex(propName)], i, wrapt<TT>{}));
+        // return RetT::zeros();
       }
 #endif
-      return static_cast<const base_t &>(*this).pack(
-          dim_c<Ns...>, _tagOffsets[propertyIndex(propName)], i, wrapt<TT>{});
+      return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _tagOffsets[propNo], i,
+                                                     wrapt<TT>{});
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto pack(const SmallString &propName, const size_type i,
                         wrapt<TT> = {}) const noexcept {
       return pack(dim_c<Ns...>, propName, i, wrapt<TT>{});
@@ -1256,31 +1272,34 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
                         const channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (pack) accessing prop [%s] which is not among %d props (%d "
             "chns, "
             "%lld eles) in total\n",
             _nameTag.asChars(), propName.asChars(), (int)_N, (int)_dims._numChannels,
             (long long int)_dims.size());
-        // return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _dims._numChannels, i,
-        // wrapt<TT>{});
-        using RetT = decltype(static_cast<const base_t &>(*this).pack(
-            dim_c<Ns...>, _tagOffsets[propertyIndex(propName)] + chn, i, wrapt<TT>{}));
-        return RetT::zeros();
+        return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _dims._numChannels, i,
+                                                       wrapt<TT>{});
+        // using RetT = decltype(static_cast<const base_t &>(*this).pack(
+        //     dim_c<Ns...>, _tagOffsets[propertyIndex(propName)] + chn, i, wrapt<TT>{}));
+        // return RetT::zeros();
       }
 #endif
-      return static_cast<const base_t &>(*this).pack(
-          dim_c<Ns...>, _tagOffsets[propertyIndex(propName)] + chn, i, wrapt<TT>{});
+      return static_cast<const base_t &>(*this).pack(dim_c<Ns...>, _tagOffsets[propNo] + chn, i,
+                                                     wrapt<TT>{});
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto pack(const SmallString &propName, const channel_counter_type chn,
                         const size_type i, wrapt<TT> = {}) const noexcept {
       return pack(dim_c<Ns...>, propName, chn, i, wrapt<TT>{});
@@ -1288,8 +1307,9 @@ namespace zs {
 
     template <channel_counter_type N, typename VT = value_type>
     constexpr auto array(const SmallString &propName, const size_type i) const noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (array) accessing prop [%s] which is not among %d props (%d "
             "chns, %lld eles) in total\n",
@@ -1298,18 +1318,19 @@ namespace zs {
         return static_cast<const base_t &>(*this).template array<N, VT>(_dims._numChannels, i);
       }
 #endif
-      return static_cast<const base_t &>(*this).template array<N, VT>(
-          _tagOffsets[propertyIndex(propName)], i);
+      return static_cast<const base_t &>(*this).template array<N, VT>(_tagOffsets[propNo], i);
     }
 
     /// @brief tieing
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto tuple(value_seq<Ns...>, const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (tuple) const accessing prop [%s] which is not among %d props "
             "(%d chns, %lld eles) in total\n",
@@ -1319,12 +1340,13 @@ namespace zs {
                                                         wrapt<TT>{});
       }
 #endif
-      return static_cast<const base_t &>(*this).tuple(
-          dim_c<Ns...>, _tagOffsets[propertyIndex(propName)], i, wrapt<TT>{});
+      return static_cast<const base_t &>(*this).tuple(dim_c<Ns...>, _tagOffsets[propNo], i,
+                                                      wrapt<TT>{});
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto tuple(const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return tuple(dim_c<d>, propName, i, wrapt<TT>{});
@@ -1332,12 +1354,14 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
                          const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (!hasProperty(propName)) {
+      if (propNo == _N) {
         printf(
             "tilevector [%s] ofb! (tuple) const accessing prop [%s] which is not among %d props "
             "(%d chns, %lld eles) in total\n",
@@ -1347,12 +1371,13 @@ namespace zs {
                                                         wrapt<TT>{});
       }
 #endif
-      return static_cast<const base_t &>(*this).tuple(
-          dim_c<Ns...>, _tagOffsets[propertyIndex(propName)] + chn, i, wrapt<TT>{});
+      return static_cast<const base_t &>(*this).tuple(dim_c<Ns...>, _tagOffsets[propNo] + chn, i,
+                                                      wrapt<TT>{});
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)> = 0>
+                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+              = 0>
     constexpr auto tuple(const SmallString &propName, const channel_counter_type chn,
                          const size_type i, wrapt<TT> = {}) const noexcept {
       return tuple(dim_c<d>, propName, chn, i, wrapt<TT>{});

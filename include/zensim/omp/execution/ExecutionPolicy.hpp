@@ -441,7 +441,23 @@ namespace zs {
         /// @note currently [unstable] adopts the [stable] routine
         {
           //  bottom-up fashion
-          for (DiffT halfStride = 1; halfStride < (r - l);) {
+          // insertion sort for segments of granularity <= 16
+          for (DiffT ll = l; ll < r;) {
+            auto rr = std::min(ll + 16, r);
+            // [ll, rr)
+            for (DiffT i = ll + 1; i != rr; ++i) {
+              for (DiffT k = i; k != ll; --k) {  // insert k
+                auto j = k - 1;
+                if (compOp(keys[k], keys[j])) {
+                  std::swap(keys[k], keys[j]);
+                  std::swap(vals[k], vals[j]);
+                } else
+                  break;
+              }
+            }
+            ll = rr;
+          }
+          for (DiffT halfStride = 16; halfStride < (r - l);) {
             DiffT stride = halfStride * 2;
             auto bgCur = flipped ? okeys : keys;
             auto bgCurVals = flipped ? ovals : vals;
@@ -576,8 +592,23 @@ namespace zs {
 
         if constexpr (Stable) {
           // std::stable_sort(first + l, first + r, compOp);
+          // insertion sort for segments of granularity <= 16
+          for (DiffT ll = l; ll < r;) {
+            auto rr = std::min(ll + 16, r);
+            // [ll, rr)
+            for (DiffT i = ll + 1; i != rr; ++i) {
+              for (DiffT k = i; k != ll; --k) {  // insert k
+                auto j = k - 1;
+                if (compOp(first[k], first[j]))
+                  std::swap(first[k], first[j]);
+                else
+                  break;
+              }
+            }
+            ll = rr;
+          }
           //  bottom-up fashion
-          for (DiffT halfStride = 1; halfStride < (r - l);) {
+          for (DiffT halfStride = 16; halfStride < (r - l);) {
             DiffT stride = halfStride * 2;
             auto bgCur = flipped ? ofirst : first;
             auto bgNext = flipped ? first : ofirst;

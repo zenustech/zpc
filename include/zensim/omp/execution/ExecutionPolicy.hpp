@@ -401,6 +401,26 @@ namespace zs {
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
 
+    template <typename KeyIter, typename ValueIter, typename DiffT, typename CompareOpT>
+    static void quick_sort_impl(KeyIter &&keys, ValueIter &&vals, DiffT l, DiffT r,
+                                CompareOpT &&compOp) {
+      // ref: https://www.geeksforgeeks.org/quick-sort/
+      DiffT pi = l;
+      if (l < r) {
+        const auto &pivot = keys[r];
+        for (DiffT j = l; j != r; ++j) {
+          if (keys[j] < pivot) {
+            std::swap(keys[pi], keys[j]);
+            std::swap(vals[pi], vals[j]);
+            pi++;
+          }
+        }
+        std::swap(keys[pi], keys[r]);
+        std::swap(vals[pi], vals[r]);
+        quick_sort_impl(keys, vals, l, pi - 1, compOp);
+        quick_sort_impl(keys, vals, pi + 1, r, compOp);
+      }
+    }
     template <typename KeyIter, typename ValueIter, typename CompareOpT, bool Stable>
     void merge_sort_pair_impl(
         KeyIter &&keys, ValueIter &&vals,
@@ -437,9 +457,8 @@ namespace zs {
 
         bool flipped = false;
 
-        // if constexpr (Stable)
         /// @note currently [unstable] adopts the [stable] routine
-        {
+        if constexpr (Stable) {
           //  bottom-up fashion
           // insertion sort for segments of granularity <= 16
           for (DiffT ll = l; ll < r;) {
@@ -491,6 +510,8 @@ namespace zs {
             flipped = !flipped;
             halfStride = stride;
           }
+        } else {
+          quick_sort_impl(keys, vals, l, r - 1, compOp);
         }
 
         for (DiffT halfStride = 1; halfStride < nths; halfStride *= 2) {

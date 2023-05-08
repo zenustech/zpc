@@ -148,8 +148,9 @@ namespace zs {
       }
     }
     /// @note dist must be updated within 'f'
-    template <typename VecT, class F>
-    constexpr auto find_nearest(const VecInterface<VecT> &p, F &&f) const {
+    template <typename VecT, class F, bool IndexRequired = false>
+    constexpr auto find_nearest(const VecInterface<VecT> &p, F &&f,
+                                wrapv<IndexRequired> = {}) const {
       using T = typename VecT::value_type;
       index_t idx = -1;
       T dist = limits<T>::max();
@@ -159,7 +160,10 @@ namespace zs {
             f(_auxIndices[i], dist, idx);
           }
         }
-        return dist;
+        if constexpr (IndexRequired)
+          return zs::make_tuple(idx, dist);
+        else
+          return dist;
       }
       index_t node = 0;
       while (node != -1 && node != _numNodes) {
@@ -174,7 +178,10 @@ namespace zs {
         } else  // separate at internal nodes
           node = _auxIndices[node];
       }
-      return dist;
+      if constexpr (IndexRequired)
+        return zs::make_tuple(idx, dist);
+      else
+        return dist;
     }
     /// @note F return_value indicates early exit
     template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
@@ -210,6 +217,7 @@ namespace zs {
           node = _auxIndices[node];
       }
     }
+    /// @note self iteration
     template <class F> constexpr void self_iter_neighbors(index_t leafId, F &&f) const {
       if (auto nl = numLeaves(); nl <= 2) {
         const auto bv = getNodeBV(leafId);
@@ -245,6 +253,7 @@ namespace zs {
           node = _auxIndices[node];
       }
     }
+    /// @note iterate treelet (subtree)
     template <typename BV, class F>
     constexpr void iter_neighbors(const BV &bv, index_t node, F &&f) const {
       if (auto nl = numLeaves(); nl <= 2) {
@@ -265,6 +274,7 @@ namespace zs {
           node = _auxIndices[node];
       }
     }
+    /// @note iterate and maintain front nodes
     template <typename BV, typename Front, class F>
     ZS_FUNCTION void iter_neighbors(const BV &bv, index_t i, Front &front, F &&f) const {
       auto node = front.node(i);

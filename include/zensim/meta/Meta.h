@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include "../TypeAlias.hpp"
+#include "../ZpcMeta.hpp"
 
 namespace zs {
 
@@ -13,12 +14,6 @@ namespace zs {
   // template <typename... Ts> using void_t = typename make_void<Ts...>::type;
   template <typename... Ts> using void_t = std::void_t<Ts...>;
 
-  /// SFINAE
-  template <bool B> struct enable_if;
-  template <> struct enable_if<true> { using type = int; };
-  template <bool B> using enable_if_t = typename enable_if<B>::type;
-  template <bool... Bs> using enable_if_all = typename enable_if<(Bs && ...)>::type;
-  template <bool... Bs> using enable_if_any = typename enable_if<(Bs || ...)>::type;
   /// underlying_type
   /// common_type
 
@@ -38,29 +33,23 @@ namespace zs {
 
   /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
   /// decay+unref
-  template <class T> struct unwrap_refwrapper { using type = T; };
-  template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> { using type = T &; };
+  template <class T> struct unwrap_refwrapper {
+    using type = T;
+  };
+  template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> {
+    using type = T &;
+  };
   template <class T> using special_decay_t =
       typename unwrap_refwrapper<typename std::decay_t<T>>::type;
 
-  template <class T> struct is_refwrapper { static constexpr bool value = false; };
+  template <class T> struct is_refwrapper {
+    static constexpr bool value = false;
+  };
   template <class T> struct is_refwrapper<std::reference_wrapper<T>> {
     static constexpr bool value = true;
   };
   template <class T> static constexpr bool is_refwrapper_v
       = is_refwrapper<typename std::decay_t<T>>::value;
-
-  ///
-  /// fundamental type-value wrapper
-  ///
-  template <typename T> struct wrapt { using type = T; };
-  /// wrap at most 1 layer
-  template <typename T> struct wrapt<wrapt<T>> { using type = T; };
-  template <typename T> constexpr wrapt<T> wrapt_v{};
-
-  template <typename T> struct is_type_wrapper : std::false_type {};
-  template <typename T> struct is_type_wrapper<wrapt<T>> : std::true_type {};
-  template <typename T> constexpr bool is_type_wrapper_v = is_type_wrapper<T>::value;
 
   template <typename Tn, Tn N> using integral_t = std::integral_constant<Tn, N>;
   template <typename> struct is_integral : std::false_type {};

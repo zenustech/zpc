@@ -47,6 +47,8 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp
   resource/Resource.cpp
+
+  py_interop/VectorInstantiations.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 
@@ -108,7 +110,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   memory/MemoryResource.h
 
   # meta
-  meta/ControlFlow.h
+  ZpcMeta.hpp
   meta/Functional.h
   meta/Meta.h
   meta/Relationship.h

@@ -187,9 +187,9 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     void localOrdering(CudaExecutionPolicy &policy);
     /// @note do NOT sort _vals
-    void localOrdering(CudaExecutionPolicy &policy, std::false_type);
+    void localOrdering(CudaExecutionPolicy &policy, false_type);
     /// @note DO sort _vals
-    void localOrdering(CudaExecutionPolicy &policy, std::true_type);
+    void localOrdering(CudaExecutionPolicy &policy, true_type);
 #endif
     // template <typename Policy> void localOrdering(Policy &&policy);
 
@@ -588,7 +588,7 @@ namespace zs {
 
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol,
-                                                                    std::false_type) {
+                                                                    false_type) {
     Ti nsegs = is_row_major ? _nrows : _ncols;
     Ti innerSize = is_row_major ? _ncols : _nrows;
     auto nnz = _inds.size();
@@ -622,7 +622,7 @@ namespace zs {
 
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol,
-                                                                    std::true_type) {
+                                                                    true_type) {
     constexpr execspace_e space = execspace_e::cuda;
 
     Ti nsegs = is_row_major ? _nrows : _ncols;
@@ -783,7 +783,7 @@ namespace zs {
       }
     }
     /// @note binary search
-    constexpr size_type locate(index_type i, index_type j, std::true_type) const noexcept {
+    constexpr size_type locate(index_type i, index_type j, true_type) const noexcept {
       size_type st{}, ed{}, mid{};
       if constexpr (is_row_major) {
         st = _ptrs[i];
@@ -816,7 +816,7 @@ namespace zs {
 #endif
       return limits<size_type>::max();
     }
-    constexpr bool exist(index_type i, index_type j, std::true_type) const noexcept {
+    constexpr bool exist(index_type i, index_type j, true_type) const noexcept {
       size_type st{}, ed{}, mid{};
       if constexpr (is_row_major) {
         st = _ptrs[i];

@@ -123,17 +123,13 @@ namespace zs {
   template <typename T> struct is_equality_comparable {
   private:
     static void *conv(bool);
-    template <typename U> static std::true_type test(
-        decltype(conv(std::declval<U const &>() == std::declval<U const &>())),
-        decltype(conv(!std::declval<U const &>() == std::declval<U const &>())));
-    template <typename U> static std::false_type test(...);
+    template <typename U>
+    static true_type test(decltype(conv(std::declval<U const &>() == std::declval<U const &>())),
+                          decltype(conv(!std::declval<U const &>() == std::declval<U const &>())));
+    template <typename U> static false_type test(...);
 
   public:
     static constexpr bool value = decltype(test<T>(nullptr, nullptr))::value;
   };
-
-  template <class T> struct is_unbounded_array : std::false_type {};
-
-  template <class T> struct is_unbounded_array<T[]> : std::true_type {};
 
 }  // namespace zs

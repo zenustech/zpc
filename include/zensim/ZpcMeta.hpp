@@ -7,20 +7,14 @@ namespace zs {
   /// SFINAE
   ///
   template <bool B> struct enable_if;
-  template <> struct enable_if<true> {
-    using type = int;
-  };
+  template <> struct enable_if<true> { using type = int; };
   template <bool B> using enable_if_t = typename enable_if<B>::type;
   template <bool... Bs> using enable_if_all = typename enable_if<(Bs && ...)>::type;
   template <bool... Bs> using enable_if_any = typename enable_if<(Bs || ...)>::type;
 
   // conditional
-  template <bool B> struct conditional_impl {
-    template <class T, class F> using type = T;
-  };
-  template <> struct conditional_impl<false> {
-    template <class T, class F> using type = F;
-  };
+  template <bool B> struct conditional_impl { template <class T, class F> using type = T; };
+  template <> struct conditional_impl<false> { template <class T, class F> using type = F; };
   template <bool B, class T, class F> using conditional_t =
       typename conditional_impl<B>::template type<T, F>;
 
@@ -47,13 +41,9 @@ namespace zs {
   constexpr false_type false_c{};
 
   /// @note fundamental type-value wrapper
-  template <typename T> struct wrapt {
-    using type = T;
-  };
+  template <typename T> struct wrapt { using type = T; };
   // wrap at most 1 layer
-  template <typename T> struct wrapt<wrapt<T>> {
-    using type = T;
-  };
+  template <typename T> struct wrapt<wrapt<T>> { using type = T; };
   template <typename T> constexpr wrapt<T> wrapt_c{};
   template <auto N> using wrapv = integral_constant<decltype(N), N>;
   template <auto N> constexpr wrapv<N> wrapv_c{};
@@ -75,6 +65,8 @@ namespace zs {
   template <class T> struct is_array : false_type {};
   template <class T> struct is_array<T[]> : true_type {};
   template <class T, std::size_t N> struct is_array<T[N]> : true_type {};
+  template <class T> struct is_unbounded_array : false_type {};
+  template <class T> struct is_unbounded_array<T[]> : true_type {};
   // const
   template <class T> struct is_const : false_type {};
   template <class T> struct is_const<const T> : true_type {};
@@ -108,40 +100,18 @@ namespace zs {
   /// type decoration
   ///
   // remove_reference
-  template <class T> struct remove_reference {
-    using type = T;
-  };
-  template <class T> struct remove_reference<T&> {
-    using type = T;
-  };
-  template <class T> struct remove_reference<T&&> {
-    using type = T;
-  };
+  template <class T> struct remove_reference { using type = T; };
+  template <class T> struct remove_reference<T&> { using type = T; };
+  template <class T> struct remove_reference<T&&> { using type = T; };
   // remove cv
-  template <class T> struct remove_cv {
-    using type = T;
-  };
-  template <class T> struct remove_cv<const T> {
-    using type = T;
-  };
-  template <class T> struct remove_cv<volatile T> {
-    using type = T;
-  };
-  template <class T> struct remove_cv<const volatile T> {
-    using type = T;
-  };
-  template <class T> struct remove_const {
-    using type = T;
-  };
-  template <class T> struct remove_const<const T> {
-    using type = T;
-  };
-  template <class T> struct remove_volatile {
-    using type = T;
-  };
-  template <class T> struct remove_volatile<volatile T> {
-    using type = T;
-  };
+  template <class T> struct remove_cv { using type = T; };
+  template <class T> struct remove_cv<const T> { using type = T; };
+  template <class T> struct remove_cv<volatile T> { using type = T; };
+  template <class T> struct remove_cv<const volatile T> { using type = T; };
+  template <class T> struct remove_const { using type = T; };
+  template <class T> struct remove_const<const T> { using type = T; };
+  template <class T> struct remove_volatile { using type = T; };
+  template <class T> struct remove_volatile<volatile T> { using type = T; };
   template <class T> struct remove_cvref {
     using type = typename remove_cv<typename remove_reference<T>::type>::type;
   };
@@ -172,25 +142,19 @@ namespace zs {
   template <class T> struct add_rvalue_reference
       : decltype(detail::try_add_rvalue_reference<T>(0)) {};
   // remove_extent
-  template <class T> struct remove_extent {
-    using type = T;
-  };
-  template <class T> struct remove_extent<T[]> {
-    using type = T;
-  };
-  template <class T, std::size_t N> struct remove_extent<T[N]> {
-    using type = T;
-  };
+  template <class T> struct remove_extent { using type = T; };
+  template <class T> struct remove_extent<T[]> { using type = T; };
+  template <class T, std::size_t N> struct remove_extent<T[N]> { using type = T; };
   /// decay
   template <class T> struct decay {
   private:
     using U = typename remove_reference<T>::type;
 
   public:
-    using type = typename conditional_t<
-        is_array<U>::value, typename add_pointer<typename remove_extent<U>::type>::type,
-        typename conditional_t<is_function<U>::value, typename add_pointer<U>::type,
-                               typename remove_cv<U>::type>::type>::type;
+    using type = conditional_t<is_array<U>::value,
+                               typename add_pointer<typename remove_extent<U>::type>::type,
+                               conditional_t<is_function<U>::value, typename add_pointer<U>::type,
+                                             typename remove_cv<U>::type>>;
   };
 
   ///

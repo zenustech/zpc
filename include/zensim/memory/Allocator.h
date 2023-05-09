@@ -18,9 +18,9 @@ namespace zs {
     using value_type = std::byte;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
-    using propagate_on_container_move_assignment = std::true_type;
-    using propagate_on_container_copy_assignment = std::true_type;
-    using propagate_on_container_swap = std::true_type;
+    using propagate_on_container_move_assignment = true_type;
+    using propagate_on_container_copy_assignment = true_type;
+    using propagate_on_container_swap = true_type;
 
     void *do_allocate(std::size_t bytes, std::size_t alignment) override {
       if (bytes) {

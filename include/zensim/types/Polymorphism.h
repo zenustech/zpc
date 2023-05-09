@@ -9,33 +9,33 @@ namespace zs {
 
   /// https://github.com/SuperV1234/ndctechtown2020/blob/master/7_a_match.pdf
   template <typename... Fs> struct overload_set : Fs... {
-    template <typename... Xs> constexpr overload_set(Xs &&...xs) : Fs{std::forward<Xs>(xs)}... {}
+    template <typename... Xs> constexpr overload_set(Xs &&...xs) : Fs{zs::forward<Xs>(xs)}... {}
     using Fs::operator()...;
   };
   /// class template argument deduction
   template <typename... Xs> overload_set(Xs &&...xs) -> overload_set<remove_cvref_t<Xs>...>;
 
   template <typename... Fs> constexpr auto make_overload_set(Fs &&...fs) {
-    return overload_set<std::decay_t<Fs>...>(std::forward<Fs>(fs)...);
+    return overload_set<typename decay<Fs>::type...>(zs::forward<Fs>(fs)...);
   }
 
   template <typename... Ts> using variant = std::variant<Ts...>;
 
   template <typename... Fs> constexpr auto match(Fs &&...fs) {
 #if 0
-  return [visitor = overload_set{std::forward<Fs>(fs)...}](
+  return [visitor = overload_set{zs::forward<Fs>(fs)...}](
              auto &&...vs) -> decltype(auto) {
-    return std::visit(visitor, std::forward<decltype(vs)>(vs)...);
+    return std::visit(visitor, zs::forward<decltype(vs)>(vs)...);
   };
 #else
-    return [visitor = make_overload_set(std::forward<Fs>(fs)...)](auto &&...vs) -> decltype(auto) {
-      return std::visit(visitor, std::forward<decltype(vs)>(vs)...);
+    return [visitor = make_overload_set(zs::forward<Fs>(fs)...)](auto &&...vs) -> decltype(auto) {
+      return std::visit(visitor, zs::forward<decltype(vs)>(vs)...);
     };
 #endif
   }
 
-  template <typename> struct is_variant : std::false_type {};
-  template <typename... Ts> struct is_variant<variant<Ts...>> : std::true_type {};
+  template <typename> struct is_variant : false_type {};
+  template <typename... Ts> struct is_variant<variant<Ts...>> : true_type {};
 
   template <typename Visitor> struct VariantTaskExecutor {
     Visitor visitor;
@@ -45,11 +45,9 @@ namespace zs {
 
     template <typename Fn, typename... Args> struct CheckCallable {
     private:
-      template <typename F, typename... Ts> static constexpr std::false_type test(...) {
-        return {};
-      }
-      template <typename F, typename... Ts> static constexpr std::true_type test(
-          void_t<decltype(std::declval<Fn>()(std::declval<Args>()...))> *) {
+      template <typename F, typename... Ts> static constexpr false_type test(...) { return {}; }
+      template <typename F, typename... Ts>
+      static constexpr true_type test(void_t<decltype(declval<Fn>()(declval<Args>()...))> *) {
         return {};
       }
 

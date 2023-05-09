@@ -58,7 +58,12 @@ namespace zs::cudri {
     const char *userScript = code.data();
 
     nvrtcProgram prog;
-    nvrtcCreateProgram(&prog, userScript, name.data(), 0, NULL, NULL);
+    #if 0
+    const char *headers[] = {"type_traits", "initializer_list"};
+    nvrtcCreateProgram(&prog, userScript, name.data(), 2, headers, NULL);
+    #else
+    nvrtcCreateProgram(&prog, userScript, name.data(), 0, nullptr, NULL);
+    #endif
     nvrtcResult res = nvrtcCompileProgram(prog, opts.size(), opts.data());
 
     size_t strSize{0};

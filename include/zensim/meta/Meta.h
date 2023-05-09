@@ -23,27 +23,20 @@ namespace zs {
 
   /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
   /// decay+unref
-  template <class T> struct unwrap_refwrapper {
-    using type = T;
-  };
-  template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> {
-    using type = T &;
-  };
+  template <class T> struct unwrap_refwrapper { using type = T; };
+  template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> { using type = T &; };
   template <class T> using special_decay_t =
-      typename unwrap_refwrapper<typename std::decay_t<T>>::type;
+      typename unwrap_refwrapper<typename decay<T>::type>::type;
 
-  template <class T> struct is_refwrapper {
-    static constexpr bool value = false;
-  };
+  template <class T> struct is_refwrapper { static constexpr bool value = false; };
   template <class T> struct is_refwrapper<std::reference_wrapper<T>> {
     static constexpr bool value = true;
   };
   template <class T> static constexpr bool is_refwrapper_v
-      = is_refwrapper<typename std::decay_t<T>>::value;
+      = is_refwrapper<typename decay<T>::type>::value;
 
   // specialization for std::integral_constant
-  template <auto N> struct is_value_wrapper<std::integral_constant<decltype(N), N>>
-      : std::true_type {};
+  template <auto N> struct is_value_wrapper<std::integral_constant<decltype(N), N>> : true_type {};
 
   /// arithmetic type
   constexpr wrapt<u8> u8_c{};
@@ -67,13 +60,13 @@ namespace zs {
   namespace detail {
     template <class Default, class AlwaysVoid, template <class...> class Op, class... Args>
     struct detector {
-      using value_t = std::false_type;
+      using value_t = false_type;
       using type = Default;
     };
 
     template <class Default, template <class...> class Op, class... Args>
     struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
-      using value_t = std::true_type;
+      using value_t = true_type;
       using type = Op<Args...>;
     };
 

@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include "Platform.hpp"
+#include "ZpcMeta.hpp"
 
 namespace zs {
 
@@ -90,8 +91,9 @@ namespace zs {
 
 /// lambda capture
 /// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
-#define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
+#define FWD(...) ::zs::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
 #define RM_CVREF_T(...) ::std::remove_cv_t<std::remove_reference_t<decltype(__VA_ARGS__)>>
+//#define RM_CVREF_T(...) ::std::remove_cvref_t<decltype(__VA_ARGS__)>
 
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
 #  if defined(ZS_LAMBDA)

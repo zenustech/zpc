@@ -181,9 +181,9 @@ namespace zs {
     value_type _background;  // background value
   };
 
-  template <typename T, typename = void> struct is_spg : std::false_type {};
+  template <typename T, typename = void> struct is_spg : false_type {};
   template <int dim, typename ValueT, int SideLength, typename AllocatorT, typename IndexT>
-  struct is_spg<SparseGrid<dim, ValueT, SideLength, AllocatorT, IndexT>> : std::true_type {};
+  struct is_spg<SparseGrid<dim, ValueT, SideLength, AllocatorT, IndexT>> : true_type {};
   template <typename T> constexpr bool is_spg_v = is_spg<T>::value;
 
   // forward decl
@@ -283,16 +283,15 @@ namespace zs {
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
                                             std::is_integral_v<typename VecTI::value_type>> = 0>
-    constexpr auto valueOr(std::false_type, size_type chn, const VecInterface<VecTI> &indexCoord,
+    constexpr auto valueOr(false_type, size_type chn, const VecInterface<VecTI> &indexCoord,
                            value_type defaultVal) const noexcept {
       auto [bno, cno] = decomposeCoord(indexCoord);
       return valueOr(chn, bno, cno, defaultVal);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
                                             std::is_integral_v<typename VecTI::value_type>> = 0>
-    constexpr value_type valueOr(std::true_type, size_type chn,
-                                 const VecInterface<VecTI> &indexCoord, int orientation,
-                                 value_type defaultVal) const noexcept {
+    constexpr value_type valueOr(true_type, size_type chn, const VecInterface<VecTI> &indexCoord,
+                                 int orientation, value_type defaultVal) const noexcept {
       /// 0, ..., dim-1: within cell
       /// dim, ..., dim+dim-1: neighbor cell
       auto coord = indexCoord.clone();
@@ -864,7 +863,7 @@ namespace zs {
     /// index-space ctors
     // collocated grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(std::false_type, grid_view_type &sgv, const VecInterface<VecT> &X) noexcept
+    constexpr GridArena(false_type, grid_view_type &sgv, const VecInterface<VecT> &X) noexcept
         : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = ((kt == kernel_e::linear || kt == kernel_e::delta2)
@@ -888,7 +887,7 @@ namespace zs {
     }
     // staggered grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(std::false_type, grid_view_type &sgv, const VecInterface<VecT> &X,
+    constexpr GridArena(false_type, grid_view_type &sgv, const VecInterface<VecT> &X,
                         int f) noexcept
         : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
@@ -916,12 +915,11 @@ namespace zs {
     /// world-space ctors
     // collocated grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(std::true_type, grid_view_type &sgv, const VecInterface<VecT> &x) noexcept
+    constexpr GridArena(true_type, grid_view_type &sgv, const VecInterface<VecT> &x) noexcept
         : GridArena{false_c, sgv, sgv.worldToIndex(x)} {}
     // staggered grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(std::true_type, grid_view_type &sgv, const VecInterface<VecT> &x,
-                        int f) noexcept
+    constexpr GridArena(true_type, grid_view_type &sgv, const VecInterface<VecT> &x, int f) noexcept
         : GridArena{false_c, sgv, sgv.worldToIndex(x), f} {}
 
     /// scalar arena

@@ -21,21 +21,21 @@ namespace zs::detail {
   /// check equal to
   template <typename T> struct has_equal_to {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
+    template <typename U> static constexpr false_type test(...) { return {}; }
 #if 0
     /// this definition is not good
-    template <typename U> static std::true_type test(
+    template <typename U> static true_type test(
         enable_if_t<std::is_convertible_v<std::invoke_result_t<decltype(&U::equal_to), U>, bool>>
             *);
 #else
     /// this method allows for template function
     template <typename U> static constexpr auto test(char) -> std::enable_if_t<
         std::is_convertible_v<decltype(std::declval<U &>().equal_to(std::declval<U>())), bool>,
-        std::true_type> {
-      return std::true_type{};
+        true_type> {
+      return {};
     }
 #endif
-    // template <typename U> static std::true_type test(decltype(&U::equal_to));
+    // template <typename U> static true_type test(decltype(&U::equal_to));
 
   public:
     static constexpr bool value = test<T>(0);
@@ -43,10 +43,8 @@ namespace zs::detail {
   /// check increment impl
   template <typename T> struct has_increment {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
-    template <typename U> static constexpr std::true_type test(decltype(&U::increment)) {
-      return {};
-    }
+    template <typename U> static constexpr false_type test(...) { return {}; }
+    template <typename U> static constexpr true_type test(decltype(&U::increment)) { return {}; }
 
   public:
     static constexpr bool value = test<T>(0);
@@ -54,10 +52,8 @@ namespace zs::detail {
   /// check decrement impl
   template <typename T> struct has_decrement {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
-    template <typename U> static constexpr std::true_type test(decltype(&U::decrement)) {
-      return {};
-    }
+    template <typename U> static constexpr false_type test(...) { return {}; }
+    template <typename U> static constexpr true_type test(decltype(&U::decrement)) { return {}; }
 
   public:
     static constexpr bool value = test<T>(0);
@@ -65,9 +61,9 @@ namespace zs::detail {
   /// check advance impl
   template <typename T> struct has_distance_to {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
+    template <typename U> static constexpr false_type test(...) { return {}; }
     template <typename U> static constexpr auto test(char)
-        -> decltype(std::declval<U &>().distance_to(std::declval<U>()), std::true_type{}) {
+        -> decltype(declval<U &>().distance_to(declval<U>()), true_type{}) {
       return {};
     }
 
@@ -77,8 +73,8 @@ namespace zs::detail {
   /// check sentinel support
   template <typename T> struct has_sentinel {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
-    template <typename U> static constexpr std::true_type test(
+    template <typename U> static constexpr false_type test(...) { return {}; }
+    template <typename U> static constexpr true_type test(
         decltype(&U::sentinel_type),
         enable_if_t<std::is_convertible_v<std::invoke_result_t<decltype(&U::at_end)>, bool>>) {
       return {};
@@ -90,8 +86,8 @@ namespace zs::detail {
   /// check single pass declaration
   template <typename T> struct decl_single_pass {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
-    template <typename U> static constexpr std::true_type test(decltype(&U::single_pass_iterator)) {
+    template <typename U> static constexpr false_type test(...) { return {}; }
+    template <typename U> static constexpr true_type test(decltype(&U::single_pass_iterator)) {
       return {};
     }
 
@@ -101,9 +97,8 @@ namespace zs::detail {
   /// infer difference type
   template <typename T> struct has_difference_type {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
-    template <typename U>
-    static constexpr std::true_type test(void_t<typename U::difference_type> *) {
+    template <typename U> static constexpr false_type test(...) { return {}; }
+    template <typename U> static constexpr true_type test(void_t<typename U::difference_type> *) {
       return {};
     }
 
@@ -124,11 +119,11 @@ namespace zs::detail {
   /// check advance impl
   template <typename T> struct has_advance {
   private:
-    template <typename U> static constexpr std::false_type test(...) { return {}; }
+    template <typename U> static constexpr false_type test(...) { return {}; }
     template <typename U> static constexpr auto test(char)
         -> decltype(std::declval<U &>().advance(std::declval<infer_difference_type_t<U>>()),
-                    std::true_type{}) {
-      return std::true_type{};
+                    true_type{}) {
+      return true_type{};
     }
 
   public:
@@ -250,44 +245,38 @@ namespace zs {
     /// advance (random access iterator)
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
-              = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
     friend constexpr Derived &operator+=(Derived &it, D offset) {
       it.advance(offset);
       return it;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
-              = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
     friend constexpr Derived operator+(Derived it, D offset) {
       return it += offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
-              = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
     friend constexpr Derived operator+(D offset, Derived it) {
       return it += offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
-              = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
     friend constexpr Derived operator-(Derived it, D offset) {
       return it + (-std::make_signed_t<D>(offset));
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
-              = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
     friend constexpr Derived &operator-=(Derived &it, D offset) {
       return it = it - offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
-              = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
     constexpr decltype(auto) operator[](D pos) {
       return *(self() + pos);
     }
@@ -350,39 +339,34 @@ namespace zs {
       return LegacyIterator{(*static_cast<base_t *>(this))--};
     }
     /// @brief advance (random access iterator)
-    template <
-        typename D, typename Self = base_t,
-        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
-        = 0>
+    template <typename D, typename Self = base_t,
+              enable_if_all<detail::has_advance<Self>::value,
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator &operator+=(LegacyIterator &it, D offset) {
       it.advance(offset);
       return it;
     }
-    template <
-        typename D, typename Self = base_t,
-        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
-        = 0>
+    template <typename D, typename Self = base_t,
+              enable_if_all<detail::has_advance<Self>::value,
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator+(LegacyIterator it, D offset) {
       return it += offset;
     }
-    template <
-        typename D, typename Self = base_t,
-        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
-        = 0>
+    template <typename D, typename Self = base_t,
+              enable_if_all<detail::has_advance<Self>::value,
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator+(D offset, LegacyIterator it) {
       return it += offset;
     }
-    template <
-        typename D, typename Self = base_t,
-        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
-        = 0>
+    template <typename D, typename Self = base_t,
+              enable_if_all<detail::has_advance<Self>::value,
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator operator-(LegacyIterator it, D offset) {
       return it + (-std::make_signed_t<D>(offset));
     }
-    template <
-        typename D, typename Self = base_t,
-        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
-        = 0>
+    template <typename D, typename Self = base_t,
+              enable_if_all<detail::has_advance<Self>::value,
+                            std::is_convertible_v<D, difference_type>> = 0>
     friend constexpr LegacyIterator &operator-=(LegacyIterator &it, D offset) {
       return it = it - offset;
     }
@@ -397,8 +381,8 @@ namespace zs {
     return LegacyIterator<IterT>(T(FWD(args)...));
   }
 
-  template <typename Iter> struct is_custom_iterator : std::false_type {};
-  template <typename Iter> struct is_custom_iterator<LegacyIterator<Iter>> : std::true_type {};
+  template <typename Iter> struct is_custom_iterator : false_type {};
+  template <typename Iter> struct is_custom_iterator<LegacyIterator<Iter>> : true_type {};
 
   template <typename Iter> constexpr bool is_custom_iterator_v = is_custom_iterator<Iter>::value;
 
@@ -537,8 +521,7 @@ namespace zs {
   template <typename, typename> struct zip_iterator;
   template <typename... Ts> constexpr bool all_convertible_to_raiter() {
     return (std::is_convertible_v<typename std::iterator_traits<Ts>::iterator_category,
-                                  std::random_access_iterator_tag>
-            && ...);
+                                  std::random_access_iterator_tag> && ...);
   }
 
   template <typename... Iters, std::size_t... Is>
@@ -589,12 +572,12 @@ namespace zs {
   template <typename... Iters> zip_iterator(Iters...)
       -> zip_iterator<zs::tuple<Iters...>, std::index_sequence_for<Iters...>>;
 
-  template <typename Iter> struct is_zip_iterator : std::false_type {};
+  template <typename Iter> struct is_zip_iterator : false_type {};
   template <typename Iter, typename Indices>
-  struct is_zip_iterator<LegacyIterator<zip_iterator<Iter, Indices>>> : std::true_type {};
+  struct is_zip_iterator<LegacyIterator<zip_iterator<Iter, Indices>>> : true_type {};
 
   template <typename Iter, typename Indices> struct is_zip_iterator<zip_iterator<Iter, Indices>>
-      : std::true_type {};
+      : true_type {};
 
   template <typename Iter> constexpr bool is_zip_iterator_v = is_zip_iterator<Iter>::value;
 

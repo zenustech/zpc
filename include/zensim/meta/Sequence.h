@@ -44,8 +44,8 @@ namespace zs {
   template <typename... Seqs> struct concat;
   template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;
 
-  template <typename> struct is_type_seq : std::false_type {};
-  template <typename... Ts> struct is_type_seq<type_seq<Ts...>> : std::true_type {};
+  template <typename> struct is_type_seq : false_type {};
+  template <typename... Ts> struct is_type_seq<type_seq<Ts...>> : true_type {};
   template <typename SeqT> static constexpr bool is_type_seq_v = is_type_seq<SeqT>::value;
 
   /******************************************************************/
@@ -139,8 +139,8 @@ namespace zs {
     }
   };
   // template <typename... Ts> struct type_seq<type_seq<Ts...>> : type_seq<Ts...> {};
-  template <typename T> struct is_tseq : std::false_type {};
-  template <typename... Ts> struct is_tseq<type_seq<Ts...>> : std::true_type {};
+  template <typename T> struct is_tseq : false_type {};
+  template <typename... Ts> struct is_tseq<type_seq<Ts...>> : true_type {};
 
   /// select type by index
   template <std::size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
@@ -251,8 +251,8 @@ namespace zs {
   template <typename Ti, Ti... Ns> value_seq(integer_seq<Ti, Ns...>) -> value_seq<Ns...>;
   template <auto... Ns> value_seq(wrapv<Ns>...) -> value_seq<Ns...>;
 
-  template <typename T> struct is_vseq : std::false_type {};
-  template <auto... Ns> struct is_vseq<value_seq<Ns...>> : std::true_type {};
+  template <typename T> struct is_vseq : false_type {};
+  template <auto... Ns> struct is_vseq<value_seq<Ns...>> : true_type {};
 
   template <typename> struct vseq;
   template <auto... Ns> struct vseq<value_seq<Ns...>> { using type = value_seq<Ns...>; };
@@ -398,16 +398,15 @@ namespace zs {
       typename gather<Indices, ValueSeq>::type;
 
   /// variadic type template parameters
-  template <typename T, template <typename...> class Ref> struct is_type_specialized
-      : std::false_type {};
+  template <typename T, template <typename...> class Ref> struct is_type_specialized : false_type {
+  };
   template <template <typename...> class Ref, typename... Ts>
-  struct is_type_specialized<Ref<Ts...>, Ref> : std::true_type {};
+  struct is_type_specialized<Ref<Ts...>, Ref> : true_type {};
 
   /// variadic non-type template parameters
-  template <typename T, template <auto...> class Ref> struct is_value_specialized
-      : std::false_type {};
+  template <typename T, template <auto...> class Ref> struct is_value_specialized : false_type {};
   template <template <auto...> class Ref, auto... Args>
-  struct is_value_specialized<Ref<Args...>, Ref> : std::true_type {};
+  struct is_value_specialized<Ref<Args...>, Ref> : true_type {};
 
   /** direct operations on sequences */
   template <typename> struct seq_tail { using type = index_seq<>; };

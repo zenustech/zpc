@@ -90,8 +90,8 @@ namespace zs {
     };
 
     template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
-    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F &&f,
-                                                  ZipIter &&iter, index_seq<Is...>) {
+    __forceinline__ __device__ void range_foreach(wrapv<withIndex>, Tn i, F &&f, ZipIter &&iter,
+                                                  index_seq<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
         f(i, *zs::get<Is>(iter.iters)...);
@@ -101,8 +101,8 @@ namespace zs {
     }
     template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
               std::size_t... Is>
-    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, ShmT *shmem, Tn i,
-                                                  F &&f, ZipIter &&iter, index_seq<Is...>) {
+    __forceinline__ __device__ void range_foreach(wrapv<withIndex>, ShmT *shmem, Tn i, F &&f,
+                                                  ZipIter &&iter, index_seq<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
       using func_traits
           = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;

@@ -238,8 +238,8 @@ namespace zs {
 
   template <typename Ls, typename... Args> LevelSetBoundary(Ls, Args...) -> LevelSetBoundary<Ls>;
 
-  template <typename> struct is_levelset_boundary : std::false_type {};
-  template <typename LS> struct is_levelset_boundary<LevelSetBoundary<LS>> : std::true_type {};
+  template <typename> struct is_levelset_boundary : false_type {};
+  template <typename LS> struct is_levelset_boundary<LevelSetBoundary<LS>> : true_type {};
 
   using GeneralBoundary = variant<LevelSetBoundary<SparseLevelSet<3>>,
                                   Collider<AnalyticLevelSet<analytic_geometry_e::Plane, f32, 3>>,

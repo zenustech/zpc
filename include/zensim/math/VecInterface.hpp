@@ -79,7 +79,7 @@ namespace zs {
   template <typename OtherVecT,                                                                   \
             enable_if_all<OtherVecT::extent == extent,                                            \
                           std::is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
-  constexpr base_t operator=(const VecInterface<OtherVecT>& rhs)&& noexcept = delete; /**/          \
+  constexpr base_t operator=(const VecInterface<OtherVecT>& rhs)&& noexcept = delete; /**/        \
   template <typename OtherVecT,                                                                   \
             enable_if_all<OtherVecT::extent == extent,                                            \
                           std::is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
@@ -971,11 +971,10 @@ namespace zs {
                                              std::make_index_sequence<sizeof...(dims)>{});
   }
 
-  template <typename T, typename = void> struct is_vec : std::false_type {};
-  template <typename VecT> struct is_vec<VecInterface<VecT>> : std::true_type {};
+  template <typename T, typename = void> struct is_vec : false_type {};
+  template <typename VecT> struct is_vec<VecInterface<VecT>> : true_type {};
   template <typename VecT>
-  struct is_vec<VecT, std::enable_if_t<std::is_base_of_v<VecInterface<VecT>, VecT>>>
-      : std::true_type {};
+  struct is_vec<VecT, std::enable_if_t<std::is_base_of_v<VecInterface<VecT>, VecT>>> : true_type {};
 
   template <std::size_t d = 0, typename VecTV, typename VecTM,
             enable_if_all<VecTV::dim == 1, VecTM::dim + d == VecTV::extent> = 0>

@@ -23,7 +23,7 @@ namespace zs {
 
   template <class T> struct unwrap_refwrapper;
   template <class T> using special_decay_t =
-      typename unwrap_refwrapper<typename std::decay_t<T>>::type;
+      typename unwrap_refwrapper<typename decay<T>::type>::type;
 
 /// Jorg Brown, Cppcon2019, reducing template compilation overhead using
 /// features from C++11, 14, 17, and 20
@@ -149,8 +149,8 @@ template <std::size_t I, typename T> struct tuple_value {
   template <typename, typename> struct tuple_base;
   template <typename... Ts> struct tuple;
 
-  template <typename> struct is_tuple : std::false_type {};
-  template <typename... Ts> struct is_tuple<tuple<Ts...>> : std::true_type {};
+  template <typename> struct is_tuple : false_type {};
+  template <typename... Ts> struct is_tuple<tuple<Ts...>> : true_type {};
   template <typename T> static constexpr bool is_tuple_v = is_tuple<T>::value;
 
   template <typename... Args> constexpr auto make_tuple(Args &&...args);
@@ -347,8 +347,8 @@ template <std::size_t I, typename T> struct tuple_value {
 
   template <typename... Args> tuple(Args...) -> tuple<Args...>;
 
-  template <typename> struct is_std_tuple : std::false_type {};
-  template <typename... Ts> struct is_std_tuple<std::tuple<Ts...>> : std::true_type {};
+  template <typename> struct is_std_tuple : false_type {};
+  template <typename... Ts> struct is_std_tuple<std::tuple<Ts...>> : true_type {};
   template <typename T> static constexpr bool is_std_tuple_v = is_std_tuple<T>::value;
 
   /** tuple_element */
@@ -432,8 +432,8 @@ template <std::size_t I, typename T> struct tuple_value {
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<std::size_t>{}).value;
       using indices = typename gen_seq<length>::ascend;
-      using outer = decltype(counts{}.template scan<1, plus<std::size_t>>().map(count_leq{},
-                                                                                wrapv<length>{}));
+      using outer = decltype(
+          counts{}.template scan<1, plus<std::size_t>>().map(count_leq{}, wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
           minus<std::size_t>{}, counts{}.template scan<0, plus<std::size_t>>().shuffle(outer{})));
       // using types = decltype(type_seq<typename

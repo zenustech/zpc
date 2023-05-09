@@ -27,9 +27,9 @@ namespace zs {
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     /// this is different from std::polymorphic_allocator
-    using propagate_on_container_move_assignment = std::true_type;
-    using propagate_on_container_copy_assignment = std::true_type;
-    using propagate_on_container_swap = std::true_type;
+    using propagate_on_container_move_assignment = true_type;
+    using propagate_on_container_copy_assignment = true_type;
+    using propagate_on_container_swap = true_type;
     using is_virtual = wrapv<is_virtual_>;
     using resource_type = conditional_t<is_virtual::value, vmr_t, mr_t>;
 
@@ -194,12 +194,12 @@ namespace zs {
     return allocator.location.memspace() == memsrc_e::host;
   }
 
-  template <typename Allocator> struct is_zs_allocator : std::false_type {};
+  template <typename Allocator> struct is_zs_allocator : false_type {};
   template <bool is_virtual, typename T> struct is_zs_allocator<ZSPmrAllocator<is_virtual, T>>
-      : std::true_type {};
+      : true_type {};
   template <typename Allocator> using is_virtual_zs_allocator
       = conditional_t<is_zs_allocator<Allocator>::value, typename Allocator::is_virtual,
-                      std::false_type>;
+                      false_type>;
 
   template <typename MemTag> constexpr bool is_memory_source_available(MemTag) noexcept {
     if constexpr (is_same_v<MemTag, device_mem_tag>)

@@ -198,9 +198,8 @@ namespace zs {
     TM _i2wShat{TM::identity()}, _i2wRhat{TM::identity()};
   };
 
-  template <typename T, typename = void> struct is_spls : std::false_type {};
-  template <int dim, grid_e category> struct is_spls<SparseLevelSet<dim, category>>
-      : std::true_type {};
+  template <typename T, typename = void> struct is_spls : false_type {};
+  template <int dim, grid_e category> struct is_spls<SparseLevelSet<dim, category>> : true_type {};
   template <typename T> constexpr bool is_spls_v = is_spls<T>::value;
 
   using GeneralSparseLevelSet
@@ -491,28 +490,26 @@ namespace zs {
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate != grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {}, integral_t<bool, WS> tag = {}) noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, tag};
     }
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate != grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {},
-                         integral_t<bool, WS> tag = {}) const noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) const noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, tag};
     }
 
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate == grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, int f, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {}, integral_t<bool, WS> tag = {}) noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, f, tag};
     }
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate == grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, int f, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {},
-                         integral_t<bool, WS> tag = {}) const noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) const noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, f, tag};
     }
 
@@ -838,7 +835,7 @@ namespace zs {
     // index-space
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::false_type, lsv_t &lsv, const VecInterface<VecT> &X) noexcept
+    constexpr LevelSetArena(false_type, lsv_t &lsv, const VecInterface<VecT> &X) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
@@ -853,8 +850,7 @@ namespace zs {
     }
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::false_type, lsv_t &lsv, const VecInterface<VecT> &X,
-                            int f) noexcept
+    constexpr LevelSetArena(false_type, lsv_t &lsv, const VecInterface<VecT> &X, int f) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
@@ -871,22 +867,22 @@ namespace zs {
     // world-space
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::true_type, lsv_t &lsv, const VecInterface<VecT> &x) noexcept
+    constexpr LevelSetArena(true_type, lsv_t &lsv, const VecInterface<VecT> &x) noexcept
         : LevelSetArena{false_c, lsv, lsv.worldToIndex(x)} {}
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::true_type, lsv_t &lsv, const VecInterface<VecT> &x, int f) noexcept
+    constexpr LevelSetArena(true_type, lsv_t &lsv, const VecInterface<VecT> &x, int f) noexcept
         : LevelSetArena{false_c, lsv, lsv.worldToIndex(x), f} {}
     /// for CTAD
     template <typename VecT, auto cate = category, bool WS = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
     constexpr LevelSetArena(wrapv<kt>, wrapv<deriv_order>, lsv_t &lsv, const VecInterface<VecT> &x,
-                            int f, integral_t<bool, WS> tag = {}) noexcept
+                            int f, wrapv<WS> tag = {}) noexcept
         : LevelSetArena{tag, lsv, x, f} {}
     template <typename VecT, auto cate = category, bool WS = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
     constexpr LevelSetArena(wrapv<kt>, wrapv<deriv_order>, lsv_t &lsv, const VecInterface<VecT> &x,
-                            integral_t<bool, WS> tag = {}) noexcept
+                            wrapv<WS> tag = {}) noexcept
         : LevelSetArena{tag, lsv, x} {}
 
     /// scalar arena
@@ -1014,8 +1010,7 @@ namespace zs {
 
   template <kernel_e kt = kernel_e::linear, int deriv_order = 0, bool WS = true, typename LsvT,
             typename VecT>
-  constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x,
-                                     integral_t<bool, WS> tag = {}) {
+  constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x, wrapv<WS> tag = {}) {
     static_assert(LsvT::category != grid_e::staggered,
                   "this method is not for staggered levelset.");
     return LevelSetArena<LsvT, kt, deriv_order>{tag, lsv, x};
@@ -1023,7 +1018,7 @@ namespace zs {
   template <kernel_e kt = kernel_e::linear, int deriv_order = 0, bool WS = true, typename LsvT,
             typename VecT>
   constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x, int f,
-                                     integral_t<bool, WS> tag = {}) {
+                                     wrapv<WS> tag = {}) {
     static_assert(LsvT::category == grid_e::staggered,
                   "this method is for staggered levelset only.");
     return LevelSetArena<LsvT, kt, deriv_order>{tag, lsv, x, f};

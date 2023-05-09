@@ -20,16 +20,6 @@ namespace zs {
   ///
   /// type decorato
   ///
-  template <class T> struct remove_cvref {
-    using type = std::remove_cv_t<std::remove_reference_t<T>>;
-  };
-  template <class T> using remove_cvref_t = typename remove_cvref<T>::type;
-
-  /// vref
-  template <class T> struct remove_vref {
-    using type = std::remove_volatile_t<std::remove_reference_t<T>>;
-  };
-  template <class T> using remove_vref_t = typename remove_vref<T>::type;
 
   /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
   /// decay+unref
@@ -51,25 +41,9 @@ namespace zs {
   template <class T> static constexpr bool is_refwrapper_v
       = is_refwrapper<typename std::decay_t<T>>::value;
 
-  template <typename Tn, Tn N> using integral_t = std::integral_constant<Tn, N>;
-  template <typename> struct is_integral : std::false_type {};
-  template <typename T, T v> struct is_integral<integral_t<T, v>> : std::true_type {};
-
-  template <auto N> using wrapv = integral_t<decltype(N), N>;
-  template <auto N> constexpr wrapv<N> wrapv_v{};
-
-  template <typename T> struct is_value_wrapper : std::false_type {};
-  template <auto N> struct is_value_wrapper<wrapv<N>> : std::true_type {};
-  template <typename T> constexpr bool is_value_wrapper_v = is_value_wrapper<T>::value;
-
-  template <std::size_t N> using index_t = integral_t<std::size_t, N>;
-  template <std::size_t N> constexpr index_t<N> index_c{};
-
-#define INST_(T) std::declval<T>()
-#define DECL_(T) std::declval<T>()
-
-  constexpr std::true_type true_c{};
-  constexpr std::false_type false_c{};
+  // specialization for std::integral_constant
+  template <auto N> struct is_value_wrapper<std::integral_constant<decltype(N), N>>
+      : std::true_type {};
 
   /// arithmetic type
   constexpr wrapt<u8> u8_c{};

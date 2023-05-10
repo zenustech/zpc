@@ -538,7 +538,7 @@ if(ZS_ENABLE_CUDA)
     PRIVATE ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES}
   )
   target_compile_options(zs_cu_wrangler
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -lineinfo --ptxas-options=-allow-expensive-optimizations=true> # -ptx --keep
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-ptx -lineinfo --ptxas-options=-allow-expensive-optimizations=true> # -ptx --keep
   )
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
 

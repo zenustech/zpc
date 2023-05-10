@@ -174,7 +174,7 @@ namespace zs {
     template <typename T, enable_if_t<std::is_reference_v<T>> = 0>
     constexpr auto getAddress(T &&v) {
       // `ref` is a true reference, and we're safe to take its address
-      return std::addressof(v);
+      return zs::addressof(v);
     }
     template <typename T, enable_if_t<!std::is_reference_v<T>> = 0>
     constexpr auto getAddress(T &&v) {
@@ -245,38 +245,44 @@ namespace zs {
     /// advance (random access iterator)
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
+              = 0>
     friend constexpr Derived &operator+=(Derived &it, D offset) {
       it.advance(offset);
       return it;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
+              = 0>
     friend constexpr Derived operator+(Derived it, D offset) {
       return it += offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
+              = 0>
     friend constexpr Derived operator+(D offset, Derived it) {
       return it += offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
+              = 0>
     friend constexpr Derived operator-(Derived it, D offset) {
       return it + (-std::make_signed_t<D>(offset));
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
+              = 0>
     friend constexpr Derived &operator-=(Derived &it, D offset) {
       return it = it - offset;
     }
     template <typename D, typename Self = Derived,
               enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>> = 0>
+                            std::is_convertible_v<D, detail::infer_difference_type_t<Self>>>
+              = 0>
     constexpr decltype(auto) operator[](D pos) {
       return *(self() + pos);
     }
@@ -339,34 +345,39 @@ namespace zs {
       return LegacyIterator{(*static_cast<base_t *>(this))--};
     }
     /// @brief advance (random access iterator)
-    template <typename D, typename Self = base_t,
-              enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <
+        typename D, typename Self = base_t,
+        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
+        = 0>
     friend constexpr LegacyIterator &operator+=(LegacyIterator &it, D offset) {
       it.advance(offset);
       return it;
     }
-    template <typename D, typename Self = base_t,
-              enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <
+        typename D, typename Self = base_t,
+        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
+        = 0>
     friend constexpr LegacyIterator operator+(LegacyIterator it, D offset) {
       return it += offset;
     }
-    template <typename D, typename Self = base_t,
-              enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <
+        typename D, typename Self = base_t,
+        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
+        = 0>
     friend constexpr LegacyIterator operator+(D offset, LegacyIterator it) {
       return it += offset;
     }
-    template <typename D, typename Self = base_t,
-              enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <
+        typename D, typename Self = base_t,
+        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
+        = 0>
     friend constexpr LegacyIterator operator-(LegacyIterator it, D offset) {
       return it + (-std::make_signed_t<D>(offset));
     }
-    template <typename D, typename Self = base_t,
-              enable_if_all<detail::has_advance<Self>::value,
-                            std::is_convertible_v<D, difference_type>> = 0>
+    template <
+        typename D, typename Self = base_t,
+        enable_if_all<detail::has_advance<Self>::value, std::is_convertible_v<D, difference_type>>
+        = 0>
     friend constexpr LegacyIterator &operator-=(LegacyIterator &it, D offset) {
       return it = it - offset;
     }
@@ -442,7 +453,7 @@ namespace zs {
 
     T base;
   };
-  template <typename BaseT, typename DiffT, enable_if_t<!is_integral<DiffT>::value> = 0>
+  template <typename BaseT, typename DiffT, enable_if_t<!is_integral_constant<DiffT>::value> = 0>
   IndexIterator(BaseT, DiffT) -> IndexIterator<BaseT, DiffT>;
   template <typename BaseT> IndexIterator(BaseT)
       -> IndexIterator<BaseT, integral_t<sint_t, (sint_t)1>>;
@@ -521,7 +532,8 @@ namespace zs {
   template <typename, typename> struct zip_iterator;
   template <typename... Ts> constexpr bool all_convertible_to_raiter() {
     return (std::is_convertible_v<typename std::iterator_traits<Ts>::iterator_category,
-                                  std::random_access_iterator_tag> && ...);
+                                  std::random_access_iterator_tag>
+            && ...);
   }
 
   template <typename... Iters, std::size_t... Is>

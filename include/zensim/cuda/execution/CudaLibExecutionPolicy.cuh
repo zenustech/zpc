@@ -67,7 +67,7 @@ namespace zs {
       : CudaLibHandle<flagbit>,
         virtual std::reference_wrapper<CudaExecutionPolicy> {
     template <typename Fn, typename... Args>
-    std::enable_if_t<is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
+    enable_if_type<is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
     call(Fn&& fn, Args&&... args) const {
       using fts = function_traits<Fn>;
       if constexpr (sizeof...(Args) == fts::arity)
@@ -85,7 +85,7 @@ namespace zs {
         ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
         CudaLibComponentExecutionPolicy<flagbits>... {
     template <CudaLibraryComponentFlagBit flagbit, typename Fn, typename... Args>
-    constexpr std::enable_if_t<
+    constexpr enable_if_type<
         is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
     call(Fn&& fn, Args&&... args) const {
       CudaLibComponentExecutionPolicy<flagbit>::call(FWD(fn), FWD(args)...);

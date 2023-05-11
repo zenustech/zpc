@@ -61,7 +61,7 @@ namespace zs {
   BuilderForSceneParticle &NAME(float v) {                                                 \
     /*match([v](auto &model) { model.ATTRIB = v; }, [v](auto &model) {})(config); */       \
     match([](...) {},                                                                      \
-          [v](auto &model) -> std::enable_if_t<is_same_v<decltype(model.ATTRIB), float>> { \
+          [v](auto &model) -> enable_if_type<is_same_v<decltype(model.ATTRIB), float>> { \
             model.ATTRIB = v;                                                              \
           })(config);                                                                      \
     return *this;                                                                          \

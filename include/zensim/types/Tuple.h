@@ -99,7 +99,7 @@ template <size_t I, typename T> struct tuple_value {
 #  endif
   template <size_t I, typename T> struct tuple_value<
       I, T,
-      std::enable_if_t<(
+      enable_if_type<(
           std::is_fundamental_v<
               T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>)>> {
     constexpr tuple_value() = default;
@@ -156,7 +156,7 @@ template <size_t I, typename T> struct tuple_value {
   template <typename T> struct tuple_size;
   template <typename... Ts> struct tuple_size<tuple<Ts...>>
       : std::integral_constant<size_t, sizeof...(Ts)> {};
-  template <typename Tup> constexpr std::enable_if_t<is_tuple_v<Tup>, size_t> tuple_size_v
+  template <typename Tup> constexpr enable_if_type<is_tuple_v<Tup>, size_t> tuple_size_v
       = tuple_size<Tup>::value;
 
   template <size_t... Is, typename... Ts> struct tuple_base<index_seq<Is...>, type_seq<Ts...>>
@@ -306,7 +306,7 @@ template <size_t I, typename T> struct tuple_value {
 
     // vec
     template <typename VecT>
-    constexpr std::enable_if_t<VecT::extent == sizeof...(Ts), tuple &> operator=(
+    constexpr enable_if_type<VecT::extent == sizeof...(Ts), tuple &> operator=(
         const VecInterface<VecT> &v) noexcept {
       assign_impl(v, std::index_sequence_for<Ts...>{});
       return *this;
@@ -318,7 +318,7 @@ template <size_t I, typename T> struct tuple_value {
     }
     // c-array
     template <typename Vec>
-    constexpr std::enable_if_t<std::is_array_v<Vec>, tuple &> operator=(const Vec &v) {
+    constexpr enable_if_type<std::is_array_v<Vec>, tuple &> operator=(const Vec &v) {
       assign_impl(v, std::index_sequence_for<Ts...>{});
       return *this;
     }
@@ -353,11 +353,11 @@ template <size_t I, typename T> struct tuple_value {
   /** tuple_element */
   template <size_t I, typename T, typename = void> struct tuple_element;
   template <size_t I, typename... Ts>
-  struct tuple_element<I, tuple<Ts...>, std::enable_if_t<(I < sizeof...(Ts))>> {
+  struct tuple_element<I, tuple<Ts...>, enable_if_type<(I < sizeof...(Ts))>> {
     using type = select_type<I, typename tuple<Ts...>::tuple_types>;
   };
   template <size_t I, typename Tup> using tuple_element_t
-      = std::enable_if_t<is_tuple_v<Tup>, std::enable_if_t<(I < (tuple_size_v<Tup>)),
+      = enable_if_type<is_tuple_v<Tup>, enable_if_type<(I < (tuple_size_v<Tup>)),
                                                            typename tuple_element<I, Tup>::type>>;
 
   /** operations */

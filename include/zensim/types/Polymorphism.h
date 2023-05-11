@@ -92,7 +92,7 @@ namespace zs {
     }
 
     template <typename... Args>
-    constexpr std::enable_if_t<all_variant<Args...>()> operator()(Args &&...args) {
+    constexpr enable_if_type<all_variant<Args...>()> operator()(Args &&...args) {
       using variant_sizes = std::index_sequence<std::variant_size_v<remove_cvref_t<Args>>...>;
       constexpr auto narg = sizeof...(Args);
       constexpr auto lastVariantSize

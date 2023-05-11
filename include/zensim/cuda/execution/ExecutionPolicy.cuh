@@ -149,7 +149,7 @@ namespace zs {
     }
   }
 
-  template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
+  template <typename Tn, typename F, typename ZipIter> __global__ enable_if_type<
       std::is_convertible_v<
           typename std::iterator_traits<ZipIter>::iterator_category,
           std::
@@ -530,7 +530,7 @@ namespace zs {
           FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// merge sort
-    template <class KeyIter, class ValueIter, typename CompareOpT> std::enable_if_t<
+    template <class KeyIter, class ValueIter, typename CompareOpT> enable_if_type<
         std::is_convertible_v<
             typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
             std::
@@ -563,7 +563,7 @@ namespace zs {
       if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
       context.recordEventSpare(streamid, loc);
     }
-    template <class KeyIter, typename CompareOpT> std::enable_if_t<std::is_convertible_v<
+    template <class KeyIter, typename CompareOpT> enable_if_type<std::is_convertible_v<
         typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
         std::random_access_iterator_tag>>
     merge_sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
@@ -593,7 +593,7 @@ namespace zs {
     template <class KeyIter, class ValueIter,
               typename Tn
               = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
-    std::enable_if_t<std::is_convertible_v<
+    enable_if_type<std::is_convertible_v<
         typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
         std::random_access_iterator_tag>>
     radix_sort_pair(

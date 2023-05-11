@@ -41,7 +41,7 @@ namespace zs {
         match(
             [&, this, did = mh.devid()](
                 auto& constitutiveModel, auto& partition, auto& obj,
-                auto& grids) -> std::enable_if_t<RM_CVREF_T(obj)::dim == RM_CVREF_T(partition)::dim
+                auto& grids) -> enable_if_type<RM_CVREF_T(obj)::dim == RM_CVREF_T(partition)::dim
                                                  && RM_CVREF_T(obj)::dim == RM_CVREF_T(grids)::dim
                                                  && RM_CVREF_T(obj)::dim == RM_CVREF_T(in)::dim> {
               policy(range(out.numEntries()), DofFill{out, 0});
@@ -102,7 +102,7 @@ namespace zs {
       for (auto& boundary : simulator.boundaries) {
         match(
             [&, did = mh.devid()](auto& collider, auto& partition, auto& grids)
-                -> std::enable_if_t<RM_CVREF_T(collider)::dim == RM_CVREF_T(partition)::dim
+                -> enable_if_type<RM_CVREF_T(collider)::dim == RM_CVREF_T(partition)::dim
                                     && RM_CVREF_T(collider)::dim == RM_CVREF_T(grids)::dim
                                     && RM_CVREF_T(collider)::dim == RM_CVREF_T(inout)::dim> {
               // fmt::print("[gpu {}]\tprojecting {} grid blocks, dof dim: {}\n", (int)did,
@@ -143,7 +143,7 @@ namespace zs {
       assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
       match(
           [&, did = mh.devid()](auto& partition, auto& grids)
-              -> std::enable_if_t<RM_CVREF_T(partition)::dim == RM_CVREF_T(grids)::dim> {
+              -> enable_if_type<RM_CVREF_T(partition)::dim == RM_CVREF_T(grids)::dim> {
             fmt::print("[gpu {}]\tpreconditioning {} grid blocks\n", (int)did, partition.size());
             auto gridm = dof_view<space, 1>(grids.grid(), "m", 0);
             policy(range(out.numEntries()), DivPernodeMass{in, gridm, out});

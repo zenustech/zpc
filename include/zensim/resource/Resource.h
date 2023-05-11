@@ -98,21 +98,21 @@ namespace zs {
       return res.get() == other.res.get() && location == other.location;
     }
     template <bool V = is_virtual::value>
-    std::enable_if_t<V, bool> commit(size_t offset,
+    enable_if_type<V, bool> commit(size_t offset,
                                      size_t bytes = resource_type::s_chunk_granularity) {
       return res->commit(offset, bytes);
     }
     template <bool V = is_virtual::value>
-    std::enable_if_t<V, bool> evict(size_t offset,
+    enable_if_type<V, bool> evict(size_t offset,
                                     size_t bytes = resource_type::s_chunk_granularity) {
       return res->evict(offset, bytes);
     }
-    template <bool V = is_virtual::value> std::enable_if_t<V, bool> check_residency(
+    template <bool V = is_virtual::value> enable_if_type<V, bool> check_residency(
         size_t offset, size_t bytes = resource_type::s_chunk_granularity) const {
       return res->check_residency(offset, bytes);
     }
     template <bool V = is_virtual::value>
-    std::enable_if_t<V, void *> address(size_t offset = 0) const {
+    enable_if_type<V, void *> address(size_t offset = 0) const {
       return res->address(offset);
     }
 

@@ -113,9 +113,9 @@ namespace zs {
     /// @brief tilevector iterator specializations
     template <typename ValT, auto... Ns>
     struct iterator_impl<ValT, value_seq<Ns...>,
-                         std::enable_if_t<sizeof(value_type) == sizeof(ValT)>>
+                         enable_if_type<sizeof(value_type) == sizeof(ValT)>>
         : IteratorInterface<iterator_impl<ValT, value_seq<Ns...>,
-                                          std::enable_if_t<sizeof(value_type) == sizeof(ValT)>>> {
+                                          enable_if_type<sizeof(value_type) == sizeof(ValT)>>> {
       static_assert(!std::is_reference_v<ValT>,
                     "the access type of the iterator should not be a reference.");
       static constexpr auto extent = (Ns * ...);
@@ -164,11 +164,11 @@ namespace zs {
 
     template <typename ValT, auto... Ns>
     struct iterator_impl<ValT, value_seq<Ns...>,
-                         std::enable_if_t<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
+                         enable_if_type<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
                                           && (sizeof(value_type) > sizeof(ValT))>>
         : IteratorInterface<
               iterator_impl<ValT, value_seq<Ns...>,
-                            std::enable_if_t<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
+                            enable_if_type<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
                                              && (sizeof(value_type) > sizeof(ValT))>>> {
       static_assert(!std::is_reference_v<ValT>,
                     "the access type of the iterator should not be a reference.");

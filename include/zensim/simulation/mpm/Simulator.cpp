@@ -23,7 +23,7 @@ namespace zs {
 #if 0
     for (auto&& boundary : this->target().boundaries) {
       match([](auto& b)
-                -> std::enable_if_t<is_levelset_boundary<remove_cvref_t<decltype(b)>>::value> {
+                -> enable_if_type<is_levelset_boundary<remove_cvref_t<decltype(b)>>::value> {
                   b = b.clone(MemoryHandle{memsrc_e::um, -5});
                 },
             [](...) {})(boundary);

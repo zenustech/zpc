@@ -37,38 +37,38 @@ namespace zs {
     /// access by entry index
     template <typename svt, enable_if_t<is_same_v<svt, structure_view_t>> = 0>
     static constexpr auto get(svt obj, size_type i)
-        -> std::enable_if_t<std::is_convertible_v<RM_CVREF_T(obj(i)), value_type>, value_type> {
+        -> enable_if_type<std::is_convertible_v<RM_CVREF_T(obj(i)), value_type>, value_type> {
       return obj(i);
     }
     template <typename svt, enable_if_t<is_same_v<svt, structure_view_t>> = 0>
-    static constexpr auto ref(svt obj, size_type i) -> std::enable_if_t<
+    static constexpr auto ref(svt obj, size_type i) -> enable_if_type<
         std::is_reference_v<decltype(obj(i))> && is_same_v<decltype(get(obj, i)), value_type>,
         decltype(obj(i))> {
       return obj(i);
     }
     template <typename svt, enable_if_t<is_same_v<svt, structure_view_t>> = 0>
     static constexpr auto set(svt obj, size_type i, const value_type& v)
-        -> std::enable_if_t<std::is_assignable_v<decltype(ref(obj, i)), value_type>> {
+        -> enable_if_type<std::is_assignable_v<decltype(ref(obj, i)), value_type>> {
       ref(obj, i) = v;
     }
 
     /// access by channel and entry index
     template <typename svt, enable_if_t<is_same_v<svt, structure_view_t>> = 0>
     static constexpr auto get(svt obj, channel_counter_type chn, size_type i)
-        -> std::enable_if_t<std::is_convertible_v<RM_CVREF_T(obj(chn, i)), value_type>,
+        -> enable_if_type<std::is_convertible_v<RM_CVREF_T(obj(chn, i)), value_type>,
                             value_type> {
       return obj(chn, i);
     }
     template <typename svt, enable_if_t<is_same_v<svt, structure_view_t>> = 0>
     static constexpr auto ref(svt obj, channel_counter_type chn, size_type i)
-        -> std::enable_if_t<std::is_reference_v<decltype(
+        -> enable_if_type<std::is_reference_v<decltype(
                                 obj(chn, i))> && is_same_v<decltype(get(obj, chn, i)), value_type>,
                             decltype(obj(chn, i))> {
       return obj(chn, i);
     }
     template <typename svt, enable_if_t<is_same_v<svt, structure_view_t>> = 0>
     static constexpr auto set(svt obj, channel_counter_type chn, size_type i, const value_type& v)
-        -> std::enable_if_t<std::is_assignable_v<decltype(ref(obj, chn, i)), value_type>> {
+        -> enable_if_type<std::is_assignable_v<decltype(ref(obj, chn, i)), value_type>> {
       ref(obj, chn, i) = v;
     }
   };
@@ -157,7 +157,7 @@ namespace zs {
       }
     }
     template <typename V> constexpr auto set(size_type i, V&& v = {})
-        -> std::enable_if_t<std::is_lvalue_reference_v<decltype(ref(i))>> {
+        -> enable_if_type<std::is_lvalue_reference_v<decltype(ref(i))>> {
       if constexpr ((std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
                     || (!std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::vector))
         traits::set(_structure, i, FWD(v));
@@ -260,7 +260,7 @@ namespace zs {
         return traits::get(_structure, _chn, i);
     }
     template <typename V> constexpr auto set(size_type i, V&& v = {})
-        -> std::enable_if_t<std::is_lvalue_reference_v<decltype(ref(i))>> {
+        -> enable_if_type<std::is_lvalue_reference_v<decltype(ref(i))>> {
       if constexpr (std::is_arithmetic_v<remove_cvref_t<V>> && entry_e == attrib_e::scalar)
         traits::ref(_structure, _chn + i % dim, i / dim) = FWD(v);
       // V is a scalar

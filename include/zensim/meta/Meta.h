@@ -44,7 +44,7 @@ namespace zs {
   constexpr wrapt<float> float_c{};
   constexpr wrapt<f64> f64_c{};
   constexpr wrapt<double> double_c{};
-  template <typename T> constexpr wrapt<std::enable_if_t<std::is_arithmetic_v<T>, T>> number_c{};
+  template <typename T> constexpr wrapt<enable_if_type<std::is_arithmetic_v<T>, T>> number_c{};
 
   ///
   /// detection

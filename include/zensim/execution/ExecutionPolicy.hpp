@@ -516,7 +516,7 @@ namespace zs {
   template <class ExecutionPolicy, class KeyIter, class ValueIter,
             typename Tn
             = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
-  constexpr std::enable_if_t<std::is_convertible_v<
+  constexpr enable_if_type<std::is_convertible_v<
       typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
       std::random_access_iterator_tag>>
   radix_sort_pair(

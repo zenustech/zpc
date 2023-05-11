@@ -29,7 +29,7 @@ namespace zs::detail {
             *);
 #else
     /// this method allows for template function
-    template <typename U> static constexpr auto test(char) -> std::enable_if_t<
+    template <typename U> static constexpr auto test(char) -> enable_if_type<
         std::is_convertible_v<decltype(declval<U &>().equal_to(declval<U>())), bool>,
         true_type> {
       return {};
@@ -112,7 +112,7 @@ namespace zs::detail {
     using type = typename T::difference_type;
   };
   template <typename T> struct infer_difference_type<
-      T, std::enable_if_t<!has_difference_type<T>::value && has_distance_to<T>::value>> {
+      T, enable_if_type<!has_difference_type<T>::value && has_distance_to<T>::value>> {
     using type = decltype(declval<T &>().distance_to(declval<T &>()));
   };
   template <typename T> using infer_difference_type_t = typename infer_difference_type<T>::type;

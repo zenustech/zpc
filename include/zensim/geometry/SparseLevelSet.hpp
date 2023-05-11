@@ -958,7 +958,7 @@ namespace zs {
     }
     /// weight gradient
     template <size_t I, typename... Tn, auto ord = deriv_order>
-    constexpr std::enable_if_t<(ord > 0), value_type> weightGradient(
+    constexpr enable_if_type<(ord > 0), value_type> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
       return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
     }

@@ -974,7 +974,7 @@ namespace zs {
   template <typename T, typename = void> struct is_vec : false_type {};
   template <typename VecT> struct is_vec<VecInterface<VecT>> : true_type {};
   template <typename VecT>
-  struct is_vec<VecT, std::enable_if_t<std::is_base_of_v<VecInterface<VecT>, VecT>>> : true_type {};
+  struct is_vec<VecT, enable_if_type<std::is_base_of_v<VecInterface<VecT>, VecT>>> : true_type {};
 
   template <size_t d = 0, typename VecTV, typename VecTM,
             enable_if_all<VecTV::dim == 1, VecTM::dim + d == VecTV::extent> = 0>

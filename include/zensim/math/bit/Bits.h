@@ -135,7 +135,7 @@ namespace zs {
   template <> constexpr auto morton_3d<double>(double x, double y, double z) noexcept {
     return morton_3d_64(x, y, z);
   }
-  template <int dim, typename Vec, std::enable_if_t<(dim == 3), char> = 0>
+  template <int dim, typename Vec, enable_if_type<(dim == 3), char> = 0>
   constexpr auto morton_code(const Vec &coord) noexcept {
     return morton_3d(coord[0], coord[1], coord[2]);
   }

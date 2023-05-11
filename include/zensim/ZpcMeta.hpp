@@ -122,7 +122,6 @@ namespace zs {
     template <typename T, auto I> indexed_type<I, T> extract_index(indexed_type<I, T> *);
   }  // namespace type_impl
 
-#if 0
   template <typename... Ts> struct type_seq;
   template <auto... Ns> struct value_seq;
 
@@ -132,8 +131,6 @@ namespace zs {
 
   /// generate index sequence declaration
   template <typename> struct gen_seq_impl;
-  template <size_t N> using gen_seq = gen_seq_impl<make_index_sequence<N>>;
-#  if 0
   template <size_t... Is> struct gen_seq_impl<index_sequence<Is...>> {
     /// arithmetic sequences
     template <auto N0 = 0, auto Step = 1> using arithmetic = index_sequence<static_cast<size_t>(
@@ -154,11 +151,9 @@ namespace zs {
     template <template <auto...> class T, auto Arg> using uniform_values_t
         = T<(Is >= 0 ? Arg : 0)...>;
   };
-#  endif
 
   template <typename... Seqs> struct concat;
   template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;
-#endif
 
   ///
   /// type predicates

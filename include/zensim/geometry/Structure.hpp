@@ -377,37 +377,37 @@ namespace zs {
     constexpr GridView(view_t g, value_type dx) noexcept : grid{g}, dx{dx} {}
 
     template <auto V = with_name>
-    constexpr std::enable_if_t<V, const SmallString *> getPropertyNames() const noexcept {
+    constexpr enable_if_type<V, const SmallString *> getPropertyNames() const noexcept {
       return grid.getPropertyNames();
     }
     template <auto V = with_name>
-    constexpr std::enable_if_t<V, const channel_counter_type *> getPropertyOffsets()
+    constexpr enable_if_type<V, const channel_counter_type *> getPropertyOffsets()
         const noexcept {
       return grid.getPropertyOffsets();
     }
     template <auto V = with_name>
-    constexpr std::enable_if_t<V, const channel_counter_type *> getPropertySizes() const noexcept {
+    constexpr enable_if_type<V, const channel_counter_type *> getPropertySizes() const noexcept {
       return grid.getPropertySizes();
     }
     template <auto V = with_name>
-    constexpr std::enable_if_t<V, channel_counter_type> numProperties() const noexcept {
+    constexpr enable_if_type<V, channel_counter_type> numProperties() const noexcept {
       return grid.numProperties();
     }
-    template <auto V = with_name> constexpr std::enable_if_t<V, channel_counter_type> propertyIndex(
+    template <auto V = with_name> constexpr enable_if_type<V, channel_counter_type> propertyIndex(
         const SmallString &propName) const noexcept {
       return grid.propertyIndex(propName);
     }
-    template <auto V = with_name> constexpr std::enable_if_t<V, channel_counter_type> propertySize(
+    template <auto V = with_name> constexpr enable_if_type<V, channel_counter_type> propertySize(
         const SmallString &propName) const noexcept {
       return grid.propertySize(propName);
     }
     template <auto V = with_name>
-    constexpr std::enable_if_t<V, channel_counter_type> propertyOffset(
+    constexpr enable_if_type<V, channel_counter_type> propertyOffset(
         const SmallString &propName) const noexcept {
       return grid.propertyOffset(propName);
     }
     template <auto V = with_name>
-    constexpr std::enable_if_t<V, bool> hasProperty(const SmallString &propName) const noexcept {
+    constexpr enable_if_type<V, bool> hasProperty(const SmallString &propName) const noexcept {
       return grid.hasProperty(propName);
     }
 

@@ -201,7 +201,7 @@ namespace zs {
   constexpr bool is_triangle_degenerated(const VecInterface<VecT>& t1, const VecInterface<VecT>& t2,
                                          const VecInterface<VecT>& t3) noexcept {
     using T = typename VecT::value_type;
-    using vec2 = typename VecT::template variant_vec<T, integer_seq<int, 2>>;
+    using vec2 = typename VecT::template variant_vec<T, integer_sequence<int, 2>>;
     const auto to_2d = [](const VecInterface<VecT>& p, int t) {
       vec2 ret{};
       ret.val(0) = p[(t + 1) % 3];
@@ -301,7 +301,7 @@ namespace zs {
                                          const VecInterface<VecT>& s1,
                                          const VecInterface<VecT>& e1) {
     using vec3 = typename VecT::template variant_vec<typename VecT::value_type,
-                                                     integer_seq<typename VecT::index_type, 3>>;
+                                                     integer_sequence<typename VecT::index_type, 3>>;
     if (same_point(e1, s1))  // degenerated case
       return point_on_ray(s0, e0, dir0, s1);
 
@@ -346,7 +346,7 @@ namespace zs {
                                      const VecInterface<VecT>& t2, const VecInterface<VecT>& t3,
                                      bool dege, const bool halfopen) {
     using vec3 = typename VecT::template variant_vec<typename VecT::value_type,
-                                                     integer_seq<typename VecT::index_type, 3>>;
+                                                     integer_sequence<typename VecT::index_type, 3>>;
     if (dege) {  // check 2 edges are enough
       if (point_on_segment(pt, t1, t2)) return 2;
       if (point_on_segment(pt, t1, t3)) return 2;

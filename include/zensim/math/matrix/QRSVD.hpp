@@ -43,7 +43,7 @@ namespace zs {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
       constexpr auto N = VecT::template range_t<0>::value;
-      typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{};
+      typename VecT::template variant_vec<value_type, integer_sequence<index_type, N>> S{};
 
       auto S_sym = polar_decomposition(A, U);
       value_type cosine{}, sine{};
@@ -234,9 +234,9 @@ namespace zs {
 // this is slow (redundant copy) for the moment due to the lack of block view
 #if 1
         using mat2 =
-            typename VecTB::template variant_vec<T, integer_seq<typename VecTB::index_type, 2, 2>>;
+            typename VecTB::template variant_vec<T, integer_sequence<typename VecTB::index_type, 2, 2>>;
         // using vec2 =
-        //     typename VecTB::template variant_vec<T, integer_seq<typename VecTB::index_type, 2>>;
+        //     typename VecTB::template variant_vec<T, integer_sequence<typename VecTB::index_type, 2>>;
         mat2 B_{};
         B_(0, 0) = B(t, t);
         B_(0, 1) = B(t, t + 1);
@@ -338,7 +338,7 @@ namespace zs {
       typename VecT::template variant_vec<value_type, typename VecT::extents> U{}, V{};
       static_assert(N >= 1 && N <= 3, "dimension of A must be 1, 2 or 3.");
       if constexpr (N == 1) {
-        typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{A(0, 0)};
+        typename VecT::template variant_vec<value_type, integer_sequence<index_type, N>> S{A(0, 0)};
         U(0, 0) = V(0, 0) = 1;
         return zs::make_tuple(U, S, V);
       } else if constexpr (N == 2) {
@@ -348,7 +348,7 @@ namespace zs {
         gv.fill(V);
         return zs::make_tuple(U, S, V);
       } else if constexpr (N == 3) {
-        typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{};
+        typename VecT::template variant_vec<value_type, integer_sequence<index_type, N>> S{};
         auto B = A.clone();
         U = U.identity();
         V = V.identity();

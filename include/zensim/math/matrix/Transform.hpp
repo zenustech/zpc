@@ -98,7 +98,7 @@ namespace zs::math {
       H(i, dim) = 0;
     }
     // RS
-    typename VecTM::template variant_vec<ValT, integer_seq<Tn, dim, dim>> L{};
+    typename VecTM::template variant_vec<ValT, integer_sequence<Tn, dim, dim>> L{};
     for (Tn i = 0; i != dim; ++i)
       for (Tn j = 0; j != dim; ++j) L(i, j) = H(i, j);
     auto [R_, S_] = polar_decomposition(L);
@@ -142,7 +142,7 @@ namespace zs::math {
     // T
     for (Tn i = 0; i != dim; ++i) t(i) = H(i, dim);
     // RS
-    typename VecTM::template variant_vec<ValT, integer_seq<Tn, dim, dim>> L{};
+    typename VecTM::template variant_vec<ValT, integer_sequence<Tn, dim, dim>> L{};
     for (Tn i = 0; i != dim; ++i)
       for (Tn j = 0; j != dim; ++j) L(i, j) = H(i, j);
     auto [R_, S_] = polar_decomposition(L);

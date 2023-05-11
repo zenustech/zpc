@@ -49,14 +49,14 @@ namespace zs {
     protected:
       using calltype = function_traits_impl<decltype(&Functor::operator())>;
       template <typename... Ts, size_t... Is>
-      static auto extract_arguments(type_seq<Ts...>, std::index_sequence<Is...>)
+      static auto extract_arguments(type_seq<Ts...>, index_sequence<Is...>)
           -> type_seq<select_type<Is + 1, typename calltype::arguments_t>...>;
 
     public:
       static constexpr size_t arity = calltype::arity - 1;
       using return_t = typename calltype::return_t;
       using arguments_t = decltype(extract_arguments(declval<typename calltype::arguments_t>(),
-                                                     std::make_index_sequence<arity>{}));
+                                                     make_index_sequence<arity>{}));
     };
 
   }  // namespace detail

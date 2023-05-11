@@ -89,7 +89,7 @@ namespace zs {
       constexpr auto dim = VecT::template range_t<0>::value;
       using RetT = typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_seq<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
+          integer_sequence<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
       RetT coeffs{};
       if constexpr (dim == 2)
         coeffs[0] = mu - (value_type)0.5 * lam * (S.prod() - (value_type)1);

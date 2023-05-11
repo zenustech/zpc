@@ -6,7 +6,7 @@ namespace zs {
     // skew_symmetric matrix
     // cross-product matrix
     typename VecT::template variant_vec<typename VecT::value_type,
-                                        integer_seq<typename VecT::index_type, 3, 3>>
+                                        integer_sequence<typename VecT::index_type, 3, 3>>
         m{};
     m(0, 0) = m(1, 1) = m(2, 2) = 0;
     m(0, 1) = -v(2);
@@ -23,7 +23,7 @@ namespace zs {
     constexpr auto nrows = VecTM::template range_t<0>::value;
     constexpr auto ncols = VecTM::template range_t<1>::value;
     typename VecTM::template variant_vec<typename VecTM::value_type,
-                                         integer_seq<typename VecTM::index_type, nrows * ncols>>
+                                         integer_sequence<typename VecTM::index_type, nrows * ncols>>
         r{};
     if constexpr (ColMajorOrder) {
       for (typename VecTM::index_type j = 0, no = 0; j != ncols; ++j)
@@ -39,7 +39,7 @@ namespace zs {
   constexpr auto row(const VecInterface<VecTM> &m, typename VecTM::index_type i) noexcept {
     constexpr auto ncols = VecTM::template range_t<1>::value;
     typename VecTM::template variant_vec<typename VecTM::value_type,
-                                         integer_seq<typename VecTM::index_type, ncols>>
+                                         integer_sequence<typename VecTM::index_type, ncols>>
         r{};
     for (typename VecTM::index_type j = 0; j != ncols; ++j) r.val(j) = m(i, j);
     return r;
@@ -48,7 +48,7 @@ namespace zs {
   constexpr auto col(const VecInterface<VecTM> &m, typename VecTM::index_type j) noexcept {
     constexpr auto nrows = VecTM::template range_t<0>::value;
     typename VecTM::template variant_vec<typename VecTM::value_type,
-                                         integer_seq<typename VecTM::index_type, nrows>>
+                                         integer_sequence<typename VecTM::index_type, nrows>>
         c{};
     for (typename VecTM::index_type i = 0; i != nrows; ++i) c.val(i) = m(i, j);
     return c;
@@ -59,7 +59,7 @@ namespace zs {
     constexpr auto ncols = VecTM::template range_t<1>::value;
     using index_type = typename VecTM::index_type;
     typename VecTM::template variant_vec<typename VecTM::value_type,
-                                         integer_seq<index_type, nrows * ncols>>
+                                         integer_sequence<index_type, nrows * ncols>>
         r{};
     if constexpr (ColumnMajor) {
       for (index_type offset = 0, j = 0; j != ncols; ++j)
@@ -89,7 +89,7 @@ namespace zs {
     using index_type = typename VecTA::index_type;
     constexpr auto nrows = VecTA::extent;
     constexpr auto ncols = VecTB::extent;
-    typename VecTA::template variant_vec<R, integer_seq<index_type, nrows, ncols>> m{};
+    typename VecTA::template variant_vec<R, integer_sequence<index_type, nrows, ncols>> m{};
     for (index_type i = 0; i != nrows; ++i)
       for (index_type j = 0; j != ncols; ++j) m(i, j) = col.val(i) * row.val(j);
     return m;
@@ -178,7 +178,7 @@ namespace zs {
     using Ti = typename VecT::index_type;
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::template range_t<0>::value;
-    using SubMatT = typename VecT::template variant_vec<T, integer_seq<Ti, dim - 1, dim - 1>>;
+    using SubMatT = typename VecT::template variant_vec<T, integer_sequence<Ti, dim - 1, dim - 1>>;
     T det = 0;
     SubMatT m{};
     for (Ti j = 0; j != dim; ++j) {
@@ -309,7 +309,7 @@ namespace zs {
     constexpr auto nrows_m_1 = VecTM::template range_t<0>::value - 1;
     constexpr auto ncols = VecTM::template range_t<1>::value;
     constexpr auto ncols_m_1 = ncols - 1;
-    typename VecTM::template variant_vec<R, integer_seq<index_type, nrows_m_1>> r{};
+    typename VecTM::template variant_vec<R, integer_sequence<index_type, nrows_m_1>> r{};
     for (index_type i = 0; i != nrows_m_1; ++i) {
       r(i) = (R)0;
       for (index_type j = 0; j != ncols; ++j) r(i) += (j == ncols_m_1 ? A(i, j) : A(i, j) * x(j));
@@ -326,7 +326,7 @@ namespace zs {
     constexpr auto nrows = VecTM::template range_t<0>::value;
     constexpr auto nrows_m_1 = nrows - 1;
     constexpr auto ncols_m_1 = VecTM::template range_t<1>::value - 1;
-    typename VecTV::template variant_vec<R, integer_seq<index_type, ncols_m_1>> r{};
+    typename VecTV::template variant_vec<R, integer_sequence<index_type, ncols_m_1>> r{};
     for (index_type j = 0; j != ncols_m_1; ++j) {
       r(j) = (R)0;
       for (index_type i = 0; i != nrows; ++i) r(j) += (i == nrows_m_1 ? A(i, j) : A(i, j) * x(i));

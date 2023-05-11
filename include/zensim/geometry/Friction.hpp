@@ -37,8 +37,8 @@ namespace zs {
                                            const VecInterface<VecTB>& p1) {
     using T = typename VecTA::value_type;
     using Ti = typename VecTA::index_type;
-    using TV = typename VecTA::template variant_vec<T, integer_seq<Ti, 3>>;
-    using RetT = typename VecTA::template variant_vec<T, integer_seq<Ti, 3, 2>>;
+    using TV = typename VecTA::template variant_vec<T, integer_sequence<Ti, 3>>;
+    using RetT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 3, 2>>;
     RetT basis{};
     auto v01 = (p1 - p0);
     TV xCross{}, yCross{};
@@ -75,7 +75,7 @@ namespace zs {
                                                 const VecInterface<VecTM>& basis) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 3>>;
+    using RetT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 2, 3>>;
     RetT TTTDX{};
     auto val = basis * relDXTan;
     for (Ti d = 0; d != 3; ++d) {
@@ -89,7 +89,7 @@ namespace zs {
   constexpr auto point_point_TT(const VecInterface<VecTM>& basis) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 6>>;
+    using HessT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 2, 6>>;
     HessT hess{};
     for (Ti r = 0; r != 2; ++r)
       for (Ti c = 0; c != 3; ++c) {
@@ -117,7 +117,7 @@ namespace zs {
                                           const VecInterface<VecTB>& v2) {
     using T = typename VecTA::value_type;
     using Ti = typename VecTA::index_type;
-    using RetT = typename VecTA::template variant_vec<T, integer_seq<Ti, 3, 2>>;
+    using RetT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 3, 2>>;
     RetT basis{};
     auto v12 = v2 - v1;
     auto c0 = v12.normalized();
@@ -142,7 +142,7 @@ namespace zs {
                                                const VecInterface<VecTM>& basis, TT yita) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 3, 3>>;
+    using RetT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 3, 3>>;
     RetT TTTDX{};
     auto val = basis * relDXTan;
     for (Ti d = 0; d != 3; ++d) {
@@ -158,7 +158,7 @@ namespace zs {
   constexpr auto point_edge_TT(const VecInterface<VecTM>& basis, TT yita) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 9>>;
+    using HessT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 2, 9>>;
     HessT hess{};
     for (Ti r = 0; r != 2; ++r)
       for (Ti c = 0; c != 3; ++c) {
@@ -179,7 +179,7 @@ namespace zs {
                                               const VecInterface<VecTB>& v3) {
     using T = typename VecTA::value_type;
     using Ti = typename VecTA::index_type;
-    using MT = typename VecTA::template variant_vec<T, integer_seq<Ti, 2, 3>>;
+    using MT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 2, 3>>;
     MT basis{};
     auto r0 = v2 - v1;
     auto r1 = v3 - v1;
@@ -200,7 +200,7 @@ namespace zs {
                                               const VecInterface<VecTB>& v3) {
     using T = typename VecTA::value_type;
     using Ti = typename VecTA::index_type;
-    using RetT = typename VecTA::template variant_vec<T, integer_seq<Ti, 3, 2>>;
+    using RetT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 3, 2>>;
     RetT basis{};
     auto v12 = v2 - v1;
     auto c0 = v12.normalized();
@@ -227,7 +227,7 @@ namespace zs {
                                                    TT beta2) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 4, 3>>;
+    using RetT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 4, 3>>;
     RetT TTTDX{};
     auto val = basis * relDXTan;
     for (Ti d = 0; d != 3; ++d) {
@@ -244,7 +244,7 @@ namespace zs {
   constexpr auto point_triangle_TT(const VecInterface<VecTM>& basis, TT beta1, TT beta2) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 12>>;
+    using HessT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 2, 12>>;
     HessT hess{};
     for (Ti r = 0; r != 2; ++r)
       for (Ti c = 0; c != 3; ++c) {
@@ -266,8 +266,8 @@ namespace zs {
                                          const VecInterface<VecTB>& v3) {
     using T = typename VecTA::value_type;
     using Ti = typename VecTA::index_type;
-    using MT = typename VecTA::template variant_vec<T, integer_seq<Ti, 2, 2>>;
-    using VT = typename VecTA::template variant_vec<T, integer_seq<Ti, 2>>;
+    using MT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 2, 2>>;
+    using VT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 2>>;
     auto e20 = v0 - v2;
     auto e01 = v1 - v0;
     auto e23 = v3 - v2;
@@ -290,7 +290,7 @@ namespace zs {
                                          const VecInterface<VecTB>& v3) {
     using T = typename VecTA::value_type;
     using Ti = typename VecTA::index_type;
-    using RetT = typename VecTA::template variant_vec<T, integer_seq<Ti, 3, 2>>;
+    using RetT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 3, 2>>;
     RetT basis{};
     auto v01 = v1 - v0;
     auto c0 = v01.normalized();
@@ -316,7 +316,7 @@ namespace zs {
                                               TT gamma2) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using RetT = typename VecTM::template variant_vec<T, integer_seq<Ti, 4, 3>>;
+    using RetT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 4, 3>>;
     RetT TTTDX{};
     auto val = basis * relDXTan;
     for (Ti d = 0; d != 3; ++d) {
@@ -333,7 +333,7 @@ namespace zs {
   constexpr auto edge_edge_TT(const VecInterface<VecTM>& basis, TT gamma1, TT gamma2) {
     using T = typename VecTM::value_type;
     using Ti = typename VecTM::index_type;
-    using HessT = typename VecTM::template variant_vec<T, integer_seq<Ti, 2, 12>>;
+    using HessT = typename VecTM::template variant_vec<T, integer_sequence<Ti, 2, 12>>;
     HessT hess{};
     for (Ti r = 0; r != 2; ++r)
       for (Ti c = 0; c != 3; ++c) {

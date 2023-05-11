@@ -30,6 +30,13 @@ namespace zs {
       typename conditional_impl<B>::template type<T, F>;
   template <bool B, typename T = void> using enable_if_type = conditional_t<B, T, enable_if_t<B>>;
 
+  using sint_t
+      = conditional_t<sizeof(long long int) == sizeof(size_t), long long int,
+                      conditional_t<sizeof(long int) == sizeof(size_t), long int,
+                                    conditional_t<sizeof(int) == sizeof(size_t), int, short>>>;
+  static_assert(alignof(sint_t) == alignof(size_t) && sizeof(sint_t) == sizeof(size_t),
+                "sint_t not properly deduced!");
+
   ///
   /// fundamental building blocks
   ///
@@ -46,9 +53,9 @@ namespace zs {
   using true_type = bool_constant<true>;
   using false_type = bool_constant<false>;
 
-  template <typename Tn, Tn N> using integral_t = integral_constant<Tn, N>;
+  template <typename Tn, Tn N> using integral = integral_constant<Tn, N>;
   template <typename> struct is_integral_constant : false_type {};
-  template <typename T, T v> struct is_integral_constant<integral_t<T, v>> : true_type {};
+  template <typename T, T v> struct is_integral_constant<integral<T, v>> : true_type {};
   constexpr true_type true_c{};
   constexpr false_type false_c{};
 
@@ -151,6 +158,7 @@ namespace zs {
     template <template <auto...> class T, auto Arg> using uniform_values_t
         = T<(Is >= 0 ? Arg : 0)...>;
   };
+  template <size_t N> using gen_seq = gen_seq_impl<make_index_sequence<N>>;
 
   template <typename... Seqs> struct concat;
   template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;
@@ -352,6 +360,77 @@ namespace zs {
     }
   };
   constexpr is_valid_t is_valid{};
+  // type_seq (impl)
+  template <typename... Ts> struct type_seq {
+    static constexpr bool is_value_sequence() noexcept {
+      if constexpr (sizeof...(Ts) == 0)
+        return true;
+      else
+        return (is_value_wrapper_v<Ts> && ...);
+    }
+    static constexpr bool all_values = is_value_sequence();
+
+    using indices = index_sequence_for<Ts...>;
+
+    static constexpr auto count = sizeof...(Ts);
+
+    // type
+    template <size_t I> using type = typename decltype(type_impl::extract_type<I>(
+        declval<add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::type;
+
+    // index
+    template <typename, typename = void> struct locator {
+      using index = index_t<~(size_t)0>;
+    };
+    template <typename T> static constexpr size_t count_occurencies() noexcept {
+      if constexpr (sizeof...(Ts) == 0)
+        return 0;
+      else
+        return (static_cast<size_t>(is_same_v<T, Ts>) + ...);
+    }
+    template <typename T> using occurencies_t = wrapv<count_occurencies<T>()>;
+    template <typename T> struct locator<T, enable_if_type<count_occurencies<T>() == 1>> {
+      using index = integral<
+          size_t, decltype(type_impl::extract_index<T>(
+                      declval<add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::value>;
+    };
+    template <typename T> using index = typename locator<T>::index;
+
+    // functor
+    template <template <typename...> class T> using functor = T<Ts...>;
+
+    ///
+    /// operations
+    ///
+    template <auto I = 0> constexpr auto get_type(wrapv<I> = {}) const noexcept {
+      return wrapt<type<I>>{};
+    }
+    template <typename T = void> constexpr auto get_index(wrapt<T> = {}) const noexcept {
+      return index<T>{};
+    }
+    template <typename Ti, Ti... Is>
+    constexpr auto filter(integer_sequence<Ti, Is...>) const noexcept {  // for tuple_cat
+      return value_seq<index<type_seq<integral<Ti, 1>, integral<Ti, Is>>>::value...>{};
+    }
+    template <typename... Args> constexpr auto pair(type_seq<Args...>) const noexcept;
+    template <typename Ti, Ti... Is>
+    constexpr auto shuffle(integer_sequence<Ti, Is...>) const noexcept {
+      if constexpr (all_values)
+        return value_seq<type<Is>::value...>{};
+      else
+        return type_seq<type<Is>...>{};
+    }
+    template <typename Ti, Ti... Is>
+    constexpr auto shuffle_join(integer_sequence<Ti, Is...>) const noexcept {
+      static_assert((is_type_seq_v<Ts> && ...), "");
+      return type_seq<typename Ts::template type<Is>...>{};
+    }
+  };
+  ///
+
+  /// select type by index
+  template <size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
+  template <size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
 
   ///
   /// advanced predicates
@@ -366,14 +445,17 @@ namespace zs {
   }  // namespace detail
   template <class T> struct is_integral
       : decltype(detail::test_integral(declval<T>(), declval<T *>(), declval<void (*)(T)>())) {};
+  template <class T> constexpr bool is_integral_v = is_integral<T>::value;
   template <class T> struct is_floating_point
       : bool_constant<
             // Note: standard floating-point types
             is_same_v<float, typename remove_cv<T>::type>
             || is_same_v<double, typename remove_cv<T>::type>
             || is_same_v<long double, typename remove_cv<T>::type>> {};
+  template <class T> constexpr bool is_floating_point_v = is_floating_point<T>::value;
   template <class T> struct is_arithmetic
       : bool_constant<is_integral<T>::value || is_floating_point<T>::value> {};
+  template <class T> constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
   // scalar
   // ref: https://stackoverflow.com/questions/11316912/is-enum-implementation
   template <class _Tp> struct is_enum : bool_constant<__is_enum(_Tp)> {};

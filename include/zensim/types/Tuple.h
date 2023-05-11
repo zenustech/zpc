@@ -159,7 +159,7 @@ template <size_t I, typename T> struct tuple_value {
   template <typename Tup> constexpr enable_if_type<is_tuple_v<Tup>, size_t> tuple_size_v
       = tuple_size<Tup>::value;
 
-  template <size_t... Is, typename... Ts> struct tuple_base<index_seq<Is...>, type_seq<Ts...>>
+  template <size_t... Is, typename... Ts> struct tuple_base<index_sequence<Is...>, type_seq<Ts...>>
       : tuple_value<Is, Ts>... {
     using tuple_types = type_seq<Ts...>;
     static constexpr size_t tuple_size = sizeof...(Ts);
@@ -174,19 +174,19 @@ template <size_t I, typename T> struct tuple_value {
     constexpr tuple_base &operator=(const tuple_base &) = default;
 
     template <typename... Vs, enable_if_all<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
-    constexpr tuple_base(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &o)
+    constexpr tuple_base(const tuple_base<index_sequence<Is...>, type_seq<Vs...>> &o)
         : tuple_value<Is, Ts>(o.get(index_t<Is>{}))... {}
     template <typename... Vs, enable_if_all<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
-    constexpr tuple_base(tuple_base<index_seq<Is...>, type_seq<Vs...>> &&o)
+    constexpr tuple_base(tuple_base<index_sequence<Is...>, type_seq<Vs...>> &&o)
         : tuple_value<Is, Ts>(o.get(index_t<Is>{}))... {}
     template <typename... Vs, enable_if_all<(is_assignable_v<Ts, Vs> && ...)> = 0>
-    constexpr tuple_base &operator=(const tuple_base<index_seq<Is...>, type_seq<Vs...>> &
+    constexpr tuple_base &operator=(const tuple_base<index_sequence<Is...>, type_seq<Vs...>> &
                                         o) noexcept((std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
       ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);
       return *this;
     }
     template <typename... Vs, enable_if_all<(is_assignable_v<Ts, Vs> && ...)> = 0>
-    constexpr tuple_base &operator=(tuple_base<index_seq<Is...>, type_seq<Vs...>> &&o) noexcept(
+    constexpr tuple_base &operator=(tuple_base<index_sequence<Is...>, type_seq<Vs...>> &&o) noexcept(
         (std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
       ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);
       return *this;
@@ -231,7 +231,7 @@ template <size_t I, typename T> struct tuple_value {
     }
     /// map
     template <typename MapOp, size_t... Js>
-    constexpr auto map_impl(MapOp &&op, std::index_sequence<Js...>) const noexcept {
+    constexpr auto map_impl(MapOp &&op, index_sequence<Js...>) const noexcept {
       return zs::make_tuple(op(Js, get<Is>()...)...);
     }
     template <size_t N, typename MapOp> constexpr auto map(MapOp &&op) const noexcept {
@@ -251,7 +251,7 @@ template <size_t I, typename T> struct tuple_value {
     }
     template <typename BinaryOp, typename MonoidOp, typename... TTs> constexpr auto reduce(
         BinaryOp &&bop, MonoidOp &&mop,
-        const tuple_base<std::index_sequence<Is...>, type_seq<TTs...>> &t) const noexcept {
+        const tuple_base<index_sequence<Is...>, type_seq<TTs...>> &t) const noexcept {
       return mop(bop(get<Is>(), t.template get<Is>())...);
     }
     /// shuffle
@@ -261,7 +261,7 @@ template <size_t I, typename T> struct tuple_value {
     template <auto... Js> constexpr auto shuffle(value_seq<Js...>) const noexcept {
       return zs::make_tuple(get<Js>()...);
     }
-    template <size_t... Js> constexpr auto shuffle(std::index_sequence<Js...>) const noexcept {
+    template <size_t... Js> constexpr auto shuffle(index_sequence<Js...>) const noexcept {
       return zs::make_tuple(get<Js>()...);
     }
     /// transform
@@ -275,8 +275,8 @@ template <size_t I, typename T> struct tuple_value {
   };
 
   template <typename... Ts> struct tuple
-      : tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>> {
-    using base_t = tuple_base<std::index_sequence_for<Ts...>, type_seq<Ts...>>;
+      : tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>> {
+    using base_t = tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>>;
     using tuple_types = typename base_t::tuple_types;
     template <size_t I> using tuple_element_t = select_indexed_type<I, Ts...>;
 
@@ -308,38 +308,38 @@ template <size_t I, typename T> struct tuple_value {
     template <typename VecT>
     constexpr enable_if_type<VecT::extent == sizeof...(Ts), tuple &> operator=(
         const VecInterface<VecT> &v) noexcept {
-      assign_impl(v, std::index_sequence_for<Ts...>{});
+      assign_impl(v, index_sequence_for<Ts...>{});
       return *this;
     }
     // std::array
     template <typename TT, size_t dd> constexpr tuple &operator=(const std::array<TT, dd> &v) {
-      assign_impl(v, std::index_sequence_for<Ts...>{});
+      assign_impl(v, index_sequence_for<Ts...>{});
       return *this;
     }
     // c-array
     template <typename Vec>
     constexpr enable_if_type<std::is_array_v<Vec>, tuple &> operator=(const Vec &v) {
-      assign_impl(v, std::index_sequence_for<Ts...>{});
+      assign_impl(v, index_sequence_for<Ts...>{});
       return *this;
     }
     // std::tuple
     template <typename... Args> constexpr tuple &operator=(const std::tuple<Args...> &tup) {
       assign_impl(FWD(tup),
-                  std::make_index_sequence<zs::math::min(sizeof...(Ts), sizeof...(Args))>{});
+                  make_index_sequence<zs::math::min(sizeof...(Ts), sizeof...(Args))>{});
       return *this;
     }
 
   private:
     template <typename VecT, size_t... Is>
-    constexpr void assign_impl(const VecInterface<VecT> &v, index_seq<Is...>) noexcept {
+    constexpr void assign_impl(const VecInterface<VecT> &v, index_sequence<Is...>) noexcept {
       ((void)(this->template get<Is>() = v.val(Is)), ...);
     }
     template <typename Vec, size_t... Is>
-    constexpr auto assign_impl(const Vec &v, index_seq<Is...>) noexcept -> decltype(v[0], void()) {
+    constexpr auto assign_impl(const Vec &v, index_sequence<Is...>) noexcept -> decltype(v[0], void()) {
       ((void)(this->template get<Is>() = v[Is]), ...);
     }
     template <typename... Args, size_t... Is>
-    constexpr void assign_impl(const std::tuple<Args...> &tup, index_seq<Is...>) noexcept {
+    constexpr void assign_impl(const std::tuple<Args...> &tup, index_sequence<Is...>) noexcept {
       ((void)(this->template get<Is>() = std::get<Is>(tup)), ...);
     }
   };
@@ -390,16 +390,16 @@ template <size_t I, typename T> struct tuple_value {
     return zs::tuple<special_decay_t<Args>...>{FWD(args)...};
   }
   template <typename T, size_t... Is>
-  constexpr auto make_uniform_tuple(T &&v, index_seq<Is...>) noexcept {
+  constexpr auto make_uniform_tuple(T &&v, index_sequence<Is...>) noexcept {
     return make_tuple((Is ? v : v)...);
   }
   template <size_t N, typename T> constexpr auto make_uniform_tuple(T &&v) noexcept {
-    return make_uniform_tuple(FWD(v), std::make_index_sequence<N>{});
+    return make_uniform_tuple(FWD(v), make_index_sequence<N>{});
   }
 
   /** linear_to_multi */
   template <auto... Ns, size_t... Is, enable_if_all<(Ns > 0)...> = 0>
-  constexpr auto index_to_coord(size_t I, value_seq<Ns...> vs, index_seq<Is...>) {
+  constexpr auto index_to_coord(size_t I, value_seq<Ns...> vs, index_sequence<Is...>) {
     constexpr auto N = sizeof...(Ns);
     using Tn = typename value_seq<Ns...>::value_type;
     // using RetT = typename gen_seq<N>::template uniform_types_t<tuple, Tn>;
@@ -414,7 +414,7 @@ template <size_t I, typename T> struct tuple_value {
   }
   template <auto... Ns, enable_if_all<(Ns > 0)...> = 0>
   constexpr auto index_to_coord(size_t I, value_seq<Ns...> vs) {
-    return index_to_coord(I, vs, std::make_index_sequence<sizeof...(Ns)>{});
+    return index_to_coord(I, vs, make_index_sequence<sizeof...(Ns)>{});
   }
 
   /** forward_as_tuple */
@@ -498,7 +498,7 @@ template <size_t I, typename T> struct tuple_value {
   namespace detail {
     template <class F, class Tuple, size_t... Is,
               enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
-    constexpr decltype(auto) apply_impl(F &&f, Tuple &&t, index_seq<Is...>) {
+    constexpr decltype(auto) apply_impl(F &&f, Tuple &&t, index_sequence<Is...>) {
       // should use constexpr zs::invoke
       return f(get<Is>(t)...);
     }
@@ -506,22 +506,22 @@ template <size_t I, typename T> struct tuple_value {
   template <class F, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr decltype(auto) apply(F &&f, Tuple &&t) {
     return detail::apply_impl(FWD(f), FWD(t),
-                              std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
+                              make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
   }
 
   template <template <class...> class F, class Tuple,
             enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr decltype(auto) apply(assemble_t<F, get_ttal_t<remove_cvref_t<Tuple>>> &&f, Tuple &&t) {
     return detail::apply_impl(FWD(f), FWD(t),
-                              std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
+                              make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
   }
 
   template <size_t... Is, typename... Ts>
-  constexpr auto shuffle(index_seq<Is...>, const std::tuple<Ts...> &tup) {
+  constexpr auto shuffle(index_sequence<Is...>, const std::tuple<Ts...> &tup) {
     return std::make_tuple(std::get<Is>(tup)...);
   }
   template <size_t... Is, typename... Ts>
-  constexpr auto shuffle(index_seq<Is...>, const zs::tuple<Ts...> &tup) {
+  constexpr auto shuffle(index_sequence<Is...>, const zs::tuple<Ts...> &tup) {
     return zs::make_tuple(zs::get<Is>(tup)...);
   }
 
@@ -533,7 +533,7 @@ template <size_t I, typename T> struct tuple_value {
   /** make_from_tuple */
   namespace tuple_detail_impl {
     template <class T, class Tuple, size_t... Is>
-    constexpr T make_from_tuple_impl(Tuple &&t, index_seq<Is...>) {
+    constexpr T make_from_tuple_impl(Tuple &&t, index_sequence<Is...>) {
       return T{get<Is>(t)...};
     }
   }  // namespace tuple_detail_impl
@@ -541,7 +541,7 @@ template <size_t I, typename T> struct tuple_value {
   template <class T, class Tuple, enable_if_t<is_tuple_v<remove_cvref_t<Tuple>>> = 0>
   constexpr T make_from_tuple(Tuple &&t) {
     return tuple_detail_impl::make_from_tuple_impl<T>(
-        FWD(t), std::make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
+        FWD(t), make_index_sequence<tuple_size_v<remove_cvref_t<Tuple>>>{});
   }
 
   // need this because zs::tuple's rvalue deduction not finished

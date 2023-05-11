@@ -18,18 +18,19 @@ namespace zs {
   template <typename T, typename Extents> struct vec_view;
   template <typename T, typename Extents> struct vec_impl;
 
-  template <typename T, auto... Ns> using vec = vec_impl<T, integer_seq<int, Ns...>>;
-  template <typename T, typename Tn, Tn... Ns> using vec_t = vec_impl<T, integer_seq<Tn, Ns...>>;
+  template <typename T, auto... Ns> using vec = vec_impl<T, integer_sequence<int, Ns...>>;
+  template <typename T, typename Tn, Tn... Ns> using vec_t
+      = vec_impl<T, integer_sequence<Tn, Ns...>>;
 
   /// vec without lifetime managing
-  template <typename T, typename Tn, Tn... Ns> struct vec_view<T, integer_seq<Tn, Ns...>>
-      : VecInterface<vec_view<T, integer_seq<Tn, Ns...>>> {
-    using base_t = VecInterface<vec_view<T, integer_seq<Tn, Ns...>>>;
+  template <typename T, typename Tn, Tn... Ns> struct vec_view<T, integer_sequence<Tn, Ns...>>
+      : VecInterface<vec_view<T, integer_sequence<Tn, Ns...>>> {
+    using base_t = VecInterface<vec_view<T, integer_sequence<Tn, Ns...>>>;
     // essential defs for any VecInterface
     using value_type = remove_const_t<T>;
     using index_type = Tn;
     using indexer_type = indexer<index_type, Ns...>;
-    using extents = integer_seq<index_type, Ns...>;
+    using extents = integer_sequence<index_type, Ns...>;
 
     SUPPLEMENT_VEC_STATIC_ATTRIBUTES
 
@@ -85,15 +86,15 @@ namespace zs {
   };
 
   /// vec
-  template <typename T, typename Tn, Tn... Ns> struct vec_impl<T, std::integer_sequence<Tn, Ns...>>
-      : VecInterface<vec_impl<T, std::integer_sequence<Tn, Ns...>>> {
+  template <typename T, typename Tn, Tn... Ns> struct vec_impl<T, integer_sequence<Tn, Ns...>>
+      : VecInterface<vec_impl<T, integer_sequence<Tn, Ns...>>> {
     // static_assert(std::is_trivial<T>::value,
     //              "Vec element type is not trivial!\n");
-    using base_t = VecInterface<vec_impl<T, std::integer_sequence<Tn, Ns...>>>;
+    using base_t = VecInterface<vec_impl<T, integer_sequence<Tn, Ns...>>>;
     using value_type = T;
     using index_type = Tn;
     using indexer_type = indexer<index_type, Ns...>;
-    using extents = integer_seq<index_type, Ns...>;
+    using extents = integer_sequence<index_type, Ns...>;
 
     SUPPLEMENT_VEC_STATIC_ATTRIBUTES
 
@@ -120,7 +121,8 @@ namespace zs {
     constexpr vec_impl &operator=(vec_impl &&) &noexcept = default;
     template <typename... Ts,
               enable_if_all<(sizeof...(Ts) <= extent),
-                            (std::is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)> = 0>
+                            (std::is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)>
+              = 0>
     constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}
     /// https://github.com/kokkos/kokkos/issues/177
 #if 0
@@ -130,14 +132,14 @@ namespace zs {
     }
 #endif
     template <typename... Args, size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
-    static constexpr vec_impl from_tuple(const std::tuple<Args...> &tup, index_seq<Is...>) {
+    static constexpr vec_impl from_tuple(const std::tuple<Args...> &tup, index_sequence<Is...>) {
       vec_impl ret{};
       ((void)(ret.data()[Is] = std::get<Is>(tup)), ...);
       return ret;
     }
     template <typename... Args, enable_if_t<sizeof...(Args) == extent> = 0>
     static constexpr vec_impl from_tuple(const std::tuple<Args...> &tup) {
-      return from_tuple(tup, std::index_sequence_for<Args...>{});
+      return from_tuple(tup, index_sequence_for<Args...>{});
     }
     template <typename... Args, enable_if_t<sizeof...(Args) == extent> = 0>
     constexpr vec_impl &operator=(const std::tuple<Args...> &tup) {
@@ -145,14 +147,14 @@ namespace zs {
       return *this;
     }
     template <typename... Args, size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
-    static constexpr vec_impl from_tuple(const zs::tuple<Args...> &tup, index_seq<Is...>) {
+    static constexpr vec_impl from_tuple(const zs::tuple<Args...> &tup, index_sequence<Is...>) {
       vec_impl ret{};
       ((void)(ret.data()[Is] = zs::get<Is>(tup)), ...);
       return ret;
     }
     template <typename... Args, enable_if_t<sizeof...(Args) == extent> = 0>
     static constexpr vec_impl from_tuple(const zs::tuple<Args...> &tup) {
-      return from_tuple(tup, std::index_sequence_for<Args...>{});
+      return from_tuple(tup, index_sequence_for<Args...>{});
     }
 
     static constexpr vec_impl from_array(const std::array<T, extent> &arr) noexcept {
@@ -220,7 +222,8 @@ namespace zs {
   /// make vec
   template <typename... Args, enable_if_all<((!is_std_tuple<remove_cvref_t<Args>>::value
                                               && !is_tuple_v<remove_cvref_t<Args>>),
-                                             ...)> = 0>
+                                             ...)>
+                              = 0>
   constexpr auto make_vec(Args &&...args) noexcept {
     using Tn = math::op_result_t<remove_cvref_t<Args>...>;
     return vec<Tn, sizeof...(Args)>{FWD(args)...};
@@ -228,21 +231,21 @@ namespace zs {
   /// make vec from std tuple
   template <typename T, typename... Ts, size_t... Is>
   constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const std::tuple<Ts...> &tup,
-                                                  index_seq<Is...>) noexcept {
+                                                  index_sequence<Is...>) noexcept {
     return vec<T, (sizeof...(Ts))>{std::get<Is>(tup)...};
   }
   template <typename T, typename... Ts>
   constexpr auto make_vec(const std::tuple<Ts...> &tup) noexcept {
-    return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
+    return make_vec_impl<T>(tup, index_sequence_for<Ts...>{});
   }
   /// make vec from zs tuple
   template <typename T, typename... Ts, size_t... Is>
   constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const tuple<Ts...> &tup,
-                                                  index_seq<Is...>) noexcept {
+                                                  index_sequence<Is...>) noexcept {
     return vec<T, (sizeof...(Ts))>{get<Is>(tup)...};
   }
   template <typename T, typename... Ts> constexpr auto make_vec(const tuple<Ts...> &tup) noexcept {
-    return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
+    return make_vec_impl<T>(tup, index_sequence_for<Ts...>{});
   }
 
   /// affine map = linear map + translation matrix+(0, 0, 1) point(vec+{1})

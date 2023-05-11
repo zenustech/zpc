@@ -141,7 +141,7 @@ namespace zs {
 
     template <size_t I, size_t... Is, typename... Iters, typename... Policies,
               typename... Ranges, typename... Bodies>
-    constexpr void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
+    constexpr void exec(index_sequence<Is...> indices, zs::tuple<Iters...> prefixIters,
                         const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
                         const Bodies &...bodies) const {
       // using Range = zs::select_indexed_type<I, decay_t<Ranges>...>;
@@ -385,7 +385,7 @@ namespace zs {
     static_assert(sizeof...(Is) == 0 || sizeof...(Is) == sizeof...(Ranges),
                   "loop index mapping not legal\n");
     using Indices
-        = conditional_t<sizeof...(Is) == 0, std::index_sequence_for<Ranges...>, index_seq<Is...>>;
+        = conditional_t<sizeof...(Is) == 0, index_sequence_for<Ranges...>, index_sequence<Is...>>;
     if constexpr (sizeof...(Policies) == 0)
       return;
     else {

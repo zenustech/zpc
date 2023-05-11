@@ -59,8 +59,8 @@ namespace zs {
               size_t I, size_t... Js>
     constexpr void traverse(bool &tagMatch, Args &args,
                             const std::array<size_t, sizeof...(Ns)> &varIndices,
-                            index_seq<Ns...> dims, index_seq<i, js...> indices,
-                            index_seq<I, Js...>) {
+                            index_sequence<Ns...> dims, index_sequence<i, js...> indices,
+                            index_sequence<I, Js...>) {
       if constexpr (No == 0) {
         if constexpr (CheckCallable<
                           Visitor,
@@ -78,11 +78,11 @@ namespace zs {
         }
       } else {
         traverse<No - 1>(tagMatch, args, varIndices, dims, indices,
-                         index_seq<select_indexed_value<No - 1, Ns...>::value - 1, I, Js...>{});
+                         index_sequence<select_indexed_value<No - 1, Ns...>::value - 1, I, Js...>{});
         if (tagMatch) return;
       }
       if constexpr (I > 0) {  // next loop
-        traverse<No>(tagMatch, args, varIndices, dims, indices, index_seq<I - 1, Js...>{});
+        traverse<No>(tagMatch, args, varIndices, dims, indices, index_sequence<I - 1, Js...>{});
         if (tagMatch) return;
       }
     }
@@ -93,7 +93,7 @@ namespace zs {
 
     template <typename... Args>
     constexpr enable_if_type<all_variant<Args...>()> operator()(Args &&...args) {
-      using variant_sizes = std::index_sequence<std::variant_size_v<remove_cvref_t<Args>>...>;
+      using variant_sizes = index_sequence<std::variant_size_v<remove_cvref_t<Args>>...>;
       constexpr auto narg = sizeof...(Args);
       constexpr auto lastVariantSize
           = std::variant_size_v<select_indexed_type<narg - 1, remove_cvref_t<Args>...>>;
@@ -102,8 +102,8 @@ namespace zs {
       bool tagMatch{false};
 
       traverse<narg - 1>(tagMatch, packedArgs, varIndices, variant_sizes{},
-                         std::index_sequence_for<Args...>{},
-                         std::index_sequence<lastVariantSize - 1>{});
+                         index_sequence_for<Args...>{},
+                         index_sequence<lastVariantSize - 1>{});
     }
   };
   template <typename Visitor> VariantTaskExecutor(Visitor) -> VariantTaskExecutor<Visitor>;

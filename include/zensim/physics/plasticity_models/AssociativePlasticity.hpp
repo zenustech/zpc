@@ -22,7 +22,7 @@ namespace zs {
 
     template <typename VecT, auto... Ns> using vec_t =
         typename VecT::template variant_vec<typename VecT::value_type,
-                                            integer_seq<typename VecT::index_type, Ns...>>;
+                                            integer_sequence<typename VecT::index_type, Ns...>>;
     // project_strain
     template <
         typename VecT, typename Model, 

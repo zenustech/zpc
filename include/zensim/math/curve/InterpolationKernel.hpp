@@ -62,7 +62,7 @@ namespace zs {
     static_assert(order == 0 || order == 1 || order == 2,
                   "wrong order for linear bspline weight pads");
     using Pad =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 2>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, dim, 2>>;
     using RetT = conditional_t<order == 0, tuple<Pad>,
                                conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
     RetT weights{};
@@ -96,7 +96,7 @@ namespace zs {
     static_assert(order == 0 || order == 1 || order == 2,
                   "wrong order for quadratic bspline weight pads");
     using Pad =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 3>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, dim, 3>>;
     using RetT = conditional_t<order == 0, tuple<Pad>,
                                conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
     RetT weights{};
@@ -135,7 +135,7 @@ namespace zs {
     static_assert(order == 0 || order == 1 || order == 2,
                   "wrong order for cubic bspline weight pads");
     using Pad =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 4>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, dim, 4>>;
     using RetT = conditional_t<order == 0, tuple<Pad>,
                                conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
     RetT weights{};
@@ -181,7 +181,7 @@ namespace zs {
     constexpr auto dim = VecT::extent;
 
     using Pad =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 2>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, dim, 2>>;
     using RetT = tuple<Pad>;
 
     RetT weights{};
@@ -208,7 +208,7 @@ namespace zs {
     constexpr auto dim = VecT::extent;
 
     using Pad =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 3>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, dim, 3>>;
     using RetT = tuple<Pad>;
 
     RetT weights{};
@@ -239,7 +239,7 @@ namespace zs {
     constexpr auto dim = VecT::extent;
 
     using Pad =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, dim, 4>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, dim, 4>>;
     using RetT = tuple<Pad>;
 
     RetT weights{};

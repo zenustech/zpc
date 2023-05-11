@@ -891,7 +891,7 @@ namespace zs {
                             (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
               = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
-                              index_seq<Is...>, wrapt<TT>) const noexcept {
+                              index_sequence<Is...>, wrapt<TT>) const noexcept {
       constexpr channel_counter_type d = sizeof...(Is);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if ((TT *)_vector == nullptr) {
@@ -937,7 +937,7 @@ namespace zs {
               = 0>
     constexpr auto tuple(value_seq<Ns...>, const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
-      return tuple_impl(chn, i, std::make_index_sequence<(Ns * ...)>{}, wrapt<TT>{});
+      return tuple_impl(chn, i, make_index_sequence<(Ns * ...)>{}, wrapt<TT>{});
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,

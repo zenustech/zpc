@@ -8,19 +8,13 @@
 
 namespace zs {
 
-  /// pre C++14 impl, https://zh.cppreference.com/w/cpp/types/void_t
-  /// check ill-formed types
-  // template <typename... Ts> struct make_void { using type = void; };
-  // template <typename... Ts> using void_t = typename make_void<Ts...>::type;
-  template <typename... Ts> using void_t = std::void_t<Ts...>;
-
   /// underlying_type
   /// common_type
 
   ///
   /// type decorato
   ///
-
+  
   /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
   /// decay+unref
   template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> {

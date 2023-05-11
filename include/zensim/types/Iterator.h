@@ -437,8 +437,8 @@ namespace zs {
     T base;
     DiffT stride;
   };
-  template <typename Data, sint_t Stride> struct IndexIterator<Data, integral_t<sint_t, Stride>>
-      : IteratorInterface<IndexIterator<Data, integral_t<sint_t, Stride>>> {
+  template <typename Data, sint_t Stride> struct IndexIterator<Data, integral<sint_t, Stride>>
+      : IteratorInterface<IndexIterator<Data, integral<sint_t, Stride>>> {
     using T = std::make_signed_t<Data>;
     static_assert(std::is_integral_v<T>, "Index type must be integral");
     static_assert(std::is_convertible_v<sint_t, T>,
@@ -456,9 +456,9 @@ namespace zs {
   template <typename BaseT, typename DiffT, enable_if_t<!is_integral_constant<DiffT>::value> = 0>
   IndexIterator(BaseT, DiffT) -> IndexIterator<BaseT, DiffT>;
   template <typename BaseT> IndexIterator(BaseT)
-      -> IndexIterator<BaseT, integral_t<sint_t, (sint_t)1>>;
-  template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral_t<sint_t, Diff>)
-      -> IndexIterator<BaseT, integral_t<sint_t, Diff>>;
+      -> IndexIterator<BaseT, integral<sint_t, (sint_t)1>>;
+  template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral<sint_t, Diff>)
+      -> IndexIterator<BaseT, integral<sint_t, Diff>>;
 
   // collapse iterator
   template <typename Ts, typename Indices> struct Collapse;
@@ -466,7 +466,7 @@ namespace zs {
   template <typename... Tn> constexpr bool all_integral() {
     return (std::is_integral_v<Tn> && ...);
   }
-  template <typename... Tn, size_t... Is> struct Collapse<type_seq<Tn...>, index_seq<Is...>> {
+  template <typename... Tn, size_t... Is> struct Collapse<type_seq<Tn...>, index_sequence<Is...>> {
     static_assert(all_integral<Tn...>(), "not all types in Collapse is integral!");
     template <size_t I> using index_t = zs::tuple_element_t<I, zs::tuple<Tn...>>;
     static constexpr size_t dim = sizeof...(Tn);
@@ -509,23 +509,23 @@ namespace zs {
 
   template <typename Tn, int dim> using collapse_t
       = Collapse<typename gen_seq<dim>::template uniform_types_t<type_seq, int>,
-                 std::make_index_sequence<dim>>;
+                 make_index_sequence<dim>>;
 
   template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
   Collapse(const VecInterface<VecT> &) -> Collapse<
       typename gen_seq<VecT::extent>::template uniform_types_t<type_seq, typename VecT::value_type>,
-      std::make_index_sequence<VecT::extent>>;
+      make_index_sequence<VecT::extent>>;
   template <typename... Tn, enable_if_all<std::is_integral_v<Tn>...> = 0> Collapse(Tn...)
-      -> Collapse<type_seq<Tn...>, std::index_sequence_for<Tn...>>;
+      -> Collapse<type_seq<Tn...>, index_sequence_for<Tn...>>;
 
   template <typename... Tn> constexpr auto ndrange(Tn &&...ns) { return Collapse{FWD(ns)...}; }
   namespace detail {
-    template <typename T, size_t... Is> constexpr auto ndrange_impl(T n, index_seq<Is...>) {
+    template <typename T, size_t... Is> constexpr auto ndrange_impl(T n, index_sequence<Is...>) {
       return Collapse{(Is + 1 ? n : n)...};
     }
   }  // namespace detail
   template <auto d> constexpr auto ndrange(decltype(d) n) {
-    return detail::ndrange_impl(n, std::make_index_sequence<d>{});
+    return detail::ndrange_impl(n, make_index_sequence<d>{});
   }
 
   // zip iterator
@@ -537,8 +537,8 @@ namespace zs {
   }
 
   template <typename... Iters, size_t... Is>
-  struct zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>
-      : IteratorInterface<zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>> {
+  struct zip_iterator<zs::tuple<Iters...>, index_sequence<Is...>>
+      : IteratorInterface<zip_iterator<zs::tuple<Iters...>, index_sequence<Is...>>> {
     static constexpr bool all_random_access_iter = all_convertible_to_raiter<Iters...>();
     using difference_type = conditional_t<
         all_convertible_to_raiter<Iters...>(),
@@ -582,7 +582,7 @@ namespace zs {
   };
 
   template <typename... Iters> zip_iterator(Iters...)
-      -> zip_iterator<zs::tuple<Iters...>, std::index_sequence_for<Iters...>>;
+      -> zip_iterator<zs::tuple<Iters...>, index_sequence_for<Iters...>>;
 
   template <typename Iter> struct is_zip_iterator : false_type {};
   template <typename Iter, typename Indices>

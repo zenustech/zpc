@@ -12,13 +12,13 @@ namespace zs {
   template <typename T, typename Extents, typename Indexer> struct tensor_impl;
 
   template <typename Tensor, typename Tn, Tn... Ns>
-  struct tensor_view<Tensor, integer_seq<Tn, Ns...>>
-      : VecInterface<tensor_view<Tensor, integer_seq<Tn, Ns...>>> {
-    using base_t = VecInterface<tensor_view<Tensor, integer_seq<Tn, Ns...>>>;
+  struct tensor_view<Tensor, integer_sequence<Tn, Ns...>>
+      : VecInterface<tensor_view<Tensor, integer_sequence<Tn, Ns...>>> {
+    using base_t = VecInterface<tensor_view<Tensor, integer_sequence<Tn, Ns...>>>;
     static constexpr bool is_const_structure = std::is_const_v<Tensor>;
     using tensor_type = remove_const_t<Tensor>;
     using value_type = typename tensor_type::value_type;
-    using extents = integer_seq<Tn, Ns...>;
+    using extents = integer_sequence<Tn, Ns...>;
     using index_type = typename vseq_t<extents>::value_type;
     using indexer_type = typename tensor_type::indexer_type;
 
@@ -45,23 +45,23 @@ namespace zs {
           _base{make_from_tuple<base_type>(base)} {}
 
     /// helper
-    using indices = std::make_index_sequence<dim>;
+    using indices = make_index_sequence<dim>;
     template <typename... Args, size_t... Is, enable_if_t<dim == sizeof...(Args)> = 0>
-    constexpr auto getTensorCoord(tuple<Args...> c, index_seq<Is...>) const noexcept {
+    constexpr auto getTensorCoord(tuple<Args...> c, index_sequence<Is...>) const noexcept {
       return tuple_cat(_prefix, make_tuple((get<Is>(_base) + get<Is>(c))...));
     }
 
     /// random access
     // ()
-    template <typename... Args,
-              enable_if_t<sizeof...(Args) <= dim
-                          && (std::is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
+    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
+                                            && (std::is_integral_v<remove_cvref_t<Args>> && ...)>
+                                = 0>
     constexpr decltype(auto) operator()(Args &&...args) noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
-    template <typename... Args,
-              enable_if_t<sizeof...(Args) <= dim
-                          && (std::is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
+    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
+                                            && (std::is_integral_v<remove_cvref_t<Args>> && ...)>
+                                = 0>
     constexpr decltype(auto) operator()(Args &&...args) const noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
@@ -107,21 +107,22 @@ namespace zs {
   template <typename Tensor, typename Extents, typename... Args>
   tensor_view(Tensor &, Extents, Args...) -> tensor_view<Tensor, Extents>;
 
-  template <typename T, typename Tn, Tn... Ns, typename Tm, Tm... Ms, size_t... Is,
-            size_t... Js>
-  struct tensor_impl<T, integer_seq<Tn, Ns...>,
-                     indexer_impl<integer_seq<Tm, Ms...>, index_seq<Is...>, index_seq<Js...>>>
-      : VecInterface<
-            tensor_impl<T, integer_seq<Tn, Ns...>,
-                        indexer_impl<integer_seq<Tm, Ms...>, index_seq<Is...>, index_seq<Js...>>>> {
-    using self_t
-        = tensor_impl<T, integer_seq<Tn, Ns...>,
-                      indexer_impl<integer_seq<Tm, Ms...>, index_seq<Is...>, index_seq<Js...>>>;
+  template <typename T, typename Tn, Tn... Ns, typename Tm, Tm... Ms, size_t... Is, size_t... Js>
+  struct tensor_impl<
+      T, integer_sequence<Tn, Ns...>,
+      indexer_impl<integer_sequence<Tm, Ms...>, index_sequence<Is...>, index_sequence<Js...>>>
+      : VecInterface<tensor_impl<T, integer_sequence<Tn, Ns...>,
+                                 indexer_impl<integer_sequence<Tm, Ms...>, index_sequence<Is...>,
+                                              index_sequence<Js...>>>> {
+    using self_t = tensor_impl<
+        T, integer_sequence<Tn, Ns...>,
+        indexer_impl<integer_sequence<Tm, Ms...>, index_sequence<Is...>, index_sequence<Js...>>>;
     using base_t = VecInterface<self_t>;
     using value_type = T;
     using index_type = Tn;
-    using indexer_type = indexer_impl<integer_seq<Tm, Ms...>, index_seq<Is...>, index_seq<Js...>>;
-    using extents = integer_seq<index_type, Ns...>;
+    using indexer_type
+        = indexer_impl<integer_sequence<Tm, Ms...>, index_sequence<Is...>, index_sequence<Js...>>;
+    using extents = integer_sequence<index_type, Ns...>;
 
     static_assert(sizeof...(Ns) == sizeof...(Ms),
                   "access dimension and storage dimension mismatch!");
@@ -146,13 +147,13 @@ namespace zs {
             //
             indexer_impl<Extents,
                          typename decltype(truncate_storage_orders<vseq_t<Extents>::count>())::iseq,
-                         std::make_index_sequence<vseq_t<Extents>::count>>,
+                         make_index_sequence<vseq_t<Extents>::count>>,
             //
             indexer_impl<
                 Extents,
                 decltype(value_seq<Is...>{}.concat(
                     typename gen_seq<vseq_t<Extents>::count - dim>::template arithmetic<dim>{})),
-                std::make_index_sequence<vseq_t<Extents>::count>>>>;
+                make_index_sequence<vseq_t<Extents>::count>>>>;
 
     template <typename OtherT, typename ExtentsT> using variant_vec
         = tensor_impl<OtherT, ExtentsT, deduce_indexer_type<ExtentsT>>;

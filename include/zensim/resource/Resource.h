@@ -126,7 +126,7 @@ namespace zs {
 
     /// owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, size_t... Is>
-    void setOwningUpstream(mem_tags tag, ProcID devid, zs::tuple<Args...> args, index_seq<Is...>) {
+    void setOwningUpstream(mem_tags tag, ProcID devid, zs::tuple<Args...> args, index_sequence<Is...>) {
       match([&](auto t) {
         if constexpr (is_memory_source_available(t)) {
           using MemT = RM_CVREF_T(t);
@@ -150,7 +150,7 @@ namespace zs {
     void setOwningUpstream(MemTag tag, ProcID devid, Args &&...args) {
       if constexpr (is_same_v<MemTag, mem_tags>)
         setOwningUpstream<ResourceT>(tag, devid, zs::forward_as_tuple(FWD(args)...),
-                                     std::index_sequence_for<Args...>{});
+                                     index_sequence_for<Args...>{});
       else {
         if constexpr (is_memory_source_available(tag)) {
           res = std::make_unique<ResourceT<MemTag>>(devid, args...);

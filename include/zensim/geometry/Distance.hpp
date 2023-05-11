@@ -177,7 +177,7 @@ namespace zs {
                           const VecInterface<VecT> &x2, const VecInterface<VecT> &x3, T dHat) {
     using HessT =
         typename VecT::template variant_vec<typename VecT::value_type,
-                                            integer_seq<typename VecT::index_type, 12, 9>>;
+                                            integer_sequence<typename VecT::index_type, 12, 9>>;
     HessT pFpx{};
     detail::pFpx_pppV0V1(dHat, x0[0], x0[1], x0[2], x1[0], x1[1], x1[2], x2[0], x2[1], x2[2], x3[0],
                          x3[1], x3[2], pFpx);
@@ -204,7 +204,7 @@ namespace zs {
     using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::extent;
-    using GradT = typename VecTA::template variant_vec<T, integer_seq<Ti, 2, dim>>;
+    using GradT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 2, dim>>;
     GradT grad{};
     for (int d = 0; d != dim; ++d) {
       auto v = 2 * (a(d) - b(d));
@@ -220,7 +220,7 @@ namespace zs {
     using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::extent;
-    using HessT = typename VecTA::template variant_vec<T, integer_seq<Ti, dim * 2, dim * 2>>;
+    using HessT = typename VecTA::template variant_vec<T, integer_sequence<Ti, dim * 2, dim * 2>>;
     auto hess = HessT::identity() * 2;
     if constexpr (dim == 2)
       hess(0, 2) = hess(1, 3) = hess(2, 0) = hess(3, 1) = -2;
@@ -965,7 +965,7 @@ namespace zs {
                           const VecInterface<VecT> &x2, const VecInterface<VecT> &x3, T dHat) {
     using HessT =
         typename VecT::template variant_vec<typename VecT::value_type,
-                                            integer_seq<typename VecT::index_type, 12, 9>>;
+                                            integer_sequence<typename VecT::index_type, 12, 9>>;
     HessT pFpx{};
     detail::pFpx_ppeV0V1(dHat, x0[0], x0[1], x0[2], x1[0], x1[1], x1[2], x2[0], x2[1], x2[2], x3[0],
                          x3[1], x3[2], pFpx);
@@ -1049,7 +1049,7 @@ namespace zs {
     using Ti = typename VecTP::index_type;
     constexpr int dim = VecTP::extent;
     static_assert(dim == 3 || dim == 2, "currently only implement 2d/3d version");
-    using GradT = typename VecTP::template variant_vec<T, integer_seq<Ti, 3, dim>>;
+    using GradT = typename VecTP::template variant_vec<T, integer_sequence<Ti, 3, dim>>;
     GradT grad{};
     if constexpr (dim == 2)
       detail::g_PE2D(p[0], p[1], e0[0], e0[1], e1[0], e1[1], grad);
@@ -1067,7 +1067,7 @@ namespace zs {
     using Ti = typename VecTP::index_type;
     constexpr int dim = VecTP::extent;
     static_assert(dim == 3 || dim == 2, "currently only implement 2d/3d version");
-    using HessT = typename VecTP::template variant_vec<T, integer_seq<Ti, dim * 3, dim * 3>>;
+    using HessT = typename VecTP::template variant_vec<T, integer_sequence<Ti, dim * 3, dim * 3>>;
     HessT hess{};
     if constexpr (dim == 2)
       detail::H_PE2D(p[0], p[1], e0[0], e0[1], e1[0], e1[1], hess);
@@ -1981,7 +1981,7 @@ namespace zs {
                           const VecInterface<VecT> &x2, const VecInterface<VecT> &x3, T dHat) {
     using HessT =
         typename VecT::template variant_vec<typename VecT::value_type,
-                                            integer_seq<typename VecT::index_type, 12, 9>>;
+                                            integer_sequence<typename VecT::index_type, 12, 9>>;
     HessT pFpx{};
     detail::pFpx_peeV0V1(dHat, x0[0], x0[1], x0[2], x1[0], x1[1], x1[2], x2[0], x2[1], x2[2], x3[0],
                          x3[1], x3[2], pFpx);
@@ -2130,7 +2130,7 @@ namespace zs {
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
-    using GradT = typename VecTA::template variant_vec<T, integer_seq<Ti, 4, dim>>;
+    using GradT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 4, dim>>;
     GradT grad{};
     detail::g_EE(ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2], eb1[0],
                  eb1[1], eb1[2], grad);
@@ -2147,7 +2147,7 @@ namespace zs {
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
-    using HessT = typename VecTA::template variant_vec<T, integer_seq<Ti, dim * 4, dim * 4>>;
+    using HessT = typename VecTA::template variant_vec<T, integer_sequence<Ti, dim * 4, dim * 4>>;
     HessT hess{};
     detail::H_EE(ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2], eb1[0],
                  eb1[1], eb1[2], hess);
@@ -2525,7 +2525,7 @@ namespace zs {
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
-    using GradT = typename VecTA::template variant_vec<T, integer_seq<Ti, 4, dim>>;
+    using GradT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 4, dim>>;
     GradT grad{};
     detail::g_EECN2(ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2], eb1[0],
                     eb1[1], eb1[2], grad);
@@ -2542,7 +2542,7 @@ namespace zs {
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
-    using HessT = typename VecTA::template variant_vec<T, integer_seq<Ti, dim * 4, dim * 4>>;
+    using HessT = typename VecTA::template variant_vec<T, integer_sequence<Ti, dim * 4, dim * 4>>;
     HessT hess{};
     detail::H_EECN2(ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2], eb1[0],
                     eb1[1], eb1[2], hess);
@@ -2584,7 +2584,7 @@ namespace zs {
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
-    using GradT = typename VecTA::template variant_vec<T, integer_seq<Ti, 4, dim>>;
+    using GradT = typename VecTA::template variant_vec<T, integer_sequence<Ti, 4, dim>>;
 
     auto c = cn2_ee(ea0, ea1, eb0, eb1);
     if (c < eps)
@@ -2603,7 +2603,7 @@ namespace zs {
     using Ti = typename VecTA::index_type;
     constexpr int dim = VecTA::template range_t<0>::value;
     static_assert(dim == 3, "currently only implement 3d version");
-    using HessT = typename VecTA::template variant_vec<T, integer_seq<Ti, dim * 4, dim * 4>>;
+    using HessT = typename VecTA::template variant_vec<T, integer_sequence<Ti, dim * 4, dim * 4>>;
 
     auto c = cn2_ee(ea0, ea1, eb0, eb1);
     if (c < eps) {
@@ -3276,7 +3276,7 @@ namespace zs {
     constexpr int dim = VecTP::extent;
     using Ti = typename VecTP::index_type;
 
-    typename VecTP::template variant_vec<T, integer_seq<Ti, 2, dim>> basis{};
+    typename VecTP::template variant_vec<T, integer_sequence<Ti, 2, dim>> basis{};
     for (int d = 0; d != dim; ++d) {
       basis(0, d) = t1(d) - t0(d);
       basis(1, d) = t2(d) - t0(d);
@@ -3284,7 +3284,7 @@ namespace zs {
 
     const auto nVec = row(basis, 0).cross(row(basis, 1));
 
-    typename VecTP::template variant_vec<T, integer_seq<Ti, 2, dim>> param{};
+    typename VecTP::template variant_vec<T, integer_sequence<Ti, 2, dim>> param{};
 
     {
       auto tmp = row(basis, 0).cross(nVec);
@@ -3358,7 +3358,7 @@ namespace zs {
     constexpr int dim = VecTP::extent;
     static_assert(dim == 3, "only implemented 3d version");
     using Ti = typename VecTP::index_type;
-    using MatT = typename VecTP::template variant_vec<T, integer_seq<Ti, dim, dim>>;
+    using MatT = typename VecTP::template variant_vec<T, integer_sequence<Ti, dim, dim>>;
 
     auto basis0 = t1 - t0;
     auto basis1 = t2 - t0;
@@ -3482,7 +3482,7 @@ namespace zs {
     using Ti = typename VecTP::index_type;
     constexpr int dim = VecTP::extent;
     static_assert(dim == 3, "currently only implement 3d version");
-    using GradT = typename VecTP::template variant_vec<T, integer_seq<Ti, 4, dim>>;
+    using GradT = typename VecTP::template variant_vec<T, integer_sequence<Ti, 4, dim>>;
     GradT grad{};
     detail::g_PT(p[0], p[1], p[2], t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], t2[0], t2[1], t2[2],
                  grad);
@@ -3498,7 +3498,7 @@ namespace zs {
     using Ti = typename VecTP::index_type;
     constexpr int dim = VecTP::extent;
     static_assert(dim == 3, "currently only implement 3d version");
-    using HessT = typename VecTP::template variant_vec<T, integer_seq<Ti, dim * 4, dim * 4>>;
+    using HessT = typename VecTP::template variant_vec<T, integer_sequence<Ti, dim * 4, dim * 4>>;
     HessT hess{};
     detail::H_PT(p[0], p[1], p[2], t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], t2[0], t2[1], t2[2],
                  hess);
@@ -3515,7 +3515,7 @@ namespace zs {
     using Ti = typename VecTE::index_type;
     constexpr int dim = VecTE::extent;
     static_assert(dim == 3, "currently only implement 3d version");
-    using MatT = typename VecTE::template variant_vec<T, integer_seq<Ti, dim, dim>>;
+    using MatT = typename VecTE::template variant_vec<T, integer_sequence<Ti, dim, dim>>;
     auto col0 = t1 - t0;
     auto col1 = t2 - t0;
     auto col2 = e0 - e1;

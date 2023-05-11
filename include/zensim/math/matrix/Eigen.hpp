@@ -26,7 +26,7 @@ namespace zs {
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
-        typename VecTM::template variant_vec<T, integer_seq<typename VecTM::index_type, 2>>;
+        typename VecTM::template variant_vec<T, integer_sequence<typename VecTM::index_type, 2>>;
     MatT eivecs{};
     VecT eivals{};
     T shift = trace(M) / (T)2;
@@ -83,7 +83,7 @@ namespace zs {
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
-        typename VecTM::template variant_vec<T, integer_seq<typename VecTM::index_type, 3>>;
+        typename VecTM::template variant_vec<T, integer_sequence<typename VecTM::index_type, 3>>;
     MatT eivecs{};
     VecT eivals{};
     // Shift the matrix to the mean eigenvalue and map the matrix coefficients to [-1:1] to avoid
@@ -229,9 +229,9 @@ namespace zs {
     constexpr int dim = VecTM::template range_t<0>::value;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
-        typename VecTM::template variant_vec<T, integer_seq<typename VecTM::index_type, dim>>;
+        typename VecTM::template variant_vec<T, integer_sequence<typename VecTM::index_type, dim>>;
     using IVecT =
-        typename VecTM::template variant_vec<Ti, integer_seq<typename VecTM::index_type, dim>>;
+        typename VecTM::template variant_vec<Ti, integer_sequence<typename VecTM::index_type, dim>>;
 
     auto S = mat.clone();
     MatT E = MatT::identity();  // eigen vectors

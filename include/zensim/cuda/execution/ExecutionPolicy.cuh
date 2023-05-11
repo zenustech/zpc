@@ -91,7 +91,7 @@ namespace zs {
 
     template <bool withIndex, typename Tn, typename F, typename ZipIter, size_t... Is>
     __forceinline__ __device__ void range_foreach(wrapv<withIndex>, Tn i, F &&f, ZipIter &&iter,
-                                                  index_seq<Is...>) {
+                                                  index_sequence<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
         f(i, *zs::get<Is>(iter.iters)...);
@@ -102,7 +102,7 @@ namespace zs {
     template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
               size_t... Is>
     __forceinline__ __device__ void range_foreach(wrapv<withIndex>, ShmT *shmem, Tn i, F &&f,
-                                                  ZipIter &&iter, index_seq<Is...>) {
+                                                  ZipIter &&iter, index_sequence<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
       using func_traits
           = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;
@@ -160,7 +160,7 @@ namespace zs {
     if (id < n) {
       using func_traits = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types>;
       constexpr auto numArgs = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
-      constexpr auto indices = std::make_index_sequence<numArgs>{};
+      constexpr auto indices = make_index_sequence<numArgs>{};
       static_assert(func_traits::arity >= numArgs && func_traits::arity <= numArgs + 2,
                     "range_launch arity does not match with numArgs");
       if constexpr (func_traits::arity == numArgs) {

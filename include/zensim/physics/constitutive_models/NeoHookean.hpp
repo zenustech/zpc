@@ -74,7 +74,7 @@ namespace zs {
       constexpr auto dim = VecT::template range_t<0>::value;
       using RetT = typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_seq<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
+          integer_sequence<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
       RetT coeffs{};
       const auto S_prod = S.prod();
       if constexpr (dim == 2)
@@ -175,7 +175,7 @@ namespace zs {
     constexpr auto eval_stretching_matrix(const VecInterface<VecT>& Is,
                                           const VecInterface<VecS>& sigma) const noexcept {
       typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3, 3>>
+                                          integer_sequence<typename VecT::index_type, 3, 3>>
           A{};
       A(0, 0) = mu + lam * Is[2] * Is[2] / sigma[0] / sigma[0];
       A(0, 1) = sigma[2] * (lam * (2 * Is[2] - 1) - mu);
@@ -200,7 +200,7 @@ namespace zs {
       // printf("do_first_piola_derivative_spd get called\n");
 
       typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3>>
+                                          integer_sequence<typename VecT::index_type, 3>>
           Is{};
 
       auto [U, S, V] = math::qr_svd(F);
@@ -235,7 +235,7 @@ namespace zs {
 
       using mat3 =
           typename VecT::template variant_vec<typename VecT::value_type,
-                                              integer_seq<typename VecT::index_type, 3, 3>>;
+                                              integer_sequence<typename VecT::index_type, 3, 3>>;
       constexpr double sqrt2 = 1.4142135623730950488016887242096980785697L;
       constexpr mat3 Qs[9]
           = {mat3::init([](int i) { return i == 0 ? 1 : 0; }),

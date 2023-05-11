@@ -125,7 +125,7 @@ namespace zs {
 
     template <size_t I, size_t... Is, typename... Iters, typename... Policies,
               typename... Ranges, typename... Bodies>
-    void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
+    void exec(index_sequence<Is...> indices, zs::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
               const Bodies &...bodies) const {
       // using Range = zs::select_indexed_type<I, decay_t<Ranges>...>;

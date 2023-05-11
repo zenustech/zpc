@@ -17,8 +17,8 @@ namespace zs {
   struct SparseGrid {
     using value_type = ValueT;
     using allocator_type = AllocatorT;
-    using index_type = sint_t;  // associated with the number of blocks
     using size_type = size_t;
+    using index_type = std::make_signed_t<size_type>;  // associated with the number of blocks
 
     using integer_coord_component_type = std::make_signed_t<IntegerCoordT>;
     static constexpr auto deduce_basic_value_type() noexcept {
@@ -155,7 +155,8 @@ namespace zs {
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
                             VecTM::template range_t<1>::value == dim + 1,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            std::is_floating_point_v<typename VecTM::value_type>>
+              = 0>
     void resetTransformation(const VecInterface<VecTM> &i2w) {
       _transform.self() = i2w;
     }
@@ -165,7 +166,8 @@ namespace zs {
       _transform.postTranslate(t);
     }
     template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == dim,
-                                           VecT::template range_t<1>::value == dim> = 0>
+                                           VecT::template range_t<1>::value == dim>
+                             = 0>
     void rotate(const VecInterface<VecT> &r) noexcept {
       _transform.preRotate(r);
     }
@@ -245,10 +247,11 @@ namespace zs {
       for (auto d = dim - 1; d >= 0; --d, offset /= side_length) ret[d] = offset % side_length;
       return ret;
     }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_signed_v<typename VecT::value_type>,
-                                           std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+    template <typename VecT,
+              enable_if_all<
+                  VecT::dim == 1, VecT::extent == dim, std::is_signed_v<typename VecT::value_type>,
+                  std::is_convertible_v<typename VecT::value_type, integer_coord_component_type>>
+              = 0>
     static constexpr integer_coord_component_type local_coord_to_offset(
         const VecInterface<VecT> &coord) noexcept {
       integer_coord_component_type ret{coord[0]};
@@ -256,10 +259,11 @@ namespace zs {
         ret = (ret * side_length) + (integer_coord_component_type)coord[d];
       return ret;
     }
-    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_signed_v<typename VecT::value_type>,
-                                           std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+    template <typename VecT,
+              enable_if_all<
+                  VecT::dim == 1, VecT::extent == dim, std::is_signed_v<typename VecT::value_type>,
+                  std::is_convertible_v<typename VecT::value_type, integer_coord_component_type>>
+              = 0>
     static constexpr integer_coord_component_type global_coord_to_local_offset(
         const VecInterface<VecT> &coord) noexcept {
       // [x, y, z]
@@ -270,7 +274,8 @@ namespace zs {
     }
     // node value access (used for GridArena::arena_type init)
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::index_type>> = 0>
+                                            std::is_integral_v<typename VecTI::index_type>>
+                              = 0>
     constexpr auto decomposeCoord(const VecInterface<VecTI> &indexCoord) const noexcept {
       auto cellid = indexCoord & (side_length - 1);
       auto blockid = indexCoord - cellid;
@@ -282,14 +287,16 @@ namespace zs {
       return blockno == table_type::sentinel_v ? defaultVal : _grid(chn, blockno, cellno);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::value_type>> = 0>
+                                            std::is_integral_v<typename VecTI::value_type>>
+                              = 0>
     constexpr auto valueOr(false_type, size_type chn, const VecInterface<VecTI> &indexCoord,
                            value_type defaultVal) const noexcept {
       auto [bno, cno] = decomposeCoord(indexCoord);
       return valueOr(chn, bno, cno, defaultVal);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::value_type>> = 0>
+                                            std::is_integral_v<typename VecTI::value_type>>
+                              = 0>
     constexpr value_type valueOr(true_type, size_type chn, const VecInterface<VecTI> &indexCoord,
                                  int orientation, value_type defaultVal) const noexcept {
       /// 0, ..., dim-1: within cell
@@ -426,7 +433,8 @@ namespace zs {
     }
     // staggered
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+                                                 std::is_signed_v<typename VecT::value_type>>
+                                   = 0>
     constexpr value_type iStaggeredCellSample(size_type propOffset, int d,
                                               const VecInterface<VecT> &X,
                                               typename table_type::index_type blockno,
@@ -448,7 +456,8 @@ namespace zs {
              * (coord_component_type)0.25;
     }
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+                                                 std::is_signed_v<typename VecT::value_type>>
+                                   = 0>
     constexpr auto iStaggeredCellSample(const SmallString &prop, int chn,
                                         const VecInterface<VecT> &X, int f) const {
       static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
@@ -489,7 +498,8 @@ namespace zs {
     /// packed sample
     // staggered
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+                                                 std::is_signed_v<typename VecT::value_type>>
+                                   = 0>
     constexpr packed_value_type iStaggeredCellPack(size_type propOffset,
                                                    const VecInterface<VecT> &X,
                                                    typename table_type::index_type blockno,
@@ -522,7 +532,8 @@ namespace zs {
       return ret;
     }
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>> = 0>
+                                                 std::is_signed_v<typename VecT::value_type>>
+                                   = 0>
     constexpr packed_value_type iStaggeredCellPack(const SmallString &propName,
                                                    const VecInterface<VecT> &X, int f) const {
       static_assert(dim == 2 || dim == 3, "only implements 2d & 3d for now.");
@@ -635,7 +646,8 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr decltype(auto) operator()(size_type chn, const VecInterface<VecT> &X) {
       auto [blockno, cellno] = decomposeCoord(X);
       if (blockno == table_type::sentinel_v) printf("accessing an inactive voxel (block)!\n");
@@ -643,13 +655,15 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr decltype(auto) operator()(const SmallString &prop, const VecInterface<VecT> &X) {
       return this->operator()(_grid.propertyOffset(prop), X);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr decltype(auto) operator()(const SmallString &prop, size_type chn,
                                         const VecInterface<VecT> &X) {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
@@ -668,7 +682,8 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto operator()(size_type chn, const VecInterface<VecT> &X) const {
       auto [blockno, cellno] = decomposeCoord(X);
       if (blockno == table_type::sentinel_v) return _background;
@@ -676,13 +691,15 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto operator()(const SmallString &prop, const VecInterface<VecT> &X) const {
       return this->operator()(_grid.propertyOffset(prop), X);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto operator()(const SmallString &prop, size_type chn,
                               const VecInterface<VecT> &X) const {
       return this->operator()(_grid.propertyOffset(prop) + chn, X);
@@ -703,7 +720,8 @@ namespace zs {
     /// @brief access value by coord
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto value(size_type chn, const VecInterface<VecT> &X) const {
       auto [blockno, cellno] = decomposeCoord(X);
       if (blockno == table_type::sentinel_v) return _background;
@@ -711,13 +729,15 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto value(const SmallString &prop, const VecInterface<VecT> &X) const {
       return value(_grid.propertyOffset(prop), X);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto value(const SmallString &prop, size_type chn,
                          const VecInterface<VecT> &X) const {
       return value(_grid.propertyOffset(prop) + chn, X);
@@ -725,7 +745,8 @@ namespace zs {
     /// @note default value override
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto value(size_type chn, const VecInterface<VecT> &X,
                          value_type backgroundVal) const {
       auto [blockno, cellno] = decomposeCoord(X);
@@ -734,21 +755,24 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto value(const SmallString &prop, const VecInterface<VecT> &X,
                          value_type backgroundVal) const {
       return value(_grid.propertyOffset(prop), X, backgroundVal);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr auto value(const SmallString &prop, size_type chn, const VecInterface<VecT> &X,
                          value_type backgroundVal) const {
       return value(_grid.propertyOffset(prop) + chn, X, backgroundVal);
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
                                            std::is_convertible_v<typename VecT::value_type,
-                                                                 integer_coord_component_type>> = 0>
+                                                                 integer_coord_component_type>>
+                             = 0>
     constexpr bool hasVoxel(const VecInterface<VecT> &X) const {
       auto [blockno, cellno] = decomposeCoord(X);
       return blockno != table_type::sentinel_v;
@@ -851,11 +875,11 @@ namespace zs {
                         conditional_t<deriv_order == 1, tuple<TWM, TWM>, tuple<TWM, TWM, TWM>>>;
 
     template <typename ValT, size_t... Is>
-    static constexpr auto deduce_arena_type_impl(index_seq<Is...>) {
+    static constexpr auto deduce_arena_type_impl(index_sequence<Is...>) {
       return vec<ValT, (Is + 1 > 0 ? width : width)...>{};
     }
     template <typename ValT, int d> static constexpr auto deduce_arena_type() {
-      return deduce_arena_type_impl<ValT>(std::make_index_sequence<d>{});
+      return deduce_arena_type_impl<ValT>(make_index_sequence<d>{});
     }
     template <typename ValT> using arena_type = RM_CVREF_T(deduce_arena_type<ValT, dim>());
 
@@ -998,14 +1022,15 @@ namespace zs {
     /// weight
     template <typename... Tn>
     constexpr value_type weight(const std::tuple<Tn...> &loc) const noexcept {
-      return weight_impl(loc, std::index_sequence_for<Tn...>{});
+      return weight_impl(loc, index_sequence_for<Tn...>{});
     }
     template <typename... Tn>
     constexpr value_type weight(const zs::tuple<Tn...> &loc) const noexcept {
-      return weight_impl(loc, std::index_sequence_for<Tn...>{});
+      return weight_impl(loc, index_sequence_for<Tn...>{});
     }
     template <typename... Tn, enable_if_all<((!is_tuple_v<Tn> && !is_std_tuple<Tn>()) && ...
-                                             && (sizeof...(Tn) == dim))> = 0>
+                                             && (sizeof...(Tn) == dim))>
+                              = 0>
     constexpr auto weight(Tn &&...is) const noexcept {
       return weight(zs::forward_as_tuple(FWD(is)...));
     }
@@ -1013,23 +1038,23 @@ namespace zs {
     template <size_t I, typename... Tn, auto ord = deriv_order>
     constexpr enable_if_type<(ord > 0), coord_component_type> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
-      return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
+      return weightGradient_impl<I>(loc, index_sequence_for<Tn...>{});
     }
     template <size_t I, typename... Tn, auto ord = deriv_order>
     constexpr enable_if_type<(ord > 0), coord_component_type> weightGradient(
         const zs::tuple<Tn...> &loc) const noexcept {
-      return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
+      return weightGradient_impl<I>(loc, index_sequence_for<Tn...>{});
     }
     /// weight gradient
     template <typename... Tn, auto ord = deriv_order>
     constexpr enable_if_type<(ord > 0), coord_type> weightsGradient(
         const std::tuple<Tn...> &loc) const noexcept {
-      return weightGradients_impl(loc, std::index_sequence_for<Tn...>{});
+      return weightGradients_impl(loc, index_sequence_for<Tn...>{});
     }
     template <typename... Tn, auto ord = deriv_order>
     constexpr enable_if_type<(ord > 0), coord_type> weightsGradient(
         const zs::tuple<Tn...> &loc) const noexcept {
-      return weightGradients_impl(loc, std::index_sequence_for<Tn...>{});
+      return weightGradients_impl(loc, index_sequence_for<Tn...>{});
     }
 
     void printWeights() {
@@ -1056,7 +1081,7 @@ namespace zs {
     template <typename... Tn, size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr coord_component_type weight_impl(const std::tuple<Tn...> &loc,
-                                               index_seq<Is...>) const noexcept {
+                                               index_sequence<Is...>) const noexcept {
       coord_component_type ret{1};
       ((void)(ret *= get<0>(weights)(Is, std::get<Is>(loc))), ...);
       return ret;
@@ -1064,7 +1089,7 @@ namespace zs {
     template <size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_component_type weightGradient_impl(const std::tuple<Tn...> &loc,
-                                                       index_seq<Is...>) const noexcept {
+                                                       index_sequence<Is...>) const noexcept {
       coord_component_type ret{1};
       ((void)(ret *= (I == Is ? get<1>(weights)(Is, std::get<Is>(loc))
                               : get<0>(weights)(Is, std::get<Is>(loc)))),
@@ -1074,14 +1099,14 @@ namespace zs {
     template <typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_type weightGradients_impl(const std::tuple<Tn...> &loc,
-                                              index_seq<Is...>) const noexcept {
-      return coord_type{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
+                                              index_sequence<Is...>) const noexcept {
+      return coord_type{weightGradient_impl<Is>(loc, index_sequence<Is...>{})...};
     }
     /// zs tuple
     template <typename... Tn, size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr coord_component_type weight_impl(const zs::tuple<Tn...> &loc,
-                                               index_seq<Is...>) const noexcept {
+                                               index_sequence<Is...>) const noexcept {
       coord_component_type ret{1};
       ((void)(ret *= get<0>(weights)(Is, zs::get<Is>(loc))), ...);
       return ret;
@@ -1089,7 +1114,7 @@ namespace zs {
     template <size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_component_type weightGradient_impl(const zs::tuple<Tn...> &loc,
-                                                       index_seq<Is...>) const noexcept {
+                                                       index_sequence<Is...>) const noexcept {
       coord_component_type ret{1};
       ((void)(ret *= (I == Is ? get<1>(weights)(Is, zs::get<Is>(loc))
                               : get<0>(weights)(Is, zs::get<Is>(loc)))),
@@ -1099,8 +1124,8 @@ namespace zs {
     template <typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_type weightGradients_impl(const zs::tuple<Tn...> &loc,
-                                              index_seq<Is...>) const noexcept {
-      return coord_type{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
+                                              index_sequence<Is...>) const noexcept {
+      return coord_type{weightGradient_impl<Is>(loc, index_sequence<Is...>{})...};
     }
   };
 

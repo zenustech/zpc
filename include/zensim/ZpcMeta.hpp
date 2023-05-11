@@ -269,7 +269,7 @@ namespace zs {
   // (See accompanying file LICENSE.md or copy at http://boost.org/LICENSE_1_0.txt)
   namespace detail {
     template <typename F, typename... Args> constexpr auto is_valid_impl(int) noexcept
-        -> decltype(declval<F &&>()(declval<Args &&>()...), true_c) {
+        -> decltype(declval<F &&>()(declval<Args &&>()...), true_type{}) {
       return true_c;
     }
     template <typename F, typename... Args> constexpr auto is_valid_impl(...) noexcept {
@@ -298,11 +298,9 @@ namespace zs {
   template <class T> struct is_void : is_same<void, typename remove_cv<T>::type> {};
   // arithmetic
   namespace detail {
-    template <typename T> constexpr auto test_integral(T t, T *p, void (*f)(T))
-        -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{}) {
-      return {};
-    }
-    constexpr false_type test_integral(...) noexcept { return {}; }
+    template <typename T> static auto test_integral(T t, T *p, void (*f)(T))
+        -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{});
+    static false_type test_integral(...) noexcept;
   }  // namespace detail
   template <class T> struct is_integral
       : decltype(detail::test_integral(declval<T>(), declval<T *>(), declval<void (*)(T)>())) {};
@@ -395,8 +393,17 @@ namespace zs {
 
   template <class T> class reference_wrapper;
   namespace detail {
-    /// ref: ubuntu c++11 header [/usr/include/c++/11/type_traits]
+    struct __invoke_memfun_ref {};
+    struct __invoke_memfun_deref {};
+    struct __invoke_memobj_ref {};
+    struct __invoke_memobj_deref {};
+    struct __invoke_other {};
 
+    template <typename _Tp, typename _Tag> struct __result_of_success : wrapt<_Tp> {
+      using __invoke_type = _Tag;
+    };
+
+    /// ref: ubuntu c++11 header [/usr/include/c++/11/type_traits]
     template <typename _Tp, typename _Up = remove_cvref_t<_Tp>> struct __inv_unwrap {
       using type = _Tp;
     };
@@ -407,8 +414,9 @@ namespace zs {
     // [func.require] paragraph 1 bullet 3:
     struct __result_of_memobj_ref_impl {
       template <typename _Fp, typename _Tp1>
-      constexpr wrapt<decltype(declval<_Tp1>().*declval<_Fp>())> _S_test(int);
-      template <typename, typename> constexpr failure_type _S_test(...);
+      static __result_of_success<decltype(declval<_Tp1>().*declval<_Fp>()), __invoke_memobj_ref>
+      _S_test(int);
+      template <typename, typename> static failure_type _S_test(...);
     };
     template <typename _MemPtr, typename _Arg> struct __result_of_memobj_ref
         : private __result_of_memobj_ref_impl {
@@ -417,8 +425,10 @@ namespace zs {
     // [func.require] paragraph 1 bullet 4:
     struct __result_of_memobj_deref_impl {
       template <typename _Fp, typename _Tp1>
-      constexpr wrapt<decltype((*std::declval<_Tp1>()).*std::declval<_Fp>())> _S_test(int);
-      template <typename, typename> constexpr failure_type _S_test(...);
+      static __result_of_success<decltype((*declval<_Tp1>()).*declval<_Fp>()),
+                                 __invoke_memobj_deref>
+      _S_test(int);
+      template <typename, typename> static failure_type _S_test(...);
     };
     template <typename _MemPtr, typename _Arg> struct __result_of_memobj_deref
         : private __result_of_memobj_deref_impl {
@@ -431,18 +441,20 @@ namespace zs {
     struct __result_of_memobj<_Res _Class::*, _Arg> {
       using _Argval = remove_cvref_t<_Arg>;
       using _MemPtr = _Res _Class::*;
-      using type = conditional_t<is_same_v<_Argval, _Class> || is_base_of<_Class, _Argval>::value,
+      using type =
+          typename conditional_t<is_same_v<_Argval, _Class> || is_base_of<_Class, _Argval>::value,
                                  __result_of_memobj_ref<_MemPtr, _Arg>,
-                                 __result_of_memobj_deref<_MemPtr, _Arg>>;
+                                 __result_of_memobj_deref<_MemPtr, _Arg>>::type;
     };
 
     // callable is a member func
     // [func.require] paragraph 1 bullet 1:
     struct __result_of_memfun_ref_impl {
       template <typename _Fp, typename _Tp1, typename... _Args>
-      constexpr wrapt<decltype((declval<_Tp1>().*declval<_Fp>())(declval<_Args>()...))> _S_test(
-          int);
-      template <typename...> constexpr failure_type _S_test(...);
+      static __result_of_success<decltype((declval<_Tp1>().*declval<_Fp>())(declval<_Args>()...)),
+                                 __invoke_memfun_ref>
+      _S_test(int);
+      template <typename...> static failure_type _S_test(...);
     };
     template <typename _MemPtr, typename _Arg, typename... _Args> struct __result_of_memfun_ref
         : private __result_of_memfun_ref_impl {
@@ -451,8 +463,10 @@ namespace zs {
     // [func.require] paragraph 1 bullet 2:
     struct __result_of_memfun_deref_impl {
       template <typename _Fp, typename _Tp1, typename... _Args>
-      constexpr wrapt<decltype(((*declval<_Tp1>()).*declval<_Fp>())(declval<_Args>()...))> _S_test(
-          int);
+      static __result_of_success<decltype(((*declval<_Tp1>())
+                                           .*declval<_Fp>())(declval<_Args>()...)),
+                                 __invoke_memfun_deref>
+      _S_test(int);
       template <typename...> static failure_type _S_test(...);
     };
     template <typename _MemPtr, typename _Arg, typename... _Args> struct __result_of_memfun_deref
@@ -465,16 +479,20 @@ namespace zs {
     struct __result_of_memfun<_Res _Class::*, _Arg, _Args...> {
       using _Argval = remove_reference_t<_Arg>;
       using _MemPtr = _Res _Class::*;
-      using type = conditional_t<is_base_of<_Class, _Argval>::value,
-                                 __result_of_memfun_ref<_MemPtr, _Arg, _Args...>,
-                                 __result_of_memfun_deref<_MemPtr, _Arg, _Args...>>;
+      using type = typename conditional_t<is_base_of<_Class, _Argval>::value,
+                                          __result_of_memfun_ref<_MemPtr, _Arg, _Args...>,
+                                          __result_of_memfun_deref<_MemPtr, _Arg, _Args...>>::type;
     };
-    template <typename Fn, typename _Arg, typename... _Args> struct __result_of_memfun_delegate
-        : __result_of_memfun<Fn, typename __inv_unwrap<_Arg>::type, _Args...> {};
+    template <typename Fn, typename _Arg, typename... _Args>
+    __result_of_memfun<Fn, typename __inv_unwrap<_Arg>::type, _Args...>
+    __result_of_memfun_delegate() {
+      return {};
+    }
     // callable is free func, etc.
     template <typename Fn, typename... Args>
-    constexpr wrapt<decltype(declval<Fn>()(declval<Args>()...))> invoke_test(int);
-    template <typename...> constexpr failure_type invoke_test(...);
+    static __result_of_success<decltype(declval<Fn>()(declval<Args>()...)), __invoke_other>
+    invoke_test(int);
+    template <typename...> static failure_type invoke_test(...);
 
     // deduce invoke result
     template <bool IsMemberObjectPtr, bool IsMemberFuncPtr, typename Fn, typename... Args>
@@ -483,36 +501,147 @@ namespace zs {
         return failure_type{};
       else if constexpr (IsMemberObjectPtr) {
         if constexpr (sizeof...(Args) == 1)
-          return __result_of_memobj<decay_t<Fn>, typename __inv_unwrap<Args>::type...>{};
+          return typename __result_of_memobj<decay_t<Fn>,
+                                             typename __inv_unwrap<Args>::type...>::type{};
         else
           return failure_type{};
       } else if constexpr (IsMemberFuncPtr) {
         if constexpr (sizeof...(Args) > 1)
-          return __result_of_memfun_delegate<decay_t<Fn>, Args...>{};
+          return typename decltype(__result_of_memfun_delegate<decay_t<Fn>, Args...>())::type{};
         else
           return failure_type{};
       } else
         return decltype(invoke_test<Fn, Args...>(0)){};
     }
   }  // namespace detail
-
+  /// ref: https://en.cppreference.com/w/cpp/utility/functional
+  /// invoke_result
   template <typename Functor, typename... Args> struct invoke_result
       : decltype(detail::deduce_invoke_result<
                  is_member_object_pointer_v<remove_reference_t<Functor>>,
-                 is_member_function_pointer_v<remove_reference_t<Functor>>, Functor, Args...>()) {};
+                 is_member_function_pointer_v<remove_reference_t<Functor>>, Functor, Args...>()) {
+    // _Fn must be a complete class or an unbounded array
+    // each argument type must be a complete class or an unbounded array
+  };
   template <typename _Fn, typename... _Args> using invoke_result_t =
       typename invoke_result<_Fn, _Args...>::type;
 
+  /// result_of
   template <typename> struct result_of;
   template <typename _Functor, typename... _ArgTypes> struct result_of<_Functor(_ArgTypes...)>
       : invoke_result<_Functor, _ArgTypes...> {};
+  template <typename _Fn> using result_of_t = typename result_of<_Fn>::type;
 
-#if 0
+  /// is_invocable
+  // The primary template is used for invalid INVOKE expressions.
+  template <typename _Result, typename _Ret, bool = is_void<_Ret>::value, typename = void>
+  struct __is_invocable_impl : false_type {};
+  // Used for valid INVOKE and INVOKE<void> expressions.
+  template <typename _Result, typename _Ret>
+  struct __is_invocable_impl<_Result, _Ret,
+                             /* is_void<_Ret> = */ true, void_t<typename _Result::type>>
+      : true_type {};
+  // Used for INVOKE<R> expressions to check the implicit conversion to R.
+  template <typename _Result, typename _Ret>
+  struct __is_invocable_impl<_Result, _Ret,
+                             /* is_void<_Ret> = */ false, void_t<typename _Result::type>> {
+  private:
+    // The type of the INVOKE expression.
+    // Unlike declval, this doesn't add_rvalue_reference.
+    static typename _Result::type _S_get();
+
+    // The argument passed may be a different type convertible to _Tp
+    template <typename _Tp> static void _S_conv(_Tp);
+
+    // This overload is viable if INVOKE(f, args...) can convert to _Tp.
+    template <typename _Tp, typename = decltype(_S_conv<_Tp>(_S_get()))>
+    static true_type _S_test(int);
+    template <typename _Tp> static false_type _S_test(...);
+
+  public:
+    using type = decltype(_S_test<_Ret>(1));
+  };
+  template <typename _Fn, typename... _ArgTypes> struct is_invocable
+      : __is_invocable_impl<invoke_result<_Fn, _ArgTypes...>, void>::type {
+    // check complete or unbounded for _Fn, _ArgTypes
+  };
+  template <typename _Fn, typename... _ArgTypes> constexpr bool is_invocable_v
+      = is_invocable<_Fn, _ArgTypes...>::value;
+  template <typename _Ret, typename _Fn, typename... _ArgTypes> struct is_invocable_r
+      : __is_invocable_impl<invoke_result<_Fn, _ArgTypes...>, _Ret>::type {
+    // check complete or unbounded for _Fn, _ArgTypes, _Ret
+  };
+  template <typename _Ret, typename _Fn, typename... _ArgTypes> constexpr bool is_invocable_r_v
+      = is_invocable_r<_Ret, _Fn, _ArgTypes...>::value;
+
+  // check no-throw
+  template <typename _Fn, typename _Tp, typename... _Args>
+  constexpr bool __call_is_nt(detail::__invoke_memfun_ref) {
+    using _Up = typename detail::__inv_unwrap<_Tp>::type;
+    return noexcept((declval<_Up>().*declval<_Fn>())(declval<_Args>()...));
+  }
+  template <typename _Fn, typename _Tp, typename... _Args>
+  constexpr bool __call_is_nt(detail::__invoke_memfun_deref) {
+    return noexcept(((*declval<_Tp>()).*declval<_Fn>())(declval<_Args>()...));
+  }
+  template <typename _Fn, typename _Tp> constexpr bool __call_is_nt(detail::__invoke_memobj_ref) {
+    using _Up = typename detail::__inv_unwrap<_Tp>::type;
+    return noexcept(declval<_Up>().*declval<_Fn>());
+  }
+  template <typename _Fn, typename _Tp> constexpr bool __call_is_nt(detail::__invoke_memobj_deref) {
+    return noexcept((*declval<_Tp>()).*declval<_Fn>());
+  }
+  template <typename _Fn, typename... _Args> constexpr bool __call_is_nt(detail::__invoke_other) {
+    return noexcept(declval<_Fn>()(declval<_Args>()...));
+  }
+  template <typename _Result, typename _Fn, typename... _Args> struct __call_is_nothrow
+      : bool_constant<__call_is_nt<_Fn, _Args...>(typename _Result::__invoke_type{})> {};
+  template <typename _Fn, typename... _Args> using __call_is_nothrow_
+      = __call_is_nothrow<invoke_result<_Fn, _Args...>, _Fn, _Args...>;
+  /// no_throw_invocable
+  template <typename _Fn, typename... _Args> struct is_nothrow_invocable
+      : bool_constant<is_invocable_v<_Fn, _Args...> && __call_is_nothrow_<_Fn, _Args...>::value> {};
+  template <typename _Fn, typename... _Args> constexpr bool is_nothrow_invocable_v
+      = is_nothrow_invocable<_Fn, _Args...>::value;
+
+  namespace detail {
+    template <class> constexpr bool is_reference_wrapper_v = false;
+    template <class U> constexpr bool is_reference_wrapper_v<reference_wrapper<U>> = true;
+
+    template <class C, class Pointed, class T1, class... Args>
+    constexpr decltype(auto) invoke_memptr(Pointed C::*f, T1 &&t1, Args &&...args) {
+      if constexpr (is_function<Pointed>::value) {
+        if constexpr (is_base_of<C, decay_t<T1>>::value)
+          return (forward<T1>(t1).*f)(forward<Args>(args)...);
+        else if constexpr (is_reference_wrapper_v<decay_t<T1>>)
+          return (t1.get().*f)(forward<Args>(args)...);
+        else
+          return ((*forward<T1>(t1)).*f)(forward<Args>(args)...);
+      } else {
+        static_assert(is_object_v<Pointed> && sizeof...(args) == 0);
+        if constexpr (is_base_of<C, decay_t<T1>>::value)
+          return forward<T1>(t1).*f;
+        else if constexpr (is_reference_wrapper_v<decay_t<T1>>)
+          return t1.get().*f;
+        else
+          return (*forward<T1>(t1)).*f;
+      }
+    }
+  }  // namespace detail
+
+  template <class F, class... Args> constexpr invoke_result_t<F, Args...> invoke(
+      F &&f, Args &&...args) noexcept(is_nothrow_invocable_v<F, Args...>) {
+    if constexpr (is_member_pointer_v<decay_t<F>>)
+      return detail::invoke_memptr(f, forward<Args>(args)...);
+    else
+      return forward<F>(f)(forward<Args>(args)...);
+  }
+
   // reference_wrapper
   /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
   namespace detail {
-    template <class T> constexpr T& pass_ref_only(T& t) noexcept { return t; }
-    template <class T> void pass_ref_only(T&&) = delete;
+    template <class T> constexpr T &pass_ref_only(T &t) noexcept { return t; }
+    template <class T> void pass_ref_only(T &&) = delete;
   }  // namespace detail
   template <class T> class reference_wrapper {
   public:
@@ -522,47 +651,41 @@ namespace zs {
     template <class U,
               class = decltype(detail::pass_ref_only<T>(declval<U>()),
                                enable_if_t<!is_same_v<reference_wrapper, remove_cvref_t<U>>>())>
-    constexpr reference_wrapper(U&& u) noexcept(noexcept(detail::pass_ref_only<T>(forward<U>(u))))
+    constexpr reference_wrapper(U &&u) noexcept(noexcept(detail::pass_ref_only<T>(forward<U>(u))))
         : _ptr(addressof(detail::pass_ref_only<T>(forward<U>(u)))) {}
 
-    reference_wrapper(const reference_wrapper&) noexcept = default;
+    reference_wrapper(const reference_wrapper &) noexcept = default;
 
     // assignment
-    reference_wrapper& operator=(const reference_wrapper& x) noexcept = default;
+    reference_wrapper &operator=(const reference_wrapper &x) noexcept = default;
 
     // access
-    constexpr operator T&() const noexcept { return *_ptr; }
-    constexpr T& get() const noexcept { return *_ptr; }
+    constexpr operator T &() const noexcept { return *_ptr; }
+    constexpr T &get() const noexcept { return *_ptr; }
 
     template <class... ArgTypes>
-    constexpr invoke_result_t<T&, ArgTypes...> operator()(ArgTypes&&... args) const
-        noexcept(std::is_nothrow_invocable_v<T&, ArgTypes...>) {
-      return std::invoke(get(), forward<ArgTypes>(args)...);
+    constexpr invoke_result_t<T &, ArgTypes...> operator()(ArgTypes &&...args) const
+        noexcept(is_nothrow_invocable_v<T &, ArgTypes...>) {
+      return invoke(get(), forward<ArgTypes>(args)...);
     }
 
   private:
-    T* _ptr;
+    T *_ptr;
   };
-  template <class T> reference_wrapper(T&) -> reference_wrapper<T>;
+  template <class T> reference_wrapper(T &) -> reference_wrapper<T>;
 
   /// special_decay = decay + unref
   template <class T> struct unwrap_refwrapper {
     using type = T;
   };
   template <class T> struct unwrap_refwrapper<reference_wrapper<T>> {
-    using type = T&;
+    using type = T &;
   };
   template <class T> using special_decay_t =
-      typename unwrap_refwrapper<typename decay<T>::type>::type;
+      typename unwrap_refwrapper<decay_t<T>>::type;
 
-  template <class T> struct is_refwrapper {
-    static constexpr bool value = false;
-  };
-  template <class T> struct is_refwrapper<reference_wrapper<T>> {
-    static constexpr bool value = true;
-  };
-  template <class T> static constexpr bool is_refwrapper_v
-      = is_refwrapper<typename decay<T>::type>::value;
-#endif
+  template <class T> struct is_refwrapper : false_type {};
+  template <class T> struct is_refwrapper<reference_wrapper<T>> : true_type {};
+  template <class T> static constexpr bool is_refwrapper_v = is_refwrapper<decay_t<T>>::value;
 
 }  // namespace zs

@@ -23,24 +23,12 @@ namespace zs {
 
   /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
   /// decay+unref
-  template <class T> struct unwrap_refwrapper {
-    using type = T;
-  };
   template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> {
     using type = T &;
-  };
-  template <class T> using special_decay_t =
-      typename unwrap_refwrapper<typename decay<T>::type>::type;
-
-  template <class T> struct is_refwrapper {
-    static constexpr bool value = false;
   };
   template <class T> struct is_refwrapper<std::reference_wrapper<T>> {
     static constexpr bool value = true;
   };
-  template <class T> static constexpr bool is_refwrapper_v
-      = is_refwrapper<typename decay<T>::type>::value;
-
   // specialization for std::integral_constant
   template <auto N> struct is_value_wrapper<std::integral_constant<decltype(N), N>> : true_type {};
 

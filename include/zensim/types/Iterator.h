@@ -30,7 +30,7 @@ namespace zs::detail {
 #else
     /// this method allows for template function
     template <typename U> static constexpr auto test(char) -> std::enable_if_t<
-        std::is_convertible_v<decltype(std::declval<U &>().equal_to(std::declval<U>())), bool>,
+        std::is_convertible_v<decltype(declval<U &>().equal_to(declval<U>())), bool>,
         true_type> {
       return {};
     }
@@ -113,7 +113,7 @@ namespace zs::detail {
   };
   template <typename T> struct infer_difference_type<
       T, std::enable_if_t<!has_difference_type<T>::value && has_distance_to<T>::value>> {
-    using type = decltype(std::declval<T &>().distance_to(std::declval<T &>()));
+    using type = decltype(declval<T &>().distance_to(declval<T &>()));
   };
   template <typename T> using infer_difference_type_t = typename infer_difference_type<T>::type;
   /// check advance impl
@@ -121,7 +121,7 @@ namespace zs::detail {
   private:
     template <typename U> static constexpr false_type test(...) { return {}; }
     template <typename U> static constexpr auto test(char)
-        -> decltype(std::declval<U &>().advance(std::declval<infer_difference_type_t<U>>()),
+        -> decltype(declval<U &>().advance(declval<infer_difference_type_t<U>>()),
                     true_type{}) {
       return true_type{};
     }
@@ -131,7 +131,7 @@ namespace zs::detail {
   };
   /// infer value type
   template <typename T, typename = void> struct infer_value_type {
-    using type = remove_cvref_t<decltype(*std::declval<T &>())>;
+    using type = remove_cvref_t<decltype(*declval<T &>())>;
   };
   template <typename T> struct infer_value_type<T, void_t<decltype(&T::value_type)>> {
     using type = typename T::value_type;
@@ -151,9 +151,9 @@ namespace zs {
   struct iterator_traits<Iter,
                          void_t<enable_if_t<std::is_base_of_v<IteratorInterface<Iter>, Iter>>>> {
     // reference
-    using reference = decltype(*std::declval<Iter &>());
+    using reference = decltype(*declval<Iter &>());
     // pointer (should also infer this)
-    using pointer = decltype(std::declval<Iter &>().operator->());
+    using pointer = decltype(declval<Iter &>().operator->());
     // difference type
     using difference_type = typename detail::infer_difference_type<Iter>::type;
     // value type

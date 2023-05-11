@@ -69,7 +69,7 @@ namespace zs {
   template <zs::execspace_e Space, typename ShT> struct SpatialHashView<Space, ShT> {
     static constexpr bool is_const_structure = std::is_const_v<ShT>;
     static constexpr auto space = Space;
-    using container_type = std::remove_const_t<ShT>;
+    using container_type = remove_const_t<ShT>;
     static constexpr int dim = ShT::dim;
     using index_type = typename ShT::index_type;
     using size_type = typename ShT::size_type;
@@ -80,10 +80,10 @@ namespace zs {
     using integer_coord_type = typename ShT::integer_coord_type;
     using table_type = typename ShT::table_type;
     using table_view_type = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
+        declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
     using indices_type = typename ShT::indices_type;
     using indices_view_type = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const indices_type &, indices_type &>>()));
+        declval<conditional_t<is_const_structure, const indices_type &, indices_type &>>()));
 
     constexpr SpatialHashView() = default;
     ~SpatialHashView() = default;

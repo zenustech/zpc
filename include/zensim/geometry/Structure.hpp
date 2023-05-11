@@ -269,7 +269,7 @@ namespace zs {
   /// GridT can be const decorated
   template <typename GridT, typename = void> struct grid_traits {
     static constexpr bool is_const_structure = std::is_const_v<GridT>;
-    using grid_t = std::remove_const_t<GridT>;
+    using grid_t = remove_const_t<GridT>;
     using value_type = typename grid_t::value_type;
     using size_type = typename grid_t::size_type;  // basically std::size_t
     using channel_counter_type = typename grid_t::channel_counter_type;
@@ -297,10 +297,10 @@ namespace zs {
     template <execspace_e space, bool with_name = true> using grid_view_t = conditional_t<
         with_name,
         RM_CVREF_T(
-            proxy<space>({}, std::declval<conditional_t<is_const_structure, const grid_storage_t &,
+            proxy<space>({}, declval<conditional_t<is_const_structure, const grid_storage_t &,
                                                         grid_storage_t &>>())),
         RM_CVREF_T(proxy<space>(
-            std::declval<
+            declval<
                 conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()))>;
     template <execspace_e space, bool with_name = true> using grid_block_view_t =
         typename grid_view_t<space, with_name>::tile_view_type;  // tilevector view property
@@ -798,7 +798,7 @@ namespace zs {
   template <execspace_e, typename GridsT, typename = void> struct GridsView;
   template <execspace_e space, typename GridsT> struct GridsView<space, GridsT> {
     static constexpr bool is_const_structure = std::is_const_v<GridsT>;
-    using grids_t = std::remove_const_t<GridsT>;
+    using grids_t = remove_const_t<GridsT>;
     using value_type = typename grids_t::value_type;
     static constexpr int dim = grids_t::dim;
     static constexpr auto side_length = grids_t::side_length;
@@ -808,7 +808,7 @@ namespace zs {
 
     using grid_storage_t = typename grids_t::grid_storage_t;
     using grid_view_t = RM_CVREF_T(proxy<space>(
-        {}, std::declval<
+        {}, declval<
                 conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()));
     using grid_block_view_t = typename grid_view_t::tile_view_type;  // tilevector view property
     using size_type = typename grids_t::size_type;

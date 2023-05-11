@@ -32,7 +32,7 @@ namespace zs {
   template <typename T> struct LinearCombineOp {
     constexpr LinearCombineOp(T m = (T)1, T n = (T)1) noexcept : m{m}, n{n} {}
     template <typename L, typename R> constexpr auto operator()(L&& lhs, R&& rhs)
-        -> decltype(std::declval<T>() * FWD(lhs) + std::declval<T>() * FWD(rhs)) {
+        -> decltype(declval<T>() * FWD(lhs) + declval<T>() * FWD(rhs)) {
       return m * FWD(lhs) + n * FWD(rhs);
     }
     T m, n;

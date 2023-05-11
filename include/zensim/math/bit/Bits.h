@@ -55,8 +55,8 @@ namespace zs {
   // CppCon 2019 Timur Doumler [Type punning in modern C++]
   //
   template <typename DstT, typename SrcT> constexpr auto reinterpret_bits(SrcT &&val) noexcept {
-    using Src = std::remove_cv_t<std::remove_reference_t<SrcT>>;
-    using Dst = std::remove_cv_t<std::remove_reference_t<DstT>>;
+    using Src = remove_cv_t<remove_reference_t<SrcT>>;
+    using Dst = remove_cv_t<remove_reference_t<DstT>>;
     static_assert(sizeof(Src) == sizeof(Dst),
                   "Source Type and Destination Type must be of the same size");
     static_assert(std::is_trivially_copyable_v<Src> && std::is_trivially_copyable_v<Dst>,

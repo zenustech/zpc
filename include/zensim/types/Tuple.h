@@ -6,7 +6,6 @@
 #include "zensim/Reflection.h"
 #include "zensim/math/MathUtils.h"
 #include "zensim/meta/Meta.h"
-#include "zensim/meta/Relationship.h"
 #include "zensim/meta/Sequence.h"
 
 namespace zs {
@@ -236,7 +235,7 @@ template <std::size_t I, typename T> struct tuple_value {
       return zs::make_tuple(op(Js, get<Is>()...)...);
     }
     template <std::size_t N, typename MapOp> constexpr auto map(MapOp &&op) const noexcept {
-      return map_impl(std::forward<MapOp>(op), gen_seq<N>::ascend());
+      return map_impl(forward<MapOp>(op), gen_seq<N>::ascend());
     }
     /// reduce
     template <typename MonoidOp> constexpr auto reduce(MonoidOp &&op) const noexcept {
@@ -442,7 +441,7 @@ template <std::size_t I, typename T> struct tuple_value {
       static constexpr auto get_ret_type(value_seq<Os...>, value_seq<Is...>) {
         // precisely extract types from these tuples
         return type_seq<typename select_indexed_type<
-            Os, std::remove_reference_t<Tuples>...>::template tuple_element_t<Is>...>{};
+            Os, remove_reference_t<Tuples>...>::template tuple_element_t<Is>...>{};
       }
       // https://en.cppreference.com/w/cpp/utility/tuple/tuple_cat
       using types = decltype(get_ret_type(outer{}, inner{}));
@@ -473,7 +472,7 @@ template <std::size_t I, typename T> struct tuple_value {
     } else {
       constexpr auto marks = value_seq<(remove_cvref_t<Ts>::tuple_size > 0 ? 1 : 0)...>{};
       if constexpr (marks.reduce(logical_and<bool>{})) {
-        // using helper = concat<typename std::remove_reference_t<Ts>::tuple_types...>;
+        // using helper = concat<typename remove_reference_t<Ts>::tuple_types...>;
         using helper = tuple_detail_impl::concat<Ts...>;
         return tuple_detail_impl::tuple_cat_impl<assemble_t<tuple, typename helper::types>>(
             typename helper::outer{}, typename helper::inner{},
@@ -548,7 +547,7 @@ template <std::size_t I, typename T> struct tuple_value {
   // need this because zs::tuple's rvalue deduction not finished
   template <typename T> using capture_t
       = conditional_t<std::is_lvalue_reference<T>{}, std::add_lvalue_reference_t<T>,
-                      std::remove_reference_t<T>>;
+                      remove_reference_t<T>>;
   template <typename... Ts> constexpr auto fwd_capture(Ts &&...xs) {
     return tuple<capture_t<Ts>...>(FWD(xs)...);
   }

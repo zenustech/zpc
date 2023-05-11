@@ -165,7 +165,7 @@ namespace zs {
 
   template <grid_e category, execspace_e space, typename T, int d, auto l>
   struct ResetGrid<category, GridsView<space, Grids<T, d, l>>> {
-    using grid_view_t = decltype(proxy<space>(std::declval<Grid<T, d, l, category> &>()));
+    using grid_view_t = decltype(proxy<space>(declval<Grid<T, d, l, category> &>()));
     using value_type = typename grid_view_t::value_type;
     static constexpr int dim = grid_view_t::dim;
 
@@ -183,7 +183,7 @@ namespace zs {
 
   template <grid_e category, execspace_e space, typename T, int d, auto l>
   struct GridMomentumToVelocity<category, GridsView<space, Grids<T, d, l>>> {
-    using grid_view_t = decltype(proxy<space>(std::declval<Grid<T, d, l, category> &>()));
+    using grid_view_t = decltype(proxy<space>(declval<Grid<T, d, l, category> &>()));
     using value_type = typename grid_view_t::value_type;
     static constexpr int dim = grid_view_t::dim;
 
@@ -217,7 +217,7 @@ namespace zs {
   struct GridAngularMomentum<category, HashTableView<space, TableT>,
                              GridsView<space, Grids<T, d, l>>> {
     using partition_t = HashTableView<space, TableT>;
-    using grid_view_t = decltype(proxy<space>(std::declval<Grid<T, d, l, category> &>()));
+    using grid_view_t = decltype(proxy<space>(declval<Grid<T, d, l, category> &>()));
     using value_type = typename grid_view_t::value_type;
     static constexpr int dim = grid_view_t::dim;
 

@@ -212,16 +212,16 @@ namespace zs {
       : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>> {
     static constexpr bool is_const_structure = std::is_const_v<SparseLevelSetT>;
     static constexpr auto space = Space;
-    using ls_t = std::remove_const_t<SparseLevelSetT>;
+    using ls_t = remove_const_t<SparseLevelSetT>;
     using value_type = typename ls_t::value_type;
     using size_type = typename ls_t::size_type;
     using index_type = typename ls_t::index_type;
     using table_t = typename ls_t::table_t;
     using table_view_t = RM_CVREF_T(proxy<Space>(
-        std::declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
+        declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
     using grid_t = typename ls_t::grid_t;
     using grid_view_t = RM_CVREF_T(proxy<Space>(
-        {}, std::declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
+        {}, declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
 
     using T = typename ls_t::value_type;
     using Ti = typename ls_t::index_type;
@@ -1026,6 +1026,6 @@ namespace zs {
 
   template <kernel_e kt, int drv_order, typename LsvT, typename... Args>
   LevelSetArena(wrapv<kt>, wrapv<drv_order>, LsvT &, Args...)
-      -> LevelSetArena<std::remove_reference_t<LsvT>, kt, drv_order>;
+      -> LevelSetArena<remove_reference_t<LsvT>, kt, drv_order>;
 
 }  // namespace zs

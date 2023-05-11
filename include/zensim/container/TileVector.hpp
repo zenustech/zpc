@@ -623,7 +623,7 @@ namespace zs {
             typename = void>
   struct TileVectorUnnamedView {
     static constexpr bool is_const_structure = std::is_const_v<TileVectorT>;
-    using tile_vector_type = std::remove_const_t<TileVectorT>;
+    using tile_vector_type = remove_const_t<TileVectorT>;
     using const_tile_vector_type = std::add_const_t<tile_vector_type>;
     using pointer = typename tile_vector_type::pointer;
     using const_pointer = typename tile_vector_type::const_pointer;

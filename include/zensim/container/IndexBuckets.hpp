@@ -66,7 +66,7 @@ namespace zs {
   template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsView {
     static constexpr bool is_const_structure = std::is_const_v<IndexBucketsT>;
     static constexpr auto space = Space;
-    using ib_t = std::remove_const_t<IndexBucketsT>;
+    using ib_t = remove_const_t<IndexBucketsT>;
     static constexpr int dim = ib_t::dim;
     static constexpr auto category = ib_t::category;
     using value_type = typename ib_t::value_type;
@@ -75,10 +75,10 @@ namespace zs {
     using coord_index_type = typename ib_t::coord_index_type;
     using table_t = typename ib_t::table_t;
     using table_view_t = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
+        declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
     using vector_t = typename ib_t::vector_t;
     using vector_view_t = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const vector_t &, vector_t &>>()));
+        declval<conditional_t<is_const_structure, const vector_t &, vector_t &>>()));
 
     static constexpr auto coord_offset
         = category == grid_e::collocated ? (value_type)0.5 : (value_type)0;

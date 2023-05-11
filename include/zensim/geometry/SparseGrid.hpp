@@ -193,7 +193,7 @@ namespace zs {
       : LevelSetInterface<SparseGridView<Space, SparseGridT>> {
     static constexpr bool is_const_structure = std::is_const_v<SparseGridT>;
     static constexpr auto space = Space;
-    using container_type = std::remove_const_t<SparseGridT>;
+    using container_type = remove_const_t<SparseGridT>;
     using value_type = typename container_type::value_type;
     using size_type = typename container_type::size_type;
     using index_type = typename container_type::index_type;
@@ -206,11 +206,11 @@ namespace zs {
 
     using table_type = typename container_type::table_type;
     using table_view_type = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
+        declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
     using grid_storage_type = typename container_type::grid_storage_type;
     using grid_view_type = RM_CVREF_T(view<space>(
         {},
-        std::declval<
+        declval<
             conditional_t<is_const_structure, const grid_storage_type &, grid_storage_type &>>()));
     using transform_type = typename container_type::transform_type;
 

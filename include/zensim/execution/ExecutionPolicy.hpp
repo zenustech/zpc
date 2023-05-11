@@ -108,9 +108,9 @@ namespace zs {
     using exec_tag = host_exec_tag;
     template <typename Range, typename F> constexpr void operator()(Range &&range, F &&f) const {
       constexpr auto hasBegin = is_valid(
-          [](auto t) -> decltype((void)std::begin(std::declval<typename decltype(t)::type>())) {});
+          [](auto t) -> decltype((void)std::begin(declval<typename decltype(t)::type>())) {});
       constexpr auto hasEnd = is_valid(
-          [](auto t) -> decltype((void)std::end(std::declval<typename decltype(t)::type>())) {});
+          [](auto t) -> decltype((void)std::end(declval<typename decltype(t)::type>())) {});
       if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
         /// for iterator-like range (e.g. openvdb)
         /// for openvdb parallel iteration...
@@ -144,7 +144,7 @@ namespace zs {
     constexpr void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
                         const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
                         const Bodies &...bodies) const {
-      // using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
+      // using Range = zs::select_indexed_type<I, decay_t<Ranges>...>;
       const auto &range = zs::get<I>(ranges);
       if constexpr (I + 1 == sizeof...(Ranges)) {
         for (auto &&it : range) {
@@ -167,7 +167,7 @@ namespace zs {
     }
 
     template <class InputIt, class OutputIt,
-              class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+              class BinaryOperation = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     constexpr void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                                   BinaryOperation &&binary_op = {},
                                   const source_location &loc = source_location::current()) const {
@@ -175,7 +175,7 @@ namespace zs {
       while (first != last) *(d_first++) = prev = binary_op(prev, *(first++));
     }
     template <class InputIt, class OutputIt,
-              class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
+              class T = remove_cvref_t<decltype(*declval<InputIt>())>,
               class BinaryOperation = std::plus<T>>
     constexpr void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                                   T init = deduce_identity<BinaryOperation, T>(),
@@ -187,11 +187,11 @@ namespace zs {
       } while (++first != last);
     }
     template <class InputIt, class OutputIt,
-              class BinaryOp = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+              class BinaryOp = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     constexpr void reduce(
         InputIt &&first, InputIt &&last, OutputIt &&d_first,
-        remove_cvref_t<decltype(*std::declval<InputIt>())> init
-        = deduce_identity<BinaryOp, remove_cvref_t<decltype(*std::declval<InputIt>())>>(),
+        remove_cvref_t<decltype(*declval<InputIt>())> init
+        = deduce_identity<BinaryOp, remove_cvref_t<decltype(*declval<InputIt>())>>(),
         BinaryOp &&binary_op = {}, const source_location &loc = source_location::current()) const {
       for (; first != last;) init = binary_op(init, *(first++));
       *d_first = init;
@@ -213,7 +213,7 @@ namespace zs {
     template <class InputIt, class OutputIt> constexpr void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
+        = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       using IterT = remove_cvref_t<InputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
@@ -278,12 +278,12 @@ namespace zs {
     }
     template <class KeyIter, class ValueIter,
               typename Tn
-              = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
+              = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
     void radix_sort_pair(
         KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
         int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+        = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       using KeyT = typename std::iterator_traits<KeyIter>::value_type;
       using ValueT = typename std::iterator_traits<ValueIter>::value_type;
@@ -483,7 +483,7 @@ namespace zs {
             = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
   void sort_pair(
       ExecutionPolicy &&policy, KeyIter &&keys, ValueIter &&vals,
-      typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+      typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
       CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) {
     policy.sort_pair(FWD(keys), FWD(vals), count, FWD(compOp), loc);
   }
@@ -500,7 +500,7 @@ namespace zs {
             = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
   void merge_sort_pair(
       ExecutionPolicy &&policy, KeyIter &&keys, ValueIter &&vals,
-      typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+      typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
       CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) {
     policy.merge_sort_pair(FWD(keys), FWD(vals), count, FWD(compOp), loc);
   }
@@ -515,15 +515,15 @@ namespace zs {
   /// sort
   template <class ExecutionPolicy, class KeyIter, class ValueIter,
             typename Tn
-            = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
+            = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
   constexpr std::enable_if_t<std::is_convertible_v<
-      typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
+      typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
       std::random_access_iterator_tag>>
   radix_sort_pair(
       ExecutionPolicy &&policy, KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut,
       ValueIter &&valsOut, Tn count, int sbit = 0,
       int ebit
-      = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+      = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
       const source_location &loc = source_location::current()) {
     policy.radix_sort_pair(FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit,
                            loc);
@@ -531,7 +531,7 @@ namespace zs {
   template <class ExecutionPolicy, class InputIt, class OutputIt> constexpr void radix_sort(
       ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
       int ebit
-      = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
+      = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type) * 8,
       const source_location &loc = source_location::current()) {
     policy.radix_sort(FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
   }

@@ -113,7 +113,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   ZpcMeta.hpp
   meta/Functional.h
   meta/Meta.h
-  meta/Relationship.h
   meta/Sequence.h
 
   # profile

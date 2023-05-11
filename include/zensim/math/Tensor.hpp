@@ -16,7 +16,7 @@ namespace zs {
       : VecInterface<tensor_view<Tensor, integer_seq<Tn, Ns...>>> {
     using base_t = VecInterface<tensor_view<Tensor, integer_seq<Tn, Ns...>>>;
     static constexpr bool is_const_structure = std::is_const_v<Tensor>;
-    using tensor_type = std::remove_const_t<Tensor>;
+    using tensor_type = remove_const_t<Tensor>;
     using value_type = typename tensor_type::value_type;
     using extents = integer_seq<Tn, Ns...>;
     using index_type = typename vseq_t<extents>::value_type;

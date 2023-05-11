@@ -282,7 +282,7 @@ namespace zs {
   template <execspace_e space, typename HashTableT, typename = void> struct BHTView {
     static constexpr auto exectag = wrapv<space>{};
     static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
-    using hash_table_type = std::remove_const_t<HashTableT>;
+    using hash_table_type = remove_const_t<HashTableT>;
     using hasher_type = typename hash_table_type::hasher_type;
 
     using storage_key_type = typename hash_table_type::storage_key_type;

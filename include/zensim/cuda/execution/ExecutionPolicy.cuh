@@ -39,8 +39,8 @@ namespace zs {
       template <typename IterOrIndex, typename = void> struct iter_arg {
         using type = IterOrIndex;
       };
-      template <typename Iter> struct iter_arg<Iter, void_t<decltype(*std::declval<Iter>())>> {
-        using type = decltype(*std::declval<Iter>());
+      template <typename Iter> struct iter_arg<Iter, void_t<decltype(*declval<Iter>())>> {
+        using type = decltype(*declval<Iter>());
       };
       template <typename IterOrIndex> using iter_arg_t = typename iter_arg<IterOrIndex>::type;
 
@@ -373,7 +373,7 @@ namespace zs {
     void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
                   const source_location &loc = source_location::current()) const {
       for_each_impl(
-          typename std::iterator_traits<std::remove_reference_t<ForwardIt>>::iterator_category{},
+          typename std::iterator_traits<remove_reference_t<ForwardIt>>::iterator_category{},
           FWD(first), FWD(last), FWD(f), loc);
     }
     /// inclusive scan
@@ -411,17 +411,17 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
-              class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+              class BinaryOperation = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       inclusive_scan_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
           FWD(first), FWD(last), FWD(d_first), FWD(binary_op), loc);
     }
     /// exclusive scan
@@ -469,11 +469,11 @@ namespace zs {
         const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       exclusive_scan_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
           FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// reduce
@@ -511,7 +511,7 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
-              // class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
+              // class T = remove_cvref_t<decltype(*declval<InputIt>())>,
               class BinaryOp
               = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
@@ -522,22 +522,22 @@ namespace zs {
                 const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       reduce_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
           FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
     /// merge sort
     template <class KeyIter, class ValueIter, typename CompareOpT> std::enable_if_t<
         std::is_convertible_v<
-            typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
+            typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
             std::
-                random_access_iterator_tag> && std::is_convertible_v<typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category, std::random_access_iterator_tag>>
+                random_access_iterator_tag> && std::is_convertible_v<typename std::iterator_traits<remove_reference_t<ValueIter>>::iterator_category, std::random_access_iterator_tag>>
     merge_sort_pair(
         KeyIter &&keys, ValueIter &&vals,
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
         CompareOpT &&compOp, const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
@@ -564,7 +564,7 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class KeyIter, typename CompareOpT> std::enable_if_t<std::is_convertible_v<
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
         std::random_access_iterator_tag>>
     merge_sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
                const source_location &loc = source_location::current()) const {
@@ -592,15 +592,15 @@ namespace zs {
     /// radix sort pair
     template <class KeyIter, class ValueIter,
               typename Tn
-              = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
+              = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
     std::enable_if_t<std::is_convertible_v<
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
         std::random_access_iterator_tag>>
     radix_sort_pair(
         KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
         int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+        = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
@@ -681,19 +681,19 @@ namespace zs {
     template <class InputIt, class OutputIt> void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
+        = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
+              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
+              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
           "Input Iterator and Output Iterator should be from the same category");
       static_assert(
-          is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::pointer,
-                    typename std::iterator_traits<std::remove_reference_t<OutputIt>>::pointer>,
+          is_same_v<typename std::iterator_traits<remove_reference_t<InputIt>>::pointer,
+                    typename std::iterator_traits<remove_reference_t<OutputIt>>::pointer>,
           "Input iterator pointer different from output iterator\'s");
       radix_sort_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
+          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
           FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
     }
 

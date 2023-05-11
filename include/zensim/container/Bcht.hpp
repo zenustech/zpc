@@ -161,7 +161,7 @@ namespace zs {
         return wrapt<KeyT>{};
     }
     using key_type = typename decltype(deduce_key_type<key_is_vec>())::type;
-    using hashed_key_type = RM_CVREF_T(std::declval<hasher_type>()(std::declval<key_type>()));
+    using hashed_key_type = RM_CVREF_T(declval<hasher_type>()(declval<key_type>()));
     using mapped_hashed_key_type
         = conditional_t<sizeof(hashed_key_type) == 8, u64,
                         conditional_t<sizeof(hashed_key_type) == 4, u32,
@@ -459,7 +459,7 @@ namespace zs {
 
   template <execspace_e space, typename BCHT, bool Base = false, typename = void> struct BCHTView {
     static constexpr bool is_const_structure = std::is_const_v<BCHT>;
-    using hash_table_type = std::remove_const_t<BCHT>;
+    using hash_table_type = remove_const_t<BCHT>;
     static constexpr auto exectag = wrapv<space>{};
 
     static constexpr auto bucket_size = hash_table_type::bucket_size;

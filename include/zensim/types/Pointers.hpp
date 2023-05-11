@@ -29,7 +29,7 @@ namespace zs {
     template <typename D = Deleter, std::enable_if_t<std::is_move_constructible_v<D>, char> = 0>
     copyable_ptr(T *p, std::enable_if_t<!std::is_lvalue_reference_v<D>, D &&> d) noexcept
         : _ptr{p, std::move(d)} {}
-    template <typename D = Deleter, typename DUnref = std::remove_reference_t<D>>
+    template <typename D = Deleter, typename DUnref = remove_reference_t<D>>
     copyable_ptr(T *p, std::enable_if_t<std::is_lvalue_reference_v<D>, DUnref &&> d) = delete;
 
     constexpr copyable_ptr(std::nullptr_t) noexcept : _ptr{nullptr} {}

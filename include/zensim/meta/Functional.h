@@ -4,7 +4,6 @@
 #include <limits>
 
 #include "Meta.h"
-#include "Relationship.h"
 #include "zensim/zpc_tpls/tl/function_ref.hpp"
 
 namespace zs {
@@ -24,7 +23,7 @@ namespace zs {
       typename map<Function, Functor>::type;
 
   template <typename MapperF, typename Oprand, bool recursive = true> struct map_op {
-    using type = decltype(std::declval<MapperF &>()(std::declval<Oprand>()));
+    using type = decltype(declval<MapperF &>()(declval<Oprand>()));
   };
   template <typename MapperF, template <class...> class Functor, typename... Args>
   struct map_op<MapperF, Functor<Args...>, true> {
@@ -37,12 +36,60 @@ namespace zs {
   // either, apply, join, bind, mcombine, fold
 
   /// binary operation
-  template <typename T = void> using plus = std::plus<T>;
-  template <typename T = void> using minus = std::minus<T>;
-  template <typename T = void> using logical_or = std::logical_or<T>;
-  template <typename T = void> using logical_and = std::logical_and<T>;
-  template <typename T = void> using multiplies = std::multiplies<T>;
-  template <typename T = void> using divides = std::divides<T>;
+  template <typename T = void> struct plus {
+    constexpr T operator()(const T &x, const T &y) const { return x + y; }
+  };
+  template <> struct plus<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(FWD(x) + FWD(y))) {
+      return FWD(x) + FWD(y);
+    }
+  };
+  template <typename T = void> struct minus {
+    constexpr T operator()(const T &x, const T &y) const { return x - y; }
+  };
+  template <> struct minus<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(FWD(x) - FWD(y))) {
+      return FWD(x) - FWD(y);
+    }
+  };
+  template <typename T = void> struct logical_or {
+    constexpr T operator()(const T &x, const T &y) const { return x || y; }
+  };
+  template <> struct logical_or<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(FWD(x) || FWD(y))) {
+      return FWD(x) || FWD(y);
+    }
+  };
+  template <typename T = void> struct logical_and {
+    constexpr T operator()(const T &x, const T &y) const { return x && y; }
+  };
+  template <> struct logical_and<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(FWD(x) && FWD(y))) {
+      return FWD(x) && FWD(y);
+    }
+  };
+  template <typename T = void> struct multiplies {
+    constexpr T operator()(const T &x, const T &y) const { return x * y; }
+  };
+  template <> struct multiplies<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(FWD(x) * FWD(y))) {
+      return FWD(x) * FWD(y);
+    }
+  };
+  template <typename T = void> struct divides {
+    constexpr T operator()(const T &x, const T &y) const { return x / y; }
+  };
+  template <> struct divides<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(FWD(x) / FWD(y))) {
+      return FWD(x) / FWD(y);
+    }
+  };
   template <typename T = void> struct getmax {
     template <typename Auto, typename TT = T, enable_if_t<is_same_v<TT, void>> = 0>
     constexpr Auto operator()(const Auto &lhs, const Auto &rhs) const noexcept {
@@ -72,7 +119,9 @@ namespace zs {
   }  // namespace detail
 
   namespace detail {
-    template <typename T> struct extract_template_type_argument2 { using type = void; };
+    template <typename T> struct extract_template_type_argument2 {
+      using type = void;
+    };
     template <template <class, class> class TT, typename T0, typename T1>
     struct extract_template_type_argument2<TT<T0, T1>> {
       using type0 = T0;
@@ -114,28 +163,28 @@ namespace zs {
     static constexpr T e{0};
     static constexpr auto identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
-      return (std::forward<Args>(args) + ...);
+      return (forward<Args>(args) + ...);
     }
   };
   template <typename T> struct monoid<multiplies<T>, T> {
     static constexpr T e{1};
     static constexpr T identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
-      return (std::forward<Args>(args) * ...);
+      return (forward<Args>(args) * ...);
     }
   };
   template <typename T> struct monoid<logical_or<T>, T> {
     static constexpr bool e{false};
     static constexpr bool identity() noexcept { return e; }
     template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
-      return (std::forward<Args>(args) || ...);
+      return (forward<Args>(args) || ...);
     }
   };
   template <typename T> struct monoid<logical_and<T>, T> {
     static constexpr bool e{true};
     static constexpr bool identity() noexcept { return e; }
     template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
-      return (std::forward<Args>(args) && ...);
+      return (forward<Args>(args) && ...);
     }
   };
   template <typename T> struct monoid<getmax<T>, T> {

@@ -16,7 +16,7 @@
 namespace zs {
 
   template <typename F, typename... Ts> inline auto reallyAsync(F &&f, Ts &&...params) {
-    return std::async(std::launch::async, std::forward<F>(f), std::forward<Ts>(params)...);
+    return std::async(std::launch::async, forward<F>(f), forward<Ts>(params)...);
   }
 
   /// <<C++ concurrency in action>>
@@ -113,7 +113,7 @@ namespace zs {
     }
     template <typename... Args> decltype(auto) emplace(Args &&...args) {
       std::unique_lock<std::shared_mutex> lk(_rw);
-      return _map.emplace(std::forward<Args>(args)...);
+      return _map.emplace(forward<Args>(args)...);
     }
     const value_t &get(const key_t &key) const {
       std::shared_lock<std::shared_mutex> lk(_rw);

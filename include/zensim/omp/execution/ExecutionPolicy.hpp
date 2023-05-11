@@ -56,9 +56,9 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       constexpr auto hasBegin = is_valid(
-          [](auto t) -> decltype((void)std::begin(std::declval<typename decltype(t)::type>())) {});
+          [](auto t) -> decltype((void)std::begin(declval<typename decltype(t)::type>())) {});
       constexpr auto hasEnd = is_valid(
-          [](auto t) -> decltype((void)std::end(std::declval<typename decltype(t)::type>())) {});
+          [](auto t) -> decltype((void)std::end(declval<typename decltype(t)::type>())) {});
       if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
         /// for iterator-like range (e.g. openvdb)
         /// for openvdb parallel iteration...
@@ -128,7 +128,7 @@ namespace zs {
     void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
               const Bodies &...bodies) const {
-      // using Range = zs::select_indexed_type<I, std::decay_t<Ranges>...>;
+      // using Range = zs::select_indexed_type<I, decay_t<Ranges>...>;
       const auto &range = zs::get<I>(ranges);
       auto ed = range.end();
       if constexpr (I + 1 == sizeof...(Ranges)) {
@@ -232,7 +232,7 @@ namespace zs {
                                loc.column()));
     }
     template <class InputIt, class OutputIt,
-              class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+              class BinaryOperation = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
@@ -424,7 +424,7 @@ namespace zs {
     template <typename KeyIter, typename ValueIter, typename CompareOpT, bool Stable>
     void merge_sort_pair_impl(
         KeyIter &&keys, ValueIter &&vals,
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type dist,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type dist,
         CompareOpT &&compOp, wrapv<Stable>, const source_location &loc) const {
       using KeyIterT = remove_cvref_t<KeyIter>;
       using ValueIterT = remove_cvref_t<ValueIter>;
@@ -567,7 +567,7 @@ namespace zs {
               = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
     void sort_pair(
         KeyIter &&keys, ValueIter &&vals,
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
         CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) const {
       merge_sort_pair_impl(FWD(keys), FWD(vals), count, FWD(compOp), false_c, loc);  // unstable
     }
@@ -576,7 +576,7 @@ namespace zs {
               = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
     void merge_sort_pair(
         KeyIter &&keys, ValueIter &&vals,
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
         CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) const {
       merge_sort_pair_impl(FWD(keys), FWD(vals), count, FWD(compOp), true_c, loc);  // stable
     }
@@ -990,20 +990,20 @@ namespace zs {
     }
     template <class KeyIter, class ValueIter,
               typename Tn
-              = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
+              = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
     void radix_sort_pair(
         KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
         int sbit = 0,
         int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
+        = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       static_assert(
           is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category>,
+              typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
+              typename std::iterator_traits<remove_reference_t<ValueIter>>::iterator_category>,
           "Key Iterator and Val Iterator should be from the same category");
       radix_sort_pair_impl(
-          typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category{},
+          typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category{},
           FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit, loc);
     }
 

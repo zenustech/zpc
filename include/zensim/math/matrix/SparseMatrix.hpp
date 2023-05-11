@@ -678,7 +678,7 @@ namespace zs {
     static constexpr auto space = Space;
     template <typename T> using decorate_t
         = conditional_t<is_const_structure, std::add_const_t<T>, T>;
-    using sparse_matrix_type = std::remove_const_t<SpMatT>;
+    using sparse_matrix_type = remove_const_t<SpMatT>;
     using const_sparse_matrix_type = std::add_const_t<sparse_matrix_type>;
 
     static constexpr auto is_row_major = sparse_matrix_type::is_row_major;

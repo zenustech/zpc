@@ -55,12 +55,12 @@ namespace zs {
     public:
       static constexpr std::size_t arity = calltype::arity - 1;
       using return_t = typename calltype::return_t;
-      using arguments_t = decltype(extract_arguments(std::declval<typename calltype::arguments_t>(),
+      using arguments_t = decltype(extract_arguments(declval<typename calltype::arguments_t>(),
                                                      std::make_index_sequence<arity>{}));
     };
 
   }  // namespace detail
-  template <typename F> using function_traits = detail::function_traits_impl<std::decay_t<F>>;
+  template <typename F> using function_traits = detail::function_traits_impl<decay_t<F>>;
 
   template <class R, class... Args> using function = std::function<R(Args...)>;
 

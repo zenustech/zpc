@@ -26,9 +26,7 @@ namespace zs {
   template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> {
     using type = T &;
   };
-  template <class T> struct is_refwrapper<std::reference_wrapper<T>> {
-    static constexpr bool value = true;
-  };
+  template <class T> struct is_refwrapper<std::reference_wrapper<T>> : std::true_type {};
   // specialization for std::integral_constant
   template <auto N> struct is_value_wrapper<std::integral_constant<decltype(N), N>> : true_type {};
 

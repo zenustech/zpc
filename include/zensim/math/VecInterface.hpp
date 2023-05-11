@@ -113,11 +113,11 @@ namespace zs {
     }
 
     template <typename VecT = Derived> static constexpr bool is_access_lref
-        = std::is_lvalue_reference_v<decltype(std::declval<VecT&>().val(0))>;
+        = std::is_lvalue_reference_v<decltype(declval<VecT&>().val(0))>;
     template <typename VecT = Derived> using variant_vec_type =
         typename VecT::template variant_vec<typename VecT::value_type, typename VecT::extents>;
     template <typename VecT = Derived> static constexpr bool is_variant_writable
-        = std::is_lvalue_reference_v<decltype(std::declval<variant_vec_type<VecT>&>().val(0))>;
+        = std::is_lvalue_reference_v<decltype(declval<variant_vec_type<VecT>&>().val(0))>;
 
     constexpr auto data() noexcept { return derivedPtr()->do_data(); }
     constexpr auto data() volatile noexcept {
@@ -234,7 +234,7 @@ namespace zs {
     }
     template <typename F, typename VecT = Derived,
               enable_if_all<std::is_convertible_v<
-                  decltype(std::declval<F>()(std::declval<typename VecT::index_type>())),
+                  decltype(declval<F>()(declval<typename VecT::index_type>())),
                   typename VecT::value_type>> = 0>
     static constexpr auto init(const F& f) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES

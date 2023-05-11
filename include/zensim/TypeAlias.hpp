@@ -69,9 +69,8 @@ namespace zs {
 
   // kokkos::ObservingRawPtr<T>, OptionalRef<T>
   // vsg::ref_ptr<T>
-  template <typename T> using RefPtr = ::std::decay_t<T> *;  ///< non-owning reference
-  template <typename T> using ConstRefPtr
-      = const ::std::decay_t<T> *;  ///< non-owning const reference
+  template <typename T> using RefPtr = decay_t<T> *;             ///< non-owning reference
+  template <typename T> using ConstRefPtr = const decay_t<T> *;  ///< non-owning const reference
   // template <typename T> using Holder = ::std::unique_ptr<T>;
   // template <typename T> using SharedHolder = ::std::shared_ptr<T>;
 
@@ -90,10 +89,6 @@ namespace zs {
 }  // namespace zs
 
 /// lambda capture
-/// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
-#define FWD(...) ::zs::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
-#define RM_CVREF_T(...) ::std::remove_cv_t<std::remove_reference_t<decltype(__VA_ARGS__)>>
-//#define RM_CVREF_T(...) ::std::remove_cvref_t<decltype(__VA_ARGS__)>
 
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
 #  if defined(ZS_LAMBDA)

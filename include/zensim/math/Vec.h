@@ -9,7 +9,6 @@
 #include "VecInterface.hpp"
 #include "zensim/math/MathUtils.h"
 #include "zensim/meta/Meta.h"
-#include "zensim/meta/Relationship.h"
 #include "zensim/meta/Sequence.h"
 #include "zensim/types/Tuple.h"
 
@@ -27,7 +26,7 @@ namespace zs {
       : VecInterface<vec_view<T, integer_seq<Tn, Ns...>>> {
     using base_t = VecInterface<vec_view<T, integer_seq<Tn, Ns...>>>;
     // essential defs for any VecInterface
-    using value_type = std::remove_const_t<T>;
+    using value_type = remove_const_t<T>;
     using index_type = Tn;
     using indexer_type = indexer<index_type, Ns...>;
     using extents = integer_seq<index_type, Ns...>;
@@ -51,11 +50,11 @@ namespace zs {
     // ()
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr T &operator()(Args &&...args) noexcept {
-      return _data[indexer_type::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(forward<Args>(args)...)];
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr const T &operator()(Args &&...args) const noexcept {
-      return _data[indexer_type::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(forward<Args>(args)...)];
     }
     // []
     template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
@@ -170,11 +169,11 @@ namespace zs {
     // ()
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr T &operator()(Args &&...args) noexcept {
-      return _data[indexer_type::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(forward<Args>(args)...)];
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
     constexpr const T &operator()(Args &&...args) const noexcept {
-      return _data[indexer_type::offset(std::forward<Args>(args)...)];
+      return _data[indexer_type::offset(forward<Args>(args)...)];
     }
     // []
     template <typename Index,

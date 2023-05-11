@@ -110,7 +110,7 @@ namespace zs {
     template <std::size_t head = 0, std::size_t length = 0, typename T>
     constexpr auto get_var_type_substr(T &&) noexcept {
       constexpr auto typestr = get_type_str_helper<T>();
-      using CharT = std::remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
+      using CharT = remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
       constexpr auto typelength = get_type_len_helper(typestr);
       static_assert(typelength > head, "sub-string should not exceed the whole string!");
       constexpr auto substrLength
@@ -124,7 +124,7 @@ namespace zs {
 
   template <typename T> constexpr auto get_type() noexcept {
     constexpr auto typestr = detail::get_type_str_helper<T>();
-    using CharT = std::remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
+    using CharT = remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
     // constexpr auto typelength = detail::get_type_len_helper(typestr);
 
 #if defined(_MSC_VER)

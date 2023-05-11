@@ -67,7 +67,7 @@ namespace zs {
 
     template <typename Policy> Box getTotalBox(Policy &&pol) const {
       using namespace zs;
-      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+      constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
 
       auto numLeaves = getNumLeaves();
       Vector<Box> box{orderedBvs.get_allocator(), 1};
@@ -188,7 +188,7 @@ namespace zs {
       if (auto nl = numLeaves(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
           if (overlaps(getNodeBV(i), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(_auxIndices[i]);
             else {
               if (f(_auxIndices[i])) return;
@@ -206,7 +206,7 @@ namespace zs {
         // leaf node check
         if (level == 0) {
           if (overlaps(getNodeBV(node), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(_auxIndices[node]);
             else {
               if (f(_auxIndices[node])) return;
@@ -223,7 +223,7 @@ namespace zs {
         const auto bv = getNodeBV(leafId);
         for (index_t i = leafId + 1; i != nl; ++i) {
           if (overlaps(getNodeBV(i), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(_auxIndices[i]);
             else {
               if (f(_auxIndices[i])) return;
@@ -242,7 +242,7 @@ namespace zs {
         // leaf node check
         if (level == 0) {
           if (overlaps(getNodeBV(node), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(_auxIndices[node]);
             else {
               if (f(_auxIndices[node])) return;

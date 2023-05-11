@@ -20,7 +20,7 @@ namespace zs {
       template <typename _Tp> using extent_t = typename std::integral_constant<int, _Tp::extent>;
     };
 
-    using structure_view_t = decltype(proxy<space>(std::declval<Structure>()));
+    using structure_view_t = decltype(proxy<space>(declval<Structure>()));
     using structure_type = remove_cvref_t<Structure>;
     using value_type = detected_or_t<detected_or_t<float, dof_detail::T_t, structure_type>,
                                      dof_detail::value_t, structure_type>;
@@ -76,7 +76,7 @@ namespace zs {
   template <execspace_e space, typename Structure, int dim_ = 3, bool WithChannel = false>
   struct DofView {
     using structure_t = Structure;
-    using structure_view_t = decltype(proxy<space>(std::declval<Structure>()));
+    using structure_view_t = decltype(proxy<space>(declval<Structure>()));
     using traits = dof_traits<space, structure_t>;
     using value_type = typename traits::value_type;
     using size_type = typename traits::size_type;
@@ -175,7 +175,7 @@ namespace zs {
   template <execspace_e space, typename Structure, int dim_>
   struct DofView<space, Structure, dim_, true> {
     using structure_t = Structure;
-    using structure_view_t = decltype(proxy<space>(std::declval<Structure>()));
+    using structure_view_t = decltype(proxy<space>(declval<Structure>()));
     using traits = dof_traits<space, structure_t>;
     using value_type = typename traits::value_type;
     using size_type = typename traits::size_type;

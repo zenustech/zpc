@@ -349,7 +349,7 @@ namespace zs {
 
   template <execspace_e, typename VectorT, bool Base = false, typename = void> struct VectorView {
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
-    using vector_type = std::remove_const_t<VectorT>;
+    using vector_type = remove_const_t<VectorT>;
     using const_vector_type = std::add_const_t<vector_type>;
     using pointer = conditional_t<is_const_structure, typename vector_type::const_pointer,
                                   typename vector_type::pointer>;
@@ -425,7 +425,7 @@ namespace zs {
 
   template <execspace_e S, typename VectorT> struct VectorView<S, VectorT, true, void> {
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
-    using vector_type = std::remove_const_t<VectorT>;
+    using vector_type = remove_const_t<VectorT>;
     using const_vector_type = std::add_const_t<vector_type>;
     using pointer = conditional_t<is_const_structure, typename vector_type::const_pointer,
                                   typename vector_type::pointer>;

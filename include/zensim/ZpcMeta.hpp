@@ -28,7 +28,7 @@ namespace zs {
   };
   template <bool B, class T, class F> using conditional_t =
       typename conditional_impl<B>::template type<T, F>;
-  template <bool B, typename T> using enable_if_type = conditional_t<B, T, enable_if_t<B>>;
+  template <bool B, typename T = void> using enable_if_type = conditional_t<B, T, enable_if_t<B>>;
 
   ///
   /// fundamental building blocks
@@ -105,6 +105,60 @@ namespace zs {
       = decltype(detail::gen_integer_seq<T, N>());
   template <size_t N> using make_index_sequence = make_integer_sequence<size_t, N>;
   template <class... T> using index_sequence_for = make_index_sequence<sizeof...(T)>;
+
+  /// indexable type list to avoid recursion
+  namespace type_impl {
+    template <auto I, typename T> struct indexed_type {
+      using type = T;
+      static constexpr auto value = I;
+    };
+    template <typename, typename... Ts> struct indexed_types;
+
+    template <typename T, T... Is, typename... Ts>
+    struct indexed_types<integer_sequence<T, Is...>, Ts...> : indexed_type<Is, Ts>... {};
+
+    // use pointer rather than reference as in taocpp! [incomplete type error]
+    template <auto I, typename T> indexed_type<I, T> extract_type(indexed_type<I, T> *);
+    template <typename T, auto I> indexed_type<I, T> extract_index(indexed_type<I, T> *);
+  }  // namespace type_impl
+
+#if 0
+  template <typename... Ts> struct type_seq;
+  template <auto... Ns> struct value_seq;
+
+  template <typename> struct is_type_seq : false_type {};
+  template <typename... Ts> struct is_type_seq<type_seq<Ts...>> : true_type {};
+  template <typename SeqT> static constexpr bool is_type_seq_v = is_type_seq<SeqT>::value;
+
+  /// generate index sequence declaration
+  template <typename> struct gen_seq_impl;
+  template <size_t N> using gen_seq = gen_seq_impl<make_index_sequence<N>>;
+#  if 0
+  template <size_t... Is> struct gen_seq_impl<index_sequence<Is...>> {
+    /// arithmetic sequences
+    template <auto N0 = 0, auto Step = 1> using arithmetic = index_sequence<static_cast<size_t>(
+        static_cast<signed long long int>(N0)
+        + static_cast<signed long long int>(Is) * static_cast<signed long long int>(Step))...>;
+    using ascend = arithmetic<0, 1>;
+    using descend = arithmetic<sizeof...(Is) - 1, -1>;
+    template <auto J> using uniform = integer_sequence<decltype(J), (Is, J)...>;
+    template <auto J> using constant = integer_sequence<decltype(J), (Is, J)...>;
+    template <auto J> using uniform_vseq = value_seq<(Is, J)...>;
+    /// types with uniform type/value params
+    template <template <typename...> class T, typename Arg> using uniform_types_t
+        = T<enable_if_type<(Is >= 0), Arg>...>;
+    template <template <typename...> class T, typename Arg>
+    static constexpr auto uniform_values(const Arg &arg) {
+      return uniform_types_t<T, Arg>{((void)Is, arg)...};
+    }
+    template <template <auto...> class T, auto Arg> using uniform_values_t
+        = T<(Is >= 0 ? Arg : 0)...>;
+  };
+#  endif
+
+  template <typename... Seqs> struct concat;
+  template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;
+#endif
 
   ///
   /// type predicates
@@ -194,6 +248,10 @@ namespace zs {
     using type = typename remove_volatile<typename remove_reference<T>::type>::type;
   };
   template <class T> using remove_vref_t = typename remove_vref<T>::type;
+
+#define RM_CVREF_T(...) remove_cvref_t<decltype(__VA_ARGS__)>
+  // #define RM_CVREF_T(...) ::std::remove_cvref_t<decltype(__VA_ARGS__)>
+
   // add_pointer
   namespace detail {
     template <class T> auto try_add_pointer(int) -> wrapt<typename remove_reference<T>::type *>;
@@ -261,6 +319,8 @@ namespace zs {
     static_assert(!is_lvalue_reference<T>::value, "Can not forward an rvalue as an lvalue.");
     return static_cast<T &&>(t);
   }
+/// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
+#define FWD(...) ::zs::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
   // is_valid
   /// ref: boost-hana
   /// boost/hana/type.hpp
@@ -681,8 +741,7 @@ namespace zs {
   template <class T> struct unwrap_refwrapper<reference_wrapper<T>> {
     using type = T &;
   };
-  template <class T> using special_decay_t =
-      typename unwrap_refwrapper<decay_t<T>>::type;
+  template <class T> using special_decay_t = typename unwrap_refwrapper<decay_t<T>>::type;
 
   template <class T> struct is_refwrapper : false_type {};
   template <class T> struct is_refwrapper<reference_wrapper<T>> : true_type {};

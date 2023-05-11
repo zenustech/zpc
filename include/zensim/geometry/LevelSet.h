@@ -25,7 +25,7 @@ namespace zs {
   namespace detail {
     template <execspace_e space> struct ls_view_helper {
       template <typename LsSharedPtr> constexpr auto operator()(LsSharedPtr) noexcept {
-        return decltype(get_level_set_view<space>(std::declval<LsSharedPtr>())){};
+        return decltype(get_level_set_view<space>(declval<LsSharedPtr>())){};
       }
     };
   }  // namespace detail

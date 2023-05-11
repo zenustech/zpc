@@ -2,7 +2,6 @@
 #include <type_traits>
 
 #include "zensim/meta/Meta.h"
-#include "zensim/meta/Relationship.h"
 
 namespace zs {
 
@@ -124,8 +123,8 @@ namespace zs {
   private:
     static void *conv(bool);
     template <typename U>
-    static true_type test(decltype(conv(std::declval<U const &>() == std::declval<U const &>())),
-                          decltype(conv(!std::declval<U const &>() == std::declval<U const &>())));
+    static true_type test(decltype(conv(declval<U const &>() == declval<U const &>())),
+                          decltype(conv(!declval<U const &>() == declval<U const &>())));
     template <typename U> static false_type test(...);
 
   public:

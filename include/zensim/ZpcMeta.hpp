@@ -178,25 +178,32 @@ namespace zs {
   template <class T> struct is_array : false_type {};
   template <class T> struct is_array<T[]> : true_type {};
   template <class T, size_t N> struct is_array<T[N]> : true_type {};
+  template <class T> constexpr bool is_array_v = is_array<T>::value;
   template <class T> struct is_unbounded_array : false_type {};
   template <class T> struct is_unbounded_array<T[]> : true_type {};
+  template <class T> constexpr bool is_unbounded_array_v = is_unbounded_array<T>::value;
   // const
   template <class T> struct is_const : false_type {};
   template <class T> struct is_const<const T> : true_type {};
+  template <class T> constexpr bool is_const_v = is_const<T>::value;
   // volatile
   template <class T> struct is_volatile : false_type {};
   template <class T> struct is_volatile<volatile T> : true_type {};
+  template <class T> constexpr bool is_volatile_v = is_volatile<T>::value;
   // reference
   template <class T> struct is_lvalue_reference : false_type {};
   template <class T> struct is_lvalue_reference<T &> : true_type {};
   template <class T> struct is_rvalue_reference : false_type {};
   template <class T> struct is_rvalue_reference<T &&> : true_type {};
+  template <class T> constexpr bool is_rvalue_reference_v = is_rvalue_reference<T>::value;
   template <class T> struct is_reference : false_type {};
   template <class T> struct is_reference<T &> : true_type {};
   template <class T> struct is_reference<T &&> : true_type {};
+  template <class T> constexpr bool is_reference_v = is_reference<T>::value;
   // function
   template <class T> struct is_function
       : integral_constant<bool, !is_const<const T>::value && !is_reference<T>::value> {};
+  template <class T> constexpr bool is_function_v = is_function<T>::value;
 
   ///
   /// type decoration
@@ -429,6 +436,8 @@ namespace zs {
       : bool_constant<is_class_v<Base>
                       && is_class_v<Derived> &&decltype(details::test_is_base_of<Base, Derived>(
                           0))::value> {};
+  template <typename Base, typename Derived> constexpr bool is_base_of_v
+      = is_base_of<Base, Derived>::value;
   // is_fundamental
   template <class T> struct is_fundamental
       : bool_constant<is_arithmetic<T>::value || is_void<T>::value

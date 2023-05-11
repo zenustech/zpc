@@ -12,7 +12,7 @@ namespace zs {
     template <typename, typename = void> struct function_traits_impl;
     // free-function
     template <typename R, typename... Args> struct function_traits_impl<R(Args...)> {
-      static constexpr std::size_t arity = sizeof...(Args);
+      static constexpr size_t arity = sizeof...(Args);
       using return_t = R;
       using arguments_t = type_seq<Args...>;
     };
@@ -48,12 +48,12 @@ namespace zs {
     struct function_traits_impl<Functor, std::void_t<decltype(&Functor::operator())>> {
     protected:
       using calltype = function_traits_impl<decltype(&Functor::operator())>;
-      template <typename... Ts, std::size_t... Is>
+      template <typename... Ts, size_t... Is>
       static auto extract_arguments(type_seq<Ts...>, std::index_sequence<Is...>)
           -> type_seq<select_type<Is + 1, typename calltype::arguments_t>...>;
 
     public:
-      static constexpr std::size_t arity = calltype::arity - 1;
+      static constexpr size_t arity = calltype::arity - 1;
       using return_t = typename calltype::return_t;
       using arguments_t = decltype(extract_arguments(declval<typename calltype::arguments_t>(),
                                                      std::make_index_sequence<arity>{}));

@@ -70,7 +70,7 @@ namespace zs {
               return wrapt<std::invoke_result_t<F, iter_arg_t<Args>...>>{};
           }
         }
-        static constexpr std::size_t deduce_arity() noexcept {
+        static constexpr size_t deduce_arity() noexcept {
           if constexpr (fts_available)
             return function_traits<F>::arity;
           else
@@ -83,13 +83,13 @@ namespace zs {
       using first_argument_t = typename decltype(impl<ArgSeq>::deduce_args_t())::template type<0>;
 
       using return_t = typename decltype(impl<ArgSeq>::deduce_return_t())::type;
-      static constexpr std::size_t arity = impl<ArgSeq>::deduce_arity();
+      static constexpr size_t arity = impl<ArgSeq>::deduce_arity();
 
       static_assert(is_same_v<return_t, void>,
                     "callable for execution policy should only return void");
     };
 
-    template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
+    template <bool withIndex, typename Tn, typename F, typename ZipIter, size_t... Is>
     __forceinline__ __device__ void range_foreach(wrapv<withIndex>, Tn i, F &&f, ZipIter &&iter,
                                                   index_seq<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
@@ -100,7 +100,7 @@ namespace zs {
       }
     }
     template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
-              std::size_t... Is>
+              size_t... Is>
     __forceinline__ __device__ void range_foreach(wrapv<withIndex>, ShmT *shmem, Tn i, F &&f,
                                                   ZipIter &&iter, index_seq<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
@@ -214,7 +214,7 @@ namespace zs {
 
     template <auto F, unsigned int I, typename R, typename... Args>
     struct function_traits_impl<__nv_dl_tag<R (*)(Args...), F, I>> {
-      static constexpr std::size_t arity = sizeof...(Args);
+      static constexpr size_t arity = sizeof...(Args);
       using return_t = R;
       using arguments_t = zs::tuple<Args...>;
     };
@@ -239,11 +239,11 @@ namespace zs {
       procid = pid;
       return *this;
     }
-    CudaExecutionPolicy &shmem(std::size_t bytes) {
+    CudaExecutionPolicy &shmem(size_t bytes) {
       shmemBytes = bytes;
       return *this;
     }
-    CudaExecutionPolicy &block(std::size_t tpb) {
+    CudaExecutionPolicy &block(size_t tpb) {
       blockSize = tpb;
       return *this;
     }
@@ -388,7 +388,7 @@ namespace zs {
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -411,7 +411,7 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
-              class BinaryOperation = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
+              class BinaryOperation = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
@@ -445,7 +445,7 @@ namespace zs {
           thrust::device_pointer_cast(first.operator->() + dist),
           thrust::device_pointer_cast(d_first.operator->()), init, FWD(binary_op));
 #else
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
@@ -459,7 +459,7 @@ namespace zs {
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation
-              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void exclusive_scan(
         InputIt &&first, InputIt &&last, OutputIt &&d_first,
         typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
@@ -489,7 +489,7 @@ namespace zs {
       using IterT = remove_cvref_t<InputIt>;
       using ValueT = typename std::iterator_traits<IterT>::value_type;
       const auto dist = last - first;
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -513,7 +513,7 @@ namespace zs {
     template <class InputIt, class OutputIt,
               // class T = remove_cvref_t<decltype(*declval<InputIt>())>,
               class BinaryOp
-              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                 typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
                 = deduce_identity<
@@ -545,7 +545,7 @@ namespace zs {
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       if (count) {
-        std::size_t temp_bytes = 0;
+        size_t temp_bytes = 0;
         auto stream = (cudaStream_t)context.streamSpare(streamid);
         Cuda::CudaContext::StreamExecutionTimer *timer{};
         if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -578,7 +578,7 @@ namespace zs {
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       if (this->shouldProfile()) timer = context.tick(stream, loc);
 
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       cub::DeviceMergeSort::StableSortKeys(nullptr, temp_bytes, first, dist, compOp, stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceMergeSort::StableSortKeys(d_tmp, temp_bytes, first, dist, compOp, stream);
@@ -608,7 +608,7 @@ namespace zs {
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       if (count) {
-        std::size_t temp_bytes = 0;
+        size_t temp_bytes = 0;
         auto stream = (cudaStream_t)context.streamSpare(streamid);
         Cuda::CudaContext::StreamExecutionTimer *timer{};
         if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -666,7 +666,7 @@ namespace zs {
       thrust::sort(thrust::cuda::par.on(stream), thrust::device_pointer_cast(d_first.operator->()),
                    thrust::device_pointer_cast(d_first.operator->() + dist));
 #else
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
                                      dist, sbit, ebit, stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
@@ -708,17 +708,17 @@ namespace zs {
     constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
     constexpr StreamID getIncomingStreamid() const noexcept { return incomingStreamid; }
 
-    constexpr std::size_t getShmemSize() const noexcept { return shmemBytes; }
+    constexpr size_t getShmemSize() const noexcept { return shmemBytes; }
 
   protected:
     // bool do_launch(const ParallelTask &) const noexcept;
     friend struct ExecutionPolicyInterface<CudaExecutionPolicy>;
     // template <auto flagbit> friend struct CudaLibHandle<flagbit>;
 
-    // std::size_t blockGranularity{128};
+    // size_t blockGranularity{128};
     StreamID incomingStreamid{-1};
     StreamID streamid{-1};      ///< @note use CUDA default stream by default
-    std::size_t shmemBytes{0};  ///< amount of shared memory passed
+    size_t shmemBytes{0};  ///< amount of shared memory passed
     int blockSize{0};           ///< 0 to enable auto configure
     ProcID incomingProc{0};
     ProcID procid{0};  ///< 0-th gpu

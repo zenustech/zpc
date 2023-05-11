@@ -6,7 +6,7 @@
 namespace zs {
 
   /// Bow/Math/LinearSolver/ConjugateGradient.h
-  template <typename T, int dim, typename Index = std::size_t> struct ConjugateGradient {
+  template <typename T, int dim, typename Index = size_t> struct ConjugateGradient {
     using TV = Vector<T>;
     using allocator_type = ZSPmrAllocator<>;
     using size_type = std::make_unsigned_t<Index>;
@@ -53,7 +53,7 @@ namespace zs {
     }
 
     template <typename DV> void print(DV&& dv) {
-      for (std::size_t i = 0; i != dv.size(); ++i) fmt::print("{} ", dv.get(i));
+      for (size_t i = 0; i != dv.size(); ++i) fmt::print("{} ", dv.get(i));
       fmt::print("\n");
     }
 
@@ -62,9 +62,9 @@ namespace zs {
       constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
       using ValueT = typename std::iterator_traits<RM_CVREF_T(std::begin(a))>::value_type;
       auto dofSqr = dof_view<space, dim>(dofSqr_);
-      DofCompwiseOp{std::multiplies<void>{}}(policy, a, b, dofSqr);
+      DofCompwiseOp{multiplies<void>{}}(policy, a, b, dofSqr);
       reduce(policy, std::begin(dofSqr), std::end(dofSqr),
-             std::begin(dof_view<space, dim>(normSqr_)), 0, std::plus<ValueT>{});
+             std::begin(dof_view<space, dim>(normSqr_)), 0, plus<ValueT>{});
       return normSqr_.clone({memsrc_e::host, -1})[0];
     }
 
@@ -92,7 +92,7 @@ namespace zs {
 
       checkVector(b, fmt::color::light_yellow);
       A.multiply(policy, x, temp);
-      DofCompwiseOp{std::minus<void>{}}(policy, b, temp, r);  // r = b - temp;
+      DofCompwiseOp{minus<void>{}}(policy, b, temp, r);  // r = b - temp;
       if (shouldPrint()) {
         fmt::print("pre loop, b - Ax -> r\n");
         checkVector(r, fmt::color::yellow);

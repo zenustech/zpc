@@ -47,7 +47,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _ptrs.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -208,10 +208,9 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(
-        std::is_convertible_v<Tr,
-                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
-        "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
+                      && std::is_convertible_v<Tv, T>,
+                  "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -226,11 +225,11 @@ namespace zs {
     constexpr auto execTag = wrapv<space>{};
     using ICoord = zs::vec<Ti, 2>;
 
-    std::size_t tabSize = size;
+    size_t tabSize = size;
     bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
     tab.reset(policy, true);
-    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
-    Vector<index_type> localOffsets{get_allocator(), (std::size_t)size};
+    Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
+    Vector<index_type> localOffsets{get_allocator(), (size_t)size};
     bool success = false;
 
     do {
@@ -336,11 +335,11 @@ namespace zs {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     using ICoord = zs::vec<Ti, 2>;
 
-    std::size_t tabSize = Mirror ? (std::size_t)size * 2 : (std::size_t)size;
+    size_t tabSize = Mirror ? (size_t)size * 2 : (size_t)size;
     bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
     tab.reset(policy, true);
     Vector<index_type> localOffsets{get_allocator(), tabSize};
-    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
+    Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
     bool success = false;
     do {
       cnts.reset(0);
@@ -429,7 +428,7 @@ namespace zs {
     using ICoord = zs::vec<Ti, 2>;
 
     Vector<index_type> localOffsets{get_allocator(), size * 2};
-    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
+    Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
     bool success = false;
     cnts.reset(0);
     policy(range(size),
@@ -521,8 +520,8 @@ namespace zs {
       auto nnz = o.nnz();
       auto nOuter = o.outerSize();
       auto nInner = o.innerSize();
-      Vector<index_type> localOffsets{get_allocator(), (std::size_t)nnz};
-      Vector<size_type> cnts{get_allocator(), (std::size_t)(nInner + 1)};
+      Vector<index_type> localOffsets{get_allocator(), (size_t)nnz};
+      Vector<size_type> cnts{get_allocator(), (size_t)(nInner + 1)};
       cnts.reset(0);
       policy(range(nOuter), [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets),
                              ptrs = view<space>(o._ptrs), inds = view<space>(o._inds),
@@ -534,15 +533,15 @@ namespace zs {
           localOffsets[k] = atomic_add(execTag, &cnts[innerId], 1);
         }
       });
-      _ptrs = zs::Vector<size_type, allocator_type>{o.get_allocator(), (std::size_t)(nInner + 1)};
+      _ptrs = zs::Vector<size_type, allocator_type>{o.get_allocator(), (size_t)(nInner + 1)};
       /// _ptrs
       exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
 
       /// _inds, _vals (optional)
-      _inds = zs::Vector<index_type, allocator_type>{o.get_allocator(), (std::size_t)nnz};
+      _inds = zs::Vector<index_type, allocator_type>{o.get_allocator(), (size_t)nnz};
       bool valActivated = o.hasValues();
       if (valActivated)
-        _vals = zs::Vector<value_type, allocator_type>{o.get_allocator(), (std::size_t)nnz};
+        _vals = zs::Vector<value_type, allocator_type>{o.get_allocator(), (size_t)nnz};
 
       policy(range(nOuter), [localOffsets = view<space>(localOffsets), oinds = view<space>(o._inds),
                              optrs = view<space>(o._ptrs), ovals = view<space>(o._vals),
@@ -605,7 +604,7 @@ namespace zs {
     auto &context = pol.context();
     context.setContext();
     auto stream = (cudaStream_t)context.streamSpare(pol.getStreamid());
-    std::size_t temp_storage_bytes = 0;
+    size_t temp_storage_bytes = 0;
     cub::DeviceSegmentedRadixSort::SortKeys(
         nullptr, temp_storage_bytes, _inds.data(), orderedIndices.data(), (int)nnz, (int)nsegs,
         _ptrs.data(), _ptrs.data() + 1, 0, std::max((int)bit_count(innerSize), 1), stream);
@@ -647,7 +646,7 @@ namespace zs {
     auto &context = pol.context();
     context.setContext();
     auto stream = (cudaStream_t)context.streamSpare(pol.getStreamid());
-    std::size_t temp_storage_bytes = 0;
+    size_t temp_storage_bytes = 0;
     cub::DeviceSegmentedRadixSort::SortPairs(
         nullptr, temp_storage_bytes, _inds.data(), orderedIndices.data(), indices.data(),
         srcIndices.data(), (int)nnz, (int)nsegs, _ptrs.data(), _ptrs.data() + 1, 0,

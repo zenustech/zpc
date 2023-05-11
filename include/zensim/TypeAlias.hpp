@@ -9,23 +9,23 @@ namespace zs {
 
   using uint = unsigned int;
   // signed
-  using i8 = std::conditional_t<sizeof(char) == 1, char, int8_t>;
-  using i16 = std::conditional_t<sizeof(short) == 2, short, int16_t>;
-  using i32 = std::conditional_t<sizeof(int) == 4, int, int32_t>;
-  using i64 = std::conditional_t<sizeof(long long int) == 8, long long int,
-                                 std::conditional_t<sizeof(long int) == 8, long int, int64_t>>;
+  using i8 = conditional_t<sizeof(char) == 1, char, int8_t>;
+  using i16 = conditional_t<sizeof(short) == 2, short, int16_t>;
+  using i32 = conditional_t<sizeof(int) == 4, int, int32_t>;
+  using i64 = conditional_t<sizeof(long long int) == 8, long long int,
+                            conditional_t<sizeof(long int) == 8, long int, int64_t>>;
   // unsigned
-  using u8 = std::conditional_t<sizeof(unsigned char) == 1, unsigned char, uint8_t>;
-  using u16 = std::conditional_t<sizeof(unsigned short) == 2, unsigned short, uint16_t>;
-  using u32 = std::conditional_t<sizeof(unsigned int) == 4, unsigned int, uint32_t>;
-  using u64 = std::conditional_t<
-      sizeof(unsigned long long int) == 8, unsigned long long int,
-      std::conditional_t<sizeof(unsigned long int) == 8, unsigned long int, uint64_t>>;
+  using u8 = conditional_t<sizeof(unsigned char) == 1, unsigned char, uint8_t>;
+  using u16 = conditional_t<sizeof(unsigned short) == 2, unsigned short, uint16_t>;
+  using u32 = conditional_t<sizeof(unsigned int) == 4, unsigned int, uint32_t>;
+  using u64
+      = conditional_t<sizeof(unsigned long long int) == 8, unsigned long long int,
+                      conditional_t<sizeof(unsigned long int) == 8, unsigned long int, uint64_t>>;
   // floating points
   using f32 = float;
   using f64 = double;
 
-  using sint_t = std::make_signed_t<std::size_t>;
+  using sint_t = std::make_signed_t<size_t>;
 
   union dat32 {
     f32 f;

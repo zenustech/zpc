@@ -39,8 +39,8 @@ namespace zs {
   };
 
   struct DofCompwiseOp {
-    using Ops = variant<std::plus<void>, std::multiplies<void>, std::minus<void>,
-                        std::divides<void>, LinearCombineOp<float>, LinearCombineOp<double>>;
+    using Ops = variant<plus<void>, multiplies<void>, minus<void>,
+                        divides<void>, LinearCombineOp<float>, LinearCombineOp<double>>;
     template <typename Op> DofCompwiseOp(Op op) : _op{op} {}
 
     template <typename DofViewA, typename DofViewB, typename DofViewC, typename Op>

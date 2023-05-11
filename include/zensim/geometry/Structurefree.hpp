@@ -210,7 +210,7 @@ namespace zs {
           _attributes[attrib.first] = attrib.second;
     }
 
-    void resize(std::size_t newSize) {
+    void resize(size_t newSize) {
       for (auto &&attrib : attrs()) match([newSize](auto &&att) { att.resize(newSize); })(attrib);
     }
 

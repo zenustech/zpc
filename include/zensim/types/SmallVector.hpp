@@ -11,7 +11,7 @@ namespace zs {
     using char_type = char;
     static_assert(std::is_trivial_v<char_type> && std::is_standard_layout_v<char_type>,
                   "char type is not trivial and in standard-layout.");
-    using size_type = std::size_t;
+    using size_type = size_t;
     static constexpr auto nbytes = 4 * sizeof(void *);  ///< 4 * 8 - 1 = 31 bytes (chars)
 
     constexpr SmallString() noexcept : buf{} {

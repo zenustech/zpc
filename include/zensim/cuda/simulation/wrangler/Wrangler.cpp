@@ -51,7 +51,7 @@ namespace zs::cudri {
         fmt::format("--include-path={}", ZS_INCLUDE_DIR), "--device-as-default-execution-space",
         fmt::format("--gpu-architecture=sm_{}{}", major, minor), "-dc", "-std=c++17"};
     std::vector<const char *> opts(fixedOpts.size() + additionalOptions.size());
-    std::size_t loc = 0;
+    size_t loc = 0;
     for (auto &&opt : fixedOpts) opts[loc++] = opt.data();
     for (auto &&opt : additionalOptions) opts[loc++] = opt.data();
 

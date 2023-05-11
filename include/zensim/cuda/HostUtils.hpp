@@ -73,8 +73,8 @@ namespace zs {
   }
 
   inline void reportMemory(std::string msg) {
-    std::size_t free_byte;
-    std::size_t total_byte;
+    size_t free_byte;
+    size_t total_byte;
     cudaError_t cuda_status = cudaMemGetInfo(&free_byte, &total_byte);
 
     if (cudaSuccess != cuda_status) {

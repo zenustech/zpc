@@ -4,7 +4,7 @@
 
 namespace zs {
 
-  template <typename T, std::size_t dim>
+  template <typename T, size_t dim>
   void write_partio(std::string filename, const std::vector<std::array<T, dim>> &data,
                     std::string tag) {
     Partio::ParticlesDataMutable *parts = Partio::create();
@@ -28,7 +28,7 @@ namespace zs {
     parts->release();
   }
 
-  template <typename T, std::size_t dim>
+  template <typename T, size_t dim>
   void write_partio_with_stress(std::string filename, const std::vector<std::array<T, dim>> &data,
                                 const std::vector<T> &stressData) {
     Partio::ParticlesDataMutable *parts = Partio::create();
@@ -55,7 +55,7 @@ namespace zs {
     parts->release();
   }
 
-  template <typename T, std::size_t dim>
+  template <typename T, size_t dim>
   void write_partio_with_grid(std::string filename, const std::vector<std::array<T, dim>> &pos,
                               const std::vector<std::array<T, dim>> &force) {
     Partio::ParticlesDataMutable *parts = Partio::create();

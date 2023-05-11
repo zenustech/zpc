@@ -16,7 +16,7 @@ namespace zs {
       if (geomTag == Scene::model_e::Particle)
         this->target().models.emplace_back(config, particleModelOffset + localId);
     // particles
-    for (std::size_t i = 0; i < scene.particles.size(); ++i)
+    for (size_t i = 0; i < scene.particles.size(); ++i)
       /// range-based for loop might not be safe after moved
       this->target().particles.push_back(std::move(scene.particles[i]));
     this->target().boundaries = std::move(scene.boundaries);
@@ -42,7 +42,7 @@ namespace zs {
 
   BuilderForMPMSimulator::operator MPMSimulator() noexcept {
     std::vector<MemoryProperty> memDsts(0);
-    std::vector<std::vector<std::tuple<std::size_t, std::size_t>>> groups(0);
+    std::vector<std::vector<std::tuple<size_t, size_t>>> groups(0);
     auto searchHandle = [&memDsts](MemoryLocation mloc) -> int {
       for (auto&& [id, entry] : zs::zip(zs::range(memDsts.size()), memDsts))
         if (mloc.memspace() == entry.memspace() && mloc.devid() == entry.devid()) return id;
@@ -62,7 +62,7 @@ namespace zs {
       }
       this->target().evaluatedDt = defaultDt;
     }
-    auto searchModel = [&models = this->target().models](std::size_t objId) {
+    auto searchModel = [&models = this->target().models](size_t objId) {
       int modelid{0};
       for (auto&& [model, id] : models) {
         if (id == objId) return modelid;
@@ -70,8 +70,8 @@ namespace zs {
       }
       return -1;
     };
-    std::vector<std::size_t> numParticles(0);
-    std::size_t id = 0;
+    std::vector<size_t> numParticles(0);
+    size_t id = 0;
     this->target().buckets.resize(this->target().particles.size());  // new
     for (auto&& particles : this->target().particles) {
       match([&](auto& ps) {
@@ -79,7 +79,7 @@ namespace zs {
         if (did == -1) {
           memDsts.push_back(MemoryProperty{ps.memoryLocation()});
           numParticles.push_back(ps.size());
-          groups.emplace_back(std::move(std::vector<std::tuple<std::size_t, std::size_t>>{
+          groups.emplace_back(std::move(std::vector<std::tuple<size_t, size_t>>{
               std::make_tuple(searchModel(id), id)}));
         } else {
           numParticles[did] += ps.size();
@@ -100,7 +100,7 @@ namespace zs {
       fmt::print("\n");
     }
 
-    std::vector<std::size_t> numBlocks(numParticles.size());
+    std::vector<size_t> numBlocks(numParticles.size());
     for (auto&& [dst, src] : zs::zip(numBlocks, numParticles)) dst = src / 8;
     for (auto&& [id, n] : zs::zip(range(numBlocks.size()), numBlocks))
       fmt::print("allocating {} blocks for partition {} in total!\n", n, id);

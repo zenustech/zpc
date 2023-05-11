@@ -16,18 +16,18 @@ namespace zs {
 #if 0
   /// indexable type list to avoid recursion
   namespace type_impl {
-    template <std::size_t I, typename T> struct indexed_type {
+    template <size_t I, typename T> struct indexed_type {
       using type = T;
-      static constexpr std::size_t value = I;
+      static constexpr size_t value = I;
     };
     template <typename, typename... Ts> struct indexed_types;
 
-    template <std::size_t... Is, typename... Ts> struct indexed_types<index_seq<Is...>, Ts...>
+    template <size_t... Is, typename... Ts> struct indexed_types<index_seq<Is...>, Ts...>
         : indexed_type<Is, Ts>... {};
 
     // use pointer rather than reference as in taocpp! [incomplete type error]
-    template <std::size_t I, typename T> indexed_type<I, T> extract_type(indexed_type<I, T> *);
-    template <typename T, std::size_t I> indexed_type<I, T> extract_index(indexed_type<I, T> *);
+    template <size_t I, typename T> indexed_type<I, T> extract_type(indexed_type<I, T> *);
+    template <typename T, size_t I> indexed_type<I, T> extract_index(indexed_type<I, T> *);
   }  // namespace type_impl
 #endif
 
@@ -43,7 +43,7 @@ namespace zs {
 #if 1
   /// generate index sequence declaration
   template <typename> struct gen_seq_impl;
-  template <std::size_t N> using gen_seq = gen_seq_impl<std::make_index_sequence<N>>;
+  template <size_t N> using gen_seq = gen_seq_impl<std::make_index_sequence<N>>;
 
   /// seq + op
   template <typename... Ts> struct type_seq;
@@ -61,9 +61,9 @@ namespace zs {
   /** definition: monoid, type_seq, value_seq, gen_seq, gather */
   /******************************************************************/
   /// static uniform non-types
-  template <std::size_t... Is> struct gen_seq_impl<index_seq<Is...>> {
+  template <size_t... Is> struct gen_seq_impl<index_seq<Is...>> {
     /// arithmetic sequences
-    template <auto N0 = 0, auto Step = 1> using arithmetic = index_seq<static_cast<std::size_t>(
+    template <auto N0 = 0, auto Step = 1> using arithmetic = index_seq<static_cast<size_t>(
         static_cast<sint_t>(N0) + static_cast<sint_t>(Is) * static_cast<sint_t>(Step))...>;
     using ascend = arithmetic<0, 1>;
     using descend = arithmetic<sizeof...(Is) - 1, -1>;
@@ -80,7 +80,7 @@ namespace zs {
     template <template <auto...> typename T, auto Arg> using uniform_values_t
         = T<(Is >= 0 ? Arg : 0)...>;
   };
-  template <std::size_t... Is> struct gen_seq_impl<index_sequence<Is...>>
+  template <size_t... Is> struct gen_seq_impl<index_sequence<Is...>>
       : gen_seq_impl<index_seq<Is...>> {};
 
   /// type_seq
@@ -103,18 +103,18 @@ namespace zs {
 
     // index
     template <typename, typename = void> struct locator {
-      using index = index_t<limits<std::size_t>::max()>;
+      using index = index_t<limits<size_t>::max()>;
     };
-    template <typename T> static constexpr std::size_t count_occurencies() noexcept {
+    template <typename T> static constexpr size_t count_occurencies() noexcept {
       if constexpr (sizeof...(Ts) == 0)
         return 0;
       else
-        return (static_cast<std::size_t>(is_same_v<T, Ts>) + ...);
+        return (static_cast<size_t>(is_same_v<T, Ts>) + ...);
     }
     template <typename T> using occurencies_t = wrapv<count_occurencies<T>()>;
     template <typename T> struct locator<T, std::enable_if_t<count_occurencies<T>() == 1>> {
       using index
-          = integral_t<std::size_t, decltype(type_impl::extract_index<T>(
+          = integral_t<size_t, decltype(type_impl::extract_index<T>(
                                         declval<std::add_pointer_t<
                                             type_impl::indexed_types<indices, Ts...>>>()))::value>;
     };
@@ -154,8 +154,8 @@ namespace zs {
   template <typename... Ts> struct is_tseq<type_seq<Ts...>> : true_type {};
 
   /// select type by index
-  template <std::size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
-  template <std::size_t I, typename... Ts> using select_indexed_type
+  template <size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
+  template <size_t I, typename... Ts> using select_indexed_type
       = select_type<I, type_seq<Ts...>>;
 
   template <typename TypeSeq, typename Indices> using shuffle_t
@@ -170,7 +170,7 @@ namespace zs {
     static constexpr auto count = base_t::count;
     static constexpr auto get_common_type() noexcept {
       if constexpr (base_t::count == 0)
-        return wrapt<std::size_t>{};
+        return wrapt<size_t>{};
       else
         return wrapt<std::common_type_t<decltype(Ns)...>>{};
     }
@@ -178,7 +178,7 @@ namespace zs {
     using iseq = integer_seq<value_type, (value_type)Ns...>;
     template <typename T> using to_iseq = integer_seq<T, (T)Ns...>;
 
-    template <std::size_t I> static constexpr auto value = base_t::template type<I>::value;
+    template <size_t I> static constexpr auto value = base_t::template type<I>::value;
 
     value_seq() noexcept = default;
     template <typename Ti, auto cnt = count, enable_if_t<(cnt > 0)> = 0>
@@ -201,7 +201,7 @@ namespace zs {
     constexpr auto reduce(UnaryOp, BinaryOp) const noexcept {
       return wrapv<monoid<BinaryOp>{}(UnaryOp{}(Ns)...)>{};
     }
-    template <typename UnaryOp, typename BinaryOp, std::size_t... Is>
+    template <typename UnaryOp, typename BinaryOp, size_t... Is>
     constexpr auto map_reduce(UnaryOp, BinaryOp, index_seq<Is...> = indices{}) noexcept {
       return wrapv<monoid<BinaryOp>{}(UnaryOp{}(Is, Ns)...)>{};
     }
@@ -240,7 +240,7 @@ namespace zs {
     template <typename F> constexpr void for_each(F &&f) const noexcept { (f(Ns), ...); }
     /// scan
     template <auto Cate, typename BinaryOp, typename Indices> struct scan_impl;
-    template <auto Cate, typename BinaryOp, std::size_t... Is>
+    template <auto Cate, typename BinaryOp, size_t... Is>
     struct scan_impl<Cate, BinaryOp, index_seq<Is...>> {
       template <auto I> static constexpr auto get_sum(wrapv<I>) noexcept {
         if constexpr (Cate == 0)
@@ -278,9 +278,9 @@ namespace zs {
   template <typename Seq> using vseq_t = typename vseq<Seq>::type;
 
   /// select (constant integral) value (integral_constant<T, N>) by index
-  template <std::size_t I, typename ValueSeq> using select_value =
+  template <size_t I, typename ValueSeq> using select_value =
       typename ValueSeq::template type<I>;
-  template <std::size_t I, auto... Ns> using select_indexed_value
+  template <size_t I, auto... Ns> using select_indexed_value
       = select_value<I, value_seq<Ns...>>;
 
   /** utilities */
@@ -332,7 +332,7 @@ namespace zs {
           using T = select_indexed_type<decltype(I_)::value, SeqT...>;
           return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
         };
-        constexpr std::size_t N = sizeof...(SeqT);
+        constexpr size_t N = sizeof...(SeqT);
 
         if constexpr (N == 0)
           return type_seq<>{};
@@ -341,7 +341,7 @@ namespace zs {
         else if constexpr (N == 2)
           return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
         else {
-          constexpr std::size_t halfN = N / 2;
+          constexpr size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
                          (*this)(type_seq<SeqT...>{}.shuffle(
                              typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
@@ -361,7 +361,7 @@ namespace zs {
   namespace detail {
     struct compose_op {
       // merger
-      template <typename... As, typename... Bs, std::size_t... Is>
+      template <typename... As, typename... Bs, size_t... Is>
       constexpr auto get_seq(type_seq<As...>, type_seq<Bs...>, index_seq<Is...>) const noexcept {
         constexpr auto Nb = sizeof...(Bs);
         return type_seq<concatenation_t<select_indexed_type<Is / Nb, As...>,
@@ -381,7 +381,7 @@ namespace zs {
           using T = select_indexed_type<decltype(I_)::value, SeqT...>;
           return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
         };
-        constexpr std::size_t N = sizeof...(SeqT);
+        constexpr size_t N = sizeof...(SeqT);
         if constexpr (N == 0)
           return type_seq<>{};
         else if constexpr (N == 1)
@@ -389,7 +389,7 @@ namespace zs {
         else if constexpr (N == 2)
           return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
         else if constexpr (N > 2) {
-          constexpr std::size_t halfN = N / 2;
+          constexpr size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
                          (*this)(type_seq<SeqT...>{}.shuffle(
                              typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
@@ -405,7 +405,7 @@ namespace zs {
   /// sequence manipulation declaration
   template <typename, typename> struct gather;
   /// uniform value sequence
-  template <std::size_t... Is, typename T, T... Ns>
+  template <size_t... Is, typename T, T... Ns>
   struct gather<index_seq<Is...>, integer_seq<T, Ns...>> {
     using type = integer_seq<T, select_indexed_value<Is, Ns...>{}...>;
   };
@@ -427,7 +427,7 @@ namespace zs {
   template <typename> struct seq_tail {
     using type = index_seq<>;
   };
-  template <std::size_t I, std::size_t... Is> struct seq_tail<index_seq<I, Is...>> {
+  template <size_t I, size_t... Is> struct seq_tail<index_seq<I, Is...>> {
     using type = index_seq<Is...>;
   };
   template <typename Seq> using seq_tail_t = typename seq_tail<Seq>::type;
@@ -479,7 +479,7 @@ namespace zs {
     }
 
     template <char... c> constexpr auto operator""_th() noexcept {
-      constexpr auto id = index_impl<(std::size_t)0, c...>();
+      constexpr auto id = index_impl<(size_t)0, c...>();
       return index_c<id>;
     }
   }  // namespace index_literals
@@ -488,10 +488,10 @@ namespace zs {
     return index_literals::operator""_th<c...>();
   }
 
-  template <std::size_t... Ns> constexpr value_seq<Ns...> dim_c{};
+  template <size_t... Ns> constexpr value_seq<Ns...> dim_c{};
 
   namespace placeholders {
-    using placeholder_type = std::size_t;
+    using placeholder_type = size_t;
     constexpr auto _0 = integral_t<placeholder_type, 0>{};
     constexpr auto _1 = integral_t<placeholder_type, 1>{};
     constexpr auto _2 = integral_t<placeholder_type, 2>{};

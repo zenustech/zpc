@@ -55,8 +55,8 @@ namespace zs {
     static auto &context(int devid) { return driver().contexts[devid]; }
     static auto alignment() noexcept { return driver().textureAlignment; }
     static auto device_count() noexcept { return driver().numTotalDevice; }
-    // static void init_constant_cache(void *ptr, std::size_t size);
-    // static void init_constant_cache(void *ptr, std::size_t size, void *stream);
+    // static void init_constant_cache(void *ptr, size_t size);
+    // static void init_constant_cache(void *ptr, size_t size, void *stream);
 
     /// error handling
     static u32 get_last_cuda_rt_error();
@@ -66,10 +66,10 @@ namespace zs {
     /// kernel launch
     static u32 launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
                             unsigned int bx, unsigned int by, unsigned int bz, void **args,
-                            std::size_t shmem, void *stream);
+                            size_t shmem, void *stream);
     static u32 launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
                                        unsigned int gz, unsigned int bx, unsigned int by,
-                                       unsigned int bz, void **args, std::size_t shmem,
+                                       unsigned int bz, void **args, size_t shmem,
                                        void *stream);
     static u32 launchCallback(void *stream, void *f, void *data);
 
@@ -127,7 +127,7 @@ namespace zs {
       void spareStreamWaitForEvent(StreamID sid, void *event,
                                    const source_location &loc = source_location::current());
       // stream ordered memory allocator
-      void *streamMemAlloc(std::size_t size, void *stream,
+      void *streamMemAlloc(size_t size, void *stream,
                            const source_location &loc = source_location::current());
       void streamMemFree(void *ptr, void *stream,
                          const source_location &loc = source_location::current());
@@ -224,7 +224,7 @@ namespace zs {
     /// other utilities
     /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
     static int deduce_block_size(const source_location &loc, const CudaContext &ctx, void *f,
-                                 std::function<std::size_t(int)>, std::string_view = "");
+                                 std::function<size_t(int)>, std::string_view = "");
 
     mutable bool errorStatus;
 
@@ -263,7 +263,7 @@ namespace zs {
   if (lc.enableAutoConfig()) {                                                                   \
     auto nwork = lc.db.x;                                                                        \
     lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                       \
-                                      [shmem = lc.shmem](int) -> std::size_t { return shmem; }); \
+                                      [shmem = lc.shmem](int) -> size_t { return shmem; }); \
     lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                                   \
     lc.shmem = (lc.shmem + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t)              \
                * sizeof(std::max_align_t);                                                       \

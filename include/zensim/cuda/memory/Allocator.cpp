@@ -53,7 +53,7 @@ namespace zs {
     for (auto &&handle : _allocHandles) cuMemRelease(handle);
   }
 
-  bool stack_virtual_memory_resource<device_mem_tag>::reserve(std::size_t desiredSpace) {
+  bool stack_virtual_memory_resource<device_mem_tag>::reserve(size_t desiredSpace) {
     if (desiredSpace <= _reservedSpace) return true;
     auto newSpace = (desiredSpace + _granularity - 1) / _granularity * _granularity;
     CUdeviceptr ptr = 0ull;
@@ -100,8 +100,8 @@ namespace zs {
     return true;
   }
 
-  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,
-                                                                   std::size_t alignment) {
+  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(size_t bytes,
+                                                                   size_t alignment) {
     auto &allocProp = std::any_cast<CUmemAllocationProp &>(_allocProp);
     unsigned long long handle{};  // CUmemGenericAllocationHandle
     _offset = (_offset + alignment - 1) / alignment * alignment;
@@ -145,9 +145,9 @@ namespace zs {
     return (void *)base;
   }
 
-  void stack_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
-                                                                    std::size_t alignment) {
-    std::size_t i = _allocationRanges.size();
+  void stack_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr, size_t bytes,
+                                                                    size_t alignment) {
+    size_t i = _allocationRanges.size();
     for (; i != 0 && (std::uintptr_t)_allocationRanges[i - 1].first >= (std::uintptr_t)ptr;) {
       --i;
       cuMemUnmap((CUdeviceptr)_allocationRanges[i].first, _allocationRanges[i].second);
@@ -161,7 +161,7 @@ namespace zs {
 
 #else
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(ProcID did,
-                                                                               std::size_t size)
+                                                                               size_t size)
       : _allocHandles{}, _allocRanges{}, _allocatedSpace{0}, _did{did} {
     CUmemAllocationProp allocProp{};
     allocProp.type = CU_MEM_ALLOCATION_TYPE_PINNED;
@@ -199,14 +199,14 @@ namespace zs {
     for (auto &&handle : _allocHandles) cuMemRelease(handle);
   }
 
-  bool stack_virtual_memory_resource<device_mem_tag>::do_check_residency(std::size_t offset,
-                                                                         std::size_t bytes) const {
+  bool stack_virtual_memory_resource<device_mem_tag>::do_check_residency(size_t offset,
+                                                                         size_t bytes) const {
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
     return ed <= _allocatedSpace;
   }
-  bool stack_virtual_memory_resource<device_mem_tag>::do_commit(std::size_t offset,
-                                                                std::size_t bytes) {
+  bool stack_virtual_memory_resource<device_mem_tag>::do_commit(size_t offset,
+                                                                size_t bytes) {
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
 
@@ -240,8 +240,8 @@ namespace zs {
     return true;
   }
 
-  bool stack_virtual_memory_resource<device_mem_tag>::do_evict(std::size_t offset,
-                                                               std::size_t bytes) {
+  bool stack_virtual_memory_resource<device_mem_tag>::do_evict(size_t offset,
+                                                               size_t bytes) {
     ZS_WARN_IF(round_down(offset + bytes, s_chunk_granularity) < _allocatedSpace,
                "will evict more bytes (till the end) than asking");
     size_t st = round_up(offset, s_chunk_granularity);
@@ -256,13 +256,13 @@ namespace zs {
     return true;
   }
 
-  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,
-                                                                   std::size_t alignment) {
+  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(size_t bytes,
+                                                                   size_t alignment) {
     return nullptr;
   }
 
-  void stack_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
-                                                                    std::size_t alignment) {
+  void stack_virtual_memory_resource<device_mem_tag>::do_deallocate(void *ptr, size_t bytes,
+                                                                    size_t alignment) {
     return;
   }
 
@@ -306,8 +306,8 @@ namespace zs {
     for (auto &&[offset, handle] : _allocations) cuMemRelease(handle);
   }
 
-  bool arena_virtual_memory_resource<device_mem_tag>::do_check_residency(std::size_t offset,
-                                                                         std::size_t bytes) const {
+  bool arena_virtual_memory_resource<device_mem_tag>::do_check_residency(size_t offset,
+                                                                         size_t bytes) const {
     size_t st = round_down(offset, s_chunk_granularity);
     if (st >= _reservedSpace) return false;
     offset += bytes;
@@ -316,8 +316,8 @@ namespace zs {
       if ((_activeChunkMasks[st >> 6] & ((u64)1 << (st & 63))) == 0) return false;
     return true;
   }
-  bool arena_virtual_memory_resource<device_mem_tag>::do_commit(std::size_t offset,
-                                                                std::size_t bytes) {
+  bool arena_virtual_memory_resource<device_mem_tag>::do_commit(size_t offset,
+                                                                size_t bytes) {
     size_t st = round_down(offset, s_chunk_granularity);
     if (st >= _reservedSpace) return false;
     offset += bytes;
@@ -353,8 +353,8 @@ namespace zs {
     return true;
   }
 
-  bool arena_virtual_memory_resource<device_mem_tag>::do_evict(std::size_t offset,
-                                                               std::size_t bytes) {
+  bool arena_virtual_memory_resource<device_mem_tag>::do_evict(size_t offset,
+                                                               size_t bytes) {
     size_t st = round_up(offset, s_chunk_granularity);
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_down(offset, s_chunk_granularity) : _reservedSpace;

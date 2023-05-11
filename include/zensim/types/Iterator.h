@@ -466,15 +466,15 @@ namespace zs {
   template <typename... Tn> constexpr bool all_integral() {
     return (std::is_integral_v<Tn> && ...);
   }
-  template <typename... Tn, std::size_t... Is> struct Collapse<type_seq<Tn...>, index_seq<Is...>> {
+  template <typename... Tn, size_t... Is> struct Collapse<type_seq<Tn...>, index_seq<Is...>> {
     static_assert(all_integral<Tn...>(), "not all types in Collapse is integral!");
-    template <std::size_t I> using index_t = zs::tuple_element_t<I, zs::tuple<Tn...>>;
-    static constexpr std::size_t dim = sizeof...(Tn);
+    template <size_t I> using index_t = zs::tuple_element_t<I, zs::tuple<Tn...>>;
+    static constexpr size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
     template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
     constexpr Collapse(const VecInterface<VecT> &v) : ns{v.to_tuple()} {}
 
-    template <std::size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
+    template <size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
       return zs::get<I>(ns);
     }
 
@@ -488,7 +488,7 @@ namespace zs {
       constexpr bool equal_to(iterator o) const noexcept {
         return ((zs::get<Is>(it) == zs::get<Is>(o.it)) && ...);
       }
-      template <std::size_t I> constexpr void increment_impl() noexcept {
+      template <size_t I> constexpr void increment_impl() noexcept {
         index_t<I> n = ++zs::get<I>(it);
         if constexpr (I > 0)
           if (n >= zs::get<I>(ns)) {
@@ -520,7 +520,7 @@ namespace zs {
 
   template <typename... Tn> constexpr auto ndrange(Tn &&...ns) { return Collapse{FWD(ns)...}; }
   namespace detail {
-    template <typename T, std::size_t... Is> constexpr auto ndrange_impl(T n, index_seq<Is...>) {
+    template <typename T, size_t... Is> constexpr auto ndrange_impl(T n, index_seq<Is...>) {
       return Collapse{(Is + 1 ? n : n)...};
     }
   }  // namespace detail
@@ -536,7 +536,7 @@ namespace zs {
             && ...);
   }
 
-  template <typename... Iters, std::size_t... Is>
+  template <typename... Iters, size_t... Is>
   struct zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>
       : IteratorInterface<zip_iterator<zs::tuple<Iters...>, index_seq<Is...>>> {
     static constexpr bool all_random_access_iter = all_convertible_to_raiter<Iters...>();

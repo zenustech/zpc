@@ -46,7 +46,7 @@ namespace zs {
 
     /// helper
     using indices = std::make_index_sequence<dim>;
-    template <typename... Args, std::size_t... Is, enable_if_t<dim == sizeof...(Args)> = 0>
+    template <typename... Args, size_t... Is, enable_if_t<dim == sizeof...(Args)> = 0>
     constexpr auto getTensorCoord(tuple<Args...> c, index_seq<Is...>) const noexcept {
       return tuple_cat(_prefix, make_tuple((get<Is>(_base) + get<Is>(c))...));
     }
@@ -107,8 +107,8 @@ namespace zs {
   template <typename Tensor, typename Extents, typename... Args>
   tensor_view(Tensor &, Extents, Args...) -> tensor_view<Tensor, Extents>;
 
-  template <typename T, typename Tn, Tn... Ns, typename Tm, Tm... Ms, std::size_t... Is,
-            std::size_t... Js>
+  template <typename T, typename Tn, Tn... Ns, typename Tm, Tm... Ms, size_t... Is,
+            size_t... Js>
   struct tensor_impl<T, integer_seq<Tn, Ns...>,
                      indexer_impl<integer_seq<Tm, Ms...>, index_seq<Is...>, index_seq<Js...>>>
       : VecInterface<
@@ -127,7 +127,7 @@ namespace zs {
                   "access dimension and storage dimension mismatch!");
     static_assert(((Ns <= Ms) && ...), "access dimension and storage dimension mismatch!");
 
-    template <std::size_t I> static constexpr auto truncate_storage_orders() noexcept {
+    template <size_t I> static constexpr auto truncate_storage_orders() noexcept {
       constexpr auto marks = value_seq<(Is < I ? 1 : 0)...>{};
       constexpr auto offsets = marks.scan();  // exclusive scan
       constexpr auto tags = marks.pair(offsets);

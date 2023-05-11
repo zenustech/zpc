@@ -14,8 +14,8 @@ namespace zs {
     /// construct
     static MPMSimulatorBuilder create();
 
-    std::size_t numModels() const noexcept { return particles.size(); }
-    std::size_t numPartitions() const noexcept { return partitions.size(); }
+    size_t numModels() const noexcept { return particles.size(); }
+    size_t numPartitions() const noexcept { return partitions.size(); }
     float getMaxVel(int partI) const {
       float ret[1];
       Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, ret},
@@ -29,11 +29,11 @@ namespace zs {
 
     /// particle
     std::vector<GeneralParticles> particles;
-    std::vector<std::tuple<ConstitutiveModelConfig, std::size_t>>
+    std::vector<std::tuple<ConstitutiveModelConfig, size_t>>
         models;  // (constitutive model, id)
     /// parallel execution helper
     std::vector<MemoryHandle> memDsts;
-    std::vector<std::vector<std::tuple<std::size_t, std::size_t>>> groups;  // (model id, object id)
+    std::vector<std::vector<std::tuple<size_t, size_t>>> groups;  // (model id, object id)
     /// background grid
     std::vector<GeneralGrids> grids;
     /// sparsity info (hash table)

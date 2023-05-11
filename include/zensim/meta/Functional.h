@@ -1,10 +1,9 @@
 #pragma once
 
-#include <functional>
 #include <limits>
 
 #include "Meta.h"
-#include "zensim/zpc_tpls/tl/function_ref.hpp"
+// #include "zensim/zpc_tpls/tl/function_ref.hpp"
 
 namespace zs {
 
@@ -331,7 +330,7 @@ namespace zs {
 
   /// map operation
   struct count_leq {  ///< count less and equal
-    template <typename... Tn> constexpr auto operator()(std::size_t M, Tn... Ns) const noexcept {
+    template <typename... Tn> constexpr auto operator()(size_t M, Tn... Ns) const noexcept {
       if constexpr (sizeof...(Tn) > 0)
         return ((Ns <= M ? 1 : 0) + ...);
       else
@@ -339,6 +338,7 @@ namespace zs {
     }
   };
 
+#if 0
   /// monad : construct (T -> M<T>), mbind
   /// functor: mcompose, map, transform
   namespace vw {
@@ -351,5 +351,6 @@ namespace zs {
   }  // namespace vw
 
   namespace action {}  // namespace action
+#endif
 
 }  // namespace zs

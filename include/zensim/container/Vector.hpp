@@ -15,7 +15,7 @@ namespace zs {
 
     using value_type = T;
     using allocator_type = AllocatorT;
-    using size_type = std::size_t;
+    using size_type = size_t;
     using difference_type = sint_t;
     using reference = value_type &;
     using const_reference = const value_type &;
@@ -34,11 +34,11 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _allocator; }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
-    pointer allocate(std::size_t bytes) {
+    pointer allocate(size_t bytes) {
       /// virtual memory way
       if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
         _allocator.commit(0, bytes);
@@ -297,7 +297,7 @@ namespace zs {
     }
 
   protected:
-    constexpr std::size_t usedBytes() const noexcept { return sizeof(T) * size(); }
+    constexpr size_t usedBytes() const noexcept { return sizeof(T) * size(); }
 
     constexpr size_type geometric_size_growth(size_type newSize,
                                               size_type capacity) const noexcept {

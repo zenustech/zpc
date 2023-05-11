@@ -23,40 +23,40 @@ namespace zs {
     }
     return true;
   }
-  void *allocate(device_mem_tag, std::size_t size, std::size_t alignment,
+  void *allocate(device_mem_tag, size_t size, size_t alignment,
                  const source_location &loc) {
     void *ret{nullptr};
     cuMemAlloc((CUdeviceptr *)&ret, size);
     return ret;
   }
 
-  void deallocate(device_mem_tag, void *ptr, std::size_t size, std::size_t alignment,
+  void deallocate(device_mem_tag, void *ptr, size_t size, size_t alignment,
                   const source_location &loc) {
     cuMemFree((CUdeviceptr)ptr);
   }
 
-  void memset(device_mem_tag, void *addr, int chval, std::size_t size, const source_location &loc) {
+  void memset(device_mem_tag, void *addr, int chval, size_t size, const source_location &loc) {
     /// @note this is asynchronous with respect to host, cuz of using 'per-thread' default stream!!!
     cuMemsetD8((CUdeviceptr)addr, chval, size);
     // cudaDeviceSynchronize();
   }
-  void copy(device_mem_tag, void *dst, void *src, std::size_t size, const source_location &loc) {
+  void copy(device_mem_tag, void *dst, void *src, size_t size, const source_location &loc) {
     /// @note
     /// https://docs.nvidia.com/cuda/cuda-driver-api/api-sync-behavior.html#api-sync-behavior__memcpy-sync
     cuMemcpy((CUdeviceptr)dst, (CUdeviceptr)src, size);
     // cudaDeviceSynchronize();
   }
-  void copyHtoD(device_mem_tag, void *dst, void *src, std::size_t size,
+  void copyHtoD(device_mem_tag, void *dst, void *src, size_t size,
                 const source_location &loc) {
     cuMemcpyHtoD((CUdeviceptr)dst, (void *)src, size);
     // cudaDeviceSynchronize();
   }
-  void copyDtoH(device_mem_tag, void *dst, void *src, std::size_t size,
+  void copyDtoH(device_mem_tag, void *dst, void *src, size_t size,
                 const source_location &loc) {
     cuMemcpyDtoH((void *)dst, (CUdeviceptr)src, size);
     // cudaDeviceSynchronize();
   }
-  void copyDtoD(device_mem_tag, void *dst, void *src, std::size_t size,
+  void copyDtoD(device_mem_tag, void *dst, void *src, size_t size,
                 const source_location &loc) {
     cuMemcpyDtoD((CUdeviceptr)dst, (CUdeviceptr)src, size);
     // cudaDeviceSynchronize();
@@ -78,32 +78,32 @@ namespace zs {
     }
     return true;
   }
-  void *allocate(um_mem_tag, std::size_t size, std::size_t alignment, const source_location &loc) {
+  void *allocate(um_mem_tag, size_t size, size_t alignment, const source_location &loc) {
     void *ret{nullptr};
     // cudri::umalloc(&ret, size, 0x1, loc);  //(unsigned int)CU_MEM_ATTACH_GLOBAL);
     cuMemAllocManaged((CUdeviceptr *)&ret, size, CU_MEM_ATTACH_GLOBAL);
     return ret;
   }
-  void deallocate(um_mem_tag, void *ptr, std::size_t size, std::size_t alignment,
+  void deallocate(um_mem_tag, void *ptr, size_t size, size_t alignment,
                   const source_location &loc) {
     cuMemFree((CUdeviceptr)ptr);
   }
-  void memset(um_mem_tag, void *addr, int chval, std::size_t size, const source_location &loc) {
+  void memset(um_mem_tag, void *addr, int chval, size_t size, const source_location &loc) {
     cuMemsetD8((CUdeviceptr)addr, chval, size);
   }
-  void copy(um_mem_tag, void *dst, void *src, std::size_t size, const source_location &loc) {
+  void copy(um_mem_tag, void *dst, void *src, size_t size, const source_location &loc) {
     cuMemcpy((CUdeviceptr)dst, (CUdeviceptr)src, size);
   }
-  void copyHtoD(um_mem_tag, void *dst, void *src, std::size_t size, const source_location &loc) {
+  void copyHtoD(um_mem_tag, void *dst, void *src, size_t size, const source_location &loc) {
     cuMemcpyHtoD((CUdeviceptr)dst, (void *)src, size);
   }
-  void copyDtoH(um_mem_tag, void *dst, void *src, std::size_t size, const source_location &loc) {
+  void copyDtoH(um_mem_tag, void *dst, void *src, size_t size, const source_location &loc) {
     cuMemcpyDtoH((void *)dst, (CUdeviceptr)src, size);
   }
-  void copyDtoD(um_mem_tag, void *dst, void *src, std::size_t size, const source_location &loc) {
+  void copyDtoD(um_mem_tag, void *dst, void *src, size_t size, const source_location &loc) {
     cuMemcpyDtoD((CUdeviceptr)dst, (CUdeviceptr)src, size);
   }
-  void advise(um_mem_tag, std::string advice, void *addr, std::size_t bytes, ProcID did,
+  void advise(um_mem_tag, std::string advice, void *addr, size_t bytes, ProcID did,
               const source_location &loc) {
     unsigned int option{};  // CUmem_advise
     if (advice == "ACCESSED_BY")

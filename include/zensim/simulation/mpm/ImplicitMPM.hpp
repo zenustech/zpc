@@ -9,7 +9,7 @@
 namespace zs {
 
   struct ImplicitMPMSystem {
-    ImplicitMPMSystem(MPMSimulator& simulator, float dt, std::size_t partI)
+    ImplicitMPMSystem(MPMSimulator& simulator, float dt, size_t partI)
         : simulator{simulator}, partI{partI}, dt{dt} {}
 
     template <typename DofA, typename DofB, typename DofC, typename DofD>
@@ -108,12 +108,12 @@ namespace zs {
               // fmt::print("[gpu {}]\tprojecting {} grid blocks, dof dim: {}\n", (int)did,
               //            partition.size(), RM_CVREF_T(inout)::dim);
               if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
-                policy(range((std::size_t)inout.numEntries()
+                policy(range((size_t)inout.numEntries()
                              / remove_cvref_t<decltype(collider)>::dim),
                        Projector{Collider{proxy<space>(collider.levelset), collider.type},
                                  proxy<space>(partition), proxy<space>(grids.grid()), inout});
               else {
-                policy(range((std::size_t)inout.numEntries()
+                policy(range((size_t)inout.numEntries()
                              / remove_cvref_t<decltype(collider)>::dim),
                        Projector{collider, proxy<space>(partition), proxy<space>(grids.grid()),
                                  inout});
@@ -152,7 +152,7 @@ namespace zs {
     }
 
     MPMSimulator& simulator;
-    std::size_t partI;
+    size_t partI;
     float dt;
   };
 

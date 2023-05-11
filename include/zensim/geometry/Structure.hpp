@@ -57,7 +57,7 @@ namespace zs {
         = side_length > 0 && ((side_length & (side_length - 1)) == 0);
     static constexpr auto num_cell_bits = bit_count(side_length);
 
-    using grid_storage_t = TileVector<value_type, (std::size_t)block_size, allocator_type>;
+    using grid_storage_t = TileVector<value_type, (size_t)block_size, allocator_type>;
     using size_type = typename grid_storage_t::size_type;
     using channel_counter_type = typename grid_storage_t::channel_counter_type;
 
@@ -72,7 +72,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return blocks.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -84,7 +84,7 @@ namespace zs {
 
     Grid(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
          value_type dx, size_type count = 0)
-        : blocks{allocator, channelTags, count * (std::size_t)block_size}, dx{dx} {}
+        : blocks{allocator, channelTags, count * (size_t)block_size}, dx{dx} {}
     Grid(const std::vector<PropertyTag> &channelTags, value_type dx, size_type count,
          memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : Grid{get_default_allocator(mre, devid), channelTags, dx, count} {}
@@ -120,7 +120,7 @@ namespace zs {
     constexpr channel_counter_type getPropertyOffset(const SmallString &str) const {
       return blocks.getPropertyOffset(str);
     }
-    constexpr PropertyTag getPropertyTag(std::size_t i = 0) const {
+    constexpr PropertyTag getPropertyTag(size_t i = 0) const {
       return blocks.getPropertyTag(i);
     }
     constexpr const auto &getPropertyTags() const { return blocks.getPropertyTags(); }
@@ -157,7 +157,7 @@ namespace zs {
 
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -271,7 +271,7 @@ namespace zs {
     static constexpr bool is_const_structure = std::is_const_v<GridT>;
     using grid_t = remove_const_t<GridT>;
     using value_type = typename grid_t::value_type;
-    using size_type = typename grid_t::size_type;  // basically std::size_t
+    using size_type = typename grid_t::size_type;  // basically size_t
     using channel_counter_type = typename grid_t::channel_counter_type;
     using coord_index_type = typename grid_t::coord_index_type;
     using grid_storage_t

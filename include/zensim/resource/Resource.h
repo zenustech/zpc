@@ -24,7 +24,7 @@ namespace zs {
 
   template <bool is_virtual_ = false, typename T = std::byte> struct ZPC_API ZSPmrAllocator {
     using value_type = T;
-    using size_type = std::size_t;
+    using size_type = size_t;
     using difference_type = std::ptrdiff_t;
     /// this is different from std::polymorphic_allocator
     using propagate_on_container_move_assignment = true_type;
@@ -87,32 +87,32 @@ namespace zs {
     }
 
     constexpr resource_type *resource() noexcept { return res.get(); }
-    [[nodiscard]] void *allocate(std::size_t bytes,
-                                 std::size_t alignment = alignof(std::max_align_t)) {
+    [[nodiscard]] void *allocate(size_t bytes,
+                                 size_t alignment = alignof(std::max_align_t)) {
       return res->allocate(bytes, alignment);
     }
-    void deallocate(void *p, std::size_t bytes, std::size_t alignment = alignof(std::max_align_t)) {
+    void deallocate(void *p, size_t bytes, size_t alignment = alignof(std::max_align_t)) {
       res->deallocate(p, bytes, alignment);
     }
     bool is_equal(const ZSPmrAllocator &other) const noexcept {
       return res.get() == other.res.get() && location == other.location;
     }
     template <bool V = is_virtual::value>
-    std::enable_if_t<V, bool> commit(std::size_t offset,
-                                     std::size_t bytes = resource_type::s_chunk_granularity) {
+    std::enable_if_t<V, bool> commit(size_t offset,
+                                     size_t bytes = resource_type::s_chunk_granularity) {
       return res->commit(offset, bytes);
     }
     template <bool V = is_virtual::value>
-    std::enable_if_t<V, bool> evict(std::size_t offset,
-                                    std::size_t bytes = resource_type::s_chunk_granularity) {
+    std::enable_if_t<V, bool> evict(size_t offset,
+                                    size_t bytes = resource_type::s_chunk_granularity) {
       return res->evict(offset, bytes);
     }
     template <bool V = is_virtual::value> std::enable_if_t<V, bool> check_residency(
-        std::size_t offset, std::size_t bytes = resource_type::s_chunk_granularity) const {
+        size_t offset, size_t bytes = resource_type::s_chunk_granularity) const {
       return res->check_residency(offset, bytes);
     }
     template <bool V = is_virtual::value>
-    std::enable_if_t<V, void *> address(std::size_t offset = 0) const {
+    std::enable_if_t<V, void *> address(size_t offset = 0) const {
       return res->address(offset);
     }
 
@@ -125,7 +125,7 @@ namespace zs {
     }
 
     /// owning upstream should specify deleter
-    template <template <typename Tag> class ResourceT, typename... Args, std::size_t... Is>
+    template <template <typename Tag> class ResourceT, typename... Args, size_t... Is>
     void setOwningUpstream(mem_tags tag, ProcID devid, zs::tuple<Args...> args, index_seq<Is...>) {
       match([&](auto t) {
         if constexpr (is_memory_source_available(t)) {
@@ -264,7 +264,7 @@ namespace zs {
   }
 
   inline ZPC_API ZSPmrAllocator<true> get_virtual_memory_source(memsrc_e mre, ProcID devid,
-                                                                std::size_t bytes,
+                                                                size_t bytes,
                                                                 std::string_view option = "STACK") {
     const mem_tags tag = to_memory_source_tag(mre);
     ZSPmrAllocator<true> ret{};
@@ -296,7 +296,7 @@ namespace zs {
   struct ZPC_API Resource {
     static std::atomic_ullong &counter() noexcept;
     static Resource &instance() noexcept;
-    static void copy(MemoryEntity dst, MemoryEntity src, std::size_t numBytes) {
+    static void copy(MemoryEntity dst, MemoryEntity src, size_t numBytes) {
       if (dst.location.onHost() && src.location.onHost())
         zs::copy(mem_host, dst.ptr, src.ptr, numBytes);
       else {
@@ -311,7 +311,7 @@ namespace zs {
           throw std::runtime_error("There is no corresponding device backend for Resource::copy");
       }
     }
-    static void memset(MemoryEntity dst, char ch, std::size_t numBytes) {
+    static void memset(MemoryEntity dst, char ch, size_t numBytes) {
       if (dst.location.onHost())
         zs::memset(mem_host, dst.ptr, ch, numBytes);
       else {
@@ -324,14 +324,14 @@ namespace zs {
 
     struct AllocationRecord {
       mem_tags tag{};
-      std::size_t size{0}, alignment{0};
+      size_t size{0}, alignment{0};
       std::string allocatorType{};
     };
     Resource();
     ~Resource();
 
-    void record(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
-                std::size_t alignment);
+    void record(mem_tags tag, void *ptr, std::string_view name, size_t size,
+                size_t alignment);
     void erase(void *ptr);
 
     void deallocate(void *ptr);

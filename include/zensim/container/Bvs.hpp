@@ -86,7 +86,7 @@ namespace zs {
 
       // must call this in the beginning
       bvs = bvs_t{
-          primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, (std::size_t)range_size(primBvs)};
+          primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, (size_t)range_size(primBvs)};
 
       if (!(axis >= 0 && axis < dim)) {
         // compute bvs and global bv

@@ -29,7 +29,7 @@ namespace zs {
     T operator()(const IV &indices) const { return grid[offset(indices)]; }
     T &operator()(const IV &indices) { return grid[offset(indices)]; }
 
-    Tn domain(std::size_t d) const noexcept { return dims(d); }
+    Tn domain(size_t d) const noexcept { return dims(d); }
 
     IV weights{};
     IV dims{};

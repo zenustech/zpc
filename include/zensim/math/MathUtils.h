@@ -20,20 +20,20 @@ namespace zs {
   namespace mathutil_impl {
     // constexpr scan only available in c++20:
     // https://en.cppreference.com/w/cpp/algorithm/exclusive_scan
-    template <typename... Args, std::size_t... Is>
-    constexpr auto incl_prefix_sum_impl(std::make_signed_t<std::size_t> I,
+    template <typename... Args, size_t... Is>
+    constexpr auto incl_prefix_sum_impl(std::make_signed_t<size_t> I,
                                         std::index_sequence<Is...>, Args &&...args) noexcept {
-      return (((std::make_signed_t<std::size_t>)Is <= I ? forward<Args>(args) : 0) + ...);
+      return (((std::make_signed_t<size_t>)Is <= I ? forward<Args>(args) : 0) + ...);
     }
-    template <typename... Args, std::size_t... Is>
-    constexpr auto excl_prefix_sum_impl(std::size_t I, std::index_sequence<Is...>,
+    template <typename... Args, size_t... Is>
+    constexpr auto excl_prefix_sum_impl(size_t I, std::index_sequence<Is...>,
                                         Args &&...args) noexcept {
-      return (((std::make_signed_t<std::size_t>)Is < I ? forward<Args>(args) : 0) + ...);
+      return (((std::make_signed_t<size_t>)Is < I ? forward<Args>(args) : 0) + ...);
     }
-    template <typename... Args, std::size_t... Is>
-    constexpr auto excl_suffix_mul_impl(std::make_signed_t<std::size_t> I,
+    template <typename... Args, size_t... Is>
+    constexpr auto excl_suffix_mul_impl(std::make_signed_t<size_t> I,
                                         std::index_sequence<Is...>, Args &&...args) noexcept {
-      return (((std::make_signed_t<std::size_t>)Is > I ? forward<Args>(args) : 1) * ...);
+      return (((std::make_signed_t<size_t>)Is > I ? forward<Args>(args) : 1) * ...);
     }
   }  // namespace mathutil_impl
 
@@ -1091,30 +1091,30 @@ namespace zs {
   }  // namespace math
 
   template <typename... Args>
-  constexpr auto incl_prefix_sum(std::size_t I, Args &&...args) noexcept {
+  constexpr auto incl_prefix_sum(size_t I, Args &&...args) noexcept {
     return mathutil_impl::incl_prefix_sum_impl(I, std::index_sequence_for<Args...>{},
                                                forward<Args>(args)...);
   }
   template <typename... Args>
-  constexpr auto excl_prefix_sum(std::size_t I, Args &&...args) noexcept {
+  constexpr auto excl_prefix_sum(size_t I, Args &&...args) noexcept {
     return mathutil_impl::excl_prefix_sum_impl(I, std::index_sequence_for<Args...>{},
                                                forward<Args>(args)...);
   }
   template <typename... Args>
-  constexpr auto excl_suffix_mul(std::size_t I, Args &&...args) noexcept {
+  constexpr auto excl_suffix_mul(size_t I, Args &&...args) noexcept {
     return mathutil_impl::excl_suffix_mul_impl(I, std::index_sequence_for<Args...>{},
                                                forward<Args>(args)...);
   }
   template <typename Tn, Tn... Ns>
-  constexpr auto incl_prefix_sum(std::size_t I, std::integer_sequence<Tn, Ns...>) noexcept {
+  constexpr auto incl_prefix_sum(size_t I, std::integer_sequence<Tn, Ns...>) noexcept {
     return incl_prefix_sum(I, Ns...);
   }
   template <typename Tn, Tn... Ns>
-  constexpr auto excl_prefix_sum(std::size_t I, std::integer_sequence<Tn, Ns...>) noexcept {
+  constexpr auto excl_prefix_sum(size_t I, std::integer_sequence<Tn, Ns...>) noexcept {
     return excl_prefix_sum(I, Ns...);
   }
   template <typename Tn, Tn... Ns>
-  constexpr auto excl_suffix_mul(std::size_t I, std::integer_sequence<Tn, Ns...>) noexcept {
+  constexpr auto excl_suffix_mul(size_t I, std::integer_sequence<Tn, Ns...>) noexcept {
     return excl_suffix_mul(I, Ns...);
   }
 

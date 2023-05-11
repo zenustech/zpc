@@ -141,8 +141,8 @@ namespace zs {
         std::ifstream is((std::string{AssetDirPath} + "MpmParticles/particles-1000k.dat"),
                          std::ios::in | std::ios::binary);
         if (!is) throw std::runtime_error("particle-1000k.dat file not found!");
-        std::size_t cnt, tmp;
-        is.read((char *)&cnt, sizeof(std::size_t));
+        size_t cnt, tmp;
+        is.read((char *)&cnt, sizeof(size_t));
         auto estimate = cnt * (sideLength.prod() / scaled_ref_box_length.prod());
         fmt::print(
             "try reserving {} entries, cnt {}, minDistance: {}, box: [{}, {}, {} ~ {}, {}, {}], "
@@ -154,7 +154,7 @@ namespace zs {
             scaled_ref_box_length[0], scaled_ref_box_length[1], scaled_ref_box_length[2]);
         if (estimate < 100000) samples.reserve((i64)estimate);
 
-        is.read((char *)&tmp, sizeof(std::size_t));  ///< neglect this
+        is.read((char *)&tmp, sizeof(size_t));  ///< neglect this
         // Read from file as float
         std::vector<vec<float, dim>> data(cnt);
         is.read((char *)data.data(), cnt * sizeof(vec<float, dim>));
@@ -195,7 +195,7 @@ namespace zs {
           samples.insert(samples.end(), localSamples[id].begin(), localSamples[id].end());
         puts("done parallel sampling!");
 #else
-        for (std::size_t i = 0; i < cnt; ++i) {
+        for (size_t i = 0; i < cnt; ++i) {
           const auto &new_point_read = data[i];
           TV new_point, offset_center, offset_new_point;
           for (int d = 0; d < dim; ++d)

@@ -78,24 +78,24 @@ namespace zs {
 #endif
     }
 
-    constexpr std::size_t get_type_len_helper(const char *p = nullptr) noexcept {
-      if (p == nullptr) return (std::size_t)0;
-      std::size_t i = 0;
+    constexpr size_t get_type_len_helper(const char *p = nullptr) noexcept {
+      if (p == nullptr) return (size_t)0;
+      size_t i = 0;
       for (; p[i]; ++i)
         ;
       return i;
     }
 
     struct range_pair {
-      std::size_t l{}, r{};
+      size_t l{}, r{};
     };
     constexpr range_pair locate_char_in_str_helper(const char *p, const char lc,
                                                    const char rc) noexcept {
       if (p == nullptr) return range_pair{0, 0};
-      std::size_t l{0};
+      size_t l{0};
       for (; *p; ++p, ++l)
         if (*p == lc) break;
-      std::size_t r{l + 1}, cnt{1};
+      size_t r{l + 1}, cnt{1};
       for (++p; *p; ++p, ++r) {
         if (*p == lc)
           cnt++;
@@ -107,7 +107,7 @@ namespace zs {
       return range_pair{l, r};
     }
 
-    template <std::size_t head = 0, std::size_t length = 0, typename T>
+    template <size_t head = 0, size_t length = 0, typename T>
     constexpr auto get_var_type_substr(T &&) noexcept {
       constexpr auto typestr = get_type_str_helper<T>();
       using CharT = remove_const_t<std::remove_pointer_t<decltype(typestr)>>;
@@ -117,7 +117,7 @@ namespace zs {
           = (length == 0 ? typelength - head
                          : (length < (typelength - head) ? length : (typelength - head)));
       std::array<CharT, substrLength> ret{};
-      for (std::size_t i = 0; i != substrLength; ++i) ret[i] = typestr[i + head];
+      for (size_t i = 0; i != substrLength; ++i) ret[i] = typestr[i + head];
       return ret;
     }
   }  // namespace detail
@@ -129,25 +129,25 @@ namespace zs {
 
 #if defined(_MSC_VER)
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');
-    constexpr std::size_t head{pair.l + 1};
-    constexpr std::size_t length{pair.r - head};
+    constexpr size_t head{pair.l + 1};
+    constexpr size_t length{pair.r - head};
 #elif defined(__clang__)
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '[', ']');
-    constexpr std::size_t head{pair.l + 5};
-    constexpr std::size_t length{pair.r - head};
+    constexpr size_t head{pair.l + 5};
+    constexpr size_t length{pair.r - head};
 #elif defined(__GNUC__)
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '[', ']');
-    constexpr std::size_t head{pair.l + 10};
-    constexpr std::size_t length{pair.r - head};
+    constexpr size_t head{pair.l + 10};
+    constexpr size_t length{pair.r - head};
 #endif
 
     std::array<CharT, length> ret{};
-    for (std::size_t i = 0; i != length; ++i) ret[i] = typestr[i + head];
+    for (size_t i = 0; i != length; ++i) ret[i] = typestr[i + head];
     return ret;
   }
   template <typename T> constexpr auto get_var_type(T &&) noexcept { return get_type<T>(); }
 
-  template <typename CharT, std::size_t N>
+  template <typename CharT, size_t N>
   auto convert_char_array_to_string(const std::array<CharT, N> &str) noexcept {
     return std::basic_string<CharT>{std::begin(str), std::end(str)};
   }

@@ -43,7 +43,7 @@ namespace zs {
       Table(Table &&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, std::size_t numEntries)
+      Table(const allocator_type &allocator, size_t numEntries)
           : keys{allocator, numEntries},
             indices{allocator, numEntries},
             status{allocator, numEntries} {}
@@ -67,7 +67,7 @@ namespace zs {
     static constexpr Tn key_scalar_sentinel_v = limits<Tn>::max();
     static constexpr value_t sentinel_v{-1};  // this requires value_t to be signed type
     static constexpr status_t status_sentinel_v{-1};
-    static constexpr std::size_t reserve_ratio_v = 16;
+    static constexpr size_t reserve_ratio_v = 16;
 
     constexpr decltype(auto) memoryLocation() const noexcept {
       return _cnt.get_allocator().location;
@@ -77,7 +77,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -85,21 +85,21 @@ namespace zs {
     constexpr auto &self() noexcept { return _table; }
     constexpr const auto &self() const noexcept { return _table; }
 
-    constexpr std::size_t evaluateTableSize(std::size_t entryCnt) const {
-      if (entryCnt == 0) return (std::size_t)0;
+    constexpr size_t evaluateTableSize(size_t entryCnt) const {
+      if (entryCnt == 0) return (size_t)0;
       return next_2pow(entryCnt) * reserve_ratio_v;
     }
-    HashTable(const allocator_type &allocator, std::size_t numExpectedEntries)
+    HashTable(const allocator_type &allocator, size_t numExpectedEntries)
         : _table{allocator, evaluateTableSize(numExpectedEntries)},
           _tableSize{static_cast<value_t>(evaluateTableSize(numExpectedEntries))},
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(numExpectedEntries)} {
       _cnt.setVal((value_t)0);
     }
-    HashTable(std::size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    HashTable(size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : HashTable{get_default_allocator(mre, devid), numExpectedEntries} {}
     HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : HashTable{get_default_allocator(mre, devid), (std::size_t)0} {}
+        : HashTable{get_default_allocator(mre, devid), (size_t)0} {}
 
     ~HashTable() = default;
 
@@ -195,8 +195,8 @@ namespace zs {
       return make_iterator<const_iterator_impl>(_activeKeys.data(), size());
     }
 
-    template <typename Policy> void resize(Policy &&, std::size_t numExpectedEntries);
-    template <typename Policy> void preserve(Policy &&, std::size_t numExpectedEntries);
+    template <typename Policy> void resize(Policy &&, size_t numExpectedEntries);
+    template <typename Policy> void preserve(Policy &&, size_t numExpectedEntries);
     template <typename Policy> void reset(Policy &&, bool clearCnt);
 
     Table _table;
@@ -274,7 +274,7 @@ namespace zs {
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::preserve(Policy &&policy,
-                                                      std::size_t numExpectedEntries) {
+                                                      size_t numExpectedEntries) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto numEntries = size();
     if (numExpectedEntries == numEntries) return;
@@ -291,13 +291,13 @@ namespace zs {
              ResetHashTable<LsvT>{proxy<space>(*this), false});  // don't clear cnt
     } else
       policy(range(numEntries), RemoveHashTableEntries<LsvT>{proxy<space>(*this)});
-    policy(range(std::min((std::size_t)numEntries, numExpectedEntries)),
+    policy(range(std::min((size_t)numEntries, numExpectedEntries)),
            ReinsertHashTable<LsvT>{proxy<space>(*this)});
   }
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy,
-                                                    std::size_t numExpectedEntries) {
+                                                    size_t numExpectedEntries) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto newTableSize = evaluateTableSize(numExpectedEntries);
     if (newTableSize <= _tableSize) return;
@@ -500,7 +500,7 @@ namespace zs {
               enable_if_all<VecT::dim == 1, VecT::extent == dim,
                             std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
     constexpr value_t do_hash(const VecInterface<VecT> &key) const noexcept {
-      std::size_t ret = key[0];
+      size_t ret = key[0];
       for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);
     }

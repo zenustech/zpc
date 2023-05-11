@@ -204,7 +204,7 @@ namespace zs {
     _offsets = indices_type{primBvs.get_allocator(), numCells + 1};
     exclusive_scan(policy, std::begin(counts), std::end(counts), std::begin(_offsets));
 
-    const std::size_t numEntries = _offsets.getVal(numCells);
+    const size_t numEntries = _offsets.getVal(numCells);
     _indices = indices_type{primBvs.get_allocator(), numEntries};
 
     policy(range(primBvs.size()), [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),

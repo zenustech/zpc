@@ -129,7 +129,7 @@ namespace zs {
       return *this;
     }
 #endif
-    template <typename... Args, std::size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
+    template <typename... Args, size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
     static constexpr vec_impl from_tuple(const std::tuple<Args...> &tup, index_seq<Is...>) {
       vec_impl ret{};
       ((void)(ret.data()[Is] = std::get<Is>(tup)), ...);
@@ -144,7 +144,7 @@ namespace zs {
       *this = from_tuple(tup);
       return *this;
     }
-    template <typename... Args, std::size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
+    template <typename... Args, size_t... Is, enable_if_t<sizeof...(Args) == extent> = 0>
     static constexpr vec_impl from_tuple(const zs::tuple<Args...> &tup, index_seq<Is...>) {
       vec_impl ret{};
       ((void)(ret.data()[Is] = zs::get<Is>(tup)), ...);
@@ -226,7 +226,7 @@ namespace zs {
     return vec<Tn, sizeof...(Args)>{FWD(args)...};
   }
   /// make vec from std tuple
-  template <typename T, typename... Ts, std::size_t... Is>
+  template <typename T, typename... Ts, size_t... Is>
   constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const std::tuple<Ts...> &tup,
                                                   index_seq<Is...>) noexcept {
     return vec<T, (sizeof...(Ts))>{std::get<Is>(tup)...};
@@ -236,7 +236,7 @@ namespace zs {
     return make_vec_impl<T>(tup, std::index_sequence_for<Ts...>{});
   }
   /// make vec from zs tuple
-  template <typename T, typename... Ts, std::size_t... Is>
+  template <typename T, typename... Ts, size_t... Is>
   constexpr vec<T, (sizeof...(Ts))> make_vec_impl(const tuple<Ts...> &tup,
                                                   index_seq<Is...>) noexcept {
     return vec<T, (sizeof...(Ts))>{get<Is>(tup)...};

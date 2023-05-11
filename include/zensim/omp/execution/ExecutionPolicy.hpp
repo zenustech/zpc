@@ -123,7 +123,7 @@ namespace zs {
                                loc.column()));
     }
 
-    template <std::size_t I, std::size_t... Is, typename... Iters, typename... Policies,
+    template <size_t I, size_t... Is, typename... Iters, typename... Policies,
               typename... Ranges, typename... Bodies>
     void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
@@ -232,7 +232,7 @@ namespace zs {
                                loc.column()));
     }
     template <class InputIt, class OutputIt,
-              class BinaryOperation = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
+              class BinaryOperation = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
@@ -311,7 +311,7 @@ namespace zs {
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation
-              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void exclusive_scan(
         InputIt &&first, InputIt &&last, OutputIt &&d_first,
         typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
@@ -386,7 +386,7 @@ namespace zs {
     }
     template <class InputIt, class OutputIt,
               class BinaryOp
-              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                 typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
                 = deduce_identity<

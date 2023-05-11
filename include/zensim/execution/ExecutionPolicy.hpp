@@ -139,7 +139,7 @@ namespace zs {
       }
     }
 
-    template <std::size_t I, std::size_t... Is, typename... Iters, typename... Policies,
+    template <size_t I, size_t... Is, typename... Iters, typename... Policies,
               typename... Ranges, typename... Bodies>
     constexpr void exec(index_seq<Is...> indices, zs::tuple<Iters...> prefixIters,
                         const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
@@ -167,7 +167,7 @@ namespace zs {
     }
 
     template <class InputIt, class OutputIt,
-              class BinaryOperation = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
+              class BinaryOperation = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     constexpr void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                                   BinaryOperation &&binary_op = {},
                                   const source_location &loc = source_location::current()) const {
@@ -176,7 +176,7 @@ namespace zs {
     }
     template <class InputIt, class OutputIt,
               class T = remove_cvref_t<decltype(*declval<InputIt>())>,
-              class BinaryOperation = std::plus<T>>
+              class BinaryOperation = plus<T>>
     constexpr void exclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                                   T init = deduce_identity<BinaryOperation, T>(),
                                   BinaryOperation &&binary_op = {},
@@ -187,7 +187,7 @@ namespace zs {
       } while (++first != last);
     }
     template <class InputIt, class OutputIt,
-              class BinaryOp = std::plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
+              class BinaryOp = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     constexpr void reduce(
         InputIt &&first, InputIt &&last, OutputIt &&d_first,
         remove_cvref_t<decltype(*declval<InputIt>())> init
@@ -376,7 +376,7 @@ namespace zs {
   /// kernel, for_each, reduce, scan, gather, sort
   /// ========================================================================
   /// this can only be called on host side
-  template <std::size_t... Is, typename... Policies, typename... Ranges, typename... Bodies>
+  template <size_t... Is, typename... Policies, typename... Ranges, typename... Bodies>
   constexpr void par_exec(zs::tuple<Policies...> policies, zs::tuple<Ranges...> ranges,
                           Bodies &&...bodies) {
     /// these backends should all be on the host side
@@ -396,7 +396,7 @@ namespace zs {
 
   /// default policy is 'sequential'
   /// this should be able to be used within a kernel
-  template <std::size_t... Is, typename... Ranges, typename... Bodies>
+  template <size_t... Is, typename... Ranges, typename... Bodies>
   constexpr void par_exec(zs::tuple<Ranges...> ranges, Bodies &&...bodies) {
     using SeqPolicies =
         typename gen_seq<sizeof...(Ranges)>::template uniform_types_t<zs::tuple,
@@ -448,7 +448,7 @@ namespace zs {
   /// scan
   template <class ExecutionPolicy, class InputIt, class OutputIt,
             class BinaryOperation
-            = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+            = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
   constexpr void inclusive_scan(ExecutionPolicy &&policy, InputIt &&first, InputIt &&last,
                                 OutputIt &&d_first, BinaryOperation &&binary_op = {},
                                 const source_location &loc = source_location::current()) {
@@ -456,7 +456,7 @@ namespace zs {
   }
   template <class ExecutionPolicy, class InputIt, class OutputIt,
             class BinaryOperation
-            = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+            = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
   constexpr void exclusive_scan(
       ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first,
       typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
@@ -468,7 +468,7 @@ namespace zs {
   /// reduce
   template <class ExecutionPolicy, class InputIt, class OutputIt,
             class BinaryOp
-            = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+            = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
   constexpr void reduce(
       ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first,
       typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init

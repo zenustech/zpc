@@ -35,8 +35,8 @@ namespace zs {
     static_assert(threshold > 0, "bucket load threshold must be positive");
 
     struct alignas(next_2pow(sizeof(index_type) * dim)) storage_key_type {
-      static constexpr std::size_t num_total_bytes = next_2pow(sizeof(index_type) * dim);
-      static constexpr std::size_t num_padded_bytes
+      static constexpr size_t num_total_bytes = next_2pow(sizeof(index_type) * dim);
+      static constexpr size_t num_padded_bytes
           = next_2pow(sizeof(index_type) * dim) - sizeof(index_type) * dim;
       constexpr storage_key_type() noexcept = default;
       constexpr storage_key_type(const key_type &k) noexcept : val{k} {}
@@ -87,7 +87,7 @@ namespace zs {
       Table(Table &&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, std::size_t numEntries)
+      Table(const allocator_type &allocator, size_t numEntries)
           : keys{allocator, numEntries},
             indices{allocator, numEntries},
             status{allocator, numEntries} {}
@@ -120,7 +120,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -128,12 +128,12 @@ namespace zs {
     constexpr auto &self() noexcept { return _table; }
     constexpr const auto &self() const noexcept { return _table; }
 
-    constexpr std::size_t evaluateTableSize(std::size_t entryCnt) const {
-      if (entryCnt == 0) return (std::size_t)0;
-      std::size_t n = next_2pow(entryCnt) * 2;
+    constexpr size_t evaluateTableSize(size_t entryCnt) const {
+      if (entryCnt == 0) return (size_t)0;
+      size_t n = next_2pow(entryCnt) * 2;
       return n + (bucket_size - n % bucket_size);
     }
-    bht(const allocator_type &allocator, std::size_t numExpectedEntries)
+    bht(const allocator_type &allocator, size_t numExpectedEntries)
         : _table{allocator, evaluateTableSize(numExpectedEntries)},
           _tableSize{static_cast<size_type>(evaluateTableSize(numExpectedEntries))},
           _cnt{allocator, 1},
@@ -149,10 +149,10 @@ namespace zs {
 
       _cnt.setVal((value_type)0);
     }
-    bht(std::size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    bht(size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : bht{get_default_allocator(mre, devid), numExpectedEntries} {}
     bht(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : bht{get_default_allocator(mre, devid), (std::size_t)0} {}
+        : bht{get_default_allocator(mre, devid), (size_t)0} {}
 
     ~bht() = default;
 
@@ -224,9 +224,9 @@ namespace zs {
 
 #if 0
     template <typename Policy>
-    void resize(Policy &&, std::size_t numExpectedEntries);
+    void resize(Policy &&, size_t numExpectedEntries);
     template <typename Policy>
-    void preserve(Policy &&, std::size_t numExpectedEntries);
+    void preserve(Policy &&, size_t numExpectedEntries);
 #endif
     template <typename Policy> void reset(Policy &&, bool clearCnt);
 

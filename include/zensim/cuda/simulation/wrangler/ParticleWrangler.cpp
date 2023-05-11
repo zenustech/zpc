@@ -26,7 +26,7 @@ using ConstZenoLBvhView = zs::LBvhView<zs::execspace_e::cuda, const ZenoLBvh>;
 
 __device__ void zfx_wrangle_func(float *globals, float const *params);
 
-extern "C" __global__ void zpc_particle_wrangle_kernel(std::size_t npars,
+extern "C" __global__ void zpc_particle_wrangle_kernel(size_t npars,
                                                        zs::ConstitutiveModelConfig config,
                                                        zs::f32 const *params, int nchns,
                                                        zs::AccessorAoSoA *accessors) {
@@ -44,7 +44,7 @@ extern "C" __global__ void zpc_particle_wrangle_kernel(std::size_t npars,
   for (int i = 0; i < nchns; ++i) *(zs::f32 *)accessors[i](pid) = globals[i];
 }
 
-extern "C" __global__ void zpc_particle_wrangler_kernel(std::size_t npars, zs::f32 const *params,
+extern "C" __global__ void zpc_particle_wrangler_kernel(size_t npars, zs::f32 const *params,
                                                         int nchns, zs::AccessorAoSoA *accessors) {
   auto pid = blockIdx.x * blockDim.x + threadIdx.x;
   if (pid >= npars) return;
@@ -62,7 +62,7 @@ extern "C" __global__ void zpc_particle_wrangler_kernel(std::size_t npars, zs::f
 
 // todo: templatize indexbucket parameter type
 extern "C" __global__ void zpc_particle_neighbor_wrangle_kernel(
-    std::size_t npars, int isBox, float radius,
+    size_t npars, int isBox, float radius,
     zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> pos,
     zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> neighborPos,
     zs::IndexBucketsView<zs::execspace_e::cuda, zs::IndexBuckets<3>> ibs, zs::f32 const *params,
@@ -89,7 +89,7 @@ extern "C" __global__ void zpc_particle_neighbor_wrangle_kernel(
 
     auto bucketOffset = ibs.offsets[bucketNo];
     auto bucketSize = ibs.counts[bucketNo];
-    for (std::size_t j = 0; j < bucketSize; ++j) {
+    for (size_t j = 0; j < bucketSize; ++j) {
       auto pj = ibs.indices[bucketOffset + j];
       if (pj == pi) continue;  // skip myself
       auto xj = neighborPos(pj);
@@ -114,7 +114,7 @@ extern "C" __global__ void zpc_particle_neighbor_wrangle_kernel(
 }
 
 extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
-    std::size_t npars, int isBox, float radius, ZenoParticlesView pars,
+    size_t npars, int isBox, float radius, ZenoParticlesView pars,
     ConstZenoParticlesView neighborPars, ConstZenoIndexBucketsView ibs, zs::f32 const *params,
     int nchns, zs::AccessorAoSoA *accessors) {
   auto pi = blockIdx.x * blockDim.x + threadIdx.x;
@@ -139,7 +139,7 @@ extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
 
     auto bucketOffset = ibs.offsets[bucketNo];
     auto bucketSize = ibs.counts[bucketNo];
-    for (std::size_t j = 0; j != bucketSize; ++j) {
+    for (size_t j = 0; j != bucketSize; ++j) {
       auto pj = ibs.indices[bucketOffset + j];
       if (pj == pi) continue;  // skip myself
       auto xj = neighborPars.pack<3>("x", pj);
@@ -164,7 +164,7 @@ extern "C" __global__ void zpc_particle_neighbor_wrangler_kernel(
 }
 
 extern "C" __global__ void zpc_particle_neighbor_bvh_wrangle_kernel(
-    std::size_t npars, int isBox, float radius2,
+    size_t npars, int isBox, float radius2,
     zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> pos,
     zs::VectorView<zs::execspace_e::cuda, const zs::Vector<zs::vec<zs::f32, 3>>> neighborPos,
     ConstZenoLBvhView lbvh, zs::f32 const *params, int nchns, zs::AccessorAoSoA *accessors) {
@@ -200,7 +200,7 @@ extern "C" __global__ void zpc_particle_neighbor_bvh_wrangle_kernel(
 }
 
 extern "C" __global__ void zpc_particle_neighbor_bvh_wrangler_kernel(
-    std::size_t npars, int isBox, float radius2, ZenoParticlesView pars,
+    size_t npars, int isBox, float radius2, ZenoParticlesView pars,
     ConstZenoParticlesView neighborPars, ConstZenoLBvhView lbvh, zs::f32 const *params, int nchns,
     zs::AccessorAoSoA *accessors) {
   auto pi = blockIdx.x * blockDim.x + threadIdx.x;
@@ -233,8 +233,8 @@ extern "C" __global__ void zpc_particle_neighbor_bvh_wrangler_kernel(
     if (!accessors[i].aux) *(T *)accessors[i](pi) = globals[i];
 }
 
-extern "C" __global__ void zpc_particle_particle_wrangler_kernel(std::size_t npars,
-                                                                 std::size_t nNeighborPars,
+extern "C" __global__ void zpc_particle_particle_wrangler_kernel(size_t npars,
+                                                                 size_t nNeighborPars,
                                                                  zs::f32 const *params, int nchns,
                                                                  zs::AccessorAoSoA *accessors) {
   auto pi = blockIdx.x * blockDim.x + threadIdx.x;

@@ -5,7 +5,7 @@
 
 namespace zs {
 
-  template <typename PrimIdT = std::size_t, typename NodeIdT = PrimIdT> struct BvttFront {
+  template <typename PrimIdT = size_t, typename NodeIdT = PrimIdT> struct BvttFront {
     using allocator_type = ZSPmrAllocator<>;
     using prim_id_t = PrimIdT;
     using node_id_t = NodeIdT;
@@ -37,9 +37,9 @@ namespace zs {
     }
 
     BvttFront(const allocator_type &allocator, node_id_t numNodes, index_t estimatedCount)
-        : _primIds{allocator, (std::size_t)estimatedCount},
-          _nodeIds{allocator, (std::size_t)estimatedCount},
-          _offsets{allocator, (std::size_t)numNodes + 1},
+        : _primIds{allocator, (size_t)estimatedCount},
+          _nodeIds{allocator, (size_t)estimatedCount},
+          _offsets{allocator, (size_t)numNodes + 1},
           _cnt{allocator, 1} {
       _cnt.setVal(0);
     }

@@ -73,14 +73,14 @@ namespace zs {
 
   protected:
     // std tuple
-    template <typename... Tn, std::size_t... Is,
+    template <typename... Tn, size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr T weight_impl(const std::tuple<Tn...> &loc, index_seq<Is...>) const noexcept {
       value_type ret{1};
       ((void)(ret *= get<0>(weights)(Is, std::get<Is>(loc))), ...);
       return ret;
     }
-    template <std::size_t I, typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr T weightGradient_impl(const std::tuple<Tn...> &loc, index_seq<Is...>) const noexcept {
       value_type ret{1};
@@ -89,21 +89,21 @@ namespace zs {
        ...);
       return ret;
     }
-    template <typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr TV weightGradients_impl(const std::tuple<Tn...> &loc,
                                       index_seq<Is...>) const noexcept {
       return TV{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
     }
     // zs tuple
-    template <typename... Tn, std::size_t... Is,
+    template <typename... Tn, size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr T weight_impl(const zs::tuple<Tn...> &loc, index_seq<Is...>) const noexcept {
       value_type ret{1};
       ((void)(ret *= get<0>(weights)(Is, zs::get<Is>(loc))), ...);
       return ret;
     }
-    template <std::size_t I, typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr T weightGradient_impl(const zs::tuple<Tn...> &loc, index_seq<Is...>) const noexcept {
       value_type ret{1};
@@ -112,7 +112,7 @@ namespace zs {
        ...);
       return ret;
     }
-    template <typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr TV weightGradients_impl(const zs::tuple<Tn...> &loc,
                                       index_seq<Is...>) const noexcept {
@@ -139,12 +139,12 @@ namespace zs {
     template <typename... Tn> constexpr T weight(const zs::tuple<Tn...> &loc) const noexcept {
       return weight_impl(loc, std::index_sequence_for<Tn...>{});
     }
-    template <std::size_t I, typename... Tn, auto ord = deriv_order>
+    template <size_t I, typename... Tn, auto ord = deriv_order>
     constexpr std::enable_if_t<(ord > 0), T> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
       return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
     }
-    template <std::size_t I, typename... Tn, auto ord = deriv_order>
+    template <size_t I, typename... Tn, auto ord = deriv_order>
     constexpr std::enable_if_t<(ord > 0), T> weightGradient(
         const zs::tuple<Tn...> &loc) const noexcept {
       return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});

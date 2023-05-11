@@ -153,7 +153,7 @@ namespace zs {
   }
   /**
    */
-  template <typename Tn = std::size_t> constexpr Tn interleaved_bit_mask(int dim) noexcept {
+  template <typename Tn = size_t> constexpr Tn interleaved_bit_mask(int dim) noexcept {
     constexpr Tn totalBits = sizeof(Tn) << (Tn)3;
     Tn mask = 0;
     for (Tn curBit = 0; curBit < totalBits; curBit += (Tn)dim) mask |= ((Tn)1 << curBit);

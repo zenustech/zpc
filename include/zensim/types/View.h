@@ -24,7 +24,7 @@ namespace zs {
     using structure_type = remove_cvref_t<Structure>;
     using value_type = detected_or_t<detected_or_t<float, dof_detail::T_t, structure_type>,
                                      dof_detail::value_t, structure_type>;
-    using size_type = detected_or_t<detected_or_t<std::size_t, dof_detail::index_t, structure_type>,
+    using size_type = detected_or_t<detected_or_t<size_t, dof_detail::index_t, structure_type>,
                                     dof_detail::size_t, structure_type>;
     using channel_counter_type
         = detected_or_t<unsigned char, dof_detail::counter_t, structure_type>;

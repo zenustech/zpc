@@ -216,7 +216,7 @@ namespace zs {
     static constexpr index_type sentinel_v = -1;
     static constexpr index_type failure_token_v = limits<index_type>::max();
 
-    static std::size_t padded_capacity(std::size_t capacity) noexcept {
+    static size_t padded_capacity(size_t capacity) noexcept {
       if (auto remainder = capacity % bucket_size; remainder) capacity += (bucket_size - remainder);
       return capacity;
     }
@@ -227,12 +227,12 @@ namespace zs {
       Table(Table &&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, std::size_t capacity)
+      Table(const allocator_type &allocator, size_t capacity)
           : keys{allocator, capacity},
             indices{allocator, capacity},
             status{allocator, capacity / bucket_size} {}
 
-      void resize(std::size_t newCap) {
+      void resize(size_t newCap) {
         keys.resize(newCap);
         indices.resize(newCap);
         status.resize(newCap / bucket_size);
@@ -286,19 +286,19 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
 
-    inline static u32 deduce_num_chains(std::size_t cap) {
+    inline static u32 deduce_num_chains(size_t cap) {
       // maximum number of cuckoo chains
       double lg_input_size = (float)(std::log((double)cap) / std::log(2.0));
       constexpr unsigned max_iter_const = 7;
       return static_cast<u32>(max_iter_const * lg_input_size);
     }
 
-    bcht(const allocator_type &allocator, std::size_t capacity)
+    bcht(const allocator_type &allocator, size_t capacity)
         : _capacity{padded_capacity(capacity) * 2},
           _numBuckets{(size_type)_capacity / bucket_size},
           _table{allocator, _capacity},
@@ -325,10 +325,10 @@ namespace zs {
       // mark complete status
       _buildSuccess.setVal(1);
     }
-    bcht(std::size_t capacity, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    bcht(size_t capacity, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : bcht{get_default_allocator(mre, devid), capacity} {}
     bcht(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : bcht{get_default_allocator(mre, devid), (std::size_t)0} {}
+        : bcht{get_default_allocator(mre, devid), (size_t)0} {}
 
     ~bcht() = default;
 
@@ -415,9 +415,9 @@ namespace zs {
       _buildSuccess.setVal(1);
     }
 
-    template <typename Policy> void resize(Policy &&, std::size_t newCapacity);
+    template <typename Policy> void resize(Policy &&, size_t newCapacity);
 
-    std::size_t _capacity;  // make sure this comes ahead
+    size_t _capacity;  // make sure this comes ahead
     size_type _numBuckets;
     Table _table;
     zs::Vector<key_type> _activeKeys;
@@ -431,7 +431,7 @@ namespace zs {
             typename AllocatorT>
   template <typename Policy>
   void bcht<KeyT, IndexT, KeyCompare, HashT, B, AllocatorT>::resize(Policy &&pol,
-                                                                    std::size_t newCapacity) {
+                                                                    size_t newCapacity) {
     newCapacity = padded_capacity(newCapacity) * 2;
     if (newCapacity <= _capacity) return;
     constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
@@ -528,8 +528,8 @@ namespace zs {
           _hf1{table._hf1},
           _hf2{table._hf2} {}
 
-    constexpr std::size_t capacity() const noexcept {
-      return (std::size_t)_numBuckets * (std::size_t)bucket_size;
+    constexpr size_t capacity() const noexcept {
+      return (size_t)_numBuckets * (size_t)bucket_size;
     }
     constexpr auto transKey(const key_type &key) const noexcept {
       if constexpr (compare_key)

@@ -11,7 +11,7 @@ namespace zs {
   template <typename, typename, typename> struct indexer_impl;
 
   /// indexer
-  template <typename Tn, Tn... Ns, std::size_t... StorageOrders, std::size_t... Is>
+  template <typename Tn, Tn... Ns, size_t... StorageOrders, size_t... Is>
   struct indexer_impl<integer_seq<Tn, Ns...>, index_seq<StorageOrders...>, index_seq<Is...>> {
     static_assert(sizeof...(Ns) == sizeof...(StorageOrders), "dimension mismatch");
     static_assert(std::is_integral_v<Tn>, "index type is not an integral");
@@ -28,16 +28,16 @@ namespace zs {
     using lookup_bases = value_seq<
         storage_bases::template type<lookup_orders::template type<Is>::value>::value...>;
 
-    template <std::size_t I, enable_if_t<(I < dim)> = 0>
+    template <size_t I, enable_if_t<(I < dim)> = 0>
     static constexpr index_type storage_range() noexcept {
       return select_indexed_value<storage_orders::template type<I>::value, Ns...>::value;
     }
-    template <std::size_t I, enable_if_t<(I < dim)> = 0>
+    template <size_t I, enable_if_t<(I < dim)> = 0>
     static constexpr index_type range() noexcept {
       return select_indexed_value<I, Ns...>::value;
     }
 
-    template <std::size_t... Js, typename... Args>
+    template <size_t... Js, typename... Args>
     static constexpr index_type offset_impl(index_seq<Js...>, Args&&... args) noexcept {
       return (... + ((index_type)args * lookup_bases::template type<Js>::value));
     }
@@ -68,9 +68,9 @@ namespace zs {
   using dims = typename vseq_t<extents>::template to_iseq<sint_t>;                                \
   static constexpr index_type extent = vseq_t<extents>{}.reduce(multiplies<index_type>{});        \
   static constexpr int dim = vseq_t<extents>::count;                                              \
-  template <std::size_t I, enable_if_t<(I < dim)> = 0> using range_t                              \
+  template <size_t I, enable_if_t<(I < dim)> = 0> using range_t                              \
       = integral_t<index_type, select_value<I, vseq_t<extents>>::value>;                          \
-  template <std::size_t I> static constexpr index_type range = range_t<I>::value;                 \
+  template <size_t I> static constexpr index_type range = range_t<I>::value;                 \
   using base_t::identity;                                                                         \
   using base_t::ones;                                                                             \
   using base_t::uniform;                                                                          \
@@ -133,7 +133,7 @@ namespace zs {
     static constexpr auto get_dims() noexcept { return wrapt<typename Derived::dims>{}; }
 
     struct detail {
-      template <typename VecT, std::size_t... Is>
+      template <typename VecT, size_t... Is>
       static constexpr bool all_the_same_dimension_extent(typename VecT::index_type v,
                                                           index_seq<Is...>) noexcept {
         return ((VecT::template range<Is> == v) && ...);
@@ -210,7 +210,7 @@ namespace zs {
     ///
     /// construction
     ///
-    template <std::size_t... Is, typename VecT = Derived,
+    template <size_t... Is, typename VecT = Derived,
               enable_if_t<sizeof...(Is) == VecT::extent> = 0>
     constexpr auto to_tuple(index_seq<Is...>) const noexcept {
       // using RetT = typename gen_seq<extent>::template uniform_types_t<std::tuple, value_type>;
@@ -951,7 +951,7 @@ namespace zs {
   };
 
   namespace detail {
-    template <typename VecT, std::size_t dim, sint_t... dims, std::size_t... Is>
+    template <typename VecT, size_t dim, sint_t... dims, size_t... Is>
     constexpr bool vec_fits_shape(integer_seq<sint_t, dims...>, index_seq<Is...>) noexcept {
       static_assert(sizeof...(dims) == sizeof...(Is), "count of indices and dims mismatch.");
       if constexpr (dim == VecT::dim) {
@@ -965,7 +965,7 @@ namespace zs {
     }
   }  // namespace detail
 
-  template <typename VecT, std::size_t dim, sint_t... dims>
+  template <typename VecT, size_t dim, sint_t... dims>
   constexpr bool vec_fits_shape() noexcept {
     return detail::vec_fits_shape<VecT, dim>(integer_seq<sint_t, dims...>{},
                                              std::make_index_sequence<sizeof...(dims)>{});
@@ -976,7 +976,7 @@ namespace zs {
   template <typename VecT>
   struct is_vec<VecT, std::enable_if_t<std::is_base_of_v<VecInterface<VecT>, VecT>>> : true_type {};
 
-  template <std::size_t d = 0, typename VecTV, typename VecTM,
+  template <size_t d = 0, typename VecTV, typename VecTM,
             enable_if_all<VecTV::dim == 1, VecTM::dim + d == VecTV::extent> = 0>
   constexpr auto xlerp(const VecInterface<VecTV>& diff, const VecInterface<VecTM>& arena) noexcept {
     if constexpr (VecTM::dim > 1)

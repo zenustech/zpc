@@ -18,7 +18,7 @@ namespace zs {
     using value_type = ValueT;
     using allocator_type = AllocatorT;
     using index_type = sint_t;  // associated with the number of blocks
-    using size_type = std::size_t;
+    using size_type = size_t;
 
     using integer_coord_component_type = std::make_signed_t<IntegerCoordT>;
     static constexpr auto deduce_basic_value_type() noexcept {
@@ -51,7 +51,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _grid.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -850,7 +850,7 @@ namespace zs {
         = conditional_t<deriv_order == 0, tuple<TWM>,
                         conditional_t<deriv_order == 1, tuple<TWM, TWM>, tuple<TWM, TWM, TWM>>>;
 
-    template <typename ValT, std::size_t... Is>
+    template <typename ValT, size_t... Is>
     static constexpr auto deduce_arena_type_impl(index_seq<Is...>) {
       return vec<ValT, (Is + 1 > 0 ? width : width)...>{};
     }
@@ -1010,12 +1010,12 @@ namespace zs {
       return weight(zs::forward_as_tuple(FWD(is)...));
     }
     /// weight gradient
-    template <std::size_t I, typename... Tn, auto ord = deriv_order>
+    template <size_t I, typename... Tn, auto ord = deriv_order>
     constexpr std::enable_if_t<(ord > 0), coord_component_type> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
       return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
     }
-    template <std::size_t I, typename... Tn, auto ord = deriv_order>
+    template <size_t I, typename... Tn, auto ord = deriv_order>
     constexpr std::enable_if_t<(ord > 0), coord_component_type> weightGradient(
         const zs::tuple<Tn...> &loc) const noexcept {
       return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
@@ -1053,7 +1053,7 @@ namespace zs {
 
   protected:
     /// std tuple
-    template <typename... Tn, std::size_t... Is,
+    template <typename... Tn, size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr coord_component_type weight_impl(const std::tuple<Tn...> &loc,
                                                index_seq<Is...>) const noexcept {
@@ -1061,7 +1061,7 @@ namespace zs {
       ((void)(ret *= get<0>(weights)(Is, std::get<Is>(loc))), ...);
       return ret;
     }
-    template <std::size_t I, typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_component_type weightGradient_impl(const std::tuple<Tn...> &loc,
                                                        index_seq<Is...>) const noexcept {
@@ -1071,14 +1071,14 @@ namespace zs {
        ...);
       return ret;
     }
-    template <typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_type weightGradients_impl(const std::tuple<Tn...> &loc,
                                               index_seq<Is...>) const noexcept {
       return coord_type{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
     }
     /// zs tuple
-    template <typename... Tn, std::size_t... Is,
+    template <typename... Tn, size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr coord_component_type weight_impl(const zs::tuple<Tn...> &loc,
                                                index_seq<Is...>) const noexcept {
@@ -1086,7 +1086,7 @@ namespace zs {
       ((void)(ret *= get<0>(weights)(Is, zs::get<Is>(loc))), ...);
       return ret;
     }
-    template <std::size_t I, typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_component_type weightGradient_impl(const zs::tuple<Tn...> &loc,
                                                        index_seq<Is...>) const noexcept {
@@ -1096,7 +1096,7 @@ namespace zs {
        ...);
       return ret;
     }
-    template <typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr coord_type weightGradients_impl(const zs::tuple<Tn...> &loc,
                                               index_seq<Is...>) const noexcept {

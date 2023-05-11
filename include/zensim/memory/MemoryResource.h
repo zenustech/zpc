@@ -24,7 +24,7 @@ namespace zs {
 
 #else
   class memory_resource {
-    static constexpr std::size_t _S_max_align = alignof(max_align_t);
+    static constexpr size_t _S_max_align = alignof(max_align_t);
 
   public:
     memory_resource() = default;
@@ -33,12 +33,12 @@ namespace zs {
 
     memory_resource& operator=(const memory_resource&) = default;
 
-    [[nodiscard]] void* allocate(std::size_t __bytes, std::size_t __alignment = _S_max_align)
+    [[nodiscard]] void* allocate(size_t __bytes, size_t __alignment = _S_max_align)
         __attribute__((__returns_nonnull__, __alloc_size__(2), __alloc_align__(3))) {
       return do_allocate(__bytes, __alignment);
     }
 
-    void deallocate(void* __p, std::size_t __bytes, std::size_t __alignment = _S_max_align)
+    void deallocate(void* __p, size_t __bytes, size_t __alignment = _S_max_align)
         __attribute__((__nonnull__)) {
       return do_deallocate(__p, __bytes, __alignment);
     }
@@ -46,9 +46,9 @@ namespace zs {
     bool is_equal(const memory_resource& __other) const noexcept { return do_is_equal(__other); }
 
   private:
-    virtual void* do_allocate(std::size_t __bytes, std::size_t __alignment) = 0;
+    virtual void* do_allocate(size_t __bytes, size_t __alignment) = 0;
 
-    virtual void do_deallocate(void* __p, std::size_t __bytes, std::size_t __alignment) = 0;
+    virtual void do_deallocate(void* __p, size_t __bytes, size_t __alignment) = 0;
 
     virtual bool do_is_equal(const memory_resource& __other) const noexcept = 0;
   };
@@ -67,32 +67,32 @@ namespace zs {
 #endif
 
   struct vmr_t : public mr_t {
-    static constexpr std::size_t s_chunk_granularity_bits = (std::size_t)21;
-    static constexpr std::size_t s_chunk_granularity = (std::size_t)1 << s_chunk_granularity_bits;
+    static constexpr size_t s_chunk_granularity_bits = (size_t)21;
+    static constexpr size_t s_chunk_granularity = (size_t)1 << s_chunk_granularity_bits;
     vmr_t() = default;
     vmr_t(const vmr_t&) = default;
     vmr_t& operator=(const vmr_t&) = default;
     virtual ~vmr_t() = default;
 
-    bool commit(std::size_t offset, std::size_t bytes = s_chunk_granularity) {
+    bool commit(size_t offset, size_t bytes = s_chunk_granularity) {
       return do_commit(offset, bytes);
     }
-    bool evict(std::size_t offset, std::size_t bytes = s_chunk_granularity) {
+    bool evict(size_t offset, size_t bytes = s_chunk_granularity) {
       return do_evict(offset, bytes);
     }
-    bool check_residency(std::size_t offset, std::size_t bytes = s_chunk_granularity) const {
+    bool check_residency(size_t offset, size_t bytes = s_chunk_granularity) const {
       return do_check_residency(offset, bytes);
     }
-    void* address(std::size_t offset = 0) const { return do_address(offset); }
+    void* address(size_t offset = 0) const { return do_address(offset); }
 
   private:
-    void* do_allocate(std::size_t, std::size_t) override { return nullptr; }
-    void do_deallocate(void*, std::size_t, std::size_t) override {}
+    void* do_allocate(size_t, size_t) override { return nullptr; }
+    void do_deallocate(void*, size_t, size_t) override {}
     bool do_is_equal(const mr_t& o) const noexcept override { return this == &o; }
-    virtual bool do_commit(std::size_t, std::size_t) = 0;
-    virtual bool do_evict(std::size_t, std::size_t) = 0;
-    virtual bool do_check_residency(std::size_t, std::size_t) const = 0;
-    virtual void* do_address(std::size_t) const = 0;
+    virtual bool do_commit(size_t, size_t) = 0;
+    virtual bool do_evict(size_t, size_t) = 0;
+    virtual bool do_check_residency(size_t, size_t) const = 0;
+    virtual void* do_address(size_t) const = 0;
   };
 
   // using unsynchronized_pool_resource = pmr::unsynchronized_pool_resource;

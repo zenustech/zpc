@@ -132,7 +132,7 @@ namespace zs {
         });
 
     fmt::print("{} voxels ot of {} in total are active. (threshold: {})\n",
-               numActiveVoxels.getVal(), ls.numBlocks() * (std::size_t)ls.block_size, threshold);
+               numActiveVoxels.getVal(), ls.numBlocks() * (size_t)ls.block_size, threshold);
   }
 
   /// shrink
@@ -143,7 +143,7 @@ namespace zs {
     using SplsT = SparseLevelSet<dim, category>;
 
     constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
-    std::size_t nbs = ls.numBlocks();
+    size_t nbs = ls.numBlocks();
     const auto &allocator = ls.get_allocator();
 
 #if 0
@@ -179,7 +179,7 @@ namespace zs {
     // establish mapping
     Vector<typename SplsT::size_type> offsets{allocator, nbs + 1};
     exclusive_scan(pol, std::begin(marks), std::end(marks), std::begin(offsets));
-    std::size_t newNbs = offsets.getVal(nbs);  // retrieve latest numblocks
+    size_t newNbs = offsets.getVal(nbs);  // retrieve latest numblocks
     fmt::print(fg(fmt::color::blue_violet), "shrink [{}] blocks to [{}] blocks\n", nbs, newNbs);
     Vector<typename SplsT::size_type> preservedBlockNos{allocator, newNbs};
     pol(range(nbs),
@@ -462,7 +462,7 @@ namespace zs {
         blocks.size(), table.size(), blocks.size() * grid.block_space(), grid.size(),
         grid.getPropertyOffset("tag"));
 
-    std::size_t tableSize = table.size();
+    size_t tableSize = table.size();
     int iter = 0;
     grid.resize(tableSize * 2);
 
@@ -472,7 +472,7 @@ namespace zs {
       tmp[0] = 0;
       auto seedcnt = tmp.clone(grid.get_allocator());
 
-      policy(range(tableSize * (std::size_t)grid.block_space()),
+      policy(range(tableSize * (size_t)grid.block_space()),
              ReserveForNeighbor<space, RM_CVREF_T(ls)>{ls});
 #if 0
       {
@@ -483,8 +483,8 @@ namespace zs {
       getchar();
 #endif
 
-      ks.resize(tableSize * (std::size_t)grid.block_space());
-      policy(range(tableSize * (std::size_t)grid.block_space()),
+      ks.resize(tableSize * (size_t)grid.block_space());
+      policy(range(tableSize * (size_t)grid.block_space()),
              MarkInteriorTag<space, RM_CVREF_T(ls), RM_CVREF_T(ks)>{ls, ks, seedcnt.data()});
       tmp = seedcnt.clone({memsrc_e::host, -1});
       fmt::print("floodfill iter [{}]: {} -> {}, {} seeds\n", iter, tableSize, table.size(),

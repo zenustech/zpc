@@ -84,12 +84,12 @@ namespace zs {
 
     bool reading_points = false;
     bool reading_tets = false;
-    std::size_t n_points = 0;
-    std::size_t n_tets = 0;
+    size_t n_points = 0;
+    size_t n_tets = 0;
 
     while (std::getline(in, line)) {
       std::stringstream ss(line);
-      if (line.size() == (std::size_t)(0)) {
+      if (line.size() == (size_t)(0)) {
       } else if (line.substr(0, 6) == "POINTS") {
         reading_points = true;
         reading_tets = false;
@@ -154,8 +154,8 @@ namespace zs {
 
   template <typename T, typename Tn>
   bool write_tet_mesh_vtk(const std::string &filename, const Mesh<T, 3, Tn, 4> &mesh) {
-    assert((mesh.nodes.size() != (std::size_t)0) && "The X array for writing tetmesh vtk is empty.");
-    assert((mesh.elems.size() != (std::size_t)0)
+    assert((mesh.nodes.size() != (size_t)0) && "The X array for writing tetmesh vtk is empty.");
+    assert((mesh.elems.size() != (size_t)0)
            && "The tet mesh data structure for writing tetmesh vtk is empty.");
 
     std::ofstream os(filename);

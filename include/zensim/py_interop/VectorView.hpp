@@ -4,7 +4,7 @@
 namespace zs {
 
   template <typename T> struct VectorViewLite {  // T may be const
-    using size_type = std::size_t;
+    using size_type = size_t;
 
     static constexpr bool is_const_structure = is_const<T>::value;
 

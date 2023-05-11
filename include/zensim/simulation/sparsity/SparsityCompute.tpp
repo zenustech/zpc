@@ -6,7 +6,7 @@ namespace zs {
   GeneralHashTable partition_for_particles(GeneralParticles& particles, float dx, int blocklen) {
     return match([&](auto& p) -> GeneralHashTable {
       MemoryLocation mloc = p.memoryLocation();
-      std::size_t keyCnt = p.size();
+      size_t keyCnt = p.size();
       constexpr int dim = remove_cvref_t<decltype(p)>::dim;
       for (auto d = dim; d--;) keyCnt /= blocklen;
 

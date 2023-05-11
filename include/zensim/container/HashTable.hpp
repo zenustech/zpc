@@ -262,25 +262,13 @@ namespace zs {
     HashTableView table;
   };
 
-  template <typename HashTableView> struct ResetHashTableCounter {
-    explicit ResetHashTableCounter(HashTableView tv, typename HashTableView::value_t cnt)
-        : table{tv}, cnt{cnt} {}
-    constexpr void operator()(typename HashTableView::size_type entry) noexcept {
-      *table._cnt = cnt;
-    }
-    HashTableView table;
-    typename HashTableView::value_t cnt;
-  };
-
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
-  void HashTable<Tn, dim, Index, Allocator>::preserve(Policy &&policy,
-                                                      size_t numExpectedEntries) {
+  void HashTable<Tn, dim, Index, Allocator>::preserve(Policy &&policy, size_t numExpectedEntries) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto numEntries = size();
     if (numExpectedEntries == numEntries) return;
     using LsvT = decltype(proxy<space>(*this));
-    policy(range(1), ResetHashTableCounter<LsvT>{proxy<space>(*this),
-                                                 (typename LsvT::value_t)numExpectedEntries});
+    _cnt.setVal(numExpectedEntries);
     const auto newTableSize = evaluateTableSize(numExpectedEntries);
     _activeKeys.resize(newTableSize);  // newTableSize must be larger than numExpectedEntries
     /// clear table
@@ -296,8 +284,7 @@ namespace zs {
   }
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
-  void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy,
-                                                    size_t numExpectedEntries) {
+  void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy, size_t numExpectedEntries) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     const auto newTableSize = evaluateTableSize(numExpectedEntries);
     if (newTableSize <= _tableSize) return;
@@ -363,7 +350,8 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     __forceinline__ __device__ value_t insert(const VecInterface<VecT> &key) noexcept {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -386,7 +374,8 @@ namespace zs {
 #endif
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     inline value_t insert(const VecInterface<VecT> &key) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -410,7 +399,8 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     __forceinline__ __device__ bool insert(const VecInterface<VecT> &key, value_t id) noexcept {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -429,7 +419,8 @@ namespace zs {
 #endif
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     inline bool insert(const VecInterface<VecT> &key, value_t id) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -447,9 +438,9 @@ namespace zs {
     }
 
     /// make sure no one else is inserting in the same time!
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type, Tn>>
+                             = 0>
     constexpr value_t query(const VecInterface<VecT> &key) const noexcept {
       using namespace placeholders;
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
@@ -460,9 +451,9 @@ namespace zs {
         if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
       }
     }
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type, Tn>>
+                             = 0>
     constexpr value_t entry(const VecInterface<VecT> &key) const noexcept {
       using namespace placeholders;
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
@@ -496,9 +487,9 @@ namespace zs {
     conditional_t<is_const_structure, const value_t *, value_t *> _cnt{nullptr};
 
   protected:
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type, Tn>>
+                             = 0>
     constexpr value_t do_hash(const VecInterface<VecT> &key) const noexcept {
       size_t ret = key[0];
       for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
@@ -507,7 +498,8 @@ namespace zs {
 #if defined(__CUDACC__) && ZS_ENABLE_CUDA
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                                                   const VecInterface<VecT> &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
@@ -544,7 +536,8 @@ namespace zs {
 #endif
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     inline key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                               const VecInterface<VecT> &val) {
       constexpr auto execTag = wrapv<S>{};

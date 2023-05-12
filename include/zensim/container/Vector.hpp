@@ -46,7 +46,7 @@ namespace zs {
       }
       /// conventional way
       else
-        return (pointer)_allocator.allocate(bytes, std::alignment_of_v<value_type>);
+        return (pointer)_allocator.allocate(bytes, alignof(value_type));
     }
 
     /// allocator-aware
@@ -62,8 +62,7 @@ namespace zs {
 
     ~Vector() {
       if (_base && capacity() > 0)
-        _allocator.deallocate(_base, capacity() * sizeof(value_type),
-                              std::alignment_of_v<value_type>);
+        _allocator.deallocate(_base, capacity() * sizeof(value_type), alignof(value_type));
     }
 
     inline value_type getVal(size_type i = 0) const {

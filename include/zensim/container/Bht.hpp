@@ -500,7 +500,7 @@ namespace zs {
       using namespace placeholders;
       const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
       if constexpr (sizeof(storage_key_type) == 8) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
           volatile storage_key_type *const ptr;
@@ -519,7 +519,7 @@ namespace zs {
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
           volatile storage_key_type *const ptr;
@@ -563,7 +563,7 @@ namespace zs {
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
         thread_fence(exec_cuda);
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
           storage_key_type const volatile *const ptr;
@@ -583,7 +583,7 @@ namespace zs {
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
         thread_fence(exec_cuda);
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
           storage_key_type const volatile *const ptr;
@@ -623,7 +623,7 @@ namespace zs {
       using namespace placeholders;
       const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
       if constexpr (sizeof(storage_key_type) == 8) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
           volatile storage_key_type *const ptr;
@@ -642,7 +642,7 @@ namespace zs {
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
           volatile storage_key_type *const ptr;
@@ -684,7 +684,7 @@ namespace zs {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
           storage_key_type const volatile *const ptr;
@@ -700,7 +700,7 @@ namespace zs {
         *dst.ptr64 = *src.ptr64;
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
           storage_key_type const volatile *const ptr;

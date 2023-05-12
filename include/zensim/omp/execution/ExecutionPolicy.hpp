@@ -68,7 +68,7 @@ namespace zs {
         for (; iter; ++iter)
 #pragma omp task firstprivate(iter)
         {
-          if constexpr (std::is_invocable_v<F>) {
+          if constexpr (is_invocable_v<F>) {
             f();
           } else {
             std::invoke(f, iter);
@@ -86,7 +86,7 @@ namespace zs {
 
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
           for (DiffT i = 0; i < dist; ++i) {
-            if constexpr (std::is_invocable_v<F>)
+            if constexpr (is_invocable_v<F>)
               f();
             else {
               auto &&it = *(iter + i);
@@ -105,7 +105,7 @@ namespace zs {
           for (auto &&it : range)
 #pragma omp task firstprivate(it)
           {
-            if constexpr (std::is_invocable_v<F>) {
+            if constexpr (is_invocable_v<F>) {
               f();
             } else {
               if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)

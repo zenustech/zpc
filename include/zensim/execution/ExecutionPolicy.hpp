@@ -58,18 +58,27 @@ namespace zs {
   // cuda: thread_block_tile<B, cg::thread_block>
   // rocm: wavefront<32/64>
   // cpu: core (SIMD)
-  struct Worker {
+  // sycl: sub_group
+  struct SubGroup {
     ;
   };
 
+  // if identity cannot be deduced, trigger SFINAE in case of misuse.
+  template <typename BinaryOp, typename T,
+            typename = decltype(monoid<remove_cvref_t<BinaryOp>>::identity())>
+  constexpr auto deduce_identity() {
+    return monoid<remove_cvref_t<BinaryOp>>::identity();
+  }
+#if 0
   template <typename BinaryOp, typename T> constexpr auto deduce_identity() {
-    constexpr auto canExtractIdentity
-        = is_valid([](auto t) -> decltype((void)monoid<remove_cvref_t<decltype(t)>>::e) {});
+    constexpr auto canExtractIdentity = is_valid(
+        [](auto t) -> decltype((void)monoid<remove_cvref_t<decltype(t)>>::identity()) {});
     if constexpr (canExtractIdentity(wrapt<BinaryOp>{}))
       return monoid<remove_cvref_t<BinaryOp>>::identity();
     else
       return T{};
   }
+#endif
 
 #define assert_with_msg(exp, msg) assert(((void)msg, exp))
 
@@ -116,7 +125,7 @@ namespace zs {
         /// for openvdb parallel iteration...
         auto iter = FWD(range);  // otherwise fails on win
         for (; iter; ++iter) {
-          if constexpr (std::is_invocable_v<F>) {
+          if constexpr (is_invocable_v<F>) {
             f();
           } else {
             std::invoke(f, iter);
@@ -139,8 +148,8 @@ namespace zs {
       }
     }
 
-    template <size_t I, size_t... Is, typename... Iters, typename... Policies,
-              typename... Ranges, typename... Bodies>
+    template <size_t I, size_t... Is, typename... Iters, typename... Policies, typename... Ranges,
+              typename... Bodies>
     constexpr void exec(index_sequence<Is...> indices, zs::tuple<Iters...> prefixIters,
                         const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
                         const Bodies &...bodies) const {
@@ -481,10 +490,10 @@ namespace zs {
   template <typename ExecutionPolicy, class KeyIter, class ValueIter,
             typename CompareOpT
             = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
-  void sort_pair(
-      ExecutionPolicy &&policy, KeyIter &&keys, ValueIter &&vals,
-      typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
-      CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) {
+  void sort_pair(ExecutionPolicy &&policy, KeyIter &&keys, ValueIter &&vals,
+                 typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
+                 CompareOpT &&compOp = {},
+                 const source_location &loc = source_location::current()) {
     policy.sort_pair(FWD(keys), FWD(vals), count, FWD(compOp), loc);
   }
   template <typename ExecutionPolicy, class KeyIter,
@@ -519,19 +528,18 @@ namespace zs {
   constexpr enable_if_type<std::is_convertible_v<
       typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
       std::random_access_iterator_tag>>
-  radix_sort_pair(
-      ExecutionPolicy &&policy, KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut,
-      ValueIter &&valsOut, Tn count, int sbit = 0,
-      int ebit
-      = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
-      const source_location &loc = source_location::current()) {
+  radix_sort_pair(ExecutionPolicy &&policy, KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut,
+                  ValueIter &&valsOut, Tn count, int sbit = 0,
+                  int ebit
+                  = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type)
+                    * 8,
+                  const source_location &loc = source_location::current()) {
     policy.radix_sort_pair(FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit,
                            loc);
   }
   template <class ExecutionPolicy, class InputIt, class OutputIt> constexpr void radix_sort(
       ExecutionPolicy &&policy, InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-      int ebit
-      = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type) * 8,
+      int ebit = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type) * 8,
       const source_location &loc = source_location::current()) {
     policy.radix_sort(FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
   }

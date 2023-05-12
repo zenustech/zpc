@@ -50,9 +50,9 @@ namespace zs {
           if constexpr (fts_available)
             return typename function_traits<F>::arguments_t{};
           else {
-            if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>...>)
               return type_seq<int, iter_arg_t<Args>...>{};
-            else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>...>)
               return type_seq<void *, iter_arg_t<Args>...>{};
             else
               return type_seq<iter_arg_t<Args>...>{};
@@ -62,12 +62,12 @@ namespace zs {
           if constexpr (fts_available)
             return wrapt<typename function_traits<F>::return_t>{};
           else {
-            if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
-              return wrapt<std::invoke_result_t<F, int, iter_arg_t<Args>...>>{};
-            else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
-              return wrapt<std::invoke_result_t<F, void *, iter_arg_t<Args>...>>{};
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>...>)
+              return wrapt<invoke_result_t<F, int, iter_arg_t<Args>...>>{};
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>...>)
+              return wrapt<invoke_result_t<F, void *, iter_arg_t<Args>...>>{};
             else
-              return wrapt<std::invoke_result_t<F, iter_arg_t<Args>...>>{};
+              return wrapt<invoke_result_t<F, iter_arg_t<Args>...>>{};
           }
         }
         static constexpr size_t deduce_arity() noexcept {

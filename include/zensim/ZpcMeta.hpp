@@ -3,8 +3,10 @@
 
 namespace zs {
 
-  // ref: https://stackoverflow.com/questions/1119370/where-do-i-find-the-definition-of-size-t
+  // ref: https://en.cppreference.com/w/cpp/meta
   // https://stackoverflow.com/questions/20181702/which-type-traits-cannot-be-implemented-without-compiler-hooks
+
+  // ref: https://stackoverflow.com/questions/1119370/where-do-i-find-the-definition-of-size-t
   using size_t = decltype(sizeof(int));
   using nullptr_t = decltype(nullptr);
 
@@ -446,6 +448,7 @@ namespace zs {
   template <class T> struct is_integral
       : decltype(detail::test_integral(declval<T>(), declval<T *>(), declval<void (*)(T)>())) {};
   template <class T> constexpr bool is_integral_v = is_integral<T>::value;
+
   template <class T> struct is_floating_point
       : bool_constant<
             // Note: standard floating-point types
@@ -456,6 +459,18 @@ namespace zs {
   template <class T> struct is_arithmetic
       : bool_constant<is_integral<T>::value || is_floating_point<T>::value> {};
   template <class T> constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
+  namespace detail {
+    template <typename T, bool = is_arithmetic_v<T>> struct is_signed_impl
+        : bool_constant<T(-1) < T(0)> {};
+    template <typename T> struct is_signed_impl<T, false> : false_type {};
+    template <typename T, bool = is_arithmetic_v<T>> struct is_unsigned_impl
+        : bool_constant<T(0) < T(-1)> {};
+    template <typename T> struct is_unsigned_impl<T, false> : false_type {};
+  }  // namespace detail
+  template <typename T> struct is_signed : detail::is_signed_impl<T> {};
+  template <typename T> struct is_unsigned : detail::is_unsigned_impl<T> {};
+  template <typename T> constexpr bool is_signed_v = is_signed<T>::value;
+  template <typename T> constexpr bool is_unsigned_v = is_unsigned<T>::value;
   // scalar
   // ref: https://stackoverflow.com/questions/11316912/is-enum-implementation
   template <class _Tp> struct is_enum : bool_constant<__is_enum(_Tp)> {};

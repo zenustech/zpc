@@ -90,23 +90,35 @@ namespace zs {
     }
   };
   template <typename T = void> struct getmax {
-    template <typename Auto, typename TT = T, enable_if_t<is_same_v<TT, void>> = 0>
-    constexpr Auto operator()(const Auto &lhs, const Auto &rhs) const noexcept {
-      return lhs > rhs ? lhs : rhs;
-    }
-    template <typename TT = T, enable_if_t<!is_same_v<TT, void>> = 0>
     constexpr T operator()(const T &lhs, const T &rhs) const noexcept {
       return lhs > rhs ? lhs : rhs;
     }
   };
-  template <typename T> struct getmin {
-    template <typename Auto, typename TT = T, enable_if_t<is_same_v<TT, void>> = 0>
-    constexpr Auto operator()(const Auto &lhs, const Auto &rhs) const noexcept {
-      return lhs < rhs ? lhs : rhs;
+  template <> struct getmax<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(x > y)) {
+      // static_assert(is_same_v<remove_cvref_t<A>, remove_cvref_t<B>>, "x and y should be of the
+      // same type, though decorator might differ");
+      if (x > y)
+        return FWD(x);
+      else
+        return FWD(y);
     }
-    template <typename TT = T, enable_if_t<!is_same_v<TT, void>> = 0>
+  };
+  template <typename T = void> struct getmin {
     constexpr T operator()(const T &lhs, const T &rhs) const noexcept {
       return lhs < rhs ? lhs : rhs;
+    }
+  };
+  template <> struct getmin<void> {
+    template <typename A, typename B> constexpr auto operator()(A &&x, B &&y) const
+        noexcept(noexcept(x < y)) {
+      // static_assert(is_same_v<remove_cvref_t<A>, remove_cvref_t<B>>, "x and y should be of the
+      // same type, though decorator might differ");
+      if (x < y)
+        return FWD(x);
+      else
+        return FWD(y);
     }
   };
 
@@ -145,7 +157,7 @@ namespace zs {
     template <typename Arg> constexpr T operator()(Arg &&arg) const noexcept { return FWD(arg); }
     template <typename Arg, typename... Args>
     constexpr T operator()(Arg &&arg, Args &&...args) const noexcept {
-      if constexpr (std::is_invocable_v<BinaryOp, Arg, Args...>)
+      if constexpr (is_invocable_v<BinaryOp, Arg, Args...>)
         return bop(FWD(arg), FWD(args)...);
       else
         return bop(FWD(arg), operator()(FWD(args)...));
@@ -159,6 +171,7 @@ namespace zs {
 
   /// @brief predefined monoids
   template <typename T> struct monoid<plus<T>, T> {
+    static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     static constexpr T e{0};
     static constexpr auto identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
@@ -166,6 +179,7 @@ namespace zs {
     }
   };
   template <typename T> struct monoid<multiplies<T>, T> {
+    static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     static constexpr T e{1};
     static constexpr T identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
@@ -173,6 +187,7 @@ namespace zs {
     }
   };
   template <typename T> struct monoid<logical_or<T>, T> {
+    static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     static constexpr bool e{false};
     static constexpr bool identity() noexcept { return e; }
     template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
@@ -180,15 +195,45 @@ namespace zs {
     }
   };
   template <typename T> struct monoid<logical_and<T>, T> {
+    static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     static constexpr bool e{true};
     static constexpr bool identity() noexcept { return e; }
     template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
       return (forward<Args>(args) && ...);
     }
   };
+  namespace detail {
+    template <typename T> constexpr T deduce_numeric_max() {
+      static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
+                    "T must be an arithmetic type (long double excluded).");
+      if constexpr (is_integral_v<T>) {
+        if constexpr (is_signed_v<T>)
+          return static_cast<T>(~(static_cast<T>(1) << (sizeof(T) * 8 - 1)));
+        else
+          return ~(T)0;
+      } else if constexpr (is_same_v<T, float>)
+        return FLT_MAX;
+      else if constexpr (is_same_v<T, double>)
+        return DBL_MAX;
+    }
+    template <typename T> constexpr T deduce_numeric_lowest() {
+      static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
+                    "T must be an arithmetic type (long double excluded).");
+      if constexpr (is_integral_v<T>) {
+        if constexpr (is_signed_v<T>)
+          return static_cast<T>(1) << (sizeof(T) * 8 - 1);
+        else
+          return static_cast<T>(0);
+      } else if constexpr (is_same_v<T, float>)
+        return -FLT_MAX;
+      else if constexpr (is_same_v<T, double>)
+        return -DBL_MAX;
+    }
+  }  // namespace detail
   template <typename T> struct monoid<getmax<T>, T> {
+    static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     // -infinity() only for floating point
-    static constexpr T e{limits<T>::lowest()};
+    static constexpr T e{detail::deduce_numeric_lowest<T>()};
     static constexpr T identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       T res{e};
@@ -196,8 +241,9 @@ namespace zs {
     }
   };
   template <typename T> struct monoid<getmin<T>, T> {
+    static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     // infinity() only for floating point
-    static constexpr T e{limits<T>::max()};
+    static constexpr T e{detail::deduce_numeric_max<T>()};
     static constexpr T identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
       T res{e};
@@ -297,9 +343,9 @@ namespace zs {
   template <typename MultiplyOp, template <typename> class ReduceOp, typename Domain>
   struct multiplier_for {
     template <typename T0, typename T1> constexpr Domain operator()(T0 &&a, T1 &&b) const {
-      if (a == monoid<ReduceOp<remove_cvref_t<T0>>>::e
-          || b == monoid<ReduceOp<remove_cvref_t<T1>>>::e)
-        return monoid<ReduceOp<remove_cvref_t<Domain>>>::e;
+      if (a == monoid<ReduceOp<remove_cvref_t<T0>>>::identity()
+          || b == monoid<ReduceOp<remove_cvref_t<T1>>>::identity())
+        return monoid<ReduceOp<remove_cvref_t<Domain>>>::identity();
       else {
         return MultiplyOp{}(FWD(a), FWD(b));
       }

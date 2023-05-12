@@ -1,29 +1,50 @@
 #pragma once
-#include <cstdint>
-#include <type_traits>
-
 #include "Platform.hpp"
 #include "ZpcMeta.hpp"
 
 namespace zs {
 
+#define FLT_RADIX 2
+#define FLT_MANT_DIG 24
+#define DBL_MANT_DIG 53
+#define FLT_DIG 6
+#define DBL_DIG 15
+#define FLT_MIN_EXP -125
+#define DBL_MIN_EXP -1021
+#define FLT_MIN_10_EXP -37
+#define DBL_MIN_10_EXP -307
+#define FLT_MAX_EXP 128
+#define DBL_MAX_EXP 1024
+#define FLT_MAX_10_EXP 38
+#define DBL_MAX_10_EXP 308
+#define FLT_MAX 3.4028234e38f
+#define DBL_MAX 1.7976931348623157e308
+#define FLT_EPSILON 1.19209289e-7f
+#define DBL_EPSILON 2.220440492503130e-16
+#define FLT_MIN 1.1754943e-38f
+#define DBL_MIN 2.2250738585072013e-308
+#define FLT_ROUNDS 1
+
   using uint = unsigned int;
   // signed
-  using i8 = conditional_t<sizeof(char) == 1, char, int8_t>;
-  using i16 = conditional_t<sizeof(short) == 2, short, int16_t>;
-  using i32 = conditional_t<sizeof(int) == 4, int, int32_t>;
-  using i64 = conditional_t<sizeof(long long int) == 8, long long int,
-                            conditional_t<sizeof(long int) == 8, long int, int64_t>>;
+  using i8 = signed char;
+  using i16 = signed short;
+  using i32 = signed int;
+  using i64 = signed long long int;
+  static_assert(sizeof(i8) == 1 && sizeof(i16) == 2 && sizeof(i32) == 4 && sizeof(i64) == 8,
+                "these signed integers are not of the sizes expected!");
   // unsigned
-  using u8 = conditional_t<sizeof(unsigned char) == 1, unsigned char, uint8_t>;
-  using u16 = conditional_t<sizeof(unsigned short) == 2, unsigned short, uint16_t>;
-  using u32 = conditional_t<sizeof(unsigned int) == 4, unsigned int, uint32_t>;
-  using u64
-      = conditional_t<sizeof(unsigned long long int) == 8, unsigned long long int,
-                      conditional_t<sizeof(unsigned long int) == 8, unsigned long int, uint64_t>>;
+  using u8 = unsigned char;
+  using u16 = unsigned short;
+  using u32 = unsigned int;
+  using u64 = unsigned long long int;
+  static_assert(sizeof(u8) == 1 && sizeof(u16) == 2 && sizeof(u32) == 4 && sizeof(u64) == 8,
+                "these unsigned integers are not of the sizes expected!");
   // floating points
   using f32 = float;
   using f64 = double;
+  static_assert(sizeof(f32) == 4 && sizeof(f64) == 8,
+                "these floating points are not of the sizes expected!");
 
   union dat32 {
     f32 f;

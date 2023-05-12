@@ -102,13 +102,13 @@ namespace zs {
     struct scan_impl<Cate, BinaryOp, index_sequence<Is...>> {
       template <auto I> static constexpr auto get_sum(wrapv<I>) noexcept {
         if constexpr (Cate == 0)
-          return wrapv<monoid<BinaryOp>{}((Is < I ? Ns : monoid<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is < I ? Ns : monoid<BinaryOp>::identity())...)>{};
         else if constexpr (Cate == 1)
-          return wrapv<monoid<BinaryOp>{}((Is <= I ? Ns : monoid<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is <= I ? Ns : monoid<BinaryOp>::identity())...)>{};
         else if constexpr (Cate == 2)
-          return wrapv<monoid<BinaryOp>{}((Is > I ? Ns : monoid<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is > I ? Ns : monoid<BinaryOp>::identity())...)>{};
         else
-          return wrapv<monoid<BinaryOp>{}((Is >= I ? Ns : monoid<BinaryOp>::e)...)>{};
+          return wrapv<monoid<BinaryOp>{}((Is >= I ? Ns : monoid<BinaryOp>::identity())...)>{};
       }
       using type = value_seq<decltype(get_sum(wrapv<Is>{}))::value...>;
     };

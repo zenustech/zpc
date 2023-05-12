@@ -57,7 +57,7 @@ namespace zs {
       }
       /// conventional way
       else
-        return (pointer)_allocator.allocate(bytes, std::alignment_of_v<value_type>);
+        return (pointer)_allocator.allocate(bytes, alignof(value_type));
     }
 
     TileVector(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
@@ -98,7 +98,7 @@ namespace zs {
     ~TileVector() {
       if (_base && capacity() > 0)
         _allocator.deallocate(_base, sizeof(value_type) * numChannels() * capacity(),
-                              std::alignment_of_v<value_type>);
+                              alignof(value_type));
     }
 
     static auto numTotalChannels(const std::vector<PropertyTag> &tags) {
@@ -112,8 +112,7 @@ namespace zs {
 
     /// @brief tilevector iterator specializations
     template <typename ValT, auto... Ns>
-    struct iterator_impl<ValT, value_seq<Ns...>,
-                         enable_if_type<sizeof(value_type) == sizeof(ValT)>>
+    struct iterator_impl<ValT, value_seq<Ns...>, enable_if_type<sizeof(value_type) == sizeof(ValT)>>
         : IteratorInterface<iterator_impl<ValT, value_seq<Ns...>,
                                           enable_if_type<sizeof(value_type) == sizeof(ValT)>>> {
       static_assert(!std::is_reference_v<ValT>,
@@ -165,11 +164,11 @@ namespace zs {
     template <typename ValT, auto... Ns>
     struct iterator_impl<ValT, value_seq<Ns...>,
                          enable_if_type<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
-                                          && (sizeof(value_type) > sizeof(ValT))>>
+                                        && (sizeof(value_type) > sizeof(ValT))>>
         : IteratorInterface<
               iterator_impl<ValT, value_seq<Ns...>,
                             enable_if_type<(sizeof(value_type) * lane_width % sizeof(ValT) == 0)
-                                             && (sizeof(value_type) > sizeof(ValT))>>> {
+                                           && (sizeof(value_type) > sizeof(ValT))>>> {
       static_assert(!std::is_reference_v<ValT>,
                     "the access type of the iterator should not be a reference.");
       static constexpr auto extent = (Ns * ...);
@@ -658,7 +657,7 @@ namespace zs {
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
                                                          const size_type i,
@@ -699,7 +698,7 @@ namespace zs {
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr TT operator()(const channel_counter_type chn, const size_type i,
                             wrapt<TT> = {}) const noexcept {
@@ -739,8 +738,7 @@ namespace zs {
 
     template <typename TT = value_type, bool V = is_const_structure, bool InTile = WithinTile,
               enable_if_all<!V, !InTile, sizeof(TT) == sizeof(value_type),
-                            is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            is_same_v<TT, remove_cvref_t<TT>>, (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
                                                          const size_type tileNo,
@@ -765,11 +763,10 @@ namespace zs {
 #endif
       return *((TT *)_vector + ((tileNo * _dims._numChannels + chn) * lane_width + localNo));
     }
-    template <
-        typename TT = value_type, bool InTile = WithinTile,
-        enable_if_all<!InTile, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                      (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
-        = 0>
+    template <typename TT = value_type, bool InTile = WithinTile,
+              enable_if_all<!InTile, sizeof(TT) == sizeof(value_type),
+                            is_same_v<TT, remove_cvref_t<TT>>, (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr TT operator()(const channel_counter_type chn, const size_type tileNo,
                             const size_type localNo, wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -822,7 +819,7 @@ namespace zs {
     // use dim_c<Ns...> for the first parameter
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto pack(value_seq<Ns...>, channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
@@ -869,7 +866,7 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto pack(channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
@@ -888,7 +885,7 @@ namespace zs {
     /// tuple
     template <size_t... Is, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_sequence<Is...>, wrapt<TT>) const noexcept {
@@ -933,7 +930,7 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto tuple(value_seq<Ns...>, const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
@@ -941,7 +938,7 @@ namespace zs {
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto tuple(const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
@@ -1125,7 +1122,7 @@ namespace zs {
     ///
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
                                                          const channel_counter_type chn,
@@ -1146,7 +1143,7 @@ namespace zs {
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr TT operator()(const SmallString &propName, const channel_counter_type chn,
                             const size_type i, wrapt<TT> = {}) const noexcept {
@@ -1165,7 +1162,7 @@ namespace zs {
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
                                                          const size_type i,
@@ -1185,7 +1182,7 @@ namespace zs {
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr TT operator()(const SmallString &propName, const size_type i,
                             wrapt<TT> = {}) const noexcept {
@@ -1239,7 +1236,7 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto pack(value_seq<Ns...>, const SmallString &propName, const size_type i,
                         wrapt<TT> = {}) const noexcept {
@@ -1263,7 +1260,7 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto pack(const SmallString &propName, const size_type i,
                         wrapt<TT> = {}) const noexcept {
@@ -1272,7 +1269,7 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
                         const channel_counter_type chn, const size_type i,
@@ -1298,7 +1295,7 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto pack(const SmallString &propName, const channel_counter_type chn,
                         const size_type i, wrapt<TT> = {}) const noexcept {
@@ -1324,7 +1321,7 @@ namespace zs {
     /// @brief tieing
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto tuple(value_seq<Ns...>, const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
@@ -1345,7 +1342,7 @@ namespace zs {
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto tuple(const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
@@ -1354,7 +1351,7 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
                          const channel_counter_type chn, const size_type i,
@@ -1376,7 +1373,7 @@ namespace zs {
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (std::alignment_of_v<TT> == std::alignment_of_v<value_type>)>
+                            (alignof(TT) == alignof(value_type))>
               = 0>
     constexpr auto tuple(const SmallString &propName, const channel_counter_type chn,
                          const size_type i, wrapt<TT> = {}) const noexcept {

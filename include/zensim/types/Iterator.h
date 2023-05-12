@@ -25,7 +25,7 @@ namespace zs::detail {
 #if 0
     /// this definition is not good
     template <typename U> static true_type test(
-        enable_if_t<std::is_convertible_v<std::invoke_result_t<decltype(&U::equal_to), U>, bool>>
+        enable_if_t<std::is_convertible_v<invoke_result_t<decltype(&U::equal_to), U>, bool>>
             *);
 #else
     /// this method allows for template function
@@ -76,7 +76,7 @@ namespace zs::detail {
     template <typename U> static constexpr false_type test(...) { return {}; }
     template <typename U> static constexpr true_type test(
         decltype(&U::sentinel_type),
-        enable_if_t<std::is_convertible_v<std::invoke_result_t<decltype(&U::at_end)>, bool>>) {
+        enable_if_t<std::is_convertible_v<invoke_result_t<decltype(&U::at_end)>, bool>>) {
       return {};
     }
 

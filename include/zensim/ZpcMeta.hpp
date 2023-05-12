@@ -540,6 +540,37 @@ namespace zs {
                                                       || is_union<T>::value || is_class<T>::value> {
   };
   template <class T> constexpr bool is_object_v = is_object<T>::value;
+  // common_type
+  template <typename... Ts> struct common_type {};
+  // 1
+  template <typename T> struct common_type<T> {
+    using type = T;
+  };
+  // 2
+  namespace detail {
+    template <typename T0, typename T1>
+    static wrapt<decay_t<decltype(false ? declval<T0>() : declval<T1>())>> common_type_test(int);
+    static failure_type common_type_test(...);
+
+    template <typename T0, typename T1,
+              enable_if_t<is_same_v<T0, decay_t<T0>> && is_same_v<T1, decay_t<T1>>> = 0>
+    static auto deduce_common_type(int) -> decltype(detail::common_type_test<T0, T1>(0));
+    template <typename T0, typename T1> static auto deduce_common_type(...)
+        -> decltype(deduce_common_type<decay_t<T0>, decay_t<T1>>(0));
+  }  // namespace detail
+  template <typename T0, typename T1> struct common_type<T0, T1>
+      : decltype(detail::deduce_common_type<T0, T1>(0)) {};
+  // 3+ (from cppref)
+  namespace detail {
+    template <class AlwaysVoid, class T1, class T2, class... R> struct common_type_multi_impl {};
+    template <class T1, class T2, class... R>
+    struct common_type_multi_impl<void_t<typename common_type<T1, T2>::type>, T1, T2, R...>
+        : common_type<typename common_type<T1, T2>::type, R...> {};
+  }  // namespace detail
+  template <class T1, class T2, class... R> struct common_type<T1, T2, R...>
+      : detail::common_type_multi_impl<void, T1, T2, R...> {};
+
+  template <typename... Ts> using common_type_t = typename common_type<Ts...>::type;
 
   ///
   /// advanced query

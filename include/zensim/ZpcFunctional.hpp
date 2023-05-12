@@ -392,13 +392,7 @@ namespace zs {
       if constexpr (base_t::count == 0)
         return wrapt<size_t>{};
       else
-        return wrapt<std::common_type_t<decltype(Ns)...>>{};
-#if 0
-      else if constexpr ((is_unsigned_v<decltype(Ns)> && ...))
-        return wrapt<sint_t>{};
-      else
-        return wrapt<sint_t>{};
-#endif
+        return wrapt<common_type_t<decltype(Ns)...>>{};
     }
     using value_type = typename decltype(get_common_type())::type;
     using iseq = integer_sequence<value_type, (value_type)Ns...>;

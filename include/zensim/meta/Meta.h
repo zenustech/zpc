@@ -14,7 +14,7 @@ namespace zs {
   ///
   /// type decorato
   ///
-  
+
   /// https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple
   /// decay+unref
   template <class T> struct unwrap_refwrapper<std::reference_wrapper<T>> {
@@ -38,7 +38,7 @@ namespace zs {
   constexpr wrapt<float> float_c{};
   constexpr wrapt<f64> f64_c{};
   constexpr wrapt<double> double_c{};
-  template <typename T> constexpr wrapt<enable_if_type<std::is_arithmetic_v<T>, T>> number_c{};
+  template <typename T> constexpr wrapt<enable_if_type<is_arithmetic_v<T>, T>> number_c{};
 
   ///
   /// detection
@@ -51,7 +51,7 @@ namespace zs {
     };
 
     template <class Default, template <class...> class Op, class... Args>
-    struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
+    struct detector<Default, void_t<Op<Args...>>, Op, Args...> {
       using value_t = true_type;
       using type = Op<Args...>;
     };

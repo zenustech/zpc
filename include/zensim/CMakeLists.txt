@@ -111,6 +111,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
   # meta
   ZpcMeta.hpp
+  ZpcFunctional.hpp
   meta/Functional.h
   meta/Meta.h
   meta/Sequence.h

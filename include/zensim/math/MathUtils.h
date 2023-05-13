@@ -80,7 +80,7 @@ namespace zs {
    *  math intrinsics (not constexpr at all! just cheating the compiler)
    */
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T copysign(T mag, T sgn, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -96,7 +96,7 @@ namespace zs {
       return std::copysign(mag, sgn);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T abs(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -112,7 +112,7 @@ namespace zs {
       return std::abs(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T max(T x, T y, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -128,7 +128,7 @@ namespace zs {
       return std::max(x, y);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T min(T x, T y, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -144,7 +144,7 @@ namespace zs {
       return std::min(x, y);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T fma(T x, T y, T z, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -160,7 +160,7 @@ namespace zs {
       return std::fma(x, y, z);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T fmod(T x, T y, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -176,7 +176,7 @@ namespace zs {
       return std::fmod(x, y);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T ceil(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -192,7 +192,7 @@ namespace zs {
       return std::ceil(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T floor(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -209,11 +209,11 @@ namespace zs {
   }
 
   // different from math::sqrt
-  template <typename T, enable_if_t<std::is_arithmetic_v<T>> = 0> constexpr T sqr(T v) noexcept {
+  template <typename T, enable_if_t<is_arithmetic_v<T>> = 0> constexpr T sqr(T v) noexcept {
     return v * v;
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T sqrt(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -229,7 +229,7 @@ namespace zs {
       return std::sqrt(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T rsqrt(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -246,7 +246,7 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T log(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -262,7 +262,7 @@ namespace zs {
       return std::log(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T log1p(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -278,7 +278,7 @@ namespace zs {
       return std::log1p(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T exp(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -294,7 +294,7 @@ namespace zs {
       return std::exp(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T pow(T base, T exp, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -311,7 +311,7 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   ZS_FUNCTION T add_ru(T x, T y, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -328,7 +328,7 @@ namespace zs {
       return (x + y);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   ZS_FUNCTION T sub_ru(T x, T y, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -346,7 +346,7 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T sinh(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -362,7 +362,7 @@ namespace zs {
       return std::sinh(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T sin(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -378,7 +378,7 @@ namespace zs {
       return std::sin(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T asinh(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -394,7 +394,7 @@ namespace zs {
       return std::asinh(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T asin(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -410,7 +410,7 @@ namespace zs {
       return std::asin(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T cosh(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -426,7 +426,7 @@ namespace zs {
       return std::cosh(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T cos(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -442,7 +442,7 @@ namespace zs {
       return std::cos(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T acosh(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -458,7 +458,7 @@ namespace zs {
       return std::acosh(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T acos(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -474,7 +474,7 @@ namespace zs {
       return std::acos(v);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T atan2(T y, T x, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -491,7 +491,7 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr bool isnan(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -518,7 +518,7 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T modf(T x, T *iptr, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -535,7 +535,7 @@ namespace zs {
       return std::modf(x, iptr);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T frexp(T x, int *exp, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
@@ -551,7 +551,7 @@ namespace zs {
       return std::frexp(x, exp);
   }
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T ldexp(T x, int exp, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)

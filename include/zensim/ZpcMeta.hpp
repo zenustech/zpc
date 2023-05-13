@@ -206,9 +206,46 @@ namespace zs {
   template <class T> struct is_reference<T &&> : true_type {};
   template <class T> constexpr bool is_reference_v = is_reference<T>::value;
   // function
+  /// @note
+  /// https://github.com/Quuxplusone/from-scratch/blob/master/include/scratch/bits/type-traits/compiler-magic.md
+  // is_enum
+  // ref: https://stackoverflow.com/questions/11316912/is-enum-implementation
+  template <class T> struct is_enum : bool_constant<__is_enum(T)> {};
+  template <class T> constexpr bool is_enum_v = is_enum<T>::value;
   template <class T> struct is_function
       : integral_constant<bool, !is_const<const T>::value && !is_reference<T>::value> {};
   template <class T> constexpr bool is_function_v = is_function<T>::value;
+  // is_trivial
+  template <class T> struct is_trivial : bool_constant<__is_trivial(T)> {};
+  template <class T> constexpr bool is_trivial_v = is_trivial<T>::value;
+  // is_trivially_constructible
+  template <class T, typename... Args> struct is_trivially_constructible
+      : bool_constant<__is_trivially_constructible(T, Args...)> {};
+  // is_trivially_copyable
+  template <class T> struct is_trivially_copyable : bool_constant<__is_trivially_copyable(T)> {};
+  template <class T> constexpr bool is_trivially_copyable_v = is_trivially_copyable<T>::value;
+  // is_trivially_assignable
+  template <typename T, typename U> struct is_trivially_assignable
+      : bool_constant<__is_trivially_assignable(T, U)> {};
+  // is_trivially_destructible
+  // has_virtual_destructor
+  template <typename T> struct has_virtual_destructor : bool_constant<__has_virtual_destructor(T)> {
+  };
+  // is_standard_layout
+  template <class T> struct is_standard_layout : public bool_constant<__is_standard_layout(T)> {};
+  template <class T> constexpr bool is_standard_layout_v = is_standard_layout<T>::value;
+  // is_empty
+  template <class T> struct is_empty : public bool_constant<__is_empty(T)> {};
+  template <class T> constexpr bool is_empty_v = is_empty<T>::value;
+  // is_polymorphic
+  template <class T> struct is_polymorphic : public bool_constant<__is_polymorphic(T)> {};
+  template <class T> constexpr bool is_polymorphic_v = is_polymorphic<T>::value;
+  // is_final
+  template <class T> struct is_final : public bool_constant<__is_final(T)> {};
+  template <class T> constexpr bool is_final_v = is_final<T>::value;
+  // is_abstract
+  template <class T> struct is_abstract : public bool_constant<__is_abstract(T)> {};
+  template <class T> constexpr bool is_abstract_v = is_abstract<T>::value;
 
   ///
   /// type decoration
@@ -448,7 +485,8 @@ namespace zs {
         -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{});
     static false_type test_integral(...) noexcept;
   }  // namespace detail
-  template <class T> struct is_integral
+  template <class T, typename = void> struct is_integral : false_type {};
+  template <class T> struct is_integral<T, void_t<T *, void (*)(T)>>
       : decltype(detail::test_integral(declval<T>(), declval<T *>(), declval<void (*)(T)>())) {};
   template <class T> constexpr bool is_integral_v = is_integral<T>::value;
 
@@ -475,10 +513,6 @@ namespace zs {
   template <typename T> constexpr bool is_signed_v = is_signed<T>::value;
   template <typename T> constexpr bool is_unsigned_v = is_unsigned<T>::value;
   // scalar
-  // ref: https://stackoverflow.com/questions/11316912/is-enum-implementation
-  template <class _Tp> struct is_enum : bool_constant<__is_enum(_Tp)> {};
-  template <class T> constexpr bool is_enum_v = is_enum<T>::value;
-
   template <class T> struct is_pointer : false_type {};
   template <class T> struct is_pointer<T *> : true_type {};
   template <class T> struct is_pointer<T *const> : true_type {};
@@ -517,14 +551,12 @@ namespace zs {
   template <class T> struct is_class : decltype(detail::test_is_class<T>(nullptr)) {};
   // template <class _Tp> struct is_class : bool_constant<__is_class(_Tp)> {};
   template <class T> constexpr bool is_class_v = is_class<T>::value;
-
   // relation
   template <typename T, typename... Args> struct is_constructible
-      : bool_constant<__is_constructible(T, Args...)> {
-        //
-      };
+      : bool_constant<__is_constructible(T, Args...)> {};
   template <typename T, typename... Args> constexpr bool is_constructible_v
-      = is_constructible<T>::value;
+      = __is_constructible(T, Args...);
+
   namespace details {
     template <typename B> true_type test_ptr_conv(const volatile B *);
     template <typename> false_type test_ptr_conv(const volatile void *);
@@ -579,6 +611,10 @@ namespace zs {
     static constexpr bool value = decltype(test<TT, T>(0))::value;
   };
   template <typename TT, typename T> constexpr bool is_assignable_v = is_assignable<TT, T>::value;
+  template <typename TT, typename T> struct is_nothrow_assignable
+      : bool_constant<is_assignable_v<TT, T> && noexcept(declval<TT>() = declval<T>())> {};
+  template <typename TT, typename T> constexpr bool is_nothrow_assignable_v
+      = is_nothrow_assignable<TT, T>::value;
 
   // is_constructible
 

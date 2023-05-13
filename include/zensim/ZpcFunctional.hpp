@@ -197,6 +197,16 @@ namespace zs {
     }
   };
   namespace detail {
+    template <typename T> constexpr T deduce_numeric_epsilon() {
+      static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
+                    "T must be an arithmetic type (long double excluded).");
+      if constexpr (is_integral_v<T>)
+        return 0;
+      else if constexpr (is_same_v<T, float>)
+        return FLT_EPSILON;
+      else if constexpr (is_same_v<T, double>)
+        return DBL_EPSILON;
+    }
     template <typename T> constexpr T deduce_numeric_max() {
       static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
                     "T must be an arithmetic type (long double excluded).");
@@ -368,15 +378,33 @@ namespace zs {
                     make_monoid(getmax<DomainT>{})};
   }
 
-  /// map operation
-  struct count_leq {  ///< count less and equal
-    template <typename... Tn> constexpr auto operator()(size_t M, Tn... Ns) const noexcept {
-      if constexpr (sizeof...(Tn) > 0)
-        return ((Ns <= M ? 1 : 0) + ...);
-      else
-        return 0;
+  // placeholder
+  namespace index_literals {
+    // ref: numeric UDL
+    // Embracing User Defined Literals Safely for Types that Behave as though Built-in
+    // Pablo Halpern
+    template <auto partial> constexpr auto index_impl() noexcept { return partial; }
+    template <auto partial, char c0, char... c> constexpr auto index_impl() noexcept {
+      if constexpr (c0 == '\'')
+        return index_impl<partial, c...>();
+      else {
+        using Tn = decltype(partial);
+        static_assert(c0 >= '0' && c0 <= '9', "Invalid non-numeric character");
+        static_assert(partial < (detail::deduce_numeric_max<Tn>() - (c0 - '0')) / 10 + 1,
+                      "numeric literal overflow");
+        return index_impl<partial *(Tn)10 + (Tn)(c0 - '0'), c...>();
+      }
     }
-  };
+
+    template <char... c> constexpr auto operator""_th() noexcept {
+      constexpr auto id = index_impl<(size_t)0, c...>();
+      return index_c<id>;
+    }
+  }  // namespace index_literals
+
+  template <char... c> constexpr auto operator""_c() noexcept {
+    return index_literals::operator""_th<c...>();
+  }
 
   /// value_seq
   template <typename TypeSeq, typename Indices> using shuffle_t
@@ -482,6 +510,8 @@ namespace zs {
   };
   template <typename Ti, Ti... Ns> value_seq(integer_sequence<Ti, Ns...>) -> value_seq<Ns...>;
   template <auto... Ns> value_seq(wrapv<Ns>...) -> value_seq<Ns...>;
+
+  template <size_t... Ns> constexpr value_seq<Ns...> dim_c{};
 
   /// select (constant integral) value (integral_constant<T, N>) by index
   template <size_t I, typename ValueSeq> using select_value = typename ValueSeq::template type<I>;

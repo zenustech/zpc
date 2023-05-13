@@ -20,20 +20,17 @@ namespace zs {
   namespace mathutil_impl {
     // constexpr scan only available in c++20:
     // https://en.cppreference.com/w/cpp/algorithm/exclusive_scan
-    template <typename... Args, size_t... Is>
-    constexpr auto incl_prefix_sum_impl(std::make_signed_t<size_t> I,
-                                        index_sequence<Is...>, Args &&...args) noexcept {
-      return (((std::make_signed_t<size_t>)Is <= I ? forward<Args>(args) : 0) + ...);
+    template <typename... Args, sint_t... Is>
+    constexpr auto incl_prefix_sum_impl(sint_t I, index_sequence<Is...>, Args &&...args) noexcept {
+      return ((Is <= I ? forward<Args>(args) : 0) + ...);
     }
-    template <typename... Args, size_t... Is>
-    constexpr auto excl_prefix_sum_impl(size_t I, index_sequence<Is...>,
-                                        Args &&...args) noexcept {
-      return (((std::make_signed_t<size_t>)Is < I ? forward<Args>(args) : 0) + ...);
+    template <typename... Args, sint_t... Is>
+    constexpr auto excl_prefix_sum_impl(sint_t I, index_sequence<Is...>, Args &&...args) noexcept {
+      return ((Is < I ? forward<Args>(args) : 0) + ...);
     }
-    template <typename... Args, size_t... Is>
-    constexpr auto excl_suffix_mul_impl(std::make_signed_t<size_t> I,
-                                        index_sequence<Is...>, Args &&...args) noexcept {
-      return (((std::make_signed_t<size_t>)Is > I ? forward<Args>(args) : 1) * ...);
+    template <typename... Args, sint_t... Is>
+    constexpr auto excl_suffix_mul_impl(sint_t I, index_sequence<Is...>, Args &&...args) noexcept {
+      return ((Is > I ? forward<Args>(args) : 1) * ...);
     }
   }  // namespace mathutil_impl
 
@@ -44,7 +41,7 @@ namespace zs {
 
   namespace math {
 
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr bool near_zero(T v) noexcept {
       constexpr auto eps = (T)128 * limits<T>::epsilon();
       return v >= -eps && v <= eps;
@@ -53,14 +50,14 @@ namespace zs {
     /// binary_op_result
     template <typename T0, typename T1> struct binary_op_result {
       static constexpr auto determine_type() noexcept {
-        if constexpr (std::is_integral_v<T0> && std::is_integral_v<T1>) {
+        if constexpr (is_integral_v<T0> && is_integral_v<T1>) {
           using bigger_type = conditional_t<(sizeof(T0) >= sizeof(T1)), T0, T1>;
-          if constexpr (std::is_signed_v<T0> || std::is_signed_v<T1>)
+          if constexpr (is_signed_v<T0> || is_signed_v<T1>)
             return std::make_signed_t<bigger_type>{};
           else
             return bigger_type{};
         } else
-          return std::common_type_t<T0, T1>{};
+          return common_type_t<T0, T1>{};
       }
       using type = decltype(determine_type());
     };
@@ -69,7 +66,9 @@ namespace zs {
 
     /// op_result
     template <typename... Ts> struct op_result;
-    template <typename T> struct op_result<T> { using type = T; };
+    template <typename T> struct op_result<T> {
+      using type = T;
+    };
     template <typename T, typename... Ts> struct op_result<T, Ts...> {
       using type = binary_op_result_t<T, typename op_result<Ts...>::type>;
     };
@@ -1090,18 +1089,15 @@ namespace zs {
 
   }  // namespace math
 
-  template <typename... Args>
-  constexpr auto incl_prefix_sum(size_t I, Args &&...args) noexcept {
+  template <typename... Args> constexpr auto incl_prefix_sum(size_t I, Args &&...args) noexcept {
     return mathutil_impl::incl_prefix_sum_impl(I, index_sequence_for<Args...>{},
                                                forward<Args>(args)...);
   }
-  template <typename... Args>
-  constexpr auto excl_prefix_sum(size_t I, Args &&...args) noexcept {
+  template <typename... Args> constexpr auto excl_prefix_sum(size_t I, Args &&...args) noexcept {
     return mathutil_impl::excl_prefix_sum_impl(I, index_sequence_for<Args...>{},
                                                forward<Args>(args)...);
   }
-  template <typename... Args>
-  constexpr auto excl_suffix_mul(size_t I, Args &&...args) noexcept {
+  template <typename... Args> constexpr auto excl_suffix_mul(size_t I, Args &&...args) noexcept {
     return mathutil_impl::excl_suffix_mul_impl(I, index_sequence_for<Args...>{},
                                                forward<Args>(args)...);
   }

@@ -17,8 +17,7 @@ namespace zs {
   template <typename> struct VecInterface;
 
   template <size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
-  template <size_t I, typename... Ts> using select_indexed_type
-      = select_type<I, type_seq<Ts...>>;
+  template <size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
 
   template <class T> struct unwrap_refwrapper;
   template <class T> using special_decay_t =
@@ -99,9 +98,8 @@ template <size_t I, typename T> struct tuple_value {
 #  endif
   template <size_t I, typename T> struct tuple_value<
       I, T,
-      enable_if_type<(
-          std::is_fundamental_v<
-              T> || std::is_final_v<T> || std::is_same_v<T, void *> || std::is_reference_v<T> || std::is_pointer_v<T>)>> {
+      enable_if_type<(std::is_fundamental_v<T> || std::is_final_v<T> || std::is_same_v<T, void *>
+                      || std::is_reference_v<T> || std::is_pointer_v<T>)>> {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
     template <typename V, enable_if_t<std::is_constructible_v<T, V>> = 0>
@@ -186,17 +184,15 @@ template <size_t I, typename T> struct tuple_value {
       return *this;
     }
     template <typename... Vs, enable_if_all<(is_assignable_v<Ts, Vs> && ...)> = 0>
-    constexpr tuple_base &operator=(tuple_base<index_sequence<Is...>, type_seq<Vs...>> &&o) noexcept(
-        (std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
+    constexpr tuple_base &operator=(tuple_base<index_sequence<Is...>, type_seq<Vs...>> &&
+                                        o) noexcept((std::is_nothrow_assignable_v<Ts, Vs> && ...)) {
       ((get(index_t<Is>{}) = o.get(index_t<Is>{})), ...);
       return *this;
     }
 
     using tuple_value<Is, Ts>::get...;
     template <size_t I> constexpr decltype(auto) get() noexcept { return get(index_t<I>{}); }
-    template <size_t I> constexpr decltype(auto) get() const noexcept {
-      return get(index_t<I>{});
-    }
+    template <size_t I> constexpr decltype(auto) get() const noexcept { return get(index_t<I>{}); }
     template <typename T> constexpr decltype(auto) get() noexcept { return get(wrapt<T>{}); }
     template <typename T> constexpr decltype(auto) get() const noexcept { return get(wrapt<T>{}); }
     /// compare
@@ -274,8 +270,7 @@ template <size_t I, typename T> struct tuple_value {
     constexpr operator tuple<Ts...>() const noexcept { return *this; }
   };
 
-  template <typename... Ts> struct tuple
-      : tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>> {
+  template <typename... Ts> struct tuple : tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>> {
     using base_t = tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>>;
     using tuple_types = typename base_t::tuple_types;
     template <size_t I> using tuple_element_t = select_indexed_type<I, Ts...>;
@@ -292,7 +287,7 @@ template <size_t I, typename T> struct tuple_value {
     template <typename... Vs, enable_if_t<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple(const tuple<Vs...> &o) : base_t(o) {}
     template <typename... Vs, enable_if_t<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
-    constexpr tuple(tuple<Vs...> &&o) : base_t(std::move(o)) {}
+    constexpr tuple(tuple<Vs...> &&o) : base_t(move(o)) {}
     template <typename... Vs, enable_if_t<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>> = 0>
     constexpr tuple &operator=(const tuple<Vs...> &o) {
       base_t::operator=(o);
@@ -300,7 +295,7 @@ template <size_t I, typename T> struct tuple_value {
     }
     template <typename... Vs, enable_if_t<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>> = 0>
     constexpr tuple &operator=(tuple<Vs...> &&o) {
-      base_t::operator=(std::move(o));
+      base_t::operator=(move(o));
       return *this;
     }
 
@@ -324,8 +319,7 @@ template <size_t I, typename T> struct tuple_value {
     }
     // std::tuple
     template <typename... Args> constexpr tuple &operator=(const std::tuple<Args...> &tup) {
-      assign_impl(FWD(tup),
-                  make_index_sequence<zs::math::min(sizeof...(Ts), sizeof...(Args))>{});
+      assign_impl(FWD(tup), make_index_sequence<zs::math::min(sizeof...(Ts), sizeof...(Args))>{});
       return *this;
     }
 
@@ -335,7 +329,8 @@ template <size_t I, typename T> struct tuple_value {
       ((void)(this->template get<Is>() = v.val(Is)), ...);
     }
     template <typename Vec, size_t... Is>
-    constexpr auto assign_impl(const Vec &v, index_sequence<Is...>) noexcept -> decltype(v[0], void()) {
+    constexpr auto assign_impl(const Vec &v, index_sequence<Is...>) noexcept
+        -> decltype(v[0], void()) {
       ((void)(this->template get<Is>() = v[Is]), ...);
     }
     template <typename... Args, size_t... Is>
@@ -358,20 +353,19 @@ template <size_t I, typename T> struct tuple_value {
   };
   template <size_t I, typename Tup> using tuple_element_t
       = enable_if_type<is_tuple_v<Tup>, enable_if_type<(I < (tuple_size_v<Tup>)),
-                                                           typename tuple_element<I, Tup>::type>>;
+                                                       typename tuple_element<I, Tup>::type>>;
 
   /** operations */
 
   /** get */
-  template <size_t I, typename... Ts>
-  constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
+  template <size_t I, typename... Ts> constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
     return t.template get<I>();
   }
   template <size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
     return t.template get<I>();
   }
   template <size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &&t) noexcept {
-    return std::move(t).template get<I>();
+    return move(t).template get<I>();
   }
 
   template <typename T, typename... Ts>
@@ -382,7 +376,7 @@ template <size_t I, typename T> struct tuple_value {
     return t.template get<T>();
   }
   template <typename T, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &&t) noexcept {
-    return std::move(t).template get<T>();
+    return move(t).template get<T>();
   }
 
   /** make_tuple */
@@ -424,6 +418,14 @@ template <size_t I, typename T> struct tuple_value {
 
   /** tuple_cat */
   namespace tuple_detail_impl {
+    struct count_leq {  ///< count less and equal
+      template <typename... Tn> constexpr auto operator()(size_t M, Tn... Ns) const noexcept {
+        if constexpr (sizeof...(Tn) > 0)
+          return ((Ns <= M ? 1 : 0) + ...);
+        else
+          return 0;
+      }
+    };
     /// concat
     template <typename... Tuples> struct concat {
       static_assert((is_tuple_v<remove_cvref_t<Tuples>> && ...),
@@ -431,8 +433,8 @@ template <size_t I, typename T> struct tuple_value {
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<size_t>{}).value;
       using indices = typename gen_seq<length>::ascend;
-      using outer = decltype(
-          counts{}.template scan<1, plus<size_t>>().map(count_leq{}, wrapv<length>{}));
+      using outer
+          = decltype(counts{}.template scan<1, plus<size_t>>().map(count_leq{}, wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
           minus<size_t>{}, counts{}.template scan<0, plus<size_t>>().shuffle(outer{})));
       // using types = decltype(type_seq<typename

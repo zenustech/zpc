@@ -331,6 +331,9 @@ namespace zs {
     static_assert(!is_lvalue_reference<T>::value, "Can not forward an rvalue as an lvalue.");
     return static_cast<T &&>(t);
   }
+  template <class T> constexpr remove_reference_t<T> &&move(T &&t) noexcept {
+    return static_cast<typename remove_reference_t<T> &&>(t);
+  }
 /// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
 #define FWD(...) ::zs::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
   // is_valid
@@ -515,6 +518,13 @@ namespace zs {
   // template <class _Tp> struct is_class : bool_constant<__is_class(_Tp)> {};
   template <class T> constexpr bool is_class_v = is_class<T>::value;
 
+  // relation
+  template <typename T, typename... Args> struct is_constructible
+      : bool_constant<__is_constructible(T, Args...)> {
+        //
+      };
+  template <typename T, typename... Args> constexpr bool is_constructible_v
+      = is_constructible<T>::value;
   namespace details {
     template <typename B> true_type test_ptr_conv(const volatile B *);
     template <typename> false_type test_ptr_conv(const volatile void *);
@@ -540,6 +550,38 @@ namespace zs {
                                                       || is_union<T>::value || is_class<T>::value> {
   };
   template <class T> constexpr bool is_object_v = is_object<T>::value;
+
+  // is_assignable
+  template <typename TT, typename T> struct is_assignable {
+    template <typename A, typename B, typename = void> struct pred {
+      static constexpr bool value = false;
+    };
+    template <typename A, typename B>
+    struct pred<A, B, void_t<decltype(declval<A>() = declval<B>())>> {
+      static constexpr bool value = true;
+    };
+    template <typename... Ts, typename... Vs>
+    static constexpr bool test(type_seq<Ts...>, type_seq<Vs...>) {
+      if constexpr (sizeof...(Vs) == sizeof...(Ts))
+        /// @note (std::is_assignable<Ts, Vs>::value && ...) may cause nvcc compiler error
+        return (pred<Ts, Vs>::value && ...);
+      else
+        return false;
+    }
+    template <typename UU, typename U> static constexpr auto test(char) {
+      if constexpr (is_type_seq_v<UU> && is_type_seq_v<U>)
+        return integral<bool, test(UU{}, U{})>{};
+      else
+        return integral<bool, pred<UU, U>::value>{};
+    }
+
+  public:
+    static constexpr bool value = decltype(test<TT, T>(0))::value;
+  };
+  template <typename TT, typename T> constexpr bool is_assignable_v = is_assignable<TT, T>::value;
+
+  // is_constructible
+
   // common_type
   template <typename... Ts> struct common_type {};
   // 1
@@ -571,6 +613,43 @@ namespace zs {
       : detail::common_type_multi_impl<void, T1, T2, R...> {};
 
   template <typename... Ts> using common_type_t = typename common_type<Ts...>::type;
+
+  namespace placeholders {
+    using placeholder_type = size_t;
+    constexpr auto _0 = integral<placeholder_type, 0>{};
+    constexpr auto _1 = integral<placeholder_type, 1>{};
+    constexpr auto _2 = integral<placeholder_type, 2>{};
+    constexpr auto _3 = integral<placeholder_type, 3>{};
+    constexpr auto _4 = integral<placeholder_type, 4>{};
+    constexpr auto _5 = integral<placeholder_type, 5>{};
+    constexpr auto _6 = integral<placeholder_type, 6>{};
+    constexpr auto _7 = integral<placeholder_type, 7>{};
+    constexpr auto _8 = integral<placeholder_type, 8>{};
+    constexpr auto _9 = integral<placeholder_type, 9>{};
+    constexpr auto _10 = integral<placeholder_type, 10>{};
+    constexpr auto _11 = integral<placeholder_type, 11>{};
+    constexpr auto _12 = integral<placeholder_type, 12>{};
+    constexpr auto _13 = integral<placeholder_type, 13>{};
+    constexpr auto _14 = integral<placeholder_type, 14>{};
+    constexpr auto _15 = integral<placeholder_type, 15>{};
+    constexpr auto _16 = integral<placeholder_type, 16>{};
+    constexpr auto _17 = integral<placeholder_type, 17>{};
+    constexpr auto _18 = integral<placeholder_type, 18>{};
+    constexpr auto _19 = integral<placeholder_type, 19>{};
+    constexpr auto _20 = integral<placeholder_type, 20>{};
+    constexpr auto _21 = integral<placeholder_type, 21>{};
+    constexpr auto _22 = integral<placeholder_type, 22>{};
+    constexpr auto _23 = integral<placeholder_type, 23>{};
+    constexpr auto _24 = integral<placeholder_type, 24>{};
+    constexpr auto _25 = integral<placeholder_type, 25>{};
+    constexpr auto _26 = integral<placeholder_type, 26>{};
+    constexpr auto _27 = integral<placeholder_type, 27>{};
+    constexpr auto _28 = integral<placeholder_type, 28>{};
+    constexpr auto _29 = integral<placeholder_type, 29>{};
+    constexpr auto _30 = integral<placeholder_type, 30>{};
+    constexpr auto _31 = integral<placeholder_type, 31>{};
+  }  // namespace placeholders
+  using place_id = placeholders::placeholder_type;
 
   ///
   /// advanced query

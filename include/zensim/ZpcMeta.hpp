@@ -198,6 +198,7 @@ namespace zs {
   // reference
   template <class T> struct is_lvalue_reference : false_type {};
   template <class T> struct is_lvalue_reference<T &> : true_type {};
+  template <class T> constexpr bool is_lvalue_reference_v = is_lvalue_reference<T>::value;
   template <class T> struct is_rvalue_reference : false_type {};
   template <class T> struct is_rvalue_reference<T &&> : true_type {};
   template <class T> constexpr bool is_rvalue_reference_v = is_rvalue_reference<T>::value;
@@ -478,16 +479,33 @@ namespace zs {
   /// advanced predicates
   ///
   // void
-  template <class T> struct is_void : is_same<void, typename remove_cv<T>::type> {};
+  template <class T> struct is_void : is_same<void, remove_cv_t<T>> {};
+  template <class T> constexpr bool is_void_v = is_same_v<void, remove_cv_t<T>>;
   // arithmetic
   namespace detail {
     template <typename T> static auto test_integral(T t, T *p, void (*f)(T))
         -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{});
     static false_type test_integral(...) noexcept;
   }  // namespace detail
+#if 0
   template <class T, typename = void> struct is_integral : false_type {};
-  template <class T> struct is_integral<T, void_t<T *, void (*)(T)>>
+  template <class T> struct is_integral<T, void_t<decltype(sizeof(T)), T *, void (*)(T)>>
       : decltype(detail::test_integral(declval<T>(), declval<T *>(), declval<void (*)(T)>())) {};
+#else
+  template <class T> struct is_integral : false_type {};
+  template <> struct is_integral<bool> : true_type {};
+  template <> struct is_integral<char> : true_type {};
+  template <> struct is_integral<signed char> : true_type {};
+  template <> struct is_integral<unsigned char> : true_type {};
+  template <> struct is_integral<short> : true_type {};
+  template <> struct is_integral<unsigned short> : true_type {};
+  template <> struct is_integral<int> : true_type {};
+  template <> struct is_integral<unsigned int> : true_type {};
+  template <> struct is_integral<long> : true_type {};
+  template <> struct is_integral<unsigned long> : true_type {};
+  template <> struct is_integral<long long> : true_type {};
+  template <> struct is_integral<unsigned long long> : true_type {};
+#endif
   template <class T> constexpr bool is_integral_v = is_integral<T>::value;
 
   template <class T> struct is_floating_point
@@ -499,7 +517,7 @@ namespace zs {
   template <class T> constexpr bool is_floating_point_v = is_floating_point<T>::value;
   template <class T> struct is_arithmetic
       : bool_constant<is_integral<T>::value || is_floating_point<T>::value> {};
-  template <class T> constexpr bool is_arithmetic_v = is_arithmetic<T>::value;
+  template <class T> constexpr bool is_arithmetic_v = is_integral_v<T> || is_floating_point_v<T>;
   namespace detail {
     template <typename T, bool = is_arithmetic_v<T>> struct is_signed_impl
         : bool_constant<T(-1) < T(0)> {};
@@ -575,8 +593,9 @@ namespace zs {
   // is_fundamental
   template <class T> struct is_fundamental
       : bool_constant<is_arithmetic<T>::value || is_void<T>::value
-                      || is_same_v<nullptr_t, typename remove_cv<T>::type>> {};
-  template <class T> constexpr bool is_fundamental_v = is_fundamental<T>::value;
+                      || is_same_v<nullptr_t, remove_cv_t<T>>> {};
+  template <class T> constexpr bool is_fundamental_v
+      = is_arithmetic_v<T> || is_void_v<T> || is_same_v<nullptr_t, remove_cv_t<T>>;
   // is_object
   template <class T> struct is_object : bool_constant<is_scalar<T>::value || is_array<T>::value
                                                       || is_union<T>::value || is_class<T>::value> {
@@ -617,6 +636,22 @@ namespace zs {
       = is_nothrow_assignable<TT, T>::value;
 
   // is_constructible
+  // is_convertible (from cppref)
+  namespace detail {
+    template <class T> auto test_returnable(int)
+        -> decltype(void(static_cast<T (*)()>(nullptr)), true_type{});
+    template <class> false_type test_returnable(...);
+
+    template <class From, class To> auto test_implicitly_convertible(int)
+        -> decltype(void(declval<void (&)(To)>()(declval<From>())), true_type{});
+    template <class, class> false_type test_implicitly_convertible(...);
+
+  }  // namespace detail
+  template <class From, class To> struct is_convertible
+      : bool_constant<(decltype(detail::test_returnable<To>(0))::value
+                       && decltype(detail::test_implicitly_convertible<From, To>(0))::value)
+                      || (is_void<From>::value && is_void<To>::value)> {};
+  template <class From, class To> constexpr bool is_convertible_v = is_convertible<From, To>::value;
 
   // common_type
   template <typename... Ts> struct common_type {};

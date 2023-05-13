@@ -304,7 +304,7 @@ namespace zs {
 
   // add_pointer
   namespace detail {
-    template <class T> auto try_add_pointer(int) -> wrapt<typename remove_reference<T>::type *>;
+    template <class T> auto try_add_pointer(int) -> wrapt<remove_reference_t<T> *>;
     template <class T> auto try_add_pointer(...) -> wrapt<T>;
 
   }  // namespace detail
@@ -483,14 +483,28 @@ namespace zs {
   template <class T> constexpr bool is_void_v = is_same_v<void, remove_cv_t<T>>;
   // arithmetic
   namespace detail {
+#if 0
     template <typename T> static auto test_integral(T t, T *p, void (*f)(T))
         -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{});
+#else
+    template <typename T> static auto test_integral(T t, T *p) -> decltype(p + t, true_type{});
+#endif
     static false_type test_integral(...) noexcept;
   }  // namespace detail
 #if 0
   template <class T, typename = void> struct is_integral : false_type {};
   template <class T> struct is_integral<T, void_t<decltype(sizeof(T)), T *, void (*)(T)>>
       : decltype(detail::test_integral(declval<T>(), declval<T *>(), declval<void (*)(T)>())) {};
+#elif 1
+  template <class T, typename = void> struct is_integral : false_type {};
+  template <class T>
+  struct is_integral<T, void_t<decltype(sizeof(T)), enable_if_t<!__is_enum(T) && !__is_class(T)
+                                                                && !is_reference_v<T>>>> {
+    template <typename U = T> static auto test(int)
+        -> decltype(detail::test_integral(declval<U>(), declval<U *>()));
+    template <typename...> static false_type test(...);
+    static constexpr bool value = decltype(test(0))::value;
+  };
 #else
   template <class T> struct is_integral : false_type {};
   template <> struct is_integral<bool> : true_type {};

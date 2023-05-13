@@ -491,20 +491,14 @@ namespace zs {
 #endif
     static false_type test_integral(...) noexcept;
   }  // namespace detail
-#if 0
-  template <class T, typename = void> struct is_integral : false_type {};
-  template <class T> struct is_integral<T, void_t<decltype(sizeof(T)), T *, void (*)(T)>>
-      : decltype(detail::test_integral(declval<T>(), declval<T *>(), declval<void (*)(T)>())) {};
-#elif 1
-  template <class T, typename = void> struct is_integral : false_type {};
+#if 1
+  template <class T, typename = int> struct is_integral : false_type {};
   template <class T>
-  struct is_integral<T, void_t<decltype(sizeof(T)), enable_if_t<!__is_enum(T) && !__is_class(T)
-                                                                && !is_reference_v<T>>>> {
-    template <typename U = T> static auto test(int)
-        -> decltype(detail::test_integral(declval<U>(), declval<U *>()));
-    template <typename...> static false_type test(...);
-    static constexpr bool value = decltype(test(0))::value;
-  };
+  struct is_integral<T, enable_if_t<!__is_enum(T) && !__is_class(T) && !is_reference_v<T>>>
+      : decltype(detail::test_integral(declval<T>(), declval<T *>())) {};
+  // static_assert(!is_integral<float>::value, "???");
+  // static_assert(!is_integral<int &>::value, "???");
+  // static_assert(!is_integral<volatile int>::value, "???");
 #else
   template <class T> struct is_integral : false_type {};
   template <> struct is_integral<bool> : true_type {};

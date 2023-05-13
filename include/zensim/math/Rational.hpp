@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+
 #include "Vec.h"
 
 namespace zs {
@@ -7,14 +8,16 @@ namespace zs {
   /// ref:
   /// https://stackoverflow.com/questions/21211291/the-most-accurate-way-to-calculate-numerator-and-denominator-of-a-double
   template <typename T, typename Ti,
-            zs::enable_if_all<std::is_floating_point_v<T>, std::is_integral_v<Ti>> = 0>
+            zs::enable_if_all<is_floating_point_v<T>, is_integral_v<Ti>> = 0>
   constexpr void to_rational(T val, Ti &num, Ti &den) {
     if (zs::isnan(val)) {
       return;
     }
+#if 0
     if (zs::isinf(val)) {
       return;
     }
+#endif
 
     T d{};
 
@@ -83,7 +86,7 @@ namespace zs {
     constexpr rational() noexcept : num{0}, den{1} {}
     constexpr rational(int_type n) noexcept : num{n}, den{1} {}
     constexpr rational(int_type n, int_type d) noexcept : num{n}, den{d} { canonicalize(); }
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr rational(T v) noexcept {
       to_rational(v, num, den);
       if (den < 0) {

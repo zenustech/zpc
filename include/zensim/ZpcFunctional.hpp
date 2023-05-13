@@ -203,9 +203,9 @@ namespace zs {
       if constexpr (is_integral_v<T>)
         return 0;
       else if constexpr (is_same_v<T, float>)
-        return FLT_EPSILON;
+        return ZS_FLT_EPSILON;
       else if constexpr (is_same_v<T, double>)
-        return DBL_EPSILON;
+        return ZS_DBL_EPSILON;
     }
     template <typename T> constexpr T deduce_numeric_max() {
       static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
@@ -216,9 +216,9 @@ namespace zs {
         else
           return ~(T)0;
       } else if constexpr (is_same_v<T, float>)
-        return FLT_MAX;
+        return ZS_FLT_MAX;
       else if constexpr (is_same_v<T, double>)
-        return DBL_MAX;
+        return ZS_DBL_MAX;
     }
     template <typename T> constexpr T deduce_numeric_lowest() {
       static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
@@ -229,9 +229,9 @@ namespace zs {
         else
           return static_cast<T>(0);
       } else if constexpr (is_same_v<T, float>)
-        return -FLT_MAX;
+        return -ZS_FLT_MAX;
       else if constexpr (is_same_v<T, double>)
-        return -DBL_MAX;
+        return -ZS_DBL_MAX;
     }
   }  // namespace detail
   template <typename T> struct monoid<getmax<T>, T> {

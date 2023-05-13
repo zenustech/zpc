@@ -4,26 +4,26 @@
 
 namespace zs {
 
-#define FLT_RADIX 2
-#define FLT_MANT_DIG 24
-#define DBL_MANT_DIG 53
-#define FLT_DIG 6
-#define DBL_DIG 15
-#define FLT_MIN_EXP -125
-#define DBL_MIN_EXP -1021
-#define FLT_MIN_10_EXP -37
-#define DBL_MIN_10_EXP -307
-#define FLT_MAX_EXP 128
-#define DBL_MAX_EXP 1024
-#define FLT_MAX_10_EXP 38
-#define DBL_MAX_10_EXP 308
-#define FLT_MAX 3.4028234e38f
-#define DBL_MAX 1.7976931348623157e308
-#define FLT_EPSILON 1.19209289e-7f
-#define DBL_EPSILON 2.220440492503130e-16
-#define FLT_MIN 1.1754943e-38f
-#define DBL_MIN 2.2250738585072013e-308
-#define FLT_ROUNDS 1
+#define ZS_FLT_RADIX 2
+#define ZS_FLT_MANT_DIG 24
+#define ZS_DBL_MANT_DIG 53
+#define ZS_FLT_DIG 6
+#define ZS_DBL_DIG 15
+#define ZS_FLT_MIN_EXP -125
+#define ZS_DBL_MIN_EXP -1021
+#define ZS_FLT_MIN_10_EXP -37
+#define ZS_DBL_MIN_10_EXP -307
+#define ZS_FLT_MAX_EXP 128
+#define ZS_DBL_MAX_EXP 1024
+#define ZS_FLT_MAX_10_EXP 38
+#define ZS_DBL_MAX_10_EXP 308
+#define ZS_FLT_MAX 3.4028234e38f
+#define ZS_DBL_MAX 1.7976931348623157e308
+#define ZS_FLT_EPSILON 1.19209289e-7f
+#define ZS_DBL_EPSILON 2.220440492503130e-16
+#define ZS_FLT_MIN 1.1754943e-38f
+#define ZS_DBL_MIN 2.2250738585072013e-308
+#define ZS_FLT_ROUNDS 1
 
   using uint = unsigned int;
   // signed

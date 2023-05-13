@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include "Vec.h"
 
 namespace zs {

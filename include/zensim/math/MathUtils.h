@@ -20,17 +20,17 @@ namespace zs {
   namespace mathutil_impl {
     // constexpr scan only available in c++20:
     // https://en.cppreference.com/w/cpp/algorithm/exclusive_scan
-    template <typename... Args, sint_t... Is>
+    template <typename... Args, auto... Is>
     constexpr auto incl_prefix_sum_impl(sint_t I, index_sequence<Is...>, Args &&...args) noexcept {
-      return ((Is <= I ? forward<Args>(args) : 0) + ...);
+      return (((sint_t)Is <= I ? forward<Args>(args) : 0) + ...);
     }
-    template <typename... Args, sint_t... Is>
+    template <typename... Args, auto... Is>
     constexpr auto excl_prefix_sum_impl(sint_t I, index_sequence<Is...>, Args &&...args) noexcept {
-      return ((Is < I ? forward<Args>(args) : 0) + ...);
+      return (((sint_t)Is < I ? forward<Args>(args) : 0) + ...);
     }
-    template <typename... Args, sint_t... Is>
+    template <typename... Args, auto... Is>
     constexpr auto excl_suffix_mul_impl(sint_t I, index_sequence<Is...>, Args &&...args) noexcept {
-      return ((Is > I ? forward<Args>(args) : 1) * ...);
+      return (((sint_t)Is > I ? forward<Args>(args) : 1) * ...);
     }
   }  // namespace mathutil_impl
 

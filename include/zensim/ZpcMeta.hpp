@@ -332,7 +332,7 @@ namespace zs {
     return static_cast<T &&>(t);
   }
   template <class T> constexpr remove_reference_t<T> &&move(T &&t) noexcept {
-    return static_cast<typename remove_reference_t<T> &&>(t);
+    return static_cast<remove_reference_t<T> &&>(t);
   }
 /// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
 #define FWD(...) ::zs::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)

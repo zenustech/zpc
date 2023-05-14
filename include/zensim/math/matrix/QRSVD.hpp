@@ -14,7 +14,7 @@ namespace zs {
   namespace math {
 
     template <typename VecT, enable_if_all<vec_fits_shape<VecT, 2, 2, 2>(),
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto polar_decomposition(const VecInterface<VecT>& A,
                                        GivensRotation<typename VecT::value_type>& R) noexcept {
       using value_type = typename VecT::value_type;
@@ -37,7 +37,7 @@ namespace zs {
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             VecT::template range_t<0>::value == 2,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A, GivensRotation<typename VecT::value_type>& U,
                           GivensRotation<typename VecT::value_type>& V) noexcept {
       using value_type = typename VecT::value_type;
@@ -265,7 +265,7 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto qr(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
@@ -286,7 +286,7 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto gram_schmidt(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       // using index_type = typename VecT::index_type;
@@ -330,7 +330,7 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
@@ -390,7 +390,8 @@ namespace zs {
           gamma[1] = alpha[1] * beta[1];
         }
 
-        if constexpr (false) {
+#if 0
+        {
           auto printMat = [](auto&& mat, std::string msg = "") {
             using Mat = RM_CVREF_T(mat);
             if (!msg.empty()) fmt::print("## msg: {}\n", msg);
@@ -405,6 +406,7 @@ namespace zs {
           printMat(V.transpose(), "V^T");
           printMat(U * B * V.transpose(), "Achk (U B V^T)");
         }
+#endif
         /**
          *  Handle the cases of one of the alphas and betas being 0
          *  Sorted by ease of handling and then frequency
@@ -522,7 +524,7 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto polar_decomposition(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto N = VecT::template range_t<0>::value;

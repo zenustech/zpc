@@ -9,7 +9,7 @@ namespace zs {
     using base_t = PlasticityModelInterface<AssociativeVonMises<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     /// vonmises
     // yielding criteria: f_vm(cauchy, k, alpha) = sqrt(3/2 * (cauchy - alpha)^T P (cauchy - alpha))
@@ -27,7 +27,7 @@ namespace zs {
     template <
         typename VecT, typename Model, 
         enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                      std::is_floating_point_v<typename VecT::value_type>> = 0>
+                      is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr bool do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
       using Ti = typename VecT::index_type;

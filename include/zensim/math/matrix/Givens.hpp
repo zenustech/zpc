@@ -94,7 +94,7 @@ namespace zs {
       template <typename VecT,
                 enable_if_all<VecT::dim == 2,
                               VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                              std::is_floating_point_v<typename VecT::value_type>> = 0>
+                              is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void fill(VecInterface<VecT>& A) const noexcept {
         A.assign(A.identity());
         A(rowi, rowi) = c;
@@ -113,7 +113,7 @@ namespace zs {
       template <typename VecT,
                 enable_if_all<VecT::dim == 2,
                               VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                              std::is_floating_point_v<typename VecT::value_type>> = 0>
+                              is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void rowRotation(VecInterface<VecT>& A) const noexcept {
         using index_type = typename VecT::index_type;
         constexpr auto ncols = VecT::template range_t<1>::value;
@@ -134,7 +134,7 @@ namespace zs {
       template <typename VecT,
                 enable_if_all<VecT::dim == 2,
                               VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                              std::is_floating_point_v<typename VecT::value_type>> = 0>
+                              is_floating_point_v<typename VecT::value_type>> = 0>
       constexpr void columnRotation(VecInterface<VecT>& A) const noexcept {
         using index_type = typename VecT::index_type;
         constexpr auto nrows = VecT::template range_t<0>::value;

@@ -8,6 +8,7 @@
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
+#include "zensim/types/Tuple.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
 #include "zensim/types/SourceLocation.hpp"
@@ -244,7 +245,7 @@ namespace zs {
 
       /// sign-related handling
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<InputValueT>)
+        if constexpr (is_signed_v<InputValueT>)
           cur[i] = *(first + i) ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
         else
           cur[i] = *(first + i);
@@ -279,7 +280,7 @@ namespace zs {
 
       /// sign-related handling
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<InputValueT>)
+        if constexpr (is_signed_v<InputValueT>)
           *(d_first + i) = cur[i] ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
         else
           *(d_first + i) = cur[i];
@@ -318,7 +319,7 @@ namespace zs {
 
       /// sign-related handling
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<KeyT>)
+        if constexpr (is_signed_v<KeyT>)
           cur[i] = *(keysIn + i) ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
         else
           cur[i] = *(keysIn + i);
@@ -359,7 +360,7 @@ namespace zs {
 
       /// sign-related handling
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<KeyT>)
+        if constexpr (is_signed_v<KeyT>)
           *(keysOut + i) = cur[i] ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
         else
           *(keysOut + i) = cur[i];

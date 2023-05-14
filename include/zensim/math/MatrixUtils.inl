@@ -199,7 +199,7 @@ namespace zs {
 
   template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 1,
                                          VecT::template range_t<1>::value == 1,
-                                         std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                         is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     using T = typename VecT::value_type;
     auto ret = VecT::zeros();
@@ -208,7 +208,7 @@ namespace zs {
   }
   template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 2,
                                          VecT::template range_t<1>::value == 2,
-                                         std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                         is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     using T = typename VecT::value_type;
     auto ret = VecT::zeros();
@@ -221,7 +221,7 @@ namespace zs {
   }
   template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
                                          VecT::template range_t<1>::value == 3,
-                                         std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                         is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     using T = typename VecT::value_type;
     auto ret = VecT::zeros();
@@ -245,7 +245,7 @@ namespace zs {
   }
   template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 4,
                                          VecT::template range_t<1>::value == 4,
-                                         std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                         is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto inverse(const VecInterface<VecT> &A) noexcept {
     // using T = typename VecT::value_type;
     auto ret = VecT::zeros();

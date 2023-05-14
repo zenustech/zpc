@@ -4,14 +4,13 @@
 #include <limits>
 #include <type_traits>
 
-#include "zensim/meta/Sequence.h"
-#include "zensim/types/Tuple.h"
+#include "zensim/ZpcTuple.hpp"
 
 namespace zs::detail {
   /// reference type helper
   template <class T> struct arrow_proxy {
   private:
-    using TPlain = typename std::remove_reference<T>::type;
+    using TPlain = remove_reference_t<T>;
     T r;
 
   public:
@@ -30,7 +29,7 @@ namespace zs::detail {
 #else
     /// this method allows for template function
     template <typename U> static constexpr auto test(char) -> enable_if_type<
-        std::is_convertible_v<decltype(declval<U &>().equal_to(declval<U>())), bool>,
+        is_convertible_v<decltype(declval<U &>().equal_to(declval<U>())), bool>,
         true_type> {
       return {};
     }
@@ -76,7 +75,7 @@ namespace zs::detail {
     template <typename U> static constexpr false_type test(...) { return {}; }
     template <typename U> static constexpr true_type test(
         decltype(&U::sentinel_type),
-        enable_if_t<std::is_convertible_v<invoke_result_t<decltype(&U::at_end)>, bool>>) {
+        enable_if_t<is_convertible_v<invoke_result_t<decltype(&U::at_end)>, bool>>) {
       return {};
     }
 
@@ -421,7 +420,7 @@ namespace zs {
       : IteratorInterface<IndexIterator<Data, StrideT>> {
     using T = Data;
     using DiffT = std::make_signed_t<StrideT>;
-    static_assert(std::is_integral_v<T> && std::is_integral_v<DiffT>,
+    static_assert(is_integral_v<T> && is_integral_v<DiffT>,
                   "Index type must be integral");
     static_assert(std::is_convertible_v<T, DiffT>,
                   "Stride type not compatible with the index type");
@@ -440,7 +439,7 @@ namespace zs {
   template <typename Data, sint_t Stride> struct IndexIterator<Data, integral<sint_t, Stride>>
       : IteratorInterface<IndexIterator<Data, integral<sint_t, Stride>>> {
     using T = std::make_signed_t<Data>;
-    static_assert(std::is_integral_v<T>, "Index type must be integral");
+    static_assert(is_integral_v<T>, "Index type must be integral");
     static_assert(std::is_convertible_v<sint_t, T>,
                   "Stride type not compatible with the index type");
 
@@ -464,14 +463,14 @@ namespace zs {
   template <typename Ts, typename Indices> struct Collapse;
 
   template <typename... Tn> constexpr bool all_integral() {
-    return (std::is_integral_v<Tn> && ...);
+    return (is_integral_v<Tn> && ...);
   }
   template <typename... Tn, size_t... Is> struct Collapse<type_seq<Tn...>, index_sequence<Is...>> {
     static_assert(all_integral<Tn...>(), "not all types in Collapse is integral!");
     template <size_t I> using index_t = zs::tuple_element_t<I, zs::tuple<Tn...>>;
     static constexpr size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
-    template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
+    template <typename VecT, enable_if_t<is_integral_v<typename VecT::value_type>> = 0>
     constexpr Collapse(const VecInterface<VecT> &v) : ns{v.to_tuple()} {}
 
     template <size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
@@ -511,11 +510,11 @@ namespace zs {
       = Collapse<typename gen_seq<dim>::template uniform_types_t<type_seq, int>,
                  make_index_sequence<dim>>;
 
-  template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
+  template <typename VecT, enable_if_t<is_integral_v<typename VecT::value_type>> = 0>
   Collapse(const VecInterface<VecT> &) -> Collapse<
       typename gen_seq<VecT::extent>::template uniform_types_t<type_seq, typename VecT::value_type>,
       make_index_sequence<VecT::extent>>;
-  template <typename... Tn, enable_if_all<std::is_integral_v<Tn>...> = 0> Collapse(Tn...)
+  template <typename... Tn, enable_if_all<is_integral_v<Tn>...> = 0> Collapse(Tn...)
       -> Collapse<type_seq<Tn...>, index_sequence_for<Tn...>>;
 
   template <typename... Tn> constexpr auto ndrange(Tn &&...ns) { return Collapse{FWD(ns)...}; }
@@ -597,7 +596,7 @@ namespace zs {
   /// ranges
   ///
   // index range
-  template <typename T, enable_if_t<std::is_integral_v<T>> = 0>
+  template <typename T, enable_if_t<is_integral_v<T>> = 0>
   constexpr auto range(T begin, T end, T increment) {
     auto actualEnd = end - ((end - begin) % increment);
     using DiffT = std::make_signed_t<T>;
@@ -605,12 +604,12 @@ namespace zs {
         make_iterator<IndexIterator>(begin, static_cast<DiffT>(increment)),
         make_iterator<IndexIterator>(actualEnd, static_cast<DiffT>(increment)));
   }
-  template <typename T, enable_if_t<std::is_integral_v<T>> = 0>
+  template <typename T, enable_if_t<is_integral_v<T>> = 0>
   constexpr auto range(T begin, T end) {
     using DiffT = std::make_signed_t<T>;
     return range<DiffT>(begin, end, begin < end ? 1 : -1);
   }
-  template <typename T, enable_if_t<std::is_integral_v<T>> = 0> constexpr auto range(T end) {
+  template <typename T, enable_if_t<is_integral_v<T>> = 0> constexpr auto range(T end) {
     return range<T>(0, end);
   }
 

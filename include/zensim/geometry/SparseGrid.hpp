@@ -28,7 +28,7 @@ namespace zs {
         return wrapt<value_type>{};
     }
     using coord_component_type = typename RM_CVREF_T(deduce_basic_value_type())::type;
-    static_assert(std::is_floating_point_v<coord_component_type>,
+    static_assert(is_floating_point_v<coord_component_type>,
                   "coord type should be floating point.");
     ///
     static constexpr int dim = dim_;
@@ -155,7 +155,7 @@ namespace zs {
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
                             VecTM::template range_t<1>::value == dim + 1,
-                            std::is_floating_point_v<typename VecTM::value_type>>
+                            is_floating_point_v<typename VecTM::value_type>>
               = 0>
     void resetTransformation(const VecInterface<VecTM> &i2w) {
       _transform.self() = i2w;
@@ -249,7 +249,7 @@ namespace zs {
     }
     template <typename VecT,
               enable_if_all<
-                  VecT::dim == 1, VecT::extent == dim, std::is_signed_v<typename VecT::value_type>,
+                  VecT::dim == 1, VecT::extent == dim, is_signed_v<typename VecT::value_type>,
                   std::is_convertible_v<typename VecT::value_type, integer_coord_component_type>>
               = 0>
     static constexpr integer_coord_component_type local_coord_to_offset(
@@ -261,7 +261,7 @@ namespace zs {
     }
     template <typename VecT,
               enable_if_all<
-                  VecT::dim == 1, VecT::extent == dim, std::is_signed_v<typename VecT::value_type>,
+                  VecT::dim == 1, VecT::extent == dim, is_signed_v<typename VecT::value_type>,
                   std::is_convertible_v<typename VecT::value_type, integer_coord_component_type>>
               = 0>
     static constexpr integer_coord_component_type global_coord_to_local_offset(
@@ -274,7 +274,7 @@ namespace zs {
     }
     // node value access (used for GridArena::arena_type init)
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::index_type>>
+                                            is_integral_v<typename VecTI::index_type>>
                               = 0>
     constexpr auto decomposeCoord(const VecInterface<VecTI> &indexCoord) const noexcept {
       auto cellid = indexCoord & (side_length - 1);
@@ -287,7 +287,7 @@ namespace zs {
       return blockno == table_type::sentinel_v ? defaultVal : _grid(chn, blockno, cellno);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::value_type>>
+                                            is_integral_v<typename VecTI::value_type>>
                               = 0>
     constexpr auto valueOr(false_type, size_type chn, const VecInterface<VecTI> &indexCoord,
                            value_type defaultVal) const noexcept {
@@ -295,7 +295,7 @@ namespace zs {
       return valueOr(chn, bno, cno, defaultVal);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::value_type>>
+                                            is_integral_v<typename VecTI::value_type>>
                               = 0>
     constexpr value_type valueOr(true_type, size_type chn, const VecInterface<VecTI> &indexCoord,
                                  int orientation, value_type defaultVal) const noexcept {
@@ -374,7 +374,7 @@ namespace zs {
     }
 
     /// delegate to bcht
-    template <typename VecT, enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT, enable_if_t<is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto insert(const VecInterface<VecT> &x) {
       auto X_ = worldToIndex(x) + (coord_component_type)0.5;
       auto X = integer_coord_type::init(
@@ -382,7 +382,7 @@ namespace zs {
       X -= (X & (side_length - 1));
       return _table.insert(X);
     }
-    template <typename VecT, enable_if_t<std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <typename VecT, enable_if_t<is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto query(const VecInterface<VecT> &x) const {
       auto X_ = worldToIndex(x) + (coord_component_type)0.5;
       auto X = integer_coord_type::init(
@@ -433,7 +433,7 @@ namespace zs {
     }
     // staggered
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>>
+                                                 is_signed_v<typename VecT::value_type>>
                                    = 0>
     constexpr value_type iStaggeredCellSample(size_type propOffset, int d,
                                               const VecInterface<VecT> &X,
@@ -456,7 +456,7 @@ namespace zs {
              * (coord_component_type)0.25;
     }
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>>
+                                                 is_signed_v<typename VecT::value_type>>
                                    = 0>
     constexpr auto iStaggeredCellSample(const SmallString &prop, int chn,
                                         const VecInterface<VecT> &X, int f) const {
@@ -498,7 +498,7 @@ namespace zs {
     /// packed sample
     // staggered
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>>
+                                                 is_signed_v<typename VecT::value_type>>
                                    = 0>
     constexpr packed_value_type iStaggeredCellPack(size_type propOffset,
                                                    const VecInterface<VecT> &X,
@@ -532,7 +532,7 @@ namespace zs {
       return ret;
     }
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                                 std::is_signed_v<typename VecT::value_type>>
+                                                 is_signed_v<typename VecT::value_type>>
                                    = 0>
     constexpr packed_value_type iStaggeredCellPack(const SmallString &propName,
                                                    const VecInterface<VecT> &X, int f) const {

@@ -42,7 +42,7 @@ namespace zs {
   // https://github.com/penn-graphics-research/ziran2020
   template <int interpolation_degree, typename T,
             typename Ti = conditional_t<sizeof(T) <= sizeof(f32), i32, i64>,
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr auto base_node(T x, wrapt<Ti> tag = {}) noexcept {
     // linear: 0
     // quadratic: 1
@@ -52,7 +52,7 @@ namespace zs {
   }
 
   template <int order, typename VecT,
-            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+            enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto linear_bspline_weights(const VecInterface<VecT>& x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
@@ -86,7 +86,7 @@ namespace zs {
   }
 
   template <int order, typename VecT,
-            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+            enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto quadratic_bspline_weights(const VecInterface<VecT>& x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
@@ -125,7 +125,7 @@ namespace zs {
   }
 
   template <int order, typename VecT,
-            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+            enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto cubic_bspline_weights(const VecInterface<VecT>& x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
@@ -175,7 +175,7 @@ namespace zs {
   }
 
   template <typename VecT,
-            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+            enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto delta_2point_weights(const VecInterface<VecT>& x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
@@ -202,7 +202,7 @@ namespace zs {
   }
 
   template <typename VecT,
-            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+            enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto delta_3point_weights(const VecInterface<VecT>& x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
@@ -233,7 +233,7 @@ namespace zs {
   }
 
   template <typename VecT,
-            enable_if_all<VecT::dim == 1, std::is_floating_point_v<typename VecT::value_type>> = 0>
+            enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto delta_4point_weights(const VecInterface<VecT>& x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;

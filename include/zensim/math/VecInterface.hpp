@@ -765,7 +765,7 @@ namespace zs {
     // scalar integral
 #define DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(OP)                                            \
   template <typename TT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>, \
-            enable_if_all<is_integral_v<typename VecT::value_type>, std::is_integral_v<TT>, \
+            enable_if_all<is_integral_v<typename VecT::value_type>, is_integral_v<TT>, \
                           IsAssignable>                                                     \
             = 0>                                                                            \
   constexpr Derived& operator OP##=(TT v) noexcept {                                        \

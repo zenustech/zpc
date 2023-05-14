@@ -48,7 +48,7 @@ namespace zs {
     constexpr result_type operator()(const key_type &key) const noexcept {
       return (((_hashx ^ key) + _hashy) % prime_divisor);
     }
-    template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
+    template <typename VecT, enable_if_t<is_integral_v<typename VecT::value_type>> = 0>
     constexpr result_type operator()(const VecInterface<VecT> &key) const noexcept {
       static_assert(VecT::extent >= 1, "should at least have one element");
       const universal_hash<typename VecT::value_type> subhasher{_hashx, _hashy};
@@ -95,15 +95,15 @@ namespace zs {
     }
     template <bool isVec = is_vec<key_type>::value, enable_if_t<isVec> = 0>
     constexpr result_type operator()(const key_type &key) const noexcept {
-      if constexpr (std::is_integral_v<typename key_type::value_type>) {
+      if constexpr (is_integral_v<typename key_type::value_type>) {
         if constexpr (sizeof(typename key_type::value_type) == 4) {  // i32, u32
           // this is the most frequently used case
           // only preserve low 21-bit index of each dimension
           if constexpr (key_type::extent == 3) {
             auto extract = [](typename key_type::value_type val) -> u64 {
-              if constexpr (std::is_unsigned_v<typename key_type::value_type>)
+              if constexpr (is_unsigned_v<typename key_type::value_type>)
                 return (u64)val & (u64)0x1fffffu;
-              else if constexpr (std::is_signed_v<typename key_type::value_type>)
+              else if constexpr (is_signed_v<typename key_type::value_type>)
                 return ((u64)val & (u64)0xfffffu) | ((u64)(val < 0 ? 1 : 0) << (u64)20);
             };
             return (extract(key.val(0)) << (u64)42) | (extract(key.val(1)) << (u64)21)
@@ -166,7 +166,7 @@ namespace zs {
         = conditional_t<sizeof(hashed_key_type) == 8, u64,
                         conditional_t<sizeof(hashed_key_type) == 4, u32,
                                       conditional_t<sizeof(hashed_key_type) == 4, u16, void>>>;
-    static_assert(std::is_unsigned_v<mapped_hashed_key_type>,
+    static_assert(is_unsigned_v<mapped_hashed_key_type>,
                   "hashed key type should be an unsigned integer");
     using storage_key_type = conditional_t<compare_key, key_type, mapped_hashed_key_type>;
     //

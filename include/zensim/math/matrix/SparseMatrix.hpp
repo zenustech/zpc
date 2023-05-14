@@ -17,7 +17,7 @@ namespace zs {
   struct SparseMatrix {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "SparseMatrix only works with zspmrallocator for now.");
-    static_assert(std::is_fundamental_v<T> || is_vec<T>::value,
+    static_assert(is_fundamental_v<T> || is_vec<T>::value,
                   "only fundamental types and vec are allowed to be used as value_type.");
     static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
                   "element is not default-constructible or trivially-copyable!");

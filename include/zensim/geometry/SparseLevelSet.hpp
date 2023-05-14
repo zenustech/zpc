@@ -137,7 +137,7 @@ namespace zs {
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
                             VecTM::template range_t<1>::value == dim + 1,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     void resetTransformation(const VecInterface<VecTM> &i2w) {
       math::decompose_transform(i2w, _i2wSinv, _i2wRinv, _i2wT, 0);
       _i2wSinv = inverse(_i2wSinv);
@@ -376,7 +376,7 @@ namespace zs {
     /// index space to world space
     // cell-corresponding positions
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_integral_v<typename VecT::value_type>> = 0>
+                                           is_integral_v<typename VecT::value_type>> = 0>
     constexpr auto cellToIndex(const VecInterface<VecT> &X) const noexcept {
       if constexpr (category == grid_e::cellcentered)
         return (X + (value_type)0.5);
@@ -385,7 +385,7 @@ namespace zs {
     }
     template <typename VecT, auto cate = category,
               enable_if_all<cate == grid_e::staggered, VecT::dim == 1, VecT::extent == dim,
-                            std::is_integral_v<typename VecT::value_type>> = 0>
+                            is_integral_v<typename VecT::value_type>> = 0>
     constexpr auto cellToIndex(const VecInterface<VecT> &X, int f) const noexcept {
       using RetT = typename VecT::template variant_vec<value_type, typename VecT::extents>;
       return RetT::init([&X, f](int d) {
@@ -434,7 +434,7 @@ namespace zs {
     template <
         typename VecT, auto cate = category,
         enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                      std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
+                      is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &coord, int orientation) const noexcept {
       auto offset = TV::constant((value_type)0.5);
       offset(orientation) = (value_type)0;
@@ -448,7 +448,7 @@ namespace zs {
     template <
         typename VecT, auto cate = category,
         enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                      std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
+                      is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
     constexpr auto indexToWorld(size_type bno, const VecInterface<VecT> &cid,
                                 int orientation) const noexcept {
       return indexToWorld(_table._activeKeys[bno] + cid, orientation);
@@ -456,7 +456,7 @@ namespace zs {
 
     /// helper functions
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::index_type>> = 0>
+                                            is_integral_v<typename VecTI::index_type>> = 0>
     constexpr auto decompose_coord(const VecInterface<VecTI> &indexCoord) const noexcept {
       auto cellid = indexCoord & (side_length - 1);
       auto blockid = indexCoord - cellid;
@@ -464,7 +464,7 @@ namespace zs {
     }
     template <typename VecTI, auto cate = category,
               enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                            std::is_integral_v<typename VecTI::index_type>,
+                            is_integral_v<typename VecTI::index_type>,
                             cate == grid_e::staggered> = 0>
     constexpr value_type value_or(channel_counter_type chn, const VecInterface<VecTI> &indexCoord,
                                   int orientation, value_type defaultVal) const noexcept {
@@ -480,7 +480,7 @@ namespace zs {
       return blockno == table_t::sentinel_v ? defaultVal : _grid(chn, (size_type)blockno, cellno);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::index_type>> = 0>
+                                            is_integral_v<typename VecTI::index_type>> = 0>
     constexpr auto value_or(channel_counter_type chn, const VecInterface<VecTI> &indexCoord,
                             value_type defaultVal) const noexcept {
       auto [bno, cno] = decompose_coord(indexCoord);
@@ -519,7 +519,7 @@ namespace zs {
     // cell-wise staggered grid sampling
     template <typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_floating_point_v<typename VecT::value_type>,
+                            is_floating_point_v<typename VecT::value_type>,
                             cate == grid_e::staggered> = 0>
     constexpr TV ipack(const SmallString &propName, const VecInterface<VecT> &X,
                        const value_type defaultVal, wrapv<kt> = {}) const noexcept {
@@ -552,7 +552,7 @@ namespace zs {
     template <
         typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
         enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                      std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
+                      is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
     constexpr TV ipack(const SmallString &propName, const VecInterface<VecT> &coord, int f,
                        const value_type defaultVal, wrapv<kt> = {}) const noexcept {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
@@ -800,7 +800,7 @@ namespace zs {
     using value_type = typename lsv_t::value_type;
     using index_type = typename lsv_t::index_type;
 
-    static_assert(std::is_signed_v<index_type>, "index_type should be a signed integer.");
+    static_assert(is_signed_v<index_type>, "index_type should be a signed integer.");
     static constexpr grid_e category = lsv_t::category;
     static constexpr int dim = lsv_t::dim;
     static constexpr kernel_e kt = kt_;

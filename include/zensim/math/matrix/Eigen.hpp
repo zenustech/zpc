@@ -22,7 +22,7 @@ namespace zs {
                           VecTM::template range_t<0>::value == 2> = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &M) noexcept {
     using value_type = typename VecTM::value_type;
-    using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+    using T = conditional_t<is_floating_point_v<value_type>, value_type,
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
@@ -79,7 +79,7 @@ namespace zs {
                           VecTM::template range_t<0>::value == 3> = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &mat) noexcept {
     using value_type = typename VecTM::value_type;
-    using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+    using T = conditional_t<is_floating_point_v<value_type>, value_type,
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
@@ -223,7 +223,7 @@ namespace zs {
           VecTM::template range_t<0>::value != 2, VecTM::template range_t<0>::value != 3> = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &mat) noexcept {
     using value_type = typename VecTM::value_type;
-    using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+    using T = conditional_t<is_floating_point_v<value_type>, value_type,
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using Ti = typename VecTM::index_type;
     constexpr int dim = VecTM::template range_t<0>::value;
@@ -309,7 +309,7 @@ namespace zs {
 
   template <
       typename VecTM,
-      enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
+      enable_if_all<is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
                     VecTM::template range_t<0>::value == VecTM::template range_t<1>::value> = 0>
   constexpr void make_pd(VecInterface<VecTM> &mat) noexcept {
     constexpr int dim = VecTM::template range_t<0>::value;

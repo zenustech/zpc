@@ -14,7 +14,7 @@ namespace zs {
    */
   template <typename VecT, execspace_e space = deduce_execution_space(),
             enable_if_all<VecT::dim == 1, VecT::extent == 3,
-                          std::is_floating_point_v<typename VecT::value_type>> = 0>
+                          is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto dihedral_angle(const VecInterface<VecT>& v2, const VecInterface<VecT>& v0,
                                 const VecInterface<VecT>& v1, const VecInterface<VecT>& v3,
                                 wrapv<space> tag = {}) {
@@ -35,7 +35,7 @@ namespace zs {
    */
   template <typename VecT, execspace_e space = deduce_execution_space(),
             enable_if_all<VecT::dim == 1, VecT::extent == 3,
-                          std::is_floating_point_v<typename VecT::value_type>> = 0>
+                          is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto dihedral_angle_gradient(const VecInterface<VecT>& v2, const VecInterface<VecT>& v0,
                                          const VecInterface<VecT>& v1, const VecInterface<VecT>& v3,
                                          wrapv<space> tag = {}) {
@@ -76,7 +76,7 @@ namespace zs {
    */
   template <typename VecT, execspace_e space = deduce_execution_space(),
             enable_if_all<VecT::dim == 1, VecT::extent == 3,
-                          std::is_floating_point_v<typename VecT::value_type>> = 0>
+                          is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto dihedral_angle_hessian(const VecInterface<VecT>& v2, const VecInterface<VecT>& v0,
                                         const VecInterface<VecT>& v1, const VecInterface<VecT>& v3,
                                         wrapv<space> tag = {}) {

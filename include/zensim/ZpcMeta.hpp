@@ -328,6 +328,13 @@ namespace zs {
   template <class T> struct add_rvalue_reference
       : decltype(detail::try_add_rvalue_reference<T>(0)) {};
   template <typename T> using add_rvalue_reference_t = typename add_rvalue_reference<T>::type;
+  // add_cv/const/volatile
+  template<class T> struct add_cv { typedef const volatile T type; };
+  template <class T> using add_cv_t = typename add_cv<T>::type;
+  template<class T> struct add_const { typedef const T type; };
+  template <class T> using add_const_t = typename add_const<T>::type;
+  template<class T> struct add_volatile { typedef volatile T type; };
+  template <class T> using add_volatile_t = typename add_volatile<T>::type;
   // remove_extent
   template <class T> struct remove_extent {
     using type = T;

@@ -724,7 +724,7 @@ namespace zs {
           std::is_convertible_v<DiffT, typename std::iterator_traits<DstIterT>::difference_type>,
           "diff type not compatible");
       static_assert(std::is_convertible_v<InputValueT, ValueT>, "value type not compatible");
-      static_assert(std::is_integral_v<ValueT>, "value type not integral");
+      static_assert(is_integral_v<ValueT>, "value type not integral");
 
       CppTimer timer;
       if (shouldProfile()) timer.tick();
@@ -748,7 +748,7 @@ namespace zs {
       /// move to local buffer first (bit hack for signed type)
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<InputValueT>)
+        if constexpr (is_signed_v<InputValueT>)
           cur[i] = *(first + i) ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
         else
           cur[i] = *(first + i);
@@ -830,7 +830,7 @@ namespace zs {
 
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<InputValueT>)
+        if constexpr (is_signed_v<InputValueT>)
           *(d_first + i) = cur[i] ^ ((InputValueT)1 << (sizeof(InputValueT) * 8 - 1));
         else
           *(d_first + i) = cur[i];
@@ -861,7 +861,7 @@ namespace zs {
       using KeyT = typename std::iterator_traits<KeyIter>::value_type;
       using ValueT = typename std::iterator_traits<ValueIter>::value_type;
       using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
-      static_assert(std::is_integral_v<KeyT>, "key type not integral");
+      static_assert(is_integral_v<KeyT>, "key type not integral");
 
       CppTimer timer;
       if (shouldProfile()) timer.tick();
@@ -889,7 +889,7 @@ namespace zs {
       /// move to local buffer first (bit hack for signed type)
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<KeyT>)
+        if constexpr (is_signed_v<KeyT>)
           cur[i] = *(keysIn + i) ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
         else
           cur[i] = *(keysIn + i);
@@ -978,7 +978,7 @@ namespace zs {
 
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
       for (DiffT i = 0; i < dist; ++i) {
-        if constexpr (std::is_signed_v<KeyT>)
+        if constexpr (is_signed_v<KeyT>)
           *(keysOut + i) = cur[i] ^ ((KeyT)1 << (sizeof(KeyT) * 8 - 1));
         else
           *(keysOut + i) = cur[i];

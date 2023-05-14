@@ -717,7 +717,7 @@ namespace zs {
   }
 #if 0
   template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr bool isinf(T v, wrapv<space> = {}) noexcept {
     if constexpr (space == execspace_e::cuda) {
 #  if defined(__CUDACC__)

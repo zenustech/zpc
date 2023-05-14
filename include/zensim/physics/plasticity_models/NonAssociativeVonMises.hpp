@@ -10,7 +10,7 @@ namespace zs {
     using base_t = PlasticityModelInterface<NonAssociativeVonMises<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type tauY, alpha, hardeningCoeff;
 
@@ -21,7 +21,7 @@ namespace zs {
     // project_strain
     template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr bool do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;

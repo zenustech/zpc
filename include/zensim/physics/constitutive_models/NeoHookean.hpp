@@ -8,7 +8,7 @@ namespace zs {
     using base_t = IsotropicConstitutiveModelInterface<NeoHookean<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type mu, lam;
 
@@ -19,7 +19,7 @@ namespace zs {
 
     // do_psi_sigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr typename VecT::value_type do_psi_sigma(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -30,7 +30,7 @@ namespace zs {
     }
     // do_dpsi_dsigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       // constexpr auto dim = VecT::template range_t<0>::value;
@@ -41,7 +41,7 @@ namespace zs {
     }
     // do_d2psi_dsigma2
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -68,7 +68,7 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1,
                                            VecT::template range_t<0>::value == 2
                                                || VecT::template range_t<0>::value == 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -94,7 +94,7 @@ namespace zs {
     using base_t = InvariantConstitutiveModelInterface<NeoHookean<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type mu, lam;
 
@@ -132,7 +132,7 @@ namespace zs {
       : InvariantConstitutiveModelInterface<StableNeohookeanInvarient<T>> {
     using base_t = InvariantConstitutiveModelInterface<StableNeohookeanInvarient<T>>;
     using value_type = T;
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
     value_type mu, lam;
 
     StableNeohookeanInvarient() noexcept = default;
@@ -170,8 +170,8 @@ namespace zs {
     template <typename VecT, typename VecS,
               enable_if_all<VecT::dim == 1, VecS::dim == 1, VecT::template range_t<0>::value == 3,
                             VecS::template range_t<0>::value == 3,
-                            std::is_floating_point_v<typename VecT::value_type>,
-                            std::is_floating_point_v<typename VecS::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>,
+                            is_floating_point_v<typename VecS::value_type>> = 0>
     constexpr auto eval_stretching_matrix(const VecInterface<VecT>& Is,
                                           const VecInterface<VecS>& sigma) const noexcept {
       typename VecT::template variant_vec<typename VecT::value_type,
@@ -194,7 +194,7 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_first_piola_derivative_spd(const VecInterface<VecT>& F) const noexcept {
       // sum_i ((d2Psi / dI_i2) g_i g_i^T + ((dPsi / dI_i) H_i))
       // printf("do_first_piola_derivative_spd get called\n");

@@ -22,7 +22,7 @@ namespace zs {
     }
     template <typename VecT, typename Self = Derived,
               enable_if_all<VecT::dim == 1, VecT::extent == Self::dim,
-                            std::is_floating_point_v<typename Self::value_type>> = 0>
+                            is_floating_point_v<typename Self::value_type>> = 0>
     constexpr auto getUniformCoord(const VecInterface<VecT> &pos) const noexcept {
       auto [lo, offset] = getBoundingBox();
       const auto lengths = offset - lo;

@@ -58,7 +58,7 @@ namespace zs {
       return _data[indexer_type::offset(forward<Args>(args)...)];
     }
     // []
-    template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
+    template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
     constexpr decltype(auto) operator[](Index index) noexcept {
       if constexpr (dim == 1) {
         return _data[index];
@@ -67,12 +67,12 @@ namespace zs {
         return R{_data + indexer_type::offset(index)};
       }
     }
-    template <typename Index, enable_if_t<std::is_integral_v<Index>> = 0>
+    template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
     constexpr decltype(auto) operator[](Index index) const noexcept {
       if constexpr (dim == 1) {
         return _data[index];
       } else {
-        using R = vec_view<std::add_const_t<T>,
+        using R = vec_view<add_const_t<T>,
                            gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
         return R{_data + indexer_type::offset(index)};
       }
@@ -121,7 +121,7 @@ namespace zs {
     constexpr vec_impl &operator=(vec_impl &&) &noexcept = default;
     template <typename... Ts,
               enable_if_all<(sizeof...(Ts) <= extent),
-                            (std::is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)>
+                            (is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)>
               = 0>
     constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}
     /// https://github.com/kokkos/kokkos/issues/177
@@ -187,7 +187,7 @@ namespace zs {
     }
     template <typename Index,
               typename R
-              = vec_view<std::add_const_t<T>,
+              = vec_view<add_const_t<T>,
                          gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>,
               Tn d = dim, enable_if_t<(d > 1)> = 0>
     constexpr R operator[](Index index) const noexcept {

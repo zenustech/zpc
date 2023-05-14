@@ -358,7 +358,7 @@ namespace zs {
             enable_if_all<VecT::dim == 1, VecT::extent == 3> = 0>
   constexpr bool ray_box_intersect(VecInterface<VecT> const &ro, VecInterface<VecT> const &rd,
                                    AABBBox<dim, T_> const &box) noexcept {
-    static_assert(std::is_floating_point_v<typename VecT::value_type>,
+    static_assert(is_floating_point_v<typename VecT::value_type>,
                   "ray direction should be in floating point");
     using T = math::op_result_t<typename VecT::value_type, T_>;
     // if (rd.l2NormSqr() < limits<T>::epsilon() * 10) return false;

@@ -78,7 +78,7 @@ namespace zs {
     else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
 #  if 1
 #    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
-      if constexpr (std::is_integral_v<T>) {
+      if constexpr (is_integral_v<T>) {
         if constexpr (sizeof(T) == sizeof(char))
           return InterlockedExchangeAdd8(const_cast<char volatile *>((char *)dest), (char)val);
         else if constexpr (sizeof(T) == sizeof(short))
@@ -91,7 +91,7 @@ namespace zs {
       } else
         return atomic_add_impl(ExecTag{}, dest, val);
 #    else
-      if constexpr (std::is_integral_v<T>)
+      if constexpr (is_integral_v<T>)
         return __atomic_fetch_add(dest, val, __ATOMIC_SEQ_CST);
       else
         return atomic_add_impl(ExecTag{}, dest, val);
@@ -112,7 +112,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_inc(ExecTag, T *dest) {
-    if constexpr (std::is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
+    if constexpr (is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
 #  ifdef __CUDA_ARCH__
       unsigned int active = __activemask();
       int leader = __ffs(active) - 1;
@@ -275,7 +275,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
   atomic_max(ExecTag execTag, T *const dest, const T val) {
-    if constexpr (std::is_integral_v<T>) {
+    if constexpr (is_integral_v<T>) {
       atomicMax(dest, val);
       return;
     } else {
@@ -315,7 +315,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
   atomic_min(ExecTag execTag, T *const dest, const T val) {
-    if constexpr (std::is_integral_v<T>) {
+    if constexpr (is_integral_v<T>) {
       atomicMin(dest, val);
       return;
     } else {

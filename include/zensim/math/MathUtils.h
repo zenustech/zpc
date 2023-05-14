@@ -133,7 +133,7 @@ namespace zs {
     return x == T{} ? T{} : zs::exp(y * zs::log(x));
   }
 
-  template <typename T, enable_if_t<!std::is_integral_v<T>> = 0>
+  template <typename T, enable_if_t<!is_integral_v<T>> = 0>
   constexpr complex<T> pow(const complex<T> &x, const T &y) {
     if (x.imag() == T{} && x.real() > T{}) return zs::pow(x.real(), y);
 
@@ -218,9 +218,9 @@ namespace zs {
 
   /// additional overloads [8.1.9]
   template <typename T> constexpr auto arg(T x) {
-    static_assert(std::is_floating_point_v<T> || std::is_integral_v<T>,
+    static_assert(is_floating_point_v<T> || is_integral_v<T>,
                   "invalid param type for func [arg]");
-    using type = conditional_t<std::is_floating_point_v<T>, T, double>;
+    using type = conditional_t<is_floating_point_v<T>, T, double>;
     return zs::arg(complex<type>{x});
   }
   // ignore the remaining type promotions for now
@@ -241,7 +241,7 @@ namespace zs {
     // TODO refer to:
     // https://github.com/mountunion/ModGCD-OneGPU/blob/master/ModGCD-OneGPU.pdf
     // http://www.iaeng.org/IJCS/issues_v42/issue_4/IJCS_42_4_01.pdf
-    template <typename Ti, enable_if_t<std::is_integral_v<Ti>> = 0>
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
     constexpr Ti gcd(Ti u, Ti v) noexcept {
       while (v != 0) {
         auto r = u % v;
@@ -250,18 +250,18 @@ namespace zs {
       }
       return u;
     }
-    template <typename Ti, enable_if_t<std::is_integral_v<Ti>> = 0>
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
     constexpr Ti lcm(Ti u, Ti v) noexcept {
       return (u / gcd(u, v)) * v;
     }
 
 #if 0
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr T sqrtNewtonRaphson(T x, T curr = 1, T prev = 0) noexcept {
       return curr == prev ? curr : sqrtNewtonRaphson(x, (T)0.5 * (curr + x / curr), curr);
     }
 #else
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr T sqrtNewtonRaphson(T n, T relTol = (T)(sizeof(T) > 4 ? 1e-9 : 1e-6)) noexcept {
       constexpr auto eps = (T)128 * limits<T>::epsilon();
       if (n < -eps) return (T)limits<T>::quiet_NaN();
@@ -347,7 +347,7 @@ namespace zs {
     }
 
     namespace detail {
-      template <typename T, typename Tn, enable_if_t<std::is_integral_v<Tn>> = 0>
+      template <typename T, typename Tn, enable_if_t<is_integral_v<Tn>> = 0>
       constexpr T pow_integral_recursive(T base, T val, Tn exp) noexcept {
         return exp > (Tn)1
                    ? ((exp & (Tn)1) ? pow_integral_recursive(base * base, val * base, exp / (Tn)2)
@@ -356,7 +356,7 @@ namespace zs {
       }
     }  // namespace detail
     template <typename T, typename Tn,
-              enable_if_all<std::is_arithmetic_v<T>, std::is_integral_v<Tn>> = 0>
+              enable_if_all<std::is_arithmetic_v<T>, is_integral_v<Tn>> = 0>
     constexpr auto pow_integral(T base, Tn exp) noexcept {
       using R = T;  // math::op_result_t<T0, T1>;
       return exp == (Tn)3
@@ -378,7 +378,7 @@ namespace zs {
     /**
      * Robustly computing log(x+1)/x
      */
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr T log_1px_over_x(const T x, const T eps = 1e-6) noexcept {
       if (abs(x) < eps)
         return (T)1 - x / (T)2 + x * x / (T)3 - x * x * x / (T)4;
@@ -399,14 +399,14 @@ namespace zs {
     /**
      * Robustly computing (logx-logy)/(x-y)
      */
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr T diff_log_over_diff(const T x, const T y, const T eps = 1e-6) noexcept {
       return log_1px_over_x(x / y - (T)1, eps) / y;
     }
     /**
      * Robustly computing (x logy- y logx)/(x-y)
      */
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr T diff_interlock_log_over_diff(const T x, const T y, const T logy,
                                              const T eps = 1e-6) noexcept {
       return logy - y * diff_log_over_diff(x, y, eps);
@@ -564,17 +564,17 @@ namespace zs {
     return excl_suffix_mul(I, Ns...);
   }
 
-  template <typename T, typename Data, enable_if_t<std::is_floating_point_v<T>> = 0>
+  template <typename T, typename Data, enable_if_t<is_floating_point_v<T>> = 0>
   constexpr auto linear_interop(T alpha, Data &&a, Data &&b) noexcept {
     return a + (b - a) * alpha;
   }
 
-  template <typename T, enable_if_t<std::is_integral_v<T>> = 0>
+  template <typename T, enable_if_t<is_integral_v<T>> = 0>
   constexpr auto lower_trunc(const T v) noexcept {
     return v;
   }
   template <typename T, typename Ti = conditional_t<sizeof(T) <= sizeof(f32), i32, i64>,
-            enable_if_t<std::is_floating_point_v<T>> = 0>
+            enable_if_t<is_floating_point_v<T>> = 0>
   constexpr auto lower_trunc(const T v, wrapt<Ti> = {}) noexcept {
     return static_cast<Ti>(zs::floor(v));
   }

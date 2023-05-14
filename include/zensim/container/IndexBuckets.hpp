@@ -10,7 +10,7 @@ namespace zs {
   template <int dim_ = 3, typename Index = i64, typename Tn = i32,
             grid_e category_ = grid_e::collocated, typename AllocatorT = ZSPmrAllocator<>>
   struct IndexBuckets {
-    static_assert(std::is_integral_v<Index> && std::is_integral_v<Tn>,
+    static_assert(is_integral_v<Index> && is_integral_v<Tn>,
                   "index and coord_index should be integrals");
     static constexpr int dim = dim_;
     static constexpr auto category = category_;
@@ -96,7 +96,7 @@ namespace zs {
       return table._activeKeys[bucketno];
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto bucketCoord(const VecInterface<VecT> &pos) const noexcept {
       const auto dxinv = (value_type)1.0 / dx;
       typename VecT::template variant_vec<coord_index_type, typename VecT::extents> coord{};
@@ -105,7 +105,7 @@ namespace zs {
       return coord;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_integral_v<typename VecT::value_type>> = 0>
+                                           is_integral_v<typename VecT::value_type>> = 0>
     constexpr auto bucketNo(const VecInterface<VecT> &coord) const noexcept {
       return table.query(coord);
     }

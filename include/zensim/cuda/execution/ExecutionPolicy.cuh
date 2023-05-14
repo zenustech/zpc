@@ -167,12 +167,12 @@ namespace zs {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(
-            std::is_integral_v<
+            is_integral_v<
                 typename func_traits::
                     first_argument_t> || std::is_pointer_v<typename func_traits::first_argument_t>,
             "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
             "integer");
-        if constexpr (std::is_integral_v<typename func_traits::first_argument_t>)
+        if constexpr (is_integral_v<typename func_traits::first_argument_t>)
           detail::range_foreach(true_c, id, f, iter, indices);
         else if constexpr (std::is_pointer_v<typename func_traits::first_argument_t>)
           detail::range_foreach(false_c,

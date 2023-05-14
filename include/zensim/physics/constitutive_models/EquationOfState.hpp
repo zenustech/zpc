@@ -8,7 +8,7 @@ namespace zs {
     using base_t = IsotropicConstitutiveModelInterface<EquationOfState<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type bulk, gamma;  // gamma is 7
 

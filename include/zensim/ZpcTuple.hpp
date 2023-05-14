@@ -79,7 +79,7 @@ namespace zs {
                                      || is_reference_v<T> || is_pointer_v<T>)>> {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
-    template <typename V, enable_if_t<std::is_constructible_v<T, V>> = 0>
+    template <typename V, enable_if_t<is_constructible_v<T, V>> = 0>
     constexpr tuple_value(V &&v) noexcept : value(FWD(v)) {}
     constexpr tuple_value(tuple_value &&) = default;
     constexpr tuple_value(const tuple_value &) = default;
@@ -147,10 +147,10 @@ namespace zs {
     constexpr tuple_base &operator=(tuple_base &&) = default;
     constexpr tuple_base &operator=(const tuple_base &) = default;
 
-    template <typename... Vs, enable_if_all<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
+    template <typename... Vs, enable_if_all<(is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple_base(const tuple_base<index_sequence<Is...>, type_seq<Vs...>> &o)
         : tuple_value<Is, Ts>(o.get(index_t<Is>{}))... {}
-    template <typename... Vs, enable_if_all<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
+    template <typename... Vs, enable_if_all<(is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple_base(tuple_base<index_sequence<Is...>, type_seq<Vs...>> &&o)
         : tuple_value<Is, Ts>(o.get(index_t<Is>{}))... {}
     template <typename... Vs, enable_if_all<(is_assignable_v<Ts, Vs> && ...)> = 0>
@@ -256,9 +256,9 @@ namespace zs {
     constexpr tuple &operator=(tuple &&) = default;
     constexpr tuple &operator=(const tuple &) = default;
 
-    template <typename... Vs, enable_if_t<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
+    template <typename... Vs, enable_if_t<(is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple(const tuple<Vs...> &o) : base_t(o) {}
-    template <typename... Vs, enable_if_t<(std::is_constructible_v<Ts, Vs> && ...)> = 0>
+    template <typename... Vs, enable_if_t<(is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple(tuple<Vs...> &&o) : base_t(move(o)) {}
     template <typename... Vs, enable_if_t<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>> = 0>
     constexpr tuple &operator=(const tuple<Vs...> &o) {

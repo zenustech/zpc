@@ -18,8 +18,8 @@ namespace zs {
     // must be signed integer, since we are using -1 as sentinel value
     using index_type = std::make_signed_t<Index>;
     using size_type = std::make_unsigned_t<Index>;
-    static_assert(std::is_floating_point_v<value_type>, "value_type should be floating point");
-    static_assert(std::is_integral_v<index_type>, "index_type should be an integral");
+    static_assert(is_floating_point_v<value_type>, "value_type should be floating point");
+    static_assert(is_integral_v<index_type>, "index_type should be an integral");
 
     using mc_t = zs::u32;
     using Box = zs::AABBBox<dim, value_type>;

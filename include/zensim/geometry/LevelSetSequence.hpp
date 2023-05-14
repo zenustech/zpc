@@ -13,7 +13,7 @@ namespace zs {
     static constexpr int dim = ls_t::dim;
     using T = typename ls_t::value_type;
     using TV = typename ls_t::TV;
-    static_assert(std::is_floating_point_v<T>, "");
+    static_assert(is_floating_point_v<T>, "");
 
     constexpr LevelSetWindow(T dt = 0, T alpha = 0) : stepDt{dt}, alpha{alpha} {}
     ~LevelSetWindow() = default;

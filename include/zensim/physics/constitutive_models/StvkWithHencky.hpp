@@ -8,7 +8,7 @@ namespace zs {
     using base_t = IsotropicConstitutiveModelInterface<StvkWithHencky<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type mu, lam;
 
@@ -19,7 +19,7 @@ namespace zs {
 
     // do_psi_sigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr typename VecT::value_type do_psi_sigma(const VecInterface<VecT>& S) const noexcept {
       const auto S_log = S.abs().log();
       const auto S_log_trace = S_log.sum();
@@ -27,7 +27,7 @@ namespace zs {
     }
     // do_dpsi_dsigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       // constexpr auto dim = VecT::template range_t<0>::value;
@@ -38,7 +38,7 @@ namespace zs {
     }
     // do_d2psi_dsigma2
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -67,7 +67,7 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1,
                                            VecT::template range_t<0>::value == 2
                                                || VecT::template range_t<0>::value == 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;

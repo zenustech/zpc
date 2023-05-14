@@ -277,7 +277,7 @@ namespace zs {
     using grid_storage_t
         = remove_cvref_t<typename grid_t::grid_storage_t>;  // should be a tilevector
 
-    static_assert(std::is_signed_v<coord_index_type>,
+    static_assert(is_signed_v<coord_index_type>,
                   "coordinate index type should be a signed integer!");
 
     static constexpr grid_e category = grid_t::category;
@@ -719,12 +719,12 @@ namespace zs {
     }
 
     // rw
-    template <auto... Ns, typename Tn, enable_if_t<std::is_integral_v<Tn>> = 0>
+    template <auto... Ns, typename Tn, enable_if_t<is_integral_v<Tn>> = 0>
     constexpr auto pack(channel_counter_type chn, Tn cellid) const noexcept {
       return grid.template pack<Ns...>(chn, cellid);
     }
     template <auto... Ns, typename Tn, auto has_name = with_name,
-              enable_if_all<std::is_integral_v<Tn>, has_name> = 0>
+              enable_if_all<is_integral_v<Tn>, has_name> = 0>
     constexpr auto pack(const SmallString &propName, Tn cellid) const noexcept {
       return grid.template pack<Ns...>(propName, cellid);
     }
@@ -833,7 +833,7 @@ namespace zs {
       return ret;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_integral_v<typename VecT::index_type>> = 0>
+                                           is_integral_v<typename VecT::index_type>> = 0>
     static constexpr auto coord_to_cellid(const VecInterface<VecT> &coord) noexcept {
       using Ti = typename VecT::index_type;
       cell_index_type ret{0};
@@ -844,7 +844,7 @@ namespace zs {
       return ret;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_integral_v<typename VecT::index_type>> = 0>
+                                           is_integral_v<typename VecT::index_type>> = 0>
     static constexpr auto global_coord_to_cellid(const VecInterface<VecT> &coord) noexcept {
       using Ti = typename VecT::index_type;
       cell_index_type ret{0};

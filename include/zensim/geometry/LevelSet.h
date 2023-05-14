@@ -43,7 +43,7 @@ namespace zs {
         : vel{} {
       vel = v;
     }
-    template <typename V, enable_if_t<std::is_floating_point_v<V>> = 0>
+    template <typename V, enable_if_t<is_floating_point_v<V>> = 0>
     constexpr UniformVelocityLevelSet(V v) noexcept : vel{vec<T, d>::constant(v)} {}
 
     constexpr auto do_getMaterialVelocity(...) const noexcept { return vel; }
@@ -247,9 +247,9 @@ namespace zs {
   template <typename SdfLsView, typename VelLsView> struct SdfVelFieldView
       : LevelSetInterface<SdfVelFieldView<SdfLsView, VelLsView>> {
     static_assert(SdfLsView::dim == VelLsView::dim, "dimension mismatch!");
-    static_assert(std::is_floating_point_v<
+    static_assert(is_floating_point_v<
                       typename SdfLsView::
-                          value_type> && std::is_floating_point_v<typename VelLsView::value_type>,
+                          value_type> && is_floating_point_v<typename VelLsView::value_type>,
                   "levelset not in floating point type!");
 
     using value_type = typename SdfLsView::value_type;

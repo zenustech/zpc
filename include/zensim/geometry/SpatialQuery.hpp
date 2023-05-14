@@ -20,7 +20,7 @@ namespace zs {
                              const VecInterface<VecTT> &t1,
                              const VecInterface<VecTT> &t2) noexcept {
     using T = math::op_result_t<typename VecTP::value_type, typename VecTT::value_type>;
-    static_assert(std::is_floating_point_v<T>,
+    static_assert(is_floating_point_v<T>,
                   "value_types of VecTs cannot be both integral type.");
     using TV = typename VecTP::template variant_vec<T, typename VecTP::extents>;
     TV diff = t0 - p;

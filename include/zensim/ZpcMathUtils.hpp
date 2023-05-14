@@ -123,20 +123,16 @@ namespace zs {
 
     /// binary_op_result
     template <typename T0, typename T1> struct binary_op_result {
-      static constexpr auto determine_type() noexcept {
-        if constexpr (is_integral_v<T0> && is_integral_v<T1>) {
-          using bigger_type = conditional_t<(sizeof(T0) >= sizeof(T1)), T0, T1>;
-          if constexpr (is_signed_v<T0> && is_signed_v<T1>)
-            return bigger_type{};
-          else if constexpr (is_signed_v<T0>)
-            return T0{};
-          else if constexpr (is_signed_v<T1>)
-            return T1{};
-          else
-            return bigger_type{};
-        } else
-          return common_type_t<T0, T1>{};
-      }
+      template <typename A = T0, typename B = T1,
+                enable_if_all<is_integral_v<A>, is_integral_v<B>> = 0>
+      static auto determine_type() -> conditional_t<
+          is_signed_v<A> && is_signed_v<B>, conditional_t<(sizeof(A) >= sizeof(B)), A, B>,
+          conditional_t<
+              is_signed_v<A>, A,
+              conditional_t<is_signed_v<B>, B, conditional_t<(sizeof(A) >= sizeof(B)), A, B>>>>;
+      template <typename A = T0, typename B = T1,
+                enable_if_t<!is_integral_v<A> || !is_integral_v<B>> = 0>
+      static auto determine_type() -> common_type_t<A, B>;
       using type = decltype(determine_type());
     };
     template <typename T0, typename T1> using binary_op_result_t =

@@ -647,9 +647,9 @@ namespace zs {
     DEFINE_VEC_OP_VECTOR(-)
     DEFINE_VEC_OP_VECTOR(/)
 
-    template <typename VecTA, typename VecTB>
+    template <typename VecTA, typename VecTB, auto DimA = VecTA::dim, auto DimB = VecTB::dim>
     static constexpr bool is_matrix_matrix_product() noexcept {
-      if constexpr (VecTA::dim == 2 && VecTB::dim == 2) {
+      if constexpr (DimA == 2 && DimB == 2) {
         if constexpr (VecTA::template range_t<1>::value == VecTB::template range_t<0>::value)
           return true;
         else

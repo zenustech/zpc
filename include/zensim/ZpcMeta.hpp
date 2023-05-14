@@ -101,14 +101,16 @@ namespace zs {
       else
         return integer_sequence<T, Is..., (sizeof...(Is) + Is)...>{};
     }
-    template <typename T, size_t N> constexpr auto gen_integer_seq() {
+    template <typename T, size_t N, enable_if_t<(N > 1)> = 0> constexpr auto gen_integer_seq() {
+      return concat_sequence<N & 1>(gen_integer_seq<T, N / 2>());
+    }
+    template <typename T, size_t N, enable_if_t<(N <= 1)> = 0> constexpr auto gen_integer_seq() {
       if constexpr (N == 0)
         return integer_sequence<T>{};
-      else if constexpr (N == 1)
+      else  // if constexpr (N == 1)
         return integer_sequence<T, 0>{};
-      else
-        return concat_sequence<N & 1>(gen_integer_seq<T, N / 2>());
-    };
+    }
+
   }  // namespace detail
   template <typename T, T N> using make_integer_sequence
       = decltype(detail::gen_integer_seq<T, N>());
@@ -487,18 +489,26 @@ namespace zs {
     template <typename T> static auto test_integral(T t, T *p, void (*f)(T))
         -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{});
 #else
-    template <typename T> static auto test_integral(T t, T *p) -> decltype(p + t, true_type{});
+    template <typename T,
+              typename = enable_if_t<!is_const_v<T> && !is_volatile_v<T> && !is_reference_v<T>
+                                     && !__is_enum(T) && !__is_class(T)>>
+    static auto test_integral(T t) -> decltype((char *)(nullptr) + t, true_type{});
 #endif
     static false_type test_integral(...) noexcept;
   }  // namespace detail
 #if 1
-  template <class T, typename = int> struct is_integral : false_type {};
-  template <class T>
-  struct is_integral<T, enable_if_t<!__is_enum(T) && !__is_class(T) && !is_reference_v<T>>>
-      : decltype(detail::test_integral(declval<T>(), declval<T *>())) {};
-  // static_assert(!is_integral<float>::value, "???");
-  // static_assert(!is_integral<int &>::value, "???");
-  // static_assert(!is_integral<volatile int>::value, "???");
+  template <typename T, typename = void> struct is_integral : false_type {};
+  template <typename T> struct is_integral<
+      T,
+      void_t<T *, enable_if_all<is_same_v<decltype(detail::test_integral(declval<T>())), true_type>,
+                                !is_const_v<T>, !is_volatile_v<T>, !__is_enum(T), !__is_class(T)>>>
+      : true_type {};
+  template <class T> constexpr bool is_integral_v
+      = decltype(detail::test_integral(declval<T>()))::value;
+  static_assert(is_integral<int>::value, "???");
+  static_assert(!is_integral<float>::value, "???");
+  static_assert(!is_integral<int &>::value, "???");
+  static_assert(!is_integral<volatile int>::value, "???");
 #else
   template <class T> struct is_integral : false_type {};
   template <> struct is_integral<bool> : true_type {};
@@ -513,8 +523,8 @@ namespace zs {
   template <> struct is_integral<unsigned long> : true_type {};
   template <> struct is_integral<long long> : true_type {};
   template <> struct is_integral<unsigned long long> : true_type {};
-#endif
   template <class T> constexpr bool is_integral_v = is_integral<T>::value;
+#endif
 
   template <class T> struct is_floating_point
       : bool_constant<
@@ -661,27 +671,30 @@ namespace zs {
                       || (is_void<From>::value && is_void<To>::value)> {};
   template <class From, class To> constexpr bool is_convertible_v = is_convertible<From, To>::value;
 
-  // common_type
+  // common_type (from cppref)
   template <typename... Ts> struct common_type {};
   // 1
-  template <typename T> struct common_type<T> {
-    using type = T;
-  };
-  // 2
+  template <class T> struct common_type<T> : common_type<T, T> {};
   namespace detail {
-    template <typename T0, typename T1>
-    static wrapt<decay_t<decltype(false ? declval<T0>() : declval<T1>())>> common_type_test(int);
-    static failure_type common_type_test(...);
+    template <class T1, class T2> using conditional_result_t
+        = decltype(false ? declval<T1>() : declval<T2>());
 
-    template <typename T0, typename T1,
-              enable_if_t<is_same_v<T0, decay_t<T0>> && is_same_v<T1, decay_t<T1>>> = 0>
-    static auto deduce_common_type(int) -> decltype(detail::common_type_test<T0, T1>(0));
-    template <typename T0, typename T1> static auto deduce_common_type(...)
-        -> decltype(deduce_common_type<decay_t<T0>, decay_t<T1>>(0));
+    template <class, class, class = void> struct decay_conditional_result {};
+    template <class T1, class T2>
+    struct decay_conditional_result<T1, T2, void_t<conditional_result_t<T1, T2>>>
+        : decay<conditional_result_t<T1, T2>> {};
+
+    template <class T1, class T2, class = void> struct common_type_2_impl
+        : decay_conditional_result<const T1 &, const T2 &> {};
+    template <class T1, class T2>
+    struct common_type_2_impl<T1, T2, void_t<conditional_result_t<T1, T2>>>
+        : decay_conditional_result<T1, T2> {};
   }  // namespace detail
-  template <typename T0, typename T1> struct common_type<T0, T1>
-      : decltype(detail::deduce_common_type<T0, T1>(0)) {};
-  // 3+ (from cppref)
+  //////// two types
+  template <class T1, class T2> struct common_type<T1, T2>
+      : conditional_t<is_same_v<T1, decay_t<T1>> && is_same_v<T2, decay_t<T2>>,
+                      detail::common_type_2_impl<T1, T2>, common_type<decay_t<T1>, decay_t<T2>>> {};
+  // 3+
   namespace detail {
     template <class AlwaysVoid, class T1, class T2, class... R> struct common_type_multi_impl {};
     template <class T1, class T2, class... R>

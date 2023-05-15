@@ -295,7 +295,8 @@ namespace zs {
     }
 #endif
     template <typename Self = Derived, enable_if_t<detail::has_advance<Self>::value> = 0>
-    friend constexpr Derived operator+(Derived it, detail::infer_difference_type_t<Self> offset) {
+    constexpr Derived operator+(detail::infer_difference_type_t<Self> offset) const {
+      auto it = self();
       return it += offset;
     }
     template <typename Self = Derived, enable_if_t<detail::has_advance<Self>::value> = 0>
@@ -303,8 +304,8 @@ namespace zs {
       return it += offset;
     }
     template <typename Self = Derived, enable_if_t<detail::has_advance<Self>::value> = 0>
-    friend constexpr Derived operator-(Derived it, detail::infer_difference_type_t<Self> offset) {
-      return it + (-offset);
+    constexpr Derived operator-(detail::infer_difference_type_t<Self> offset) const {
+      return (*this) + (-offset);
     }
     template <typename Self = Derived, enable_if_t<detail::has_advance<Self>::value> = 0>
     constexpr Derived &operator-=(detail::infer_difference_type_t<Self> offset) {
@@ -380,8 +381,8 @@ namespace zs {
       return static_cast<LegacyIterator &>(*this);
     }
     template <typename Self = base_t, enable_if_t<detail::has_advance<Self>::value> = 0>
-    friend constexpr LegacyIterator operator+(LegacyIterator it,
-                                              detail::infer_difference_type_t<Iterator> offset) {
+    constexpr LegacyIterator operator+(detail::infer_difference_type_t<Self> offset) const {
+      LegacyIterator it = *this;
       return it += offset;
     }
     template <typename Self = base_t, enable_if_t<detail::has_advance<Self>::value> = 0>
@@ -390,9 +391,8 @@ namespace zs {
       return it += offset;
     }
     template <typename Self = base_t, enable_if_t<detail::has_advance<Self>::value> = 0>
-    friend constexpr LegacyIterator operator-(LegacyIterator it,
-                                              detail::infer_difference_type_t<Iterator> offset) {
-      return it + (-(difference_type)offset);
+    constexpr LegacyIterator operator-(detail::infer_difference_type_t<Iterator> offset) const {
+      return (*this) + (-(difference_type)offset);
     }
     template <typename Self = base_t, enable_if_t<detail::has_advance<Self>::value> = 0>
     constexpr LegacyIterator &operator-=(detail::infer_difference_type_t<Iterator> offset) {

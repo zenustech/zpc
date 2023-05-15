@@ -832,4 +832,39 @@ namespace zs {
     return a + (b - a) * alpha;
   }
 
+  template <typename... Args> constexpr auto incl_prefix_sum(size_t I, Args &&...args) noexcept {
+    return mathutil_impl::incl_prefix_sum_impl(I, index_sequence_for<Args...>{},
+                                               forward<Args>(args)...);
+  }
+  template <typename... Args> constexpr auto excl_prefix_sum(size_t I, Args &&...args) noexcept {
+    return mathutil_impl::excl_prefix_sum_impl(I, index_sequence_for<Args...>{},
+                                               forward<Args>(args)...);
+  }
+  template <typename... Args> constexpr auto excl_suffix_mul(size_t I, Args &&...args) noexcept {
+    return mathutil_impl::excl_suffix_mul_impl(I, index_sequence_for<Args...>{},
+                                               forward<Args>(args)...);
+  }
+  template <typename Tn, Tn... Ns>
+  constexpr auto incl_prefix_sum(size_t I, integer_sequence<Tn, Ns...>) noexcept {
+    return incl_prefix_sum(I, Ns...);
+  }
+  template <typename Tn, Tn... Ns>
+  constexpr auto excl_prefix_sum(size_t I, integer_sequence<Tn, Ns...>) noexcept {
+    return excl_prefix_sum(I, Ns...);
+  }
+  template <typename Tn, Tn... Ns>
+  constexpr auto excl_suffix_mul(size_t I, integer_sequence<Tn, Ns...>) noexcept {
+    return excl_suffix_mul(I, Ns...);
+  }
+
+  template <typename T, enable_if_t<is_integral_v<T>> = 0>
+  constexpr auto lower_trunc(const T v) noexcept {
+    return v;
+  }
+  template <typename T, typename Ti = conditional_t<sizeof(T) <= sizeof(f32), i32, i64>,
+            enable_if_t<is_floating_point_v<T>> = 0>
+  constexpr auto lower_trunc(const T v, wrapt<Ti> = {}) noexcept {
+    return static_cast<Ti>(zs::floor(v));
+  }
+
 }  // namespace zs

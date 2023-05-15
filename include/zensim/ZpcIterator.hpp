@@ -185,6 +185,24 @@ namespace zs {
                       conditional_t<detail::decl_single_pass<Iter>::value, input_iterator_tag,
                                     forward_iterator_tag>>>;
   };
+
+  // ref: https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator
+  template <typename Iter, typename = void> struct is_ra_iter : false_type {};
+  template <typename Iter>
+  struct is_ra_iter<Iter, void_t<Iter &, typename iterator_traits<Iter>::difference_type>> {
+    using diff_t = typename iterator_traits<Iter>::difference_type;
+    static constexpr bool value
+        = is_same_v<decltype(declval<Iter &>() += declval<diff_t>()), Iter &>
+          && is_same_v<decltype(declval<Iter &>() -= declval<diff_t>()), Iter &>
+          && is_same_v<decltype(declval<Iter &>() + declval<diff_t>()), Iter>
+          && is_same_v<decltype(declval<diff_t>() + declval<Iter &>()), Iter>
+          && is_same_v<decltype(declval<Iter &>() - declval<diff_t>()), Iter>
+          && is_same_v<decltype(declval<Iter>() - declval<Iter>()), diff_t>
+          && is_same_v<decltype(declval<Iter &>()[declval<diff_t>()]),
+                       typename iterator_traits<Iter>::reference>;
+  };
+  template <typename Iter> constexpr bool is_ra_iter_v = is_ra_iter<Iter>::value;
+
   template <typename Derived> struct IteratorInterface {
     /// dereference
     constexpr decltype(auto) operator*() { return self().dereference(); }
@@ -532,31 +550,7 @@ namespace zs {
 
   // zip iterator
   template <typename, typename> struct zip_iterator;
-  // ref: https://en.cppreference.com/w/cpp/named_req/RandomAccessIterator
-  template <
-      typename... Ts,
-      enable_if_all<
-          (is_same_v<decltype(declval<Ts &>()
-                              += declval<typename iterator_traits<Ts>::difference_type>()),
-                     Ts &>
-           && is_same_v<decltype(declval<Ts &>()
-                                 -= declval<typename iterator_traits<Ts>::difference_type>()),
-                        Ts &>
-           && is_same_v<decltype(declval<Ts &>()
-                                 + declval<typename iterator_traits<Ts>::difference_type>()),
-                        Ts>
-           && is_same_v<decltype(declval<typename iterator_traits<Ts>::difference_type>()
-                                 + declval<Ts &>()),
-                        Ts>
-           && is_same_v<decltype(declval<Ts &>()
-                                 - declval<typename iterator_traits<Ts>::difference_type>()),
-                        Ts>
-           && is_same_v<decltype(declval<Ts>() - declval<Ts>()),
-                        typename iterator_traits<Ts>::difference_type>
-           && is_same_v<
-               decltype(declval<Ts &>()[declval<typename iterator_traits<Ts>::difference_type>()]),
-               typename iterator_traits<Ts>::reference>)...>
-      = 0>
+  template <typename... Ts, enable_if_all<is_ra_iter_v<Ts>...> = 0>
   static true_type all_convertible_to_raiter(int);
   static false_type all_convertible_to_raiter(...);
 

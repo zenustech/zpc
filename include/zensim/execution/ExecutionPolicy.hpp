@@ -8,10 +8,10 @@
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
-#include "zensim/types/Tuple.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
 #include "zensim/types/SourceLocation.hpp"
+#include "zensim/types/Tuple.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 namespace zs {
@@ -526,15 +526,11 @@ namespace zs {
   template <class ExecutionPolicy, class KeyIter, class ValueIter,
             typename Tn
             = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
-  constexpr enable_if_type<std::is_convertible_v<
-      typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
-      std::random_access_iterator_tag>>
-  radix_sort_pair(ExecutionPolicy &&policy, KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut,
-                  ValueIter &&valsOut, Tn count, int sbit = 0,
-                  int ebit
-                  = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type)
-                    * 8,
-                  const source_location &loc = source_location::current()) {
+  constexpr enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>> radix_sort_pair(
+      ExecutionPolicy &&policy, KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut,
+      ValueIter &&valsOut, Tn count, int sbit = 0,
+      int ebit = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
+      const source_location &loc = source_location::current()) {
     policy.radix_sort_pair(FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit,
                            loc);
   }

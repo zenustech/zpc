@@ -149,12 +149,11 @@ namespace zs {
     }
   }
 
-  template <typename Tn, typename F, typename ZipIter> __global__ enable_if_type<
-      std::is_convertible_v<
-          typename std::iterator_traits<ZipIter>::iterator_category,
-          std::
-              random_access_iterator_tag> && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
-  range_launch(Tn n, F f, ZipIter iter) {
+  template <typename Tn, typename F, typename ZipIter> __global__
+      enable_if_type<is_ra_iter_v<ZipIter>
+                     && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
+                         || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
@@ -167,9 +166,8 @@ namespace zs {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(
-            is_integral_v<
-                typename func_traits::
-                    first_argument_t> || std::is_pointer_v<typename func_traits::first_argument_t>,
+            is_integral_v<typename func_traits::first_argument_t>
+                || is_pointer_v<typename func_traits::first_argument_t>,
             "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
             "integer");
         if constexpr (is_integral_v<typename func_traits::first_argument_t>)
@@ -357,9 +355,6 @@ namespace zs {
     void for_each_impl(std::random_access_iterator_tag, ForwardIt &&first, ForwardIt &&last,
                        UnaryFunction &&f, const source_location &loc) const {
       using IterT = remove_cvref_t<ForwardIt>;
-      static_assert(is_same_v<typename std::iterator_traits<IterT>::iterator_category,
-                              std::random_access_iterator_tag>,
-                    "iterator passed to cuda_for_each must be a random_access_iterator.");
       const auto dist = last - first;
       (*this)(
           Collapse{dist},
@@ -372,9 +367,9 @@ namespace zs {
     template <class ForwardIt, class UnaryFunction>
     void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
                   const source_location &loc = source_location::current()) const {
-      for_each_impl(
-          typename std::iterator_traits<remove_reference_t<ForwardIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(f), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<ForwardIt>>,
+                    "Iterator should be a random access iterator");
+      for_each_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(f), loc);
     }
     /// inclusive scan
     template <class InputIt, class OutputIt, class BinaryOperation>
@@ -415,14 +410,10 @@ namespace zs {
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      inclusive_scan_impl(
-          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      inclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
+                          FWD(binary_op), loc);
     }
     /// exclusive scan
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
@@ -467,14 +458,10 @@ namespace zs {
                           typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
         BinaryOperation &&binary_op = {},
         const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      exclusive_scan_impl(
-          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      exclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
+                          init, FWD(binary_op), loc);
     }
     /// reduce
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
@@ -520,21 +507,15 @@ namespace zs {
                     BinaryOp, typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
                 BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      reduce_impl(
-          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      reduce_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), init,
+                  FWD(binary_op), loc);
     }
     /// merge sort
-    template <class KeyIter, class ValueIter, typename CompareOpT> enable_if_type<
-        std::is_convertible_v<
-            typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
-            std::
-                random_access_iterator_tag> && std::is_convertible_v<typename std::iterator_traits<remove_reference_t<ValueIter>>::iterator_category, std::random_access_iterator_tag>>
+    template <class KeyIter, class ValueIter, typename CompareOpT>
+    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>
+                   && is_ra_iter_v<remove_reference_t<ValueIter>>>
     merge_sort_pair(
         KeyIter &&keys, ValueIter &&vals,
         typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
@@ -563,11 +544,10 @@ namespace zs {
       if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
       context.recordEventSpare(streamid, loc);
     }
-    template <class KeyIter, typename CompareOpT> enable_if_type<std::is_convertible_v<
-        typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
-        std::random_access_iterator_tag>>
-    merge_sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
-               const source_location &loc = source_location::current()) const {
+    template <class KeyIter, typename CompareOpT>
+    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>> merge_sort(
+        KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
+        const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -593,15 +573,14 @@ namespace zs {
     template <class KeyIter, class ValueIter,
               typename Tn
               = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
-    enable_if_type<std::is_convertible_v<
-        typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
-        std::random_access_iterator_tag>>
-    radix_sort_pair(
-        KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
-        int sbit = 0,
-        int ebit
-        = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
-        const source_location &loc = source_location::current()) const {
+    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>
+                   && is_ra_iter_v<remove_reference_t<ValueIter>>>
+    radix_sort_pair(KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut,
+                    Tn count = 0, int sbit = 0,
+                    int ebit
+                    = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type)
+                      * 8,
+                    const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -678,23 +657,19 @@ namespace zs {
       if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
       context.recordEventSpare(streamid, loc);
     }
-    template <class InputIt, class OutputIt> void radix_sort(
-        InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-        int ebit
-        = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type) * 8,
-        const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      static_assert(
-          is_same_v<typename std::iterator_traits<remove_reference_t<InputIt>>::pointer,
-                    typename std::iterator_traits<remove_reference_t<OutputIt>>::pointer>,
-          "Input iterator pointer different from output iterator\'s");
-      radix_sort_impl(
-          typename std::iterator_traits<remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
+    template <class InputIt, class OutputIt>
+    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
+                    int ebit
+                    = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type)
+                      * 8,
+                    const source_location &loc = source_location::current()) const {
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      static_assert(is_same_v<typename std::iterator_traits<remove_reference_t<InputIt>>::pointer,
+                              typename std::iterator_traits<remove_reference_t<OutputIt>>::pointer>,
+                    "Input iterator pointer different from output iterator\'s");
+      radix_sort_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), sbit,
+                      ebit, loc);
     }
 
     constexpr ProcID getProcid() const noexcept { return procid; }
@@ -717,9 +692,9 @@ namespace zs {
 
     // size_t blockGranularity{128};
     StreamID incomingStreamid{-1};
-    StreamID streamid{-1};      ///< @note use CUDA default stream by default
-    size_t shmemBytes{0};  ///< amount of shared memory passed
-    int blockSize{0};           ///< 0 to enable auto configure
+    StreamID streamid{-1};  ///< @note use CUDA default stream by default
+    size_t shmemBytes{0};   ///< amount of shared memory passed
+    int blockSize{0};       ///< 0 to enable auto configure
     ProcID incomingProc{0};
     ProcID procid{0};  ///< 0-th gpu
   };

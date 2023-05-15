@@ -78,8 +78,7 @@ namespace zs {
         /// not stl conforming iterator
         using IterT = remove_cvref_t<decltype(std::begin(range))>;
         // random iterator category
-        if constexpr (std::is_convertible_v<typename std::iterator_traits<IterT>::iterator_category,
-                                            std::random_access_iterator_tag>) {
+        if constexpr (is_ra_iter_v<IterT>) {
           using DiffT = typename std::iterator_traits<IterT>::difference_type;
           auto iter = std::begin(range);
           const DiffT dist = std::end(range) - iter;
@@ -163,8 +162,9 @@ namespace zs {
     template <class ForwardIt, class UnaryFunction>
     void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
                   const source_location &loc = source_location::current()) const {
-      for_each_impl(typename std::iterator_traits<remove_cvref_t<ForwardIt>>::iterator_category{},
-                    FWD(first), FWD(last), FWD(f), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<ForwardIt>>,
+                    "Iterator should be a random access iterator");
+      for_each_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(f), loc);
     }
 
     /// inclusive scan
@@ -236,9 +236,10 @@ namespace zs {
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
-      inclusive_scan_impl(
-          typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      inclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
+                          FWD(binary_op), loc);
     }
 
     /// exclusive scan
@@ -315,9 +316,10 @@ namespace zs {
                           typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
         BinaryOperation &&binary_op = {},
         const source_location &loc = source_location::current()) const {
-      exclusive_scan_impl(
-          typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
-          FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      exclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
+                          init, FWD(binary_op), loc);
     }
     /// reduce
     template <class InputIt, class OutputIt, class BinaryOperation>
@@ -385,8 +387,10 @@ namespace zs {
                     BinaryOp, typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
                 BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
-      reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
-                  FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      reduce_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), init,
+                  FWD(binary_op), loc);
     }
 
     template <typename KeyIter, typename ValueIter, typename DiffT, typename CompareOpT>
@@ -831,11 +835,10 @@ namespace zs {
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
-      static_assert(is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::pointer,
-                              typename std::iterator_traits<remove_cvref_t<OutputIt>>::pointer>,
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
                     "Input iterator pointer different from output iterator\'s");
-      radix_sort_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
-                      FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
+      radix_sort_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), sbit,
+                      ebit, loc);
     }
 
     template <class KeyIter, class ValueIter, typename Tn>
@@ -982,13 +985,10 @@ namespace zs {
         = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
       static_assert(
-          is_same_v<
-              typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category,
-              typename std::iterator_traits<remove_reference_t<ValueIter>>::iterator_category>,
-          "Key Iterator and Val Iterator should be from the same category");
-      radix_sort_pair_impl(
-          typename std::iterator_traits<remove_reference_t<KeyIter>>::iterator_category{},
-          FWD(keysIn), FWD(valsIn), FWD(keysOut), FWD(valsOut), count, sbit, ebit, loc);
+          is_ra_iter_v<remove_cvref_t<KeyIter>> && is_ra_iter_v<remove_cvref_t<ValueIter>>,
+          "Key Iterator and Val Iterator should both random access iterators");
+      radix_sort_pair_impl(std::random_access_iterator_tag{}, FWD(keysIn), FWD(valsIn),
+                           FWD(keysOut), FWD(valsOut), count, sbit, ebit, loc);
     }
 
     OmpExecutionPolicy &threads(int numThreads) noexcept {

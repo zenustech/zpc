@@ -7,6 +7,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   execution/Stacktrace.cpp
   execution/ExecutionPolicy.cpp
   execution/ConcurrencyPrimitive.cpp
+  types/Iterator.cpp
   Logger.cpp
 
   # simulation

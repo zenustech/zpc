@@ -502,8 +502,8 @@ namespace zs {
         -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{});
 #else
     template <typename T,
-              typename = enable_if_t<!is_const_v<T> && !is_volatile_v<T> && !is_reference_v<T>
-                                     && !__is_enum(T) && !__is_class(T)>>
+              typename = enable_if_t<!is_void_v<T> && !is_const_v<T> && !is_volatile_v<T>
+                                     && !is_reference_v<T> && !__is_enum(T) && !__is_class(T)>>
     static auto test_integral(T t) -> decltype((char *)(nullptr) + t, true_type{});
 #endif
     static false_type test_integral(...) noexcept;
@@ -1027,8 +1027,9 @@ namespace zs {
     template <class U,
               class = decltype(detail::pass_ref_only<T>(declval<U>()),
                                enable_if_t<!is_same_v<reference_wrapper, remove_cvref_t<U>>>())>
-    constexpr reference_wrapper(U &&u) noexcept(noexcept(detail::pass_ref_only<T>(forward<U>(u))))
-        : _ptr(addressof(detail::pass_ref_only<T>(forward<U>(u)))) {}
+    constexpr reference_wrapper(U &&u) noexcept(
+        noexcept(detail::pass_ref_only<T>(zs::forward<U>(u))))
+        : _ptr(zs::addressof(detail::pass_ref_only<T>(zs::forward<U>(u)))) {}
 
     reference_wrapper(const reference_wrapper &) noexcept = default;
 
@@ -1049,6 +1050,23 @@ namespace zs {
     T *_ptr;
   };
   template <class T> reference_wrapper(T &) -> reference_wrapper<T>;
+
+  // ref: https://en.cppreference.com/w/cpp/utility/functional/ref
+  template <class T> constexpr reference_wrapper<T> ref(T &t) noexcept {
+    return reference_wrapper(t);
+  }
+  template <class T> constexpr reference_wrapper<T> ref(reference_wrapper<T> t) noexcept {
+    return reference_wrapper(t.get());
+  }
+  template <class T> void ref(const T &&) = delete;
+
+  template <class T> constexpr reference_wrapper<const T> cref(const T &t) noexcept {
+    return reference_wrapper(t);
+  }
+  template <class T> constexpr reference_wrapper<const T> cref(reference_wrapper<T> t) noexcept {
+    return reference_wrapper(t.get());
+  }
+  template <class T> void cref(const T &&) = delete;
 
   /// special_decay = decay + unref
   template <class T> struct unwrap_refwrapper {

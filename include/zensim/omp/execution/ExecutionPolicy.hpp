@@ -123,8 +123,8 @@ namespace zs {
                                loc.column()));
     }
 
-    template <size_t I, size_t... Is, typename... Iters, typename... Policies,
-              typename... Ranges, typename... Bodies>
+    template <size_t I, size_t... Is, typename... Iters, typename... Policies, typename... Ranges,
+              typename... Bodies>
     void exec(index_sequence<Is...> indices, zs::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
               const Bodies &...bodies) const {
@@ -236,10 +236,6 @@ namespace zs {
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
       inclusive_scan_impl(
           typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
           FWD(last), FWD(d_first), FWD(binary_op), loc);
@@ -319,10 +315,6 @@ namespace zs {
                           typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
         BinaryOperation &&binary_op = {},
         const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
       exclusive_scan_impl(
           typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{}, FWD(first),
           FWD(last), FWD(d_first), init, FWD(binary_op), loc);
@@ -393,10 +385,6 @@ namespace zs {
                     BinaryOp, typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
                 BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
       reduce_impl(typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category{},
                   FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
     }
@@ -843,10 +831,6 @@ namespace zs {
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit = sizeof(typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::iterator_category,
-                    typename std::iterator_traits<remove_cvref_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
       static_assert(is_same_v<typename std::iterator_traits<remove_cvref_t<InputIt>>::pointer,
                               typename std::iterator_traits<remove_cvref_t<OutputIt>>::pointer>,
                     "Input iterator pointer different from output iterator\'s");

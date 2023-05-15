@@ -101,16 +101,15 @@ namespace zs {
       else
         return integer_sequence<T, Is..., (sizeof...(Is) + Is)...>{};
     }
-    template <typename T, size_t N, enable_if_t<(N > 1)> = 0> constexpr auto gen_integer_seq() {
-      return concat_sequence<N & 1>(gen_integer_seq<T, N / 2>());
-    }
     template <typename T, size_t N, enable_if_t<(N <= 1)> = 0> constexpr auto gen_integer_seq() {
       if constexpr (N == 0)
         return integer_sequence<T>{};
       else  // if constexpr (N == 1)
         return integer_sequence<T, 0>{};
     }
-
+    template <typename T, size_t N, enable_if_t<(N > 1)> = 0> constexpr auto gen_integer_seq() {
+      return concat_sequence<N & 1>(gen_integer_seq<T, N / 2>());
+    }
   }  // namespace detail
   template <typename T, T N> using make_integer_sequence
       = decltype(detail::gen_integer_seq<T, N>());
@@ -301,7 +300,7 @@ namespace zs {
   };
   template <class T> using remove_vref_t = typename remove_vref<T>::type;
 
-#define RM_CVREF_T(...) remove_cvref_t<decltype(__VA_ARGS__)>
+#define RM_CVREF_T(...) ::zs::remove_cvref_t<decltype(__VA_ARGS__)>
   // #define RM_CVREF_T(...) ::std::remove_cvref_t<decltype(__VA_ARGS__)>
 
   // add_pointer
@@ -329,11 +328,17 @@ namespace zs {
       : decltype(detail::try_add_rvalue_reference<T>(0)) {};
   template <typename T> using add_rvalue_reference_t = typename add_rvalue_reference<T>::type;
   // add_cv/const/volatile
-  template<class T> struct add_cv { typedef const volatile T type; };
+  template <class T> struct add_cv {
+    typedef const volatile T type;
+  };
   template <class T> using add_cv_t = typename add_cv<T>::type;
-  template<class T> struct add_const { typedef const T type; };
+  template <class T> struct add_const {
+    typedef const T type;
+  };
   template <class T> using add_const_t = typename add_const<T>::type;
-  template<class T> struct add_volatile { typedef volatile T type; };
+  template <class T> struct add_volatile {
+    typedef volatile T type;
+  };
   template <class T> using add_volatile_t = typename add_volatile<T>::type;
   // remove_extent
   template <class T> struct remove_extent {

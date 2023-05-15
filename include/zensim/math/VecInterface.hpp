@@ -1,8 +1,6 @@
 #pragma once
-#include "MathUtils.h"
-#include "zensim/meta/Meta.h"
-#include "zensim/meta/Sequence.h"
-#include "zensim/types/Iterator.h"
+#include "zensim/ZpcMathUtils.hpp"
+#include "zensim/ZpcTuple.hpp"
 
 namespace zs {
 
@@ -271,12 +269,20 @@ namespace zs {
       return r;
     }
     template <typename T, typename VecT = Derived,
-              enable_if_t<sizeof(typename VecT::value_type) == sizeof(T)> = 0>
+              enable_if_all<(alignof(typename VecT::value_type) >= alignof(T)),
+                            sizeof(typename VecT::value_type) == sizeof(T)>
+              = 0>
     constexpr auto reinterpret_bits(wrapt<T> = {}) const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       typename Derived::template variant_vec<T, extents> r{};
-      for (index_type i = 0; i != extent; ++i)
-        r.val(i) = zs::reinterpret_bits<T>(derivedPtr()->val(i));
+      for (index_type i = 0; i != extent; ++i) {
+        union {
+          T dst;
+          value_type src;
+        } tmp = {derivedPtr()->val(i)};
+        r.val(i) = tmp.dst;
+        // r.val(i) = zs::reinterpret_bits<T>(derivedPtr()->val(i));
+      }
       return r;
     }
     template <typename T, typename VecT = Derived,
@@ -293,6 +299,7 @@ namespace zs {
       for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = v;
       return static_cast<Derived&>(*this);
     }
+#if 0
     template <typename T, typename VecT = Derived,
               enable_if_all<is_convertible_v<T, typename VecT::value_type>> = 0>
     constexpr Derived& operator=(const std::initializer_list<T>& rhs) noexcept {
@@ -304,6 +311,7 @@ namespace zs {
       }
       return static_cast<Derived&>(*this);
     }
+#endif
     template <
         typename OtherVecT, typename VecT = Derived,
         enable_if_all<OtherVecT::extent == VecT::extent,
@@ -326,9 +334,10 @@ namespace zs {
       for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = rhs.val(i);
       return static_cast<Derived&>(*this);
     }
-    template <typename T, typename VecT = Derived,
+    // specifically targeting std::array
+    template <template <typename, auto> class V, typename T, typename VecT = Derived,
               enable_if_all<is_convertible_v<T, typename VecT::value_type>> = 0>
-    constexpr Derived& operator=(const std::array<T, VecT::extent>& rhs) noexcept {
+    constexpr Derived& operator=(const V<T, VecT::extent>& rhs) noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
       for (index_type i = 0; i != extent; ++i) derivedPtr()->val(i) = rhs[i];
       return static_cast<Derived&>(*this);
@@ -512,10 +521,16 @@ namespace zs {
               enable_if_t<is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto reciprocal() const noexcept {
       DECLARE_VEC_INTERFACE_ATTRIBUTES
+      static_assert(!is_same_v<value_type, long double>, "This op does not support double yet");
       typename Derived::template variant_vec<value_type, extents> r{};
-      for (index_type i = 0; i != extent; ++i)
-        r.val(i) = math::near_zero(derivedPtr()->val(i)) ? limits<value_type>::infinity()
-                                                         : (value_type)1 / derivedPtr()->val(i);
+      for (index_type i = 0; i != extent; ++i) {
+        if constexpr (is_same_v<value_type, float>)
+          r.val(i) = math::near_zero(derivedPtr()->val(i)) ? __builtin_huge_valf()
+                                                           : (value_type)1 / derivedPtr()->val(i);
+        else
+          r.val(i) = math::near_zero(derivedPtr()->val(i)) ? __builtin_huge_val()
+                                                           : (value_type)1 / derivedPtr()->val(i);
+      }
       return r;
     }
     template <execspace_e space = deduce_execution_space(), typename VecT = Derived,
@@ -763,17 +778,17 @@ namespace zs {
     DEFINE_VEC_OP_SCALAR_ASSIGN(/)
 
     // scalar integral
-#define DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(OP)                                            \
-  template <typename TT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>, \
-            enable_if_all<is_integral_v<typename VecT::value_type>, is_integral_v<TT>, \
-                          IsAssignable>                                                     \
-            = 0>                                                                            \
-  constexpr Derived& operator OP##=(TT v) noexcept {                                        \
-    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                        \
-    using R = math::op_result_t<value_type, TT>;                                            \
-    for (index_type i = 0; i != extent; ++i)                                                \
-      derivedPtr()->val(i) = (R)derivedPtr()->val(i) OP((R)v);                              \
-    return static_cast<Derived&>(*this);                                                    \
+#define DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(OP)                                               \
+  template <                                                                                   \
+      typename TT, typename VecT = Derived, bool IsAssignable = is_access_lref<VecT>,          \
+      enable_if_all<is_integral_v<typename VecT::value_type>, is_integral_v<TT>, IsAssignable> \
+      = 0>                                                                                     \
+  constexpr Derived& operator OP##=(TT v) noexcept {                                           \
+    DECLARE_VEC_INTERFACE_ATTRIBUTES                                                           \
+    using R = math::op_result_t<value_type, TT>;                                               \
+    for (index_type i = 0; i != extent; ++i)                                                   \
+      derivedPtr()->val(i) = (R)derivedPtr()->val(i) OP((R)v);                                 \
+    return static_cast<Derived&>(*this);                                                       \
   }
     DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(&)
     DEFINE_VEC_OP_SCALAR_INTEGRAL_ASSIGN(|)

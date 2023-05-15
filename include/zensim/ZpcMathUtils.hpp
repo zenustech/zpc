@@ -121,6 +121,32 @@ namespace zs {
       return v >= -eps && v <= eps;
     }
 
+    template <typename T, enable_if_t<is_fundamental_v<T>> = 0> constexpr T min(T x, T y) noexcept {
+      return y < x ? y : x;
+    }
+    template <typename T, enable_if_t<is_fundamental_v<T>> = 0> constexpr T max(T x, T y) noexcept {
+      return y > x ? y : x;
+    }
+    template <typename T, enable_if_t<is_fundamental_v<T>> = 0> constexpr T abs(T x) noexcept {
+      return x < 0 ? -x : x;
+    }
+    // TODO refer to:
+    // https://github.com/mountunion/ModGCD-OneGPU/blob/master/ModGCD-OneGPU.pdf
+    // http://www.iaeng.org/IJCS/issues_v42/issue_4/IJCS_42_4_01.pdf
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    constexpr Ti gcd(Ti u, Ti v) noexcept {
+      while (v != 0) {
+        auto r = u % v;
+        u = v;
+        v = r;
+      }
+      return u;
+    }
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    constexpr Ti lcm(Ti u, Ti v) noexcept {
+      return (u / gcd(u, v)) * v;
+    }
+
     /// binary_op_result
     template <typename T0, typename T1> struct binary_op_result {
       template <typename A = T0, typename B = T1,
@@ -798,6 +824,12 @@ namespace zs {
         return ::ldexp((double)x, exp);
 #endif
     }
+  }
+
+  ///
+  template <typename T, typename Data, enable_if_t<is_floating_point_v<T>> = 0>
+  constexpr auto linear_interop(T alpha, Data &&a, Data &&b) noexcept {
+    return a + (b - a) * alpha;
   }
 
 }  // namespace zs

@@ -218,8 +218,7 @@ namespace zs {
 
   /// additional overloads [8.1.9]
   template <typename T> constexpr auto arg(T x) {
-    static_assert(is_floating_point_v<T> || is_integral_v<T>,
-                  "invalid param type for func [arg]");
+    static_assert(is_floating_point_v<T> || is_integral_v<T>, "invalid param type for func [arg]");
     using type = conditional_t<is_floating_point_v<T>, T, double>;
     return zs::arg(complex<type>{x});
   }
@@ -227,33 +226,6 @@ namespace zs {
 
   /// customized zpc calls
   namespace math {
-    template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0>
-    constexpr T min(T x, T y) noexcept {
-      return y < x ? y : x;
-    }
-    template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0>
-    constexpr T max(T x, T y) noexcept {
-      return y > x ? y : x;
-    }
-    template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0> constexpr T abs(T x) noexcept {
-      return x < 0 ? -x : x;
-    }
-    // TODO refer to:
-    // https://github.com/mountunion/ModGCD-OneGPU/blob/master/ModGCD-OneGPU.pdf
-    // http://www.iaeng.org/IJCS/issues_v42/issue_4/IJCS_42_4_01.pdf
-    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
-    constexpr Ti gcd(Ti u, Ti v) noexcept {
-      while (v != 0) {
-        auto r = u % v;
-        u = v;
-        v = r;
-      }
-      return u;
-    }
-    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
-    constexpr Ti lcm(Ti u, Ti v) noexcept {
-      return (u / gcd(u, v)) * v;
-    }
 
 #if 0
     template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
@@ -562,11 +534,6 @@ namespace zs {
   template <typename Tn, Tn... Ns>
   constexpr auto excl_suffix_mul(size_t I, integer_sequence<Tn, Ns...>) noexcept {
     return excl_suffix_mul(I, Ns...);
-  }
-
-  template <typename T, typename Data, enable_if_t<is_floating_point_v<T>> = 0>
-  constexpr auto linear_interop(T alpha, Data &&a, Data &&b) noexcept {
-    return a + (b - a) * alpha;
   }
 
   template <typename T, enable_if_t<is_integral_v<T>> = 0>

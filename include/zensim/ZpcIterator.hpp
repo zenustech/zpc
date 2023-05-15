@@ -16,7 +16,7 @@ namespace zs::detail {
   /// check equal to
   template <typename T> struct has_equal_to {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
+    template <typename U> static false_type test(...);
 #if 0
     /// this definition is not good
     template <typename U> static true_type test(
@@ -24,81 +24,71 @@ namespace zs::detail {
             *);
 #else
     /// this method allows for template function
-    template <typename U> static constexpr auto test(char)
+    template <typename U> static auto test(char)
         -> enable_if_type<is_convertible_v<decltype(declval<U &>().equal_to(declval<U>())), bool>,
-                          true_type> {
-      return {};
-    }
+                          true_type>;
 #endif
     // template <typename U> static true_type test(decltype(&U::equal_to));
 
   public:
-    static constexpr bool value = test<T>(0);
+    static constexpr bool value = decltype(test<T>(0))::value;
   };
   /// check increment impl
   template <typename T> struct has_increment {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
-    template <typename U> static constexpr true_type test(decltype(&U::increment)) { return {}; }
+    template <typename U> static false_type test(...);
+    template <typename U> static true_type test(decltype(&U::increment));
 
   public:
-    static constexpr bool value = test<T>(0);
+    static constexpr bool value = decltype(test<T>(0))::value;
   };
   /// check decrement impl
   template <typename T> struct has_decrement {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
-    template <typename U> static constexpr true_type test(decltype(&U::decrement)) { return {}; }
+    template <typename U> static false_type test(...);
+    template <typename U> static true_type test(decltype(&U::decrement));
 
   public:
-    static constexpr bool value = test<T>(0);
+    static constexpr bool value = decltype(test<T>(0))::value;
   };
   /// check advance impl
   template <typename T> struct has_distance_to {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
-    template <typename U> static constexpr auto test(char)
-        -> decltype(declval<U &>().distance_to(declval<U>()), true_type{}) {
-      return {};
-    }
+    template <typename U> static false_type test(...);
+    template <typename U> static auto test(char)
+        -> decltype(declval<U &>().distance_to(declval<U>()), true_type{});
 
   public:
-    static constexpr bool value = test<T>(0);
+    static constexpr bool value = decltype(test<T>(0))::value;
   };
   /// check sentinel support
   template <typename T> struct has_sentinel {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
-    template <typename U> static constexpr true_type test(
+    template <typename U> static false_type test(...);
+    template <typename U> static true_type test(
         decltype(&U::sentinel_type),
-        enable_if_t<is_convertible_v<invoke_result_t<decltype(&U::at_end)>, bool>>) {
-      return {};
-    }
+        enable_if_t<is_convertible_v<invoke_result_t<decltype(&U::at_end)>, bool>>);
 
   public:
-    static constexpr bool value = test<T>(0, 0);
+    static constexpr bool value = decltype(test<T>(0, 0))::value;
   };
   /// check single pass declaration
   template <typename T> struct decl_single_pass {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
-    template <typename U> static constexpr true_type test(decltype(&U::single_pass_iterator)) {
-      return {};
-    }
+    template <typename U> static false_type test(...);
+    template <typename U> static true_type test(decltype(&U::single_pass_iterator));
 
   public:
-    static constexpr bool value = test<T>(0);
+    static constexpr bool value = decltype(test<T>(0))::value;
   };
   /// infer difference type
   template <typename T> struct has_difference_type {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
-    template <typename U> static constexpr true_type test(void_t<typename U::difference_type> *) {
-      return {};
-    }
+    template <typename U> static false_type test(...);
+    template <typename U> static true_type test(void_t<typename U::difference_type> *);
 
   public:
-    static constexpr bool value = test<T>(nullptr);
+    static constexpr bool value = decltype(test<T>(nullptr))::value;
   };
   template <typename, typename = void> struct infer_difference_type {
     using type = sint_t;
@@ -114,14 +104,12 @@ namespace zs::detail {
   /// check advance impl
   template <typename T> struct has_advance {
   private:
-    template <typename U> static constexpr false_type test(...) { return {}; }
-    template <typename U> static constexpr auto test(char)
-        -> decltype(declval<U &>().advance(declval<infer_difference_type_t<U>>()), true_type{}) {
-      return true_type{};
-    }
+    template <typename U> static false_type test(...);
+    template <typename U> static auto test(char)
+        -> decltype(declval<U &>().advance(declval<infer_difference_type_t<U>>()), true_type{});
 
   public:
-    static constexpr bool value = test<T>(0);
+    static constexpr bool value = decltype(test<T>(0))::value;
   };
   /// infer value type
   template <typename T, typename = void> struct infer_value_type {

@@ -14,76 +14,76 @@ int abs(int);
 long long llabs(long long);
 
 // math.h
-float copysignf(float x, float y);
-double copysign(double x, double y);
-float fabsf(float);
-double fabs(double);
-float fmaxf(float x, float y);
-double fmax(double x, double y);
-float fminf(float x, float y);
-double fmin(double x, double y);
-float fmaf(float, float, float);
-double fma(double x, double y, double z);
-float fmodf(float, float);
-double fmod(double, double);
-float ceilf(float);
-double ceil(double);
-float floorf(float);
-double floor(double);
-float sqrtf(float);
-double sqrt(double);
-float logf(float);
-double log(double);
-float log1pf(float);
-double log1p(double);
-float expf(float);
-double exp(double);
-float powf(float, float);
-double pow(double, double);
+float copysignf(float x, float y) noexcept;
+double copysign(double x, double y) noexcept;
+float fabsf(float) noexcept;
+double fabs(double) noexcept;
+float fmaxf(float x, float y) noexcept;
+double fmax(double x, double y) noexcept;
+float fminf(float x, float y) noexcept;
+double fmin(double x, double y) noexcept;
+float fmaf(float, float, float) noexcept;
+double fma(double x, double y, double z) noexcept;
+float fmodf(float, float) noexcept;
+double fmod(double, double) noexcept;
+float ceilf(float) noexcept;
+double ceil(double) noexcept;
+float floorf(float) noexcept;
+double floor(double) noexcept;
+float sqrtf(float) noexcept;
+double sqrt(double) noexcept;
+float logf(float) noexcept;
+double log(double) noexcept;
+float log1pf(float) noexcept;
+double log1p(double) noexcept;
+float expf(float) noexcept;
+double exp(double) noexcept;
+float powf(float, float) noexcept;
+double pow(double, double) noexcept;
 
-float sinhf(float);
-double sinh(double);
-float sinf(float);
-double sin(double);
-float asinhf(float);
-double asinh(double);
-float asinf(float);
-double asin(double);
+float sinhf(float) noexcept;
+double sinh(double) noexcept;
+float sinf(float) noexcept;
+double sin(double) noexcept;
+float asinhf(float) noexcept;
+double asinh(double) noexcept;
+float asinf(float) noexcept;
+double asin(double) noexcept;
 
-float cosf(float);
-double cos(double);
-float coshf(float);
-double cosh(double);
-float acoshf(float);
-double acosh(double);
-float acosf(float);
-double acos(double);
+float cosf(float) noexcept;
+double cos(double) noexcept;
+float coshf(float) noexcept;
+double cosh(double) noexcept;
+float acoshf(float) noexcept;
+double acosh(double) noexcept;
+float acosf(float) noexcept;
+double acos(double) noexcept;
 
-float atan2f(float, float);
-double atan2(double, double);
+float atan2f(float, float) noexcept;
+double atan2(double, double) noexcept;
 
-float modff(float arg, float *iptr);
-double modf(double arg, double *iptr);
-float frexpf(float arg, int *exp);
-double frexp(double arg, int *exp);
-float ldexpf(float arg, int exp);
-double ldexp(double arg, int exp);
+float modff(float arg, float *iptr) noexcept;
+double modf(double arg, double *iptr) noexcept;
+float frexpf(float arg, int *exp) noexcept;
+double frexp(double arg, int *exp) noexcept;
+float ldexpf(float arg, int exp) noexcept;
+double ldexp(double arg, int exp) noexcept;
 
 // not yet wrapped
-float log2f(float);
-double log2(double);
-float log10f(float);
-double log10(double);
-float roundf(float);
-double round(double);
-float truncf(float);
-double trunc(double);
-float atanf(float);
-double atan(double);
-float tanf(float);
-double tan(double);
-float tanhf(float);
-double tanh(double);
+float log2f(float) noexcept;
+double log2(double) noexcept;
+float log10f(float) noexcept;
+double log10(double) noexcept;
+float roundf(float) noexcept;
+double round(double) noexcept;
+float truncf(float) noexcept;
+double trunc(double) noexcept;
+float atanf(float) noexcept;
+double atan(double) noexcept;
+float tanf(float) noexcept;
+double tan(double) noexcept;
+float tanhf(float) noexcept;
+double tanh(double) noexcept;
 // float rintf(float);
 // double rint(double);
 }
@@ -166,14 +166,40 @@ namespace zs {
 
     /// op_result
     template <typename... Ts> struct op_result;
-    template <typename T> struct op_result<T> {
-      using type = T;
-    };
+    template <typename T> struct op_result<T> { using type = T; };
     template <typename T, typename... Ts> struct op_result<T, Ts...> {
       using type = binary_op_result_t<T, typename op_result<Ts...>::type>;
     };
     /// @brief determine the most appropriate resulting type of a binary operation
     template <typename... Args> using op_result_t = typename op_result<Args...>::type;
+
+    namespace detail {
+      template <typename T, typename Tn, enable_if_t<is_signed_v<Tn>> = 0>
+      constexpr T pow_integral_recursive(T base, T val, Tn exp) noexcept {
+        return exp > (Tn)1
+                   ? ((exp & (Tn)1) ? pow_integral_recursive(base * base, val * base, exp / (Tn)2)
+                                    : pow_integral_recursive(base * base, val, exp / (Tn)2))
+                   : (exp == (Tn)1 ? val * base : val);
+      }
+    }  // namespace detail
+    template <typename T, typename Tn, enable_if_all<is_arithmetic_v<T>, is_signed_v<Tn>> = 0>
+    constexpr auto pow_integral(T base, Tn exp) noexcept {
+      using R = T;  // math::op_result_t<T0, T1>;
+      return exp == (Tn)3
+                 ? base * base * base
+                 : (exp == (Tn)2
+                        ? base * base
+                        : (exp == (Tn)1
+                               ? base
+                               : (exp == (Tn)0 ? (R)1
+                                               : (exp == zs::detail::deduce_numeric_max<Tn>()
+                                                      ? zs::detail::deduce_numeric_infinity<R>()
+                                                      // make signed to get rid of compiler warn
+                                                      : (exp < 0 ? (R)0
+                                                                 : detail::pow_integral_recursive(
+                                                                     (R)base, (R)1, (Tn)exp))))));
+    }
+
   }  // namespace math
 
   /**
@@ -825,6 +851,46 @@ namespace zs {
 #endif
     }
   }
+
+  namespace math {
+
+    /**
+     * Robustly computing log(x+1)/x
+     */
+    template <typename T, execspace_e space = deduce_execution_space(),
+              enable_if_t<is_floating_point_v<T>> = 0>
+    constexpr T log_1px_over_x(const T x,
+                               const T eps = zs::detail::deduce_numeric_epsilon<T>() * 10,
+                               wrapv<space> = {}) noexcept {
+      if (abs(x) < eps)
+        return (T)1 - x / (T)2 + x * x / (T)3 - x * x * x / (T)4;
+      else {
+        return log1p(x, wrapv<space>{}) / x;
+      }
+    }
+    /**
+     * Robustly computing (logx-logy)/(x-y)
+     */
+    template <typename T, execspace_e space = deduce_execution_space(),
+              enable_if_t<is_floating_point_v<T>> = 0>
+    constexpr T diff_log_over_diff(const T x, const T y,
+                                   const T eps = zs::detail::deduce_numeric_epsilon<T>() * 10,
+                                   wrapv<space> = {}) noexcept {
+      return log_1px_over_x(x / y - (T)1, eps, wrapv<space>{}) / y;
+    }
+    /**
+     * Robustly computing (x logy- y logx)/(x-y)
+     */
+    template <typename T, execspace_e space = deduce_execution_space(),
+              enable_if_t<is_floating_point_v<T>> = 0>
+    constexpr T diff_interlock_log_over_diff(const T x, const T y, const T logy,
+                                             const T eps
+                                             = zs::detail::deduce_numeric_epsilon<T>() * 10,
+                                             wrapv<space> = {}) noexcept {
+      return logy - y * diff_log_over_diff(x, y, eps, wrapv<space>{});
+    }
+
+  }  // namespace math
 
   ///
   template <typename T, typename Data, enable_if_t<is_floating_point_v<T>> = 0>

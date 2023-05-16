@@ -45,7 +45,7 @@ namespace zs {
     static constexpr auto category = category_;
     static constexpr int dim = d_;
     static constexpr cell_index_type side_length = SideLength;
-    static constexpr auto block_size = math::pow_integral(side_length, (unsigned)dim);
+    static constexpr auto block_size = math::pow_integral(side_length, (int)dim);
     using grids_t = Grids<value_type, dim, side_length, allocator_type>;
     static constexpr cell_index_type block_space() noexcept {
       auto ret = side_length;
@@ -120,9 +120,7 @@ namespace zs {
     constexpr channel_counter_type getPropertyOffset(const SmallString &str) const {
       return blocks.getPropertyOffset(str);
     }
-    constexpr PropertyTag getPropertyTag(size_t i = 0) const {
-      return blocks.getPropertyTag(i);
-    }
+    constexpr PropertyTag getPropertyTag(size_t i = 0) const { return blocks.getPropertyTag(i); }
     constexpr const auto &getPropertyTags() const { return blocks.getPropertyTags(); }
 
     grid_storage_t blocks;
@@ -288,20 +286,20 @@ namespace zs {
     // https://listengine.tuxfamily.org/lists.tuxfamily.org/eigen/2017/01/msg00126.html
     using cell_index_type = std::make_signed_t<RM_CVREF_T(
         side_length)>;  // this should be signed integer for indexing convenience
-    static constexpr auto block_size = math::pow_integral(side_length, (unsigned)dim);
+    static constexpr auto block_size = math::pow_integral(side_length, (int)dim);
     static constexpr bool is_power_of_two
         = side_length > 0 && ((side_length & (side_length - 1)) == 0);
     static constexpr auto num_cell_bits = bit_count(side_length);
     static constexpr auto num_block_bits = bit_count(block_size);
 
-    template <execspace_e space, bool with_name = true> using grid_view_t = conditional_t<
-        with_name,
-        RM_CVREF_T(
-            proxy<space>({}, declval<conditional_t<is_const_structure, const grid_storage_t &,
-                                                        grid_storage_t &>>())),
-        RM_CVREF_T(proxy<space>(
-            declval<
-                conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()))>;
+    template <execspace_e space, bool with_name = true> using grid_view_t
+        = conditional_t<with_name,
+                        RM_CVREF_T(proxy<space>(
+                            {}, declval<conditional_t<is_const_structure, const grid_storage_t &,
+                                                      grid_storage_t &>>())),
+                        RM_CVREF_T(proxy<space>(
+                            declval<conditional_t<is_const_structure, const grid_storage_t &,
+                                                  grid_storage_t &>>()))>;
     template <execspace_e space, bool with_name = true> using grid_block_view_t =
         typename grid_view_t<space, with_name>::tile_view_type;  // tilevector view property
 
@@ -381,8 +379,7 @@ namespace zs {
       return grid.getPropertyNames();
     }
     template <auto V = with_name>
-    constexpr enable_if_type<V, const channel_counter_type *> getPropertyOffsets()
-        const noexcept {
+    constexpr enable_if_type<V, const channel_counter_type *> getPropertyOffsets() const noexcept {
       return grid.getPropertyOffsets();
     }
     template <auto V = with_name>
@@ -401,8 +398,7 @@ namespace zs {
         const SmallString &propName) const noexcept {
       return grid.propertySize(propName);
     }
-    template <auto V = with_name>
-    constexpr enable_if_type<V, channel_counter_type> propertyOffset(
+    template <auto V = with_name> constexpr enable_if_type<V, channel_counter_type> propertyOffset(
         const SmallString &propName) const noexcept {
       return grid.propertyOffset(propName);
     }
@@ -808,8 +804,8 @@ namespace zs {
 
     using grid_storage_t = typename grids_t::grid_storage_t;
     using grid_view_t = RM_CVREF_T(proxy<space>(
-        {}, declval<
-                conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()));
+        {},
+        declval<conditional_t<is_const_structure, const grid_storage_t &, grid_storage_t &>>()));
     using grid_block_view_t = typename grid_view_t::tile_view_type;  // tilevector view property
     using size_type = typename grids_t::size_type;
     using channel_counter_type = typename grids_t::channel_counter_type;

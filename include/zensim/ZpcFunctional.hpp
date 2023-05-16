@@ -124,9 +124,7 @@ namespace zs {
   }  // namespace detail
 
   namespace detail {
-    template <typename T> struct extract_template_type_argument2 {
-      using type = void;
-    };
+    template <typename T> struct extract_template_type_argument2 { using type = void; };
     template <template <class, class> class TT, typename T0, typename T1>
     struct extract_template_type_argument2<TT<T0, T1>> {
       using type0 = T0;
@@ -232,6 +230,16 @@ namespace zs {
         return -ZS_FLT_MAX;
       else if constexpr (is_same_v<T, double>)
         return -ZS_DBL_MAX;
+    }
+    template <typename T> constexpr T deduce_numeric_infinity() {
+      static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
+                    "T must be an arithmetic type (long double excluded).");
+      if constexpr (is_integral_v<T>)
+        return deduce_numeric_max<T>();
+      else if constexpr (is_same_v<T, float>)
+        return __builtin_huge_valf();
+      else if constexpr (is_same_v<T, double>)
+        return __builtin_huge_val();
     }
   }  // namespace detail
   template <typename T> struct monoid<getmax<T>, T> {
@@ -526,15 +534,11 @@ namespace zs {
       typename gather<Indices, ValueSeq>::type;
 
   template <typename> struct vseq;
-  template <auto... Ns> struct vseq<value_seq<Ns...>> {
-    using type = value_seq<Ns...>;
-  };
+  template <auto... Ns> struct vseq<value_seq<Ns...>> { using type = value_seq<Ns...>; };
   template <typename Ti, Ti... Ns> struct vseq<integer_sequence<Ti, Ns...>> {
     using type = value_seq<Ns...>;
   };
-  template <typename Ti, Ti N> struct vseq<integral<Ti, N>> {
-    using type = value_seq<N>;
-  };
+  template <typename Ti, Ti N> struct vseq<integral<Ti, N>> { using type = value_seq<N>; };
   template <typename Seq> using vseq_t = typename vseq<Seq>::type;
 
   /** utilities */
@@ -669,9 +673,7 @@ namespace zs {
   struct is_value_specialized<Ref<Args...>, Ref> : true_type {};
 
   /** direct operations on sequences */
-  template <typename> struct seq_tail {
-    using type = index_sequence<>;
-  };
+  template <typename> struct seq_tail { using type = index_sequence<>; };
   template <size_t I, size_t... Is> struct seq_tail<index_sequence<I, Is...>> {
     using type = index_sequence<Is...>;
   };

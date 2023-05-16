@@ -13,6 +13,7 @@ int printf(const char *format, ...);
 int abs(int);
 long long llabs(long long);
 
+#  if defined(__linux__)
 // math.h
 float copysignf(float x, float y) noexcept;
 double copysign(double x, double y) noexcept;
@@ -86,6 +87,84 @@ float tanhf(float) noexcept;
 double tanh(double) noexcept;
 // float rintf(float);
 // double rint(double);
+
+#  elif defined(_WIN64)
+// math.h
+float copysignf(float x, float y);
+double copysign(double x, double y);
+float fabsf(float);
+double fabs(double);
+float fmaxf(float x, float y);
+double fmax(double x, double y);
+float fminf(float x, float y);
+double fmin(double x, double y);
+float fmaf(float, float, float);
+double fma(double x, double y, double z);
+float fmodf(float, float);
+double fmod(double, double);
+float ceilf(float);
+double ceil(double);
+float floorf(float);
+double floor(double);
+float sqrtf(float);
+double sqrt(double);
+float logf(float);
+double log(double);
+float log1pf(float);
+double log1p(double);
+float expf(float);
+double exp(double);
+float powf(float, float);
+double pow(double, double);
+
+float sinhf(float);
+double sinh(double);
+float sinf(float);
+double sin(double);
+float asinhf(float);
+double asinh(double);
+float asinf(float);
+double asin(double);
+
+float cosf(float);
+double cos(double);
+float coshf(float);
+double cosh(double);
+float acoshf(float);
+double acosh(double);
+float acosf(float);
+double acos(double);
+
+float atan2f(float, float);
+double atan2(double, double);
+
+float modff(float arg, float *iptr);
+double modf(double arg, double *iptr);
+float frexpf(float arg, int *exp);
+double frexp(double arg, int *exp);
+float ldexpf(float arg, int exp);
+double ldexp(double arg, int exp);
+
+// not yet wrapped
+float log2f(float);
+double log2(double);
+float log10f(float);
+double log10(double);
+float roundf(float);
+double round(double);
+float truncf(float);
+double trunc(double);
+float atanf(float);
+double atan(double);
+float tanf(float);
+double tan(double);
+float tanhf(float);
+double tanh(double);
+// float rintf(float);
+// double rint(double);
+
+#  endif
+
 }
 #endif
 

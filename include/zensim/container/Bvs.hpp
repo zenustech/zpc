@@ -227,7 +227,10 @@ namespace zs {
         else
           left = mid + 1;
       }
-      if (_bvs(_axis, left) > v) left--;
+      if (left < numNodes()) {
+        if (_bvs(_axis, left) > v) left--;
+      } else
+        left = numNodes() - 1;
       // left could be -1
       return left;
     }

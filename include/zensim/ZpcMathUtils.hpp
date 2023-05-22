@@ -1,6 +1,6 @@
 #pragma once
-#include "ZpcFunctional.hpp"
-#include "types/Property.h"
+#include "zensim/ZpcFunctional.hpp"
+#include "zensim/types/Property.h"
 
 #if defined(__CUDACC__)
 

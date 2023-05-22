@@ -1,5 +1,5 @@
 #pragma once
-#include "../ZpcMeta.hpp"
+#include "zensim/ZpcMeta.hpp"
 
 namespace zs {
 

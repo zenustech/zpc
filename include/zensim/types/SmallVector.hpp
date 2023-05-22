@@ -1,16 +1,12 @@
 #pragma once
-#include <string>
-#include <string_view>
 
-#include "zensim/meta/Meta.h"
+#include "zensim/ZpcMeta.hpp"
 
 namespace zs {
 
   // null-terminated string
   struct SmallString {
     using char_type = char;
-    static_assert(std::is_trivial_v<char_type> && std::is_standard_layout_v<char_type>,
-                  "char type is not trivial and in standard-layout.");
     using size_type = size_t;
     static constexpr auto nbytes = 4 * sizeof(void *);  ///< 4 * 8 - 1 = 31 bytes (chars)
 
@@ -44,15 +40,8 @@ namespace zs {
     constexpr SmallString &operator=(SmallString &&) noexcept = default;
 
     constexpr bool operator==(const char str[]) const noexcept {
-      size_type i = 0;
-      for (; buf[i] && str[i]; ++i)
-        if (buf[i] != str[i]) return false;
-      if (!(buf[i] || str[i])) return true;
-      return false;
-    }
-    constexpr bool operator==(const std::string_view str) const noexcept {
-      size_type i = 0;
-      for (; buf[i] && i != str.size(); ++i)
+      size_type i = 0, sz = size();
+      for (; i != sz && str[i]; ++i)
         if (buf[i] != str[i]) return false;
       if (!(buf[i] || str[i])) return true;
       return false;

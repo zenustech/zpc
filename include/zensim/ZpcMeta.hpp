@@ -351,6 +351,12 @@ namespace zs {
     using type = T;
   };
   template <typename T> using remove_extent_t = typename remove_extent<T>::type;
+  // underlying_type
+  template <class T, bool = is_enum_v<T>> struct underlying_type {
+    using type = __underlying_type(T);
+  };
+  template <class T> struct underlying_type<T, false> {};
+  template <class T> using underlying_type_t = typename underlying_type<T>::type;
   /// decay
   template <class T> struct decay {
   private:
@@ -560,6 +566,80 @@ namespace zs {
   template <typename T> struct is_unsigned : detail::is_unsigned_impl<T> {};
   template <typename T> constexpr bool is_signed_v = is_signed<T>::value;
   template <typename T> constexpr bool is_unsigned_v = is_unsigned<T>::value;
+  /// integral type aliases
+  using uint = unsigned int;
+  // signed
+  using i8 = signed char;
+  using i16 = signed short;
+  using i32 = signed int;
+  using i64 = signed long long int;
+  static_assert(sizeof(i8) == 1 && sizeof(i16) == 2 && sizeof(i32) == 4 && sizeof(i64) == 8,
+                "these signed integers are not of the sizes expected!");
+  // unsigned
+  using u8 = unsigned char;
+  using u16 = unsigned short;
+  using u32 = unsigned int;
+  using u64 = unsigned long long int;
+  static_assert(sizeof(u8) == 1 && sizeof(u16) == 2 && sizeof(u32) == 4 && sizeof(u64) == 8,
+                "these unsigned integers are not of the sizes expected!");
+  // floating points
+  using f32 = float;
+  using f64 = double;
+  static_assert(sizeof(f32) == 4 && sizeof(f64) == 8,
+                "these floating points are not of the sizes expected!");
+
+  // make_unsigned
+  template <class T, typename = void> struct make_unsigned;
+  template <> struct make_unsigned<bool>;
+  template <class T> struct make_unsigned<T, enable_if_type<is_enum_v<T>, void>> {
+    using type = typename make_unsigned<underlying_type_t<T>>::type;
+  };
+  template <class T>
+  struct make_unsigned<T, enable_if_type<is_integral_v<T> && is_same_v<T, remove_cv_t<T>>, void>> {
+    using type = conditional_t<
+        sizeof(T) == 1, u8,
+        conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, size_t>>>;
+    static_assert(sizeof(T) == sizeof(type), "the unsigned type of T does not have the same size");
+  };
+  template <class T>
+  struct make_unsigned<T, enable_if_type<!is_same_v<T, remove_cv_t<T>>,
+                                         void_t<typename make_unsigned<remove_cv_t<T>>::type>>> {
+    static constexpr bool isConst = is_const_v<T>;
+    static constexpr bool isVolatile = is_volatile_v<T>;
+    using underlying_t = typename make_unsigned<remove_cv_t<T>>::type;
+    using type = conditional_t<
+        isConst && isVolatile, add_cv_t<underlying_t>,
+        conditional_t<isConst, add_const_t<underlying_t>,
+                      conditional_t<isVolatile, add_volatile_t<underlying_t>, underlying_t>>>;
+  };
+  template <class T> using make_unsigned_t = typename make_unsigned<T>::type;
+  static_assert(is_same_v<make_unsigned_t<char>, unsigned char>, "???");
+  static_assert(is_same_v<make_unsigned_t<const volatile int>, volatile const unsigned int>, "???");
+  // make_signed
+  template <class T, typename = void> struct make_signed;
+  template <> struct make_signed<bool>;
+  template <class T> struct make_signed<T, enable_if_type<is_enum_v<T>, void>> {
+    using type = typename make_signed<underlying_type_t<T>>::type;
+  };
+  template <class T>
+  struct make_signed<T, enable_if_type<is_integral_v<T> && is_same_v<T, remove_cv_t<T>>, void>> {
+    using type = conditional_t<
+        sizeof(T) == 1, i8,
+        conditional_t<sizeof(T) == 2, i16, conditional_t<sizeof(T) == 4, i32, size_t>>>;
+    static_assert(sizeof(T) == sizeof(type), "the signed type of T does not have the same size");
+  };
+  template <class T>
+  struct make_signed<T, enable_if_type<!is_same_v<T, remove_cv_t<T>>,
+                                       void_t<typename make_signed<remove_cv_t<T>>::type>>> {
+    static constexpr bool isConst = is_const_v<T>;
+    static constexpr bool isVolatile = is_volatile_v<T>;
+    using underlying_t = typename make_signed<remove_cv_t<T>>::type;
+    using type = conditional_t<
+        isConst && isVolatile, add_cv_t<underlying_t>,
+        conditional_t<isConst, add_const_t<underlying_t>,
+                      conditional_t<isVolatile, add_volatile_t<underlying_t>, underlying_t>>>;
+  };
+  template <class T> using make_signed_t = typename make_signed<T>::type;
   // scalar
   template <class T> struct is_pointer : false_type {};
   template <class T> struct is_pointer<T *> : true_type {};

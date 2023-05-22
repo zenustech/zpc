@@ -1,6 +1,6 @@
 #pragma once
-#include "Platform.hpp"
-#include "ZpcMeta.hpp"
+#include "zensim/Platform.hpp"
+#include "zensim/ZpcMeta.hpp"
 
 namespace zs {
 
@@ -24,27 +24,6 @@ namespace zs {
 #define ZS_FLT_MIN 1.1754943e-38f
 #define ZS_DBL_MIN 2.2250738585072013e-308
 #define ZS_FLT_ROUNDS 1
-
-  using uint = unsigned int;
-  // signed
-  using i8 = signed char;
-  using i16 = signed short;
-  using i32 = signed int;
-  using i64 = signed long long int;
-  static_assert(sizeof(i8) == 1 && sizeof(i16) == 2 && sizeof(i32) == 4 && sizeof(i64) == 8,
-                "these signed integers are not of the sizes expected!");
-  // unsigned
-  using u8 = unsigned char;
-  using u16 = unsigned short;
-  using u32 = unsigned int;
-  using u64 = unsigned long long int;
-  static_assert(sizeof(u8) == 1 && sizeof(u16) == 2 && sizeof(u32) == 4 && sizeof(u64) == 8,
-                "these unsigned integers are not of the sizes expected!");
-  // floating points
-  using f32 = float;
-  using f64 = double;
-  static_assert(sizeof(f32) == 4 && sizeof(f64) == 8,
-                "these floating points are not of the sizes expected!");
 
   union dat32 {
     f32 f;

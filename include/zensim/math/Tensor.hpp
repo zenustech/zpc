@@ -1,7 +1,5 @@
 #pragma once
 
-#include <utility>
-
 #include "VecInterface.hpp"
 #include "zensim/math/MathUtils.h"
 #include "zensim/types/Tuple.h"
@@ -53,15 +51,15 @@ namespace zs {
 
     /// random access
     // ()
-    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
-                                            && (is_integral_v<remove_cvref_t<Args>> && ...)>
-                                = 0>
+    template <typename... Args,
+              enable_if_t<sizeof...(Args) <= dim && (is_integral_v<remove_cvref_t<Args>> && ...)>
+              = 0>
     constexpr decltype(auto) operator()(Args &&...args) noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
-    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
-                                            && (is_integral_v<remove_cvref_t<Args>> && ...)>
-                                = 0>
+    template <typename... Args,
+              enable_if_t<sizeof...(Args) <= dim && (is_integral_v<remove_cvref_t<Args>> && ...)>
+              = 0>
     constexpr decltype(auto) operator()(Args &&...args) const noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }

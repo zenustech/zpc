@@ -50,6 +50,7 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   resource/Resource.cpp
 
   py_interop/VectorInstantiations.cpp
+  py_interop/TileVectorInstantiations.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 

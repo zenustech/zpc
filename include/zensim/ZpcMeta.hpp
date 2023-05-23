@@ -128,8 +128,8 @@ namespace zs {
     struct indexed_types<integer_sequence<T, Is...>, Ts...> : indexed_type<Is, Ts>... {};
 
     // use pointer rather than reference as in taocpp! [incomplete type error]
-    template <auto I, typename T> indexed_type<I, T> extract_type(indexed_type<I, T> *);
-    template <typename T, auto I> indexed_type<I, T> extract_index(indexed_type<I, T> *);
+    template <auto I, typename T> static indexed_type<I, T> extract_type(indexed_type<I, T> *);
+    template <typename T, auto I> static indexed_type<I, T> extract_index(indexed_type<I, T> *);
   }  // namespace type_impl
 
   template <typename... Ts> struct type_seq;
@@ -440,6 +440,11 @@ namespace zs {
     // type
     template <size_t I> using type = typename decltype(type_impl::extract_type<I>(
         declval<add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::type;
+
+    template <size_t N = sizeof...(Ts), enable_if_t<(N == 1)> = 0>
+    constexpr operator auto() const noexcept {
+      return wrapt<type<0>>{};
+    }
 
     // index
     template <typename, typename = void> struct locator {

@@ -23,7 +23,10 @@ namespace zs {
       }
 #endif
     }
-    SmallString(const std::string &str) noexcept {
+    template <typename StrT, enable_if_t<is_assignable_v<char_type &, decltype(declval<StrT>()[0])>
+                                         && is_integral_v<decltype(declval<StrT>().size())>>
+                             = 0>
+    SmallString(const StrT &str) noexcept {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;
       buf[n] = '\0';
       for (size_type i = 0; i != n; ++i) buf[i] = str[i];

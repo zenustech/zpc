@@ -520,8 +520,12 @@ namespace zs {
 }  // namespace zs
 
 namespace std {
+
+  template <typename T> struct tuple_size;
   template <typename... Ts> struct tuple_size<zs::tuple<Ts...>>
-      : integral_constant<size_t, zs::tuple_size_v<zs::tuple<Ts...>>> {};
+      : zs::integral_constant<size_t, zs::tuple_size_v<zs::tuple<Ts...>>> {};
+
+  template <size_t I, typename T> struct tuple_element;
   template <size_t I, typename... Ts> struct tuple_element<I, zs::tuple<Ts...>> {
     using type = zs::tuple_element_t<I, zs::tuple<Ts...>>;
   };

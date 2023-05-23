@@ -439,7 +439,7 @@ namespace zs {
     template <size_t I> static constexpr auto value = base_t::template type<I>::value;
 
     template <size_t N = sizeof...(Ns), enable_if_t<(N == 1)> = 0>
-    constexpr operator wrapv<(Ns, ...)>() const noexcept {
+    constexpr operator typename base_t::template type<0>() const noexcept {
       return {};
     }
 

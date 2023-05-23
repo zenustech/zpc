@@ -591,16 +591,33 @@ namespace zs {
   // make_unsigned
   template <class T, typename = void> struct make_unsigned;
   template <> struct make_unsigned<bool>;
+#define ZS_SPECIALIZE_MAKE_UNSIGNED(FROM, TO) \
+  template <> struct make_unsigned<FROM> {    \
+    using type = TO;                          \
+  };
+  ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned char, unsigned char)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned short, unsigned short)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned int, unsigned int)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned long, unsigned long)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned long long, unsigned long long)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(signed char, unsigned char)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(signed short, unsigned short)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(signed int, unsigned int)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(signed long, unsigned long)
+  ZS_SPECIALIZE_MAKE_UNSIGNED(signed long long, unsigned long long)
+  // enum
   template <class T> struct make_unsigned<T, enable_if_type<is_enum_v<T>, void>> {
     using type = typename make_unsigned<underlying_type_t<T>>::type;
   };
+  // for the remaining integrals
   template <class T>
   struct make_unsigned<T, enable_if_type<is_integral_v<T> && is_same_v<T, remove_cv_t<T>>, void>> {
     using type = conditional_t<
         sizeof(T) == 1, u8,
-        conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, size_t>>>;
+        conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, u64>>>;
     static_assert(sizeof(T) == sizeof(type), "the unsigned type of T does not have the same size");
   };
+  // cv-qualified
   template <class T>
   struct make_unsigned<T, enable_if_type<!is_same_v<T, remove_cv_t<T>>,
                                          void_t<typename make_unsigned<remove_cv_t<T>>::type>>> {
@@ -615,19 +632,38 @@ namespace zs {
   template <class T> using make_unsigned_t = typename make_unsigned<T>::type;
   static_assert(is_same_v<make_unsigned_t<char>, unsigned char>, "???");
   static_assert(is_same_v<make_unsigned_t<const volatile int>, volatile const unsigned int>, "???");
+  static_assert(is_same_v<make_unsigned_t<volatile long>, volatile unsigned long>, "???");
+
   // make_signed
   template <class T, typename = void> struct make_signed;
   template <> struct make_signed<bool>;
+#define ZS_SPECIALIZE_MAKE_SIGNED(FROM, TO) \
+  template <> struct make_signed<FROM> {    \
+    using type = TO;                        \
+  };
+  ZS_SPECIALIZE_MAKE_SIGNED(unsigned char, signed char)
+  ZS_SPECIALIZE_MAKE_SIGNED(unsigned short, signed short)
+  ZS_SPECIALIZE_MAKE_SIGNED(unsigned int, signed int)
+  ZS_SPECIALIZE_MAKE_SIGNED(unsigned long, signed long)
+  ZS_SPECIALIZE_MAKE_SIGNED(unsigned long long, signed long long)
+  ZS_SPECIALIZE_MAKE_SIGNED(signed char, signed char)
+  ZS_SPECIALIZE_MAKE_SIGNED(signed short, signed short)
+  ZS_SPECIALIZE_MAKE_SIGNED(signed int, signed int)
+  ZS_SPECIALIZE_MAKE_SIGNED(signed long, signed long)
+  ZS_SPECIALIZE_MAKE_SIGNED(signed long long, signed long long)
+  // enum
   template <class T> struct make_signed<T, enable_if_type<is_enum_v<T>, void>> {
     using type = typename make_signed<underlying_type_t<T>>::type;
   };
+  // for the remaining integrals
   template <class T>
   struct make_signed<T, enable_if_type<is_integral_v<T> && is_same_v<T, remove_cv_t<T>>, void>> {
     using type = conditional_t<
         sizeof(T) == 1, i8,
-        conditional_t<sizeof(T) == 2, i16, conditional_t<sizeof(T) == 4, i32, size_t>>>;
+        conditional_t<sizeof(T) == 2, i16, conditional_t<sizeof(T) == 4, i32, i64>>>;
     static_assert(sizeof(T) == sizeof(type), "the signed type of T does not have the same size");
   };
+  // cv-qualified
   template <class T>
   struct make_signed<T, enable_if_type<!is_same_v<T, remove_cv_t<T>>,
                                        void_t<typename make_signed<remove_cv_t<T>>::type>>> {
@@ -640,6 +676,10 @@ namespace zs {
                       conditional_t<isVolatile, add_volatile_t<underlying_t>, underlying_t>>>;
   };
   template <class T> using make_signed_t = typename make_signed<T>::type;
+
+  static_assert(is_same_v<make_signed_t<const volatile int>, volatile const int>, "???");
+  static_assert(is_same_v<make_signed_t<volatile unsigned long long>, volatile long long>, "???");
+  static_assert(is_same_v<make_signed_t<const unsigned long>, const long>, "???");
   // scalar
   template <class T> struct is_pointer : false_type {};
   template <class T> struct is_pointer<T *> : true_type {};

@@ -47,7 +47,6 @@ namespace zs {
       return false;
     }
 
-    std::string asString() const { return std::string{buf}; }
     constexpr const char *asChars() const noexcept { return buf; }
     constexpr operator const char *() const noexcept { return buf; }
     constexpr size_type size() const noexcept {

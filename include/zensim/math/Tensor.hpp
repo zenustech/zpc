@@ -1,8 +1,6 @@
 #pragma once
 
-#include "VecInterface.hpp"
-#include "zensim/math/MathUtils.h"
-#include "zensim/types/Tuple.h"
+#include "zensim/math/VecInterface.hpp"
 
 namespace zs {
 

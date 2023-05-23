@@ -1,8 +1,5 @@
 #pragma once
-#include <functional>
-#include <tuple>
-
-#include "zensim/meta/Sequence.h"
+#include "zensim/ZpcFunctional.hpp"
 
 namespace zs {
 
@@ -45,7 +42,7 @@ namespace zs {
         : function_traits_impl<R(C &, Args...)> {};
     // lambda/ functor
     template <typename Functor>
-    struct function_traits_impl<Functor, std::void_t<decltype(&Functor::operator())>> {
+    struct function_traits_impl<Functor, void_t<decltype(&Functor::operator())>> {
     protected:
       using calltype = function_traits_impl<decltype(&Functor::operator())>;
       template <typename... Ts, size_t... Is>
@@ -62,7 +59,7 @@ namespace zs {
   }  // namespace detail
   template <typename F> using function_traits = detail::function_traits_impl<decay_t<F>>;
 
-  template <class R, class... Args> using function = std::function<R(Args...)>;
+  // template <class R, class... Args> using function = std::function<R(Args...)>;
 
   template <typename F> struct recursive_lambda {
     F f;
@@ -70,7 +67,7 @@ namespace zs {
     template <typename F_> constexpr recursive_lambda(F_ &&f) : f{FWD(f)} {}
 
     template <typename... Args> constexpr decltype(auto) operator()(Args &&...args) {
-      return std::invoke(f, *this, FWD(args)...);
+      return zs::invoke(f, *this, FWD(args)...);
     }
   };
   template <typename F> recursive_lambda(F &&) -> recursive_lambda<F>;

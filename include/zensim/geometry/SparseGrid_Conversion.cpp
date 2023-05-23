@@ -151,8 +151,7 @@ namespace zs {
       seqExec(gridPtr->cbeginValueOff(), [&valueOffCount](GridType::ValueOffCIter &iter) {
         if (iter.getValue() < 0) valueOffCount++;
       });
-      fmt::print("{} more off-value voxels to be appended to {} blocks.\n", valueOffCount,
-                 nbs);
+      fmt::print("{} more off-value voxels to be appended to {} blocks.\n", valueOffCount, nbs);
       auto newNbs = nbs + valueOffCount;  // worst-case scenario
       if (newNbs == nbs) return ret;
       ret.resize(seqExec, newNbs);
@@ -166,7 +165,7 @@ namespace zs {
       });
       // register table
       seqExec(gridPtr->cbeginValueOff(),
-            [ls = proxy<execspace_e::host>(ret)](GridType::ValueOffCIter &iter) mutable {
+              [ls = proxy<execspace_e::host>(ret)](GridType::ValueOffCIter &iter) mutable {
                 if (iter.getValue() < 0.0) {
                   auto coord = iter.getCoord();
                   auto coord_ = IV{coord.x(), coord.y(), coord.z()};
@@ -175,14 +174,14 @@ namespace zs {
                 }
               });
       // write inactive voxels
-      seqExec(gridPtr->cbeginValueOff(), [ls = proxy<execspace_e::host>(ret),
-                                          propTag](GridType::ValueOffCIter &iter) mutable {
-        if (iter.getValue() < 0.0) {
-          auto coord = iter.getCoord();
-          auto coord_ = IV{coord.x(), coord.y(), coord.z()};
-          ls(propTag, coord_) = iter.getValue();
-        }
-      });
+      seqExec(gridPtr->cbeginValueOff(),
+              [ls = proxy<execspace_e::host>(ret), propTag](GridType::ValueOffCIter &iter) mutable {
+                if (iter.getValue() < 0.0) {
+                  auto coord = iter.getCoord();
+                  auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+                  ls(propTag, coord_) = iter.getValue();
+                }
+              });
 #if 0
       // following impl contains bugs
       for (GridType::ValueOffCIter iter = gridPtr->cbeginValueOff(); iter; ++iter) {
@@ -228,7 +227,7 @@ namespace zs {
         = openvdb::FloatGrid::create(/*background value=*/spls._background);
     // meta
     grid->insertMeta("zpc_version", openvdb::FloatMetadata(0.f));
-    grid->setName(gridName.asString());
+    grid->setName(std::string(gridName));
     // transform
     openvdb::Mat4R v2w{};
     auto lsv2w = spls.getIndexToWorldTransformation();
@@ -509,7 +508,7 @@ namespace zs {
         = openvdb::Vec3fGrid::create(/*background value=*/TV{spls._background});
     // meta
     grid->insertMeta("zpc_version", openvdb::FloatMetadata(0.f));
-    grid->setName(gridName.asString());
+    grid->setName(std::string(gridName));
     // transform
     openvdb::Mat4R v2w{};
     auto lsv2w = spls.getIndexToWorldTransformation();

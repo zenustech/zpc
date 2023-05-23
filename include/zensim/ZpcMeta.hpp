@@ -62,7 +62,7 @@ namespace zs {
   constexpr false_type false_c{};
 
   template <class...> using void_t = void;
-  struct failure_type {};  // no [type] member
+  struct failure_type {};  // no [type] member, should never be used publically
 
   template <typename T> struct wrapt {
     using type = T;
@@ -126,10 +126,14 @@ namespace zs {
 
     template <typename T, T... Is, typename... Ts>
     struct indexed_types<integer_sequence<T, Is...>, Ts...> : indexed_type<Is, Ts>... {};
+    template <typename T> struct indexed_types<integer_sequence<T>> : wrapt<T> {};
 
     // use pointer rather than reference as in taocpp! [incomplete type error]
     template <auto I, typename T> static indexed_type<I, T> extract_type(indexed_type<I, T> *);
+    template <auto I, typename Ti>
+    static wrapt<failure_type> extract_type(wrapt<Ti> *);  // indicates no type
     template <typename T, auto I> static indexed_type<I, T> extract_index(indexed_type<I, T> *);
+    template <typename T, typename Ti> static wrapv<(~(size_t)0)> extract_index(wrapt<Ti> *);
   }  // namespace type_impl
 
   template <typename... Ts> struct type_seq;
@@ -441,15 +445,13 @@ namespace zs {
     template <size_t I> using type = typename decltype(type_impl::extract_type<I>(
         declval<add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::type;
 
+    /// @note when Ts=<>, type<0> is 'wrapv<0>'
     template <size_t N = sizeof...(Ts), enable_if_t<(N == 1)> = 0>
-    constexpr operator auto() const noexcept {
-      return wrapt<type<0>>{};
+    constexpr operator wrapt<type<0>>() const noexcept {
+      return {};
     }
 
     // index
-    template <typename, typename = void> struct locator {
-      using index = index_t<~(size_t)0>;
-    };
     template <typename T> static constexpr size_t count_occurencies() noexcept {
       if constexpr (sizeof...(Ts) == 0)
         return 0;
@@ -457,11 +459,22 @@ namespace zs {
         return (static_cast<size_t>(is_same_v<T, Ts>) + ...);
     }
     template <typename T> using occurencies_t = wrapv<count_occurencies<T>()>;
+#if 0
+    template <typename, typename = void> struct locator {
+      using index = index_t<~(size_t)0>;
+    };
     template <typename T> struct locator<T, enable_if_type<count_occurencies<T>() == 1>> {
       using index = integral<
           size_t, decltype(type_impl::extract_index<T>(
                       declval<add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::value>;
     };
+#else
+    template <typename T> struct locator {
+      using index = integral<
+          size_t, decltype(type_impl::extract_index<T>(
+                      declval<add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::value>;
+    };
+#endif
     template <typename T> using index = typename locator<T>::index;
 
     // functor

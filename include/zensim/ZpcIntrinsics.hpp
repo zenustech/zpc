@@ -2,10 +2,16 @@
 #include "zensim/ZpcMeta.hpp"
 #include "zensim/types/Property.h"
 
+#if defined(__CUDACC__)
+
+#else
 extern "C" {
+/// @note refer to <stdlib.h>
+extern void *malloc(size_t __size) noexcept;
 /// @note refer to <string.h>
 extern void *memcpy(void *__dest, const void *__src, size_t __n) noexcept;
 }
+#endif
 
 namespace zs {
 

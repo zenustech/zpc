@@ -4,7 +4,7 @@
 
 #include "zensim/ZpcMathUtils.hpp"
 #include "zensim/types/Property.h"
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 #  include "math.h"  // CUDA math library
 #endif
 #include <functional>

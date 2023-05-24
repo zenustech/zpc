@@ -1,18 +1,25 @@
 #pragma once
-#include <atomic>
+#if 0
+#  include <atomic>
 
-#include "zensim/execution/ExecutionPolicy.hpp"
-#include "zensim/math/bit/Bits.h"
-#if defined(_WIN32)
-#  include <windows.h>
+#  include "zensim/execution/ExecutionPolicy.hpp"
+#  include "zensim/math/bit/Bits.h"
+#  if defined(_WIN32)
+#    include <windows.h>
 // # include <winnt.h>
+#  endif
+
+#else
+
+#  include "zensim/ZpcIntrinsics.hpp"
+#  include "zensim/types/Property.h"
 #endif
 
 namespace zs {
 
   /// reference: raja/include/RAJA/policy/atomic_builtin.hpp: BuiltinAtomicCAS
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_add(ExecTag, T *dest, const T val) {
@@ -104,11 +111,14 @@ namespace zs {
 #  endif
     }
 #endif
+    else {
+      static_assert(always_false<ExecTag>, "invalid execution space for atomic_add.");
+    }
     return (T)0;
   }
 
   // https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_inc(ExecTag, T *dest) {
@@ -124,7 +134,7 @@ namespace zs {
       warp_res = __shfl_sync(active, warp_res, leader);
       return warp_res + rank;
 #  else
-      static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
+      static_assert(always_false<ExecTag>,
                     "error in compiling cuda implementation of [atomic_add]!");
       return 0;
 #  endif
@@ -141,7 +151,7 @@ namespace zs {
   ///
   /// exch, cas
   ///
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_exch(ExecTag, T *dest, const T val) {
@@ -183,11 +193,13 @@ namespace zs {
 #  endif
     }
 #endif
-    throw std::runtime_error("not implemented");
+    else {
+      static_assert(always_false<ExecTag>, "no backend corresponding atomic_exch impl!");
+    }
     return (T)0;
   }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_cas(ExecTag, T *dest, T expected, T desired) {
@@ -233,10 +245,9 @@ namespace zs {
             const_cast<volatile __int64 *>((__int64 *)dest), reinterpret_bits<__int64>(desired),
             reinterpret_bits<__int64>(expected)));
       } else {
-        throw std::runtime_error("no corresponding atomic_cas (win) impl!");
+        static_assert(always_false<ExecTag>, "no corresponding openmp atomic_cas (win) impl!");
       }
 #    else
-
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T)) {
         int expected_ = reinterpret_bits<int>(expected);
         __atomic_compare_exchange_n(const_cast<int volatile *>((int *)dest), &expected_,
@@ -262,7 +273,9 @@ namespace zs {
 #  endif
     }
 #endif
-    throw std::runtime_error("not implemented");
+    else {
+      static_assert(always_false<ExecTag>, "no backend corresponding atomic_cas impl!");
+    }
     return (T)0;
   }
 
@@ -271,10 +284,10 @@ namespace zs {
   ///
   // https://github.com/NVIDIA-developer-blog/code-samples/blob/master/posts/cuda-aware-mpi-example/src/Device.cu
   // https://herbsutter.com/2012/08/31/reader-qa-how-to-write-a-cas-loop-using-stdatomics/
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
-  atomic_max(ExecTag execTag, T *const dest, const T val) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>> atomic_max(
+      ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_integral_v<T>) {
       atomicMax(dest, val);
       return;
@@ -306,15 +319,16 @@ namespace zs {
       return;
     }
 #endif
-    throw std::runtime_error(
-        fmt::format("atomic_max(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
+    else {
+      static_assert(always_false<ExecTag>, "no backend corresponding atomic_max impl!");
+    }
     return;
   }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
-  atomic_min(ExecTag execTag, T *const dest, const T val) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>> atomic_min(
+      ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_integral_v<T>) {
       atomicMin(dest, val);
       return;
@@ -346,15 +360,16 @@ namespace zs {
       return;
     }
 #endif
-    throw std::runtime_error(
-        fmt::format("atomic_min(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
+    else {
+      static_assert(always_false<ExecTag>, "no backend corresponding atomic_min impl!");
+    }
     return;
   }
 
   ///
   /// bit-wise operations
   ///
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_or(ExecTag, T *dest, const T val) {
@@ -392,12 +407,13 @@ namespace zs {
 #  endif
     }
 #endif
-    throw std::runtime_error(
-        fmt::format("atomic_or(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
+    else {
+      static_assert(always_false<ExecTag>, "no backend corresponding atomic_or impl!");
+    }
     return (T)0;
   }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_and(ExecTag, T *dest, const T val) {
@@ -435,12 +451,13 @@ namespace zs {
 #  endif
     }
 #endif
-    throw std::runtime_error(
-        fmt::format("atomic_and(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
+    else {
+      static_assert(always_false<ExecTag>, "no backend corresponding atomic_and impl!");
+    }
     return (T)0;
   }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_xor(ExecTag, T *dest, const T val) {
@@ -476,8 +493,9 @@ namespace zs {
 #  endif
     }
 #endif
-    throw std::runtime_error(
-        fmt::format("atomic_xor(tag {}, ...) not viable\n", get_execution_tag_name(ExecTag{})));
+    else {
+      static_assert(always_false<ExecTag>, "no backend corresponding atomic_xor impl!");
+    }
     return (T)0;
   }
 

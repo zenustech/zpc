@@ -3,7 +3,7 @@
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 #  include <cooperative_groups.h>
 #endif
 

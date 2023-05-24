@@ -2,7 +2,7 @@
 #include "zensim/container/Bht.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 #  include <cooperative_groups/scan.h>
 
 #  include <cub/device/device_segmented_radix_sort.cuh>
@@ -184,7 +184,7 @@ namespace zs {
         SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o) const {
       o.transposeFrom(FWD(policy), *this);
     }
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     void localOrdering(CudaExecutionPolicy &policy);
     /// @note do NOT sort _vals
     void localOrdering(CudaExecutionPolicy &policy, false_type);
@@ -576,7 +576,7 @@ namespace zs {
     if constexpr (PostOrder) localOrdering(policy);
   }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol) {
     if (_vals.size())

@@ -32,7 +32,7 @@ namespace zs {
 
 /// @brief synchronization funcs
 // __threadfence
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
   thread_fence(ExecTag) {
@@ -56,7 +56,7 @@ namespace zs {
   inline void thread_fence(host_exec_tag) noexcept {}
 
   // __syncthreads
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
   sync_threads(ExecTag) {
@@ -94,7 +94,7 @@ namespace zs {
 
 /// @brief warp shuffle funcs
 // __shfl_sync
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   shfl_sync(ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
@@ -109,7 +109,7 @@ namespace zs {
 #endif
 
 // __shfl_up_sync
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   shfl_up_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
@@ -124,7 +124,7 @@ namespace zs {
 #endif
 
 // __shfl_down_sync
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   shfl_down_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
@@ -139,7 +139,7 @@ namespace zs {
 #endif
 
 // __shfl_xor_sync
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   shfl_xor_sync(ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
@@ -155,7 +155,7 @@ namespace zs {
 
 /// @brief warp vote funcs
 // __activemask
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
   active_mask(ExecTag) {
@@ -170,7 +170,7 @@ namespace zs {
 #endif
 
 // __ballot_sync
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
   ballot_sync(ExecTag, unsigned mask, int predicate) {
@@ -185,7 +185,7 @@ namespace zs {
 #endif
 
 // __all_sync
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
   all_sync(ExecTag, unsigned mask, int predicate) {
@@ -200,7 +200,7 @@ namespace zs {
 #endif
 
 // __any_sync
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
   any_sync(ExecTag, unsigned mask, int predicate) {
@@ -216,7 +216,7 @@ namespace zs {
 
 /// @brief math intrinsics
 // ffs
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> ffs(
       ExecTag, int x) {
@@ -231,7 +231,7 @@ namespace zs {
 #endif
 
 // ffsll
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
   ffsll(ExecTag, long long int x) {
@@ -246,7 +246,7 @@ namespace zs {
 #endif
 
   // popc
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> popc(
       ExecTag, unsigned int x) {
@@ -261,7 +261,7 @@ namespace zs {
 #endif
 
   // popcll
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
   popcll(ExecTag, unsigned long long int x) {
@@ -277,7 +277,7 @@ namespace zs {
 
 // ref: https://graphics.stanford.edu/~seander/bithacks.html
 // count leading zeros
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
   count_lz(ExecTag, T x) {
@@ -325,7 +325,7 @@ namespace zs {
   }
 
   /// reverse bits
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   reverse_bits(ExecTag, T x) {

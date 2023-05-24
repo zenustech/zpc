@@ -10,6 +10,7 @@
 #include "zensim/py_interop/TileVectorView.hpp"
 #include "zensim/py_interop/VectorView.hpp"
 //
+#include "zensim/execution/Atomics.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Property.h"
 #include "zensim/types/SmallVector.hpp"

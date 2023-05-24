@@ -333,7 +333,7 @@ namespace zs {
           _hf1{table._hf1},
           _hf2{table._hf2} {}
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __host__ __device__ value_type insert(const key_type &key) noexcept {
@@ -490,7 +490,7 @@ namespace zs {
 
   protected:
     /// @brief helper methods: atomicSwitchIfEqual, atomicLoad
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __host__ __device__ bool atomicSwitchIfEqual(

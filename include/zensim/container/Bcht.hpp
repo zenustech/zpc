@@ -12,7 +12,7 @@
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 #  include <cooperative_groups.h>
 #endif
 #if ZS_ENABLE_OPENMP
@@ -538,7 +538,7 @@ namespace zs {
         return reinterpret_bits<mapped_hashed_key_type>(_hf0(key));
     }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 
     /// helper construct
     struct CoalescedGroup : cooperative_groups::coalesced_group {

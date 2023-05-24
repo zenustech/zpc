@@ -25,8 +25,8 @@ namespace zs {
     static constexpr bool is_row_major = RowMajor;
     using value_type = T;
     using allocator_type = AllocatorT;
-    using size_type = std::make_unsigned_t<Tn>;
-    using difference_type = std::make_signed_t<size_type>;
+    using size_type = zs::make_unsigned_t<Tn>;
+    using difference_type = zs::make_signed_t<size_type>;
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;

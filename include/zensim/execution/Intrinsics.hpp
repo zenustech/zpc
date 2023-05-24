@@ -352,7 +352,7 @@ namespace zs {
   inline T reverse_bits(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return 0;
-    using Val = std::make_unsigned_t<T>;
+    using Val = zs::make_unsigned_t<T>;
     Val tmp{}, ret{0};
 #if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     if constexpr (sizeof(unsigned short) == nbytes)

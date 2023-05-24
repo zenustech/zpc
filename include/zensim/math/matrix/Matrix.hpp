@@ -11,8 +11,8 @@ namespace zs {
   template <typename ValueType = float, typename IndexType = int> struct MatrixBase {
     using value_type = ValueType;
     using index_type = IndexType;
-    using size_type = std::make_unsigned_t<index_type>;
-    using difference_type = std::make_signed_t<size_type>;
+    using size_type = zs::make_unsigned_t<index_type>;
+    using difference_type = zs::make_signed_t<size_type>;
 
     constexpr index_type rows() const noexcept { return nrows; }
     constexpr index_type cols() const noexcept { return ncols; }

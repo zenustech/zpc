@@ -24,7 +24,7 @@ namespace zs {
     using structure_type = remove_cvref_t<Structure>;
     using value_type = detected_or_t<detected_or_t<float, dof_detail::T_t, structure_type>,
                                      dof_detail::value_t, structure_type>;
-    using size_type = detected_or_t<detected_or_t<size_t, dof_detail::index_t, structure_type>,
+    using size_type = detected_or_t<detected_or_t<zs::size_t, dof_detail::index_t, structure_type>,
                                     dof_detail::size_t, structure_type>;
     using channel_counter_type
         = detected_or_t<unsigned char, dof_detail::counter_t, structure_type>;
@@ -112,7 +112,7 @@ namespace zs {
     struct iterator_impl : IteratorInterface<iterator_impl> {
       using traits = typename DofView::traits;
       using size_type = typename DofView::size_type;
-      using difference_type = std::make_signed_t<size_type>;
+      using difference_type = zs::make_signed_t<size_type>;
       static constexpr auto entry_e = DofView::entry_e;
       static constexpr int dim = DofView::dim;
 
@@ -210,7 +210,7 @@ namespace zs {
     struct iterator_impl : IteratorInterface<iterator_impl> {
       using traits = typename DofView::traits;
       using size_type = typename DofView::size_type;
-      using difference_type = std::make_signed_t<size_type>;
+      using difference_type = zs::make_signed_t<size_type>;
       static constexpr auto entry_e = DofView::entry_e;
       static constexpr int dim = DofView::dim;
 

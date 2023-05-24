@@ -55,10 +55,10 @@ namespace zs {
       static constexpr bool value = test<Fn, Args...>(nullptr);
     };
 
-    template <size_t No, typename Args, size_t... Ns, size_t i, size_t... js,
+    template <zs::size_t No, typename Args, size_t... Ns, size_t i, size_t... js,
               size_t I, size_t... Js>
     constexpr void traverse(bool &tagMatch, Args &args,
-                            const std::array<size_t, sizeof...(Ns)> &varIndices,
+                            const std::array<zs::size_t, sizeof...(Ns)> &varIndices,
                             index_sequence<Ns...> dims, index_sequence<i, js...> indices,
                             index_sequence<I, Js...>) {
       if constexpr (No == 0) {
@@ -98,7 +98,7 @@ namespace zs {
       constexpr auto lastVariantSize
           = std::variant_size_v<select_indexed_type<narg - 1, remove_cvref_t<Args>...>>;
       auto packedArgs = std::forward_as_tuple(FWD(args)...);
-      std::array<size_t, narg> varIndices{(args.index())...};
+      std::array<zs::size_t, narg> varIndices{(args.index())...};
       bool tagMatch{false};
 
       traverse<narg - 1>(tagMatch, packedArgs, varIndices, variant_sizes{},

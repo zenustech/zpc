@@ -21,17 +21,17 @@ namespace zs {
     static_assert(std::is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
 
     static constexpr int dim = dim_;
-    using Tn = std::make_signed_t<Tn_>;
+    using Tn = zs::make_signed_t<Tn_>;
     using key_t = vec<Tn, dim>;
-    using value_t = std::make_signed_t<Index>;
+    using value_t = zs::make_signed_t<Index>;
     using status_t = int;
 
     using index_type = Tn;
 
     using value_type = key_t;
     using allocator_type = AllocatorT;
-    using size_type = std::make_unsigned_t<value_t>;
-    using difference_type = std::make_signed_t<size_type>;
+    using size_type = zs::make_unsigned_t<value_t>;
+    using difference_type = zs::make_signed_t<size_type>;
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;

@@ -11,7 +11,7 @@ namespace zs {
     using node_id_t = NodeIdT;
     using prim_vector_t = Vector<prim_id_t>;
     using node_vector_t = Vector<node_id_t>;
-    using index_t = std::make_signed_t<math::op_result_t<prim_id_t, node_id_t>>;
+    using index_t = zs::make_signed_t<math::op_result_t<prim_id_t, node_id_t>>;
     using counter_t = Vector<index_t>;
 
     constexpr decltype(auto) memoryLocation() const noexcept { return _cnt.memoryLocation(); }

@@ -10,8 +10,8 @@ namespace zs {
   template <typename... Seqs> struct concat;
   template <typename> struct VecInterface;
 
-  template <size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
-  template <size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
+  template <zs::size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
+  template <zs::size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
 
   template <class T> struct unwrap_refwrapper;
   template <class T> using special_decay_t = typename unwrap_refwrapper<decay_t<T>>::type;
@@ -19,7 +19,7 @@ namespace zs {
 /// Jorg Brown, Cppcon2019, reducing template compilation overhead using
 /// features from C++11, 14, 17, and 20
 #if !defined(ZS_COMPILER_MSVC)
-  template <size_t I, typename T, typename = void> struct tuple_value : T {
+  template <zs::size_t I, typename T, typename = void> struct tuple_value : T {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
     template <typename V, enable_if_t<is_constructible_v<T, V>> = 0>
@@ -45,7 +45,7 @@ namespace zs {
     constexpr const T &get(wrapt<T>) const &noexcept { return *this; }
   };
 #else
-  template <size_t I, typename T, typename = void> struct tuple_value {
+  template <zs::size_t I, typename T, typename = void> struct tuple_value {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
     template <typename V, enable_if_t<is_constructible_v<T, V>> = 0>
@@ -73,7 +73,7 @@ namespace zs {
     T base;
   };
 #endif
-  template <size_t I, typename T>
+  template <zs::size_t I, typename T>
   struct tuple_value<I, T,
                      enable_if_type<(is_fundamental_v<T> || is_final_v<T> || is_same_v<T, void *>
                                      || is_reference_v<T> || is_pointer_v<T>)>> {
@@ -129,8 +129,8 @@ namespace zs {
   template <typename... Args> constexpr auto make_tuple(Args &&...args);
   template <typename T> struct tuple_size;
   template <typename... Ts> struct tuple_size<tuple<Ts...>>
-      : integral_constant<size_t, sizeof...(Ts)> {};
-  template <typename Tup> constexpr enable_if_type<is_tuple_v<Tup>, size_t> tuple_size_v
+      : integral_constant<zs::size_t, sizeof...(Ts)> {};
+  template <typename Tup> constexpr enable_if_type<is_tuple_v<Tup>, zs::size_t> tuple_size_v
       = tuple_size<Tup>::value;
 
   template <size_t... Is, typename... Ts> struct tuple_base<index_sequence<Is...>, type_seq<Ts...>>
@@ -167,8 +167,8 @@ namespace zs {
     }
 
     using tuple_value<Is, Ts>::get...;
-    template <size_t I> constexpr decltype(auto) get() noexcept { return get(index_t<I>{}); }
-    template <size_t I> constexpr decltype(auto) get() const noexcept { return get(index_t<I>{}); }
+    template <zs::size_t I> constexpr decltype(auto) get() noexcept { return get(index_t<I>{}); }
+    template <zs::size_t I> constexpr decltype(auto) get() const noexcept { return get(index_t<I>{}); }
     template <typename T> constexpr decltype(auto) get() noexcept { return get(wrapt<T>{}); }
     template <typename T> constexpr decltype(auto) get() const noexcept { return get(wrapt<T>{}); }
     /// compare
@@ -204,7 +204,7 @@ namespace zs {
     constexpr auto map_impl(MapOp &&op, index_sequence<Js...>) const noexcept {
       return zs::make_tuple(op(Js, get<Is>()...)...);
     }
-    template <size_t N, typename MapOp> constexpr auto map(MapOp &&op) const noexcept {
+    template <zs::size_t N, typename MapOp> constexpr auto map(MapOp &&op) const noexcept {
       return map_impl(forward<MapOp>(op), gen_seq<N>::ascend());
     }
     /// reduce
@@ -245,7 +245,7 @@ namespace zs {
   template <typename... Ts> struct tuple : tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>> {
     using base_t = tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>>;
     using tuple_types = typename base_t::tuple_types;
-    template <size_t I> using tuple_element_t = select_indexed_type<I, Ts...>;
+    template <zs::size_t I> using tuple_element_t = select_indexed_type<I, Ts...>;
 
     constexpr tuple() = default;
     ~tuple() = default;
@@ -279,7 +279,7 @@ namespace zs {
       return *this;
     }
     // std::array
-    template <template <typename, size_t> class V, typename T, size_t N,
+    template <template <typename, zs::size_t> class V, typename T, size_t N,
               enable_if_t<N == sizeof...(Ts)> = 0>
     constexpr tuple &operator=(const V<T, N> &v) noexcept {
       assign_impl(v, index_sequence_for<Ts...>{});
@@ -313,25 +313,25 @@ namespace zs {
   template <typename... Args> tuple(Args...) -> tuple<Args...>;
 
   /** tuple_element */
-  template <size_t I, typename T, typename = void> struct tuple_element;
-  template <size_t I, typename... Ts>
+  template <zs::size_t I, typename T, typename = void> struct tuple_element;
+  template <zs::size_t I, typename... Ts>
   struct tuple_element<I, tuple<Ts...>, enable_if_type<(I < sizeof...(Ts))>> {
     using type = select_type<I, typename tuple<Ts...>::tuple_types>;
   };
-  template <size_t I, typename Tup> using tuple_element_t
+  template <zs::size_t I, typename Tup> using tuple_element_t
       = enable_if_type<is_tuple_v<Tup>, enable_if_type<(I < (tuple_size_v<Tup>)),
                                                        typename tuple_element<I, Tup>::type>>;
 
   /** operations */
 
   /** get */
-  template <size_t I, typename... Ts> constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
+  template <zs::size_t I, typename... Ts> constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
     return t.template get<I>();
   }
-  template <size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
+  template <zs::size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
     return t.template get<I>();
   }
-  template <size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &&t) noexcept {
+  template <zs::size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &&t) noexcept {
     return move(t).template get<I>();
   }
 
@@ -354,7 +354,7 @@ namespace zs {
   constexpr auto make_uniform_tuple(T &&v, index_sequence<Is...>) noexcept {
     return make_tuple((Is ? v : v)...);
   }
-  template <size_t N, typename T> constexpr auto make_uniform_tuple(T &&v) noexcept {
+  template <zs::size_t N, typename T> constexpr auto make_uniform_tuple(T &&v) noexcept {
     return make_uniform_tuple(FWD(v), make_index_sequence<N>{});
   }
 
@@ -523,10 +523,10 @@ namespace std {
 
   template <typename T> struct tuple_size;
   template <typename... Ts> struct tuple_size<zs::tuple<Ts...>>
-      : zs::integral_constant<size_t, zs::tuple_size_v<zs::tuple<Ts...>>> {};
+      : zs::integral_constant<zs::size_t, zs::tuple_size_v<zs::tuple<Ts...>>> {};
 
-  template <size_t I, typename T> struct tuple_element;
-  template <size_t I, typename... Ts> struct tuple_element<I, zs::tuple<Ts...>> {
+  template <zs::size_t I, typename T> struct tuple_element;
+  template <zs::size_t I, typename... Ts> struct tuple_element<I, zs::tuple<Ts...>> {
     using type = zs::tuple_element_t<I, zs::tuple<Ts...>>;
   };
 }  // namespace std

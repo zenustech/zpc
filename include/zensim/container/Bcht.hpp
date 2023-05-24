@@ -170,9 +170,9 @@ namespace zs {
                   "hashed key type should be an unsigned integer");
     using storage_key_type = conditional_t<compare_key, key_type, mapped_hashed_key_type>;
     //
-    using index_type = std::make_signed_t<Index>;
+    using index_type = zs::make_signed_t<Index>;
     using value_type = zs::tuple<key_type, index_type>;  // use original 'key_type' here
-    using size_type = std::make_unsigned_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
     using difference_type = index_type;
     using reference = zs::tuple<storage_key_type &, index_type &>;
     using const_reference = zs::tuple<const storage_key_type &, const index_type &>;

@@ -11,7 +11,7 @@
 #include "zensim/ZpcTuple.hpp"
 
 namespace std {
-  template <typename, size_t> struct array;
+  template <typename, zs::size_t> struct array;
 }
 
 namespace zs {
@@ -156,13 +156,13 @@ namespace zs {
       return *this;
     }
 
-    template <template <typename, size_t> class ArrayT>
+    template <template <typename, zs::size_t> class ArrayT>
     static constexpr vec_impl from_array(const ArrayT<T, extent> &arr) noexcept {
       vec_impl r{};
       for (Tn i = 0; i != extent; ++i) r.val(i) = arr[i];
       return r;
     }
-    template <template <typename, size_t> class ArrayT = std::array>
+    template <template <typename, zs::size_t> class ArrayT = std::array>
     constexpr ArrayT<T, extent> to_array() const noexcept {
       ArrayT<T, extent> r{};
       for (Tn i = 0; i != extent; ++i) r[i] = _data[i];
@@ -256,7 +256,7 @@ namespace zs {
 
   template <typename Tn, int dim>
   constexpr auto unpack_coord(const vec<Tn, dim> &id, Tn side_length) {
-    using T = std::make_signed_t<Tn>;
+    using T = zs::make_signed_t<Tn>;
     auto bid = id;
     for (int d = 0; d != dim; ++d) bid[d] += (id[d] < 0 ? ((T)1 - (T)side_length) : 0);
     bid = bid / side_length;

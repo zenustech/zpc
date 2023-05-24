@@ -40,7 +40,7 @@ namespace zs {
     using value_type = ValueT;
     using allocator_type = AllocatorT;
     using coord_index_type = conditional_t<(sizeof(value_type) <= 4), i32, i64>;
-    // using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
+    // using cell_index_type = zs::make_unsigned_t<decltype(SideLength)>;
     using cell_index_type = coord_index_type;
     static constexpr auto category = category_;
     static constexpr int dim = d_;
@@ -284,7 +284,7 @@ namespace zs {
 
     /// deduced
     // https://listengine.tuxfamily.org/lists.tuxfamily.org/eigen/2017/01/msg00126.html
-    using cell_index_type = std::make_signed_t<RM_CVREF_T(
+    using cell_index_type = zs::make_signed_t<RM_CVREF_T(
         side_length)>;  // this should be signed integer for indexing convenience
     static constexpr auto block_size = math::pow_integral(side_length, (int)dim);
     static constexpr bool is_power_of_two

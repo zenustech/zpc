@@ -436,9 +436,9 @@ namespace zs {
     using iseq = integer_sequence<value_type, (value_type)Ns...>;
     template <typename T> using to_iseq = integer_sequence<T, (T)Ns...>;
 
-    template <size_t I> static constexpr auto value = base_t::template type<I>::value;
+    template <zs::size_t I> static constexpr auto value = base_t::template type<I>::value;
 
-    template <size_t N = sizeof...(Ns), enable_if_t<(N == 1)> = 0>
+    template <zs::size_t N = sizeof...(Ns), enable_if_t<(N == 1)> = 0>
     constexpr operator typename base_t::template type<0>() const noexcept {
       return {};
     }
@@ -529,8 +529,8 @@ namespace zs {
   template <size_t... Ns> constexpr value_seq<Ns...> dim_c{};
 
   /// select (constant integral) value (integral_constant<T, N>) by index
-  template <size_t I, typename ValueSeq> using select_value = typename ValueSeq::template type<I>;
-  template <size_t I, auto... Ns> using select_indexed_value = select_value<I, value_seq<Ns...>>;
+  template <zs::size_t I, typename ValueSeq> using select_value = typename ValueSeq::template type<I>;
+  template <zs::size_t I, auto... Ns> using select_indexed_value = select_value<I, value_seq<Ns...>>;
 
   template <typename, typename> struct gather;
   template <size_t... Is, typename T, T... Ns>
@@ -687,7 +687,7 @@ namespace zs {
   template <typename> struct seq_tail {
     using type = index_sequence<>;
   };
-  template <size_t I, size_t... Is> struct seq_tail<index_sequence<I, Is...>> {
+  template <zs::size_t I, size_t... Is> struct seq_tail<index_sequence<I, Is...>> {
     using type = index_sequence<Is...>;
   };
   template <typename Seq> using seq_tail_t = typename seq_tail<Seq>::type;

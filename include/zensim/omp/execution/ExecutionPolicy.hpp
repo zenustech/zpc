@@ -122,7 +122,7 @@ namespace zs {
                                loc.column()));
     }
 
-    template <size_t I, size_t... Is, typename... Iters, typename... Policies, typename... Ranges,
+    template <zs::size_t I, size_t... Is, typename... Iters, typename... Policies, typename... Ranges,
               typename... Bodies>
     void exec(index_sequence<Is...> indices, zs::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,

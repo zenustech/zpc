@@ -10,7 +10,10 @@
 #  endif
 
 #else
-
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+#    include <windows.h>
+// # include <winnt.h>
+#  endif
 #  include "zensim/ZpcIntrinsics.hpp"
 #  include "zensim/types/Property.h"
 #endif
@@ -58,7 +61,6 @@ namespace zs {
   inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
   atomic_add_impl(ExecTag, T *dest, const T val) {
     static_assert(is_same_v<ExecTag, omp_exec_tag>);
-#if ZS_ENABLE_OPENMP
     if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       using TT = conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, u64>>;
       static_assert(sizeof(T) == sizeof(TT));
@@ -70,7 +72,6 @@ namespace zs {
       }
       return reinterpret_bits<T>(oldVal);
     }
-#endif
   }
 
   template <typename ExecTag, typename T>
@@ -80,11 +81,9 @@ namespace zs {
       const T old = *dest;
       *dest += val;
       return old;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-#  if 1
-#    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+#if 1
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (is_integral_v<T>) {
         if constexpr (sizeof(T) == sizeof(char))
           return InterlockedExchangeAdd8(const_cast<char volatile *>((char *)dest), (char)val);
@@ -97,21 +96,19 @@ namespace zs {
                                           (__int64)val);
       } else
         return atomic_add_impl(ExecTag{}, dest, val);
-#    else
+#  else
       if constexpr (is_integral_v<T>)
         return __atomic_fetch_add(dest, val, __ATOMIC_SEQ_CST);
       else
         return atomic_add_impl(ExecTag{}, dest, val);
-#    endif
+#  endif
 
-#  else
+#else
       /// introduced in c++20
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_add(val, std::memory_order_seq_cst);
-#  endif
-    }
 #endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "invalid execution space for atomic_add.");
     }
     return (T)0;
@@ -171,11 +168,9 @@ namespace zs {
       const T old = *dest;
       *dest = val;
       return old;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-#  if 1
-#    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+#if 1
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
         return InterlockedExchange8(const_cast<char volatile *>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
@@ -184,16 +179,14 @@ namespace zs {
         return InterlockedExchange(const_cast<long volatile *>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
         return InterlockedExchange64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
-#    else
-      return __atomic_exchange_n(dest, val, __ATOMIC_SEQ_CST);
-#    endif
 #  else
+      return __atomic_exchange_n(dest, val, __ATOMIC_SEQ_CST);
+#  endif
+#else
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.exchange(val, std::memory_order_seq_cst);
-#  endif
-    }
 #endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_exch impl!");
     }
     return (T)0;
@@ -222,12 +215,10 @@ namespace zs {
       const T old = *dest;
       if (old == expected) *dest = desired;
       return old;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-#  if 1
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+#if 1
 
-#    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char)) {  // 8-bit
         return reinterpret_bits<T>(_InterlockedCompareExchange8(
             const_cast<volatile char *>((char *)dest), reinterpret_bits<char>(desired),
@@ -247,7 +238,7 @@ namespace zs {
       } else {
         static_assert(always_false<ExecTag>, "no corresponding openmp atomic_cas (win) impl!");
       }
-#    else
+#  else
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T)) {
         int expected_ = reinterpret_bits<int>(expected);
         __atomic_compare_exchange_n(const_cast<int volatile *>((int *)dest), &expected_,
@@ -265,15 +256,13 @@ namespace zs {
                                     __ATOMIC_ACQ_REL, __ATOMIC_RELAXED);
         return expected;
       }
-#    endif
+#  endif
 
-#  else
+#else
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.compare_exchange_strong(expected, desired, std::memory_order_seq_cst);
-#  endif
-    }
 #endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_cas impl!");
     }
     return (T)0;
@@ -308,18 +297,14 @@ namespace zs {
       const T old = *dest;
       if (old < val) *dest = val;
       return;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
       for (T assumed = old;
            assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
            assumed = old)
         ;
       return;
-    }
-#endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_max impl!");
     }
     return;
@@ -349,18 +334,14 @@ namespace zs {
       const T old = *dest;
       if (old > val) *dest = val;
       return;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
       for (T assumed = old;
            assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
            assumed = old)
         ;
       return;
-    }
-#endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_min impl!");
     }
     return;
@@ -383,12 +364,10 @@ namespace zs {
       const T old = *dest;
       *dest |= val;
       return old;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-#  if 1
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+#if 1
 
-#    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
         return InterlockedOr8(const_cast<char volatile *>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
@@ -397,17 +376,15 @@ namespace zs {
         return InterlockedOr(const_cast<long volatile *>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
         return InterlockedOr64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
-#    else
-      return __atomic_fetch_or(dest, val, __ATOMIC_SEQ_CST);
-#    endif
-
 #  else
+      return __atomic_fetch_or(dest, val, __ATOMIC_SEQ_CST);
+#  endif
+
+#else
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_or(val, std::memory_order_seq_cst);
-#  endif
-    }
 #endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_or impl!");
     }
     return (T)0;
@@ -429,11 +406,9 @@ namespace zs {
       const T old = *dest;
       *dest &= val;
       return old;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-#  if 1
-#    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+#if 1
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
         return InterlockedAnd8(const_cast<char volatile *>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
@@ -442,16 +417,14 @@ namespace zs {
         return InterlockedAnd(const_cast<long volatile *>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
         return InterlockedAnd64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
-#    else
-      return __atomic_fetch_and(dest, val, __ATOMIC_SEQ_CST);
-#    endif
 #  else
+      return __atomic_fetch_and(dest, val, __ATOMIC_SEQ_CST);
+#  endif
+#else
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_and(val, std::memory_order_seq_cst);
-#  endif
-    }
 #endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_and impl!");
     }
     return (T)0;
@@ -471,11 +444,9 @@ namespace zs {
       const T old = *dest;
       *dest ^= val;
       return old;
-    }
-#if ZS_ENABLE_OPENMP
-    else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-#  if 1
-#    if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+#if 1
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
         return InterlockedXor8(const_cast<char volatile *>((char *)dest), (char)val);
       else if constexpr (sizeof(T) == sizeof(short))
@@ -484,16 +455,14 @@ namespace zs {
         return InterlockedXor(const_cast<long volatile *>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
         return InterlockedXor64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
-#    else
-      return __atomic_fetch_xor(dest, val, __ATOMIC_SEQ_CST);
-#    endif
 #  else
+      return __atomic_fetch_xor(dest, val, __ATOMIC_SEQ_CST);
+#  endif
+#else
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_xor(val, std::memory_order_seq_cst);
-#  endif
-    }
 #endif
-    else {
+    } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_xor impl!");
     }
     return (T)0;

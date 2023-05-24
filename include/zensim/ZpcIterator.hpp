@@ -442,7 +442,7 @@ namespace zs {
         = conditional_t<sizeof(StrideT) <= 1, i8,
                         conditional_t<sizeof(StrideT) <= 2, i16,
                                       conditional_t<sizeof(StrideT) <= 4, i32,
-                                                    sint_t>>>;  // std::make_signed_t<StrideT>;
+                                                    sint_t>>>;  // zs::make_signed_t<StrideT>;
     static_assert(is_integral_v<T> && is_integral_v<DiffT>, "Index type must be integral");
     static_assert(is_convertible_v<T, DiffT>, "Stride type not compatible with the index type");
 
@@ -459,7 +459,7 @@ namespace zs {
   };
   template <typename Data, sint_t Stride> struct IndexIterator<Data, integral<sint_t, Stride>>
       : IteratorInterface<IndexIterator<Data, integral<sint_t, Stride>>> {
-    // using T = std::make_signed_t<Data>;
+    // using T = zs::make_signed_t<Data>;
     using T = conditional_t<
         sizeof(Data) <= 1, i8,
         conditional_t<sizeof(Data) <= 2, i16, conditional_t<sizeof(Data) <= 4, i32, sint_t>>>;
@@ -488,13 +488,13 @@ namespace zs {
   template <typename... Tn> constexpr bool all_integral() { return (is_integral_v<Tn> && ...); }
   template <typename... Tn, size_t... Is> struct Collapse<type_seq<Tn...>, index_sequence<Is...>> {
     static_assert(all_integral<Tn...>(), "not all types in Collapse is integral!");
-    template <size_t I> using index_t = zs::tuple_element_t<I, zs::tuple<Tn...>>;
+    template <zs::size_t I> using index_t = zs::tuple_element_t<I, zs::tuple<Tn...>>;
     static constexpr size_t dim = sizeof...(Tn);
     constexpr Collapse(Tn... ns) : ns{ns...} {}
     template <typename VecT, enable_if_t<is_integral_v<typename VecT::value_type>> = 0>
     constexpr Collapse(const VecInterface<VecT> &v) : ns{v.to_tuple()} {}
 
-    template <size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
+    template <zs::size_t I = 0> constexpr auto get(wrapv<I> = {}) const noexcept {
       return zs::get<I>(ns);
     }
 
@@ -508,7 +508,7 @@ namespace zs {
       constexpr bool equal_to(iterator o) const noexcept {
         return ((zs::get<Is>(it) == zs::get<Is>(o.it)) && ...);
       }
-      template <size_t I> constexpr void increment_impl() noexcept {
+      template <zs::size_t I> constexpr void increment_impl() noexcept {
         index_t<I> n = ++zs::get<I>(it);
         if constexpr (I > 0)
           if (n >= zs::get<I>(ns)) {
@@ -617,7 +617,7 @@ namespace zs {
   template <typename T, enable_if_t<is_integral_v<T>> = 0>
   constexpr auto range(T begin, T end, T increment) {
     auto actualEnd = end - ((end - begin) % increment);
-    // using DiffT = std::make_signed_t<T>;
+    // using DiffT = zs::make_signed_t<T>;
     using DiffT = conditional_t<
         sizeof(T) <= 1, i8,
         conditional_t<sizeof(T) <= 2, i16, conditional_t<sizeof(T) <= 4, i32, sint_t>>>;
@@ -626,7 +626,7 @@ namespace zs {
         make_iterator<IndexIterator>(actualEnd, static_cast<DiffT>(increment)));
   }
   template <typename T, enable_if_t<is_integral_v<T>> = 0> constexpr auto range(T begin, T end) {
-    // using DiffT = std::make_signed_t<T>;
+    // using DiffT = zs::make_signed_t<T>;
     using DiffT = conditional_t<
         sizeof(T) <= 1, i8,
         conditional_t<sizeof(T) <= 2, i16, conditional_t<sizeof(T) <= 4, i32, sint_t>>>;

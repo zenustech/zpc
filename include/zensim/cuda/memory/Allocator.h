@@ -83,9 +83,9 @@ namespace zs {
 
     bool reserve(size_t desiredSpace);
 
-    std::vector<std::pair<unsigned long long, size_t>> _vaRanges;
+    std::vector<std::pair<unsigned long long, zs::size_t>> _vaRanges;
     std::vector<unsigned long long> _allocHandles;
-    std::vector<std::pair<void *, size_t>> _allocationRanges;
+    std::vector<std::pair<void *, zs::size_t>> _allocationRanges;
     std::string _type;
     std::any _allocProp;
     std::any _accessDescr;
@@ -111,7 +111,7 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     std::vector<unsigned long long> _allocHandles;
-    std::vector<std::pair<size_t, size_t>> _allocRanges;
+    std::vector<std::pair<zs::size_t, zs::size_t>> _allocRanges;
     std::any _allocProp;
     std::any _accessDescr;
     size_t _granularity;
@@ -144,7 +144,7 @@ namespace zs {
     const size_t _reservedSpace;
     void *_addr;
     std::vector<u64> _activeChunkMasks;
-    std::unordered_map<size_t, unsigned long long> _allocations;  // <offset, handle>
+    std::unordered_map<zs::size_t, unsigned long long> _allocations;  // <offset, handle>
     ProcID _did;
   };
 

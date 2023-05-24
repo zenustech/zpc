@@ -16,9 +16,9 @@ namespace zs {
     static constexpr auto category = category_;
     using allocator_type = AllocatorT;
     using value_type = f32;
-    using size_type = std::make_unsigned_t<Index>;
-    using index_type = std::make_signed_t<Index>;
-    using coord_index_type = std::make_signed_t<Tn>;
+    using size_type = zs::make_unsigned_t<Index>;
+    using index_type = zs::make_signed_t<Index>;
+    using coord_index_type = zs::make_signed_t<Tn>;
     using table_t = HashTable<Tn, dim, index_type, allocator_type>;
     using vector_t = Vector<index_type, allocator_type>;
 

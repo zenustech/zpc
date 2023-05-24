@@ -107,7 +107,7 @@ namespace zs {
       return range_pair{l, r};
     }
 
-    template <size_t head = 0, size_t length = 0, typename T>
+    template <zs::size_t head = 0, size_t length = 0, typename T>
     constexpr auto get_var_type_substr(T &&) noexcept {
       constexpr auto typestr = get_type_str_helper<T>();
       using CharT = remove_const_t<std::remove_pointer_t<decltype(typestr)>>;

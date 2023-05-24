@@ -83,14 +83,14 @@ namespace zs {
   template <auto N> struct is_value_wrapper<wrapv<N>> : true_type {};
   template <typename T> constexpr bool is_value_wrapper_v = is_value_wrapper<T>::value;
 
-  template <size_t N> using index_t = integral_constant<size_t, N>;
-  template <size_t N> constexpr index_t<N> index_c{};
+  template <zs::size_t N> using index_t = integral_constant<zs::size_t, N>;
+  template <zs::size_t N> constexpr index_t<N> index_c{};
 
   template <class T, T... Is> class integer_sequence {
     using value_type = T;
     static constexpr size_t size() noexcept { return sizeof...(Is); }
   };
-  template <size_t... Is> using index_sequence = integer_sequence<size_t, Is...>;
+  template <size_t... Is> using index_sequence = integer_sequence<zs::size_t, Is...>;
   namespace detail {
     /// @note the following impl is also intriguing, less funcs analyzed but more verbose AST
     /// https://github.com/taocpp/sequences/blob/main/include/tao/seq/make_integer_sequence.hpp
@@ -113,7 +113,7 @@ namespace zs {
   }  // namespace detail
   template <typename T, T N> using make_integer_sequence
       = decltype(detail::gen_integer_seq<T, N>());
-  template <size_t N> using make_index_sequence = make_integer_sequence<size_t, N>;
+  template <zs::size_t N> using make_index_sequence = make_integer_sequence<zs::size_t, N>;
   template <class... T> using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
   /// indexable type list to avoid recursion
@@ -165,7 +165,7 @@ namespace zs {
     template <template <auto...> class T, auto Arg> using uniform_values_t
         = T<(Is >= 0 ? Arg : 0)...>;
   };
-  template <size_t N> using gen_seq = gen_seq_impl<make_index_sequence<N>>;
+  template <zs::size_t N> using gen_seq = gen_seq_impl<make_index_sequence<N>>;
 
   template <typename... Seqs> struct concat;
   template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;
@@ -442,11 +442,11 @@ namespace zs {
     static constexpr auto count = sizeof...(Ts);
 
     // type
-    template <size_t I> using type = typename decltype(type_impl::extract_type<I>(
+    template <zs::size_t I> using type = typename decltype(type_impl::extract_type<I>(
         declval<add_pointer_t<type_impl::indexed_types<indices, Ts...>>>()))::type;
 
     /// @note when Ts=<>, type<0> is 'wrapv<0>'
-    template <size_t N = sizeof...(Ts), enable_if_t<(N == 1)> = 0>
+    template <zs::size_t N = sizeof...(Ts), enable_if_t<(N == 1)> = 0>
     constexpr operator wrapt<type<0>>() const noexcept {
       return {};
     }
@@ -510,8 +510,8 @@ namespace zs {
   ///
 
   /// select type by index
-  template <size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
-  template <size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
+  template <zs::size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
+  template <zs::size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
 
   ///
   /// advanced predicates

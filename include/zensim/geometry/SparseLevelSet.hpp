@@ -35,7 +35,7 @@ namespace zs {
 
     using coord_index_type = typename grid_t::coord_index_type;
     using channel_counter_type = typename grid_t::channel_counter_type;
-    // using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
+    // using cell_index_type = zs::make_unsigned_t<decltype(SideLength)>;
     using cell_index_type = typename grid_t::cell_index_type;
     static constexpr auto block_size = grid_traits<grid_t>::block_size;
 
@@ -957,7 +957,7 @@ namespace zs {
       return weight(std::forward_as_tuple(FWD(is)...));
     }
     /// weight gradient
-    template <size_t I, typename... Tn, auto ord = deriv_order>
+    template <zs::size_t I, typename... Tn, auto ord = deriv_order>
     constexpr enable_if_type<(ord > 0), value_type> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
       return weightGradient_impl<I>(loc, index_sequence_for<Tn...>{});
@@ -990,7 +990,7 @@ namespace zs {
       ((void)(ret *= get<0>(weights)(Is, std::get<Is>(loc))), ...);
       return ret;
     }
-    template <size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
+    template <zs::size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr value_type weightGradient_impl(const std::tuple<Tn...> &loc,
                                              index_sequence<Is...>) const noexcept {

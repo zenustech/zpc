@@ -7,10 +7,10 @@
 namespace zs {
 
   /// Bow/Math/LinearSolver/ConjugateGradient.h
-  template <typename T, int dim, typename Index = size_t> struct MinRes {
+  template <typename T, int dim, typename Index = zs::size_t> struct MinRes {
     using TV = Vector<T>;
     using allocator_type = ZSPmrAllocator<>;
-    using size_type = std::make_unsigned_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
 
     math::GivensRotation<T> Gk, Gkm1, Gkm2;
     T gamma, delta, epsilon;

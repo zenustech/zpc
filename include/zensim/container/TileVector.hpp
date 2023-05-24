@@ -20,7 +20,7 @@ namespace zs {
     using value_type = T_;
     using allocator_type = AllocatorT;
     using size_type = size_t;
-    using difference_type = std::make_signed_t<size_type>;
+    using difference_type = zs::make_signed_t<size_type>;
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;

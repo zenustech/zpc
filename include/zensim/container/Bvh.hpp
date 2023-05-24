@@ -16,8 +16,8 @@ namespace zs {
     using allocator_type = AllocatorT;
     using value_type = ValueT;
     // must be signed integer, since we are using -1 as sentinel value
-    using index_type = std::make_signed_t<Index>;
-    using size_type = std::make_unsigned_t<Index>;
+    using index_type = zs::make_signed_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
     static_assert(is_floating_point_v<value_type>, "value_type should be floating point");
     static_assert(is_integral_v<index_type>, "index_type should be an integral");
 

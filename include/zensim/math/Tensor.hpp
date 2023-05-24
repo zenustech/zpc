@@ -124,7 +124,7 @@ namespace zs {
                   "access dimension and storage dimension mismatch!");
     static_assert(((Ns <= Ms) && ...), "access dimension and storage dimension mismatch!");
 
-    template <size_t I> static constexpr auto truncate_storage_orders() noexcept {
+    template <zs::size_t I> static constexpr auto truncate_storage_orders() noexcept {
       constexpr auto marks = value_seq<(Is < I ? 1 : 0)...>{};
       constexpr auto offsets = marks.scan();  // exclusive scan
       constexpr auto tags = marks.pair(offsets);

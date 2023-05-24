@@ -253,10 +253,10 @@ namespace zs {
     /// ref:
     /// https://www.codeproject.com/Articles/69941/Best-Square-Root-Method-Algorithm-Function-Precisi
     constexpr float q_rsqrt(float number) noexcept {
-      uint32_t i{};
+      u32 i{};
       float x2 = number * 0.5f, y = number;
       // i = *(uint32_t *)&y;
-      i = reinterpret_bits<uint32_t>(y);
+      i = reinterpret_bits<u32>(y);
       i = 0x5f375a86 - (i >> 1);
       // y = *(float *)&i;
       y = reinterpret_bits<float>(i);
@@ -265,10 +265,10 @@ namespace zs {
       return y;
     }
     constexpr double q_rsqrt(double number) noexcept {
-      uint64_t i{};
+      u64 i{};
       double x2 = number * 0.5, y = number;
       // i = *(uint64_t *)&y;
-      i = reinterpret_bits<uint64_t>(y);
+      i = reinterpret_bits<u64>(y);
       i = 0x5fe6eb50c7b537a9 - (i >> 1);
       // y = *(double *)&i;
       y = reinterpret_bits<double>(i);

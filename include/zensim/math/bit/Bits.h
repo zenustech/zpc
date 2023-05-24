@@ -1,11 +1,6 @@
 #pragma once
-#include <stdint.h>
-
-#include <bitset>
-#include <cstring>
-#include <limits>
-
 #include "zensim/TypeAlias.hpp"
+#include "zensim/ZpcIntrinsics.hpp"
 
 namespace zs {
 
@@ -51,6 +46,8 @@ namespace zs {
     return u.l;
   }
 
+  /// @note refer to zensim/ZpcIntrinsics.hpp
+#if 0
   // ref: https://www.youtube.com/watch?v=_qzMpk-22cc
   // CppCon 2019 Timur Doumler [Type punning in modern C++]
   //
@@ -59,28 +56,30 @@ namespace zs {
     using Dst = remove_cvref_t<DstT>;
     static_assert(sizeof(Src) == sizeof(Dst),
                   "Source Type and Destination Type must be of the same size");
-    static_assert(std::is_trivially_copyable_v<Src> && std::is_trivially_copyable_v<Dst>,
+    static_assert(is_trivially_copyable_v<Src> && is_trivially_copyable_v<Dst>,
                   "Both types should be trivially copyable.");
+    if constexpr (is_same_v<Src, Dst>) return FWD(val);
+#  if 0
     static_assert(alignof(Src) % alignof(Dst) == 0,
                   "The original type should at least have an alignment as strict.");
-    if constexpr (is_same_v<Src, Dst>) return FWD(val);
-#if 0
     union {
       Src in;
       Dst out;
     } tmp{FWD(val)};
     return tmp.out;
-#elif 1
+#  elif 1
     // only this implementation proven reliable
     Dst dst{};
-    std::memcpy(&dst, const_cast<const Src *>(&val), sizeof(Dst));
+    memcpy(&dst, const_cast<const Src *>(&val), sizeof(Dst));
     return dst;
-#else
+#  else
     // unsafe due to strict aliasing rule
     // ref: https://en.cppreference.com/w/cpp/language/reinterpret_cast#Type_aliasing
     return reinterpret_cast<Dst const volatile &>(val);
-#endif
+#  endif
   }
+#endif
+
   /// morton code
   constexpr u32 expand_bits_32(u32 v) noexcept {  // expands lower 10-bits to 30 bits
     v = (v * 0x00010001u) & 0xFF0000FFu;
@@ -160,7 +159,7 @@ namespace zs {
     return mask;
   }
   /**
-   *	\fn uint32_t bit_length(uint32_t N)
+   *	\fn u32 bit_length(u32 N)
    *	\brief compute the count of significant digits of a number
    *	\param N the number
    */
@@ -171,7 +170,7 @@ namespace zs {
       return (Tn)0;
   }
   /**
-   *	\fn uint32_t bit_count(uint32_t N)
+   *	\fn u32 bit_count(u32 N)
    *	\brief compute the count of digits required to express integers in [0, N)
    *  \param N the maximum of the range
    */
@@ -184,11 +183,11 @@ namespace zs {
 
   template <typename Tn> constexpr Tn next_2pow(Tn n) noexcept { return (Tn)1 << bit_count(n); }
   /**
-   *	\fn uint32_t next_power_of_two(uint32_t i)
+   *	\fn u32 next_power_of_two(u32 i)
    *	\brief compute the next power of two bigger than the number i
    *	\param i the number
    */
-  constexpr uint32_t next_power_of_two(uint32_t i) noexcept {
+  constexpr u32 next_power_of_two(u32 i) noexcept {
     i--;
     i |= i >> 1;
     i |= i >> 2;
@@ -212,14 +211,14 @@ namespace zs {
     return res;
   }
 
-  constexpr int bit_pack(const uint64_t mask, const uint64_t data) {
-    uint64_t slresult = 0;
-    uint64_t &ulresult{slresult};
-    uint64_t uldata = data;
+  constexpr int bit_pack(const u64 mask, const u64 data) {
+    u64 slresult = 0;
+    u64 &ulresult{slresult};
+    u64 uldata = data;
     int count = 0;
     ulresult = 0;
 
-    uint64_t rmask = binary_reverse(mask);
+    u64 rmask = binary_reverse(mask);
     unsigned char lz{0};
 
     while (rmask) {
@@ -236,10 +235,10 @@ namespace zs {
     return (int)slresult;
   }
 
-  constexpr uint64_t bit_spread(const uint64_t mask, const int data) {
-    uint64_t rmask = binary_reverse(mask);
+  constexpr u64 bit_spread(const u64 mask, const int data) {
+    u64 rmask = binary_reverse(mask);
     int dat = data;
-    uint64_t result = 0;
+    u64 result = 0;
     unsigned char lz{0};
     while (rmask) {
       lz = static_cast<unsigned char>(count_leading_zeros(rmask) + 1);
@@ -253,23 +252,21 @@ namespace zs {
   ///
   /// borrowed from gvdb_library/kernels/cuda_gvdb.cuh
   ///
-  constexpr float float_construct(uint32_t m) noexcept {
-    const uint32_t ieeeMantissa = 0x007FFFFFu;  // binary32 mantissa bitmask
-    const uint32_t ieeeOne = 0x3F800000u;       // 1.0 in IEEE binary32
-    m &= ieeeMantissa;                          // Keep only mantissa bits (fractional part)
-    m |= ieeeOne;                               // Add fractional part to 1.0
-    float f = reinterpret_bits<float>(m);       // Range [1:2]
-    return f - 1.0;                             // Range [0:1]
+  constexpr float float_construct(u32 m) noexcept {
+    const u32 ieeeMantissa = 0x007FFFFFu;  // binary32 mantissa bitmask
+    const u32 ieeeOne = 0x3F800000u;       // 1.0 in IEEE binary32
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+    float f = reinterpret_bits<float>(m);  // Range [1:2]
+    return f - 1.0;                        // Range [0:1]
   }
 
-  constexpr u8 num_bits_on(uint64_t v) noexcept {
+  constexpr u8 num_bits_on(u64 v) noexcept {
     v = v - ((v >> 1) & 0x5555555555555555LLU);
     v = (v & 0x3333333333333333LLU) + ((v >> 2) & (0x3333333333333333LLU));
     return (((v + (v >> 4)) & 0xF0F0F0F0F0F0F0FLLU) * 0x101010101010101LLU) >> 56;
   }
 
-  constexpr bool is_bit_on(uint64_t mask, char b) noexcept {
-    return (mask & ((uint64_t)1 << (b & 63))) != 0;
-  }
+  constexpr bool is_bit_on(u64 mask, char b) noexcept { return (mask & ((u64)1 << (b & 63))) != 0; }
 
 }  // namespace zs

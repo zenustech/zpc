@@ -96,6 +96,11 @@ namespace zs {
         indices.resize(size);
         status.resize(size);
       }
+      void reset(bool resetIndex = true) {
+        keys.reset(0x3f);  // big enough positive integer
+        status.reset(-1);  // byte-wise init
+        if (resetIndex) indices.reset(-1);
+      }
 
       Vector<storage_key_type, allocator_type> keys;
       Vector<value_type, allocator_type> indices;
@@ -108,7 +113,14 @@ namespace zs {
             && std::allocator_traits<allocator_type>::propagate_on_container_swap::value,
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
-    static constexpr index_type key_scalar_sentinel_v = limits<index_type>::max();
+    /// @note byte-wise filled with 0x3f
+    static constexpr key_type deduce_key_sentinel() noexcept {
+      typename key_type::value_type v{0};
+      for (int i = 0; i != sizeof(typename key_type::value_type); ++i) v = (v << 8) | 0x3f;
+      return key_type::constant(v);
+    }
+    static constexpr key_type key_sentinel_v = deduce_key_sentinel();
+    // static constexpr index_type key_scalar_sentinel_v = limits<index_type>::max(); // detail::deduce_numeric_max<index_type>();
     static constexpr value_type sentinel_v{-1};  // this requires key_type to be signed type
     static constexpr status_type status_sentinel_v{-1};
 
@@ -145,9 +157,11 @@ namespace zs {
       _hf1 = hasher_type(rng);
       _hf2 = hasher_type(rng);
 
-      _buildSuccess.setVal(1);
+      // _cnt.setVal((value_type)0);
+      _cnt.reset(0);
+      _table.reset(true);
 
-      _cnt.setVal((value_type)0);
+      _buildSuccess.setVal(1);
     }
     bht(size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : bht{get_default_allocator(mre, devid), numExpectedEntries} {}
@@ -252,14 +266,14 @@ namespace zs {
   EXTERN_BHT_INSTANTIATIONS(i32, i64, 16)
   EXTERN_BHT_INSTANTIATIONS(i64, i64, 16)
 
+#if 0
   template <typename HashTableView> struct ResetBHT {
     using hash_table_type = typename HashTableView::hash_table_type;
     explicit ResetBHT(HashTableView tv, bool clearCnt) : table{tv}, clearCnt{clearCnt} {}
 
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
       using namespace placeholders;
-      table._table.keys[entry]
-          = hash_table_type::key_type::constant(hash_table_type::key_scalar_sentinel_v);
+      table._table.keys[entry] = hash_table_type::key_sentinel_v;
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
@@ -269,13 +283,19 @@ namespace zs {
     HashTableView table;
     bool clearCnt;
   };
+#endif
 
   template <typename Tn, int dim, typename Index, int B, typename Allocator>
   template <typename Policy>
   void bht<Tn, dim, Index, B, Allocator>::reset(Policy &&policy, bool clearCnt) {
+#if 0
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     using LsvT = decltype(proxy<space>(*this));
     policy(range(_tableSize), ResetBHT<LsvT>{proxy<space>(*this), clearCnt});
+#else
+    _table.reset();
+    _cnt.reset(0);
+#endif
   }
 
   /// proxy to work within each backends
@@ -317,7 +337,6 @@ namespace zs {
       conditional_t<is_const_structure, const status_type *, status_type *> status{nullptr};
     };
 
-    static constexpr auto key_scalar_sentinel_v = hash_table_type::key_scalar_sentinel_v;
     static constexpr auto sentinel_v = hash_table_type::sentinel_v;
     static constexpr auto status_sentinel_v = hash_table_type::status_sentinel_v;
 
@@ -337,8 +356,7 @@ namespace zs {
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __host__ __device__ value_type insert(const key_type &key) noexcept {
-      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
-
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       int iter = 0;
       int load = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -387,8 +405,7 @@ namespace zs {
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V> = 0>
     inline value_type insert(const key_type &key) noexcept {
-      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
-
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       int iter = 0;
       int load = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -471,7 +488,6 @@ namespace zs {
       // reset counter
       *_cnt = 0;
       // reset table
-      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
       for (key_type entry = 0; entry < _tableSize; ++entry) {
         _table.keys[entry] = key_sentinel_v;
         _table.indices[entry] = HashTableT::sentinel_v;
@@ -498,7 +514,8 @@ namespace zs {
         const storage_key_type &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
+      const storage_key_type storage_key_sentinel_v = key_sentinel_v;
       if constexpr (sizeof(storage_key_type) == 8) {
         static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
@@ -509,7 +526,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
@@ -528,7 +545,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
@@ -545,7 +562,7 @@ namespace zs {
       /// cas
       storage_key_type temp;
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
-      bool eqn = temp.val == key_sentinel_v.val;
+      bool eqn = temp.val == key_sentinel_v;
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
@@ -621,7 +638,8 @@ namespace zs {
                                     const storage_key_type &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
+      const storage_key_type storage_key_sentinel_v = key_sentinel_v;
       if constexpr (sizeof(storage_key_type) == 8) {
         static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
@@ -632,7 +650,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
@@ -651,7 +669,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
@@ -668,7 +686,7 @@ namespace zs {
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
-      bool eqn = temp.val == key_sentinel_v.val;
+      bool eqn = temp.val == key_sentinel_v;
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }

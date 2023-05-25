@@ -227,7 +227,6 @@ namespace zs {
 
     size_t tabSize = size;
     bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
-    tab.reset(policy, true);
     Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
     Vector<index_type> localOffsets{get_allocator(), (size_t)size};
     bool success = false;
@@ -251,7 +250,6 @@ namespace zs {
       if (!success) {
         tabSize *= 2;
         tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
-        tab.reset(policy, true);
         fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
             "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }
@@ -337,7 +335,6 @@ namespace zs {
 
     size_t tabSize = Mirror ? (size_t)size * 2 : (size_t)size;
     bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
-    tab.reset(policy, true);
     Vector<index_type> localOffsets{get_allocator(), tabSize};
     Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
     bool success = false;
@@ -373,7 +370,6 @@ namespace zs {
       if (!success) {
         tabSize *= 2;
         tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
-        tab.reset(policy, true);
         fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
             "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }

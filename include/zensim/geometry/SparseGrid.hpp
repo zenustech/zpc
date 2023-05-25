@@ -1,7 +1,8 @@
 #pragma once
 #include <utility>
 
-#include "zensim/container/Bcht.hpp"
+// #include "zensim/container/Bcht.hpp"
+#include "zensim/container/Bht.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
 #include "zensim/math/Vec.h"
@@ -42,7 +43,8 @@ namespace zs {
     using grid_storage_type = TileVector<value_type, block_size, allocator_type>;
     ///
     using transform_type = math::Transform<coord_component_type, dim>;
-    using table_type = bcht<integer_coord_type, int, true, universal_hash<integer_coord_type>, 16>;
+    // using table_type = bcht<integer_coord_type, int, true, universal_hash<integer_coord_type>, 16>;
+    using table_type = bht<integer_coord_component_type, dim, int, 16, allocator_type>;
 
     constexpr MemoryLocation memoryLocation() const noexcept { return _grid.memoryLocation(); }
     constexpr ProcID devid() const noexcept { return _grid.devid(); }
@@ -373,7 +375,7 @@ namespace zs {
       return indexToWorld(iStaggeredCoord(cellno, f));
     }
 
-    /// delegate to bcht
+    /// delegate to hash table
     template <typename VecT, enable_if_t<is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto insert(const VecInterface<VecT> &x) {
       auto X_ = worldToIndex(x) + (coord_component_type)0.5;

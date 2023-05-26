@@ -259,19 +259,21 @@ namespace zs {
     hasher_type _hf0, _hf1, _hf2;
   };
 
-#define EXTERN_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
-  extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
-  extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
-  extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
-  extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
+#if 0
+#  define EXTERN_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
+    extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
+    extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
+    extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
+    extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
+    extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
+    extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
+    extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
+    extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
 
   EXTERN_BHT_INSTANTIATIONS(i32, i32, 16)
   EXTERN_BHT_INSTANTIATIONS(i32, i64, 16)
   EXTERN_BHT_INSTANTIATIONS(i64, i64, 16)
+#endif
 
 #if 0
   template <typename HashTableView> struct ResetBHT {
@@ -576,7 +578,7 @@ namespace zs {
       return HashTableT::sentinel_v;
     }
 #if defined(__CUDACC__)
-    template <bool retrieve_index = false, execspace_e S = space, 
+    template <bool retrieve_index = false, execspace_e S = space,
               enable_if_t<S == execspace_e::cuda> = 0>
     __forceinline__ __host__ __device__ value_type tile_query(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
@@ -618,7 +620,7 @@ namespace zs {
       *_cnt = 0;
       // reset table
       for (key_type entry = 0; entry < _tableSize; ++entry) {
-        _table.keys[entry] = key_sentinel_v;
+        _table.keys[entry] = hash_table_type::key_sentinel_v;
         _table.indices[entry] = HashTableT::sentinel_v;
         _table.status[entry] = HashTableT::status_sentinel_v;
       }
@@ -762,10 +764,9 @@ namespace zs {
     }
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
-    __forceinline__ __host__ __device__ key_type
-    atomicTileLoad(
-      cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
-      status_type *lock, const volatile storage_key_type *const dest) noexcept {
+    __forceinline__ __host__ __device__ key_type atomicTileLoad(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        status_type *lock, const volatile storage_key_type *const dest) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
@@ -820,8 +821,7 @@ namespace zs {
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
       thread_fence(exec_cuda);
       /// unlock
-      if (tile.thread_rank() == 0)
-        atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
+      if (tile.thread_rank() == 0) atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
       tile.sync();
       return return_val;
     }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Bcht.hpp"
+#include "Bht.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
@@ -22,8 +22,7 @@ namespace zs {
     using bv_t = zs::AABBBox<dim, value_type>;
     using coord_type = zs::vec<value_type, dim>;
     using integer_coord_type = zs::vec<int, dim>;
-    using table_type
-        = bcht<integer_coord_type, index_type, true, universal_hash<integer_coord_type>, 16>;
+    using table_type = bht<int, dim, index_type, 16, allocator_type>;
     using indices_type = zs::Vector<index_type, allocator_type>;
 
     constexpr decltype(auto) memoryLocation() const noexcept { return _table.memoryLocation(); }

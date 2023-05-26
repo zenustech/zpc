@@ -329,7 +329,8 @@ namespace zs {
   }
 
   /// proxy to work within each backends
-  template <execspace_e space, typename HashTableT, typename = void> struct BHTView {
+  template <execspace_e space, typename HashTableT, bool Base = false, typename = void>
+  struct BHTView {
     static constexpr auto exectag = wrapv<space>{};
     static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
     using hash_table_type = remove_const_t<HashTableT>;
@@ -361,7 +362,7 @@ namespace zs {
     static constexpr size_type bucket_size = hash_table_type::bucket_size;
     static constexpr size_type threshold = hash_table_type::threshold;
 
-    static constexpr auto is_base_c = wrapv<!ZS_ENABLE_OFB_ACCESS_CHECK>{};
+    static constexpr auto is_base_c = wrapv<Base>{};
     using storage_key_vector_view_type = RM_CVREF_T(view<space>(
         declval<conditional_t<is_const_structure,
                               const typename hash_table_type::Table::storage_key_vector &,
@@ -590,7 +591,6 @@ namespace zs {
         else
           return limits<value_type>::max();
       }
-      int iter = 0;
       int loc = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
       for (int iter = 0; iter < 3;) {
@@ -627,7 +627,6 @@ namespace zs {
         else
           return limits<value_type>::max();
       }
-      int iter = 0;
       int loc = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
       for (int iter = 0; iter < 3;) {
@@ -988,13 +987,23 @@ namespace zs {
     }
   };
 
-  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator>
-  constexpr decltype(auto) proxy(bht<Tn, dim, Index, B, Allocator> &table) {
-    return BHTView<ExecSpace, bht<Tn, dim, Index, B, Allocator>>{table};
+  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
+    return BHTView<ExecSpace, bht<Tn, dim, Index, B, Allocator>, Base>{table};
   }
-  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator>
+  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(const bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
+    return BHTView<ExecSpace, const bht<Tn, dim, Index, B, Allocator>, Base>{table};
+  }
+  template <execspace_e space, typename Tn, int dim, typename Index, int B, typename Allocator>
+  constexpr decltype(auto) proxy(bht<Tn, dim, Index, B, Allocator> &table) {
+    return view<space>(table, false_c);
+  }
+  template <execspace_e space, typename Tn, int dim, typename Index, int B, typename Allocator>
   constexpr decltype(auto) proxy(const bht<Tn, dim, Index, B, Allocator> &table) {
-    return BHTView<ExecSpace, const bht<Tn, dim, Index, B, Allocator>>{table};
+    return view<space>(table, false_c);
   }
 
 }  // namespace zs

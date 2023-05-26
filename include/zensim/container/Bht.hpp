@@ -82,6 +82,9 @@ namespace zs {
     using pair_type = tuple<key_type, value_type>;
 
     struct Table {
+      using storage_key_vector = Vector<storage_key_type, allocator_type>;
+      using value_vector = Vector<value_type, allocator_type>;
+      using status_vector = Vector<status_type, allocator_type>;
       Table() = default;
       Table(const Table &) = default;
       Table(Table &&) noexcept = default;
@@ -96,15 +99,15 @@ namespace zs {
         indices.resize(size);
         status.resize(size);
       }
-      void reset(bool resetIndex = true) {
+      void reset(bool resetIndex = false) {
         keys.reset(0x3f);  // big enough positive integer
         status.reset(-1);  // byte-wise init
         if (resetIndex) indices.reset(-1);
       }
 
-      Vector<storage_key_type, allocator_type> keys;
-      Vector<value_type, allocator_type> indices;
-      Vector<status_type, allocator_type> status;
+      storage_key_vector keys;
+      value_vector indices;
+      status_vector status;
     };
 
     static_assert(
@@ -161,7 +164,7 @@ namespace zs {
 
       // _cnt.setVal((value_type)0);
       _cnt.reset(0);
-      _table.reset(true);
+      _table.reset(false);
 
       _buildSuccess.setVal(1);
     }
@@ -244,7 +247,7 @@ namespace zs {
 #endif
     template <typename Policy> void reset(Policy &&, bool clearCnt);
     void reset(bool clearCnt) {
-      _table.reset(true);
+      _table.reset(false);
       if (clearCnt) _cnt.reset(0);
       _buildSuccess.setVal(1);
     }
@@ -358,10 +361,33 @@ namespace zs {
     static constexpr size_type bucket_size = hash_table_type::bucket_size;
     static constexpr size_type threshold = hash_table_type::threshold;
 
+    static constexpr auto is_base_c = wrapv<!ZS_ENABLE_OFB_ACCESS_CHECK>{};
+    using storage_key_vector_view_type = RM_CVREF_T(view<space>(
+        declval<conditional_t<is_const_structure,
+                              const typename hash_table_type::Table::storage_key_vector &,
+                              typename hash_table_type::Table::storage_key_vector &>>(),
+        is_base_c));
+    using value_vector_view_type = RM_CVREF_T(view<space>(
+        declval<
+            conditional_t<is_const_structure, const typename hash_table_type::Table::value_vector &,
+                          typename hash_table_type::Table::value_vector &>>(),
+        is_base_c));
+    using status_vector_view_type = RM_CVREF_T(
+        view<space>(declval<conditional_t<is_const_structure,
+                                          const typename hash_table_type::Table::status_vector &,
+                                          typename hash_table_type::Table::status_vector &>>(),
+                    is_base_c));
+
     struct table_t {
+#if 0
       conditional_t<is_const_structure, const storage_key_type *, storage_key_type *> keys{nullptr};
       conditional_t<is_const_structure, const value_type *, value_type *> indices{nullptr};
       conditional_t<is_const_structure, const status_type *, status_type *> status{nullptr};
+#else
+      storage_key_vector_view_type keys{};
+      value_vector_view_type indices{};
+      status_vector_view_type status{};
+#endif
     };
 
     static constexpr auto sentinel_v = hash_table_type::sentinel_v;
@@ -370,7 +396,9 @@ namespace zs {
 
     BHTView() noexcept = default;
     explicit constexpr BHTView(HashTableT &table)
-        : _table{table.self().keys.data(), table.self().indices.data(), table.self().status.data()},
+        : _table{view<space>(table.self().keys, is_base_c, "bht_storage_key"),
+                 view<space>(table.self().indices, is_base_c, "bht_indices"),
+                 view<space>(table.self().status, is_base_c, "bht_status")},
           _activeKeys{table._activeKeys.data()},
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()},
@@ -553,9 +581,15 @@ namespace zs {
     }
 
     /// make sure no one else is inserting in the same time!
-    template <bool retrieve_index = false>
+    template <bool retrieve_index = true>
     constexpr value_type query(const key_type &key, wrapv<retrieve_index> = {}) const noexcept {
       using namespace placeholders;
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return HashTableT::sentinel_v;
+        else
+          return limits<value_type>::max();
+      }
       int iter = 0;
       int loc = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -564,9 +598,9 @@ namespace zs {
           if (_table.keys[bucketOffset + loc].val == key) break;
         if (loc != bucket_size) {
           if constexpr (retrieve_index)
-            return bucketOffset + loc;
-          else
             return _table.indices[bucketOffset + loc];
+          else
+            return bucketOffset + loc;
         } else {
           ++iter;
           if (iter == 1)
@@ -575,15 +609,24 @@ namespace zs {
             bucketOffset = _hf2(key) % _numBuckets * bucket_size;
         }
       }
-      return HashTableT::sentinel_v;
+      if constexpr (retrieve_index)
+        return HashTableT::sentinel_v;
+      else
+        return limits<value_type>::max();
     }
 #if defined(__CUDACC__)
-    template <bool retrieve_index = false, execspace_e S = space,
+    template <bool retrieve_index = true, execspace_e S = space,
               enable_if_t<S == execspace_e::cuda> = 0>
     __forceinline__ __host__ __device__ value_type tile_query(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const key_type &key, wrapv<retrieve_index> = {}) const noexcept {
       using namespace placeholders;
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return HashTableT::sentinel_v;
+        else
+          return limits<value_type>::max();
+      }
       int iter = 0;
       int loc = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -593,9 +636,9 @@ namespace zs {
         loc = __ffs(keyExistMap) - 1;
         if (loc != -1) {
           if constexpr (retrieve_index)
-            return bucketOffset + loc;
-          else
             return _table.indices[bucketOffset + loc];
+          else
+            return bucketOffset + loc;
         } else {
           ++iter;
           if (iter == 1)
@@ -604,7 +647,10 @@ namespace zs {
             bucketOffset = _hf2(key) % _numBuckets * bucket_size;
         }
       }
-      return HashTableT::sentinel_v;
+      if constexpr (retrieve_index)
+        return HashTableT::sentinel_v;
+      else
+        return limits<value_type>::max();
     }
 #endif
     constexpr size_type entry(const key_type &key) const noexcept {

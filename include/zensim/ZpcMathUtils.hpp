@@ -9,11 +9,10 @@ extern "C" {
 // stdio.h
 int printf(const char *format, ...);
 
-// stdlib.h
-int abs(int);
-long long llabs(long long);
-
 #  if defined(__linux__)
+// stdlib.h
+int abs(int) noexcept;
+long long llabs(long long) noexcept;
 // math.h
 float copysignf(float x, float y) noexcept;
 double copysign(double x, double y) noexcept;
@@ -89,6 +88,9 @@ double tanh(double) noexcept;
 // double rint(double);
 
 #  elif defined(_WIN64)
+// stdlib.h
+int abs(int);
+long long llabs(long long);
 // math.h
 float copysignf(float x, float y);
 double copysign(double x, double y);
@@ -164,7 +166,6 @@ double tanh(double);
 // double rint(double);
 
 #  endif
-
 }
 #endif
 
@@ -209,6 +210,10 @@ namespace zs {
     template <typename T, enable_if_t<is_fundamental_v<T>> = 0> constexpr T abs(T x) noexcept {
       return x < 0 ? -x : x;
     }
+    template <typename T, enable_if_t<is_fundamental_v<T>> = 0>
+    constexpr const T &clamp(const T &x, const T &a, const T &b) noexcept {
+      return x < a ? a : (b < x ? b : x);
+    }
     // TODO refer to:
     // https://github.com/mountunion/ModGCD-OneGPU/blob/master/ModGCD-OneGPU.pdf
     // http://www.iaeng.org/IJCS/issues_v42/issue_4/IJCS_42_4_01.pdf
@@ -245,7 +250,9 @@ namespace zs {
 
     /// op_result
     template <typename... Ts> struct op_result;
-    template <typename T> struct op_result<T> { using type = T; };
+    template <typename T> struct op_result<T> {
+      using type = T;
+    };
     template <typename T, typename... Ts> struct op_result<T, Ts...> {
       using type = binary_op_result_t<T, typename op_result<Ts...>::type>;
     };

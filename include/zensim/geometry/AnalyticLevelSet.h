@@ -1,7 +1,6 @@
 #pragma once
-#include "LevelSetInterface.h"
+#include "zensim/geometry/LevelSetInterface.h"
 #include "zensim/math/Vec.h"
-#include "zensim/types/Polymorphism.h"
 
 namespace zs {
 
@@ -16,9 +15,10 @@ namespace zs {
     using TV = vec<value_type, dim>;
 
     constexpr AnalyticLevelSet() noexcept = default;
-    template <typename VecTA, typename VecTB,
-              enable_if_all<VecTA::dim == 1, VecTA::extent == dim, VecTB::dim == 1,
-                            VecTB::extent == dim> = 0>
+    template <
+        typename VecTA, typename VecTB,
+        enable_if_all<VecTA::dim == 1, VecTA::extent == dim, VecTB::dim == 1, VecTB::extent == dim>
+        = 0>
     constexpr AnalyticLevelSet(const VecInterface<VecTA> &origin,
                                const VecInterface<VecTB> &normal) noexcept
         : _origin{}, _normal{} {
@@ -187,8 +187,8 @@ namespace zs {
         if (outsideCircle)
           return disR - _radius;
         else {
-          T disL = std::min(_bottom[_d] + _length - x[_d], x[_d] - _bottom[_d]);
-          return -std::min(disL, _radius - disR);
+          T disL = math::min(_bottom[_d] + _length - x[_d], x[_d] - _bottom[_d]);
+          return -math::min(disL, _radius - disR);
         }
       }
     }
@@ -266,7 +266,7 @@ namespace zs {
     const auto &[mi, ma] = b;
     auto center = (mi + ma) / 2;
     auto point = (p - center).abs() - (ma - mi) / 2;
-    T max = limits<T>::lowest();
+    T max = detail::deduce_numeric_lowest<T>();
     for (int d = 0; d != dim; ++d) {
       if (point[d] > max) max = point[d];
       if (point[d] < 0) point[d] = 0;
@@ -325,7 +325,7 @@ namespace zs {
       VecInterface<VecT> const &ro, VecInterface<VecT> const &rd, VecInterface<VecT> const &v0,
       VecInterface<VecT> const &v1, VecInterface<VecT> const &v2) {
     using T = typename VecT::value_type;
-    constexpr T eps = limits<T>::epsilon() * 10;
+    constexpr T eps = detail::deduce_numeric_epsilon<T>() * 10;
     auto u = v1 - v0;
     auto v = v2 - v0;
     auto n = u.cross(v);
@@ -350,7 +350,7 @@ namespace zs {
         if (-eps <= s && s <= 1 + eps && -eps <= t && s + t <= 1 + eps * 2) return r;
       }
     }
-    return limits<T>::infinity();
+    return detail::deduce_numeric_infinity<T>();
   }
 
   /// ref: An Efficient and Robust Ray-Box Intersection Algorithm, 2005

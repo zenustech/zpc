@@ -64,7 +64,7 @@ namespace zs {
                 IndexBuckets<2, i32, i64>, IndexBuckets<2, i64, i64>>;
 
   template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsView {
-    static constexpr bool is_const_structure = std::is_const_v<IndexBucketsT>;
+    static constexpr bool is_const_structure = is_const_v<IndexBucketsT>;
     static constexpr auto space = Space;
     using ib_t = remove_const_t<IndexBucketsT>;
     static constexpr int dim = ib_t::dim;
@@ -74,11 +74,11 @@ namespace zs {
     using index_type = typename ib_t::index_type;
     using coord_index_type = typename ib_t::coord_index_type;
     using table_t = typename ib_t::table_t;
-    using table_view_t = RM_CVREF_T(proxy<space>(
-        declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
+    using table_view_t = RM_CVREF_T(
+        proxy<space>(declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
     using vector_t = typename ib_t::vector_t;
-    using vector_view_t = RM_CVREF_T(proxy<space>(
-        declval<conditional_t<is_const_structure, const vector_t &, vector_t &>>()));
+    using vector_view_t = RM_CVREF_T(
+        proxy<space>(declval<conditional_t<is_const_structure, const vector_t &, vector_t &>>()));
 
     static constexpr auto coord_offset
         = category == grid_e::collocated ? (value_type)0.5 : (value_type)0;
@@ -96,7 +96,8 @@ namespace zs {
       return table._activeKeys[bucketno];
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto bucketCoord(const VecInterface<VecT> &pos) const noexcept {
       const auto dxinv = (value_type)1.0 / dx;
       typename VecT::template variant_vec<coord_index_type, typename VecT::extents> coord{};
@@ -105,7 +106,8 @@ namespace zs {
       return coord;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           is_integral_v<typename VecT::value_type>> = 0>
+                                           is_integral_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto bucketNo(const VecInterface<VecT> &coord) const noexcept {
       return table.query(coord);
     }

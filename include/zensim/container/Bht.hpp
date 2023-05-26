@@ -20,8 +20,8 @@ namespace zs {
                   "Hashtable only works with zspmrallocator for now.");
     static_assert(is_same_v<Tn_, remove_cvref_t<Tn_>>, "Key is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<Tn_>, "Key is not default-constructible!");
-    static_assert(std::is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
-    static_assert(std::is_fundamental_v<Tn_>, "Key component should be fundamental!");
+    static_assert(is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
+    static_assert(is_fundamental_v<Tn_>, "Key component should be fundamental!");
 
     using index_type = zs::make_signed_t<Tn_>;
     using key_type = vec<index_type, dim_>;
@@ -40,7 +40,7 @@ namespace zs {
           = next_2pow(sizeof(index_type) * dim) - sizeof(index_type) * dim;
       constexpr storage_key_type() noexcept = default;
       constexpr storage_key_type(const key_type &k) noexcept : val{k} {}
-      constexpr storage_key_type(key_type &&k) noexcept : val{std::move(k)} {}
+      constexpr storage_key_type(key_type &&k) noexcept : val{move(k)} {}
       ~storage_key_type() = default;
       constexpr operator key_type &() { return val; }
       constexpr operator const key_type &() const { return val; }

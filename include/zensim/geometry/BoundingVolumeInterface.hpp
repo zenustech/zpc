@@ -1,7 +1,4 @@
 #pragma once
-#include <algorithm>
-#include <type_traits>
-
 #include "zensim/math/Vec.h"
 
 namespace zs {
@@ -22,13 +19,14 @@ namespace zs {
     }
     template <typename VecT, typename Self = Derived,
               enable_if_all<VecT::dim == 1, VecT::extent == Self::dim,
-                            is_floating_point_v<typename Self::value_type>> = 0>
+                            is_floating_point_v<typename Self::value_type>>
+              = 0>
     constexpr auto getUniformCoord(const VecInterface<VecT> &pos) const noexcept {
       auto [lo, offset] = getBoundingBox();
       const auto lengths = offset - lo;
       offset = pos - lo;
       for (int d = 0; d != Self::dim; ++d)
-        offset[d] = std::clamp(offset[d], (typename Self::value_type)0, lengths[d]) / lengths[d];
+        offset[d] = math::clamp(offset[d], (typename Self::value_type)0, lengths[d]) / lengths[d];
       return offset;
     }
 
@@ -39,9 +37,10 @@ namespace zs {
   };
 
   template <typename VecTA, typename VecTB,
-            enable_if_all<std::is_fundamental_v<math::op_result_t<typename VecTA::value_type,
-                                                                  typename VecTB::value_type>>,
-                          is_same_v<typename VecTA::dims, typename VecTB::dims>> = 0>
+            enable_if_all<is_fundamental_v<math::op_result_t<typename VecTA::value_type,
+                                                             typename VecTB::value_type>>,
+                          is_same_v<typename VecTA::dims, typename VecTB::dims>>
+            = 0>
   constexpr auto get_bounding_box(const VecInterface<VecTA> &bva, const VecInterface<VecTB> &bvb) {
     using ValueT = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
     using TV = typename VecTA::template variant_vec<ValueT, typename VecTA::extents>;

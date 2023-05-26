@@ -519,7 +519,7 @@ namespace zs {
       });
     }
 
-    exclusive_scan(policy, std::begin(leafDepths), std::end(leafDepths), std::begin(leafOffsets));
+    exclusive_scan(policy, zs::begin(leafDepths), zs::end(leafDepths), zs::begin(leafOffsets));
 
     lOffsets = proxy<space>(leafOffsets);
 
@@ -559,7 +559,7 @@ namespace zs {
       // check trunk order & lInds
       Vector<u64> tab{primBvs.get_allocator(), numNodes}, tmp{primBvs.get_allocator(), 1};
       policy(enumerate(tab), [] ZS_LAMBDA(auto id, auto &i) { i = id + 1; });
-      reduce(policy, std::begin(tab), std::end(tab), std::begin(tmp), (u64)0);
+      reduce(policy, zs::begin(tab), zs::end(tab), zs::begin(tmp), (u64)0);
       auto chkSum = tmp.getVal();
       fmt::print("{} total nodes, sum {} (ref: {})\n", numNodes, chkSum,
                  ((u64)1 + (u64)numNodes) * (u64)numNodes / 2);
@@ -572,7 +572,7 @@ namespace zs {
         if (atomic_cas(execTag, &tab[dst], (u64)(dst + 1), (u64)0) != dst + 1)
           printf("\t%d-th leaf node (dst %d) invalid\n", (int)id, (int)dst);
       });
-      reduce(policy, std::begin(tab), std::end(tab), std::begin(tmp), (u64)0);
+      reduce(policy, zs::begin(tab), zs::end(tab), zs::begin(tmp), (u64)0);
       chkSum = tmp.getVal();
       fmt::print("end sum {}\n", chkSum);
     }

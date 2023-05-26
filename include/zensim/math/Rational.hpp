@@ -46,12 +46,13 @@ namespace zs {
     // assert(exponent <= 0);
 
     // significand is now a whole number
-    if (significand < limits<Ti>::max() && significand > limits<Ti>::lowest())
+    if (significand < detail::deduce_numeric_max<Ti>()
+        && significand > detail::deduce_numeric_lowest<Ti>())
       num = (Ti)significand;
     else
       printf("underlying integer not big enough!");
     if (auto v = (1.0 / zs::ldexp((T)1.0, exponent));
-        v < limits<Ti>::max() && v > limits<Ti>::lowest())
+        v < detail::deduce_numeric_max<Ti>() && v > detail::deduce_numeric_lowest<Ti>())
       den = (Ti)v;
     else
       printf("underlying integer not big enough!");
@@ -755,7 +756,7 @@ namespace zs {
 
     int refine = 0;
 
-    toi = limits<double>::infinity();
+    toi = detail::deduce_numeric_infinity<double>();
     NumCCD TOI(1, 0);
 
     bool collision = false;
@@ -858,7 +859,7 @@ namespace zs {
     int refine = 0;
     double impact_ratio = 1;
 
-    toi = zs::limits<double>::infinity();  // set toi as infinate
+    toi = detail::deduce_numeric_infinity<double>();  // set toi as infinate
     // temp_toi is to catch the toi of each level
     double temp_toi = toi;
     // set TOI to 4. this is to record the impact time of this level
@@ -1067,7 +1068,7 @@ namespace zs {
                              const double ms_in, double &toi, const double tolerance_in,
                              const double t_max_in, const int max_itr, double &output_tolerance,
                              bool &earlyTerminate, bool no_zero_toi = true) {
-    constexpr int MAX_NO_ZERO_TOI_ITER = limits<int>::max();
+    constexpr int MAX_NO_ZERO_TOI_ITER = detail::deduce_numeric_max<int>();
     // unsigned so can be larger than MAX_NO_ZERO_TOI_ITER
     unsigned int no_zero_toi_iter = 0;
 

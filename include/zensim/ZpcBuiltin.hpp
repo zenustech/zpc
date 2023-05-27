@@ -3,6 +3,7 @@
 #include "zensim/ZpcFunctional.hpp"
 #include "zensim/ZpcIterator.hpp"
 #include "zensim/ZpcMathUtils.hpp"
+#include "zensim/ZpcReflection.hpp"
 #include "zensim/ZpcTuple.hpp"
 #include "zensim/math/Tensor.hpp"
 #include "zensim/math/Vec.h"

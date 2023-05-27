@@ -12,36 +12,26 @@ namespace zs {
   }
 
   namespace detail {
-    template <typename T> constexpr auto get_var_type_str_helper(T &&) noexcept {
-#if defined(_MSC_VER)
-      return __FUNCSIG__;
-#else
-      return __PRETTY_FUNCTION__;
-#endif
-    }
-
     template <typename T> constexpr auto get_type_str_helper() noexcept {
 #if defined(_MSC_VER)
-      return __FUNCSIG__;
+      return zs::BasicSmallString<char, sizeof(__FUNCSIG__) + 1>{__FUNCSIG__};
 #else
-      return __PRETTY_FUNCTION__;
+      return zs::BasicSmallString<char, sizeof(__PRETTY_FUNCTION__) + 1>{__PRETTY_FUNCTION__};
 #endif
     }
-
-    constexpr size_t get_type_len_helper(const char *p = nullptr) noexcept {
-      if (p == nullptr) return (size_t)0;
-      size_t i = 0;
-      for (; p[i]; ++i)
-        ;
-      return i;
+    template <typename T> constexpr auto get_var_type_str_helper(T &&) noexcept {
+      return get_type_str_helper<T>();
     }
 
+#if 0
     struct range_pair {
       size_t l{}, r{};
     };
-    constexpr range_pair locate_char_in_str_helper(const char *p, const char lc,
+    template <typename CharT, size_t N>
+    constexpr range_pair locate_char_in_str_helper(const BasicSmallString<CharT, N> &str, const char lc,
                                                    const char rc) noexcept {
-      if (p == nullptr) return range_pair{0, 0};
+      const char *p = str.buf;
+      if (p[0]== '\0') return range_pair{0, 0};
       size_t l{0};
       for (; *p; ++p, ++l)
         if (*p == lc) break;
@@ -56,53 +46,46 @@ namespace zs {
       /// [l, r]
       return range_pair{l, r};
     }
+#endif
 
-    template <zs::size_t head = 0, size_t length = 0, typename T>
-    constexpr auto get_var_type_substr(T &&) noexcept {
-      constexpr auto typestr = get_type_str_helper<T>();
-      using CharT = remove_const_t<remove_pointer_t<decltype(typestr)>>;
-      constexpr auto typelength = get_type_len_helper(typestr);
-      static_assert(typelength > head, "sub-string should not exceed the whole string!");
-      constexpr auto substrLength
-          = (length == 0 ? typelength - head
-                         : (length < (typelength - head) ? length : (typelength - head)));
-      SmallStringImpl<CharT, substrLength + 1> ret{};
-      for (size_t i = 0; i != substrLength; ++i) ret[i] = typestr[i + head];
-      ret[substrLength] = '\0';
-      return ret;
-    }
   }  // namespace detail
 
   template <typename T> constexpr auto get_type() noexcept {
-    constexpr auto typestr = detail::get_type_str_helper<T>();
-    using CharT = remove_const_t<remove_pointer_t<decltype(typestr)>>;
-    // constexpr auto typelength = detail::get_type_len_helper(typestr);
+    const auto typestr = zs::detail::get_type_str_helper<T>();
+    using StrT = RM_CVREF_T(typestr);
+    using CharT = typename StrT::char_type;
+    constexpr auto typelength = StrT::nbytes;
 
 #if defined(_MSC_VER)
-    constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');
-    constexpr size_t head{pair.l + 1};
-    constexpr size_t length{pair.r - head};
+    constexpr size_t head = 45;
+    constexpr size_t ed = typelength - 18;
 #elif defined(__clang__)
-    constexpr auto pair = detail::locate_char_in_str_helper(typestr, '[', ']');
-    constexpr size_t head{pair.l + 5};
-    constexpr size_t length{pair.r - head};
+    constexpr size_t head = 44;
+    constexpr size_t ed = typelength - 3;
 #elif defined(__GNUC__)
-    constexpr auto pair = detail::locate_char_in_str_helper(typestr, '[', ']');
-    constexpr size_t head{pair.l + 10};
-    constexpr size_t length{pair.r - head};
+    constexpr size_t head = 58;
+    constexpr size_t ed = typelength - 3;
+#elif defined(__CUDACC__)
+    constexpr size_t head = 58;
+    constexpr size_t ed = typelength - 3;
+#else
+    static_assert(always_false<T>, "unknown compiler for handling compile-time type reflection");
 #endif
+    constexpr size_t length = ed - head;
 
-    SmallStringImpl<CharT, length + 1> ret{};
+    BasicSmallString<CharT, length + 1> ret{};
     for (size_t i = 0; i != length; ++i) ret[i] = typestr[i + head];
     ret[length] = '\0';
     return ret;
   }
   template <typename T> constexpr auto get_var_type(T &&) noexcept { return get_type<T>(); }
 
+#if 0
   template <typename CharT, size_t N>
-  auto convert_char_array_to_string(const SmallStringImpl<CharT, N> &str) noexcept {
+  auto convert_char_array_to_string(const BasicSmallString<CharT, N> &str) noexcept {
     return std::basic_string<CharT>{begin(str), end(str)};
   }
+#endif
   template <typename T> auto get_var_type_str(T &&v) noexcept {
     // return convert_char_array_to_string(get_var_type(FWD(v)));
     return get_var_type(FWD(v));

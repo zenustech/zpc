@@ -12,9 +12,22 @@ namespace zs {
   }
 
   namespace detail {
+#if defined(_MSC_VER)
+    template <typename T> constexpr auto get_type_raw_str_helper() noexcept { return __FUNCSIG__; }
+    constexpr zs::size_t get_type_len_helper(const char *p = nullptr) noexcept {
+      if (p == nullptr) return 0;
+      size_t i = 0;
+      for (; p[i]; ++i)
+        ;
+      return i;
+    }
+#endif
+
     template <typename T> constexpr auto get_type_str_helper() noexcept {
 #if defined(_MSC_VER)
-      return zs::BasicSmallString<char, sizeof(__FUNCSIG__) + 1>{__FUNCSIG__};
+      constexpr auto p = get_type_raw_str_helper<T>();
+      constexpr auto len = get_type_len_helper(p);
+      return zs::BasicSmallString<char, len + 1>{p};
 #else
       return zs::BasicSmallString<char, sizeof(__PRETTY_FUNCTION__) + 1>{__PRETTY_FUNCTION__};
 #endif
@@ -23,15 +36,14 @@ namespace zs {
       return get_type_str_helper<T>();
     }
 
-#if 0
     struct range_pair {
       size_t l{}, r{};
     };
     template <typename CharT, size_t N>
-    constexpr range_pair locate_char_in_str_helper(const BasicSmallString<CharT, N> &str, const char lc,
-                                                   const char rc) noexcept {
+    constexpr range_pair locate_char_in_str_helper(const BasicSmallString<CharT, N> &str,
+                                                   const char lc, const char rc) noexcept {
       const char *p = str.buf;
-      if (p[0]== '\0') return range_pair{0, 0};
+      if (p[0] == '\0') return range_pair{0, 0};
       size_t l{0};
       for (; *p; ++p, ++l)
         if (*p == lc) break;
@@ -46,30 +58,36 @@ namespace zs {
       /// [l, r]
       return range_pair{l, r};
     }
-#endif
 
   }  // namespace detail
 
   template <typename T> constexpr auto get_type() noexcept {
+#if defined(_MSC_VER)
+    constexpr auto typestr = zs::detail::get_type_str_helper<T>();
+    using StrT = RM_CVREF_T(typestr);
+    using CharT = typename StrT::char_type;
+    constexpr auto typelength = StrT::nbytes;
+    constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');
+    constexpr size_t head{pair.l + 1};
+    constexpr size_t ed{pair.r};
+#else
     const auto typestr = zs::detail::get_type_str_helper<T>();
     using StrT = RM_CVREF_T(typestr);
     using CharT = typename StrT::char_type;
     constexpr auto typelength = StrT::nbytes;
 
-#if defined(_MSC_VER)
-    constexpr size_t head = 45;
-    constexpr size_t ed = typelength - 18;
-#elif defined(__clang__)
+#  if defined(__clang__)
     constexpr size_t head = 44;
     constexpr size_t ed = typelength - 3;
-#elif defined(__GNUC__)
+#  elif defined(__GNUC__)
     constexpr size_t head = 58;
     constexpr size_t ed = typelength - 3;
-#elif defined(__CUDACC__)
+#  elif defined(__CUDACC__)
     constexpr size_t head = 58;
     constexpr size_t ed = typelength - 3;
-#else
+#  else
     static_assert(always_false<T>, "unknown compiler for handling compile-time type reflection");
+#  endif
 #endif
     constexpr size_t length = ed - head;
 

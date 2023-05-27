@@ -66,7 +66,6 @@ namespace zs {
     constexpr auto typestr = zs::detail::get_type_str_helper<T>();
     using StrT = RM_CVREF_T(typestr);
     using CharT = typename StrT::char_type;
-    constexpr auto typelength = StrT::nbytes;
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');
     constexpr size_t head{pair.l + 1};
     constexpr size_t ed{pair.r};

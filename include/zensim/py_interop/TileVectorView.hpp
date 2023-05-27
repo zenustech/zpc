@@ -126,13 +126,13 @@ namespace zs {
       return tuple_impl(chn, i, make_index_sequence<(Ns * ...)>{}, wrapt<TT>{});
     }
 
-    value_type* _vector{nullptr};
+    T_* _vector{nullptr};
     channel_counter_type _numChannels{0};
   };
 
-  template <typename T_, size_t Length> struct TileVectorNamedViewLite
-      : TileVectorViewLite<T_, Length> {
-    using base_t = TileVectorViewLite<T_, Length>;
+  template <typename T_, size_t Length, bool WithinTile = false> struct TileVectorNamedViewLite
+      : TileVectorViewLite<T_, Length, WithinTile> {
+    using base_t = TileVectorViewLite<T_, Length, WithinTile>;
     using base_t::_numChannels;
     using base_t::_vector;
     using value_type = typename base_t::value_type;
@@ -143,7 +143,7 @@ namespace zs {
     static constexpr bool is_const_structure = base_t::is_const_structure;
 
     TileVectorNamedViewLite() noexcept = default;
-    TileVectorNamedViewLite(value_type* const v, const channel_counter_type nchns,
+    TileVectorNamedViewLite(T_* const v, const channel_counter_type nchns,
                             const SmallString* tagNames, const channel_counter_type* tagOffsets,
                             const channel_counter_type* tagSizes,
                             const channel_counter_type N) noexcept

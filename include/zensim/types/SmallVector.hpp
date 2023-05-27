@@ -4,16 +4,17 @@
 
 namespace zs {
 
-  // null-terminated string
-  struct SmallString {
-    using char_type = char;
+  /// @brief null-terminated string
+  /// @note 4 * 8 - 1 = 31 bytes (chars)
+  template <typename CharT = char, zs::size_t NBytes = 4 * sizeof(void *)> struct SmallStringImpl {
+    using char_type = CharT;
     using size_type = size_t;
-    static constexpr auto nbytes = 4 * sizeof(void *);  ///< 4 * 8 - 1 = 31 bytes (chars)
+    static constexpr auto nbytes = NBytes;
 
-    constexpr SmallString() noexcept : buf{} {
+    constexpr SmallStringImpl() noexcept : buf{} {
       for (auto &c : buf) c = '\0';
     }
-    constexpr SmallString(const char tmp[]) : buf{} {
+    constexpr SmallStringImpl(const char tmp[]) : buf{} {
       size_type i = 0;
       for (; i + (size_type)1 != nbytes && tmp[i]; ++i) buf[i] = tmp[i];
       buf[i] = '\0';
@@ -26,7 +27,7 @@ namespace zs {
     template <typename StrT, enable_if_t<is_assignable_v<char_type &, decltype(declval<StrT>()[0])>
                                          && is_integral_v<decltype(declval<StrT>().size())>>
                              = 0>
-    SmallString(const StrT &str) noexcept {
+    SmallStringImpl(const StrT &str) noexcept {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;
       buf[n] = '\0';
       for (size_type i = 0; i != n; ++i) buf[i] = str[i];
@@ -37,11 +38,13 @@ namespace zs {
       }
 #endif
     }
-    constexpr SmallString(const SmallString &) noexcept = default;
-    constexpr SmallString &operator=(const SmallString &) noexcept = default;
-    constexpr SmallString(SmallString &&) noexcept = default;
-    constexpr SmallString &operator=(SmallString &&) noexcept = default;
+    constexpr SmallStringImpl(const SmallStringImpl &) noexcept = default;
+    constexpr SmallStringImpl &operator=(const SmallStringImpl &) noexcept = default;
+    constexpr SmallStringImpl(SmallStringImpl &&) noexcept = default;
+    constexpr SmallStringImpl &operator=(SmallStringImpl &&) noexcept = default;
 
+    constexpr decltype(auto) operator[](size_type i) const noexcept { return buf[i]; }
+    constexpr decltype(auto) operator[](size_type i) noexcept { return buf[i]; }
     constexpr bool operator==(const char str[]) const noexcept {
       size_type i = 0, sz = size();
       for (; i != sz && str[i]; ++i)
@@ -58,8 +61,9 @@ namespace zs {
         ;
       return i;
     }
-    friend constexpr SmallString operator+(const SmallString &a, const SmallString &b) noexcept {
-      SmallString ret{};
+    friend constexpr SmallStringImpl operator+(const SmallStringImpl &a,
+                                               const SmallStringImpl &b) noexcept {
+      SmallStringImpl ret{};
       size_type i = 0;
       for (; i + (size_type)1 != nbytes && a.buf[i]; ++i) ret.buf[i] = a.buf[i];
       for (size_type j = 0; i + (size_type)1 != nbytes && b.buf[j]; ++i, ++j) ret.buf[i] = a.buf[j];
@@ -75,6 +79,7 @@ namespace zs {
 
     char_type buf[nbytes];
   };
+  using SmallString = SmallStringImpl<>;
 
   /// property tag
   struct PropertyTag {

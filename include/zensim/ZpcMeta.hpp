@@ -307,6 +307,23 @@ namespace zs {
 #define RM_CVREF_T(...) ::zs::remove_cvref_t<decltype(__VA_ARGS__)>
   // #define RM_CVREF_T(...) ::std::remove_cvref_t<decltype(__VA_ARGS__)>
 
+  template <class T> struct remove_pointer {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *> {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *const> {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *volatile> {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *const volatile> {
+    using type = T;
+  };
+  template <typename T> using remove_pointer_t = typename remove_pointer<T>::type;
+
   // add_pointer
   namespace detail {
     template <class T> auto try_add_pointer(int) -> wrapt<remove_reference_t<T> *>;
@@ -511,7 +528,8 @@ namespace zs {
 
   /// select type by index
   template <zs::size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
-  template <zs::size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
+  template <zs::size_t I, typename... Ts> using select_indexed_type
+      = select_type<I, type_seq<Ts...>>;
 
   ///
   /// advanced predicates

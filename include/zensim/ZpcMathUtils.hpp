@@ -488,12 +488,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::sqrtf(v);
       else
         return ::sqrt((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -510,12 +508,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return (T)1 / (T)::sqrtf(v);
       else
         return (T)1 / (T)::sqrt((double)v);
-#endif
     }
   }
 
@@ -533,12 +529,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::logf(v);
       else
         return ::log((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -555,12 +549,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::log1pf(v);
       else
         return ::log1p((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -577,12 +569,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::expf(v);
       else
         return ::exp((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -599,12 +589,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::powf(base, exp);
       else
         return ::pow((double)base, (double)exp);
-#endif
     }
   }
 
@@ -657,12 +645,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::sinhf(v);
       else
         return ::sinh((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -679,12 +665,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::sinf(v);
       else
         return ::sin((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -701,12 +685,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::asinhf(v);
       else
         return ::asinh((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -723,12 +705,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::asinf(v);
       else
         return ::asin((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -745,12 +725,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::coshf(v);
       else
         return ::cosh((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -767,12 +745,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::cosf(v);
       else
         return ::cos((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -789,12 +765,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::acoshf(v);
       else
         return ::acosh((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -811,12 +785,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::acosf(v);
       else
         return ::acos((double)v);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -833,12 +805,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::atan2f(y, x);
       else
         return ::atan2((double)y, (double)x);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -886,13 +856,11 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       static_assert(is_same_v<T, float> || is_same_v<T, double>, "modf only supports float/double");
       if constexpr (is_same_v<T, float>)
         return ::modff(x, iptr);
       else if constexpr (is_same_v<T, double>)
         return ::modf(x, iptr);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -909,12 +877,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::frexpf(x, exp);
       else
         return ::frexp((double)x, exp);
-#endif
     }
   }
   template <typename T, execspace_e space = deduce_execution_space(),
@@ -931,12 +897,10 @@ namespace zs {
       return 0;
 #endif
     } else {
-#if !defined(__CUDACC__)
       if constexpr (is_same_v<T, float>)
         return ::ldexpf(x, exp);  // scalbnf(x, exp)
       else
         return ::ldexp((double)x, exp);
-#endif
     }
   }
 

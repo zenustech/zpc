@@ -79,7 +79,7 @@ namespace zs {
     constexpr size_t head = 44;
     constexpr size_t ed = typelength - 3;
 #  elif defined(__GNUC__)
-    constexpr size_t head = 58;
+    constexpr size_t head = 59;
     constexpr size_t ed = typelength - 3;
 #  elif defined(__CUDACC__)
     constexpr size_t head = 58;

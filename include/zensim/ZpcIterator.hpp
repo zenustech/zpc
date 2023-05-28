@@ -167,7 +167,7 @@ namespace zs {
   /// iterator traits helper
   template <typename, typename = void> struct iterator_traits;
   template <typename Iter>
-  struct iterator_traits<Iter, void_t<enable_if_t<is_base_of_v<IteratorInterface<Iter>, Iter>>>> {
+  struct iterator_traits<Iter, enable_if_type<is_base_of_v<IteratorInterface<Iter>, Iter>, void>> {
     // reference
     using reference = decltype(*declval<Iter &>());
     // pointer (should also infer this)

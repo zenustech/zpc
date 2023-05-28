@@ -16,13 +16,13 @@ namespace zs {
   extern template random_access_iterator_tag::operator std::random_access_iterator_tag();
 #endif
 
-  template <typename Iter>
-  struct iterator_traits<Iter, void_t<typename std::iterator_traits<Iter>::reference,
-                                      typename std::iterator_traits<Iter>::pointer,
-                                      typename std::iterator_traits<Iter>::difference_type,
-                                      typename std::iterator_traits<Iter>::value_type,
-                                      typename std::iterator_traits<Iter>::iterator_category,
-                                      enable_if_t<!is_base_of_v<IteratorInterface<Iter>, Iter>>>> {
+  template <typename Iter> struct iterator_traits<
+      Iter, enable_if_type<!is_base_of_v<IteratorInterface<Iter>, Iter>,
+                           void_t<typename std::iterator_traits<Iter>::reference,
+                                  typename std::iterator_traits<Iter>::pointer,
+                                  typename std::iterator_traits<Iter>::difference_type,
+                                  typename std::iterator_traits<Iter>::value_type,
+                                  typename std::iterator_traits<Iter>::iterator_category>>> {
     // reference
     using reference = typename std::iterator_traits<Iter>::reference;
     // pointer

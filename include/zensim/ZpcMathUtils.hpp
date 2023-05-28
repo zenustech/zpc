@@ -1,7 +1,7 @@
 #pragma once
+#include "zensim/ZensimExport.hpp"
 #include "zensim/ZpcFunctional.hpp"
 #include "zensim/types/Property.h"
-#include "zensim/ZensimExport.hpp"
 
 #if defined(__CUDACC__)
 
@@ -56,7 +56,7 @@ double cos(double) noexcept;
 float coshf(float) noexcept;
 double cosh(double) noexcept;
 float acoshf(float) noexcept;
-double acosh(double);
+double acosh(double) noexcept;
 float acosf(float) noexcept;
 double acos(double) noexcept;
 

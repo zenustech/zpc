@@ -29,7 +29,7 @@ namespace zs {
       constexpr auto len = get_type_len_helper(p);
       return zs::BasicSmallString<char, len + 1>{p};
 #else
-      return zs::BasicSmallString<char, sizeof(__PRETTY_FUNCTION__) + 1>{__PRETTY_FUNCTION__};
+      return zs::BasicSmallString<char, sizeof(__PRETTY_FUNCTION__)>{__PRETTY_FUNCTION__};
 #endif
     }
     template <typename T> constexpr auto get_var_type_str_helper(T &&) noexcept {
@@ -77,13 +77,13 @@ namespace zs {
 
 #  if defined(__clang__)
     constexpr size_t head = 44;
-    constexpr size_t ed = typelength - 3;
+    constexpr size_t ed = typelength - 2;
 #  elif defined(__GNUC__)
     constexpr size_t head = 59;
-    constexpr size_t ed = typelength - 3;
+    constexpr size_t ed = typelength - 2;
 #  elif defined(__CUDACC__)
     constexpr size_t head = 58;
-    constexpr size_t ed = typelength - 3;
+    constexpr size_t ed = typelength - 2;
 #  else
     static_assert(always_false<T>, "unknown compiler for handling compile-time type reflection");
 #  endif

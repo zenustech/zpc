@@ -140,7 +140,8 @@ else(ZS_ENABLE_OFB_ACCESS_CHECK)
 endif(ZS_ENABLE_OFB_ACCESS_CHECK)
 
 target_compile_definitions(zpc_cxx_deps
-  INTERFACE AssetDirPath="${PROJECT_SOURCE_DIR}/zpc_assets/"
+  # INTERFACE AssetDirPath="${PROJECT_SOURCE_DIR}/zpc_assets"
+  INTERFACE AssetDirPath="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
 )
 
 if(ZS_BUILD_SHARED_LIBS)

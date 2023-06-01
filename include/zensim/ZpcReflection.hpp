@@ -39,10 +39,9 @@ namespace zs {
     struct range_pair {
       size_t l{}, r{};
     };
-    template <typename CharT, size_t N>
-    constexpr range_pair locate_char_in_str_helper(const BasicSmallString<CharT, N> &str,
+    constexpr range_pair locate_char_in_str_helper(const char *str,
                                                    const char lc, const char rc) noexcept {
-      const char *p = str.buf;
+      const char *p = str;
       if (p[0] == '\0') return range_pair{0, 0};
       size_t l{0};
       for (; *p; ++p, ++l)
@@ -63,9 +62,17 @@ namespace zs {
 
   template <typename T> constexpr auto get_type() noexcept {
 #if defined(_MSC_VER)
+#if 0
+    constexpr auto typestr = __FUNCSIG__;
+    // static_assert(always_false<T>, __FUNCSIG__);
+    // using StrT = RM_CVREF_T(typestr[0]);
+    // using CharT = typename StrT::char_type;
+    using CharT = RM_CVREF_T(typestr[0]);
+#else
     constexpr auto typestr = zs::detail::get_type_str_helper<T>();
     using StrT = RM_CVREF_T(typestr);
     using CharT = typename StrT::char_type;
+#endif
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');
     constexpr size_t head{pair.l + 1};
     constexpr size_t ed{pair.r};

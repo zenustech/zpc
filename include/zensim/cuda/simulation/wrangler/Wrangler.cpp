@@ -8,6 +8,7 @@
 #include "zensim/cuda/Cuda.h"
 #include "zensim/resource/Filesystem.hpp"
 #include "zensim/types/Tuple.h"
+#include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/zpc_tpls/jitify/jitify2.hpp"
 
 namespace fs = std::filesystem;
@@ -25,7 +26,7 @@ namespace zs::cudri {
     for (auto const &entry : fs::directory_iterator(dirpath)) {
       auto path = entry.path();
       if (fs::path(path).extension() == ".ptx") {
-        printf("reading ptx file: %s\n", path.c_str());
+        fmt::print("reading ptx file: {}\n", path.string());
         std::ifstream fin(path, std::ios::in | std::ios::binary | std::ios::ate);
         if (!fin.is_open()) {
           std::cerr << "\nerror: unable to open " << path << " for reading!\n";

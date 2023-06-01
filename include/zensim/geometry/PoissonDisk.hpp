@@ -5,13 +5,13 @@
 #include <algorithm>
 #include <fstream>
 
-#include <filesystem>
 #include "zensim/container/DenseGrid.hpp"
 #include "zensim/math/RandomNumber.hpp"
 #include "zensim/math/Vec.h"
 // #include <taskflow/taskflow.hpp>
 #include "zensim/execution/Concurrency.h"
 #include "zensim/geometry/LevelSetInterface.h"
+#include "zensim/resource/Filesystem.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
 namespace zs {
@@ -139,10 +139,11 @@ namespace zs {
         for (int d = 0; d < dim; ++d)
           offset_number[d] = std::ceil(sideLength[d] / scaled_ref_box_length[d]) + 1;
 
-        auto loc = std::filesystem::current_path().u8string() + "/resource/particles-1000k.dat";
+        auto loc = abs_exe_directory() + "/resource/particles-1000k.dat";
         // Read std vector
         std::ifstream is(loc, std::ios::in | std::ios::binary);
-        if (!is) throw std::runtime_error(fmt::format("particle-1000k.dat file not found at [{}]!", loc));
+        if (!is)
+          throw std::runtime_error(fmt::format("particle-1000k.dat file not found at [{}]!", loc));
         std::size_t cnt, tmp;
         is.read((char *)&cnt, sizeof(std::size_t));
         auto estimate = cnt * (sideLength.prod() / scaled_ref_box_length.prod());

@@ -93,7 +93,7 @@ double tanh(double) noexcept;
 int abs(int);
 long labs(long);
 long long llabs(long long);
-// math.h
+// math.h (ucrt/corecrt_math.h)
 ZENSIM_EXPORT float copysignf(float x, float y);
 ZENSIM_EXPORT double copysign(double x, double y);
 float fabsf(float);

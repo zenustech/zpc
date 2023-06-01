@@ -10,6 +10,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   types/Iterator.cpp
   Logger.cpp
 
+  resource/Filesystem.cpp
   # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
@@ -282,6 +283,7 @@ if(ENABLE_PCH)
 endif()
 
 target_link_libraries(zpccore PUBLIC zpc_cxx_deps)
+target_link_libraries(zpccore PUBLIC zswhereami)
 target_compile_options(zpccore
   PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /bigobj /O2 /EHsc, $<IF:$<CXX_COMPILER_ID:Clang>, -Xclang -O3, -O3> >> # -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi
 )
@@ -552,7 +554,9 @@ if(ZS_ENABLE_CUDA)
   set(ZS_PTX_SOURCE_DIR cuda/simulation/wrangler)
 
   # set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})  # not valid for win platform
-  set(ZS_PTX_INCLUDE_DIR ${PROJECT_BINARY_DIR}/${ZS_PTX_SOURCE_DIR})
+  # set(ZS_PTX_INCLUDE_DIR ${PROJECT_BINARY_DIR}/${ZS_PTX_SOURCE_DIR})
+  set(ZS_PTX_INCLUDE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resource)
+  # message(FATAL_ERROR "to set ZS_PTX_INCLUDE_DIR: [${CMAKE_RUNTIME_OUTPUT_DIRECTORY}]")
   set_target_properties(zs_cu_wrangler
     PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
@@ -609,6 +613,21 @@ add_custom_command(
   # $<TARGET_OBJECTS:zs_cu_wrangler>
   target_link_libraries(zensim INTERFACE zs_cu_wrangler) # zs_cu_wrangler -> zensim
 endif(ZS_ENABLE_CUDA)
+
+message("[AssetDirPath] set to: [${CMAKE_RUNTIME_OUTPUT_DIRECTORY}]")
+add_custom_command(
+  TARGET zpctool
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resource
+  COMMAND ${CMAKE_COMMAND}
+  -DOBJECTS=${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/MpmParticles/particles-1000k.dat
+  -DOUTPUT=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resource
+  -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+
+  VERBATIM
+  DEPENDS zpc
+    COMMENT "copying resource file [particles-1000k.dat] for poisson disk sampling"
+)
 
 # for header installation
 # list_transform_prepend(ZENSIM_INTERFACE_FILES include/zensim/)

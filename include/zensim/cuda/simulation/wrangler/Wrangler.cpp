@@ -6,6 +6,7 @@
 #include <filesystem>
 
 #include "zensim/cuda/Cuda.h"
+#include "zensim/resource/Filesystem.hpp"
 #include "zensim/types/Tuple.h"
 #include "zensim/zpc_tpls/jitify/jitify2.hpp"
 
@@ -14,9 +15,13 @@ namespace fs = std::filesystem;
 namespace zs::cudri {
 
   /// ref: pyb zeno POC
-  std::vector<std::string> load_all_ptx_files_at(const std::string &dirpath) {
+  std::vector<std::string> load_all_ptx_files_at(const std::string &localPath) {
+    auto dirpath = abs_exe_directory() + "/" + localPath;
     std::vector<std::string> res;
 
+    if (!std::filesystem::exists(dirpath))
+      throw std::runtime_error(
+          fmt::format("cannot find directory [{}] for loading ptx files.\n", dirpath));
     for (auto const &entry : fs::directory_iterator(dirpath)) {
       auto path = entry.path();
       if (fs::path(path).extension() == ".ptx") {

@@ -127,9 +127,9 @@ namespace zs {
     template <typename VecT, class F> constexpr void ray_intersect(const VecInterface<VecT> &ro,
                                                                    const VecInterface<VecT> &rd,
                                                                    F &&f) const {  // hit distance
-      if (auto nl = numLeaves(); nl <= 2) {
+      if (auto nl = numNodes(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
-          if (ray_box_intersect(ro, rd, getNodeBV(i))) f(_auxIndices[i]);
+          if (ray_box_intersect(ro, rd, getNodeBV(i))) f(i);
         }
         return;
       }
@@ -154,10 +154,10 @@ namespace zs {
       using T = typename VecT::value_type;
       index_t idx = -1;
       T dist = limits<T>::max();
-      if (auto nl = numLeaves(); nl <= 2) {
+      if (auto nl = numNodes(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
           if (auto d = distance(p, getNodeBV(i)); d < dist) {
-            f(_auxIndices[i], dist, idx);
+            f(i, dist, idx);
           }
         }
         if constexpr (IndexRequired)
@@ -185,13 +185,13 @@ namespace zs {
     }
     /// @note F return_value indicates early exit
     template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {
-      if (auto nl = numLeaves(); nl <= 2) {
+      if (auto nl = numNodes(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
           if (overlaps(getNodeBV(i), bv)) {
             if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
-              f(_auxIndices[i]);
+              f(i);
             else {
-              if (f(_auxIndices[i])) return;
+              if (f(i)) return;
             }
           }
         }
@@ -219,14 +219,14 @@ namespace zs {
     }
     /// @note self iteration
     template <class F> constexpr void self_iter_neighbors(index_t leafId, F &&f) const {
-      if (auto nl = numLeaves(); nl <= 2) {
+      if (auto nl = numNodes(); nl <= 2) {
         const auto bv = getNodeBV(leafId);
         for (index_t i = leafId + 1; i != nl; ++i) {
           if (overlaps(getNodeBV(i), bv)) {
             if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
-              f(_auxIndices[i]);
+              f(i);
             else {
-              if (f(_auxIndices[i])) return;
+              if (f(i)) return;
             }
           }
         }
@@ -256,8 +256,8 @@ namespace zs {
     /// @note iterate treelet (subtree)
     template <typename BV, class F>
     constexpr void iter_neighbors(const BV &bv, index_t node, F &&f) const {
-      if (auto nl = numLeaves(); nl <= 2) {
-        if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
+      if (auto nl = numNodes(); nl <= 2) {
+        if (overlaps(getNodeBV(node), bv)) f(node);
         return;
       }
       const auto ed = _levels[node] != 0 ? _auxIndices[node] : node + 1;
@@ -278,7 +278,7 @@ namespace zs {
     template <typename BV, typename Front, class F>
     ZS_FUNCTION void iter_neighbors(const BV &bv, index_t i, Front &front, F &&f) const {
       auto node = front.node(i);
-      if (auto nl = numLeaves(); nl <= 2) {
+      if (auto nl = numNodes(); nl <= 2) {
         if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
         return;
       }
@@ -347,6 +347,8 @@ namespace zs {
       orderedBvs = primBvs;
       leafInds = indices_t{primBvs.get_allocator(), numLeaves};
       for (int i = 0; i < numLeaves; ++i) leafInds.setVal(i, i);
+      auxIndices = indices_t{primBvs.get_allocator(), numLeaves};
+      for (int i = 0; i < numLeaves; ++i) auxIndices.setVal(i, i);
       return;
     }
 

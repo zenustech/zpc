@@ -6,6 +6,7 @@
 #include "zensim/TypeAlias.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/profile/CppTimers.hpp"
+#include "zensim/resource/Resource.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Polymorphism.h"
@@ -371,6 +372,10 @@ namespace zs {
     return SequentialExecutionPolicy{};
   }
   constexpr SequentialExecutionPolicy seq_exec() noexcept { return SequentialExecutionPolicy{}; }
+
+  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(SequentialExecutionPolicy &pol) {
+    return get_memory_source(memsrc_e::host, (ProcID)-1);
+  }
 
   /// ========================================================================
   /// kernel, for_each, reduce, scan, gather, sort

@@ -39,6 +39,18 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
 
+  template <typename MemTag> struct temporary_memory_resource : raw_memory_resource<MemTag> {
+    using base_t = raw_memory_resource<MemTag>;
+    using value_type = typename base_t::value_type;
+    using size_type = typename base_t::size_type;
+    using difference_type = typename base_t::difference_type;
+    using propagate_on_container_move_assignment =
+        typename base_t::propagate_on_container_move_assignment;
+    using propagate_on_container_copy_assignment =
+        typename base_t::propagate_on_container_copy_assignment;
+    using propagate_on_container_swap = typename base_t::propagate_on_container_swap;
+  };
+
   template <typename MemTag> struct default_memory_resource : mr_t {
     default_memory_resource(ProcID did = 0, mr_t *up = &raw_memory_resource<MemTag>::instance())
         : upstream{up}, did{did} {}

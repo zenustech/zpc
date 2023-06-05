@@ -150,10 +150,10 @@ namespace zs {
   }
 
   template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
-      std::is_convertible_v<
-          typename std::iterator_traits<ZipIter>::iterator_category,
-          std::
-              random_access_iterator_tag> && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      std::is_convertible_v<typename std::iterator_traits<ZipIter>::iterator_category,
+                            std::random_access_iterator_tag>
+      && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
+          || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
   range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -167,9 +167,8 @@ namespace zs {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(
-            std::is_integral_v<
-                typename func_traits::
-                    first_argument_t> || std::is_pointer_v<typename func_traits::first_argument_t>,
+            std::is_integral_v<typename func_traits::first_argument_t>
+                || std::is_pointer_v<typename func_traits::first_argument_t>,
             "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
             "integer");
         if constexpr (std::is_integral_v<typename func_traits::first_argument_t>)
@@ -533,8 +532,10 @@ namespace zs {
     template <class KeyIter, class ValueIter, typename CompareOpT> std::enable_if_t<
         std::is_convertible_v<
             typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
-            std::
-                random_access_iterator_tag> && std::is_convertible_v<typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category, std::random_access_iterator_tag>>
+            std::random_access_iterator_tag>
+        && std::is_convertible_v<
+            typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category,
+            std::random_access_iterator_tag>>
     merge_sort_pair(
         KeyIter &&keys, ValueIter &&vals,
         typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
@@ -729,5 +730,18 @@ namespace zs {
 
   constexpr CudaExecutionPolicy cuda_exec() noexcept { return CudaExecutionPolicy{}; }
   constexpr CudaExecutionPolicy par_exec(cuda_exec_tag) noexcept { return CudaExecutionPolicy{}; }
+
+  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(CudaExecutionPolicy &pol) {
+    ZSPmrAllocator<> ret{};
+    ret.res = std::make_unique<temporary_memory_resource<device_mem_tag>>(&pol.context(),
+                                                                          pol.getStream());
+    ret.location = MemoryLocation{memsrc_e::device, pol.getProcid()};
+    ret.cloner = [stream = pol.getStream(), context = &pol.context()]() -> std::unique_ptr<mr_t> {
+      std::unique_ptr<mr_t> ret{};
+      ret = std::make_unique<temporary_memory_resource<device_mem_tag>>(context, stream);
+      return ret;
+    };
+    return ret;
+  }
 
 }  // namespace zs

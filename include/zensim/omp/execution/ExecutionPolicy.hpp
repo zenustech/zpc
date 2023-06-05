@@ -1029,4 +1029,8 @@ namespace zs {
     return OmpExecutionPolicy{}.threads(get_hardware_concurrency() - 1);
   }
 
+  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(OmpExecutionPolicy &pol) {
+    return get_memory_source(memsrc_e::host, (ProcID)-1);
+  }
+
 }  // namespace zs

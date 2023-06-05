@@ -7,7 +7,6 @@
 
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
-#include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/memory/MemOps.hpp"
 #include "zensim/memory/MemoryResource.h"
 // #include "zensim/types/Pointers.hpp"

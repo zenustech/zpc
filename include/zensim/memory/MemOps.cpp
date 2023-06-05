@@ -1,4 +1,5 @@
 #include "MemOps.hpp"
+#include <iostream>
 
 namespace zs {
 
@@ -10,6 +11,17 @@ namespace zs {
 #else
     // ret = std::aligned_alloc(alignment, size);
     ret = std::malloc(size);
+#endif
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    if (ret == nullptr) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+      std::cerr << fmt::format(
+          "\nHost Side Error: allocattion failed (size: {} bytes, alignment: {} "
+          "bytes)\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+          size, alignment, " api error location ", fileInfo, locInfo, funcInfo, "=");
+    }
 #endif
     return ret;
   }

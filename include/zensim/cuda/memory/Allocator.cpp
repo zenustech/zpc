@@ -13,6 +13,21 @@ namespace zs {
   raw_memory_resource<device_mem_tag>::raw_memory_resource() noexcept { (void)Cuda::instance(); }
   raw_memory_resource<um_mem_tag>::raw_memory_resource() noexcept { (void)Cuda::instance(); }
 
+  void *temporary_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,
+                                                               std::size_t alignment) {
+    if (bytes) {
+      auto ret = ((Cuda::CudaContext *)context)->streamMemAlloc(bytes, stream);
+      return ret;
+    }
+    return nullptr;
+  }
+  void temporary_memory_resource<device_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
+                                                                std::size_t alignment) {
+    if (bytes) {
+      ((Cuda::CudaContext *)context)->streamMemFree(ptr, stream);
+    }
+  }
+
 #if 0
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(
       ProcID did, std::string_view type)

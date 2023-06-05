@@ -40,6 +40,24 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
 
+  template <> struct temporary_memory_resource<device_mem_tag> : mr_t {
+    using value_type = std::byte;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+
+    temporary_memory_resource(void *c = nullptr, void *s = nullptr) : context{c}, stream{s} {}
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
+    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override;
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+
+    void *context{nullptr};
+    void *stream{nullptr};
+  };
+
   template <> struct raw_memory_resource<um_mem_tag> : mr_t,
                                                        Singleton<raw_memory_resource<um_mem_tag>> {
     using value_type = std::byte;

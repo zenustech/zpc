@@ -2,6 +2,8 @@
 
 #include <cuda.h>
 
+#include <iostream>
+
 #include "zensim/Logger.hpp"
 #include "zensim/cuda/Cuda.h"
 
@@ -27,6 +29,21 @@ namespace zs {
                  const source_location &loc) {
     void *ret{nullptr};
     cuMemAlloc((CUdeviceptr *)&ret, size);
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    cudaDeviceSynchronize();
+    if (ret == nullptr) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+      int devid;
+      cuCtxGetDevice(&devid);
+      std::cerr << fmt::format(
+          "\nCuda Error on Device {}: cuMemAlloc failed (size: {} bytes, alignment: {} "
+          "bytes)\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+          devid, size, alignment, " cuda driver api error location ", fileInfo, locInfo, funcInfo,
+          "=");
+    }
+#endif
     return ret;
   }
 
@@ -82,6 +99,21 @@ namespace zs {
     void *ret{nullptr};
     // cudri::umalloc(&ret, size, 0x1, loc);  //(unsigned int)CU_MEM_ATTACH_GLOBAL);
     cuMemAllocManaged((CUdeviceptr *)&ret, size, CU_MEM_ATTACH_GLOBAL);
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    cudaDeviceSynchronize();
+    if (ret == nullptr) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+      int devid;
+      cuCtxGetDevice(&devid);
+      std::cerr << fmt::format(
+          "\nCuda Error on Device {}: cuMemAllocManaged failed (size: {} bytes, alignment: {} "
+          "bytes)\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+          devid, size, alignment, " cuda driver api error location ", fileInfo, locInfo, funcInfo,
+          "=");
+    }
+#endif
     return ret;
   }
   void deallocate(um_mem_tag, void *ptr, size_t size, size_t alignment,

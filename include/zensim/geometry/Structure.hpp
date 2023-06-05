@@ -7,6 +7,7 @@
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Polymorphism.h"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
 

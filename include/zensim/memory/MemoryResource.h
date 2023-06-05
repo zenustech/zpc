@@ -1,12 +1,14 @@
 #pragma once
 #include <cstddef>
 #include <memory>
+#include <memory_resource>
 #include <stdexcept>
 
 #include "zensim/Platform.hpp"
 #include "zensim/types/Function.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
+#include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
 #ifdef ZS_PLATFORM_WINDOWS
@@ -14,15 +16,19 @@
 #endif
 namespace zs {
 
-  // namespace pmr = std::pmr;
+#if 1
 
-  /// since we cannot use memory_resource header in libstdc++ (chrono_nvcc compilation issue)
-  /// we directly use its implementation
-#ifdef ZS_PLATFORM_WINDOWS
+  namespace pmr = std::pmr;
+  using mr_t = pmr::memory_resource;
+
+#else
+/// since we cannot use memory_resource header in libstdc++ (chrono_nvcc compilation issue)
+/// we directly use its implementation
+#  ifdef ZS_PLATFORM_WINDOWS
 
   using mr_t = std::pmr::memory_resource;
 
-#else
+#  else
   class memory_resource {
     static constexpr size_t _S_max_align = alignof(max_align_t);
 
@@ -57,13 +63,15 @@ namespace zs {
     return &__a == &__b || __a.is_equal(__b);
   }
 
-#  if __cpp_impl_three_way_comparison < 201907L
+#    if __cpp_impl_three_way_comparison < 201907L
   inline bool operator!=(const memory_resource& __a, const memory_resource& __b) noexcept {
     return !(__a == __b);
   }
-#  endif
+#    endif
 
   using mr_t = memory_resource;
+#  endif
+
 #endif
 
   struct vmr_t : public mr_t {

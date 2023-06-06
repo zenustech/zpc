@@ -17,6 +17,25 @@ namespace zs {
                                                                std::size_t alignment) {
     if (bytes) {
       auto ret = ((Cuda::CudaContext *)context)->streamMemAlloc(bytes, stream);
+      /// @note make the allocation available to use instantly
+      // checkError(cudaStreamSynchronize((cudaStream_t)stream));
+      cuStreamSynchronize((CUstream)stream);
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (ret == nullptr) {
+        auto loc = source_location::current();
+        const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+        const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+        const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+        int devid;
+        cuCtxGetDevice(&devid);
+        std::cerr << fmt::format(
+            "\nCuda Error on Device {}, Context [{}], Stream [{}]: cuMemAllocAsync failed (size: "
+            "{} bytes, alignment: {} "
+            "bytes)\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+            devid, context, stream, bytes, alignment, " cuda driver api error location ", fileInfo,
+            locInfo, funcInfo, "=");
+      }
+#endif
       return ret;
     }
     return nullptr;
@@ -220,8 +239,7 @@ namespace zs {
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
     return ed <= _allocatedSpace;
   }
-  bool stack_virtual_memory_resource<device_mem_tag>::do_commit(size_t offset,
-                                                                size_t bytes) {
+  bool stack_virtual_memory_resource<device_mem_tag>::do_commit(size_t offset, size_t bytes) {
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
 
@@ -255,8 +273,7 @@ namespace zs {
     return true;
   }
 
-  bool stack_virtual_memory_resource<device_mem_tag>::do_evict(size_t offset,
-                                                               size_t bytes) {
+  bool stack_virtual_memory_resource<device_mem_tag>::do_evict(size_t offset, size_t bytes) {
     ZS_WARN_IF(round_down(offset + bytes, s_chunk_granularity) < _allocatedSpace,
                "will evict more bytes (till the end) than asking");
     size_t st = round_up(offset, s_chunk_granularity);
@@ -271,8 +288,7 @@ namespace zs {
     return true;
   }
 
-  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(size_t bytes,
-                                                                   size_t alignment) {
+  void *stack_virtual_memory_resource<device_mem_tag>::do_allocate(size_t bytes, size_t alignment) {
     return nullptr;
   }
 
@@ -331,8 +347,7 @@ namespace zs {
       if ((_activeChunkMasks[st >> 6] & ((u64)1 << (st & 63))) == 0) return false;
     return true;
   }
-  bool arena_virtual_memory_resource<device_mem_tag>::do_commit(size_t offset,
-                                                                size_t bytes) {
+  bool arena_virtual_memory_resource<device_mem_tag>::do_commit(size_t offset, size_t bytes) {
     size_t st = round_down(offset, s_chunk_granularity);
     if (st >= _reservedSpace) return false;
     offset += bytes;
@@ -368,8 +383,7 @@ namespace zs {
     return true;
   }
 
-  bool arena_virtual_memory_resource<device_mem_tag>::do_evict(size_t offset,
-                                                               size_t bytes) {
+  bool arena_virtual_memory_resource<device_mem_tag>::do_evict(size_t offset, size_t bytes) {
     size_t st = round_up(offset, s_chunk_granularity);
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_down(offset, s_chunk_granularity) : _reservedSpace;

@@ -355,17 +355,19 @@ namespace zs {
     const size_type numTrunk = numLeaves - 1;
     const size_type numNodes = numLeaves * 2 - 1;
 
-    indices_t trunkPars{primBvs.get_allocator(), numTrunk};
-    indices_t trunkLcs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkRcs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkLs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkRs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkDst{primBvs.get_allocator(), numTrunk};
-    indices_t leafPars{primBvs.get_allocator(), numLeaves};
-    indices_t leafLcas{primBvs.get_allocator(), numLeaves};
-    indices_t primInds{primBvs.get_allocator(), numLeaves};
-    indices_t leafDepths{primBvs.get_allocator(), numLeaves + 1};
-    indices_t leafOffsets{primBvs.get_allocator(), numLeaves + 1};
+    auto allocator = get_temporary_memory_source(policy);
+
+    indices_t trunkPars{allocator, numTrunk};
+    indices_t trunkLcs{allocator, numTrunk};
+    indices_t trunkRcs{allocator, numTrunk};
+    indices_t trunkLs{allocator, numTrunk};
+    indices_t trunkRs{allocator, numTrunk};
+    indices_t trunkDst{allocator, numTrunk};
+    indices_t leafPars{allocator, numLeaves};
+    indices_t leafLcas{allocator, numLeaves};
+    indices_t primInds{allocator, numLeaves};
+    indices_t leafDepths{allocator, numLeaves + 1};
+    indices_t leafOffsets{allocator, numLeaves + 1};
 
     orderedBvs = bvs_t{primBvs.get_allocator(), numNodes};
     auxIndices = indices_t{primBvs.get_allocator(), numNodes};
@@ -400,8 +402,8 @@ namespace zs {
     });
 
     // morton codes
-    Vector<mc_t> mcs{primBvs.get_allocator(), numLeaves};
-    indices_t indices{primBvs.get_allocator(), numLeaves};
+    Vector<mc_t> mcs{allocator, numLeaves};
+    indices_t indices{allocator, numLeaves};
     policy(range(numLeaves),
            [wholeBox = wholeBox.getVal(), primBvs = proxy<space>(primBvs), mcs = proxy<space>(mcs),
             indices = proxy<space>(indices)] ZS_LAMBDA(auto id) mutable {
@@ -413,14 +415,14 @@ namespace zs {
            });
 
     // sort by morton codes
-    Vector<mc_t> sortedMcs{primBvs.get_allocator(), numLeaves};
-    indices_t sortedIndices{primBvs.get_allocator(), numLeaves};
+    Vector<mc_t> sortedMcs{allocator, numLeaves};
+    indices_t sortedIndices{allocator, numLeaves};
     radix_sort_pair(policy, mcs.begin(), indices.begin(), sortedMcs.begin(), sortedIndices.begin(),
                     numLeaves);
 
     // build
     {
-      Vector<int> trunkBuildFlags{primBvs.get_allocator(), numTrunk};
+      Vector<int> trunkBuildFlags{allocator, numTrunk};
       trunkBuildFlags.reset(0);
       policy(range(numLeaves), [indices = proxy<space>(sortedIndices), pInds, lDepths,
                                 numTrunk] ZS_LAMBDA(Ti idx) mutable {
@@ -748,7 +750,8 @@ namespace zs {
     }
     const size_type numNodes = getNumNodes();
     // init bvs, refit flags
-    Vector<int> refitFlags{primBvs.get_allocator(), numNodes};
+    auto allocator = get_temporary_memory_source(policy);
+    Vector<int> refitFlags{allocator, numNodes};
     refitFlags.reset(0);
     // refit
     policy(Collapse{numLeaves},

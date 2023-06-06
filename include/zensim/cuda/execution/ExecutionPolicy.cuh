@@ -221,6 +221,9 @@ namespace zs {
         : function_traits_impl<Tag> {};
   }  // namespace detail
 
+  struct CudaExecutionPolicy;
+  ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const CudaExecutionPolicy &pol);
+
   struct CudaExecutionPolicy : ExecutionPolicyInterface<CudaExecutionPolicy> {
     using exec_tag = cuda_exec_tag;
     CudaExecutionPolicy &listen(ProcID incProc, StreamID incStream) {
@@ -705,7 +708,7 @@ namespace zs {
   constexpr CudaExecutionPolicy cuda_exec() noexcept { return CudaExecutionPolicy{}; }
   constexpr CudaExecutionPolicy par_exec(cuda_exec_tag) noexcept { return CudaExecutionPolicy{}; }
 
-  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(CudaExecutionPolicy &pol) {
+  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const CudaExecutionPolicy &pol) {
     ZSPmrAllocator<> ret{};
     ret.res = std::make_unique<temporary_memory_resource<device_mem_tag>>(&pol.context(),
                                                                           pol.getStream());

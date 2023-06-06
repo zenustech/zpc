@@ -117,8 +117,7 @@ namespace zs {
     checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0), loc);
     // cuStreamWaitEvent((CUstream)streamSpare(sid), (CUevent)event, 0);
   }
-  void *Cuda::CudaContext::streamMemAlloc(size_t size, void *stream,
-                                          const source_location &loc) {
+  void *Cuda::CudaContext::streamMemAlloc(size_t size, void *stream, const source_location &loc) {
     void *ptr;
     cuMemAllocAsync((CUdeviceptr *)&ptr, size, (CUstream)stream);
     return ptr;

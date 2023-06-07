@@ -208,9 +208,10 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
-                      && std::is_convertible_v<Tv, T>,
-                  "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(
+        std::is_convertible_v<Tr,
+                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
+        "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -226,9 +227,10 @@ namespace zs {
     using ICoord = zs::vec<Ti, 2>;
 
     size_t tabSize = size;
-    bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
-    Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
-    Vector<index_type> localOffsets{get_allocator(), (size_t)size};
+    auto allocator = get_temporary_memory_source(policy);
+    bht<Ti, 2, index_type> tab{allocator, tabSize};
+    Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
+    Vector<index_type> localOffsets{allocator, (size_t)size};
     bool success = false;
 
     do {
@@ -249,7 +251,7 @@ namespace zs {
       success = tab._buildSuccess.getVal();
       if (!success) {
         tabSize *= 2;
-        tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
+        tab = bht<Ti, 2, index_type>{allocator, tabSize};
         fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
             "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }
@@ -334,9 +336,10 @@ namespace zs {
     using ICoord = zs::vec<Ti, 2>;
 
     size_t tabSize = Mirror ? (size_t)size * 2 : (size_t)size;
-    bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
-    Vector<index_type> localOffsets{get_allocator(), tabSize};
-    Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
+    auto allocator = get_temporary_memory_source(policy);
+    bht<Ti, 2, index_type> tab{allocator, tabSize};
+    Vector<index_type> localOffsets{allocator, tabSize};
+    Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
     bool success = false;
     do {
       cnts.reset(0);
@@ -369,7 +372,7 @@ namespace zs {
       success = tab._buildSuccess.getVal();
       if (!success) {
         tabSize *= 2;
-        tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
+        tab = bht<Ti, 2, index_type>{allocator, tabSize};
         fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
             "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }
@@ -423,8 +426,9 @@ namespace zs {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     using ICoord = zs::vec<Ti, 2>;
 
-    Vector<index_type> localOffsets{get_allocator(), size * 2};
-    Vector<size_type> cnts{get_allocator(), (size_t)(nsegs + 1)};
+    auto allocator = get_temporary_memory_source(policy);
+    Vector<index_type> localOffsets{allocator, size * 2};
+    Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
     bool success = false;
     cnts.reset(0);
     policy(range(size),
@@ -516,8 +520,9 @@ namespace zs {
       auto nnz = o.nnz();
       auto nOuter = o.outerSize();
       auto nInner = o.innerSize();
-      Vector<index_type> localOffsets{get_allocator(), (size_t)nnz};
-      Vector<size_type> cnts{get_allocator(), (size_t)(nInner + 1)};
+      auto allocator = get_temporary_memory_source(policy);
+      Vector<index_type> localOffsets{allocator, (size_t)nnz};
+      Vector<size_type> cnts{allocator, (size_t)(nInner + 1)};
       cnts.reset(0);
       policy(range(nOuter), [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets),
                              ptrs = view<space>(o._ptrs), inds = view<space>(o._inds),

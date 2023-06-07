@@ -144,8 +144,8 @@ namespace zs {
             enable_if_all<VecTP::dim == 1, is_same_v<typename VecTP::dims, typename VecTT::dims>>
             = 0>
   constexpr auto pt_category_and_dist2(const VecInterface<VecTP> &p, const VecInterface<VecTT> &t0,
-                                      const VecInterface<VecTT> &t1,
-                                      const VecInterface<VecTT> &t2) noexcept {
+                                       const VecInterface<VecTT> &t1,
+                                       const VecInterface<VecTT> &t2) noexcept {
     using T = math::op_result_t<typename VecTP::value_type, typename VecTT::value_type>;
     static_assert(is_floating_point_v<T>, "value_types of VecTs cannot be both integral type.");
     using TV = typename VecTP::template variant_vec<T, typename VecTP::extents>;
@@ -160,46 +160,63 @@ namespace zs {
     T det = zs::max(a00 * a11 - a01 * a01, (T)0);
     T s = a01 * b1 - a11 * b0;
     T t = a01 * b0 - a00 * b1;
+    int cate = -1;
 
     if (s + t <= det) {
       if (s < (T)0) {
         if (t < (T)0) {  // region 4
           if (b0 < (T)0) {
             t = (T)0;
-            if (-b0 >= a00)
+            if (-b0 >= a00) {
               s = (T)1;
-            else
+              cate = 1;  // p, t1
+            } else {
               s = -b0 / a00;
+              cate = 3;  // p, <t0, t1>
+            }
           } else {
             s = (T)0;
-            if (b1 >= (T)0)
+            if (b1 >= (T)0) {
               t = (T)0;
-            else if (-b1 >= a11)
+              cate = 0;  // p, t0
+            } else if (-b1 >= a11) {
               t = (T)1;
-            else
+              cate = 2;  // p, t2
+            } else {
               t = -b1 / a11;
+              cate = 5;  // p, <t2, t0>
+            }
           }
         } else {  // region 3
           s = (T)0;
-          if (b1 >= (T)0)
+          if (b1 >= (T)0) {
             t = (T)0;
-          else if (-b1 >= a11)
+            cate = 0;  // p, t0
+          } else if (-b1 >= a11) {
             t = (T)1;
-          else
+            cate = 2;  // p, t2
+          } else {
             t = -b1 / a11;
+            cate = 5;  // p, <t2, t0>
+          }
         }
       } else if (t < (T)0) {  // region 5
         t = (T)0;
-        if (b0 >= (T)0)
+        if (b0 >= (T)0) {
           s = (T)0;
-        else if (-b0 >= a00)
+          cate = 0;  // p, t0
+        } else if (-b0 >= a00) {
           s = (T)1;
-        else
+          cate = 1;  // p, t1
+        } else {
           s = -b0 / a00;
+          cate = 3;  // p, <t0, t1>
+        }
       } else {  // region 0
                 // minimum at interior point
         s /= det;
         t /= det;
+        cate = 6;  // p, <t0, t1, t2>
       }
     } else {
       T tmp0{}, tmp1{}, numer{}, denom{};
@@ -212,18 +229,24 @@ namespace zs {
           if (numer >= denom) {
             s = (T)1;
             t = (T)0;
+            cate = 1;  // p, t1
           } else {
             s = numer / denom;
             t = (T)1 - s;
+            cate = 4;  // p, <t1, t2>
           }
         } else {
           s = (T)0;
-          if (tmp1 <= (T)0)
+          if (tmp1 <= (T)0) {
             t = (T)1;
-          else if (b1 >= (T)0)
+            cate = 2;  // p, t2
+          } else if (b1 >= (T)0) {
             t = (T)0;
-          else
+            cate = 0;  // p, t0
+          } else {
             t = -b1 / a11;
+            cate = 5;  // p, <t2, t0>
+          }
         }
       } else if (t < (T)0) {  // region 6
         tmp0 = a01 + b1;
@@ -234,38 +257,47 @@ namespace zs {
           if (numer >= denom) {
             t = (T)1;
             s = (T)0;
+            cate = 2;  // p, t2
           } else {
             t = numer / denom;
             s = (T)1 - t;
+            cate = 4;  // p, <t1, t2>
           }
         } else {
           t = (T)0;
-          if (tmp1 <= (T)0)
+          if (tmp1 <= (T)0) {
             s = (T)1;
-          else if (b0 >= (T)0)
+            cate = 1;  // p, t1
+          } else if (b0 >= (T)0) {
             s = (T)0;
-          else
+            cate = 0;  // p, t0
+          } else {
             s = -b0 / a00;
+            cate = 3;  // p, <t0, t1>
+          }
         }
       } else {  // region 1
         numer = a11 + b1 - a01 - b0;
         if (numer <= (T)0) {
           s = (T)0;
           t = (T)1;
+          cate = 2;  // p, t2
         } else {
           denom = a00 - (a01 + a01) + a11;
           if (numer >= denom) {
             s = (T)1;
             t = (T)0;
+            cate = 1;  // p, t1
           } else {
             s = numer / denom;
             t = (T)1 - s;
+            cate = 4;  // p, <t1, t2>
           }
         }
       }
     }
     auto hitpoint = t0 + s * e0 + t * e1;
-    return zs::make_tuple((p - hitpoint).l2NormSqr());
+    return zs::make_tuple(cate, (p - hitpoint).l2NormSqr());
   }
   template <typename VecTP, typename VecTT,
             enable_if_all<VecTP::dim == 1, is_same_v<typename VecTP::dims, typename VecTT::dims>>
@@ -366,6 +398,8 @@ namespace zs {
     float sc{}, sN{}, sD = D;  // sc = sN/sD
     float tc{}, tN{}, tD = D;
 
+    int uCate = -1;
+    int vCate = -1;
     constexpr T eps = detail::deduce_numeric_epsilon<T>() * 16;
     // constexpr auto eps = (T)128 * limits<T>::epsilon();
     if (D < eps) {
@@ -373,6 +407,7 @@ namespace zs {
       sD = (T)1;
       tN = e;
       tD = c;
+      uCate = 0;
     } else {  // get the closest points on the infinite lines
       sN = b * e - c * d;
       tN = a * e - b * d;
@@ -380,40 +415,53 @@ namespace zs {
         sN = (T)0;
         tN = e;
         tD = c;
+        uCate = 0;
       } else if (sN > sD) {
         sN = sD;
         tN = e + b;
         tD = c;
+        uCate = 1;
+      } else {
+        uCate = 2;
       }
     }
 
-    if (tN < (T)0) {
+    if (tN <= (T)0) {
       tN = (T)0;
-      if (auto _d = -d; _d < (T)0)
+      vCate = 0;
+      if (auto _d = -d; _d < (T)0) {
         sN = (T)0;
-      else if (_d > a)
+        uCate = 0;
+      } else if (_d > a) {
         sN = sD;
-      else {
+        uCate = 1;
+      } else {
         sN = _d;
         sD = a;
+        uCate = 2;
       }
-    } else if (tN > tD) {
+    } else if (tN >= tD) {
       tN = tD;
-      if (auto b_d = -d + b; b_d < (T)0)
+      vCate = 1;
+      if (auto b_d = -d + b; b_d < (T)0) {
         sN = (T)0;
-      else if (b_d > a)
+        uCate = 0;
+      } else if (b_d > a) {
         sN = sD;
-      else {
+        uCate = 1;
+      } else {
         sN = b_d;
         sD = a;
+        uCate = 2;
       }
+    } else {
+      vCate = 2;
     }
 
     sc = zs::abs(sN) < eps ? (T)0 : sN / sD;
     tc = zs::abs(tN) < eps ? (T)0 : tN / tD;
-
-    int uCate = sc < eps ? 0 : (sc + eps > 1 ? 1 : 2);
-    int vCate = tc < eps ? 0 : (tc + eps > 1 ? 1 : 2);
+    // int uCate = sc < eps ? 0 : (sc + eps > 1 ? 1 : 2);
+    // int vCate = tc < eps ? 0 : (tc + eps > 1 ? 1 : 2);
 
     auto dP = w + (sc * u) - (tc * v);
     return zs::make_tuple(uCate * 3 + vCate, dP.l2NormSqr());

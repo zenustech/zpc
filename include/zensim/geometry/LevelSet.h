@@ -5,7 +5,7 @@
 
 #include "AnalyticLevelSet.h"
 #include "LevelSetInterface.h"
-#include "SparseLevelSet.hpp"
+#include "SparseGrid.hpp"
 #include "zensim/math/Vec.h"
 
 namespace zs {
@@ -13,7 +13,7 @@ namespace zs {
   template <execspace_e space, typename LsT>
   constexpr auto get_level_set_view(const std::shared_ptr<LsT> lsPtr) noexcept {
     using ls_t = remove_cvref_t<LsT>;
-    if constexpr (is_spls_v<ls_t>)  // SparseLevelSet<ls_t::dim, grid_e::...>
+    if constexpr (is_spg_v<ls_t>)   // SparseLevelSet<ls_t::dim, grid_e::...>
       return proxy<space>(*lsPtr);  // const & non-const view
     else
       return ls_t{*lsPtr};
@@ -56,36 +56,32 @@ namespace zs {
     static constexpr int dim = d;
     using dummy_ls_t = DummyLevelSet<T, d>;
     using uniform_vel_ls_t = UniformVelocityLevelSet<T, d>;
-    template <grid_e category = grid_e::collocated> using spls_t = SparseLevelSet<dim, category>;
-    using clspls_t = spls_t<grid_e::collocated>;
-    using ccspls_t = spls_t<grid_e::cellcentered>;
-    using sgspls_t = spls_t<grid_e::staggered>;
+    using spls_t = SparseGrid<3, T, 8>;  // 8x8x8
     template <analytic_geometry_e type = analytic_geometry_e::Plane> using analytic_ls_t
         = AnalyticLevelSet<type, value_type, dim>;
     /// raw levelset type list
-    using raw_sdf_ls_tl = type_seq<clspls_t, ccspls_t
+    using raw_sdf_ls_tl = type_seq<spls_t
 #if 0
                                    ,
-                                   sgspls_t, analytic_ls_t<analytic_geometry_e::Plane>,
                                    analytic_ls_t<analytic_geometry_e::Cuboid>,
                                    analytic_ls_t<analytic_geometry_e::Sphere>,
                                    analytic_ls_t<analytic_geometry_e::Cylinder>
 #endif
                                    >;
-    using raw_vel_ls_tl = type_seq<dummy_ls_t, clspls_t, ccspls_t, sgspls_t, uniform_vel_ls_t>;
+    using raw_vel_ls_tl = type_seq<dummy_ls_t, spls_t, uniform_vel_ls_t>;
     // should automatically compute from the above two typelists
-    using raw_ls_tl = type_seq<dummy_ls_t, clspls_t, ccspls_t, sgspls_t,
+    using raw_ls_tl = type_seq<dummy_ls_t, spls_t,
                                // analytic_ls_t<analytic_geometry_e::Plane>,
                                uniform_vel_ls_t>;
     /// shared_ptr of const raw levelsets
     using basic_ls_ptr_t = assemble_t<variant, map_t<std::shared_ptr, raw_ls_tl>>;
     using const_basic_ls_ptr_t
-        = assemble_t<variant, map_t<std::shared_ptr, map_t<std::add_const_t, raw_ls_tl>>>;
+        = assemble_t<variant, map_t<std::shared_ptr, map_t<add_const_t, raw_ls_tl>>>;
 
     using const_sdf_ls_ptr_t
-        = assemble_t<variant, map_t<std::shared_ptr, map_t<std::add_const_t, raw_sdf_ls_tl>>>;
+        = assemble_t<variant, map_t<std::shared_ptr, map_t<add_const_t, raw_sdf_ls_tl>>>;
     using const_vel_ls_ptr_t
-        = assemble_t<variant, map_t<std::shared_ptr, map_t<std::add_const_t, raw_vel_ls_tl>>>;
+        = assemble_t<variant, map_t<std::shared_ptr, map_t<add_const_t, raw_vel_ls_tl>>>;
 
     BasicLevelSet() noexcept = default;
 
@@ -133,9 +129,7 @@ namespace zs {
 
     using dummy_ls_t = typename basic_level_set_t::dummy_ls_t;
     using uniform_vel_ls_t = typename basic_level_set_t::uniform_vel_ls_t;
-    using clspls_t = typename basic_level_set_t::clspls_t;
-    using ccspls_t = typename basic_level_set_t::ccspls_t;
-    using sgspls_t = typename basic_level_set_t::sgspls_t;
+    using spls_t = typename basic_level_set_t::spls_t;
 
     using const_sdf_ls_ptr_t = typename basic_level_set_t::const_sdf_ls_ptr_t;
     using const_vel_ls_ptr_t = typename basic_level_set_t::const_vel_ls_ptr_t;
@@ -157,11 +151,11 @@ namespace zs {
         = assemble_t<variant, map_t<duplicate_t, field_view_tl<space>>>;
 
     /// ctor
-    template <typename SdfField = clspls_t, typename VelField = DummyLevelSet<T, d>>
+    template <typename SdfField = spls_t, typename VelField = DummyLevelSet<T, d>>
     constexpr ConstSdfVelFieldPtr(std::shared_ptr<const SdfField> sdf = {},
                                   std::shared_ptr<const VelField> vel = {}) noexcept
         : _sdfConstPtr{sdf}, _velConstPtr{vel} {}
-    template <typename SdfField = clspls_t, typename VelField = DummyLevelSet<T, d>>
+    template <typename SdfField = spls_t, typename VelField = DummyLevelSet<T, d>>
     constexpr ConstSdfVelFieldPtr(const SdfField *sdf, const VelField *vel = nullptr) noexcept
         : _sdfConstPtr{std::shared_ptr(sdf, [](...) {})},
           _velConstPtr{std::shared_ptr(vel, [](...) {})} {}
@@ -247,9 +241,8 @@ namespace zs {
   template <typename SdfLsView, typename VelLsView> struct SdfVelFieldView
       : LevelSetInterface<SdfVelFieldView<SdfLsView, VelLsView>> {
     static_assert(SdfLsView::dim == VelLsView::dim, "dimension mismatch!");
-    static_assert(is_floating_point_v<
-                      typename SdfLsView::
-                          value_type> && is_floating_point_v<typename VelLsView::value_type>,
+    static_assert(is_floating_point_v<typename SdfLsView::value_type>
+                      && is_floating_point_v<typename VelLsView::value_type>,
                   "levelset not in floating point type!");
 
     using value_type = typename SdfLsView::value_type;

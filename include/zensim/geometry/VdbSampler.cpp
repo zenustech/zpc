@@ -22,7 +22,7 @@ namespace zs {
 
   std::vector<std::array<float, 3>> sample_from_floatgrid(const OpenVDBStruct &grid, float dx,
                                                           float ppc) {
-    auto spls = convert_floatgrid_to_sparse_levelset(grid);
+    auto spls = convert_floatgrid_to_sparse_grid(grid);
     auto lsv = proxy<execspace_e::host>(spls);
 
     PoissonDisk<float, 3> pd{};

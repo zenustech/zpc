@@ -123,7 +123,7 @@ namespace zs {
     std::vector<AnalyticLevelSet<analytic_geometry_e::Cuboid, float, 3>> cuboids;
     std::vector<AnalyticLevelSet<analytic_geometry_e::Sphere, float, 3>> spheres;
     // std::vector<LevelSet<float, 3>> vdbLevelsets;
-    std::vector<SparseLevelSet<3>> sparseLevelSets;
+    std::vector<SparseGrid<3>> sparseLevelSets;
     collider_e boundaryType{collider_e::Sticky};
   };
 

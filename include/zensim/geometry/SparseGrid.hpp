@@ -43,7 +43,8 @@ namespace zs {
     using grid_storage_type = TileVector<value_type, block_size, allocator_type>;
     ///
     using transform_type = math::Transform<coord_component_type, dim>;
-    // using table_type = bcht<integer_coord_type, int, true, universal_hash<integer_coord_type>, 16>;
+    // using table_type = bcht<integer_coord_type, int, true, universal_hash<integer_coord_type>,
+    // 16>;
     using table_type = bht<integer_coord_component_type, dim, int, 16, allocator_type>;
 
     constexpr MemoryLocation memoryLocation() const noexcept { return _grid.memoryLocation(); }
@@ -171,7 +172,7 @@ namespace zs {
                                            VecT::template range_t<1>::value == dim>
                              = 0>
     void rotate(const VecInterface<VecT> &r) noexcept {
-      _transform.preRotate(r);
+      _transform.preRotate(Rotation<typename VecT::value_type, dim>{r});
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     void scale(const VecInterface<VecT> &s) {
@@ -432,6 +433,24 @@ namespace zs {
     constexpr auto wSample(const SmallString &prop, size_type chn, const VecInterface<VecT> &x,
                            wrapv<kt> = {}) const {
       return iSample(prop, chn, worldToIndex(x), wrapv<kt>{});
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      return wSample("sdf", x);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
+      typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
+      value_type eps = (value_type)1e-6;
+      /// compute a local partial derivative
+      for (int i = 0; i != dim; i++) {
+        v1 = x;
+        v2 = x;
+        v1(i) = x(i) + eps;
+        v2(i) = x(i) - eps;
+        diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
+      }
+      return diff.normalized();
     }
     // staggered
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,

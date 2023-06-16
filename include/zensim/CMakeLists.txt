@@ -76,7 +76,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   geometry/GenericLevelSet.h
   geometry/LevelSet.h
   geometry/LevelSetInterface.h
-  geometry/LevelSetSequence.hpp
   geometry/Mesh.hpp
   geometry/PoissonDisk.hpp
   geometry/SparseLevelSet.hpp

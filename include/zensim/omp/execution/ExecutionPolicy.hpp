@@ -470,33 +470,61 @@ namespace zs {
           }
           for (DiffT halfStride = 16; halfStride < (r - l);) {
             DiffT stride = halfStride * 2;
-            auto bgCur = flipped ? okeys : keys;
-            auto bgCurVals = flipped ? ovals : vals;
-            auto bgNext = flipped ? keys : okeys;
-            auto bgNextVals = flipped ? vals : ovals;
-            for (DiffT ll = l; ll < r; ll += stride) {
-              DiffT mid = std::min(ll + halfStride, r);
-              DiffT rr = std::min(ll + stride, r);
-              // [ll, mid) [mid, rr)
-              DiffT left = ll, right = mid, k = ll;
-              while (left < mid && right < rr) {
-                const auto &a = bgCur[left];
-                const auto &b = bgCur[right];
-                if (!compOp(b, a)) {
-                  bgNext[k] = a;
-                  bgNextVals[k++] = bgCurVals[left++];
-                } else {
-                  bgNext[k] = b;
-                  bgNextVals[k++] = bgCurVals[right++];
+            // auto bgCur = flipped ? okeys : keys;
+            // auto bgCurVals = flipped ? ovals : vals;
+            // auto bgNext = flipped ? keys : okeys;
+            // auto bgNextVals = flipped ? vals : ovals;
+            if (flipped) {
+              for (DiffT ll = l; ll < r; ll += stride) {
+                DiffT mid = std::min(ll + halfStride, r);
+                DiffT rr = std::min(ll + stride, r);
+                // [ll, mid) [mid, rr)
+                DiffT left = ll, right = mid, k = ll;
+                while (left < mid && right < rr) {
+                  const auto &a = okeys[left];
+                  const auto &b = okeys[right];
+                  if (!compOp(b, a)) {
+                    keys[k] = a;
+                    vals[k++] = ovals[left++];
+                  } else {
+                    keys[k] = b;
+                    vals[k++] = ovals[right++];
+                  }
+                }
+                while (left < mid) {
+                  keys[k] = okeys[left];
+                  vals[k++] = ovals[left++];
+                }
+                while (right < rr) {
+                  keys[k] = okeys[right];
+                  vals[k++] = ovals[right++];
                 }
               }
-              while (left < mid) {
-                bgNext[k] = bgCur[left];
-                bgNextVals[k++] = bgCurVals[left++];
-              }
-              while (right < rr) {
-                bgNext[k] = bgCur[right];
-                bgNextVals[k++] = bgCurVals[right++];
+            } else {
+              for (DiffT ll = l; ll < r; ll += stride) {
+                DiffT mid = std::min(ll + halfStride, r);
+                DiffT rr = std::min(ll + stride, r);
+                // [ll, mid) [mid, rr)
+                DiffT left = ll, right = mid, k = ll;
+                while (left < mid && right < rr) {
+                  const auto &a = keys[left];
+                  const auto &b = keys[right];
+                  if (!compOp(b, a)) {
+                    okeys[k] = a;
+                    ovals[k++] = vals[left++];
+                  } else {
+                    okeys[k] = b;
+                    ovals[k++] = vals[right++];
+                  }
+                }
+                while (left < mid) {
+                  okeys[k] = keys[left];
+                  ovals[k++] = vals[left++];
+                }
+                while (right < rr) {
+                  okeys[k] = keys[right];
+                  ovals[k++] = vals[right++];
+                }
               }
             }
             flipped = !flipped;
@@ -510,32 +538,54 @@ namespace zs {
           DiffT stride = halfStride * 2;
 #pragma omp barrier
           if (tid % stride == 0) {
-            auto bgCur = flipped ? okeys : keys;
-            auto bgCurVals = flipped ? ovals : vals;
-            auto bgNext = flipped ? keys : okeys;
-            auto bgNextVals = flipped ? vals : ovals;
+            // auto bgCur = flipped ? okeys : keys;
+            // auto bgCurVals = flipped ? ovals : vals;
+            // auto bgNext = flipped ? keys : okeys;
+            // auto bgNextVals = flipped ? vals : ovals;
             DiffT mid = std::min(nwork * (tid + halfStride), dist);
             DiffT rr = std::min(nwork * (tid + stride), dist);
             // std::inplace_merge(first + l, first + mid, first + r, compOp);
             DiffT left = l, right = mid, k = l;
-            while (left < mid && right < rr) {
-              const auto &a = bgCur[left];
-              const auto &b = bgCur[right];
-              if (!compOp(b, a)) {
-                bgNext[k] = a;
-                bgNextVals[k++] = bgCurVals[left++];
-              } else {
-                bgNext[k] = b;
-                bgNextVals[k++] = bgCurVals[right++];
+            if (flipped) {
+              while (left < mid && right < rr) {
+                const auto &a = okeys[left];
+                const auto &b = okeys[right];
+                if (!compOp(b, a)) {
+                  keys[k] = a;
+                  vals[k++] = ovals[left++];
+                } else {
+                  keys[k] = b;
+                  vals[k++] = ovals[right++];
+                }
               }
-            }
-            while (left < mid) {
-              bgNext[k] = bgCur[left];
-              bgNextVals[k++] = bgCurVals[left++];
-            }
-            while (right < rr) {
-              bgNext[k] = bgCur[right];
-              bgNextVals[k++] = bgCurVals[right++];
+              while (left < mid) {
+                keys[k] = okeys[left];
+                vals[k++] = ovals[left++];
+              }
+              while (right < rr) {
+                keys[k] = okeys[right];
+                vals[k++] = ovals[right++];
+              }
+            } else {
+              while (left < mid && right < rr) {
+                const auto &a = keys[left];
+                const auto &b = keys[right];
+                if (!compOp(b, a)) {
+                  okeys[k] = a;
+                  ovals[k++] = vals[left++];
+                } else {
+                  okeys[k] = b;
+                  ovals[k++] = vals[right++];
+                }
+              }
+              while (left < mid) {
+                okeys[k] = keys[left];
+                ovals[k++] = vals[left++];
+              }
+              while (right < rr) {
+                okeys[k] = keys[right];
+                ovals[k++] = vals[right++];
+              }
             }
             flipped = !flipped;
           }
@@ -623,26 +673,48 @@ namespace zs {
           //  bottom-up fashion
           for (DiffT halfStride = 16; halfStride < (r - l);) {
             DiffT stride = halfStride * 2;
-            auto bgCur = flipped ? ofirst : first;
-            auto bgNext = flipped ? first : ofirst;
-            for (DiffT ll = l; ll < r; ll += stride) {
-              DiffT mid = std::min(ll + halfStride, r);
-              DiffT rr = std::min(ll + stride, r);
-              // [ll, mid) [mid, rr)
-              DiffT left = ll, right = mid, k = ll;
-              while (left < mid && right < rr) {
-                const auto &a = bgCur[left];
-                const auto &b = bgCur[right];
-                if (!compOp(b, a)) {
-                  bgNext[k++] = a;
-                  left++;
-                } else {
-                  bgNext[k++] = b;
-                  right++;
+            // auto bgCur = flipped ? ofirst : first;
+            // auto bgNext = flipped ? first : ofirst;
+            if (flipped) {
+              for (DiffT ll = l; ll < r; ll += stride) {
+                DiffT mid = std::min(ll + halfStride, r);
+                DiffT rr = std::min(ll + stride, r);
+                // [ll, mid) [mid, rr)
+                DiffT left = ll, right = mid, k = ll;
+                while (left < mid && right < rr) {
+                  const auto &a = ofirst[left];
+                  const auto &b = ofirst[right];
+                  if (!compOp(b, a)) {
+                    first[k++] = a;
+                    left++;
+                  } else {
+                    first[k++] = b;
+                    right++;
+                  }
                 }
+                while (left < mid) first[k++] = ofirst[left++];
+                while (right < rr) first[k++] = ofirst[right++];
               }
-              while (left < mid) bgNext[k++] = bgCur[left++];
-              while (right < rr) bgNext[k++] = bgCur[right++];
+            } else {
+              for (DiffT ll = l; ll < r; ll += stride) {
+                DiffT mid = std::min(ll + halfStride, r);
+                DiffT rr = std::min(ll + stride, r);
+                // [ll, mid) [mid, rr)
+                DiffT left = ll, right = mid, k = ll;
+                while (left < mid && right < rr) {
+                  const auto &a = first[left];
+                  const auto &b = first[right];
+                  if (!compOp(b, a)) {
+                    ofirst[k++] = a;
+                    left++;
+                  } else {
+                    ofirst[k++] = b;
+                    right++;
+                  }
+                }
+                while (left < mid) ofirst[k++] = first[left++];
+                while (right < rr) ofirst[k++] = first[right++];
+              }
             }
             flipped = !flipped;
             halfStride = stride;
@@ -655,25 +727,41 @@ namespace zs {
           DiffT stride = halfStride * 2;
 #pragma omp barrier
           if (tid % stride == 0) {
-            auto bgCur = flipped ? ofirst : first;
-            auto bgNext = flipped ? first : ofirst;
+            // auto bgCur = flipped ? ofirst : first;
+            // auto bgNext = flipped ? first : ofirst;
             DiffT mid = std::min(nwork * (tid + halfStride), dist);
             DiffT rr = std::min(nwork * (tid + stride), dist);
             // std::inplace_merge(first + l, first + mid, first + r, compOp);
             DiffT left = l, right = mid, k = l;
-            while (left < mid && right < rr) {
-              const auto &a = bgCur[left];
-              const auto &b = bgCur[right];
-              if (!compOp(b, a)) {
-                bgNext[k++] = a;
-                left++;
-              } else {
-                bgNext[k++] = b;
-                right++;
+            if (flipped) {
+              while (left < mid && right < rr) {
+                const auto &a = ofirst[left];
+                const auto &b = ofirst[right];
+                if (!compOp(b, a)) {
+                  first[k++] = a;
+                  left++;
+                } else {
+                  first[k++] = b;
+                  right++;
+                }
               }
+              while (left < mid) first[k++] = ofirst[left++];
+              while (right < rr) first[k++] = ofirst[right++];
+            } else {
+              while (left < mid && right < rr) {
+                const auto &a = first[left];
+                const auto &b = first[right];
+                if (!compOp(b, a)) {
+                  ofirst[k++] = a;
+                  left++;
+                } else {
+                  ofirst[k++] = b;
+                  right++;
+                }
+              }
+              while (left < mid) ofirst[k++] = first[left++];
+              while (right < rr) ofirst[k++] = first[right++];
             }
-            while (left < mid) bgNext[k++] = bgCur[left++];
-            while (right < rr) bgNext[k++] = bgCur[right++];
             flipped = !flipped;
           }
         }

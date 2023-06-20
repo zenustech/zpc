@@ -139,7 +139,11 @@ namespace zs {
         for (int d = 0; d < dim; ++d)
           offset_number[d] = std::ceil(sideLength[d] / scaled_ref_box_length[d]) + 1;
 
+#if RESOURCE_AT_RELATIVE_PATH
         auto loc = abs_exe_directory() + "/resource/particles-1000k.dat";
+#else
+        auto loc = std::string{AssetDirPath} + "/resource/particles-1000k.dat";
+#endif
         // Read std vector
         std::ifstream is(loc, std::ios::in | std::ios::binary);
         if (!is)

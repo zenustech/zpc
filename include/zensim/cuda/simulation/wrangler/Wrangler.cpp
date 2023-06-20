@@ -17,7 +17,11 @@ namespace zs::cudri {
 
   /// ref: pyb zeno POC
   std::vector<std::string> load_all_ptx_files_at(const std::string &localPath) {
+#if RESOURCE_AT_RELATIVE_PATH
     auto dirpath = abs_exe_directory() + "/" + localPath;
+#else
+    auto dirpath = std::string{AssetDirPath} + "/" + localPath;
+#endif
     std::vector<std::string> res;
 
     if (!std::filesystem::exists(dirpath))

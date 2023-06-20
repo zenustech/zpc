@@ -554,7 +554,7 @@ if(ZS_ENABLE_CUDA)
 
   # set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})  # not valid for win platform
   # set(ZS_PTX_INCLUDE_DIR ${PROJECT_BINARY_DIR}/${ZS_PTX_SOURCE_DIR})
-  set(ZS_PTX_INCLUDE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resource)
+  set(ZS_PTX_INCLUDE_DIR ${RESOURCE_BASE_DIR}/resource)
   # message(FATAL_ERROR "to set ZS_PTX_INCLUDE_DIR: [${CMAKE_RUNTIME_OUTPUT_DIRECTORY}]")
   set_target_properties(zs_cu_wrangler
     PROPERTIES
@@ -613,14 +613,13 @@ add_custom_command(
   target_link_libraries(zensim INTERFACE zs_cu_wrangler) # zs_cu_wrangler -> zensim
 endif(ZS_ENABLE_CUDA)
 
-message("[AssetDirPath] set to: [${CMAKE_RUNTIME_OUTPUT_DIRECTORY}]")
 add_custom_command(
   TARGET zpctool
   POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resource
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${RESOURCE_BASE_DIR}/resource
   COMMAND ${CMAKE_COMMAND}
   -DOBJECTS=${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/MpmParticles/particles-1000k.dat
-  -DOUTPUT=${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resource
+  -DOUTPUT=${RESOURCE_BASE_DIR}/resource
   -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
 
   VERBATIM

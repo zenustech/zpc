@@ -598,7 +598,6 @@ add_custom_command(
 
     # COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_OBJECTS:zs_cu_wrangler> ${ZS_PTX_INCLUDE_DIR}
     VERBATIM
-    DEPENDS zs_cu_wrangler
     COMMENT "copying wrangler ptx files"
   )
 

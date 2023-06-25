@@ -249,7 +249,7 @@ endif()
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES
 )
 set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
-  cuda/simulation/wrangler/VolumeWrangler.cpp
+  # cuda/simulation/wrangler/VolumeWrangler.cpp
   cuda/simulation/wrangler/ParticleWrangler.cpp
 )
 
@@ -598,12 +598,14 @@ add_custom_command(
 
     # COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_OBJECTS:zs_cu_wrangler> ${ZS_PTX_INCLUDE_DIR}
     VERBATIM
+    DEPENDS zpctool
     COMMENT "copying wrangler ptx files"
   )
 
   target_compile_definitions(zpc_cuda_deps INTERFACE ZS_PTX_INCLUDE_DIR="${ZS_PTX_INCLUDE_DIR}")
 
   # $<TARGET_OBJECTS:zs_cu_wrangler>
+  add_dependencies(zpctool zs_cu_wrangler)
   target_link_libraries(zensim INTERFACE zs_cu_wrangler) # zs_cu_wrangler -> zensim
 endif(ZS_ENABLE_CUDA)
 

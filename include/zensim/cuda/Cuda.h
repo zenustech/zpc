@@ -5,12 +5,6 @@
 #  error "ZS_ENABLE_CUDA was not enabled, but Cuda.h was included anyway."
 #endif
 
-#if ZS_ENABLE_CUDA && !defined(__CUDACC__)
-#  error "ZS_ENABLE_CUDA defined but the compiler is not defining the __CUDACC__ macro as expected"
-// Some tooling environments will still function better if we do this here.
-#  define __CUDACC__
-#endif
-
 // #include <driver_types.h>
 #include <cstddef>
 #include <cstdint>
@@ -69,8 +63,7 @@ namespace zs {
                             size_t shmem, void *stream);
     static u32 launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
                                        unsigned int gz, unsigned int bx, unsigned int by,
-                                       unsigned int bz, void **args, size_t shmem,
-                                       void *stream);
+                                       unsigned int bz, void **args, size_t shmem, void *stream);
     static u32 launchCallback(void *stream, void *f, void *data);
 
     struct CudaContext {
@@ -86,7 +79,8 @@ namespace zs {
       void setContext(const source_location &loc = source_location::current()) const;
       /// stream & event
       // stream
-      /// @note https://stackoverflow.com/questions/31458016/in-cuda-is-it-guaranteed-that-the-default-stream-equals-nullptr
+      /// @note
+      /// https://stackoverflow.com/questions/31458016/in-cuda-is-it-guaranteed-that-the-default-stream-equals-nullptr
       template <StreamIndex sid> auto stream() const { return streams[static_cast<StreamID>(sid)]; }
       void *stream(StreamID sid) const {
         if (sid >= 0)
@@ -259,14 +253,14 @@ namespace zs {
   }
   template <typename... Args> struct cuda_safe_launch {
     operator u32() const { return errorCode; }
-#define CHECK_LAUNCH_CONFIG                                                                      \
-  if (lc.enableAutoConfig()) {                                                                   \
-    auto nwork = lc.db.x;                                                                        \
-    lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                       \
+#define CHECK_LAUNCH_CONFIG                                                                 \
+  if (lc.enableAutoConfig()) {                                                              \
+    auto nwork = lc.db.x;                                                                   \
+    lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                  \
                                       [shmem = lc.shmem](int) -> size_t { return shmem; }); \
-    lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                                   \
-    lc.shmem = (lc.shmem + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t)              \
-               * sizeof(std::max_align_t);                                                       \
+    lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                              \
+    lc.shmem = (lc.shmem + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t)         \
+               * sizeof(std::max_align_t);                                                  \
   }
     explicit cuda_safe_launch(const source_location &loc, const Cuda::CudaContext &ctx,
                               LaunchConfig &&lc, void (*f)(remove_cvref_t<Args>...),

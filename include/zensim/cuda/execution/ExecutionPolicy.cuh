@@ -23,6 +23,12 @@
 
 #include "zensim/types/Function.h"
 
+#if ZS_ENABLE_CUDA && !defined(__CUDACC__)
+#  error "ZS_ENABLE_CUDA defined but the compiler is not defining the __CUDACC__ macro as expected"
+// Some tooling environments will still function better if we do this here.
+#  define __CUDACC__
+#endif
+
 /// extracted from compiler error message...
 template <class Tag, class... CapturedVarTypePack> struct __nv_dl_wrapper_t;
 template <class U, U func, unsigned int> struct __nv_dl_tag;

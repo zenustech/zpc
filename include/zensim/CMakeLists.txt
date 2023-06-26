@@ -40,7 +40,6 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
   omp/execution/ExecutionPolicy.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
-
   # ref: https://stackoverflow.com/questions/2351148/explicit-template-instantiation-when-is-it-used
   container/HashTable.cpp
   container/Vector.cpp
@@ -49,14 +48,15 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp
   resource/Resource.cpp
-
-  py_interop/VectorInstantiations.cpp
-  py_interop/TileVectorInstantiations.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 
   # cuda/math/matrix/Matrix.cpp
   cuda/simulation/sparsity/SparsityCompute.cpp
+)
+set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
+  py_interop/VectorInstantiations.cpp
+  py_interop/TileVectorInstantiations.cpp
 )
 
 # # headers
@@ -233,6 +233,10 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
   # resource
   resource/Resource.h
 
+)
+set(ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES
+  py_interop/VectorView.hpp
+  py_interop/TileVectorView.hpp
 )
 
 if(ZS_ENABLE_CUDA)
@@ -485,9 +489,32 @@ endif(ZS_ENABLE_OPENCL)
 
 target_link_libraries(zensim INTERFACE zpc) # zpc -> zensim
 
+# ################
+# zpc_py_interop #
+# ################
+add_library(zpc_py_interop SHARED)
+target_sources(zpc_py_interop 
+  PRIVATE
+  ${ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES}
+  ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES}
+)
+
+if(ENABLE_PCH)
+  target_precompile_headers(zpc_py_interop INTERFACE ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES})
+endif(ENABLE_PCH)
+
+target_link_libraries(zpc_py_interop PUBLIC zpc)
+# ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
+set_target_properties(zpc_py_interop PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+target_link_libraries(zensim INTERFACE zpc_py_interop) # zpctool -> zensim
+
+
 # openvdb, partio
 # ##########
-# zpctool #
+# zpctool  #
 # ##########
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpctool SHARED)

@@ -506,7 +506,9 @@ endif(ENABLE_PCH)
 target_link_libraries(zpc_py_interop PUBLIC zpc)
 # ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
 set_target_properties(zpc_py_interop PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 target_link_libraries(zensim INTERFACE zpc_py_interop) # zpctool -> zensim

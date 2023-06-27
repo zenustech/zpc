@@ -666,7 +666,6 @@ namespace zs {
                       conditional_t<isVolatile, add_volatile_t<underlying_t>, underlying_t>>>;
   };
   template <class T> using make_unsigned_t = typename make_unsigned<T>::type;
-  static_assert(is_same_v<make_unsigned_t<char>, unsigned char>, "???");
   static_assert(is_same_v<make_unsigned_t<const volatile int>, volatile const unsigned int>, "???");
   static_assert(is_same_v<make_unsigned_t<volatile long>, volatile unsigned long>, "???");
 

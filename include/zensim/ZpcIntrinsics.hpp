@@ -1,4 +1,5 @@
 #pragma once
+#include "zensim/ZensimExport.hpp"
 #include "zensim/ZpcMeta.hpp"
 #include "zensim/types/Property.h"
 
@@ -13,8 +14,8 @@ extern void *malloc(size_t __size) noexcept;
 /// @note refer to <string.h>
 extern void *memcpy(void *__dest, const void *__src, size_t __n) noexcept;
 #  elif defined(_WIN64)
-extern void *malloc(zs::size_t __size);
-extern void *memcpy(void *__dest, const void *__src, zs::size_t __n);
+ZENSIM_EXPORT void *malloc(zs::size_t __size);
+ZENSIM_EXPORT void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 #  endif
 }
 #endif

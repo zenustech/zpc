@@ -178,16 +178,112 @@ namespace zs {
     using base_t::pack;
     using base_t::tuple;
 
-    template <bool V = is_const_structure, enable_if_t<!V> = 0>
-    constexpr decltype(auto) operator[](size_type i) {
-      return _vector[i];
+    template <bool V = is_const_structure, typename TT = value_type,
+              enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) <= alignof(value_type))>
+              = 0>
+    constexpr TT& operator()(const SmallString& propName, const channel_counter_type chn,
+                             const size_type i, wrapt<TT> = {}) noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<base_t&>(*this)(_tagOffsets[propNo] + chn, i, wrapt<TT>{});
     }
-    constexpr auto operator[](size_type i) const { return _vector[i]; }
+    template <typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
+    constexpr TT operator()(const SmallString& propName, const channel_counter_type chn,
+                            const size_type i, wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<const base_t&>(*this)(_tagOffsets[propNo] + chn, i, wrapt<TT>{});
+    }
+    template <bool V = is_const_structure, typename TT = value_type,
+              enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
+    constexpr TT& operator()(const SmallString& propName, const size_type i,
+                             wrapt<TT> = {}) noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<base_t&>(*this)(_tagOffsets[propNo], i, wrapt<TT>{});
+    }
+    template <typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) <= alignof(value_type))>
+              = 0>
+    constexpr TT operator()(const SmallString& propName, const size_type i,
+                            wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<const base_t&>(*this)(_tagOffsets[propNo], i, wrapt<TT>{});
+    }
 
-    channel_counter_type _N{0};
+    template <bool V = is_const_structure, bool InTile = WithinTile, enable_if_all<!V, !InTile> = 0>
+    constexpr auto tile(const size_type tileid) noexcept {
+      return TileVectorNamedViewLite<value_type, lane_width, true>{
+          this->_vector + tileid * lane_width * base_t::_numChannels,
+          base_t::_numChannels,
+          _tagNames,
+          _tagOffsets,
+          _tagSizes,
+          _N};
+    }
+    template <bool InTile = WithinTile, enable_if_t<!InTile> = 0>
+    constexpr auto tile(const size_type tileid) const noexcept {
+      return TileVectorNamedViewLite<value_type, lane_width, true>{
+          this->_vector + tileid * lane_width * base_t::_numChannels,
+          base_t::_numChannels,
+          _tagNames,
+          _tagOffsets,
+          _tagSizes,
+          _N};
+    }
+
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) <= alignof(value_type))>
+              = 0>
+    constexpr auto pack(value_seq<Ns...>, const SmallString& propName, const size_type i,
+                        wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<const base_t&>(*this).pack(dim_c<Ns...>, _tagOffsets[propNo], i,
+                                                    wrapt<TT>{});
+    }
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) <= alignof(value_type))>
+              = 0>
+    constexpr auto pack(value_seq<Ns...>, const SmallString& propName,
+                        const channel_counter_type chn, const size_type i,
+                        wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<const base_t&>(*this).pack(dim_c<Ns...>, _tagOffsets[propNo] + chn, i,
+                                                    wrapt<TT>{});
+    }
+
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) <= alignof(value_type))>
+              = 0>
+    constexpr auto tuple(value_seq<Ns...>, const SmallString& propName, const size_type i,
+                         wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<const base_t&>(*this).tuple(dim_c<Ns...>, _tagOffsets[propNo], i,
+                                                     wrapt<TT>{});
+    }
+    template <auto... Ns, typename TT = value_type,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) <= alignof(value_type))>
+              = 0>
+    constexpr auto tuple(value_seq<Ns...>, const SmallString& propName,
+                         const channel_counter_type chn, const size_type i,
+                         wrapt<TT> = {}) const noexcept {
+      auto propNo = propertyIndex(propName);
+      return static_cast<const base_t&>(*this).tuple(dim_c<Ns...>, _tagOffsets[propNo] + chn, i,
+                                                     wrapt<TT>{});
+    }
+
     const SmallString* _tagNames{nullptr};
     const channel_counter_type* _tagOffsets{nullptr};
     const channel_counter_type* _tagSizes{nullptr};
+    channel_counter_type _N{0};
   };
 
 }  // namespace zs

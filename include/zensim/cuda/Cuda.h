@@ -44,6 +44,20 @@ namespace zs {
       Default = 32,
       Total = Default + 1
     };
+    /// @ref nvidia warp
+    class ContextGuard {
+    public:
+      // default policy for restoring contexts
+      static bool alwaysRestore;
+      explicit ContextGuard(void *context, bool restore = alwaysRestore,
+                            const source_location &loc = source_location::current());
+      ~ContextGuard();
+
+    private:
+      source_location loc;
+      void *prevContext;
+      bool needRestore;
+    };
 
     static auto &driver() noexcept { return instance(); }
     static auto &context(int devid) { return driver().contexts[devid]; }
@@ -228,6 +242,33 @@ namespace zs {
     std::vector<CudaContext> contexts;  ///< generally one per device
     int textureAlignment;
   };
+  inline bool checkCuApiError(u32 error, const source_location &loc,
+                              std::string_view msg) noexcept {
+    if (error != 0) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+
+      std::cerr << fmt::format("\nCuda Driver Api Error {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n", msg,
+                               " error location ", fileInfo, locInfo, funcInfo, "=");
+      return false;
+    }
+    return true;
+  }
+  inline bool checkCuApiError(u32 error, const source_location &loc, std::string_view msg,
+                              std::string_view errorString) noexcept {
+    if (error != 0) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+
+      std::cerr << fmt::format("\nCuda Driver Api Error {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+                               msg, errorString, " error location ", fileInfo, locInfo, funcInfo,
+                               "=");
+      return false;
+    }
+    return true;
+  }
 
   inline void checkKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,
                                      std::string_view streamInfo,

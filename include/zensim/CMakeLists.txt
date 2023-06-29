@@ -510,7 +510,22 @@ target_sources(zpc_py_interop
   PRIVATE
   ${ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES}
   ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES}
+  py_interop/serial/ExecutionPolicy.cpp
 )
+if(ZS_ENABLE_CUDA)
+  target_sources(zpc_py_interop
+    PRIVATE
+    py_interop/cuda/ExecutionPolicy.cpp
+  )
+  set_source_files_properties(py_interop/cuda/ExecutionPolicy.cpp PROPERTIES LANGUAGE CUDA)
+endif(ZS_ENABLE_CUDA)
+
+if(ZS_ENABLE_OPENMP)
+  target_sources(zpc_py_interop
+    PRIVATE
+    py_interop/omp/ExecutionPolicy.cpp
+  )
+endif(ZS_ENABLE_OPENMP)
 
 set_target_properties(zpc_py_interop 
   PROPERTIES POSITION_INDEPENDENT_CODE ON

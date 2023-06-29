@@ -359,6 +359,10 @@ if(ZS_ENABLE_OPENMP)
     target_precompile_headers(zpcomp INTERFACE ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
   endif()
 
+  set_target_properties(zpcomp
+    PROPERTIES POSITION_INDEPENDENT_CODE ON
+  )
+
   target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
 
   if(WIN32)
@@ -391,6 +395,11 @@ if(ZS_ENABLE_CUDA)
   endif()
 
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES LANGUAGE CUDA)
+
+  set_target_properties(zpccuda
+    PROPERTIES POSITION_INDEPENDENT_CODE ON
+  )
+
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
@@ -459,6 +468,9 @@ target_sources(zpc
   ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
   ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
 )
+set_target_properties(zpc
+  PROPERTIES POSITION_INDEPENDENT_CODE ON
+)
 target_link_libraries(zpc PUBLIC zpccore)
 
 if(ZS_ENABLE_OPENMP)
@@ -500,6 +512,9 @@ target_sources(zpc_py_interop
   ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES}
 )
 
+set_target_properties(zpc_py_interop 
+  PROPERTIES POSITION_INDEPENDENT_CODE ON
+)
 if(ENABLE_PCH)
   target_precompile_headers(zpc_py_interop INTERFACE ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES})
 endif(ENABLE_PCH)

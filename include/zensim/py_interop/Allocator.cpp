@@ -17,4 +17,6 @@ zs::ZSPmrAllocator<true> *allocator_virtual(zs::memsrc_e mre, zs::ProcID devid,
   *ret = get_virtual_memory_source(mre, devid, reservedSpace, "STACK");
   return ret;
 }
+void del_allocator(zs::ZSPmrAllocator<false> *allocator) { delete allocator; }
+void del_allocator_virtual(zs::ZSPmrAllocator<false> *allocator) { delete allocator; }
 }

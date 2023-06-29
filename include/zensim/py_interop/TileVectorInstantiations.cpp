@@ -3,28 +3,32 @@
 
 extern "C" {
 
+/* tags */
+std::vector<zs::PropertyTag> *property_tags(const char *names[], int sizes[], zs::size_t numTags) {
+  auto ret = new std::vector<zs::PropertyTag>(numTags);
+  for (zs::size_t i = 0; i != numTags; ++i)
+    (*ret)[i] = zs::PropertyTag{zs::SmallString{names[i]}, sizes[i]};
+  return ret;
+}
+void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
+
 #define INSTANTIATE_TILE_VECTOR_VIEWLITE(T, L)                                                   \
   /* container */                                                                                \
   zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *container##__##tv##_##T##_##L(                \
-      const zs::ZSPmrAllocator<false> *allocator, zs::PropertyTag *tagStrs, zs::size_t numTags,  \
+      const zs::ZSPmrAllocator<false> *allocator, const std::vector<zs::PropertyTag> *tags,      \
       zs::size_t size) {                                                                         \
-    std::vector<zs::PropertyTag> tags(numTags);                                                  \
-    for (zs::size_t i = 0; i != numTags; ++i) tags[i] = tagStrs[i];                              \
-    return new zs::TileVector<T, L, zs::ZSPmrAllocator<false>>{*allocator, tags, size};          \
+    return new zs::TileVector<T, L, zs::ZSPmrAllocator<false>>{*allocator, *tags, size};         \
   }                                                                                              \
   zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *container##__##tv##_##T##_##L##_##virtual(     \
-      const zs::ZSPmrAllocator<true> *allocator, zs::PropertyTag *tagStrs, zs::size_t numTags,   \
+      const zs::ZSPmrAllocator<true> *allocator, const std::vector<zs::PropertyTag> *tags,       \
       zs::size_t size) {                                                                         \
-    std::vector<zs::PropertyTag> tags(numTags);                                                  \
-    for (zs::size_t i = 0; i != numTags; ++i) tags[i] = tagStrs[i];                              \
-    return new zs::TileVector<T, L, zs::ZSPmrAllocator<true>>{*allocator, tags, size};           \
+    return new zs::TileVector<T, L, zs::ZSPmrAllocator<true>>{*allocator, *tags, size};          \
   }                                                                                              \
-  void destruct_container##__##tv##_##T##_##L(                                                   \
-      const zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v) {                                \
+  void del_container##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v) {   \
     delete v;                                                                                    \
   }                                                                                              \
-  void destruct_container##__##tv##_##T##_##L##_##virtual(                                       \
-      const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v) {                                 \
+  void del_container##__##tv##_##T##_##L##_##virtual(                                            \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v) {                                      \
     delete v;                                                                                    \
   }                                                                                              \
   /* pyview */                                                                                   \
@@ -68,16 +72,12 @@ extern "C" {
                                                        v->tagNameHandle(), v->tagOffsetHandle(), \
                                                        v->tagSizeHandle(), v->numProperties()};  \
   }                                                                                              \
-  void destruct_pyview##__##tv##_##T##_##L(const zs::TileVectorViewLite<T, L> *v) { delete v; }  \
-  void destruct_pyview##__##tv##_##const##_##T##_##L(                                            \
-      const zs::TileVectorViewLite<const T, L> *v) {                                             \
+  void del_pyview##__##tv##_##T##_##L(zs::TileVectorViewLite<T, L> *v) { delete v; }             \
+  void del_pyview##__##tv##_##const##_##T##_##L(zs::TileVectorViewLite<const T, L> *v) {         \
     delete v;                                                                                    \
   }                                                                                              \
-  void destruct_pyview##__##tvn##_##T##_##L(const zs::TileVectorNamedViewLite<T, L> *v) {        \
-    delete v;                                                                                    \
-  }                                                                                              \
-  void destruct_pyview##__##tvn##_##const##_##T##_##L(                                           \
-      const zs::TileVectorNamedViewLite<const T, L> *v) {                                        \
+  void del_pyview##__##tvn##_##T##_##L(zs::TileVectorNamedViewLite<T, L> *v) { delete v; }       \
+  void del_pyview##__##tvn##_##const##_##T##_##L(zs::TileVectorNamedViewLite<const T, L> *v) {   \
     delete v;                                                                                    \
   }
 

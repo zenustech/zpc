@@ -4,6 +4,30 @@
 extern "C" {
 
 #define INSTANTIATE_TILE_VECTOR_VIEWLITE(T, L)                                                   \
+  /* container */                                                                                \
+  zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *container##__##tv##_##T##_##L(                \
+      const zs::ZSPmrAllocator<false> *allocator, zs::PropertyTag *tagStrs, zs::size_t numTags,  \
+      zs::size_t size) {                                                                         \
+    std::vector<zs::PropertyTag> tags(numTags);                                                  \
+    for (zs::size_t i = 0; i != numTags; ++i) tags[i] = tagStrs[i];                              \
+    return new zs::TileVector<T, L, zs::ZSPmrAllocator<false>>{*allocator, tags, size};          \
+  }                                                                                              \
+  zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *container##__##tv##_##T##_##L##_##virtual(     \
+      const zs::ZSPmrAllocator<true> *allocator, zs::PropertyTag *tagStrs, zs::size_t numTags,   \
+      zs::size_t size) {                                                                         \
+    std::vector<zs::PropertyTag> tags(numTags);                                                  \
+    for (zs::size_t i = 0; i != numTags; ++i) tags[i] = tagStrs[i];                              \
+    return new zs::TileVector<T, L, zs::ZSPmrAllocator<true>>{*allocator, tags, size};           \
+  }                                                                                              \
+  void destruct_container##__##tv##_##T##_##L(                                                   \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v) {                                \
+    delete v;                                                                                    \
+  }                                                                                              \
+  void destruct_container##__##tv##_##T##_##L##_##virtual(                                       \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v) {                                 \
+    delete v;                                                                                    \
+  }                                                                                              \
+  /* pyview */                                                                                   \
   zs::TileVectorViewLite<T, L> *pyview##__##tv##_##T##_##L(                                      \
       zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v) {                                      \
     return new zs::TileVectorViewLite<T, L>{v->data(), v->numChannels()};                        \
@@ -43,6 +67,18 @@ extern "C" {
     return new zs::TileVectorNamedViewLite<const T, L>{v->data(),          v->numChannels(),     \
                                                        v->tagNameHandle(), v->tagOffsetHandle(), \
                                                        v->tagSizeHandle(), v->numProperties()};  \
+  }                                                                                              \
+  void destruct_pyview##__##tv##_##T##_##L(const zs::TileVectorViewLite<T, L> *v) { delete v; }  \
+  void destruct_pyview##__##tv##_##const##_##T##_##L(                                            \
+      const zs::TileVectorViewLite<const T, L> *v) {                                             \
+    delete v;                                                                                    \
+  }                                                                                              \
+  void destruct_pyview##__##tvn##_##T##_##L(const zs::TileVectorNamedViewLite<T, L> *v) {        \
+    delete v;                                                                                    \
+  }                                                                                              \
+  void destruct_pyview##__##tvn##_##const##_##T##_##L(                                           \
+      const zs::TileVectorNamedViewLite<const T, L> *v) {                                        \
+    delete v;                                                                                    \
   }
 
 INSTANTIATE_TILE_VECTOR_VIEWLITE(int, 8);

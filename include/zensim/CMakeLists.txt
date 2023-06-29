@@ -55,6 +55,7 @@ set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
   cuda/simulation/sparsity/SparsityCompute.cpp
 )
 set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
+  py_interop/Allocator.cpp
   py_interop/VectorInstantiations.cpp
   py_interop/TileVectorInstantiations.cpp
 )

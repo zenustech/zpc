@@ -22,6 +22,10 @@ ZENSIM_EXPORT void launch__device(zs::CudaExecutionPolicy *ppol, void *kernel, z
   CUresult ec = cuLaunchKernel((CUfunction)kernel, gridDim, 1, 1, blockDim, 1, 1, 0,
                                (CUstream)pol.getStream(), args, 0);
 
+  if (pol.shouldSync()) {
+    context.syncStreamSpare(pol.getStreamid(), source_location::current());
+  }
+
   if (ec != CUDA_SUCCESS) {
     const char *errString = nullptr;
     if (cuGetErrorString) {

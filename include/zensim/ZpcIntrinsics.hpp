@@ -10,9 +10,9 @@ extern "C" {
 
 #  if defined(__linux__)
 /// @note refer to <stdlib.h>
-extern void *malloc(size_t __size) noexcept;
+extern void *malloc(zs::size_t __size) noexcept;
 /// @note refer to <string.h>
-extern void *memcpy(void *__dest, const void *__src, size_t __n) noexcept;
+extern void *memcpy(void *__dest, const void *__src, zs::size_t __n) noexcept;
 #  elif defined(_WIN64)
 ZENSIM_EXPORT void *malloc(zs::size_t __size);
 ZENSIM_EXPORT void *memcpy(void *__dest, const void *__src, zs::size_t __n);

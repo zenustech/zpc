@@ -16,3 +16,30 @@
 #include "zensim/types/Property.h"
 #include "zensim/types/SmallVector.hpp"
 // #include "zensim/types/SourceLocation.hpp"
+
+namespace zs 
+{
+template<class T, enable_if_t<is_floating_point_v<T>> = 0>
+constexpr void print(T t)
+{
+    printf("%f ", (float)t); 
+}
+
+template<class T, enable_if_t<is_integral_v<T>> = 0>
+constexpr void print(T t)
+{
+    printf("%d ", (int)t); 
+}
+
+constexpr void print(const SmallString& s)
+{
+    printf("%s ", s.asChars()); 
+}
+
+template<class T, class... Types>
+constexpr void print(T t, Types... args)
+{
+    print(t)
+    print(...args); 
+}
+}

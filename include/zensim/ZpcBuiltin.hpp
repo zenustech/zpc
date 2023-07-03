@@ -25,10 +25,11 @@ namespace zs {
   template <class T, enable_if_t<is_integral_v<T>> = 0> ZS_FUNCTION void print(T v) {
     ::printf("%d ", (int)v);
   }
-  ZS_FUNCTION void print(const SmallString &s) { printf("%s ", s.asChars()); }
+  ZS_FUNCTION void print(const char *s) { printf("%s ", s); }
+  ZS_FUNCTION void print(const SmallString &s) { print(s.asChars()); }
 
   template <class... Types> ZS_FUNCTION void print(Types &&...args) {
     ((void)print(FWD(args)), ...);
   }
 
-}  // namespace zs
+}

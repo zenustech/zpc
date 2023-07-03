@@ -27,6 +27,8 @@ namespace zs {
   }
   ZS_FUNCTION void print(const SmallString &s) { printf("%s ", s.asChars()); }
 
-  template <class... Types> ZS_FUNCTION void print(Types... &&args) { (void)(print(FWD(args))...); }
+  template <class... Types> ZS_FUNCTION void print(Types &&...args) {
+    ((void)print(FWD(args)), ...);
+  }
 
 }  // namespace zs

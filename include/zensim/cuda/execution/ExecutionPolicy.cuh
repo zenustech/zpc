@@ -688,6 +688,7 @@ namespace zs {
     }
     decltype(auto) context() { return Cuda::context(getProcid()); }
     decltype(auto) context() const { return Cuda::context(getProcid()); }
+    void *getContext() const { return context().getContext(); }
 
     constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
     constexpr StreamID getIncomingStreamid() const noexcept { return incomingStreamid; }

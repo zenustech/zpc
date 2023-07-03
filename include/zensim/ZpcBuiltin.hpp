@@ -32,4 +32,4 @@ namespace zs {
     ((void)print(FWD(args)), ...);
   }
 
-}
+}  // namespace zs

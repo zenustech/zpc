@@ -13,9 +13,11 @@ extern "C" {
 extern void *malloc(zs::size_t __size) noexcept;
 /// @note refer to <string.h>
 extern void *memcpy(void *__dest, const void *__src, zs::size_t __n) noexcept;
+extern int printf(const char *, ...);
 #  elif defined(_WIN64)
 ZENSIM_EXPORT void *malloc(zs::size_t __size);
 ZENSIM_EXPORT void *memcpy(void *__dest, const void *__src, zs::size_t __n);
+ZENSIM_EXPORT int printf(const char *, ...);
 #  endif
 }
 #endif

@@ -17,29 +17,16 @@
 #include "zensim/types/SmallVector.hpp"
 // #include "zensim/types/SourceLocation.hpp"
 
-namespace zs 
-{
-template<class T, enable_if_t<is_floating_point_v<T>> = 0>
-constexpr void print(T t)
-{
-    printf("%f ", (float)t); 
-}
+namespace zs {
 
-template<class T, enable_if_t<is_integral_v<T>> = 0>
-constexpr void print(T t)
-{
-    printf("%d ", (int)t); 
-}
+  template <class T, enable_if_t<is_floating_point_v<T>> = 0> ZS_FUNCTION void print(T v) {
+    ::printf("%f ", (float)v);
+  }
+  template <class T, enable_if_t<is_integral_v<T>> = 0> ZS_FUNCTION void print(T v) {
+    ::printf("%d ", (int)v);
+  }
+  ZS_FUNCTION void print(const SmallString &s) { printf("%s ", s.asChars()); }
 
-constexpr void print(const SmallString& s)
-{
-    printf("%s ", s.asChars()); 
-}
+  template <class... Types> ZS_FUNCTION void print(Types... &&args) { (void)(print(FWD(args))...); }
 
-template<class T, class... Types>
-constexpr void print(T t, Types... args)
-{
-    print(t)
-    print(...args); 
-}
-}
+}  // namespace zs

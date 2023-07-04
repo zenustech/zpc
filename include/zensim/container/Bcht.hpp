@@ -10,6 +10,7 @@
 #include "zensim/math/bit/Bits.h"
 #include "zensim/math/probability/Random.hpp"
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/py_interop/HashUtils.hpp"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 #if defined(__CUDACC__)
@@ -24,51 +25,28 @@ namespace zs {
   /// ref: https://github.com/owensgroup/BGHT
   // ref: Better GPU Hash Tables
   // Muhammad A. Awad, Saman Ashkiani, Serban D. Porumbescu, Martín Farach-Colton, and John D. Owens
-  template <typename KeyT> struct universal_hash {
+  template <typename KeyT> struct universal_hash : universal_hash_base<KeyT> {
+    using base_t = universal_hash_base<KeyT>;
+    using base_t::_hashx;
+    using base_t::_hashy;
     using key_type = KeyT;
     using result_type = u32;
 
     // borrowed from cudpp
     static constexpr u32 prime_divisor = 4294967291u;
 
-    universal_hash() noexcept : _hashx{call_random(1)}, _hashy{call_random(2)} {}
-    universal_hash(std::mt19937 &rng) : _hashx{0}, _hashy{0} {
+    universal_hash() noexcept : base_t{call_random(1), call_random(2)} {}
+    universal_hash(std::mt19937 &rng) {
       _hashx = rng() % prime_divisor;
       if (_hashx < 1) _hashx = 1;
       _hashy = rng() % prime_divisor;
     }
-    constexpr universal_hash(u32 hash_x, u32 hash_y) : _hashx(hash_x), _hashy(hash_y) {}
+    constexpr universal_hash(u32 hash_x, u32 hash_y) : base_t{hash_x, hash_y} {}
     ~universal_hash() = default;
     universal_hash(const universal_hash &) = default;
     universal_hash(universal_hash &&) = default;
     universal_hash &operator=(const universal_hash &) = default;
     universal_hash &operator=(universal_hash &&) = default;
-
-    template <bool isVec = is_vec<key_type>::value, enable_if_t<!isVec> = 0>
-    constexpr result_type operator()(const key_type &key) const noexcept {
-      return (((_hashx ^ key) + _hashy) % prime_divisor);
-    }
-    template <typename VecT, enable_if_t<is_integral_v<typename VecT::value_type>> = 0>
-    constexpr result_type operator()(const VecInterface<VecT> &key) const noexcept {
-      static_assert(VecT::extent >= 1, "should at least have one element");
-      const universal_hash<typename VecT::value_type> subhasher{_hashx, _hashy};
-      u32 ret = subhasher(key.val(0));
-      for (typename VecT::index_type d = 1; d != VecT::extent; ++d)
-        hash_combine(ret, subhasher(key.val(d)));
-      return ret;
-    }
-    template <bool isVec = is_vec<key_type>::value, enable_if_t<isVec> = 0>
-    constexpr result_type operator()(const key_type &key) const noexcept {
-      static_assert(key_type::extent >= 1, "should at least have one element");
-      const universal_hash<typename key_type::value_type> subhasher{_hashx, _hashy};
-      u32 ret = subhasher(key[0]);
-      for (typename key_type::index_type d = 1; d != key_type::extent; ++d)
-        hash_combine(ret, subhasher(key.val(d)));
-      return ret;
-    }
-
-    u32 _hashx;
-    u32 _hashy;
   };
 
   template <typename KeyT> struct vec_pack_hash {
@@ -528,9 +506,7 @@ namespace zs {
           _hf1{table._hf1},
           _hf2{table._hf2} {}
 
-    constexpr size_t capacity() const noexcept {
-      return (size_t)_numBuckets * (size_t)bucket_size;
-    }
+    constexpr size_t capacity() const noexcept { return (size_t)_numBuckets * (size_t)bucket_size; }
     constexpr auto transKey(const key_type &key) const noexcept {
       if constexpr (compare_key)
         return key;
@@ -1228,9 +1204,10 @@ namespace zs {
 
     template <bool retrieve_index = true, execspace_e S = space,
               enable_if_all<S == execspace_e::cuda> = 0>
-    __forceinline__ __host__ __device__ index_type
-    group_query(CoalescedGroup &tile, const original_key_type &key,
-                wrapv<retrieve_index> = {}) const noexcept {
+    __forceinline__ __host__ __device__ index_type group_query(CoalescedGroup &tile,
+                                                               const original_key_type &key,
+                                                               wrapv<retrieve_index>
+                                                               = {}) const noexcept {
       if (_numBuckets == 0) {
         if constexpr (retrieve_index)
           return sentinel_v;
@@ -1293,8 +1270,9 @@ namespace zs {
 
     template <bool retrieve_index = true, execspace_e S = space,
               enable_if_all<S == execspace_e::cuda> = 0>
-    __forceinline__ __host__ __device__ index_type
-    single_query(const original_key_type &key, wrapv<retrieve_index> = {}) const noexcept {
+    __forceinline__ __host__ __device__ index_type single_query(const original_key_type &key,
+                                                                wrapv<retrieve_index>
+                                                                = {}) const noexcept {
       if (_numBuckets == 0) {
         if constexpr (retrieve_index)
           return sentinel_v;

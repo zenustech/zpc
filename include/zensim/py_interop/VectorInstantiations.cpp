@@ -1,4 +1,5 @@
 #include "zensim/container/Vector.hpp"
+#include "zensim/math/Vec.h"
 #include "zensim/py_interop/VectorView.hpp"
 
 extern "C" {
@@ -48,6 +49,7 @@ INSTANTIATE_VECTOR_CAPIS(int)
 INSTANTIATE_VECTOR_CAPIS(float)
 INSTANTIATE_VECTOR_CAPIS(double)
 
+#if 0
 INSTANTIATE_VECTOR_CAPIS(zs::vec<int, 2>)
 INSTANTIATE_VECTOR_CAPIS(zs::vec<int, 3>)
 INSTANTIATE_VECTOR_CAPIS(zs::vec<int, 4>)
@@ -68,4 +70,5 @@ INSTANTIATE_VECTOR_CAPIS(zs::vec<double, 2, 2>)
 INSTANTIATE_VECTOR_CAPIS(zs::vec<double, 3, 3>)
 INSTANTIATE_VECTOR_CAPIS(zs::vec<double, 4, 4>)
 
+#endif
 }  // namespace zs

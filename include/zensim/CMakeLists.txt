@@ -56,6 +56,7 @@ set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
   py_interop/Allocator.cpp
+  py_interop/BhtInstantiations.cpp
   py_interop/VectorInstantiations.cpp
   py_interop/TileVectorInstantiations.cpp
 )
@@ -238,6 +239,7 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
 set(ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES
   py_interop/VectorView.hpp
   py_interop/TileVectorView.hpp
+  py_interop/BhtView.hpp
 )
 
 if(ZS_ENABLE_CUDA)
@@ -542,6 +544,7 @@ set_target_properties(zpc_py_interop PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
+add_dependencies(zensim zpc_py_interop)
 # do not link the target (zpc_py_interop) to zensim!
 
 # openvdb, partio

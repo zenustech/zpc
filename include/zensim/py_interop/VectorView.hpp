@@ -22,7 +22,7 @@ namespace zs {
     constexpr decltype(auto) operator()(size_type i) {
       return _vector[i];
     }
-    constexpr decltype(auto) operator()(size_type i) const { return _vector[i]; }
+    constexpr auto operator()(size_type i) const { return _vector[i]; }
 
     value_type* _vector{nullptr};
   };

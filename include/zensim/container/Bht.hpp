@@ -34,6 +34,11 @@ namespace zs {
     static constexpr size_type threshold = bucket_size - 2;
     static_assert(threshold > 0, "bucket load threshold must be positive");
 
+#if 1
+    static_assert(sizeof(key_type) == sizeof(index_type) * dim,
+                  "storage_key_type assumption of key_type is invalid");
+    using storage_key_type = storage_key_type_impl<key_type>;
+#else
     struct alignas(next_2pow(sizeof(index_type) * dim)) storage_key_type {
       static constexpr size_t num_total_bytes = next_2pow(sizeof(index_type) * dim);
       static constexpr size_t num_padded_bytes
@@ -70,6 +75,7 @@ namespace zs {
 
       key_type val;
     };
+#endif
 
     using allocator_type = AllocatorT;
     using difference_type = zs::make_signed_t<size_type>;
@@ -352,8 +358,9 @@ namespace zs {
 
     using status_type = typename hash_table_type::status_type;
 
-    using unsigned_value_t = conditional_t<sizeof(value_type) == 2, u16,
-                                           conditional_t<sizeof(value_type) == 4, u32, u64>>;
+    using unsigned_value_t = make_unsigned_t<value_type>;
+    // using unsigned_value_t = conditional_t<sizeof(value_type) == 2, u16,
+    //                                       conditional_t<sizeof(value_type) == 4, u32, u64>>;
 
     static_assert(sizeof(unsigned_value_t) == sizeof(value_type),
                   "unsigned version of value_type not as expected");

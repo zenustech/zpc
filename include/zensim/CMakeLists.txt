@@ -542,8 +542,7 @@ set_target_properties(zpc_py_interop PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-target_link_libraries(zensim INTERFACE zpc_py_interop) # zpctool -> zensim
-
+# do not link the target (zpc_py_interop) to zensim!
 
 # openvdb, partio
 # ##########

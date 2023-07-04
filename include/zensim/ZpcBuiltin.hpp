@@ -42,11 +42,26 @@ namespace zs {
     constexpr static char placeholder[] = "%s"; 
   }; 
 
-  // only int, float, double for now 
-  template <class... Types> ZS_FUNCTION void print_internal(Types &&...args) {
-    auto formatStr = ((zs::SmallString{printf_target<remove_cvref_t<Types>>::placeholder} + zs::SmallString{" "}) + ...);
-    auto formatChars = (formatStr).asChars(); 
-    printf(formatChars, static_cast<typename printf_target<remove_cvref_t<Types>>::type>(args)...); 
+  ZS_FUNCTION SmallString join(const SmallString& joinStr)
+  {
+    return SmallString{}; 
+  }
+
+  template<class T>
+  ZS_FUNCTION SmallString join(const SmallString& joinStr, T&& s0)
+  {
+    return s0; 
+  }
+
+  template<class T, class... Types>
+  ZS_FUNCTION SmallString join(const SmallString& joinStr, T&& s0, Types&& ...args)
+  {
+    return s0 + joinStr + join(joinStr, FWD(args)...); 
+  }
+
+  template <class... Types> ZS_FUNCTION void print_internal(Types&& ...args) {
+    auto formatStr = join(" ", SmallString{printf_target<remove_cvref_t<Types>>::placeholder}...); 
+    printf(formatStr.asChars(), static_cast<typename printf_target<remove_cvref_t<Types>>::type>(args)...); 
   }
 
   template <class... Types> ZS_FUNCTION void print(Types &&...args) { 

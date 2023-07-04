@@ -12,7 +12,7 @@ std::vector<zs::PropertyTag> *property_tags(const char *names[], int sizes[], zs
 }
 void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
 
-#define INSTANTIATE_TILE_VECTOR_VIEWLITE(T, L)                                                    \
+#define INSTANTIATE_TILE_VECTOR_CAPIS(T, L)                                                       \
   /* container */                                                                                 \
   zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *container##__##tv##_##T##_##L(                 \
       const zs::ZSPmrAllocator<false> *allocator, const std::vector<zs::PropertyTag> *tags,       \
@@ -89,16 +89,16 @@ void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
     delete v;                                                                                     \
   }
 
-INSTANTIATE_TILE_VECTOR_VIEWLITE(int, 8);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(int, 32);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(int, 64);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(int, 512);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(float, 8);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(float, 32);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(float, 64);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(float, 512);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(double, 8);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(double, 32);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(double, 64);
-INSTANTIATE_TILE_VECTOR_VIEWLITE(double, 512);
+INSTANTIATE_TILE_VECTOR_CAPIS(int, 8)
+INSTANTIATE_TILE_VECTOR_CAPIS(int, 32)
+INSTANTIATE_TILE_VECTOR_CAPIS(int, 64)
+INSTANTIATE_TILE_VECTOR_CAPIS(int, 512)
+INSTANTIATE_TILE_VECTOR_CAPIS(float, 8)
+INSTANTIATE_TILE_VECTOR_CAPIS(float, 32)
+INSTANTIATE_TILE_VECTOR_CAPIS(float, 64)
+INSTANTIATE_TILE_VECTOR_CAPIS(float, 512)
+INSTANTIATE_TILE_VECTOR_CAPIS(double, 8)
+INSTANTIATE_TILE_VECTOR_CAPIS(double, 32)
+INSTANTIATE_TILE_VECTOR_CAPIS(double, 64)
+INSTANTIATE_TILE_VECTOR_CAPIS(double, 512)
 }

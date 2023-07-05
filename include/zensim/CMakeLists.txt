@@ -240,6 +240,7 @@ set(ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES
   py_interop/VectorView.hpp
   py_interop/TileVectorView.hpp
   py_interop/BhtView.hpp
+  py_interop/HashUtils.hpp
 )
 
 if(ZS_ENABLE_CUDA)
@@ -405,7 +406,7 @@ if(ZS_ENABLE_CUDA)
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642" -dlto>
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=2642 --diag_suppress=128" -dlto>
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
     # https://docs.nvidia.com/cuda/cuda-driver-api/stream-sync-behavior.html#stream-sync-behavior
@@ -513,19 +514,29 @@ target_sources(zpc_py_interop
   ${ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES}
   ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES}
   py_interop/serial/ExecutionPolicy.cpp
+  py_interop/serial/TileVectorUtility.cpp
+  py_interop/serial/BhtUtility.cpp
 )
 if(ZS_ENABLE_CUDA)
   target_sources(zpc_py_interop
     PRIVATE
     py_interop/cuda/ExecutionPolicy.cpp
+    py_interop/cuda/TileVectorUtility.cpp
+    py_interop/cuda/BhtUtility.cpp
   )
-  set_source_files_properties(py_interop/cuda/ExecutionPolicy.cpp PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(
+    py_interop/cuda/ExecutionPolicy.cpp 
+    py_interop/cuda/TileVectorUtility.cpp
+    py_interop/cuda/BhtUtility.cpp
+    PROPERTIES LANGUAGE CUDA)
 endif(ZS_ENABLE_CUDA)
 
 if(ZS_ENABLE_OPENMP)
   target_sources(zpc_py_interop
     PRIVATE
     py_interop/omp/ExecutionPolicy.cpp
+    py_interop/omp/TileVectorUtility.cpp
+    py_interop/omp/BhtUtility.cpp
   )
 endif(ZS_ENABLE_OPENMP)
 

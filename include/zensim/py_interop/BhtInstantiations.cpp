@@ -35,6 +35,14 @@ extern "C" {
       zs::ProcID devid) {                                                                         \
     *v = v->clone({mre, devid});                                                                  \
   }                                                                                               \
+  void reset_container##__##bht##_##Tn##_##Dim##_##Index##_##B(                                   \
+      zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<false>> *v, int clearCnt) {                   \
+    v->reset(clearCnt);                                                                           \
+  }                                                                                               \
+  void reset_container##__##bht##_##Tn##_##Dim##_##Index##_##B##_##virtual(                       \
+      zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<true>> * v, int clearCnt) {                   \
+    v->reset(clearCnt);                                                                           \
+  }                                                                                               \
   zs::BhtViewLite<Tn, Dim, Index, B> *pyview##__##bht##_##Tn##_##Dim##_##Index##_##B(             \
       zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<false>> *v) {                                 \
     return new zs::BhtViewLite<Tn, Dim, Index, B>{v->self().keys.data(),                          \

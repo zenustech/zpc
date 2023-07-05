@@ -1,6 +1,7 @@
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #define Zensim_EXPORT
 #include "zensim/ZensimExport.hpp"
+#include "zensim/container/TileVector.hpp"
 #include "zensim/cuda/Cuda.h"
 
 extern "C" {

@@ -26,6 +26,21 @@ extern "C" {
                                                    zs::memsrc_e mre, zs::ProcID devid) {         \
     *v = v->clone({mre, devid});                                                                 \
   }                                                                                              \
+  void resize_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,                \
+                                     zs::size_t newSize) {                                       \
+    v->resize(newSize);                                                                          \
+  }                                                                                              \
+  void resize_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> * v,    \
+                                                 zs::size_t newSize) {                           \
+    v->resize(newSize);                                                                          \
+  }                                                                                              \
+  void reset_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, int ch) {       \
+    v->reset(ch);                                                                                \
+  }                                                                                              \
+  void reset_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> * v,     \
+                                                int ch) {                                        \
+    v->reset(ch);                                                                                \
+  }                                                                                              \
   /* pyview */                                                                                   \
   zs::VectorViewLite<T> *pyview##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {      \
     return new zs::VectorViewLite<T>{v->data()};                                                 \

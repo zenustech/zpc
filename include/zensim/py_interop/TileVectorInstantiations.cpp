@@ -39,6 +39,22 @@ void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
       zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, zs::memsrc_e mre, zs::ProcID devid) {   \
     *v = v->clone({mre, devid});                                                                  \
   }                                                                                               \
+  void resize_container##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,   \
+                                            zs::size_t newSize) {                                 \
+    v->resize(newSize);                                                                           \
+  }                                                                                               \
+  void resize_container##__##tv##_##T##_##L##_##virtual(                                          \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, zs::size_t newSize) {                   \
+    v->resize(newSize);                                                                           \
+  }                                                                                               \
+  void reset_container##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,    \
+                                           int ch) {                                              \
+    v->reset(ch);                                                                                 \
+  }                                                                                               \
+  void reset_container##__##tv##_##T##_##L##_##virtual(                                           \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, int ch) {                               \
+    v->reset(ch);                                                                                 \
+  }                                                                                               \
   int property_offset##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,     \
                                           const char *tag) {                                      \
     return v->getPropertyOffset(tag);                                                             \

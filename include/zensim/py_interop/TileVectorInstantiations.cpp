@@ -39,6 +39,22 @@ void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
       zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, zs::memsrc_e mre, zs::ProcID devid) {   \
     *v = v->clone({mre, devid});                                                                  \
   }                                                                                               \
+  int property_offset##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,     \
+                                          const char *tag) {                                      \
+    return v->getPropertyOffset(tag);                                                             \
+  }                                                                                               \
+  int property_offset##__##tv##_##T##_##L##_##virtual(                                            \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, const char *tag) {                      \
+    return v->getPropertyOffset(tag);                                                             \
+  }                                                                                               \
+  int property_size##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,       \
+                                        const char *tag) {                                        \
+    return v->getPropertySize(tag);                                                               \
+  }                                                                                               \
+  int property_size##__##tv##_##T##_##L##_##virtual(                                              \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, const char *tag) {                      \
+    return v->getPropertySize(tag);                                                               \
+  }                                                                                               \
   /* pyview */                                                                                    \
   zs::TileVectorViewLite<T, L> *pyview##__##tv##_##T##_##L(                                       \
       zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v) {                                       \

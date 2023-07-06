@@ -14,6 +14,12 @@ extern void *malloc(zs::size_t __size) noexcept;
 /// @note refer to <string.h>
 extern void *memcpy(void *__dest, const void *__src, zs::size_t __n) noexcept;
 extern int printf(const char *, ...);
+union pthread_attr_t;
+using pthread_t = unsigned long int;
+extern int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+                          void *(*start_routine)(void *), void *arg) noexcept;
+extern int pthread_join(pthread_t thread, void **value_ptr);
+extern void pthread_exit(void *value_ptr);
 #  elif defined(_WIN64)
 ZENSIM_EXPORT void *malloc(zs::size_t __size);
 ZENSIM_EXPORT void *memcpy(void *__dest, const void *__src, zs::size_t __n);

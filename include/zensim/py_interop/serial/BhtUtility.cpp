@@ -1,6 +1,4 @@
 #include "zensim/execution/ExecutionPolicy.hpp"
-#define Zensim_EXPORT
-#include "zensim/ZensimExport.hpp"
 #include "zensim/container/Bht.hpp"
 
 extern "C" {

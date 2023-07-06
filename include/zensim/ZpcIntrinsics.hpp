@@ -1,5 +1,4 @@
 #pragma once
-#include "zensim/ZensimExport.hpp"
 #include "zensim/ZpcMeta.hpp"
 #include "zensim/types/Property.h"
 
@@ -21,9 +20,9 @@ extern int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 extern int pthread_join(pthread_t thread, void **value_ptr);
 extern void pthread_exit(void *value_ptr);
 #  elif defined(_WIN64)
-ZENSIM_EXPORT void *malloc(zs::size_t __size);
-ZENSIM_EXPORT void *memcpy(void *__dest, const void *__src, zs::size_t __n);
-ZENSIM_EXPORT int printf(const char *, ...);
+_ACRTIMP void *malloc(zs::size_t __size);
+_ACRTIMP void *memcpy(void *__dest, const void *__src, zs::size_t __n);
+int printf(const char *, ...);
 #  endif
 }
 #endif

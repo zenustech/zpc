@@ -441,7 +441,6 @@ namespace zs {
         if (load < 0)
           return HashTableT::sentinel_v;
         else if (load <= threshold) {
-          key_type storedKey = key_sentinel_v;
           if (atomicSwitchIfEqual(
                   &_table.status[bucketOffset + load],
                   const_cast<volatile storage_key_type *>(&_table.keys[bucketOffset + load]),
@@ -695,7 +694,6 @@ namespace zs {
     __forceinline__ __host__ __device__ bool atomicSwitchIfEqual(
         status_type *lock, volatile storage_key_type *const dest,
         const storage_key_type &val) noexcept {
-      constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       const storage_key_type storage_key_sentinel_v = key_sentinel_v;
@@ -759,7 +757,6 @@ namespace zs {
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __host__ __device__ key_type
     atomicLoad(status_type *lock, const volatile storage_key_type *const dest) noexcept {
-      constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
         thread_fence(exec_cuda);

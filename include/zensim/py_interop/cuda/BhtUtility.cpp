@@ -1,6 +1,4 @@
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
-#define Zensim_EXPORT
-#include "zensim/ZensimExport.hpp"
 #include "zensim/container/Bht.hpp"
 #include "zensim/cuda/Cuda.h"
 

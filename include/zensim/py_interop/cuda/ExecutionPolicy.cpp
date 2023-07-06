@@ -1,14 +1,12 @@
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
-#define Zensim_EXPORT
-#include "zensim/ZensimExport.hpp"
 #include "zensim/cuda/Cuda.h"
 
 extern "C" {
 
-ZENSIM_EXPORT zs::CudaExecutionPolicy *policy__device() { return new zs::CudaExecutionPolicy; }
-ZENSIM_EXPORT void del_policy__device(zs::CudaExecutionPolicy *v) { delete v; }
+zs::CudaExecutionPolicy *policy__device() { return new zs::CudaExecutionPolicy; }
+void del_policy__device(zs::CudaExecutionPolicy *v) { delete v; }
 
-ZENSIM_EXPORT void launch__device(zs::CudaExecutionPolicy *ppol, void *kernel, zs::size_t dim,
+void launch__device(zs::CudaExecutionPolicy *ppol, void *kernel, zs::size_t dim,
                                   void **args) {
   using namespace zs;
   CudaExecutionPolicy &pol = *ppol;

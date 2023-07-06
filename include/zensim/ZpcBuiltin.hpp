@@ -54,4 +54,8 @@ namespace zs {
   template <class... Types> ZS_FUNCTION void print(Types&&... args) {
     print_internal(FWD(args)..., "\n");
   }
-}  // namespace zs
+
+  ZS_FUNCTION auto tid() {
+    return blockIdx.x * blockDim.x + threadIdx.x; 
+  }
+}

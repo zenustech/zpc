@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/ZpcMeta.hpp"
 #include "zensim/types/Property.h"
+#include "zensim/Platform.hpp"
 
 #if defined(__CUDACC__)
 
@@ -20,9 +21,11 @@ extern int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 extern int pthread_join(pthread_t thread, void **value_ptr);
 extern void pthread_exit(void *value_ptr);
 #  elif defined(_WIN64)
-_ACRTIMP void *malloc(zs::size_t __size);
-_ACRTIMP void *memcpy(void *__dest, const void *__src, zs::size_t __n);
-int printf(const char *, ...);
+ZPC_ACRTIMP void *malloc(zs::size_t __size);
+ZPC_ACRTIMP void *memcpy(void *__dest, const void *__src, zs::size_t __n);
+ZPC_ACRTIMP unsigned long long _beginthreadex(  // NATIVE CODE
+    void *security, unsigned stack_size, unsigned(__stdcall *start_address)(void *), void *arglist,
+    unsigned initflag, unsigned *thrdaddr);
 #  endif
 }
 #endif

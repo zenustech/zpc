@@ -4,6 +4,16 @@
 // Windows
 #if defined(_WIN64)
 #  define ZS_PLATFORM_WINDOWS
+/// @ref vcruntime.h
+#  ifndef ZPC_ACRTIMP
+#    if defined _CRTIMP && !defined _VCRT_DEFINED_CRTIMP
+#      define ZPC_ACRTIMP _CRTIMP
+#    elif !defined _CORECRT_BUILD && defined _DLL
+#      define ZPC_ACRTIMP __declspec(dllimport)
+#    else
+#      define ZPC_ACRTIMP
+#    endif
+#  endif
 #endif
 
 #if defined(_WIN32) && !defined(_WIN64)

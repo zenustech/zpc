@@ -1,4 +1,5 @@
 #pragma once
+#include "zensim/Platform.hpp"
 #include "zensim/ZensimExport.hpp"
 #include "zensim/ZpcFunctional.hpp"
 #include "zensim/types/Property.h"
@@ -94,76 +95,76 @@ int abs(int);
 long labs(long);
 long long llabs(long long);
 // math.h (ucrt/corecrt_math.h)
-_ACRTIMP float copysignf(float x, float y);
-_ACRTIMP double copysign(double x, double y);
+ZPC_ACRTIMP float copysignf(float x, float y);
+ZPC_ACRTIMP double copysign(double x, double y);
 float fabsf(float);
 double fabs(double);
-_ACRTIMP float fmaxf(float x, float y);
-_ACRTIMP double fmax(double x, double y);
-_ACRTIMP float fminf(float x, float y);
-_ACRTIMP double fmin(double x, double y);
-_ACRTIMP float fmaf(float, float, float);
-_ACRTIMP double fma(double x, double y, double z);
-_ACRTIMP float fmodf(float, float);
+ZPC_ACRTIMP float fmaxf(float x, float y);
+ZPC_ACRTIMP double fmax(double x, double y);
+ZPC_ACRTIMP float fminf(float x, float y);
+ZPC_ACRTIMP double fmin(double x, double y);
+ZPC_ACRTIMP float fmaf(float, float, float);
+ZPC_ACRTIMP double fma(double x, double y, double z);
+ZPC_ACRTIMP float fmodf(float, float);
 double fmod(double, double);
-_ACRTIMP float ceilf(float);
-_ACRTIMP double ceil(double);
-_ACRTIMP float floorf(float);
-_ACRTIMP double floor(double);
-_ACRTIMP float sqrtf(float);
+ZPC_ACRTIMP float ceilf(float);
+ZPC_ACRTIMP double ceil(double);
+ZPC_ACRTIMP float floorf(float);
+ZPC_ACRTIMP double floor(double);
+ZPC_ACRTIMP float sqrtf(float);
 double sqrt(double);
-_ACRTIMP float logf(float);
+ZPC_ACRTIMP float logf(float);
 double log(double);
-_ACRTIMP float log1pf(float);
-_ACRTIMP double log1p(double);
-_ACRTIMP float expf(float);
+ZPC_ACRTIMP float log1pf(float);
+ZPC_ACRTIMP double log1p(double);
+ZPC_ACRTIMP float expf(float);
 double exp(double);
-_ACRTIMP float powf(float, float);
+ZPC_ACRTIMP float powf(float, float);
 double pow(double, double);
 
-_ACRTIMP float sinhf(float);
+ZPC_ACRTIMP float sinhf(float);
 double sinh(double);
-_ACRTIMP float sinf(float);
+ZPC_ACRTIMP float sinf(float);
 double sin(double);
-_ACRTIMP float asinhf(float);
-_ACRTIMP double asinh(double);
-_ACRTIMP float asinf(float);
+ZPC_ACRTIMP float asinhf(float);
+ZPC_ACRTIMP double asinh(double);
+ZPC_ACRTIMP float asinf(float);
 double asin(double);
 
-_ACRTIMP float cosf(float);
+ZPC_ACRTIMP float cosf(float);
 double cos(double);
-_ACRTIMP float coshf(float);
+ZPC_ACRTIMP float coshf(float);
 double cosh(double);
-_ACRTIMP float acoshf(float);
-_ACRTIMP double acosh(double);
-_ACRTIMP float acosf(float);
+ZPC_ACRTIMP float acoshf(float);
+ZPC_ACRTIMP double acosh(double);
+ZPC_ACRTIMP float acosf(float);
 double acos(double);
 
-_ACRTIMP float atan2f(float, float);
+ZPC_ACRTIMP float atan2f(float, float);
 double atan2(double, double);
 
-_ACRTIMP float modff(float arg, float *iptr);
-_ACRTIMP double modf(double arg, double *iptr);
+ZPC_ACRTIMP float modff(float arg, float *iptr);
+ZPC_ACRTIMP double modf(double arg, double *iptr);
 float frexpf(float arg, int *exp);
-_ACRTIMP double frexp(double arg, int *exp);
+ZPC_ACRTIMP double frexp(double arg, int *exp);
 float ldexpf(float arg, int exp);
-_ACRTIMP double ldexp(double arg, int exp);
+ZPC_ACRTIMP double ldexp(double arg, int exp);
 
 // not yet wrapped
-_ACRTIMP float log2f(float);
-_ACRTIMP double log2(double);
-_ACRTIMP float log10f(float);
-_ACRTIMP double log10(double);
-_ACRTIMP float roundf(float);
-_ACRTIMP double round(double);
-_ACRTIMP float truncf(float);
-_ACRTIMP double trunc(double);
-_ACRTIMP float atanf(float);
-_ACRTIMP double atan(double);
-_ACRTIMP float tanf(float);
-_ACRTIMP double tan(double);
-_ACRTIMP float tanhf(float);
-_ACRTIMP double tanh(double);
+ZPC_ACRTIMP float log2f(float);
+ZPC_ACRTIMP double log2(double);
+ZPC_ACRTIMP float log10f(float);
+ZPC_ACRTIMP double log10(double);
+ZPC_ACRTIMP float roundf(float);
+ZPC_ACRTIMP double round(double);
+ZPC_ACRTIMP float truncf(float);
+ZPC_ACRTIMP double trunc(double);
+ZPC_ACRTIMP float atanf(float);
+ZPC_ACRTIMP double atan(double);
+ZPC_ACRTIMP float tanf(float);
+ZPC_ACRTIMP double tan(double);
+ZPC_ACRTIMP float tanhf(float);
+ZPC_ACRTIMP double tanh(double);
 // float rintf(float);
 // double rint(double);
 

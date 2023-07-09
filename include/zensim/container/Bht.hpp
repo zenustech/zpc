@@ -696,10 +696,10 @@ namespace zs {
         const storage_key_type &val) noexcept {
       using namespace placeholders;
       constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
-      const storage_key_type storage_key_sentinel_v = key_sentinel_v;
       if constexpr (sizeof(storage_key_type) == 8) {
         static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
+        const storage_key_type storage_key_sentinel_v = key_sentinel_v;
         union {
           volatile storage_key_type *const ptr;
           volatile u64 *const ptr64;
@@ -719,6 +719,7 @@ namespace zs {
       } else if constexpr (sizeof(storage_key_type) == 4) {
         static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
+        const storage_key_type storage_key_sentinel_v = key_sentinel_v;
         union {
           volatile storage_key_type *const ptr;
           volatile u32 *const ptr32;

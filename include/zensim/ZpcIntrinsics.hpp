@@ -1,7 +1,7 @@
 #pragma once
+#include "zensim/Platform.hpp"
 #include "zensim/ZpcMeta.hpp"
 #include "zensim/types/Property.h"
-#include "zensim/Platform.hpp"
 
 #if defined(__CUDACC__)
 
@@ -14,41 +14,33 @@ void *malloc(zs::size_t __size) noexcept;
 /// @note refer to <string.h>
 void *memcpy(void *__dest, const void *__src, zs::size_t __n) noexcept;
 int printf(const char *, ...);
-union pthread_attr_t;
-using pthread_t = unsigned long int;
-int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
-                          void *(*start_routine)(void *), void *arg) noexcept;
-int pthread_join(pthread_t thread, void **value_ptr);
-void pthread_exit(void *value_ptr);
+
 #  elif defined(_WIN64)
 ZPC_ACRTIMP void *malloc(zs::size_t __size);
 ZPC_ACRTIMP void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 struct _iobuf;
 struct __crt_locale_pointers;
 using FILE = _iobuf;
-using _locale_t = __crt_locale_pointers*;
-ZPC_ACRTIMP FILE* __acrt_iob_func(unsigned _Ix);
+using _locale_t = __crt_locale_pointers *;
+ZPC_ACRTIMP FILE *__acrt_iob_func(unsigned _Ix);
 ZPC_ACRTIMP int __stdio_common_vfprintf(unsigned __int64 _Options, FILE *_Stream,
-                                        char const *_Format, _locale_t _Locale, char * _ArgList);
+                                        char const *_Format, _locale_t _Locale, char *_ArgList);
 __declspec(noinline) __inline unsigned __int64 *__zs_local_stdio_printf_options(void) {
   static unsigned __int64 _OptionsStorage;
   return &_OptionsStorage;
 }
-#ifdef ZPC_JIT_MODE
-  inline int printf(char const *const fmtstr, ...) {
-    int _Result;
-    char *_ArgList;
-    (void)(__va_start(&_ArgList, fmtstr));  // __crt_va_start(_ArgList, fmtstr);
-    _Result = ::__stdio_common_vfprintf(
-        *__zs_local_stdio_printf_options(), ::__acrt_iob_func(1), fmtstr, 0,
-        _ArgList);                 // _Result = _vfprintf_l(__acrt_iob_func(1), fmtstr, 0, _ArgList);
-    (void)(_ArgList = (char *)0);  // __crt_va_end(_ArgList);
-    return _Result;
-  }
-#endif
-ZPC_ACRTIMP unsigned long long _beginthreadex(  // NATIVE CODE
-    void *security, unsigned stack_size, unsigned(__stdcall *start_address)(void *), void *arglist,
-    unsigned initflag, unsigned *thrdaddr);
+#    ifdef ZPC_JIT_MODE
+inline int printf(char const *const fmtstr, ...) {
+  int _Result;
+  char *_ArgList;
+  (void)(__va_start(&_ArgList, fmtstr));  // __crt_va_start(_ArgList, fmtstr);
+  _Result = ::__stdio_common_vfprintf(
+      *__zs_local_stdio_printf_options(), ::__acrt_iob_func(1), fmtstr, 0,
+      _ArgList);                 // _Result = _vfprintf_l(__acrt_iob_func(1), fmtstr, 0, _ArgList);
+  (void)(_ArgList = (char *)0);  // __crt_va_end(_ArgList);
+  return _Result;
+}
+#    endif
 #  endif
 }
 #endif

@@ -16,6 +16,9 @@
 #include "zensim/types/Property.h"
 #include "zensim/types/SmallVector.hpp"
 // #include "zensim/types/SourceLocation.hpp"
+#if defined(ZS_ENABLE_OPENMP) && ZS_ENABLE_OPENMP == 1
+#  include "zensim/omp/Omp.h"
+#endif
 
 namespace zs {
   template <class T, class = int> struct printf_target;
@@ -57,13 +60,12 @@ namespace zs {
 
   ZS_FUNCTION auto tid() {
 #ifdef __CUDACC__
-    return blockIdx.x * blockDim.x + threadIdx.x; 
+    return blockIdx.x * blockDim.x + threadIdx.x;
 #elif defined(_OPENMP)
-    /// TBD: omp_get_thread_num() -like
-    return -1;
+    return ::omp_get_thread_num();
 #else
-    return -1;
+    return 0;
 #endif
   }
 
-}
+}  // namespace zs

@@ -8,10 +8,9 @@
 #  error "ZS_ENABLE_OPENMP defined but the compiler is not defining the _OPENMP macro as expected"
 #endif
 
-#include <omp.h>
-
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
+#include "zensim/omp/Omp.h"
 #include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 
@@ -122,8 +121,8 @@ namespace zs {
                                loc.column()));
     }
 
-    template <zs::size_t I, size_t... Is, typename... Iters, typename... Policies, typename... Ranges,
-              typename... Bodies>
+    template <zs::size_t I, size_t... Is, typename... Iters, typename... Policies,
+              typename... Ranges, typename... Bodies>
     void exec(index_sequence<Is...> indices, zs::tuple<Iters...> prefixIters,
               const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
               const Bodies &...bodies) const {

@@ -17,7 +17,7 @@
 #  include <cooperative_groups.h>
 #endif
 #if ZS_ENABLE_OPENMP
-#  include <omp.h>
+#  include "zensim/omp/Omp.h"
 #endif
 
 namespace zs {

@@ -687,6 +687,7 @@ add_custom_command(
   target_link_libraries(zensim INTERFACE zs_cu_wrangler) # zs_cu_wrangler -> zensim
 endif(ZS_ENABLE_CUDA)
 
+# poisson disk resource file
 add_custom_command(
   TARGET zpctool
   POST_BUILD
@@ -699,6 +700,21 @@ add_custom_command(
   VERBATIM
   DEPENDS zpc
     COMMENT "copying resource file [particles-1000k.dat] for poisson disk sampling"
+)
+
+# python helloworld script
+add_custom_command(
+  TARGET zpctool
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${RESOURCE_BASE_DIR}/resource
+  COMMAND ${CMAKE_COMMAND}
+  -DOBJECTS=${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Scripts/HelloWorld.py
+  -DOUTPUT=${RESOURCE_BASE_DIR}/resource
+  -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+
+  VERBATIM
+  DEPENDS zpc
+    COMMENT "copying script file [HelloWorld.py] for py module"
 )
 
 # for header installation

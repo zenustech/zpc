@@ -2,6 +2,8 @@
 
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
+#include "zensim/execution/Atomics.hpp"
+#include "zensim/execution/Intrinsics.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
 #if defined(__CUDACC__)
 #  include <cooperative_groups.h>
@@ -182,6 +184,46 @@ namespace zs {
         return zs::make_tuple(idx, dist);
       else
         return dist;
+    }
+    template <typename VecT, bool IndexRequired = false>
+    constexpr auto find_nearest_point(const VecInterface<VecT> &p,
+                                      typename VecT::value_type dist2 = limits<value_type>::max(),
+                                      index_t idx = -1, wrapv<IndexRequired> = {}) const {
+      using T = typename VecT::value_type;
+      if (auto nl = numNodes(); nl <= 2) {
+        for (index_t i = 0; i != nl; ++i) {
+          if (auto d2 = (p - getNodeBV(i)._min).l2NormSqr(); d2 < dist2) {
+            dist2 = d2;
+            idx = i;
+            // f(i, dist, idx);
+          }
+        }
+        if constexpr (IndexRequired)
+          return zs::make_tuple(idx, std::sqrt(dist2));
+        else
+          return std::sqrt(dist2);
+      }
+      index_t node = 0;
+      while (node != -1 && node != _numNodes) {
+        index_t level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (auto d = zs::max((value_type)0, distance(p, getNodeBV(node))); d * d > dist2) break;
+        // leaf node check
+        if (level == 0) {
+          if (auto d2 = (p - getNodeBV(node)._min).l2NormSqr(); d2 < dist2) {
+            dist2 = d2;
+            idx = _auxIndices[node];
+            // f(_auxIndices[node], dist, idx);
+          }
+          node++;
+        } else  // separate at internal nodes
+          node = _auxIndices[node];
+      }
+      if constexpr (IndexRequired)
+        return zs::make_tuple(idx, std::sqrt(dist2));
+      else
+        return std::sqrt(dist2);
     }
     /// @note F return_value indicates early exit
     template <typename BV, class F> constexpr void iter_neighbors(const BV &bv, F &&f) const {

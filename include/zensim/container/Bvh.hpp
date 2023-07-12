@@ -188,9 +188,8 @@ namespace zs {
     template <typename VecT, bool IndexRequired = false>
     constexpr auto find_nearest_point(const VecInterface<VecT> &p,
                                       typename VecT::value_type dist2 = limits<value_type>::max(),
-                                      wrapv<IndexRequired> = {}) const {
+                                      index_t idx = -1, wrapv<IndexRequired> = {}) const {
       using T = typename VecT::value_type;
-      index_t idx = -1;
       if (auto nl = numNodes(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
           if (auto d2 = (p - getNodeBV(i)._min).l2NormSqr(); d2 < dist2) {
@@ -209,7 +208,7 @@ namespace zs {
         index_t level = _levels[node];
         // level and node are always in sync
         for (; level; --level, ++node)
-          if (auto d = distance(p, getNodeBV(node)); d * d > dist2) break;
+          if (auto d = zs::max((value_type)0, distance(p, getNodeBV(node))); d * d > dist2) break;
         // leaf node check
         if (level == 0) {
           if (auto d2 = (p - getNodeBV(node)._min).l2NormSqr(); d2 < dist2) {

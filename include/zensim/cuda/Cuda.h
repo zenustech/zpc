@@ -1,7 +1,7 @@
 #pragma once
 
 /// kokkos/core/src/setup/Kokkos_Setup_Cuda.hpp
-#if !ZS_ENABLE_CUDA
+#if !defined(ZS_ENABLE_CUDA) || (defined(ZS_ENABLE_CUDA) && !ZS_ENABLE_CUDA)
 #  error "ZS_ENABLE_CUDA was not enabled, but Cuda.h was included anyway."
 #endif
 

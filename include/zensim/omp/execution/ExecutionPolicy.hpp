@@ -1,6 +1,6 @@
 #pragma once
 
-#if !ZS_ENABLE_OPENMP
+#if !defined(ZS_ENABLE_OPENMP) || (defined(ZS_ENABLE_OPENMP) && !ZS_ENABLE_OPENMP)
 #  error "ZS_ENABLE_OPENMP was not enabled, but Omp::ExecutionPolicy.hpp was included anyway."
 #endif
 

@@ -255,6 +255,10 @@ namespace zs {
     }
     return true;
   }
+  inline bool checkCuApiError(u32 error, std::string_view msg,
+                              const source_location &loc = source_location::current()) noexcept {
+    return checkCuApiError(error, loc, msg);
+  }
   inline bool checkCuApiError(u32 error, const source_location &loc, std::string_view msg,
                               std::string_view errorString) noexcept {
     if (error != 0) {

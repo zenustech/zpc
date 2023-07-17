@@ -84,8 +84,8 @@ namespace zs {
 
 extern "C" {
 
-ZENSIM_EXPORT int compile_cpp(const char *cpp_src, const char *include_dir,
-                              const char *output_file) {
+ZENSIM_EXPORT int cpp_compile_program(const char *cpp_src, const char *include_dir,
+                                      const char *output_file) {
 #if defined(_WIN32)
   const char *obj_ext = ".obj";
 #else

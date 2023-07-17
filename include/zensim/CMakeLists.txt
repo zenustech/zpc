@@ -517,19 +517,27 @@ target_sources(zpc_py_interop
   py_interop/serial/TileVectorUtility.cpp
   py_interop/serial/BhtUtility.cpp
 )
+
+if(ZS_ENABLE_JIT)
+target_sources(zpc_py_interop 
+  PRIVATE
+  py_interop/Clang.cpp  # may include omp backend
+)
+endif(ZS_ENABLE_JIT)
+
 if(ZS_ENABLE_CUDA)
   target_sources(zpc_py_interop
     PRIVATE
     py_interop/cuda/ExecutionPolicy.cpp
     py_interop/cuda/TileVectorUtility.cpp
     py_interop/cuda/BhtUtility.cpp
-    py_interop/cuda/nvrtc.cpp
+    py_interop/cuda/Nvrtc.cpp
   )
   set_source_files_properties(
     py_interop/cuda/ExecutionPolicy.cpp 
     py_interop/cuda/TileVectorUtility.cpp
     py_interop/cuda/BhtUtility.cpp
-    py_interop/cuda/nvrtc.cpp
+    py_interop/cuda/Nvrtc.cpp
     PROPERTIES LANGUAGE CUDA)
 endif(ZS_ENABLE_CUDA)
 

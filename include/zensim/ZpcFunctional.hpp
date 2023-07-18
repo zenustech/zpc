@@ -529,8 +529,10 @@ namespace zs {
   template <size_t... Ns> constexpr value_seq<Ns...> dim_c{};
 
   /// select (constant integral) value (integral_constant<T, N>) by index
-  template <zs::size_t I, typename ValueSeq> using select_value = typename ValueSeq::template type<I>;
-  template <zs::size_t I, auto... Ns> using select_indexed_value = select_value<I, value_seq<Ns...>>;
+  template <zs::size_t I, typename ValueSeq> using select_value =
+      typename ValueSeq::template type<I>;
+  template <zs::size_t I, auto... Ns> using select_indexed_value
+      = select_value<I, value_seq<Ns...>>;
 
   template <typename, typename> struct gather;
   template <size_t... Is, typename T, T... Ns>

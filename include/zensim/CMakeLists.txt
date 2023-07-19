@@ -557,7 +557,7 @@ if(ENABLE_PCH)
   target_precompile_headers(zpc_py_interop INTERFACE ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
-target_link_libraries(zpc_py_interop PUBLIC zpc)
+target_link_libraries(zpc_py_interop PUBLIC zpc zpc_jit_deps)
 # ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
 set_target_properties(zpc_py_interop PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}

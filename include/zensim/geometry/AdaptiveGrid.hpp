@@ -1,5 +1,6 @@
 #pragma once
 #include "SparseGrid.hpp"
+#include "zensim/types/Mask.hpp"
 
 namespace zs {
 
@@ -72,10 +73,15 @@ namespace zs {
     using packed_value_type = vec<value_type, dim>;
 
     template <size_type bs> using grid_storage_type = TileVector<value_type, bs, allocator_type>;
-    template <size_type bs> using mask_storage_type
-        = TileVector<u64, (bs + (sizeof(u64) * 8 - 1)) / (sizeof(u64) * 8), allocator_type>;
+    template <size_type bs> using mask_storage_type = Vector<bit_mask<bs>, allocator_type>;
     using table_type = bht<integer_coord_component_type, dim, int, 16, allocator_type>;
     template <size_type bs> struct Level {
+      Level() = default;
+      Level(const allocator_type &allocator, size_t numReservedBlocks)
+          : table{allocator, numReservedBlocks},
+            grid{allocator, numReservedBlocks},
+            mask{allocator, numReservedBlocks} {}
+      ~Level() = default;
       auto numBlocks() const { return table.size(); }
       auto numReservedBlocks() const noexcept { return grid.numReservedTiles(); }
 
@@ -88,6 +94,8 @@ namespace zs {
       }
       table_type table;
       grid_storage_type<bs> grid;
+      // for internal nodes, this is child mask
+      // for leaf nodes, this is value mask
       mask_storage_type<bs> mask;  // active/inactive, inside/outside
     };
     using transform_type = math::Transform<coord_component_type, dim>;

@@ -446,8 +446,8 @@ namespace zs {
     value_seq() noexcept = default;
     template <typename Ti, auto cnt = count, enable_if_t<(cnt > 0)> = 0>
     constexpr value_seq(integer_sequence<Ti, Ns...>) noexcept {}
-    template <auto cnt = count, enable_if_t<(cnt > 0)> = 0>
-    constexpr value_seq(wrapv<Ns>...) noexcept {}
+    template <auto... Ms, enable_if_all<(Ms == Ns)...> = 0>
+    constexpr value_seq(wrapv<Ms>...) noexcept {}
     ///
     /// operations
     ///

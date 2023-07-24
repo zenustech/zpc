@@ -35,27 +35,31 @@ namespace zs {
     static constexpr int dim = dim_;
     static constexpr size_t num_levels = sizeof...(SideLengthBits);
 
-    using length_bits_type = value_seq<SideLengthBits...>;
-    static constexpr integer_coord_component_type length_bits[num_levels]
-        = {(integer_coord_component_type)length_bits_type::template value<Is>...};
-    using global_length_bits_type = decltype(declval<length_bits_type>().template scan<1>());
-    static constexpr integer_coord_component_type global_length_bits[num_levels]
-        = {(integer_coord_component_type)global_length_bits_type::template value<Is>...};
+    // length_bits
+    using length_bit_counts_type = value_seq<SideLengthBits...>;
+    static constexpr integer_coord_component_type length_bit_counts[num_levels]
+        = {(integer_coord_component_type)length_bit_counts_type::template value<Is>...};
+    using global_length_bit_counts_type
+        = decltype(declval<length_bit_counts_type>().template scan<1>());
+    static constexpr integer_coord_component_type global_length_bit_counts[num_levels]
+        = {(integer_coord_component_type)global_length_bit_counts_type::template value<Is>...};
 
+    // side_lengths
     struct impl_two_pow {
       constexpr integer_coord_component_type operator()(integer_coord_component_type b) noexcept {
         return (integer_coord_component_type)1 << b;
       }
     };
     using side_lengths_type
-        = decltype(declval<length_bits_type>().transform(declval<impl_two_pow>()));
+        = decltype(declval<length_bit_counts_type>().transform(declval<impl_two_pow>()));
     static constexpr integer_coord_component_type side_lengths[num_levels]
         = {side_lengths_type::template value<Is>...};
     using global_side_lengths_type
-        = decltype(declval<global_length_bits_type>().transform(declval<impl_two_pow>()));
+        = decltype(declval<global_length_bit_counts_type>().transform(declval<impl_two_pow>()));
     static constexpr integer_coord_component_type global_side_lengths[num_levels]
         = {global_side_lengths_type::template value<Is>...};
 
+    // block_sizes
     struct impl_dim_pow {
       constexpr size_t operator()(size_t sl) noexcept { return math::pow_integral(sl, dim); }
     };
@@ -75,13 +79,45 @@ namespace zs {
     template <size_type bs> using grid_storage_type = TileVector<value_type, bs, allocator_type>;
     template <size_type bs> using mask_storage_type = Vector<bit_mask<bs>, allocator_type>;
     using table_type = bht<integer_coord_component_type, dim, int, 16, allocator_type>;
-    template <size_type bs> struct Level {
-      Level() = default;
-      Level(const allocator_type &allocator, size_t numReservedBlocks)
-          : table{allocator, numReservedBlocks},
-            grid{allocator, numReservedBlocks},
-            mask{allocator, numReservedBlocks} {}
+
+    template <int level_> struct Level {
+      static constexpr int level = level_;
+      static constexpr integer_coord_component_type length_bit_count = length_bit_counts[level];
+      static constexpr integer_coord_component_type global_length_bit_count
+          = global_length_bit_counts[level];
+      static constexpr integer_coord_component_type side_length = side_lengths[level];
+      static constexpr integer_coord_component_type global_side_length = global_side_lengths[level];
+      static constexpr size_t block_size = block_sizes[level];
+
+      /// @note used for global coords
+      static constexpr integer_coord_component_type global_coord_mask = global_side_length - 1;
+
+      using grid_type = grid_storage_type<block_size>;
+      using mask_type = mask_storage_type<block_size>;
+      Level(const allocator_type &allocator, const std::vector<PropertyTag> &propTags, size_t count)
+          : table{allocator, count},
+            grid{allocator, propTags, count * block_size},
+            valueMask{allocator, count},
+            childMask{allocator, count} {
+        grid.reset(0);
+        childMask.reset(0);
+        valueMask.reset(0);
+      }
+      Level(const allocator_type &allocator, size_t count)
+          : Level(allocator, {{"sdf", 1}}, count) {}
+      Level(size_t count = 0, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+          : Level(get_default_allocator(mre, devid), count) {}
+      Level(const std::vector<PropertyTag> &propTags, size_t count, memsrc_e mre = memsrc_e::host,
+            ProcID devid = -1)
+          : Level(get_default_allocator(mre, devid), propTags, count) {}
+
       ~Level() = default;
+
+      Level(const Level &o) = default;
+      Level(Level &&o) noexcept = default;
+      Level &operator=(const Level &o) = default;
+      Level &operator=(Level &&o) noexcept = default;
+
       auto numBlocks() const { return table.size(); }
       auto numReservedBlocks() const noexcept { return grid.numReservedTiles(); }
 
@@ -89,21 +125,22 @@ namespace zs {
         Level ret{};
         ret.table = table.clone(allocator);
         ret.grid = grid.clone(allocator);
-        ret.mask = mask.clone(allocator);
+        ret.childMask = childMask.clone(allocator);
+        ret.valueMask = valueMask.clone(allocator);
         return ret;
       }
       table_type table;
-      grid_storage_type<bs> grid;
-      // for internal nodes, this is child mask
-      // for leaf nodes, this is value mask
-      mask_storage_type<bs> mask;  // active/inactive, inside/outside
+      grid_type grid;
+      /// @note for levelset, valueMask indicates inside/outside
+      /// @note for leaf level, childMask reserved for special use cases
+      mask_type valueMask, childMask;
     };
     using transform_type = math::Transform<coord_component_type, dim>;
 
-    template <size_t I = 0> Level<block_sizes[I]> &level(wrapv<I> = {}) { return get<I>(_levels); }
-    template <size_t I = 0> const Level<block_sizes[I]> &level(wrapv<I> = {}) const {
-      return get<I>(_levels);
-    }
+    template <auto I = 0> Level<I> &level(wrapv<I>) { return zs::get<I>(_levels); }
+    template <auto I = 0> const Level<I> &level(wrapv<I>) const { return zs::get<I>(_levels); }
+    template <auto I = 0> Level<I> &level(value_seq<I>) { return zs::get<I>(_levels); }
+    template <auto I = 0> const Level<I> &level(value_seq<I>) const { return zs::get<I>(_levels); }
 
     constexpr MemoryLocation memoryLocation() const noexcept {
       return get<0>(_levels)._table.memoryLocation();
@@ -111,7 +148,7 @@ namespace zs {
     constexpr ProcID devid() const noexcept { return get<0>(_levels)._table.devid(); }
     constexpr memsrc_e memspace() const noexcept { return get<0>(_levels)._table.memspace(); }
     decltype(auto) get_allocator() const noexcept { return get<0>(_levels)._table.get_allocator(); }
-    decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
+    static decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) {
       return get_memory_source(mre, devid);
     }
 
@@ -129,6 +166,7 @@ namespace zs {
 
     /// @brief maintenance
     AdaptiveGridImpl() = default;
+    ~AdaptiveGridImpl() = default;
 
     AdaptiveGridImpl clone(const allocator_type &allocator) const {
       AdaptiveGridImpl ret{};
@@ -167,7 +205,7 @@ namespace zs {
     }
     void scale(const value_type s) { scale(s * coord_type::constant(1)); }
 
-    zs::tuple<Level<block_sizes[Is]>...> _levels;
+    zs::tuple<Level<Is>...> _levels;
     transform_type _transform;
     value_type _background;  // background value
   };

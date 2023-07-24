@@ -385,13 +385,14 @@ namespace zs {
   template <typename T, execspace_e space = deduce_execution_space()>
   __forceinline__ __host__ __device__ enable_if_type<space == execspace_e::cuda, int> count_ones(
       T x, wrapv<space> = {}) {
+    /// @note signed integers being sign-extended should be avoided
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
 #  ifdef __CUDA_ARCH__
-    if constexpr (sizeof(unsigned int) == nbytes) {
-      return __popc(x);
-    } else if constexpr (sizeof(unsigned long long int) == nbytes) {
-      return __popcll(x);
+    if constexpr (sizeof(unsigned int) >= nbytes) {
+      return __popc((make_unsigned_t<remove_cvref_t<T>>)x);
+    } else if constexpr (sizeof(unsigned long long int) >= nbytes) {
+      return __popcll((make_unsigned_t<remove_cvref_t<T>>)x);
     }
 #  else
     static_assert(always_false<T>, "error in compiling cuda implementation of [count_ones]!");
@@ -421,28 +422,41 @@ namespace zs {
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<space == execspace_e::openmp || space == execspace_e::host> = 0>
   inline int count_ones(T x, wrapv<space> = {}) {
+    /// @note signed integers being sign-extended should be avoided
     constexpr auto nbytes = sizeof(T);
     int ret{};
 #if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     unsigned long index{};
     if constexpr (sizeof(unsigned short) == nbytes)
-      ret = (int)__popcnt16(x);
+      ret = (int)__popcnt16((unsigned short)(make_unsigned_t<remove_cvref_t<T>>)x);
     else if constexpr (sizeof(unsigned int) == nbytes)
-      ret = (int)__popcnt(x);
+      ret = (int)__popcnt((unsigned int)(make_unsigned_t<remove_cvref_t<T>>)x);
     else if constexpr (sizeof(unsigned __int64) == nbytes)
-      ret = (int)__popcnt64(x);
+      ret = (int)__popcnt64((unsigned __int64)(make_unsigned_t<remove_cvref_t<T>>)x);
 #elif defined(__clang__) || defined(__GNUC__)
     if constexpr (sizeof(unsigned int) == nbytes)
-      ret = __builtin_popcount((unsigned int)x);
+      ret = __builtin_popcount((unsigned int)(make_unsigned_t<remove_cvref_t<T>>)x);
     else if constexpr (sizeof(unsigned long long) == nbytes)
-      ret = __builtin_popcountll((unsigned long long)x);
+      ret = __builtin_popcountll((unsigned long long)(make_unsigned_t<remove_cvref_t<T>>)x);
 #else
     // fall back to software implementation
+    if constexpr (true) {
+      // ref: http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetTable
+      static const unsigned char BitsSetTable256[256] = {
+#  define ZS_B2(n) n, n + 1, n + 1, n + 2
+#  define ZS_B4(n) ZS_B2(n), ZS_B2(n + 1), ZS_B2(n + 1), ZS_B2(n + 2)
+#  define ZS_B6(n) ZS_B4(n), ZS_B4(n + 1), ZS_B4(n + 1), ZS_B4(n + 2)
+          B6(0), B6(1), B6(1), B6(2)};
+      unsigned char *p = (unsigned char *)&x;
+      ret = 0;
+      for (int n = sizeof(x); n--;) ret += BitsSetTable256[*(p++)];
+      ret = c;
+    }
 #endif
     else
       static_assert(always_false<T>,
                     "unsupported type for host implementation of count_tailing_zeros.");
-    return (int)ret;
+    return ret;
   }
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<space == execspace_e::openmp || space == execspace_e::host> = 0>
@@ -472,7 +486,7 @@ namespace zs {
       static const u8 DeBruijn[8] = {0, 1, 6, 2, 7, 5, 4, 3};
       u8 v = x;
       ret = DeBruijn[u8((v & -v) * 0x1DU) >> 5];
-    } else if constexpr (sizeof(u32) == nbytes) {
+    } else if constexpr (sizeof(u32) >= nbytes) {
       static const u8 DeBruijn[32] = {0,  1,  28, 2,  29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4,  8,
                                       31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6,  11, 5,  10, 9};
       u32 v = x;

@@ -90,7 +90,9 @@ namespace zs {
       static constexpr size_t block_size = block_sizes[level];
 
       /// @note used for global coords
-      static constexpr integer_coord_component_type global_coord_mask = global_side_length - 1;
+      static constexpr make_unsigned_t<integer_coord_component_type> block_mask
+          = global_side_length - 1;
+      static constexpr make_unsigned_t<integer_coord_component_type> origin_mask = ~block_mask;
 
       using grid_type = grid_storage_type<block_size>;
       using mask_type = mask_storage_type<block_size>;
@@ -128,6 +130,15 @@ namespace zs {
         ret.childMask = childMask.clone(allocator);
         ret.valueMask = valueMask.clone(allocator);
         return ret;
+      }
+
+      auto originRange() const {
+        auto bg = table._activeKeys.begin();
+        return detail::iter_range(bg, bg + numBlocks());
+      }
+      auto originRange() {
+        auto bg = table._activeKeys.begin();
+        return detail::iter_range(bg, bg + numBlocks());
       }
       table_type table;
       grid_type grid;

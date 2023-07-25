@@ -10,6 +10,7 @@
 #include "VdbLevelSet.h"
 #include "zensim/Logger.hpp"
 #include "zensim/execution/Concurrency.h"
+#include "zensim/container/Vector.hpp"
 #include "zensim/omp/execution/ExecutionPolicy.hpp"
 
 namespace zs {
@@ -177,6 +178,7 @@ namespace zs {
   OpenVDBStruct convert_adaptive_grid_to_floatgrid(const AdaptiveGrid<3, f32, 3, 4, 5> &agIn,
                                                    SmallString propTag, u32 gridClass,
                                                    SmallString gridName) {
+    using AgT = AdaptiveGrid<3, f32, 3, 4, 5>;
 #if ZS_ENABLE_OPENMP
     constexpr auto space = execspace_e::openmp;
     auto pol = omp_exec();
@@ -233,25 +235,28 @@ namespace zs {
           }
         });
 
-    auto build_internal = [&](auto lno) {
+    auto build_internal = [&ag, &nodes, &pol, space_c = wrapv<space>{}](auto lno) {
+      constexpr auto space = RM_CVREF_T(space_c)::value;
       constexpr int levelno = RM_CVREF_T(lno)::value;
       static_assert(levelno == 1 || levelno == 2, "???");
       using CurrentNodeType = conditional_t<levelno == 1, Int1Type, Int2Type>;
       using ChildNodeType = typename CurrentNodeType::ChildNodeType;
 
-      auto &li = ag.level(dim_c<levelno>);
-      auto &lc = ag.level(dim_c<levelno - 1>);
+      const AgT::Level<levelno> &li = ag.level(dim_c<levelno>);
+      const AgT::Level<levelno - 1> &lc = ag.level(dim_c<levelno - 1>);
       auto nInts = li.numBlocks();
       zs::get<levelno>(nodes).resize(nInts);
 
       // @note use the child table, not from this level
-      pol(enumerate(li.originRange(), zs::get<levelno>(nodes)),
+      pol(enumerate(li.originRange()),
           [grid = proxy<space>(li.grid), cms = proxy<space>(li.childMask),
            vms = proxy<space>(li.valueMask), tb = proxy<space>(lc.table),
-           &childNodes = zs::get<levelno - 1>(nodes)](size_t i, const auto &origin,
-                                                      CurrentNodeType *&pnode) mutable {
-            pnode = new CurrentNodeType();
-            CurrentNodeType &node = const_cast<CurrentNodeType &>(*pnode);
+           &li = zs::get<levelno>(nodes), &childNodes = zs::get<levelno - 1>(nodes),
+           current_c = wrapt<CurrentNodeType>{}](size_t i, const auto &origin) mutable {
+            using CurrentNodeType = typename RM_CVREF_T(current_c)::type;
+            using ChildNodeType = typename CurrentNodeType::ChildNodeType;
+            li[i] = new CurrentNodeType();
+            CurrentNodeType &node = *li[i];
             auto bcoord = openvdb::Coord{origin[0], origin[1], origin[2]};
             node.setOrigin(bcoord);
 

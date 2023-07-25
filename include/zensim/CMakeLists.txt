@@ -19,6 +19,7 @@ set(ZENSIM_LIBRARY_IO_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
   geometry/SparseGrid_Conversion.cpp
+  geometry/AdaptiveGrid_Conversion.cpp
   geometry/VdbLevelSet_Point.cpp
   geometry/VdbLevelSet_LoadPhi.cpp
   geometry/VdbLevelSet_LoadPhiVel.cpp

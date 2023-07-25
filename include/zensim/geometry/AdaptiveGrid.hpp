@@ -156,9 +156,9 @@ namespace zs {
     constexpr MemoryLocation memoryLocation() const noexcept {
       return get<0>(_levels)._table.memoryLocation();
     }
-    constexpr ProcID devid() const noexcept { return get<0>(_levels)._table.devid(); }
-    constexpr memsrc_e memspace() const noexcept { return get<0>(_levels)._table.memspace(); }
-    decltype(auto) get_allocator() const noexcept { return get<0>(_levels)._table.get_allocator(); }
+    constexpr ProcID devid() const noexcept { return get<0>(_levels).table.devid(); }
+    constexpr memsrc_e memspace() const noexcept { return get<0>(_levels).table.memspace(); }
+    decltype(auto) get_allocator() const noexcept { return get<0>(_levels).table.get_allocator(); }
     static decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) {
       return get_memory_source(mre, devid);
     }
@@ -173,6 +173,22 @@ namespace zs {
     }
     template <size_t I = 0> constexpr auto numReservedBlocks() const noexcept {
       return get<I>(_levels).numReservedBlocks();
+    }
+    constexpr coord_type voxelSize() const {
+      // does not consider shearing here
+      coord_type ret{};
+      for (int i = 0; i != dim; ++i) {
+        coord_component_type sum = 0;
+        for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
+        ret.val(i) = std::sqrt(sum);
+      }
+      return ret;
+    }
+    static constexpr auto zeroValue() noexcept {
+      if constexpr (is_vec<value_type>::value)
+        return value_type::zeros();
+      else
+        return (value_type)0;
     }
 
     /// @brief maintenance

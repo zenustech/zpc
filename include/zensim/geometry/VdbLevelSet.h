@@ -37,6 +37,14 @@ namespace zs {
       const AdaptiveGrid<3, f32, 3, 4, 5> &agIn, SmallString propTag = "sdf", u32 gridClass = 1u,
       SmallString gridName = "sdf");
 
+  ZPC_API AdaptiveGrid<3, f32, 3, 4, 5> convert_float3grid_to_adaptive_grid(
+      const OpenVDBStruct &grid, SmallString propTag = "v");
+  ZPC_API AdaptiveGrid<3, f32, 3, 4, 5> convert_float3grid_to_adaptive_grid(
+      const OpenVDBStruct &grid, const MemoryHandle mh, SmallString propTag = "v");
+  ZPC_API OpenVDBStruct convert_adaptive_grid_to_float3grid(
+      const AdaptiveGrid<3, f32, 3, 4, 5> &grid, SmallString propTag = "v",
+      SmallString gridName = "SparseGrid");
+
   /// floatgrid
   template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_vdbgrid(const SplsT &grid);
   ZPC_API SparseLevelSet<3> convert_floatgrid_to_sparse_levelset(const OpenVDBStruct &grid);

@@ -123,6 +123,27 @@ namespace zs {
       auto numBlocks() const { return table.size(); }
       auto numReservedBlocks() const noexcept { return grid.numReservedTiles(); }
 
+      template <typename ExecPolicy>
+      void resize(ExecPolicy &&policy, size_type numBlocks, bool resizeGrid = true) {
+        table.resize(FWD(policy), numBlocks);
+        if (resizeGrid) grid.resize(numBlocks * (size_type)block_size);
+      }
+      template <typename ExecPolicy>
+      void resizePartition(ExecPolicy &&policy, size_type numBlocks) {
+        table.resize(FWD(policy), numBlocks);
+      }
+      void resizeGrid(size_type numBlocks) { grid.resize(numBlocks * (size_type)block_size); }
+      template <typename Policy>
+      void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
+        grid.append_channels(FWD(policy), tags);
+      }
+      // byte-wise reset
+      void reset(value_type val) { grid.reset(val); }
+      // value-wise reset
+      template <typename Policy> void reset(Policy &&policy, value_type val) {
+        grid.reset(FWD(policy), val);
+      }
+
       Level clone(const allocator_type &allocator) const {
         Level ret{};
         ret.table = table.clone(allocator);
@@ -163,17 +184,48 @@ namespace zs {
       return get_memory_source(mre, devid);
     }
 
-    template <size_t I = 0> constexpr auto numBlocks() const noexcept {
+    template <auto I = 0> constexpr auto numBlocks(wrapv<I> = {}) const noexcept {
+      return get<I>(_levels).numBlocks();
+    }
+    template <auto I = 0> constexpr auto numBlocks(value_seq<I> = {}) const noexcept {
       return get<I>(_levels).numBlocks();
     }
     constexpr size_t numTotalBlocks() const noexcept {
       size_t ret = 0;
-      (void)((ret += numBlocks<Is>()), ...);
+      (void)((ret += numBlocks(wrapv<Is>{})), ...);
       return ret;
     }
     template <size_t I = 0> constexpr auto numReservedBlocks() const noexcept {
       return get<I>(_levels).numReservedBlocks();
     }
+    template <typename Policy>
+    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
+      (void)(get<Is>(_levels).append_channels(FWD(policy), tags), ...);
+    }
+    void reset(value_type val) { (void)(get<Is>(_levels).reset(val), ...); }
+    // value-wise reset
+    template <typename Policy> void reset(Policy &&policy, value_type val) {
+      (void)(get<Is>(_levels).reset(policy, val), ...);
+    }
+    constexpr auto numChannels() const noexcept {
+      return level(dim_c<num_levels - 1>).grid.numChannels();
+    }
+    bool hasProperty(const SmallString &str) const noexcept {
+      return level(dim_c<num_levels - 1>).grid.hasProperty(str);
+    }
+    constexpr size_type getPropertySize(const SmallString &str) const {
+      return level(dim_c<num_levels - 1>).grid.getPropertySize(str);
+    }
+    constexpr size_type getPropertyOffset(const SmallString &str) const {
+      return level(dim_c<num_levels - 1>).grid.getPropertyOffset(str);
+    }
+    constexpr PropertyTag getPropertyTag(size_type i = 0) const {
+      return level(dim_c<num_levels - 1>).grid.getPropertyTag(i);
+    }
+    constexpr const auto &getPropertyTags() const {
+      return level(dim_c<num_levels - 1>).grid.getPropertyTags();
+    }
+
     constexpr coord_type voxelSize() const {
       // does not consider shearing here
       coord_type ret{};

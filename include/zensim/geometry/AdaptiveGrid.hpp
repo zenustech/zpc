@@ -377,7 +377,14 @@ namespace zs {
       static constexpr make_unsigned_t<integer_coord_component_type> origin_mask
           = level_t::origin_mask;
 
-      auto numBlocks() const { return table.size(); }
+      constexpr auto numBlocks() const { return table.size(); }
+
+#if 0
+      template <typename VecT, typename T>
+      constexpr bool probeValue(const VecInterface<VecT> &v, T &val) const {
+        ;
+      }
+#endif
 
       table_view_type table;
       grid_type grid;
@@ -407,6 +414,15 @@ namespace zs {
         conditional_t<is_const_structure, add_const_t<container_type>, container_type> &ag)
         : _levels{}, _transform{ag._transform}, _background{ag._background} {
       (void)((zs::get<Is>(_levels) = level_view_type<Is>{ag.level(dim_c<Is>)}), ...);
+    }
+
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto indexToWorld(const VecInterface<VecT> &X) const {
+      return X * _transform;
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto worldToIndex(const VecInterface<VecT> &x) const {
+      return x * inverse(_transform);
     }
 
     zs::tuple<level_view_type<Is>...> _levels;

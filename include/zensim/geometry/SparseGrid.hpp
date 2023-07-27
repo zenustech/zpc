@@ -262,10 +262,11 @@ namespace zs {
                                                                  integer_coord_component_type>> = 0>
     static constexpr integer_coord_component_type global_coord_to_local_offset(
         const VecInterface<VecT> &coord) noexcept {
+      static_assert(side_length & (side_length - 1) == 0, "side length not power of 2");
       // [x, y, z]
       integer_coord_component_type ret{coord[0]};
       for (int d = 1; d < dim; ++d)
-        ret = (ret * side_length) + ((integer_coord_component_type)coord[d] % side_length);
+        ret = (ret * side_length) + ((integer_coord_component_type)coord[d] & (side_length - 1));
       return ret;
     }
     // node value access (used for GridArena::arena_type init)

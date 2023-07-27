@@ -407,11 +407,12 @@ if(ZS_ENABLE_CUDA)
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
-    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true -dlto>
+    PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
     # https://docs.nvidia.com/cuda/cuda-driver-api/stream-sync-behavior.html#stream-sync-behavior
-    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=loop_not_reachable --diag_suppress=2642"> # -Xptxas -dlcm=cg
+    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=loop_not_reachable --diag_suppress=2642"> # -dlto -Xptxas -dlcm=cg
+    # lto issue: https://forums.developer.nvidia.com/t/using-dlink-time-opt-together-with-gencode-in-cmake/165224
   )
 
   target_link_options(zpccuda

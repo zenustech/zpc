@@ -90,9 +90,9 @@ namespace zs {
       static constexpr size_t block_size = block_sizes[level];
 
       /// @note used for global coords
-      static constexpr make_unsigned_t<integer_coord_component_type> block_mask
+      static constexpr make_unsigned_t<integer_coord_component_type> cell_mask
           = global_side_length - 1;
-      static constexpr make_unsigned_t<integer_coord_component_type> origin_mask = ~block_mask;
+      static constexpr make_unsigned_t<integer_coord_component_type> origin_mask = ~cell_mask;
 
       using grid_type = grid_storage_type<block_size>;
       using mask_type = mask_storage_type<block_size>;
@@ -161,6 +161,7 @@ namespace zs {
         auto bg = table._activeKeys.begin();
         return detail::iter_range(bg, bg + numBlocks());
       }
+
       table_type table;
       grid_type grid;
       /// @note for levelset, valueMask indicates inside/outside
@@ -289,6 +290,290 @@ namespace zs {
     value_type _background;  // background value
   };
 
-  // special construct for blockwise access (with halos)
+  template <typename T, typename = void> struct is_ag : false_type {};
+  template <int dim, typename ValueT, size_t... SideLengthBits, size_t... Is, typename AllocatorT>
+  struct is_ag<AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                index_sequence<Is...>, AllocatorT>> : true_type {};
+  template <typename T> constexpr bool is_ag_v = is_ag<T>::value;
+
+  ///
+  /// @brief adaptive grid unnamed view
+  ///
+  template <execspace_e Space, typename AdaptiveGridT, bool IsConst, bool Base = false>
+  struct AdaptiveGridUnnamedView;
+
+  /// @note Base here indicates whether grid should use lite version
+  /// @note this specializations is targeting ZSPmrAllocator<false> specifically
+  template <execspace_e Space, int dim_, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            bool IsConst, bool Base>
+  struct AdaptiveGridUnnamedView<Space,
+                                 AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>,
+                                                  index_sequence<Is...>, ZSPmrAllocator<>>,
+                                 IsConst, Base>
+      : LevelSetInterface<AdaptiveGridUnnamedView<
+            Space,
+            AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>, index_sequence<Is...>,
+                             ZSPmrAllocator<>>,
+            IsConst, Base>> {
+    static constexpr bool is_const_structure = IsConst;
+    static constexpr auto space = Space;
+    using container_type = AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>,
+                                            index_sequence<Is...>, ZSPmrAllocator<>>;
+    static constexpr int dim = container_type::dim;
+    using value_type = typename container_type::value_type;
+    using size_type = typename container_type::size_type;
+    using index_type = typename container_type::index_type;
+
+    using integer_coord_component_type = typename container_type::integer_coord_component_type;
+    using integer_coord_type = typename container_type::integer_coord_type;
+    using coord_component_type = typename container_type::coord_component_type;
+    using coord_type = typename container_type::coord_type;
+    using packed_value_type = typename container_type::packed_value_type;
+
+    template <int LevelNo> using level_type = typename container_type::template Level<LevelNo>;
+    using table_type = typename container_type::table_type;
+    using table_view_type = RM_CVREF_T(
+        view<space>(declval<conditional_t<is_const_structure, const table_type &, table_type &>>(),
+                    wrapv<Base>{}));
+
+    // grid
+    template <int LevelNo> using grid_storage_type = typename level_type<LevelNo>::grid_type;
+    template <int LevelNo> using unnamed_grid_view_type = RM_CVREF_T(
+        view<space>(declval<conditional_t<is_const_structure, const grid_storage_type<LevelNo> &,
+                                          grid_storage_type<LevelNo> &>>(),
+                    wrapv<Base>{}));
+
+    // mask
+    template <int LevelNo> using mask_storage_type = typename level_type<LevelNo>::mask_type;
+    template <int LevelNo> using mask_view_type = RM_CVREF_T(
+        view<space>(declval<conditional_t<is_const_structure, const mask_storage_type<LevelNo> &,
+                                          mask_storage_type<LevelNo> &>>(),
+                    wrapv<Base>{}));
+
+    template <int LevelNo> struct level_view_type {
+      static constexpr int level = LevelNo;
+      using level_t = level_type<level>;
+      using grid_type = unnamed_grid_view_type<level>;
+      using mask_type = mask_view_type<level>;
+
+      constexpr level_view_type() noexcept = default;
+      ~level_view_type() = default;
+      level_view_type(conditional_t<is_const_structure, add_const_t<level_t>, level_t> &level)
+          : table{view<Space>(level.table, wrapv<Base>{})},
+            grid{view<Space>(level.grid, wrapv<Base>{})},
+            valueMask{view<Space>(level.valueMask, wrapv<Base>{})},
+            childMask{view<Space>(level.childMask, wrapv<Base>{})} {}
+
+      static constexpr integer_coord_component_type length_bit_count = level_t::length_bit_count;
+      static constexpr integer_coord_component_type global_length_bit_count
+          = level_t::global_length_bit_count;
+      static constexpr integer_coord_component_type side_length = level_t::side_length;
+      static constexpr integer_coord_component_type global_side_length
+          = level_t::global_side_length;
+      static constexpr size_t block_size = level_t::block_size;
+
+      /// @note used for global coords
+      static constexpr make_unsigned_t<integer_coord_component_type> cell_mask = level_t::cell_mask;
+      static constexpr make_unsigned_t<integer_coord_component_type> origin_mask
+          = level_t::origin_mask;
+
+      auto numBlocks() const { return table.size(); }
+
+      table_view_type table;
+      grid_type grid;
+      mask_type valueMask, childMask;
+    };
+
+    using transform_type = typename container_type::transform_type;
+
+    template <auto I = 0, bool isConst = is_const_structure>
+    enable_if_type<!isConst, level_view_type<I> &> level(wrapv<I>) {
+      return zs::get<I>(_levels);
+    }
+    template <auto I = 0> const level_view_type<I> &level(wrapv<I>) const {
+      return zs::get<I>(_levels);
+    }
+    template <auto I = 0, bool isConst = is_const_structure>
+    enable_if_type<!isConst, level_view_type<I> &> level(value_seq<I>) {
+      return zs::get<I>(_levels);
+    }
+    template <auto I = 0> const level_view_type<I> &level(value_seq<I>) const {
+      return zs::get<I>(_levels);
+    }
+
+    AdaptiveGridUnnamedView() noexcept = default;
+    ~AdaptiveGridUnnamedView() noexcept = default;
+    constexpr AdaptiveGridUnnamedView(
+        conditional_t<is_const_structure, add_const_t<container_type>, container_type> &ag)
+        : _levels{}, _transform{ag._transform}, _background{ag._background} {
+      (void)((zs::get<Is>(_levels) = level_view_type<Is>{ag.level(dim_c<Is>)}), ...);
+    }
+
+    zs::tuple<level_view_type<Is>...> _levels;
+    transform_type _transform;
+    value_type _background;
+  };
+
+  ///
+  /// @brief view variants for AdaptiveUnnamedView
+  ///
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(
+      const AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>, index_sequence<Is...>,
+                             AllocatorT> &ag,
+      wrapv<Base> = {}) {
+    return AdaptiveGridUnnamedView<ExecSpace,
+                                   AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                    index_sequence<Is...>, AllocatorT>,
+                                   /*IsConst*/ true, Base>{ag};
+  }
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                 index_sequence<Is...>, AllocatorT> &ag,
+                                wrapv<Base> = {}) {
+    return AdaptiveGridUnnamedView<ExecSpace,
+                                   AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                    index_sequence<Is...>, AllocatorT>,
+                                   /*IsConst*/ false, Base>{ag};
+  }
+
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(
+      const AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>, index_sequence<Is...>,
+                             AllocatorT> &ag,
+      wrapv<Base>, const SmallString &tagName) {
+    auto ret
+        = AdaptiveGridUnnamedView<ExecSpace,
+                                  AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                   index_sequence<Is...>, AllocatorT>,
+                                  /*IsConst*/ true, Base>{ag};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName)...);
+#endif
+    return ret;
+  }
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                 index_sequence<Is...>, AllocatorT> &ag,
+                                wrapv<Base>, const SmallString &tagName) {
+    auto ret
+        = AdaptiveGridUnnamedView<ExecSpace,
+                                  AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                   index_sequence<Is...>, AllocatorT>,
+                                  /*IsConst*/ false, Base>{ag};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName)...);
+#endif
+    return ret;
+  }
+
+  template <execspace_e space, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT>
+  constexpr decltype(auto) proxy(
+      const AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>, index_sequence<Is...>,
+                             AllocatorT> &ag) {
+    return view<space>(ag, false_c);
+  }
+  template <execspace_e space, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT>
+  constexpr decltype(auto) proxy(AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                  index_sequence<Is...>, AllocatorT> &ag) {
+    return view<space>(ag, false_c);
+  }
+
+  template <execspace_e space, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT>
+  constexpr decltype(auto) proxy(
+      const AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>, index_sequence<Is...>,
+                             AllocatorT> &ag,
+      const SmallString &tagName) {
+    return view<space>(ag, false_c, tagName);
+  }
+  template <execspace_e space, int dim, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT>
+  constexpr decltype(auto) proxy(AdaptiveGridImpl<dim, ValueT, index_sequence<SideLengthBits...>,
+                                                  index_sequence<Is...>, AllocatorT> &ag,
+                                 const SmallString &tagName) {
+    return view<space>(ag, false_c, tagName);
+  }
+
+  ///
+  /// @brief adaptive grid view with name tag
+  ///
+  template <execspace_e Space, typename AdaptiveGridT, bool IsConst, bool Base = false>
+  struct AdaptiveGridView;
+
+  /// @note Base here indicates whether grid should use lite version
+  /// @note no allocator distinguish here
+  template <execspace_e Space, int dim_, typename ValueT, size_t... SideLengthBits, size_t... Is,
+            typename AllocatorT, bool IsConst, bool Base>
+  struct AdaptiveGridView<Space,
+                          AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>,
+                                           index_sequence<Is...>, AllocatorT>,
+                          IsConst, Base>
+      : AdaptiveGridUnnamedView<Space,
+                                AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>,
+                                                 index_sequence<Is...>, AllocatorT>,
+                                IsConst, Base>,
+        LevelSetInterface<
+            AdaptiveGridView<Space,
+                             AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>,
+                                              index_sequence<Is...>, AllocatorT>,
+                             IsConst, Base>> {
+    /// @brief unnamed base view
+    using base_t
+        = AdaptiveGridUnnamedView<Space,
+                                  AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>,
+                                                   index_sequence<Is...>, AllocatorT>,
+                                  IsConst, Base>;
+    static constexpr bool is_const_structure = IsConst;
+    static constexpr auto space = Space;
+    using container_type = typename base_t::container_type;
+    static constexpr int dim = base_t::dim;
+    using value_type = typename base_t::value_type;
+    using size_type = typename base_t::size_type;
+    using index_type = typename base_t::index_type;
+
+    using integer_coord_component_type = typename base_t::integer_coord_component_type;
+    using integer_coord_type = typename base_t::integer_coord_type;
+    using coord_component_type = typename base_t::coord_component_type;
+    using coord_type = typename base_t::coord_type;
+    using packed_value_type = typename base_t::packed_value_type;
+
+    // property
+    template <int LevelNo> using level_type = typename base_t::template level_type<LevelNo>;
+    template <int LevelNo> using level_view_type =
+        typename base_t::template level_view_type<LevelNo>;
+
+    using table_type = typename base_t::table_type;
+    using table_view_type = typename base_t::table_view_type;
+
+    // grid
+    template <int LevelNo> using grid_storage_type =
+        typename base_t::template grid_storage_type<LevelNo>;
+    template <int LevelNo> using unnamed_grid_view_type =
+        typename base_t::template unnamed_grid_view_type<LevelNo>;
+    template <int LevelNo> using grid_view_type = RM_CVREF_T(
+        view<space>(declval<conditional_t<is_const_structure, const grid_storage_type<LevelNo> &,
+                                          grid_storage_type<LevelNo> &>>(),
+                    wrapv<Base>{}));
+
+    // mask
+    template <int LevelNo> using mask_storage_type =
+        typename base_t::template mask_storage_type<LevelNo>;
+    template <int LevelNo> using mask_view_type = typename base_t::template mask_view_type<LevelNo>;
+
+    using channel_counter_type = typename grid_storage_type<0>::channel_counter_type;
+
+    /// @note TileVectorView-alike
+    const SmallString *_tagNames;
+    const channel_counter_type *_tagOffsets;
+    const channel_counter_type *_tagSizes;
+    channel_counter_type _N;
+  };
 
 }  // namespace zs

@@ -33,7 +33,7 @@ namespace zs {
                   "coord type should be floating point.");
     ///
     static constexpr int dim = dim_;
-    static constexpr size_t num_levels = sizeof...(SideLengthBits);
+    static constexpr int num_levels = sizeof...(SideLengthBits);
 
     // length_bits
     using length_bit_counts_type = value_seq<SideLengthBits...>;
@@ -78,7 +78,8 @@ namespace zs {
 
     template <size_type bs> using grid_storage_type = TileVector<value_type, bs, allocator_type>;
     template <size_type bs> using mask_storage_type = Vector<bit_mask<bs>, allocator_type>;
-    using table_type = bht<integer_coord_component_type, dim, int, 16, allocator_type>;
+    using table_type = bht<integer_coord_component_type, dim, index_type, 16, allocator_type>;
+    static constexpr index_type sentinel_v = table_type::sentinel_v;
 
     template <int level_> struct Level {
       static constexpr int level = level_;
@@ -320,6 +321,7 @@ namespace zs {
     using container_type = AdaptiveGridImpl<dim_, ValueT, index_sequence<SideLengthBits...>,
                                             index_sequence<Is...>, ZSPmrAllocator<>>;
     static constexpr int dim = container_type::dim;
+    static constexpr int num_levels = container_type::num_levels;
     using value_type = typename container_type::value_type;
     using size_type = typename container_type::size_type;
     using index_type = typename container_type::index_type;
@@ -335,6 +337,7 @@ namespace zs {
     using table_view_type = RM_CVREF_T(
         view<space>(declval<conditional_t<is_const_structure, const table_type &, table_type &>>(),
                     wrapv<Base>{}));
+    static constexpr index_type sentinel_v = table_type::sentinel_v;
 
     // grid
     template <int LevelNo> using grid_storage_type = typename level_type<LevelNo>::grid_type;
@@ -379,13 +382,6 @@ namespace zs {
 
       constexpr auto numBlocks() const { return table.size(); }
 
-#if 0
-      template <typename VecT, typename T>
-      constexpr bool probeValue(const VecInterface<VecT> &v, T &val) const {
-        ;
-      }
-#endif
-
       table_view_type table;
       grid_type grid;
       mask_type valueMask, childMask;
@@ -423,6 +419,56 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto worldToIndex(const VecInterface<VecT> &x) const {
       return x * inverse(_transform);
+    }
+
+    template <int I>
+    static constexpr integer_coord_type coord_to_key(const integer_coord_type &c) noexcept {
+      return c & level_view_type<I>::origin_mask;
+    }
+    template <int I> static constexpr integer_coord_type get_global_length_bit_count(
+        const integer_coord_type &c) noexcept {
+      if constexpr (I < 0)
+        return 1;
+      else
+        return level_view_type<I - 1>::global_length_bit_count;
+    }
+    template <int I> static constexpr integer_coord_component_type coord_to_offset(
+        const integer_coord_type &c) noexcept {
+      integer_coord_component_type ret
+          = (c[0] & level_view_type<I>::cell_mask) >> get_global_length_bit_count<I - 1>();
+      for (int d = 1; d != dim; ++d) {
+        ret = (ret << level_view_type<I>::length_bit_count)
+              | ((c[d] & level_view_type<I>::cell_mask) >> get_global_length_bit_count<I - 1>());
+      }
+      return ret;
+    }
+    /// TODO: should also support tensor value retrieval
+    template <typename T, int I = num_levels - 1>
+    constexpr bool probeValue(size_type chn, const integer_coord_type &coord, T &val,
+                              index_type bno = sentinel_v, wrapv<I> = {}) const {
+      auto &lev = level(dim_c<I>);
+      if (bno == sentinel_v) {
+        auto c = coord_to_key<I>(coord);
+        bno = lev.table.query(c);
+        if (bno == sentinel_v) {
+          val = _background;
+          return false;
+        }
+      }
+      const integer_coord_component_type n = coord_to_offset<I>(coord);
+      auto block = lev.grid.tile(bno);
+      /// @note none leaf level
+      if constexpr (I > 0) {
+        if (lev.childMask[bno].isOff(n)) {
+          val = block(chn, n);
+          return lev.valueMask[bno].isOn(n);
+        }
+        /// TODO: an optimal layout should directly give child-n position
+        return probeValue(chn, coord, val, sentinel_v, wrapv<I - 1>{});
+      } else {
+        val = block(chn, n);
+        return lev.valueMask[bno].isOn(n);
+      }
     }
 
     zs::tuple<level_view_type<Is>...> _levels;

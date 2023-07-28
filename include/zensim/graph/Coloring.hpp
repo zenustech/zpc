@@ -115,12 +115,13 @@ namespace zs {
     policy(colors, [] ZS_LAMBDA(ColorT & color) { color = limits<ColorT>::max(); });
 
     // @note 0: free, 1: colored, 2: temporaral exclusion (reset upon the next color iteration)
-    zs::Vector<u8, AllocatorT> maskOut{spmat.get_allocator(), (size_t)n};
+    auto allocator = get_temporary_memory_source(policy);
+    zs::Vector<u8, AllocatorT> maskOut{allocator, (size_t)n};
     maskOut.reset(0);
 
     // @note coloring occured (including maximum set expansion)
     // @note 0, 1, 2
-    zs::Vector<int, AllocatorT> expanded{spmat.get_allocator(), 1};
+    zs::Vector<int, AllocatorT> expanded{allocator, 1};
 
     ColorT color;
     for (color = 0;; color++) {

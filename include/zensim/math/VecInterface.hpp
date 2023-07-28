@@ -29,7 +29,8 @@ namespace zs {
     static constexpr index_type storage_range() noexcept {
       return select_indexed_value<storage_orders::template type<I>::value, Ns...>::value;
     }
-    template <zs::size_t I, enable_if_t<(I < dim)> = 0> static constexpr index_type range() noexcept {
+    template <zs::size_t I, enable_if_t<(I < dim)> = 0>
+    static constexpr index_type range() noexcept {
       return select_indexed_value<I, Ns...>::value;
     }
 
@@ -64,9 +65,9 @@ namespace zs {
   using dims = typename vseq_t<extents>::template to_iseq<size_t>;                         \
   static constexpr index_type extent = vseq_t<extents>{}.reduce(multiplies<index_type>{}); \
   static constexpr int dim = vseq_t<extents>::count;                                       \
-  template <zs::size_t I, enable_if_t<(I < dim)> = 0> using range_t                            \
+  template <zs::size_t I, enable_if_t<(I < dim)> = 0> using range_t                        \
       = integral<index_type, select_value<I, vseq_t<extents>>::value>;                     \
-  template <zs::size_t I> static constexpr index_type range = range_t<I>::value;               \
+  template <zs::size_t I> static constexpr index_type range = range_t<I>::value;           \
   using base_t::identity;                                                                  \
   using base_t::ones;                                                                      \
   using base_t::uniform;                                                                   \
@@ -973,6 +974,7 @@ namespace zs {
   template <typename VecT> struct is_vec<VecInterface<VecT>> : true_type {};
   template <typename VecT>
   struct is_vec<VecT, enable_if_type<is_base_of_v<VecInterface<VecT>, VecT>>> : true_type {};
+  template <typename T> constexpr bool is_vec_v = is_vec<T>::value;
 
   template <zs::size_t d = 0, typename VecTV, typename VecTM,
             enable_if_all<VecTV::dim == 1, VecTM::dim + d == VecTV::extent> = 0>

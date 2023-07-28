@@ -425,12 +425,12 @@ namespace zs {
     static constexpr integer_coord_type coord_to_key(const integer_coord_type &c) noexcept {
       return c & level_view_type<I>::origin_mask;
     }
-    template <int I> static constexpr integer_coord_type get_global_length_bit_count(
-        const integer_coord_type &c) noexcept {
+    template <int I>
+    static constexpr integer_coord_component_type get_global_length_bit_count() noexcept {
       if constexpr (I < 0)
-        return 1;
+        return 0;
       else
-        return level_view_type<I - 1>::global_length_bit_count;
+        return level_view_type<I>::global_length_bit_count;
     }
     template <int I> static constexpr integer_coord_component_type coord_to_offset(
         const integer_coord_type &c) noexcept {
@@ -442,31 +442,48 @@ namespace zs {
       }
       return ret;
     }
-    /// TODO: should also support tensor value retrieval
     template <typename T, int I = num_levels - 1>
-    constexpr bool probeValue(size_type chn, const integer_coord_type &coord, T &val,
-                              index_type bno = sentinel_v, wrapv<I> = {}) const {
+    constexpr enable_if_type<!is_const_v<T>, bool> probeValue(size_type chn,
+                                                              const integer_coord_type &coord,
+                                                              T &val, index_type bno = sentinel_v,
+                                                              wrapv<I> = {}) const {
+      constexpr bool IsVec = is_vec<T>::value;
       auto &lev = level(dim_c<I>);
       if (bno == sentinel_v) {
         auto c = coord_to_key<I>(coord);
         bno = lev.table.query(c);
         if (bno == sentinel_v) {
-          val = _background;
+          if constexpr (IsVec) {
+            val = T::constant(_background);
+          } else
+            val = _background;
           return false;
         }
       }
       const integer_coord_component_type n = coord_to_offset<I>(coord);
       auto block = lev.grid.tile(bno);
-      /// @note none leaf level
       if constexpr (I > 0) {
+        // printf("found int-%d [%d] (%d, %d, %d) ch[%d]\n", I, bno, lev.table._activeKeys[bno][0],
+        //        lev.table._activeKeys[bno][1], lev.table._activeKeys[bno][2], n);
+        /// @note internal level
         if (lev.childMask[bno].isOff(n)) {
-          val = block(chn, n);
+          if constexpr (IsVec) {
+            for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
+          } else
+            val = block(chn, n);
           return lev.valueMask[bno].isOn(n);
         }
         /// TODO: an optimal layout should directly give child-n position
         return probeValue(chn, coord, val, sentinel_v, wrapv<I - 1>{});
       } else {
-        val = block(chn, n);
+        /// @note leaf level
+        if constexpr (IsVec) {
+          for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
+        } else
+          val = block(chn, n);
+        // printf("found leaf [%d] (%d, %d, %d), slot[%d (%d, %d, %d)] val: %f\n", bno,
+        //        lev.table._activeKeys[bno][0], lev.table._activeKeys[bno][1],
+        //        lev.table._activeKeys[bno][2], n, coord[0], coord[1], coord[2], (float)val);
         return lev.valueMask[bno].isOn(n);
       }
     }

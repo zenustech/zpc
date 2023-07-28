@@ -259,6 +259,9 @@ namespace zs {
     }
 
     template <typename Policy> void resize(Policy &&, size_t newCapacity);
+    /// @note either scatter or gather
+    template <typename Policy, typename MapRange, bool Scatter = true>
+    void reorder(Policy &&, MapRange &&mapR, wrapv<Scatter> = {});
 
     Table _table;
     size_type _tableSize;
@@ -329,9 +332,51 @@ namespace zs {
     reset(false);
     _activeKeys.resize(_tableSize);  // previous records are guaranteed to be preserved
     const auto numEntries = size();
-    pol(range(numEntries), [tb = proxy<space>(*this)] ZS_LAMBDA(index_type i) mutable {
+    pol(range(numEntries), [tb = view<space>(*this)] ZS_LAMBDA(index_type i) mutable {
       tb.insert(tb._activeKeys[i], i, false);
     });
+  }
+
+  template <typename Tn, int dim, typename Index, int B, typename Allocator>
+  template <typename Policy, typename MapRange, bool Scatter>
+  void bht<Tn, dim, Index, B, Allocator>::reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter>) {
+    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    using Ti = RM_CVREF_T(*zs::begin(mapR));
+    static_assert(is_integral_v<Ti>,
+                  "index mapping range\'s dereferenced type is not an integral.");
+
+    const size_type sz = size();
+    if (range_size(mapR) != sz) throw std::runtime_error("index mapping range size mismatch");
+    if (!valid_memspace_for_execution(pol, _activeKeys.get_allocator()))
+      throw std::runtime_error("current memory location not compatible with the execution policy");
+
+    // auto allocator = get_temporary_memory_source(pol);
+    Vector<key_type, allocator_type> orderedKeys(_activeKeys.get_allocator(),
+                                                 _activeKeys.capacity());
+    pol(range(sz), [tb = view<space>(*this), map = zs::begin(mapR), keys = view<space>(_activeKeys),
+                    orderedKeys = view<space>(orderedKeys)] ZS_LAMBDA(size_type i) mutable {
+      size_type j = map[i];
+      key_type key{};
+      // reorder keys
+      if constexpr (Scatter) {  // scatter
+        key = keys[i];
+        orderedKeys[j] = key;
+      } else {  // gather
+        key = keys[j];
+        orderedKeys[i] = key;
+      }
+      // remap index table
+      auto entry = tb.query(key, false_c);
+      if (entry != detail::deduce_numeric_max<value_type>()) {
+        if constexpr (Scatter) {
+          tb._table.indices[entry] = j;
+        } else
+          tb._table.indices[entry] = i;
+      } else {
+        // printf("fatal error! should not missing querying an existing key!\n");
+      }
+    });
+    _activeKeys = zs::move(orderedKeys);
   }
 
   /// proxy to work within each backends

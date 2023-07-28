@@ -114,7 +114,7 @@ namespace zs {
       using namespace zs;
       auto &level = ag->level(dim_c<0>);
       using LevelT = RM_CVREF_T(level);
-      static_assert(LeafT::NUM_VALUES == ZSGridT::block_sizes[0], "????");
+      static_assert(LeafT::NUM_VALUES == ZSGridT::template get_tile_size<0>(), "????");
 
       auto &table = level.table;
       auto &grid = level.grid;

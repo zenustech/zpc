@@ -300,11 +300,12 @@ namespace zs {
 
     // build leaf
     auto &l0 = ag.level(dim_c<0>);
+    const int propOffset = l0.grid.getPropertyOffset(propTag);
     auto nlvs = l0.numBlocks();
     zs::tuple<std::vector<LeafType *>, std::vector<Int1Type *>, std::vector<Int2Type *>> nodes;
     zs::get<0>(nodes).resize(nlvs);
     pol(enumerate(l0.originRange(), zs::get<0>(nodes)),
-        [grid = proxy<space>(l0.grid), vms = proxy<space>(l0.valueMask)] ZS_LAMBDA(
+        [grid = proxy<space>(l0.grid), vms = proxy<space>(l0.valueMask), propOffset] ZS_LAMBDA(
             size_t i, const auto &origin, LeafType *&pleaf) {
           pleaf = new LeafType();
           LeafType &leaf = const_cast<LeafType &>(*pleaf);
@@ -319,14 +320,14 @@ namespace zs {
           int src = 0;
           for (ValueType *dst = leaf.buffer().data(), *end = dst + LeafType::SIZE; dst != end;
                dst += 4, src += 4) {
-            dst[0] = block(0, src);
-            dst[1] = block(0, src + 1);
-            dst[2] = block(0, src + 2);
-            dst[3] = block(0, src + 3);
+            dst[0] = block(propOffset, src);
+            dst[1] = block(propOffset, src + 1);
+            dst[2] = block(propOffset, src + 2);
+            dst[3] = block(propOffset, src + 3);
           }
         });
 
-    auto build_internal = [&ag, &nodes, &pol, space_c = wrapv<space>{}](auto lno) {
+    auto build_internal = [&ag, &nodes, &pol, propOffset, space_c = wrapv<space>{}](auto lno) {
       constexpr auto space = RM_CVREF_T(space_c)::value;
       constexpr int levelno = RM_CVREF_T(lno)::value;
       static_assert(levelno == 1 || levelno == 2, "???");
@@ -342,7 +343,7 @@ namespace zs {
       pol(enumerate(li.originRange()),
           [grid = proxy<space>(li.grid), cms = proxy<space>(li.childMask),
            vms = proxy<space>(li.valueMask), tb = proxy<space>(lc.table),
-           &li = zs::get<levelno>(nodes), &childNodes = zs::get<levelno - 1>(nodes),
+           &li = zs::get<levelno>(nodes), &childNodes = zs::get<levelno - 1>(nodes), propOffset,
            current_c = wrapt<CurrentNodeType>{}](size_t i, const auto &origin) mutable {
             using CurrentNodeType = typename RM_CVREF_T(current_c)::type;
             using ChildNodeType = typename CurrentNodeType::ChildNodeType;
@@ -371,7 +372,7 @@ namespace zs {
                 ChildNodeType *chPtr = const_cast<ChildNodeType *>(childNodes[chNo]);
                 dstTable[n].setChild(chPtr);
               } else {
-                dstTable[n].setValue(block(0, n));
+                dstTable[n].setValue(block(propOffset, n));
               }
             }
           });

@@ -1,5 +1,4 @@
 #pragma once
-#include <type_traits>
 
 #include "Vector.hpp"
 #include "zensim/math/Vec.h"
@@ -398,26 +397,26 @@ namespace zs {
     TileVector clone(const MemoryLocation &mloc) const {
       return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
-    /// assignment or destruction after std::move
+    /// assignment or destruction after move
     /// https://www.youtube.com/watch?v=ZG59Bqo7qX4
     /// explicit noexcept
     /// leave the source object in a valid (default constructed) state
     TileVector(TileVector &&o) noexcept {
       const TileVector defaultVector{};
-      _base = std::exchange(o._base, defaultVector._base);
-      _allocator = std::exchange(o._allocator, defaultVector._allocator);
-      _tags = std::exchange(o._tags, defaultVector._tags);
-      _tagNames = std::exchange(o._tagNames, defaultVector._tagNames);
-      _tagSizes = std::exchange(o._tagSizes, defaultVector._tagSizes);
-      _tagOffsets = std::exchange(o._tagOffsets, defaultVector._tagOffsets);
-      _size = std::exchange(o._size, defaultVector.size());
-      _capacity = std::exchange(o._capacity, defaultVector.capacity());
-      _numChannels = std::exchange(o._numChannels, defaultVector.numChannels());
+      _base = zs::exchange(o._base, defaultVector._base);
+      _allocator = zs::exchange(o._allocator, defaultVector._allocator);
+      _tags = zs::exchange(o._tags, defaultVector._tags);
+      _tagNames = zs::exchange(o._tagNames, defaultVector._tagNames);
+      _tagSizes = zs::exchange(o._tagSizes, defaultVector._tagSizes);
+      _tagOffsets = zs::exchange(o._tagOffsets, defaultVector._tagOffsets);
+      _size = zs::exchange(o._size, defaultVector.size());
+      _capacity = zs::exchange(o._capacity, defaultVector.capacity());
+      _numChannels = zs::exchange(o._numChannels, defaultVector.numChannels());
     }
     /// make move-assignment safe for self-assignment
     TileVector &operator=(TileVector &&o) noexcept {
       if (this == &o) return *this;
-      TileVector tmp(std::move(o));
+      TileVector tmp(zs::move(o));
       swap(tmp);
       return *this;
     }
@@ -465,11 +464,16 @@ namespace zs {
           _size = newSize;
       }
     }
-    template <typename Policy> void reset(Policy &&policy, value_type val);
     void reset(int ch) {
       Resource::memset(MemoryEntity{memoryLocation(), (void *)data()}, ch,
                        numTiles() * tileBytes());
     }
+
+    template <typename Policy>
+    void append_channels(Policy &&, const std::vector<PropertyTag> &tags);
+    template <typename Policy> void reset(Policy &&policy, value_type val);
+    template <typename Policy, typename MapRange, bool Scatter = true>
+    void reorderTiles(Policy &&pol, MapRange &&mapR, wrapv<Scatter> = {});
 
     constexpr size_type geometric_size_growth(size_type newSize,
                                               size_type capacity) const noexcept {
@@ -482,9 +486,6 @@ namespace zs {
     constexpr size_type geometric_size_growth(size_type newSize) const noexcept {
       return geometric_size_growth(newSize, capacity());
     }
-    template <typename Policy>
-    void append_channels(Policy &&, const std::vector<PropertyTag> &tags);
-
     constexpr channel_counter_type numProperties() const noexcept { return _tags.size(); }
 
     bool hasProperty(const SmallString &str) const {
@@ -598,7 +599,7 @@ namespace zs {
     if (!modified) return;
     TileVector<T, Length, Allocator> tmp{get_allocator(), tags, s};
     policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
-    *this = std::move(tmp);
+    *this = zs::move(tmp);
   }
   template <typename TileVectorView> struct TileVectorReset {
     using size_type = typename TileVectorView::size_type;
@@ -616,6 +617,57 @@ namespace zs {
   void TileVector<T, Length, Allocator>::reset(Policy &&policy, value_type val) {
     constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
     policy(range(size()), TileVectorReset{proxy<space>(*this), val});
+  }
+  template <typename TileVectorView, typename MapIter, bool Scatter> struct TileVectorTileReorder {
+    using size_type = typename TileVectorView::size_type;
+    using value_type = typename TileVectorView::value_type;
+    static constexpr auto lane_width = TileVectorView::lane_width;
+    using channel_counter_type = typename TileVectorView::channel_counter_type;
+    TileVectorTileReorder(TileVectorView tiles, TileVectorView orderedTiles, MapIter map)
+        : tiles{tiles}, orderedTiles{orderedTiles}, map{map} {}
+    constexpr void operator()(size_type i) {
+      const auto nchns = tiles.numChannels();
+      auto offset = i % lane_width;
+      i /= lane_width;       // tile-i
+      size_type j = map[i];  // tile-j
+      // reorder tiles
+      if constexpr (Scatter) {  // scatter
+        auto srcTile = tiles.tile(i);
+        auto dstTile = orderedTiles.tile(j);
+        for (channel_counter_type d = 0; d != nchns; ++d) dstTile(d, offset) = srcTile(d, offset);
+      } else {  // gather
+        auto srcTile = tiles.tile(j);
+        auto dstTile = orderedTiles.tile(i);
+        for (channel_counter_type d = 0; d != nchns; ++d) dstTile(d, offset) = srcTile(d, offset);
+      }
+    }
+    TileVectorView tiles, orderedTiles;
+    MapIter map;
+  };
+  template <typename T, size_t Length, typename Allocator>
+  template <typename Policy, typename MapRange, bool Scatter>
+  void TileVector<T, Length, Allocator>::reorderTiles(Policy &&pol, MapRange &&mapR,
+                                                      wrapv<Scatter>) {
+    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    using Ti = RM_CVREF_T(*zs::begin(mapR));
+    static_assert(is_integral_v<Ti>,
+                  "index mapping range\'s dereferenced type is not an integral.");
+
+    const size_type sz = numTiles();
+    if (range_size(mapR) != sz) throw std::runtime_error("index mapping range size mismatch");
+    if (!valid_memspace_for_execution(pol, get_allocator()))
+      throw std::runtime_error("current memory location not compatible with the execution policy");
+
+    TileVector orderedTiles(get_allocator(), capacity());
+    {
+      auto tiles = view<space>(*this);
+      auto oTiles = view<space>(orderedTiles);
+      auto mapIter = zs::begin(mapR);
+      pol(range(sz * lane_width),
+          TileVectorTileReorder<RM_CVREF_T(tiles), RM_CVREF_T(mapIter), Scatter>{tiles, oTiles,
+                                                                                 mapIter});
+    }
+    *this = move(orderedTiles);
   }
 
   template <execspace_e Space, typename TileVectorT, bool WithinTile, bool Base = false,

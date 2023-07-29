@@ -295,6 +295,9 @@ namespace zs {
                      MemoryEntity{other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
     }
 
+    template <typename Policy, typename MapRange, bool Scatter = false>
+    void reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter> = {});
+
   protected:
     constexpr size_t usedBytes() const noexcept { return sizeof(T) * size(); }
 
@@ -504,6 +507,40 @@ namespace zs {
   template <execspace_e space, typename T, typename Allocator>
   constexpr decltype(auto) proxy(const Vector<T, Allocator> &vec, const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
+  }
+
+  template <typename VectorView, bool Scatter> struct VectorReorder {
+    using size_type = typename VectorView::size_type;
+    using value_type = typename VectorView::value_type;
+    VectorReorder(VectorView vs, VectorView orderedVs) : vs{vs}, orderedVs{orderedVs} {}
+    constexpr void operator()(size_type i, size_type j) {
+      if constexpr (Scatter)  // scatter
+        orderedVs[j] = vs[i];
+      else  // gather
+        orderedVs[i] = vs[j];
+    }
+    VectorView vs, orderedVs;
+  };
+  template <typename T, typename Allocator>
+  template <typename Policy, typename MapRange, bool Scatter>
+  void Vector<T, Allocator>::reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter>) {
+    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    using Ti = RM_CVREF_T(*zs::begin(mapR));
+    static_assert(is_integral_v<Ti>,
+                  "index mapping range\'s dereferenced type is not an integral.");
+
+    const size_type sz = size();
+    if (range_size(mapR) != sz) throw std::runtime_error("index mapping range size mismatch");
+    if (!valid_memspace_for_execution(pol, get_allocator()))
+      throw std::runtime_error("current memory location not compatible with the execution policy");
+
+    Vector orderedVector(get_allocator(), capacity());
+    {
+      auto vs = view<space>(*this);
+      auto orderedVs = view<space>(orderedVector);
+      pol(enumerate(mapR), VectorReorder<RM_CVREF_T(vs), Scatter>{vs, orderedVs});
+    }
+    *this = move(orderedVector);
   }
 
 }  // namespace zs

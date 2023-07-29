@@ -1135,14 +1135,13 @@ namespace zs {
   template <typename _Fn, typename... _Args> constexpr bool is_nothrow_invocable_v
       = is_nothrow_invocable<_Fn, _Args...>::value;
 
-
-  template<class T, class U = T>
-  constexpr T exchange(T& obj, U&& new_value) noexcept( // since C++23
-        // is_nothrow_move_constructible<T>::value &&
-        is_nothrow_assignable<T&, U>::value
-    ) {
-    T old_value = move(obj);
-    obj = forward<U>(new_value);
+  template <class T, class U = T>
+  constexpr T exchange(T &obj,
+                       U &&new_value) noexcept(  // since C++23
+                                                 // is_nothrow_move_constructible<T>::value &&
+      is_nothrow_assignable<T &, U>::value) {
+    T old_value = zs::move(obj);
+    obj = zs::forward<U>(new_value);
     return old_value;
   }
 

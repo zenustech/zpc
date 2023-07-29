@@ -260,7 +260,7 @@ namespace zs {
 
     template <typename Policy> void resize(Policy &&, size_t newCapacity);
     /// @note either scatter or gather
-    template <typename Policy, typename MapRange, bool Scatter = true>
+    template <typename Policy, typename MapRange, bool Scatter = false>
     void reorder(Policy &&, MapRange &&mapR, wrapv<Scatter> = {});
 
     Table _table;
@@ -337,6 +337,41 @@ namespace zs {
     });
   }
 
+  template <typename BhtView, typename KeyView, typename MapIter, bool Scatter> struct ReorderBht {
+    using size_type = typename BhtView::size_type;
+    using value_type = typename BhtView::value_type;
+    using key_type = typename BhtView::key_type;
+    explicit ReorderBht(BhtView tb, KeyView orderedKeys, MapIter map)
+        : tb{tb}, orderedKeys{orderedKeys}, map{map} {}
+
+    constexpr void operator()(size_type i) {
+      size_type j = map[i];
+      key_type key{};
+      // reorder keys
+      if constexpr (Scatter) {  // scatter
+        key = tb._activeKeys[i];
+        orderedKeys[j] = key;
+      } else {  // gather
+        key = tb._activeKeys[j];
+        orderedKeys[i] = key;
+      }
+      // remap index table
+      auto entry = tb.query(key, false_c);
+      if (entry != detail::deduce_numeric_max<value_type>()) {
+        if constexpr (Scatter) {
+          tb._table.indices[entry] = j;
+        } else
+          tb._table.indices[entry] = i;
+      } else {
+        *tb._success = 0;
+        // printf("fatal error! should not missing querying an existing key!\n");
+      }
+    }
+
+    BhtView tb;
+    KeyView orderedKeys;
+    MapIter map;
+  };
   template <typename Tn, int dim, typename Index, int B, typename Allocator>
   template <typename Policy, typename MapRange, bool Scatter>
   void bht<Tn, dim, Index, B, Allocator>::reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter>) {
@@ -350,32 +385,15 @@ namespace zs {
     if (!valid_memspace_for_execution(pol, _activeKeys.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
 
-    // auto allocator = get_temporary_memory_source(pol);
     Vector<key_type, allocator_type> orderedKeys(_activeKeys.get_allocator(),
                                                  _activeKeys.capacity());
-    pol(range(sz), [tb = view<space>(*this), map = zs::begin(mapR), keys = view<space>(_activeKeys),
-                    orderedKeys = view<space>(orderedKeys)] ZS_LAMBDA(size_type i) mutable {
-      size_type j = map[i];
-      key_type key{};
-      // reorder keys
-      if constexpr (Scatter) {  // scatter
-        key = keys[i];
-        orderedKeys[j] = key;
-      } else {  // gather
-        key = keys[j];
-        orderedKeys[i] = key;
-      }
-      // remap index table
-      auto entry = tb.query(key, false_c);
-      if (entry != detail::deduce_numeric_max<value_type>()) {
-        if constexpr (Scatter) {
-          tb._table.indices[entry] = j;
-        } else
-          tb._table.indices[entry] = i;
-      } else {
-        // printf("fatal error! should not missing querying an existing key!\n");
-      }
-    });
+    {
+      auto tb = view<space>(*this);
+      auto oks = view<space>(orderedKeys);
+      auto mapIter = zs::begin(mapR);
+      pol(range(sz), ReorderBht<RM_CVREF_T(tb), RM_CVREF_T(oks), RM_CVREF_T(mapIter), Scatter>{
+                         tb, oks, mapIter});
+    }
     _activeKeys = zs::move(orderedKeys);
   }
 

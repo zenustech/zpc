@@ -68,6 +68,7 @@ namespace zs {
         return (integer_coord_component_type)tile_bits_type::template value<I>;
     }
     template <int I> static constexpr integer_coord_component_type get_accum_tile_bits() noexcept {
+      static_assert(I >= 0 && I < num_levels, "???");
       return decltype(declval<tile_bits_type>().template scan<1>())::template value<I>;
     }
 
@@ -91,6 +92,7 @@ namespace zs {
     using hierarchy_bits_type = value_seq<get_hierarchy_bits<Is>()...>;
     template <int I>
     static constexpr integer_coord_component_type get_accum_hierarchy_bits() noexcept {
+      static_assert(I >= 0 && I < num_levels, "???");
       return decltype(declval<hierarchy_bits_type>().template scan<1>())::template value<I>;
     }
     static_assert(((get_hierarchy_bits<Is>() > 0) && ...),
@@ -98,10 +100,10 @@ namespace zs {
 
     /// @brief dim series
     template <int I> static constexpr integer_coord_component_type get_hierarchy_dim() noexcept {
-      return (integer_coord_component_type)1 << hierarchy_bits_type::template value<I>;
+      return (integer_coord_component_type)1 << get_hierarchy_bits<I>();
     }
     template <int I> static constexpr integer_coord_component_type get_tile_dim() noexcept {
-      return (integer_coord_component_type)1 << tile_bits_type::template value<I>;
+      return (integer_coord_component_type)1 << get_tile_bits<I>();
     }
     template <int I>
     static constexpr integer_coord_component_type get_accum_hierarchy_dim() noexcept {
@@ -273,6 +275,21 @@ namespace zs {
       for (int d = 1; d != dim; ++d) {
         ret = (ret << get_tile_bits<I>()) | ((c[d] & Level<I>::cell_mask) >> Level<I>::sbit);
       }
+      return ret;
+    }
+    template <int I>
+    static constexpr integer_coord_type hierarchy_offset_to_coord(size_type offset) noexcept {
+      integer_coord_type ret{};
+      for (auto d = dim - 1; d >= 0; --d, offset >>= get_hierarchy_bits<I>())
+        ret[d] = (integer_coord_component_type)(offset & (get_hierarchy_dim<I>() - 1))
+                 << get_end_bits<I - 1>();
+      return ret;
+    }
+    template <int I>
+    static constexpr integer_coord_type tile_offset_to_coord(size_type offset) noexcept {
+      integer_coord_type ret{};
+      for (auto d = dim - 1; d >= 0; --d, offset >>= get_tile_bits<I>())
+        ret[d] = (integer_coord_component_type)(offset & (get_tile_dim<I>() - 1)) << Level<I>::sbit;
       return ret;
     }
 
@@ -615,6 +632,15 @@ namespace zs {
         const integer_coord_type &c) noexcept {
       return container_type::template coord_to_hierarchy_offset<I>(c);
     }
+    template <int I>
+    static constexpr integer_coord_type hierarchy_offset_to_coord(size_type offset) noexcept {
+      return container_type::template hierarchy_offset_to_coord<I>(offset);
+    }
+    template <int I>
+    static constexpr integer_coord_type tile_offset_to_coord(size_type offset) noexcept {
+      return container_type::template tile_offset_to_coord<I>(offset);
+    }
+
     template <typename T, bool Ordered = false, int I = num_levels - 1>
     constexpr enable_if_type<!is_const_v<T>, bool> probeValue(size_type chn,
                                                               const integer_coord_type &coord,
@@ -665,6 +691,66 @@ namespace zs {
         //        lev.table._activeKeys[bno][2], n, coord[0], coord[1], coord[2], (float)val);
         return lev.valueMask[bno].isOn(n);
       }
+    }
+
+    // voxel size
+    constexpr coord_type voxelSize() const {
+      // neglect shearing here
+      coord_type ret{};
+      for (int i = 0; i != dim; ++i) {
+        coord_component_type sum = 0;
+        for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
+        ret.val(i) = zs::sqrt(sum, wrapv<space>{});
+      }
+      return ret;
+    }
+
+    // linear index to coordinate
+    template <int I = 0>
+    constexpr integer_coord_type iCoord(size_type bno, integer_coord_component_type tileOffset,
+                                        wrapv<I> = {}) const {
+      return level(wrapv<I>{}).table._activeKeys[bno] + tile_offset_to_coord(tileOffset);
+    }
+    template <int I = 0>
+    constexpr integer_coord_type iCoord(size_type cellno, wrapv<I> = {}) const {
+      return level(wrapv<I>{}).table._activeKeys[cellno / level_view_type<I>::block_size]
+             + tile_offset_to_coord(cellno & (level_view_type<I>::block_size - 1));
+    }
+    template <int I = 0> constexpr coord_type wCoord(size_type bno,
+                                                     integer_coord_component_type tileOffset,
+                                                     wrapv<I> = {}) const {
+      return indexToWorld(iCoord(bno, tileOffset, wrapv<I>{}));
+    }
+    template <int I = 0> constexpr coord_type wCoord(size_type cellno, wrapv<I> = {}) const {
+      return indexToWorld(iCoord(cellno, wrapv<I>{}));
+    }
+
+    template <int I = 0>
+    constexpr coord_type iStaggeredCoord(size_type bno, integer_coord_component_type tileOffset,
+                                         int f, wrapv<I> = {}) const {
+      // f must be within [0, dim)
+      return iCoord(bno, tileOffset, wrapv<I>{}) + coord_type::init([f](int d) {
+               return d == f ? (coord_component_type)-0.5
+                                   * container_type::template get_hierarchy_dim<I - 1>()
+                             : (coord_component_type)0;
+             });
+    }
+    template <int I = 0>
+    constexpr coord_type iStaggeredCoord(size_type cellno, int f, wrapv<I> = {}) const {
+      return iCoord(cellno, wrapv<I>{}) + coord_type::init([f](int d) {
+               return d == f ? (coord_component_type)-0.5
+                                   * container_type::template get_hierarchy_dim<I - 1>()
+                             : (coord_component_type)0;
+             });
+    }
+    template <int I = 0>
+    constexpr coord_type wStaggeredCoord(size_type bno, integer_coord_component_type tileOffset,
+                                         int f, wrapv<I> = {}) const {
+      return indexToWorld(iStaggeredCoord(bno, tileOffset, f, wrapv<I>{}));
+    }
+    template <int I = 0>
+    constexpr coord_type wStaggeredCoord(size_type cellno, int f, wrapv<I> = {}) const {
+      return indexToWorld(iStaggeredCoord(cellno, f, wrapv<I>{}));
     }
 
     zs::tuple<level_view_type<Is>...> _levels;

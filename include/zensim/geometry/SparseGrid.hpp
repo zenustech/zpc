@@ -335,7 +335,7 @@ namespace zs {
 
     // voxel size
     constexpr coord_type voxelSize() const {
-      // does not consider shearing here
+      // neglect shearing here
       coord_type ret{};
       for (int i = 0; i != dim; ++i) {
         coord_component_type sum = 0;

@@ -56,22 +56,31 @@ namespace zs {
     /// @note hierarchy/ tile
     /// @note bits (bit_count)/ dim/ size
 
-    // tile_bits (determine tile size at each level)
-    using tile_bits_type = value_seq<TileBits...>;
+    /// @note tile_bits
+    /// determine tile size at each level
 
     // tile + bits
+    // using tile_bits_type = value_seq<TileBits...>;
     template <int I> static constexpr integer_coord_component_type get_tile_bits() noexcept {
       static_assert(I < num_levels, "queried level exceeds the range.");
       if constexpr (I < 0)
         return 0;
       else
-        return (integer_coord_component_type)tile_bits_type::template value<I>;
+        return (integer_coord_component_type)value_seq<TileBits...>::template value<I>;
     }
     template <int I> static constexpr integer_coord_component_type get_accum_tile_bits() noexcept {
-      static_assert(I >= 0 && I < num_levels, "???");
-      return decltype(declval<tile_bits_type>().template scan<1>())::template value<I>;
+      // static_assert(I >= 0 && I < num_levels, "???");
+      // return decltype(declval<tile_bits_type>().template scan<1>())::template value<I>;
+      integer_coord_component_type ret = 0;
+      (void)((ret += (Is <= I ? get_tile_bits<Is>() : (integer_coord_component_type)0)), ...);
+      return ret;
     }
 
+    /// @note  hierarchy_bits from child scaling_bits and tile_dim
+    /// determine branch factor at each level
+
+    // hierarchy + bits
+    // using hierarchy_bits_type = value_seq<get_hierarchy_bits<Is>()...>;
     template <int I> static constexpr integer_coord_component_type get_scaling_bits() noexcept {
       static_assert(I < num_levels, "queried level exceeds the range.");
       if constexpr (I < 0)
@@ -80,7 +89,6 @@ namespace zs {
         return (integer_coord_component_type)value_seq<ScalingBits...>::template value<I>;
     }
 
-    // hierarchy + bits
     template <int I> static constexpr integer_coord_component_type get_hierarchy_bits() noexcept {
       static_assert(I < num_levels, "queried level exceeds the range.");
       if constexpr (I < 0)
@@ -88,12 +96,13 @@ namespace zs {
       else
         return get_tile_bits<I>() - (get_tile_bits<I - 1>() - get_scaling_bits<I - 1>());
     }
-    // hierarchy_bits from child scaling_bits and tile_dim (determine branch factor at each level)
-    using hierarchy_bits_type = value_seq<get_hierarchy_bits<Is>()...>;
+
     template <int I>
     static constexpr integer_coord_component_type get_accum_hierarchy_bits() noexcept {
-      static_assert(I >= 0 && I < num_levels, "???");
-      return decltype(declval<hierarchy_bits_type>().template scan<1>())::template value<I>;
+      // return decltype(declval<hierarchy_bits_type>().template scan<1>())::template value<I>;
+      integer_coord_component_type ret = 0;
+      (void)((ret += (Is <= I ? get_hierarchy_bits<Is>() : (integer_coord_component_type)0)), ...);
+      return ret;
     }
     static_assert(((get_hierarchy_bits<Is>() > 0) && ...),
                   "parent node dimension should be greater than its child node.");
@@ -107,12 +116,10 @@ namespace zs {
     }
     template <int I>
     static constexpr integer_coord_component_type get_accum_hierarchy_dim() noexcept {
-      return (integer_coord_component_type)1
-             << decltype(declval<hierarchy_bits_type>().template scan<1>())::template value<I>;
+      return (integer_coord_component_type)1 << get_accum_hierarchy_bits<I>();
     }
     template <int I> static constexpr integer_coord_component_type get_accum_tile_dim() noexcept {
-      return (integer_coord_component_type)1
-             << decltype(declval<tile_bits_type>().template scan<1>())::template value<I>;
+      return (integer_coord_component_type)1 << get_accum_tile_bits<I>();
     }
 
     /// @brief hierarchy

@@ -615,10 +615,11 @@ namespace zs {
         const integer_coord_type &c) noexcept {
       return container_type::template coord_to_hierarchy_offset<I>(c);
     }
-    template <typename T, int I = num_levels - 1>
+    template <typename T, bool Ordered = false, int I = num_levels - 1>
     constexpr enable_if_type<!is_const_v<T>, bool> probeValue(size_type chn,
                                                               const integer_coord_type &coord,
                                                               T &val, index_type bno = sentinel_v,
+                                                              wrapv<Ordered> = {},
                                                               wrapv<I> = {}) const {
       constexpr bool IsVec = is_vec<T>::value;
       auto &lev = level(dim_c<I>);
@@ -647,7 +648,12 @@ namespace zs {
           return lev.valueMask[bno].isOn(n);
         }
         /// TODO: an optimal layout should directly give child-n position
-        return probeValue(chn, coord, val, sentinel_v, wrapv<I - 1>{});
+        if constexpr (Ordered)
+          return probeValue(chn, coord, val,
+                            lev.childOffset[bno] + lev.childMask[bno].countOffset(n),
+                            wrapv<Ordered>{}, wrapv<I - 1>{});
+        else
+          return probeValue(chn, coord, val, sentinel_v, wrapv<Ordered>{}, wrapv<I - 1>{});
       } else {
         /// @note leaf level
         if constexpr (IsVec) {

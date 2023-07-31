@@ -658,7 +658,7 @@ namespace zs {
     if (!valid_memspace_for_execution(pol, get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
 
-    TileVector orderedTiles(get_allocator(), capacity());
+    TileVector orderedTiles{get_allocator(), getPropertyTags(), capacity()};
     {
       auto tiles = view<space>(*this);
       auto oTiles = view<space>(orderedTiles);
@@ -667,7 +667,7 @@ namespace zs {
           TileVectorTileReorder<RM_CVREF_T(tiles), RM_CVREF_T(mapIter), Scatter>{tiles, oTiles,
                                                                                  mapIter});
     }
-    *this = move(orderedTiles);
+    *this = zs::move(orderedTiles);
   }
 
   template <execspace_e Space, typename TileVectorT, bool WithinTile, bool Base = false,

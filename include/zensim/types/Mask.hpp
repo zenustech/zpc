@@ -99,6 +99,14 @@ namespace zs {
       return sum;
     }
     /// Return the total number of on bits
+    constexpr int countOffset(int k) const {
+      int sum = 0, n = k >> log_2_word_size;
+      const word_type* w = words;
+      for (; n--; ++w) sum += count_ones(*w);
+      sum += count_ones((*w) & (((word_type)1 << (word_type)(k & word_mask)) - 1));
+      return sum;
+    }
+    /// Return the total number of on bits
     constexpr int countOff() const { return bit_size - countOn(); }
     /// Set the <i>n</i>th  bit on
     void setOn(int n) {

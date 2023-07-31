@@ -15,10 +15,11 @@ namespace zs {
       = AdaptiveGridImpl<dim, ValueT, index_sequence<Ns...>, index_sequence<Ns...>,
                          make_index_sequence<sizeof...(Ns)>, ZSPmrAllocator<>>;
 
-  // bifrost adaptive tile tree: <3, f32, 2, 2, 2>
-  template <int dim, typename ValueT, size_t... Ns> using AdaptiveTileTree
-      = AdaptiveGridImpl<dim, ValueT, index_sequence<Ns...>, index_sequence<(Ns, (size_t)1)...>,
-                         make_index_sequence<sizeof...(Ns)>, ZSPmrAllocator<>>;
+  // bifrost adaptive tile tree: <3, f32, 3, 2>
+  template <int dim, typename ValueT, int NumLevels, size_t N> using AdaptiveTileTree
+      = AdaptiveGridImpl<dim, ValueT, typename gen_seq<NumLevels>::template constant<N>,
+                         typename gen_seq<NumLevels>::template constant<(size_t)1>,
+                         typename gen_seq<NumLevels>::ascend, ZSPmrAllocator<>>;
 
   /// @brief stores all leaf blocks of an adaptive octree including halo regions
   template <int dim_, typename ValueT, size_t... TileBits, size_t... ScalingBits, size_t... Is>
@@ -29,6 +30,8 @@ namespace zs {
     using size_type = size_t;
     using index_type = zs::make_signed_t<size_type>;  // associated with the number of blocks
     using integer_coord_component_type = int;
+
+    using coord_mask_type = make_unsigned_t<integer_coord_component_type>;
 
     /// @note sanity checks
     static_assert(sizeof...(TileBits) == sizeof...(ScalingBits)
@@ -139,8 +142,12 @@ namespace zs {
     template <int I> using mask_storage_type
         = Vector<bit_mask<get_hierarchy_size<I>()>, allocator_type>;
 
+    using child_offset_type = Vector<size_type, allocator_type>;
+
     using table_type = bht<integer_coord_component_type, dim, index_type, 16, allocator_type>;
     static constexpr index_type sentinel_v = table_type::sentinel_v;
+
+    using transform_type = math::Transform<coord_component_type, dim>;
 
     template <int level_> struct Level {
       static constexpr int level = level_;
@@ -149,23 +156,26 @@ namespace zs {
       static constexpr integer_coord_component_type accum_tile_dim = get_accum_tile_dim<level>();
       static constexpr size_type block_size = get_tile_size<level>();
 
-      using mask_t = make_unsigned_t<integer_coord_component_type>;
       /// @note used for global coords
-      static constexpr mask_t sbit = get_child_bit_offset<level>();
-      static constexpr mask_t ebit = get_accum_hierarchy_bits<level>();
-      static constexpr mask_t cell_mask = get_accum_hierarchy_dim<level>() - 1;
-      static constexpr mask_t origin_mask = ~cell_mask;
+      /// @note [sbit, ebit) is the bit region covered within this level
+      static constexpr integer_coord_component_type sbit = get_child_bit_offset<level>();
+      static constexpr integer_coord_component_type ebit = get_accum_hierarchy_bits<level>();
+      static constexpr coord_mask_type cell_mask = get_accum_hierarchy_dim<level>() - 1;
+      static constexpr coord_mask_type origin_mask = ~cell_mask;
 
       using grid_type = grid_storage_type<level>;
       using mask_type = mask_storage_type<level>;
+      static_assert(block_size == grid_type::lane_width, "???");
       Level(const allocator_type &allocator, const std::vector<PropertyTag> &propTags, size_t count)
           : table{allocator, count},
             grid{allocator, propTags, count * block_size},
             valueMask{allocator, count},
-            childMask{allocator, count} {
+            childMask{allocator, count},
+            childOffset{allocator, count} {
         grid.reset(0);
         childMask.reset(0);
         valueMask.reset(0);
+        // childOffset will be maintained during reorder
       }
       Level(const allocator_type &allocator, size_t count)
           : Level(allocator, {{"sdf", 1}}, count) {}
@@ -212,6 +222,7 @@ namespace zs {
         ret.grid = grid.clone(allocator);
         ret.childMask = childMask.clone(allocator);
         ret.valueMask = valueMask.clone(allocator);
+        ret.childOffset = childOffset.clone(allocator);
         return ret;
       }
 
@@ -229,13 +240,41 @@ namespace zs {
       /// @note for levelset, valueMask indicates inside/outside
       /// @note for leaf level, childMask reserved for special use cases
       mask_type valueMask, childMask;
+      child_offset_type childOffset;
     };
-    using transform_type = math::Transform<coord_component_type, dim>;
 
     template <auto I = 0> Level<I> &level(wrapv<I>) { return zs::get<I>(_levels); }
     template <auto I = 0> const Level<I> &level(wrapv<I>) const { return zs::get<I>(_levels); }
     template <auto I = 0> Level<I> &level(value_seq<I>) { return zs::get<I>(_levels); }
     template <auto I = 0> const Level<I> &level(value_seq<I>) const { return zs::get<I>(_levels); }
+
+    template <int I> static constexpr integer_coord_component_type get_end_bits() noexcept {
+      if constexpr (I < 0)
+        return (integer_coord_component_type)0;
+      else
+        return Level<I>::ebit;
+    }
+    template <int I>
+    static constexpr integer_coord_type coord_to_key(const integer_coord_type &c) noexcept {
+      return c & Level<I>::origin_mask;
+    }
+    template <int I> static constexpr integer_coord_component_type coord_to_hierarchy_offset(
+        const integer_coord_type &c) noexcept {
+      integer_coord_component_type ret = (c[0] & Level<I>::cell_mask) >> get_end_bits<I - 1>();
+      for (int d = 1; d != dim; ++d) {
+        ret = (ret << get_hierarchy_bits<I>())
+              | ((c[d] & Level<I>::cell_mask) >> get_end_bits<I - 1>());
+      }
+      return ret;
+    }
+    template <int I> static constexpr integer_coord_component_type coord_to_tile_offset(
+        const integer_coord_type &c) noexcept {
+      integer_coord_component_type ret = (c[0] & Level<I>::cell_mask) >> Level<I>::sbit;
+      for (int d = 1; d != dim; ++d) {
+        ret = (ret << get_tile_bits<I>()) | ((c[d] & Level<I>::cell_mask) >> Level<I>::sbit);
+      }
+      return ret;
+    }
 
     constexpr MemoryLocation memoryLocation() const noexcept {
       return get<0>(_levels)._table.memoryLocation();
@@ -270,6 +309,75 @@ namespace zs {
     template <typename Policy> void reset(Policy &&policy, value_type val) {
       (void)(get<Is>(_levels).reset(policy, val), ...);
     }
+
+    template <typename Policy, bool SortGridData = true, int I = num_levels - 1>
+    void reorder(Policy &&pol, wrapv<SortGridData> = {}, wrapv<I> = {}) {
+      constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+      static_assert(I > 0 && I < num_levels, "???");
+
+      if (!valid_memspace_for_execution(pol, get_allocator()))
+        throw std::runtime_error(
+            "current memory location not compatible with the execution policy");
+
+      auto &l = level(wrapv<I>{});
+      auto &lc = level(wrapv<I - 1>{});
+      auto nbs = l.numBlocks();
+      auto nchbs = lc.numBlocks();
+
+      auto allocator = get_temporary_memory_source(pol);
+      /// pre-sort highest level
+      if constexpr (I == num_levels - 1) {
+        Vector<u32> codes{allocator, nbs};
+        Vector<u32> sortedMcs{allocator, nbs};
+        Vector<size_type> indices{allocator, nbs};
+        Vector<size_type> sortedIndices{allocator, nbs};
+        pol(enumerate(l.table._activeKeys, codes, indices),
+            [] ZS_LAMBDA(size_type i, const integer_coord_type &coord, u32 &key, size_type &id) {
+              auto c = ((coord >> Level<I>::sbit) & 1023).template cast<f32>() / 1024;
+              key = morton_code<dim>(c);
+              id = i;
+            });
+        radix_sort_pair(pol, codes.begin(), indices.begin(), sortedMcs.begin(),
+                        sortedIndices.begin(), nbs);
+        /// reorder block entries
+        l.table.reorder(pol, range(sortedIndices), false_c);
+        /// reorder grid data
+        if constexpr (SortGridData) l.grid.reorderTiles(pol, range(sortedIndices), false_c);
+        l.valueMask.reorder(pol, range(sortedIndices), false_c);
+        l.childMask.reorder(pol, range(sortedIndices), false_c);
+      }
+      /// histogram sort
+      Vector<size_type> numActiveChildren{allocator, nbs};
+      pol(zip(numActiveChildren, l.childMask),
+          [] ZS_LAMBDA(size_type & n, const auto &mask) { n = mask.countOn(); });
+      exclusive_scan(pol, numActiveChildren.begin(), numActiveChildren.end(),
+                     l.childOffset.begin());
+      /// compute children reorder mapping
+      Vector<size_type> dsts{allocator, nchbs};
+      pol(enumerate(lc.table._activeKeys, dsts),
+          [tb = view<space>(l.table), offsets = view<space>(l.childOffset),
+           masks = view<space>(l.childMask)] ZS_LAMBDA(size_type i, const integer_coord_type &coord,
+                                                       size_type &dst) {
+            auto parentOrigin = coord_to_key<I>(coord);
+            auto parentBno = tb.query(parentOrigin);
+            auto childOffset = coord_to_hierarchy_offset<I>(coord);
+            dst = offsets[parentBno] + masks[parentBno].countOffset(childOffset);
+          });
+      // pol(enumerate(dsts),
+      //    [nchbs] ZS_LAMBDA(size_type i, size_type & dst) { dst = nchbs - 1 - i; });
+      /// reorder block entries
+      lc.table.reorder(pol, range(dsts), true_c);
+      /// reorder grid data
+      if constexpr (SortGridData) lc.grid.reorderTiles(pol, range(dsts), true_c);
+      lc.valueMask.reorder(pol, range(dsts), true_c);
+      lc.childMask.reorder(pol, range(dsts), true_c);
+
+      /// recurse
+      if constexpr (I > 1) {
+        reorder(FWD(pol), wrapv<SortGridData>{}, wrapv<I - 1>{});
+      }
+    }
+
     constexpr auto numChannels() const noexcept {
       return level(dim_c<num_levels - 1>).grid.numChannels();
     }
@@ -393,12 +501,20 @@ namespace zs {
     using index_type = typename container_type::index_type;
 
     using integer_coord_component_type = typename container_type::integer_coord_component_type;
+    using coord_mask_type = typename container_type::coord_mask_type;
     using integer_coord_type = typename container_type::integer_coord_type;
     using coord_component_type = typename container_type::coord_component_type;
     using coord_type = typename container_type::coord_type;
     using packed_value_type = typename container_type::packed_value_type;
 
     template <int LevelNo> using level_type = typename container_type::template Level<LevelNo>;
+
+    using child_offset_type = typename container_type::child_offset_type;
+    using child_offset_view_type = RM_CVREF_T(view<space>(
+        declval<
+            conditional_t<is_const_structure, const child_offset_type &, child_offset_type &>>(),
+        wrapv<Base>{}));
+
     using table_type = typename container_type::table_type;
     using table_view_type = RM_CVREF_T(
         view<space>(declval<conditional_t<is_const_structure, const table_type &, table_type &>>(),
@@ -431,25 +547,26 @@ namespace zs {
           : table{view<Space>(level.table, wrapv<Base>{})},
             grid{view<Space>(level.grid, wrapv<Base>{})},
             valueMask{view<Space>(level.valueMask, wrapv<Base>{})},
-            childMask{view<Space>(level.childMask, wrapv<Base>{})} {}
+            childMask{view<Space>(level.childMask, wrapv<Base>{})},
+            childOffset{view<Space>(level.childOffset, wrapv<Base>{})} {}
 
       static constexpr integer_coord_component_type tile_bits = level_t::tile_bits;
       static constexpr integer_coord_component_type tile_dim = level_t::tile_dim;
       static constexpr integer_coord_component_type accum_tile_dim = level_t::accum_tile_dim;
-      static constexpr size_t block_size = level_t::block_size;
+      static constexpr size_type block_size = level_t::block_size;
 
-      using mask_t = typename level_t::mask_t;
       /// @note used for global coords
-      static constexpr mask_t sbit = level_t::sbit;
-      static constexpr mask_t ebit = level_t::ebit;
-      static constexpr mask_t cell_mask = level_t::cell_mask;
-      static constexpr mask_t origin_mask = level_t::origin_mask;
+      static constexpr integer_coord_component_type sbit = level_t::sbit;
+      static constexpr integer_coord_component_type ebit = level_t::ebit;
+      static constexpr coord_mask_type cell_mask = level_t::cell_mask;
+      static constexpr coord_mask_type origin_mask = level_t::origin_mask;
 
       constexpr auto numBlocks() const { return table.size(); }
 
       table_view_type table;
       grid_type grid;
       mask_type valueMask, childMask;
+      child_offset_view_type childOffset;
     };
 
     using transform_type = typename container_type::transform_type;
@@ -488,17 +605,15 @@ namespace zs {
 
     template <int I>
     static constexpr integer_coord_type coord_to_key(const integer_coord_type &c) noexcept {
-      return c & level_view_type<I>::origin_mask;
+      return container_type::template coord_to_key<I>(c);
     }
-    template <int I> static constexpr integer_coord_component_type coord_to_offset(
+    template <int I> static constexpr integer_coord_component_type coord_to_tile_offset(
         const integer_coord_type &c) noexcept {
-      integer_coord_component_type ret
-          = (c[0] & level_view_type<I>::cell_mask) >> level_view_type<I>::sbit;
-      for (int d = 1; d != dim; ++d) {
-        ret = (ret << level_view_type<I>::tile_bits)
-              | ((c[d] & level_view_type<I>::cell_mask) >> level_view_type<I>::sbit);
-      }
-      return ret;
+      return container_type::template coord_to_tile_offset<I>(c);
+    }
+    template <int I> static constexpr integer_coord_component_type coord_to_hierarchy_offset(
+        const integer_coord_type &c) noexcept {
+      return container_type::template coord_to_hierarchy_offset<I>(c);
     }
     template <typename T, int I = num_levels - 1>
     constexpr enable_if_type<!is_const_v<T>, bool> probeValue(size_type chn,
@@ -518,7 +633,7 @@ namespace zs {
           return false;
         }
       }
-      const integer_coord_component_type n = coord_to_offset<I>(coord);
+      const integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
       auto block = lev.grid.tile(bno);
       if constexpr (I > 0) {
         // printf("found int-%d [%d] (%d, %d, %d) ch[%d]\n", I, bno, lev.table._activeKeys[bno][0],

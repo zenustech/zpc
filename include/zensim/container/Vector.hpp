@@ -540,7 +540,7 @@ namespace zs {
       auto orderedVs = view<space>(orderedVector);
       pol(enumerate(mapR), VectorReorder<RM_CVREF_T(vs), Scatter>{vs, orderedVs});
     }
-    *this = move(orderedVector);
+    *this = zs::move(orderedVector);
   }
 
 }  // namespace zs

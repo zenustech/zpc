@@ -699,6 +699,51 @@ namespace zs {
         return lev.valueMask[bno].isOn(n);
       }
     }
+    template <int I> constexpr value_type valueOr(size_type chn,
+                                                  typename table_type::index_type blockno,
+                                                  integer_coord_component_type cellno,
+                                                  value_type defaultVal, wrapv<I>) const noexcept {
+      const auto &l = level(wrapv<I>{});
+      return blockno == table_type::sentinel_v ? defaultVal : l.grid(chn, blockno, cellno);
+    }
+    constexpr auto valueOr(false_type, size_type chn, const integer_coord_type &indexCoord,
+                           value_type defaultVal) const noexcept {
+      value_type ret{};
+      auto found = probeValue(chn, indexCoord, ret, sentinel_v, wrapv<true>{});
+      if (found)
+        return ret;
+      else
+        return defaultVal;
+    }
+    constexpr value_type valueOr(true_type, size_type chn, integer_coord_type indexCoord,
+                                 int orientation, value_type defaultVal) const noexcept {
+      /// 0, ..., dim-1: within cell
+      /// dim, ..., dim+dim-1: neighbor cell
+      if (int f = orientation % (dim + dim); f >= dim) ++indexCoord[f - dim];
+      return valueOr(false_c, chn, indexCoord, defaultVal);
+    }
+
+    // arena
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iArena(const VecInterface<VecT> &X, wrapv<kt> = {}) const {
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, X);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wArena(const VecInterface<VecT> &x, wrapv<kt> = {}) const {
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, worldToIndex(x));
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iArena(const VecInterface<VecT> &X, int f, wrapv<kt> = {}) const {
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, X, f);
+    }
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wArena(const VecInterface<VecT> &x, int f, wrapv<kt> = {}) const {
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, worldToIndex(x), f);
+    }
 
     // voxel size
     constexpr coord_type voxelSize() const {
@@ -758,6 +803,43 @@ namespace zs {
     template <int I = 0>
     constexpr coord_type wStaggeredCoord(size_type cellno, int f, wrapv<I> = {}) const {
       return indexToWorld(iStaggeredCoord(cellno, f, wrapv<I>{}));
+    }
+
+    // insert/ query
+
+    /// sample
+    // collocated
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {}) const {
+      auto pad = iArena(X, wrapv<kt>{});
+      return pad.isample(chn, _background);
+    }
+
+    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto wSample(size_type chn, const VecInterface<VecT> &x, wrapv<kt> = {}) const {
+      return iSample(chn, worldToIndex(x), wrapv<kt>{});
+    }
+
+    // levelset interface impl
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
+      return wSample(0, x);
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
+      typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
+      value_type eps = (value_type)1e-6;
+      /// compute a local partial derivative
+      for (int i = 0; i != dim; i++) {
+        v1 = x;
+        v2 = x;
+        v1(i) = x(i) + eps;
+        v2(i) = x(i) - eps;
+        diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
+      }
+      return diff.normalized();
     }
 
     zs::tuple<level_view_type<Is>...> _levels;
@@ -931,6 +1013,26 @@ namespace zs {
     template <int LevelNo> using mask_view_type = typename base_t::template mask_view_type<LevelNo>;
 
     using channel_counter_type = typename grid_storage_type<0>::channel_counter_type;
+
+    constexpr auto getPropertyNames() const noexcept { return _tagNames; }
+    constexpr auto getPropertyOffsets() const noexcept { return _tagOffsets; }
+    constexpr auto getPropertySizes() const noexcept { return _tagSizes; }
+    constexpr auto numProperties() const noexcept { return _N; }
+    constexpr auto propertyIndex(const SmallString &propName) const noexcept {
+      channel_counter_type i = 0;
+      for (; i != _N; ++i)
+        if (_tagNames[i] == propName) break;
+      return i;
+    }
+    constexpr auto propertySize(const SmallString &propName) const noexcept {
+      return getPropertySizes()[propertyIndex(propName)];
+    }
+    constexpr auto propertyOffset(const SmallString &propName) const noexcept {
+      return getPropertyOffsets()[propertyIndex(propName)];
+    }
+    constexpr bool hasProperty(const SmallString &propName) const noexcept {
+      return propertyIndex(propName) != _N;
+    }
 
     /// @note TileVectorView-alike
     const SmallString *_tagNames;

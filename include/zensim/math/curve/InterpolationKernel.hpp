@@ -17,7 +17,7 @@ namespace zs {
     return dw;
   }
   template <typename T, auto dim>
-  constexpr vec<T, dim, 3> bspline_weight(const vec<T, dim>& p, T const dx_inv) noexcept {
+  constexpr vec<T, dim, 3> bspline_weight(const vec<T, dim> &p, T const dx_inv) noexcept {
     vec<T, dim, 3> dw{};
     for (int i = 0; i < dim; ++i) {
       T d = p(i) * dx_inv - (lower_trunc(p(i) * dx_inv + 0.5) - 1);
@@ -53,7 +53,7 @@ namespace zs {
 
   template <int order, typename VecT,
             enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
-  constexpr auto linear_bspline_weights(const VecInterface<VecT>& x) noexcept {
+  constexpr auto linear_bspline_weights(const VecInterface<VecT> &x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
     // weights: 0
@@ -66,18 +66,18 @@ namespace zs {
     using RetT = conditional_t<order == 0, tuple<Pad>,
                                conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
     RetT weights{};
-    auto& w{get<0>(weights)};
+    auto &w{get<0>(weights)};
     for (int i = 0; i != dim; ++i) {
       T dx = x(i) - base_node<0>(x(i));
       w(i, 0) = (T)1 - dx;
       w(i, 1) = dx;
       if constexpr (order > 0) {
-        auto& dw{get<1>(weights)};
+        auto &dw{get<1>(weights)};
         dw(i, 0) = (T)-1;
         dw(i, 1) = (T)1;
       }
       if constexpr (order == 2) {
-        auto& ddw{get<2>(weights)};
+        auto &ddw{get<2>(weights)};
         ddw(i, 0) = (T)0;
         ddw(i, 1) = (T)0;
       }
@@ -87,7 +87,7 @@ namespace zs {
 
   template <int order, typename VecT,
             enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
-  constexpr auto quadratic_bspline_weights(const VecInterface<VecT>& x) noexcept {
+  constexpr auto quadratic_bspline_weights(const VecInterface<VecT> &x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
     // weights: 0
@@ -100,7 +100,7 @@ namespace zs {
     using RetT = conditional_t<order == 0, tuple<Pad>,
                                conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
     RetT weights{};
-    auto& w{get<0>(weights)};
+    auto &w{get<0>(weights)};
     for (int i = 0; i != dim; ++i) {
       T d0 = x(i) - base_node<1>(x(i));
       w(i, 0) = (T)0.5 * ((T)1.5 - d0) * ((T)1.5 - d0);
@@ -109,13 +109,13 @@ namespace zs {
       T zz = (T)0.5 + d1;
       w(i, 2) = (T)0.5 * zz * zz;
       if constexpr (order > 0) {
-        auto& dw{get<1>(weights)};
+        auto &dw{get<1>(weights)};
         dw(i, 0) = d0 - (T)1.5;
         dw(i, 1) = -(d1 + d1);
         dw(i, 2) = zz;
       }
       if constexpr (order == 2) {
-        auto& ddw{get<2>(weights)};
+        auto &ddw{get<2>(weights)};
         ddw(i, 0) = 1;
         ddw(i, 1) = -2;
         ddw(i, 2) = 1;
@@ -126,7 +126,7 @@ namespace zs {
 
   template <int order, typename VecT,
             enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
-  constexpr auto cubic_bspline_weights(const VecInterface<VecT>& x) noexcept {
+  constexpr auto cubic_bspline_weights(const VecInterface<VecT> &x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
     // weights: 0
@@ -139,7 +139,7 @@ namespace zs {
     using RetT = conditional_t<order == 0, tuple<Pad>,
                                conditional_t<order == 1, tuple<Pad, Pad>, tuple<Pad, Pad, Pad>>>;
     RetT weights{};
-    auto& w{get<0>(weights)};
+    auto &w{get<0>(weights)};
     for (int i = 0; i != dim; ++i) {
       T d0 = x(i) - base_node<2>(x(i));
       T z = (T)2 - d0;
@@ -157,14 +157,14 @@ namespace zs {
       w(i, 3) = zzzz * zzzz * zzzz / (T)6;
 
       if constexpr (order > 0) {
-        auto& dw{get<1>(weights)};
+        auto &dw{get<1>(weights)};
         dw(i, 0) = (T)-0.5 * z * z;
         dw(i, 1) = ((T)1.5 * d1 - (T)2) * d1;
         dw(i, 2) = ((T)-1.5 * d2 + (T)2) * d2;
         dw(i, 3) = (T)0.5 * zzzz * zzzz;
       }
       if constexpr (order == 2) {
-        auto& ddw{get<2>(weights)};
+        auto &ddw{get<2>(weights)};
         ddw(i, 0) = (T)2 - d0;
         ddw(i, 1) = (T)-2 + (T)3 * (d0 - (T)1);
         ddw(i, 2) = (T)-2 + (T)3 * ((T)2 - d0);
@@ -176,7 +176,7 @@ namespace zs {
 
   template <typename VecT,
             enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
-  constexpr auto delta_2point_weights(const VecInterface<VecT>& x) noexcept {
+  constexpr auto delta_2point_weights(const VecInterface<VecT> &x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
 
@@ -185,7 +185,7 @@ namespace zs {
     using RetT = tuple<Pad>;
 
     RetT weights{};
-    auto& w{get<0>(weights)};
+    auto &w{get<0>(weights)};
     for (int i = 0; i != dim; ++i) {
       T base = base_node<0>(x(i));
 
@@ -203,7 +203,7 @@ namespace zs {
 
   template <typename VecT,
             enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
-  constexpr auto delta_3point_weights(const VecInterface<VecT>& x) noexcept {
+  constexpr auto delta_3point_weights(const VecInterface<VecT> &x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
 
@@ -212,7 +212,7 @@ namespace zs {
     using RetT = tuple<Pad>;
 
     RetT weights{};
-    auto& w{get<0>(weights)};
+    auto &w{get<0>(weights)};
 
     for (int i = 0; i != dim; ++i) {
       T base = base_node<1>(x(i));
@@ -234,7 +234,7 @@ namespace zs {
 
   template <typename VecT,
             enable_if_all<VecT::dim == 1, is_floating_point_v<typename VecT::value_type>> = 0>
-  constexpr auto delta_4point_weights(const VecInterface<VecT>& x) noexcept {
+  constexpr auto delta_4point_weights(const VecInterface<VecT> &x) noexcept {
     using T = typename VecT::value_type;
     constexpr auto dim = VecT::extent;
 
@@ -243,7 +243,7 @@ namespace zs {
     using RetT = tuple<Pad>;
 
     RetT weights{};
-    auto& w{get<0>(weights)};
+    auto &w{get<0>(weights)};
 
     for (int i = 0; i != dim; ++i) {
       T base = base_node<2>(x(i));
@@ -262,5 +262,297 @@ namespace zs {
     }
     return weights;
   }
+
+  template <typename GridViewT, kernel_e kt_ = kernel_e::linear, int drv_order = 0>
+  struct GridArena {
+    using grid_view_type = GridViewT;
+    using value_type = typename grid_view_type::value_type;
+    using size_type = typename grid_view_type::size_type;
+
+    using integer_coord_component_type = typename grid_view_type::integer_coord_component_type;
+    using integer_coord_type = typename grid_view_type::integer_coord_type;
+    using coord_component_type = typename grid_view_type::coord_component_type;
+    using coord_type = typename grid_view_type::coord_type;
+
+    static constexpr int dim = grid_view_type::dim;
+    static constexpr kernel_e kt = kt_;
+    static constexpr int width = [](kernel_e kt) {
+      if (kt == kernel_e::linear || kt == kernel_e::delta2)
+        return 2;
+      else if (kt == kernel_e::quadratic || kt == kernel_e::delta3)
+        return 3;
+      else if (kt == kernel_e::cubic || kt == kernel_e::delta4)
+        return 4;
+    }(kt);
+    static constexpr int deriv_order = drv_order;
+
+    using TWM = vec<coord_component_type, dim, width>;
+
+    static_assert(deriv_order >= 0 && deriv_order <= 2,
+                  "weight derivative order should be an integer within [0, 2]");
+    static_assert(((kt == kernel_e::delta2 || kt == kernel_e::delta3 || kt == kernel_e::delta4)
+                   && deriv_order == 0)
+                      || (kt == kernel_e::linear || kt == kernel_e::quadratic
+                          || kt == kernel_e::cubic),
+                  "weight derivative order should be 0 when using delta kernel");
+
+    using WeightScratchPad
+        = conditional_t<deriv_order == 0, tuple<TWM>,
+                        conditional_t<deriv_order == 1, tuple<TWM, TWM>, tuple<TWM, TWM, TWM>>>;
+
+    template <typename ValT, size_t... Is>
+    static constexpr auto deduce_arena_type_impl(index_sequence<Is...>) {
+      return vec<ValT, (Is + 1 > 0 ? width : width)...>{};
+    }
+    template <typename ValT, int d> static constexpr auto deduce_arena_type() {
+      return deduce_arena_type_impl<ValT>(make_index_sequence<d>{});
+    }
+    template <typename ValT> using arena_type = RM_CVREF_T(deduce_arena_type<ValT, dim>());
+
+    /// constructors
+    /// index-space ctors
+    // collocated grid
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr GridArena(false_type, grid_view_type &sgv, const VecInterface<VecT> &X) noexcept
+        : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
+      constexpr int lerp_degree
+          = ((kt == kernel_e::linear || kt == kernel_e::delta2)
+                 ? 0
+                 : ((kt == kernel_e::quadratic || kt == kernel_e::delta3) ? 1 : 2));
+      for (int d = 0; d != dim; ++d)
+        iCorner[d] = base_node<lerp_degree>(X[d], wrapt<integer_coord_component_type>{});
+      iLocalPos = X - iCorner;
+      if constexpr (kt == kernel_e::linear)
+        weights = linear_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::quadratic)
+        weights = quadratic_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::cubic)
+        weights = cubic_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::delta2)
+        weights = delta_2point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta3)
+        weights = delta_3point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta4)
+        weights = delta_4point_weights(iLocalPos);
+    }
+    // staggered grid
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr GridArena(false_type, grid_view_type &sgv, const VecInterface<VecT> &X,
+                        int f) noexcept
+        : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
+      constexpr int lerp_degree
+          = ((kt == kernel_e::linear || kt == kernel_e::delta2)
+                 ? 0
+                 : ((kt == kernel_e::quadratic || kt == kernel_e::delta3) ? 1 : 2));
+      const auto delta = coord_type::init([f = f % dim](int d) {
+        return d != f ? (coord_component_type)0 : (coord_component_type)-0.5;
+      });
+      for (int d = 0; d != dim; ++d) iCorner[d] = base_node<lerp_degree>(X[d] - delta[d]);
+      iLocalPos = X - (iCorner + delta);
+      if constexpr (kt == kernel_e::linear)
+        weights = linear_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::quadratic)
+        weights = quadratic_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::cubic)
+        weights = cubic_bspline_weights<deriv_order>(iLocalPos);
+      else if constexpr (kt == kernel_e::delta2)
+        weights = delta_2point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta3)
+        weights = delta_3point_weights(iLocalPos);
+      else if constexpr (kt == kernel_e::delta4)
+        weights = delta_4point_weights(iLocalPos);
+    }
+    /// world-space ctors
+    // collocated grid
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr GridArena(true_type, grid_view_type &sgv, const VecInterface<VecT> &x) noexcept
+        : GridArena{false_c, sgv, sgv.worldToIndex(x)} {}
+    // staggered grid
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr GridArena(true_type, grid_view_type &sgv, const VecInterface<VecT> &x, int f) noexcept
+        : GridArena{false_c, sgv, sgv.worldToIndex(x), f} {}
+
+    /// scalar arena
+    constexpr arena_type<value_type> arena(size_type chn,
+                                           value_type defaultVal = {}) const noexcept {
+      // ensure that chn's orientation is aligned with initialization if within a staggered grid
+      arena_type<value_type> pad{};
+      for (auto offset : ndrange<dim>(width)) {
+        pad.val(offset) = gridPtr->valueOr(
+            false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
+      }
+      return pad;
+    }
+    constexpr arena_type<value_type> arena(const SmallString &propName, size_type chn = 0,
+                                           value_type defaultVal = {}) const noexcept {
+      return arena(gridPtr->propertyOffset(propName) + chn, defaultVal);
+    }
+
+    /// helpers
+    constexpr auto range() const noexcept { return ndrange<dim>(width); }
+
+    template <typename... Tn> constexpr auto offset(const std::tuple<Tn...> &loc) const noexcept {
+      return make_vec<int>(loc);
+    }
+    template <typename... Tn> constexpr auto offset(const tuple<Tn...> &loc) const noexcept {
+      return make_vec<int>(loc);
+    }
+
+    template <typename... Tn> constexpr auto coord(const std::tuple<Tn...> &loc) const noexcept {
+      return iCorner + offset(loc);
+    }
+    template <typename... Tn> constexpr auto coord(const tuple<Tn...> &loc) const noexcept {
+      return iCorner + offset(loc);
+    }
+
+    /// minimum
+    constexpr value_type minimum(size_type chn = 0) const noexcept {
+      auto pad = arena(chn, limits<value_type>::max());
+      value_type ret = limits<value_type>::max();
+      for (auto offset : ndrange<dim>(width))
+        if (const auto &v = pad.val(offset); v < ret) ret = v;
+      return ret;
+    }
+    constexpr value_type minimum(const SmallString &propName, size_type chn = 0) const noexcept {
+      return minimum(gridPtr->propertyOffset(propName) + chn);
+    }
+
+    /// maximum
+    constexpr value_type maximum(size_type chn = 0) const noexcept {
+      auto pad = arena(chn, limits<value_type>::lowest());
+      value_type ret = limits<value_type>::lowest();
+      for (auto offset : ndrange<dim>(width))
+        if (const auto &v = pad.val(offset); v > ret) ret = v;
+      return ret;
+    }
+    constexpr value_type maximum(const SmallString &propName, size_type chn = 0) const noexcept {
+      return maximum(gridPtr->propertyOffset(propName) + chn);
+    }
+
+    /// isample
+    constexpr value_type isample(size_type chn, value_type defaultVal = {}) const noexcept {
+      auto pad = arena(chn, defaultVal);
+      if constexpr (kt == kernel_e::linear)
+        return xlerp(iLocalPos, pad);
+      else {
+        value_type ret = 0;
+        for (auto offset : ndrange<dim>(width)) ret += weight(offset) * pad.val(offset);
+        return ret;
+      }
+    }
+    constexpr value_type isample(const SmallString &propName, size_type chn,
+                                 value_type defaultVal = {}) const noexcept {
+      return isample(gridPtr->propertyOffset(propName) + chn, defaultVal);
+    }
+
+    /// weight
+    template <typename... Tn>
+    constexpr value_type weight(const std::tuple<Tn...> &loc) const noexcept {
+      return weight_impl(loc, index_sequence_for<Tn...>{});
+    }
+    template <typename... Tn>
+    constexpr value_type weight(const zs::tuple<Tn...> &loc) const noexcept {
+      return weight_impl(loc, index_sequence_for<Tn...>{});
+    }
+    template <typename... Tn, enable_if_all<((!is_tuple_v<Tn> && !is_std_tuple<Tn>()) && ...
+                                             && (sizeof...(Tn) == dim))>
+                              = 0>
+    constexpr auto weight(Tn &&...is) const noexcept {
+      return weight(zs::forward_as_tuple(FWD(is)...));
+    }
+    /// weight gradient
+    template <zs::size_t I, typename... Tn, auto ord = deriv_order>
+    constexpr enable_if_type<(ord > 0), coord_component_type> weightGradient(
+        const std::tuple<Tn...> &loc) const noexcept {
+      return weightGradient_impl<I>(loc, index_sequence_for<Tn...>{});
+    }
+    template <zs::size_t I, typename... Tn, auto ord = deriv_order>
+    constexpr enable_if_type<(ord > 0), coord_component_type> weightGradient(
+        const zs::tuple<Tn...> &loc) const noexcept {
+      return weightGradient_impl<I>(loc, index_sequence_for<Tn...>{});
+    }
+    /// weight gradient
+    template <typename... Tn, auto ord = deriv_order>
+    constexpr enable_if_type<(ord > 0), coord_type> weightsGradient(
+        const std::tuple<Tn...> &loc) const noexcept {
+      return weightGradients_impl(loc, index_sequence_for<Tn...>{});
+    }
+    template <typename... Tn, auto ord = deriv_order>
+    constexpr enable_if_type<(ord > 0), coord_type> weightsGradient(
+        const zs::tuple<Tn...> &loc) const noexcept {
+      return weightGradients_impl(loc, index_sequence_for<Tn...>{});
+    }
+
+    void printWeights() {
+      value_type sum = 0;
+      for (int d = 0; d != dim; ++d) {
+        for (int w = 0; w != width; ++w) {
+          sum += get<0>(weights)(d, w);
+          fmt::print("weights({}, {}): [{}]\t", d, w, get<0>(weights)(d, w));
+          if constexpr (deriv_order > 0) fmt::print("[{}]\t", get<1>(weights)(d, w));
+          if constexpr (deriv_order > 1) fmt::print("[{}]\t", get<2>(weights)(d, w));
+          fmt::print("\n");
+        }
+      }
+      fmt::print("weight sum: {}\n", sum);
+    }
+
+    grid_view_type *gridPtr{nullptr};
+    WeightScratchPad weights{};
+    coord_type iLocalPos{coord_type::zeros()};                // index-space local offset
+    integer_coord_type iCorner{integer_coord_type::zeros()};  // index-space global coord
+
+  protected:
+    /// std tuple
+    template <typename... Tn, size_t... Is,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
+    constexpr coord_component_type weight_impl(const std::tuple<Tn...> &loc,
+                                               index_sequence<Is...>) const noexcept {
+      coord_component_type ret{1};
+      ((void)(ret *= get<0>(weights)(Is, std::get<Is>(loc))), ...);
+      return ret;
+    }
+    template <zs::size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
+    constexpr coord_component_type weightGradient_impl(const std::tuple<Tn...> &loc,
+                                                       index_sequence<Is...>) const noexcept {
+      coord_component_type ret{1};
+      ((void)(ret *= (I == Is ? get<1>(weights)(Is, std::get<Is>(loc))
+                              : get<0>(weights)(Is, std::get<Is>(loc)))),
+       ...);
+      return ret;
+    }
+    template <typename... Tn, size_t... Is, auto ord = deriv_order,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
+    constexpr coord_type weightGradients_impl(const std::tuple<Tn...> &loc,
+                                              index_sequence<Is...>) const noexcept {
+      return coord_type{weightGradient_impl<Is>(loc, index_sequence<Is...>{})...};
+    }
+    /// zs tuple
+    template <typename... Tn, size_t... Is,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
+    constexpr coord_component_type weight_impl(const zs::tuple<Tn...> &loc,
+                                               index_sequence<Is...>) const noexcept {
+      coord_component_type ret{1};
+      ((void)(ret *= get<0>(weights)(Is, zs::get<Is>(loc))), ...);
+      return ret;
+    }
+    template <zs::size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
+    constexpr coord_component_type weightGradient_impl(const zs::tuple<Tn...> &loc,
+                                                       index_sequence<Is...>) const noexcept {
+      coord_component_type ret{1};
+      ((void)(ret *= (I == Is ? get<1>(weights)(Is, zs::get<Is>(loc))
+                              : get<0>(weights)(Is, zs::get<Is>(loc)))),
+       ...);
+      return ret;
+    }
+    template <typename... Tn, size_t... Is, auto ord = deriv_order,
+              enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
+    constexpr coord_type weightGradients_impl(const zs::tuple<Tn...> &loc,
+                                              index_sequence<Is...>) const noexcept {
+      return coord_type{weightGradient_impl<Is>(loc, index_sequence<Is...>{})...};
+    }
+  };
 
 }  // namespace zs

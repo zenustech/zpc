@@ -813,6 +813,12 @@ namespace zs {
       }
       return ret;
     }
+    template <int i> constexpr coord_component_type voxelSize(wrapv<i>) const {
+      // neglect shearing here
+      coord_component_type sum = 0;
+      for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
+      return zs::sqrt(sum, wrapv<space>{});
+    }
 
     // linear index to coordinate
     template <int I = 0>
@@ -890,10 +896,20 @@ namespace zs {
       return pad.isample(chn, _background);
     }
 
-    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+    template <kernel_e kt = kernel_e::linear, typename VecT = int, bool UseAccessor = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto wSample(size_type chn, const VecInterface<VecT> &x, wrapv<kt> = {}) const {
-      return iSample(chn, worldToIndex(x), wrapv<kt>{});
+    constexpr auto wSample(size_type chn, const VecInterface<VecT> &x, wrapv<kt> = {},
+                           wrapv<UseAccessor> = {}) const {
+      return iSample(chn, worldToIndex(x), wrapv<kt>{}, wrapv<UseAccessor>{});
+    }
+    template <typename AccessorAgView, int AccessorDepths, kernel_e kt = kernel_e::linear,
+              typename VecT = int,
+              enable_if_all<is_same_v<AdaptiveGridUnnamedView, AccessorAgView>, VecT::dim == 1,
+                            VecT::extent == dim>
+              = 0>
+    constexpr auto wSample(AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
+                           const VecInterface<VecT> &x, wrapv<kt> = {}) const {
+      return iSample(acc, chn, worldToIndex(x), wrapv<kt>{});
     }
 
     // levelset interface impl
@@ -904,7 +920,7 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
       typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
-      value_type eps = (value_type)1e-6;
+      value_type eps = (value_type)(voxelSize(wrapv<0>{}) / 4);
       /// compute a local partial derivative
       for (int i = 0; i != dim; i++) {
         v1 = x;

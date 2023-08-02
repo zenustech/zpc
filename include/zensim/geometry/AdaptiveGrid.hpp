@@ -21,6 +21,8 @@ namespace zs {
                          typename gen_seq<NumLevels>::template constant<(size_t)1>,
                          typename gen_seq<NumLevels>::ascend, ZSPmrAllocator<>>;
 
+  template <typename AdaptiveGridViewT, int NumDepths = 1> struct AdaptiveGridAccessor;
+
   /// @brief stores all leaf blocks of an adaptive octree including halo regions
   template <int dim_, typename ValueT, size_t... TileBits, size_t... ScalingBits, size_t... Is>
   struct AdaptiveGridImpl<dim_, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
@@ -618,6 +620,13 @@ namespace zs {
       (void)((zs::get<Is>(_levels) = level_view_type<Is>{ag.level(dim_c<Is>)}), ...);
     }
 
+    template <int L = num_levels> constexpr auto getAccessor(wrapv<L> = {}) const {
+      return AdaptiveGridAccessor<const AdaptiveGridUnnamedView, L>(this);
+    }
+    template <int L = num_levels> constexpr auto getAccessor(wrapv<L> = {}) {
+      return AdaptiveGridAccessor<AdaptiveGridUnnamedView, L>(this);
+    }
+
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const {
       return X * _transform;
@@ -696,6 +705,54 @@ namespace zs {
         // printf("found leaf [%d] (%d, %d, %d), slot[%d (%d, %d, %d)] val: %f\n", bno,
         //        lev.table._activeKeys[bno][0], lev.table._activeKeys[bno][1],
         //        lev.table._activeKeys[bno][2], n, coord[0], coord[1], coord[2], (float)val);
+        return lev.valueMask[bno].isOn(n);
+      }
+    }
+    template <typename AccessorAgView, int AccessorDepths, typename T, bool Ordered = false,
+              int I = num_levels - 1>
+    constexpr enable_if_type<!is_const_v<T>, bool> probeValueAndCache(
+        AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
+        const integer_coord_type &coord, T &val, index_type bno, wrapv<Ordered>, wrapv<I>) const {
+      constexpr bool IsVec = is_vec<T>::value;
+      auto &lev = level(dim_c<I>);
+      if (bno == sentinel_v) {
+        auto c = coord_to_key<I>(coord);
+        bno = lev.table.query(c);
+        if (bno == sentinel_v) {
+          if constexpr (IsVec) {
+            val = T::constant(_background);
+          } else
+            val = _background;
+          return false;
+        }
+      }
+      const integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
+      auto block = lev.grid.tile(bno);
+      if constexpr (I > 0) {
+        /// @note internal level
+        if (lev.childMask[bno].isOff(n)) {
+          if constexpr (IsVec) {
+            for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
+          } else
+            val = block(chn, n);
+          return lev.valueMask[bno].isOn(n);
+        }
+        acc.insert(coord, bno, wrapv<num_levels - 1 - I>{});
+        /// TODO: an optimal layout should directly give child-n position
+        if constexpr (Ordered)
+          return probeValueAndCache(acc, chn, coord, val,
+                                    lev.childOffset[bno] + lev.childMask[bno].countOffset(n),
+                                    wrapv<Ordered>{}, wrapv<I - 1>{});
+        else
+          return probeValueAndCache(acc, chn, coord, val, sentinel_v, wrapv<Ordered>{},
+                                    wrapv<I - 1>{});
+      } else {
+        acc.insert(coord, bno, wrapv<num_levels - 1 - I>{});
+        /// @note leaf level
+        if constexpr (IsVec) {
+          for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
+        } else
+          val = block(chn, n);
         return lev.valueMask[bno].isOn(n);
       }
     }
@@ -1039,6 +1096,93 @@ namespace zs {
     const channel_counter_type *_tagOffsets;
     const channel_counter_type *_tagSizes;
     channel_counter_type _N;
+  };
+
+  template <typename AdaptiveGridViewT, int NumDepths> struct AdaptiveGridAccessor {
+    static constexpr int dim = AdaptiveGridViewT::dim;
+    static constexpr int num_levels = AdaptiveGridViewT::num_levels;
+    static constexpr int cache_depths = NumDepths;
+    static_assert(cache_depths <= num_levels, "???");
+
+    using size_type = typename AdaptiveGridViewT::size_type;
+    using index_type = typename AdaptiveGridViewT::index_type;
+    static_assert(is_signed_v<index_type>, "???");
+
+    static constexpr index_type sentinel_v = AdaptiveGridViewT::sentinel_v;
+
+    using integer_coord_component_type = typename AdaptiveGridViewT::integer_coord_component_type;
+    using integer_coord_type = typename AdaptiveGridViewT::integer_coord_type;
+    using coord_mask_type = typename AdaptiveGridViewT::coord_mask_type;
+
+    static constexpr integer_coord_type get_key_sentinel() noexcept {
+      return integer_coord_type::constant(
+          detail::deduce_numeric_max<integer_coord_component_type>());
+    }
+
+    struct CacheRecord {
+      integer_coord_type coord{get_key_sentinel()};
+      index_type blockNo{sentinel_v};
+    };
+    using cache_type =
+        typename gen_seq<cache_depths>::template uniform_types_t<zs::tuple, CacheRecord>;
+
+    constexpr AdaptiveGridAccessor() noexcept = default;
+    constexpr AdaptiveGridAccessor(AdaptiveGridViewT *gridPtr) noexcept
+        : _gridPtr{gridPtr}, _cache{} {}
+    ~AdaptiveGridAccessor() = default;
+
+    template <int D> static constexpr coord_mask_type origin_mask
+        = AdaptiveGridViewT::template level_view_type<num_levels - 1 - D>::origin_mask;
+
+    template <int D> constexpr CacheRecord &cache() const { return zs::get<D>(_cache); }
+    template <int D> constexpr CacheRecord &cache() { return zs::get<D>(_cache); }
+
+    template <typename T, int D = cache_depths - 1>
+    constexpr enable_if_type<!is_const_v<T>, bool> probeValue(size_type chn,
+                                                              const integer_coord_type &coord,
+                                                              T &val, wrapv<D> = {}) {
+      if (isHashed(coord, wrapv<D>{})) {
+        // check cache first
+        return _gridPtr->probeValueAndCache(*this, chn, coord, val, retrieveCache<D>(),
+                                            /*Ordered*/ true_c, wrapv<num_levels - 1 - D>{});
+      } else {
+        if constexpr (D == 0)  // the last cache level
+          return _gridPtr->probeValueAndCache(*this, chn, coord, val, sentinel_v,
+                                              /*Ordered*/ true_c, wrapv<num_levels - 1>{});
+        else
+          return this->probeValue(chn, coord, val, wrapv<D - 1>{});
+      }
+    }
+
+    /// @note I is depth index here rather than level
+    template <int D> constexpr index_type retrieveCache() const { return cache<D>().blockNo; }
+    template <int D> constexpr void eraseCache() { cache<D>() = CacheRecord{}; }
+    template <int D = 0> constexpr void clear(wrapv<D> = {}) {
+      eraseCache<D>();
+      if constexpr (D + 1 < cache_depths) clear<D + 1>();
+    }
+
+    template <int D> constexpr enable_if_type<(D < 0 || D >= cache_depths), void> insert(
+        const integer_coord_type &coord, index_type index, wrapv<D>) const {}
+    template <int D> constexpr enable_if_type<(D >= 0 && D < cache_depths), void> insert(
+        const integer_coord_type &coord, index_type index, wrapv<D>) const {
+      cache<D>() = CacheRecord{coord & origin_mask<D>, index};
+    }
+
+    template <int D> constexpr enable_if_type<(D < 0 || D >= cache_depths), bool> isHashed(
+        const integer_coord_type &coord, index_type index, wrapv<D>) const {
+      return false;
+    }
+    template <int D> constexpr enable_if_type<(D >= 0 && D < cache_depths), bool> isHashed(
+        const integer_coord_type &coord, wrapv<D>) const {
+      const auto &cc = cache<D>().coord;
+      for (int d = 0; d != dim; ++d)
+        if ((coord[d] & origin_mask<D>) != cc[d]) return false;
+      return true;
+    }
+
+    AdaptiveGridViewT *_gridPtr{nullptr};
+    mutable cache_type _cache{};
   };
 
 }  // namespace zs

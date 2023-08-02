@@ -784,22 +784,22 @@ namespace zs {
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iArena(const VecInterface<VecT> &X, wrapv<kt> = {}) const {
-      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, X);
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, this, X);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto wArena(const VecInterface<VecT> &x, wrapv<kt> = {}) const {
-      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, worldToIndex(x));
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, this, worldToIndex(x));
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iArena(const VecInterface<VecT> &X, int f, wrapv<kt> = {}) const {
-      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, X, f);
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, this, X, f);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto wArena(const VecInterface<VecT> &x, int f, wrapv<kt> = {}) const {
-      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, *this, worldToIndex(x), f);
+      return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, this, worldToIndex(x), f);
     }
 
     // voxel size
@@ -866,10 +866,27 @@ namespace zs {
 
     /// sample
     // collocated
-    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+    template <kernel_e kt = kernel_e::linear, typename VecT = int, bool UseAccessor = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {}) const {
-      auto pad = iArena(X, wrapv<kt>{});
+    constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {},
+                           wrapv<UseAccessor> = {}) const {
+      if constexpr (UseAccessor) {
+        auto acc = getAccessor();
+        auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
+        return pad.isample(chn, _background);
+      } else {
+        auto pad = iArena(X, wrapv<kt>{});
+        return pad.isample(chn, _background);
+      }
+    }
+    template <typename AccessorAgView, int AccessorDepths, kernel_e kt = kernel_e::linear,
+              typename VecT = int,
+              enable_if_all<is_same_v<AdaptiveGridUnnamedView, AccessorAgView>, VecT::dim == 1,
+                            VecT::extent == dim>
+              = 0>
+    constexpr auto iSample(AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
+                           const VecInterface<VecT> &X, wrapv<kt> = {}) const {
+      auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
       return pad.isample(chn, _background);
     }
 
@@ -1104,6 +1121,7 @@ namespace zs {
     static constexpr int cache_depths = NumDepths;
     static_assert(cache_depths <= num_levels, "???");
 
+    using value_type = typename AdaptiveGridViewT::value_type;
     using size_type = typename AdaptiveGridViewT::size_type;
     using index_type = typename AdaptiveGridViewT::index_type;
     static_assert(is_signed_v<index_type>, "???");
@@ -1112,6 +1130,8 @@ namespace zs {
 
     using integer_coord_component_type = typename AdaptiveGridViewT::integer_coord_component_type;
     using integer_coord_type = typename AdaptiveGridViewT::integer_coord_type;
+    using coord_component_type = typename AdaptiveGridViewT::coord_component_type;
+    using coord_type = typename AdaptiveGridViewT::coord_type;
     using coord_mask_type = typename AdaptiveGridViewT::coord_mask_type;
 
     static constexpr integer_coord_type get_key_sentinel() noexcept {
@@ -1184,5 +1204,8 @@ namespace zs {
     AdaptiveGridViewT *_gridPtr{nullptr};
     mutable cache_type _cache{};
   };
+
+  template <typename AdaptiveGridViewT, int NumDepths>
+  struct is_grid_accessor<AdaptiveGridAccessor<AdaptiveGridViewT, NumDepths>> : true_type {};
 
 }  // namespace zs

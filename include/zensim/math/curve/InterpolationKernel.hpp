@@ -263,6 +263,8 @@ namespace zs {
     return weights;
   }
 
+  template <typename T> struct is_grid_accessor : false_type {};
+
   template <typename GridViewT, kernel_e kt_ = kernel_e::linear, int drv_order = 0>
   struct GridArena {
     using grid_view_type = GridViewT;
@@ -313,8 +315,8 @@ namespace zs {
     /// index-space ctors
     // collocated grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(false_type, grid_view_type &sgv, const VecInterface<VecT> &X) noexcept
-        : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
+    constexpr GridArena(false_type, grid_view_type *gv, const VecInterface<VecT> &X) noexcept
+        : gridPtr{gv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = ((kt == kernel_e::linear || kt == kernel_e::delta2)
                  ? 0
@@ -337,9 +339,8 @@ namespace zs {
     }
     // staggered grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(false_type, grid_view_type &sgv, const VecInterface<VecT> &X,
-                        int f) noexcept
-        : gridPtr{&sgv}, weights{}, iLocalPos{}, iCorner{} {
+    constexpr GridArena(false_type, grid_view_type *gv, const VecInterface<VecT> &X, int f) noexcept
+        : gridPtr{gv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = ((kt == kernel_e::linear || kt == kernel_e::delta2)
                  ? 0
@@ -365,12 +366,12 @@ namespace zs {
     /// world-space ctors
     // collocated grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(true_type, grid_view_type &sgv, const VecInterface<VecT> &x) noexcept
-        : GridArena{false_c, sgv, sgv.worldToIndex(x)} {}
+    constexpr GridArena(true_type, grid_view_type *gv, const VecInterface<VecT> &x) noexcept
+        : GridArena{false_c, gv, gv->worldToIndex(x)} {}
     // staggered grid
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr GridArena(true_type, grid_view_type &sgv, const VecInterface<VecT> &x, int f) noexcept
-        : GridArena{false_c, sgv, sgv.worldToIndex(x), f} {}
+    constexpr GridArena(true_type, grid_view_type *gv, const VecInterface<VecT> &x, int f) noexcept
+        : GridArena{false_c, gv, gv->worldToIndex(x), f} {}
 
     /// scalar arena
     constexpr arena_type<value_type> arena(size_type chn,
@@ -378,8 +379,16 @@ namespace zs {
       // ensure that chn's orientation is aligned with initialization if within a staggered grid
       arena_type<value_type> pad{};
       for (auto offset : ndrange<dim>(width)) {
-        pad.val(offset) = gridPtr->valueOr(
-            false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
+        if constexpr (is_grid_accessor<remove_cvref_t<grid_view_type>>::value) {
+          value_type val{};
+          bool found = const_cast<remove_cvref_t<grid_view_type> *>(gridPtr)->probeValue(
+              chn, iCorner + make_vec<integer_coord_component_type>(offset), val);
+          if (!found) val = defaultVal;
+          pad.val(offset) = val;
+        } else {
+          pad.val(offset) = gridPtr->valueOr(
+              false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
+        }
       }
       return pad;
     }

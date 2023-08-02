@@ -318,22 +318,22 @@ namespace zs {
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iArena(const VecInterface<VecT> &X, wrapv<kt> = {}) const {
-      return GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      return GridArena<const SparseGridView, kt, 0>(false_c, this, X);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto wArena(const VecInterface<VecT> &x, wrapv<kt> = {}) const {
-      return GridArena<const SparseGridView, kt, 0>(false_c, *this, worldToIndex(x));
+      return GridArena<const SparseGridView, kt, 0>(false_c, this, worldToIndex(x));
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iArena(const VecInterface<VecT> &X, int f, wrapv<kt> = {}) const {
-      return GridArena<const SparseGridView, kt, 0>(false_c, *this, X, f);
+      return GridArena<const SparseGridView, kt, 0>(false_c, this, X, f);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto wArena(const VecInterface<VecT> &x, int f, wrapv<kt> = {}) const {
-      return GridArena<const SparseGridView, kt, 0>(false_c, *this, worldToIndex(x), f);
+      return GridArena<const SparseGridView, kt, 0>(false_c, this, worldToIndex(x), f);
     }
 
     // voxel size
@@ -403,21 +403,21 @@ namespace zs {
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {}) const {
-      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X);
       return pad.isample(chn, _background);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iSample(const SmallString &prop, const VecInterface<VecT> &X,
                            wrapv<kt> = {}) const {
-      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X);
       return pad.isample(prop, 0, _background);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iSample(const SmallString &prop, size_type chn, const VecInterface<VecT> &X,
                            wrapv<kt> = {}) const {
-      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X);
       return pad.isample(prop, chn, _background);
     }
 
@@ -496,14 +496,14 @@ namespace zs {
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iStaggeredSample(size_type chn, int f, const VecInterface<VecT> &X,
                                     wrapv<kt> = {}) const {
-      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X, f);
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X, f);
       return pad.isample(chn + f, _background);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iStaggeredSample(const SmallString &prop, int f, const VecInterface<VecT> &X,
                                     wrapv<kt> = {}) const {
-      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X, f);
+      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X, f);
       return pad.isample(prop, f, _background);
     }
 
@@ -573,7 +573,7 @@ namespace zs {
                                   wrapv<kt> = {}) const {
       zs::vec<value_type, N> ret{};
       for (int i = 0; i != N; ++i) {
-        const auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X, i);
+        const auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X, i);
         ret.val(i) = pad.isample(chnOffset + i, _background);
       }
       return ret;
@@ -618,7 +618,7 @@ namespace zs {
     constexpr auto iPack(size_type chnOffset, const VecInterface<VecT> &X, wrapv<N> = {},
                          wrapv<kt> = {}) const {
       zs::vec<value_type, N> ret{};
-      const auto pad = GridArena<const SparseGridView, kt, 0>(false_c, *this, X);
+      const auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X);
       for (int i = 0; i != N; ++i) ret.val(i) = pad.isample(chnOffset + i, _background);
       return ret;
     }

@@ -223,6 +223,15 @@ namespace zs {
     static constexpr auto side_length = container_type::side_length;
     static constexpr auto block_size = container_type::block_size;
 
+    // to adapt accessor
+    using coord_mask_type = make_unsigned_t<integer_coord_component_type>;
+    static constexpr coord_mask_type origin_mask = ~(coord_mask_type)(side_length - 1);
+    static constexpr index_type sentinel_v = table_view_type::sentinel_v;
+    static constexpr int num_levels = 1;
+    template <int> struct level_view_type {
+      static constexpr coord_mask_type origin_mask = SparseGridView::origin_mask;
+    };
+
     SparseGridView() noexcept = default;
     ~SparseGridView() noexcept = default;
     constexpr SparseGridView(SparseGridT &sg)
@@ -232,6 +241,14 @@ namespace zs {
           _background{sg._background} {}
 
     /// helper functions
+
+    constexpr auto getAccessor(wrapv<1> = {}) const {
+      return AdaptiveGridAccessor<const SparseGridView, 1>(this);
+    }
+    constexpr auto getAccessor(wrapv<1> = {}) {
+      return AdaptiveGridAccessor<SparseGridView, 1>(this);
+    }
+
     // index space <-> world space
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const {
@@ -287,6 +304,35 @@ namespace zs {
       auto cellid = indexCoord & (side_length - 1);
       auto blockid = indexCoord - cellid;
       return make_tuple(_table.query(blockid), local_coord_to_offset(cellid));
+    }
+    template <typename AccessorGridView, typename T>
+    constexpr enable_if_type<!is_const_v<T>, bool> probeValueAndCache(
+        AdaptiveGridAccessor<AccessorGridView, 1> &acc, size_type chn,
+        const integer_coord_type &coord, T &val, index_type bno, wrapv<true>, wrapv<0>) const {
+      constexpr bool IsVec = is_vec<T>::value;
+      if (bno == sentinel_v) {
+        auto c = coord & origin_mask;
+        bno = _table.query(c);
+        if (bno == sentinel_v) {
+          if constexpr (IsVec) {
+            val = T::constant(_background);
+          } else
+            val = _background;
+          return false;
+        }
+      }
+      integer_coord_component_type cno{};
+      zs::tie(bno, cno) = decomposeCoord(coord);
+
+      auto block = _grid.tile(bno);
+
+      acc.insert(coord, bno, wrapv<0>{});
+      /// @note leaf level
+      if constexpr (IsVec) {
+        for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, cno);
+      } else
+        val = block(chn, cno);
+      return true;
     }
     constexpr value_type valueOr(size_type chn, typename table_type::index_type blockno,
                                  integer_coord_component_type cellno,
@@ -400,18 +446,34 @@ namespace zs {
 
     /// sample
     // collocated
-    template <kernel_e kt = kernel_e::linear, typename VecT = int,
+    template <kernel_e kt = kernel_e::linear, typename VecT = int, bool UseAccessor = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
-    constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {}) const {
-      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X);
+    constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {},
+                           wrapv<UseAccessor> = {}) const {
+      if constexpr (UseAccessor) {
+        auto acc = getAccessor();
+        auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
+        return pad.isample(chn, _background);
+      } else {
+        // auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X);
+        auto pad = iArena(X, wrapv<kt>{});
+        return pad.isample(chn, _background);
+      }
+    }
+    template <typename AccessorGridView, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<is_same_v<SparseGridView, AccessorGridView>, VecT::dim == 1,
+                            VecT::extent == dim>
+              = 0>
+    constexpr auto iSample(AdaptiveGridAccessor<AccessorGridView, 1> &acc, size_type chn,
+                           const VecInterface<VecT> &X, wrapv<kt> = {}) const {
+      auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
       return pad.isample(chn, _background);
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iSample(const SmallString &prop, const VecInterface<VecT> &X,
                            wrapv<kt> = {}) const {
-      auto pad = GridArena<const SparseGridView, kt, 0>(false_c, this, X);
-      return pad.isample(prop, 0, _background);
+      return iSample(_grid.propertyOffset(prop), X, wrapv<kt>{});
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
@@ -425,6 +487,14 @@ namespace zs {
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto wSample(size_type chn, const VecInterface<VecT> &x, wrapv<kt> = {}) const {
       return iSample(chn, worldToIndex(x), wrapv<kt>{});
+    }
+    template <typename AccessorGridView, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<is_same_v<SparseGridView, AccessorGridView>, VecT::dim == 1,
+                            VecT::extent == dim>
+              = 0>
+    constexpr auto wSample(AdaptiveGridAccessor<AccessorGridView, 1> &acc, size_type chn,
+                           const VecInterface<VecT> &x, wrapv<kt> = {}) const {
+      return iSample(acc, chn, worldToIndex(x), wrapv<kt>{});
     }
     template <kernel_e kt = kernel_e::linear, typename VecT = int,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>

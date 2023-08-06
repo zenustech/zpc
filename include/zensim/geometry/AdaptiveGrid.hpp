@@ -980,7 +980,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ true, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName)...);
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName),...);
 #endif
     return ret;
   }
@@ -997,7 +997,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ false, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName)...);
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName),...);
 #endif
     return ret;
   }

@@ -612,7 +612,7 @@ namespace zs {
       return zs::get<I>(_levels);
     }
 
-    AdaptiveGridUnnamedView() noexcept = default;
+    constexpr AdaptiveGridUnnamedView() noexcept = default;
     ~AdaptiveGridUnnamedView() noexcept = default;
     constexpr AdaptiveGridUnnamedView(
         conditional_t<is_const_structure, add_const_t<container_type>, container_type> &ag)
@@ -627,6 +627,7 @@ namespace zs {
       return AdaptiveGridAccessor<AdaptiveGridUnnamedView, L>(this);
     }
 
+    /// @brief utility
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &X) const {
       return X * _transform;
@@ -802,7 +803,7 @@ namespace zs {
       return GridArena<const AdaptiveGridUnnamedView, kt, 0>(false_c, this, worldToIndex(x), f);
     }
 
-    // voxel size
+    /// @brief voxel size
     constexpr coord_type voxelSize() const {
       // neglect shearing here
       coord_type ret{};
@@ -813,14 +814,14 @@ namespace zs {
       }
       return ret;
     }
-    template <int i> constexpr coord_component_type voxelSize(wrapv<i>) const {
+    constexpr coord_component_type voxelSize(int i) const {
       // neglect shearing here
       coord_component_type sum = 0;
       for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
       return zs::sqrt(sum, wrapv<space>{});
     }
 
-    // linear index to coordinate
+    /// @brief linear index to coordinate
     template <int I = 0>
     constexpr integer_coord_type iCoord(size_type bno, integer_coord_component_type tileOffset,
                                         wrapv<I> = {}) const {
@@ -870,30 +871,29 @@ namespace zs {
 
     // insert/ query
 
-    /// sample
-    // collocated
+    /// @brief sample
+    /// @note collocated
+    template <typename AccessorAgView, int AccessorDepths, kernel_e kt = kernel_e::linear,
+              typename VecT = int,
+              enable_if_all<is_same_v<AdaptiveGridUnnamedView, remove_const_t<AccessorAgView>>,
+                            VecT::dim == 1, VecT::extent == dim>
+              = 0>
+    constexpr auto iSample(AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
+                           const VecInterface<VecT> &X, wrapv<kt> = {}) const {
+      auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
+      return pad.isample(chn, _background);
+    }
     template <kernel_e kt = kernel_e::linear, typename VecT = int, bool UseAccessor = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto iSample(size_type chn, const VecInterface<VecT> &X, wrapv<kt> = {},
                            wrapv<UseAccessor> = {}) const {
       if constexpr (UseAccessor) {
         auto acc = getAccessor();
-        auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
-        return pad.isample(chn, _background);
+        return iSample(acc, chn, X, wrapv<kt>{});
       } else {
         auto pad = iArena(X, wrapv<kt>{});
         return pad.isample(chn, _background);
       }
-    }
-    template <typename AccessorAgView, int AccessorDepths, kernel_e kt = kernel_e::linear,
-              typename VecT = int,
-              enable_if_all<is_same_v<AdaptiveGridUnnamedView, AccessorAgView>, VecT::dim == 1,
-                            VecT::extent == dim>
-              = 0>
-    constexpr auto iSample(AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
-                           const VecInterface<VecT> &X, wrapv<kt> = {}) const {
-      auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
-      return pad.isample(chn, _background);
     }
 
     template <kernel_e kt = kernel_e::linear, typename VecT = int, bool UseAccessor = true,
@@ -904,15 +904,54 @@ namespace zs {
     }
     template <typename AccessorAgView, int AccessorDepths, kernel_e kt = kernel_e::linear,
               typename VecT = int,
-              enable_if_all<is_same_v<AdaptiveGridUnnamedView, AccessorAgView>, VecT::dim == 1,
-                            VecT::extent == dim>
+              enable_if_all<is_same_v<AdaptiveGridUnnamedView, remove_const_t<AccessorAgView>>,
+                            VecT::dim == 1, VecT::extent == dim>
               = 0>
     constexpr auto wSample(AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
                            const VecInterface<VecT> &x, wrapv<kt> = {}) const {
       return iSample(acc, chn, worldToIndex(x), wrapv<kt>{});
     }
 
-    // levelset interface impl
+    /// @brief pack
+    /// @note collocated
+    template <typename AccessorAgView, int AccessorDepths, int N = dim,
+              kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<is_same_v<AdaptiveGridUnnamedView, remove_const_t<AccessorAgView>>,
+                            VecT::dim == 1, VecT::extent == dim, (N <= dim)>
+              = 0>
+    constexpr auto iPack(AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
+                         const VecInterface<VecT> &X, wrapv<N> = {}, wrapv<kt> = {}) const {
+      zs::vec<value_type, N> ret{};
+      auto pad = GridArena<RM_CVREF_T(acc), kt, 0>(false_c, &acc, X);
+      for (int i = 0; i != N; ++i) ret.val(i) = pad.isample(chn + i, _background);
+      return ret;
+    }
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
+    constexpr auto iPack(size_type chn, const VecInterface<VecT> &X, wrapv<N> = {},
+                         wrapv<kt> = {}) const {
+      auto acc = getAccessor();
+      return iPack(acc, chn, X, wrapv<N>{}, wrapv<kt>{});
+    }
+    template <int N = dim, kernel_e kt = kernel_e::linear, typename VecT = int,
+              bool UseAccessor = true,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim, (N <= dim)> = 0>
+    constexpr auto wPack(size_type chn, const VecInterface<VecT> &x, wrapv<N> = {},
+                         wrapv<kt> = {}) const {
+      auto acc = getAccessor();
+      return iPack(acc, chn, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
+    }
+    template <typename AccessorAgView, int AccessorDepths, int N = dim,
+              kernel_e kt = kernel_e::linear, typename VecT = int,
+              enable_if_all<is_same_v<AdaptiveGridUnnamedView, remove_const_t<AccessorAgView>>,
+                            VecT::dim == 1, VecT::extent == dim, (N <= dim)>
+              = 0>
+    constexpr auto wPack(AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
+                         const VecInterface<VecT> &x, wrapv<N> = {}, wrapv<kt> = {}) const {
+      return iPack(acc, chn, worldToIndex(x), wrapv<N>{}, wrapv<kt>{});
+    }
+
+    /// @brief levelset interface impl
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr value_type do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
       return wSample(0, x);
@@ -920,7 +959,7 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
       typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
-      value_type eps = (value_type)(voxelSize(wrapv<0>{}) / 4);
+      value_type eps = (value_type)(voxelSize(0) / 4);
       /// compute a local partial derivative
       for (int i = 0; i != dim; i++) {
         v1 = x;
@@ -930,6 +969,10 @@ namespace zs {
         diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
       }
       return diff.normalized();
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      return coord_type::constant(0);
     }
 
     zs::tuple<level_view_type<Is>...> _levels;
@@ -980,7 +1023,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ true, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName),...);
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
 #endif
     return ret;
   }
@@ -997,7 +1040,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ false, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName),...);
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
 #endif
     return ret;
   }

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <type_traits>
 
+#include "AdaptiveGrid.hpp"
 #include "AnalyticLevelSet.h"
 #include "LevelSetInterface.h"
 #include "SparseGrid.hpp"
@@ -13,8 +14,10 @@ namespace zs {
   template <execspace_e space, typename LsT>
   constexpr auto get_level_set_view(const std::shared_ptr<LsT> lsPtr) noexcept {
     using ls_t = remove_cvref_t<LsT>;
-    if constexpr (is_spg_v<ls_t>)   // SparseLevelSet<ls_t::dim, grid_e::...>
-      return proxy<space>(*lsPtr);  // const & non-const view
+    if constexpr (is_spg_v<ls_t>)      // SparseGrid<ls_t::dim, ...>
+      return proxy<space>(*lsPtr);     // const & non-const view
+    else if constexpr (is_ag_v<ls_t>)  // AdaptiveGrid<ls_t::dim, ...>
+      return proxy<space>(*lsPtr);     // const & non-const view
     else
       return ls_t{*lsPtr};
   }
@@ -56,11 +59,12 @@ namespace zs {
     static constexpr int dim = d;
     using dummy_ls_t = DummyLevelSet<T, d>;
     using uniform_vel_ls_t = UniformVelocityLevelSet<T, d>;
-    using spls_t = SparseGrid<3, T, 8>;  // 8x8x8
+    using spls_t = SparseGrid<3, T, 8>;           // 8x8x8
+    using spvdb_t = AdaptiveGrid<3, T, 3, 4, 5>;  // FloatGrid alike
     template <analytic_geometry_e type = analytic_geometry_e::Plane> using analytic_ls_t
         = AnalyticLevelSet<type, value_type, dim>;
     /// raw levelset type list
-    using raw_sdf_ls_tl = type_seq<spls_t
+    using raw_sdf_ls_tl = type_seq<spls_t, spvdb_t
 #if 0
                                    ,
                                    analytic_ls_t<analytic_geometry_e::Cuboid>,
@@ -68,9 +72,9 @@ namespace zs {
                                    analytic_ls_t<analytic_geometry_e::Cylinder>
 #endif
                                    >;
-    using raw_vel_ls_tl = type_seq<dummy_ls_t, spls_t, uniform_vel_ls_t>;
+    using raw_vel_ls_tl = type_seq<dummy_ls_t, spls_t, spvdb_t, uniform_vel_ls_t>;
     // should automatically compute from the above two typelists
-    using raw_ls_tl = type_seq<dummy_ls_t, spls_t,
+    using raw_ls_tl = type_seq<dummy_ls_t, spls_t, spvdb_t,
                                // analytic_ls_t<analytic_geometry_e::Plane>,
                                uniform_vel_ls_t>;
     /// shared_ptr of const raw levelsets
@@ -83,7 +87,7 @@ namespace zs {
     using const_vel_ls_ptr_t
         = assemble_t<variant, map_t<std::shared_ptr, map_t<add_const_t, raw_vel_ls_tl>>>;
 
-    BasicLevelSet() noexcept = default;
+    constexpr BasicLevelSet() noexcept = default;
 
     template <typename Ls,
               enable_if_t<raw_ls_tl::template occurencies_t<remove_cvref_t<Ls>>::value == 1> = 0>
@@ -248,7 +252,7 @@ namespace zs {
     using value_type = typename SdfLsView::value_type;
     static constexpr int dim = SdfLsView::dim;
 
-    SdfVelFieldView() noexcept = default;
+    constexpr SdfVelFieldView() noexcept = default;
     ~SdfVelFieldView() noexcept = default;
     constexpr SdfVelFieldView(const SdfLsView &sdf, const VelLsView &vel) noexcept
         : _sdf(sdf), _vel(vel) {}
@@ -287,7 +291,7 @@ namespace zs {
     using value_type = typename ls_t::value_type;
     static constexpr int dim = ls_t::dim;
 
-    TransitionLevelSetView() noexcept = default;
+    constexpr TransitionLevelSetView() noexcept = default;
     ~TransitionLevelSetView() noexcept = default;
 
     constexpr TransitionLevelSetView(const ls_t &lsvSrc, const ls_t &lsvDst,

@@ -393,6 +393,12 @@ namespace zs {
       }
       return ret;
     }
+    constexpr coord_component_type voxelSize(int i) const {
+      // neglect shearing here
+      coord_component_type sum = 0;
+      for (int d = 0; d != dim; ++d) sum += zs::sqr(_transform(i, d));
+      return zs::sqrt(sum, wrapv<space>{});
+    }
 
     // linear index to coordinate
     constexpr integer_coord_type iCoord(size_type bno, integer_coord_component_type cno) const {
@@ -515,7 +521,8 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getNormal(const VecInterface<VecT> &x) const noexcept {
       typename VecT::template variant_vec<value_type, typename VecT::extents> diff{}, v1{}, v2{};
-      value_type eps = (value_type)1e-6;
+      // value_type eps = (value_type)1e-6;
+      value_type eps = (value_type)(voxelSize(0) / 4);
       /// compute a local partial derivative
       for (int i = 0; i != dim; i++) {
         v1 = x;
@@ -525,6 +532,13 @@ namespace zs {
         diff(i) = (getSignedDistance(v1) - getSignedDistance(v2)) / (eps + eps);
       }
       return diff.normalized();
+    }
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
+    constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
+      if (_grid.hasProperty("vel"))
+        return wPack("vel", x);
+      else
+        return coord_type::constant(0);
     }
     // staggered
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,

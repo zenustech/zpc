@@ -838,12 +838,12 @@ namespace zs {
     template <int I = 0>
     constexpr integer_coord_type iCoord(size_type bno, integer_coord_component_type tileOffset,
                                         wrapv<I> = {}) const {
-      return level(wrapv<I>{}).table._activeKeys[bno] + tile_offset_to_coord(tileOffset);
+      return level(wrapv<I>{}).table._activeKeys[bno] + tile_offset_to_coord<I>(tileOffset);
     }
     template <int I = 0>
     constexpr integer_coord_type iCoord(size_type cellno, wrapv<I> = {}) const {
       return level(wrapv<I>{}).table._activeKeys[cellno / level_view_type<I>::block_size]
-             + tile_offset_to_coord(cellno & (level_view_type<I>::block_size - 1));
+             + tile_offset_to_coord<I>(cellno & (level_view_type<I>::block_size - 1));
     }
     template <int I = 0> constexpr coord_type wCoord(size_type bno,
                                                      integer_coord_component_type tileOffset,

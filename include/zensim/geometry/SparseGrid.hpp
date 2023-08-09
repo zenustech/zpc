@@ -538,7 +538,7 @@ namespace zs {
       if (_grid.hasProperty("vel"))
         return wPack("vel", x);
       else
-        return coord_type::constant(0);
+        return packed_value_type::constant(0);
     }
     // staggered
     template <typename VecT = int, enable_if_all<VecT::dim == 1, VecT::extent == dim,

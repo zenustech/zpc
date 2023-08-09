@@ -150,7 +150,9 @@ namespace zs {
     /// @note beware of the difference (tile/ hierarchy) here!
     template <int I> using grid_storage_type
         = TileVector<value_type, get_tile_size<I>(), allocator_type>;
-    template <int I> using mask_storage_type
+    template <int I> using tile_mask_storage_type
+        = Vector<bit_mask<get_tile_size<I>()>, allocator_type>;
+    template <int I> using hierarchy_mask_storage_type
         = Vector<bit_mask<get_hierarchy_size<I>()>, allocator_type>;
 
     using child_offset_type = Vector<size_type, allocator_type>;
@@ -175,7 +177,8 @@ namespace zs {
       static constexpr coord_mask_type origin_mask = ~cell_mask;
 
       using grid_type = grid_storage_type<level>;
-      using mask_type = mask_storage_type<level>;
+      using tile_mask_type = tile_mask_storage_type<level>;
+      using hierarchy_mask_type = hierarchy_mask_storage_type<level>;
       static_assert(block_size == grid_type::lane_width, "???");
       Level(const allocator_type &allocator, const std::vector<PropertyTag> &propTags, size_t count)
           : table{allocator, count},
@@ -250,7 +253,8 @@ namespace zs {
       grid_type grid;
       /// @note for levelset, valueMask indicates inside/outside
       /// @note for leaf level, childMask reserved for special use cases
-      mask_type valueMask, childMask;
+      tile_mask_type valueMask;
+      hierarchy_mask_type childMask;
       child_offset_type childOffset;
     };
 
@@ -555,17 +559,25 @@ namespace zs {
                     wrapv<Base>{}));
 
     // mask
-    template <int LevelNo> using mask_storage_type = typename level_type<LevelNo>::mask_type;
-    template <int LevelNo> using mask_view_type = RM_CVREF_T(
-        view<space>(declval<conditional_t<is_const_structure, const mask_storage_type<LevelNo> &,
-                                          mask_storage_type<LevelNo> &>>(),
-                    wrapv<Base>{}));
+    template <int LevelNo> using tile_mask_storage_type =
+        typename level_type<LevelNo>::tile_mask_type;
+    template <int LevelNo> using tile_mask_view_type = RM_CVREF_T(view<space>(
+        declval<conditional_t<is_const_structure, const tile_mask_storage_type<LevelNo> &,
+                              tile_mask_storage_type<LevelNo> &>>(),
+        wrapv<Base>{}));
+    template <int LevelNo> using hierarchy_mask_storage_type =
+        typename level_type<LevelNo>::hierarchy_mask_type;
+    template <int LevelNo> using hierarchy_mask_view_type = RM_CVREF_T(view<space>(
+        declval<conditional_t<is_const_structure, const hierarchy_mask_storage_type<LevelNo> &,
+                              hierarchy_mask_storage_type<LevelNo> &>>(),
+        wrapv<Base>{}));
 
     template <int LevelNo> struct level_view_type {
       static constexpr int level = LevelNo;
       using level_t = level_type<level>;
       using grid_type = unnamed_grid_view_type<level>;
-      using mask_type = mask_view_type<level>;
+      using tile_mask_type = tile_mask_view_type<level>;
+      using hierarchy_mask_type = hierarchy_mask_view_type<level>;
 
       constexpr level_view_type() noexcept = default;
       ~level_view_type() = default;
@@ -591,7 +603,8 @@ namespace zs {
 
       table_view_type table;
       grid_type grid;
-      mask_type valueMask, childMask;
+      tile_mask_type valueMask;
+      hierarchy_mask_type childMask;
       child_offset_view_type childOffset;
     };
 
@@ -846,17 +859,23 @@ namespace zs {
                                          int f, wrapv<I> = {}) const {
       // f must be within [0, dim)
       return iCoord(bno, tileOffset, wrapv<I>{}) + coord_type::init([f](int d) {
-               return d == f ? (coord_component_type)-0.5
-                                   * container_type::template get_hierarchy_dim<I - 1>()
-                             : (coord_component_type)0;
+               return d == f
+                          ? (coord_component_type)-0.5
+                                * (coord_component_type)((integer_coord_component_type)1
+                                                         << container_type::
+                                                                template get_child_bit_offset<I>())
+                          : (coord_component_type)0;
              });
     }
     template <int I = 0>
     constexpr coord_type iStaggeredCoord(size_type cellno, int f, wrapv<I> = {}) const {
       return iCoord(cellno, wrapv<I>{}) + coord_type::init([f](int d) {
-               return d == f ? (coord_component_type)-0.5
-                                   * container_type::template get_hierarchy_dim<I - 1>()
-                             : (coord_component_type)0;
+               return d == f
+                          ? (coord_component_type)-0.5
+                                * (coord_component_type)((integer_coord_component_type)1
+                                                         << container_type::
+                                                                template get_child_bit_offset<I>())
+                          : (coord_component_type)0;
              });
     }
     template <int I = 0>
@@ -972,7 +991,7 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
-      return coord_type::constant(0);
+      return packed_value_type::constant(0);
     }
 
     zs::tuple<level_view_type<Is>...> _levels;
@@ -1141,8 +1160,8 @@ namespace zs {
                     wrapv<Base>{}));
 
     // mask
-    template <int LevelNo> using mask_storage_type =
-        typename base_t::template mask_storage_type<LevelNo>;
+    template <int LevelNo> using hierarchy_mask_storage_type =
+        typename base_t::template hierarchy_mask_storage_type<LevelNo>;
     template <int LevelNo> using mask_view_type = typename base_t::template mask_view_type<LevelNo>;
 
     using channel_counter_type = typename grid_storage_type<0>::channel_counter_type;

@@ -97,9 +97,11 @@ namespace zs {
         }
       }
 
-      static_assert(
-          sizeof(typename NodeT::NodeMaskType) == sizeof(typename LevelT::mask_type::value_type),
-          "???");
+      static_assert(sizeof(typename NodeT::NodeMaskType)
+                            == sizeof(typename LevelT::tile_mask_type::value_type)
+                        && sizeof(typename NodeT::NodeMaskType)
+                               == sizeof(typename LevelT::hierarchy_mask_type::value_type),
+                    "???");
 
       std::memcpy(&childMask[bno], &node.getChildMask(), sizeof(childMask[bno]));
       std::memcpy(&valueMask[bno], &node.getValueMask(), sizeof(valueMask[bno]));
@@ -144,9 +146,11 @@ namespace zs {
         }
       }
 
-      static_assert(
-          sizeof(typename LeafT::NodeMaskType) == sizeof(typename LevelT::mask_type::value_type),
-          "???");
+      static_assert(sizeof(typename LeafT::NodeMaskType)
+                            == sizeof(typename LevelT::tile_mask_type::value_type)
+                        && sizeof(typename LeafT::NodeMaskType)
+                               == sizeof(typename LevelT::hierarchy_mask_type::value_type),
+                    "???");
       std::memcpy(&valueMask[bno], &lf.getValueMask(), sizeof(valueMask[bno]));
     }
 
@@ -391,6 +395,132 @@ namespace zs {
 
     return OpenVDBStruct{grid};
   }
+
+  /// vdbgrid -> adaptive grid
+  void assign_floatgrid_to_adaptive_grid(const OpenVDBStruct &grid,
+                                         AdaptiveGrid<3, f32, 3, 4, 5> &ag_, SmallString propTag) {
+    using GridType = openvdb::FloatGrid;
+    using TreeType = GridType::TreeType;
+    using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
+    using GridPtr = typename GridType::Ptr;
+    const GridPtr &gridPtr = grid.as<GridPtr>();
+    using AgT = AdaptiveGrid<3, f32, 3, 4, 5>;
+    using IV = typename AgT::integer_coord_type;
+    using TV = typename AgT::packed_value_type;
+
+    AgT *pag, hag;
+    if (ag_.memspace() == memsrc_e::host)
+      pag = &ag_;
+    else {
+      hag = ag_.clone({memsrc_e::host, -1});
+      pag = &hag;
+    }
+    AgT &ag = *pag;
+
+    constexpr auto space = execspace_e::openmp;
+    auto propOffset = ag.getPropertyOffset(propTag);
+
+    auto ompExec = omp_exec();
+    auto agv = view<space>(ag);
+
+    /// update one level
+    auto process_level = [&ompExec, &gridPtr, &agv, &propOffset](auto lNo) {
+      using AgvT = RM_CVREF_T(agv);
+      using size_type = typename AgvT::size_type;
+      auto &l = agv.level(lNo);
+      auto nbs = l.numBlocks();
+      ompExec(range(nbs), [&gridPtr, &agv, &l, propOffset, lNo](size_type blockno) mutable {
+        // vdb
+        auto accessor = gridPtr->getConstAccessor();  // openvdb::FloatGrid::ConstAccessor
+        openvdb::tools::GridSampler<RM_CVREF_T(accessor), openvdb::tools::BoxSampler> fastSampler(
+            accessor, gridPtr->transform());
+
+        auto block = l.grid.tile(blockno);
+        auto vm = l.valueMask[blockno];
+        for (size_type cid = 0; cid != l.block_size; ++cid) {
+          if (vm.isOn(cid)) {  // not sure necessity
+            auto wcoord = agv.wCoord(blockno, cid, lNo);
+            auto srcVal = fastSampler.wsSample(openvdb::Vec3R(wcoord[0], wcoord[1], wcoord[2]));
+
+            block(propOffset, cid) = srcVal;
+          }
+        }
+      });
+    };
+    process_level(wrapv<0>{});
+    process_level(wrapv<1>{});
+    process_level(wrapv<2>{});
+
+    if (ag_.memspace() != memsrc_e::host) {
+      ag_ = ag.clone(ag_.get_allocator());
+    }
+  }
+  void assign_float3grid_to_adaptive_grid(const OpenVDBStruct &grid,
+                                          AdaptiveGrid<3, f32, 3, 4, 5> &ag_, SmallString propTag) {
+    using GridType = openvdb::Vec3fGrid;
+    using TreeType = GridType::TreeType;
+    using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
+    using GridPtr = typename GridType::Ptr;
+    const GridPtr &gridPtr = grid.as<GridPtr>();
+    using AgT = AdaptiveGrid<3, f32, 3, 4, 5>;
+    using IV = typename AgT::integer_coord_type;
+    using TV = typename AgT::packed_value_type;
+
+    AgT *pag, hag;
+    if (ag_.memspace() == memsrc_e::host)
+      pag = &ag_;
+    else {
+      hag = ag_.clone({memsrc_e::host, -1});
+      pag = &hag;
+    }
+    AgT &ag = *pag;
+
+    constexpr auto space = execspace_e::openmp;
+    auto propOffset = ag.getPropertyOffset(propTag);
+
+    auto ompExec = omp_exec();
+    auto agv = view<space>(ag);
+
+    /// update one level
+    auto process_level = [&ompExec, &gridPtr, &agv, &propOffset](auto lNo) {
+      using AgvT = RM_CVREF_T(agv);
+      using size_type = typename AgvT::size_type;
+      auto &l = agv.level(lNo);
+      auto nbs = l.numBlocks();
+      ompExec(range(nbs), [&gridPtr, &agv, &l, propOffset, lNo](size_type blockno) mutable {
+        // vdb
+        auto accessor = gridPtr->getConstAccessor();  // openvdb::Vec3fGrid::ConstAccessor
+        openvdb::tools::GridSampler<RM_CVREF_T(accessor), openvdb::tools::StaggeredBoxSampler>
+            fastSampler(accessor, gridPtr->transform());
+
+        auto block = l.grid.tile(blockno);
+        auto vm = l.valueMask[blockno];
+        for (size_type cid = 0; cid != l.block_size; ++cid) {
+          if (vm.isOn(cid)) {  // not sure necessity
+            auto wcoord = agv.wCoord(blockno, cid, lNo);
+            auto srcVal = fastSampler.wsSample(openvdb::Vec3R(wcoord[0], wcoord[1], wcoord[2]));
+            for (int d = 0; d != 3; ++d) {
+#if 0
+              const auto wcoord = agv.wStaggeredCoord(blockno, cid, d, lNo);
+              auto srcVal = openvdb::tools::StaggeredBoxSampler::sample(
+                  gridPtr->tree(), gridPtr->transform().worldToIndex(
+                                       openvdb::Vec3R{wcoord[0], wcoord[1], wcoord[2]}));
+#endif
+              block(propOffset + d, cid) = srcVal[d];
+            }
+          }
+        }
+      });
+    };
+    process_level(wrapv<0>{});
+    process_level(wrapv<1>{});
+    process_level(wrapv<2>{});
+
+    if (ag_.memspace() != memsrc_e::host) {
+      ag_ = ag.clone(ag_.get_allocator());
+    }
+  }
+
   // adaptive grid -> floatgrid3
   OpenVDBStruct convert_adaptive_grid_to_float3grid(const AdaptiveGrid<3, f32, 3, 4, 5> &agIn,
                                                     SmallString propTag, SmallString gridName) {

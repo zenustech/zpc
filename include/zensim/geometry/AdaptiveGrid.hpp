@@ -10,17 +10,6 @@ namespace zs {
             typename Indices = index_sequence<0, 1, 2>, typename AllocatorT = ZSPmrAllocator<>>
   struct AdaptiveGridImpl;
 
-  // floatgrid: <3, f32, 3, 4, 5>
-  template <int dim, typename ValueT, size_t... Ns> using AdaptiveGrid
-      = AdaptiveGridImpl<dim, ValueT, index_sequence<Ns...>, index_sequence<Ns...>,
-                         make_index_sequence<sizeof...(Ns)>, ZSPmrAllocator<>>;
-
-  // bifrost adaptive tile tree: <3, f32, 3, 2>
-  template <int dim, typename ValueT, int NumLevels, size_t N> using AdaptiveTileTree
-      = AdaptiveGridImpl<dim, ValueT, typename gen_seq<NumLevels>::template constant<N>,
-                         typename gen_seq<NumLevels>::template constant<(size_t)1>,
-                         typename gen_seq<NumLevels>::ascend, ZSPmrAllocator<>>;
-
   template <typename AdaptiveGridViewT, int NumDepths = 1> struct AdaptiveGridAccessor;
 
   /// @brief stores all leaf blocks of an adaptive octree including halo regions
@@ -490,12 +479,60 @@ namespace zs {
     value_type _background;  // background value
   };
 
+  /// @note floatgrid: <3, f32, 3, 4, 5>
+  template <int dim, typename ValueT, typename BitSeq, typename AllocatorT = ZSPmrAllocator<>>
+  struct AdaptiveGrid;
+
+  template <int dim, typename ValueT, size_t... Ns, typename AllocatorT>
+  struct AdaptiveGrid<dim, ValueT, index_sequence<Ns...>, AllocatorT>
+      : AdaptiveGridImpl<dim, ValueT, index_sequence<Ns...>, index_sequence<Ns...>,
+                         make_index_sequence<sizeof...(Ns)>, AllocatorT> {
+    using base_t = AdaptiveGridImpl<dim, ValueT, index_sequence<Ns...>, index_sequence<Ns...>,
+                                    make_index_sequence<sizeof...(Ns)>, AllocatorT>;
+    AdaptiveGrid() = default;
+    ~AdaptiveGrid() = default;
+    AdaptiveGrid(base_t &&ag) : base_t{zs::move(ag)} {}
+    AdaptiveGrid(const base_t &ag) : base_t{ag} {}
+
+    AdaptiveGrid clone(const typename base_t::allocator_type &allocator) const {
+      return base_t::clone(allocator);
+    }
+    AdaptiveGrid clone(const zs::MemoryLocation &mloc) const { return base_t::clone(mloc); }
+  };
+
+  /// @note bifrost adaptive tile tree: <3, f32, 3, 2>
+  template <int dim, typename ValueT, int NumLevels, size_t N, typename AllocatorT>
+  struct AdaptiveTileTree
+      : AdaptiveGridImpl<dim, ValueT, typename gen_seq<NumLevels>::template constant<N>,
+                         typename gen_seq<NumLevels>::template constant<(size_t)1>,
+                         typename gen_seq<NumLevels>::ascend, AllocatorT> {
+    using base_t = AdaptiveGridImpl<dim, ValueT, typename gen_seq<NumLevels>::template constant<N>,
+                                    typename gen_seq<NumLevels>::template constant<(size_t)1>,
+                                    typename gen_seq<NumLevels>::ascend, AllocatorT>;
+    AdaptiveTileTree() = default;
+    ~AdaptiveTileTree() = default;
+    AdaptiveTileTree(base_t &&ag) : base_t{zs::move(ag)} {}
+    AdaptiveTileTree(const base_t &ag) : base_t{ag} {}
+
+    AdaptiveTileTree clone(const typename base_t::allocator_type &allocator) const {
+      return base_t::clone(allocator);
+    }
+    AdaptiveTileTree clone(const zs::MemoryLocation &mloc) const { return base_t::clone(mloc); }
+  };
+
+  /// @brief adaptive grid predicate
   template <typename T, typename = void> struct is_ag : false_type {};
   template <int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits, size_t... Is,
             typename AllocatorT>
   struct is_ag<AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                                 index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT>>
       : true_type {};
+  // vdb
+  template <int dim, typename ValueT, typename BitSeq, typename AllocatorT>
+  struct is_ag<AdaptiveGrid<dim, ValueT, BitSeq, AllocatorT>> : true_type {};
+  // adaptive tile tree
+  template <int dim, typename ValueT, int NumLevels, size_t N, typename AllocatorT>
+  struct is_ag<AdaptiveTileTree<dim, ValueT, NumLevels, N, AllocatorT>> : true_type {};
   template <typename T> constexpr bool is_ag_v = is_ag<T>::value;
 
   ///

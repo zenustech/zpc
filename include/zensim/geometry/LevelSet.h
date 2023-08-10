@@ -59,8 +59,8 @@ namespace zs {
     static constexpr int dim = d;
     using dummy_ls_t = DummyLevelSet<T, d>;
     using uniform_vel_ls_t = UniformVelocityLevelSet<T, d>;
-    using spls_t = SparseGrid<3, T, 8>;           // 8x8x8
-    using spvdb_t = AdaptiveGrid<3, T, 3, 4, 5>;  // FloatGrid alike
+    using spls_t = SparseGrid<3, T, 8>;                           // 8x8x8
+    using spvdb_t = AdaptiveGrid<3, T, index_sequence<3, 4, 5>>;  // FloatGrid alike
     template <analytic_geometry_e type = analytic_geometry_e::Plane> using analytic_ls_t
         = AnalyticLevelSet<type, value_type, dim>;
     /// raw levelset type list

@@ -30,11 +30,10 @@ namespace zs {
     static constexpr bool is_fp_v = is_fp<ValueT>();
     using component_type = conditional_t<is_fp_v, f32, i32>;
     static_assert(RootT::LEVEL == 3, "expects a tree of 3 levels (excluding root level)");
-    using ZSGridT
-        = zs::AdaptiveGrid<3, component_type,
-                           index_sequence<RootT::NodeChainType::template Get<0>::LOG2DIM,
-                                          RootT::NodeChainType::template Get<1>::LOG2DIM,
-                                          RootT::NodeChainType::template Get<2>::LOG2DIM>>;
+    using ZSGridT = zs::VdbGrid<3, component_type,
+                                index_sequence<RootT::NodeChainType::template Get<0>::LOG2DIM,
+                                               RootT::NodeChainType::template Get<1>::LOG2DIM,
+                                               RootT::NodeChainType::template Get<2>::LOG2DIM>>;
     using ZSCoordT = zs::vec<int, 3>;
 
     VdbConverter(const std::vector<unsigned int> &nodeCnts, SmallString propTag)
@@ -170,7 +169,7 @@ namespace zs {
   };
 
   // floatgrid -> sparse grid
-  AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
+  VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
       const OpenVDBStruct &grid, SmallString propTag) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;
@@ -182,7 +181,7 @@ namespace zs {
     using LeafCIterRange = openvdb::tree::IteratorRange<typename TreeType::LeafCIter>;
     using SDFPtr = typename GridType::Ptr;
     const SDFPtr &sdf = grid.as<SDFPtr>();
-    using AgT = AdaptiveGrid<3, f32, index_sequence<3, 4, 5>>;
+    using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
     using IV = typename AgT::integer_coord_type;
     using TV = typename AgT::packed_value_type;
 
@@ -213,13 +212,13 @@ namespace zs {
 
     return ag;
   }
-  AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
+  VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
       const OpenVDBStruct &grid, const MemoryHandle mh, SmallString propTag) {
     return convert_floatgrid_to_adaptive_grid(grid, propTag).clone(mh);
   }
 
   // vec3fgrid
-  AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
+  VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
       const OpenVDBStruct &grid, SmallString propTag) {
     using GridType = openvdb::Vec3fGrid;
     using TreeType = GridType::TreeType;
@@ -231,7 +230,7 @@ namespace zs {
     using LeafCIterRange = openvdb::tree::IteratorRange<typename TreeType::LeafCIter>;
     using GridPtr = typename GridType::Ptr;
     const GridPtr &gridPtr = grid.as<GridPtr>();
-    using AgT = AdaptiveGrid<3, f32, index_sequence<3, 4, 5>>;
+    using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
     using IV = typename AgT::integer_coord_type;
     using TV = typename AgT::packed_value_type;
 
@@ -262,7 +261,7 @@ namespace zs {
 
     return ag;
   }
-  AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
+  VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
       const OpenVDBStruct &grid, const MemoryHandle mh, SmallString propTag) {
     return convert_float3grid_to_adaptive_grid(grid, propTag).clone(mh);
   }
@@ -270,9 +269,9 @@ namespace zs {
   /// adaptive grid -> openvdb grid
   // adaptive grid -> floatgrid
   OpenVDBStruct convert_adaptive_grid_to_floatgrid(
-      const AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &agIn, SmallString propTag, u32 gridClass,
+      const VdbGrid<3, f32, index_sequence<3, 4, 5>> &agIn, SmallString propTag, u32 gridClass,
       SmallString gridName) {
-    using AgT = AdaptiveGrid<3, f32, index_sequence<3, 4, 5>>;
+    using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
 #if ZS_ENABLE_OPENMP
     constexpr auto space = execspace_e::openmp;
     auto pol = omp_exec();
@@ -397,14 +396,14 @@ namespace zs {
 
   /// vdbgrid -> adaptive grid
   void assign_floatgrid_to_adaptive_grid(const OpenVDBStruct &grid,
-                                         AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
+                                         VdbGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
                                          SmallString propTag) {
     using GridType = openvdb::FloatGrid;
     using TreeType = GridType::TreeType;
     using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
     using GridPtr = typename GridType::Ptr;
     const GridPtr &gridPtr = grid.as<GridPtr>();
-    using AgT = AdaptiveGrid<3, f32, index_sequence<3, 4, 5>>;
+    using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
     using IV = typename AgT::integer_coord_type;
     using TV = typename AgT::packed_value_type;
 
@@ -456,14 +455,14 @@ namespace zs {
     }
   }
   void assign_float3grid_to_adaptive_grid(const OpenVDBStruct &grid,
-                                          AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
+                                          VdbGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
                                           SmallString propTag) {
     using GridType = openvdb::Vec3fGrid;
     using TreeType = GridType::TreeType;
     using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
     using GridPtr = typename GridType::Ptr;
     const GridPtr &gridPtr = grid.as<GridPtr>();
-    using AgT = AdaptiveGrid<3, f32, index_sequence<3, 4, 5>>;
+    using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
     using IV = typename AgT::integer_coord_type;
     using TV = typename AgT::packed_value_type;
 
@@ -524,9 +523,9 @@ namespace zs {
 
   // adaptive grid -> floatgrid3
   OpenVDBStruct convert_adaptive_grid_to_float3grid(
-      const AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &agIn, SmallString propTag,
+      const VdbGrid<3, f32, index_sequence<3, 4, 5>> &agIn, SmallString propTag,
       SmallString gridName) {
-    using AgT = AdaptiveGrid<3, f32, index_sequence<3, 4, 5>>;
+    using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
 #if ZS_ENABLE_OPENMP
     constexpr auto space = execspace_e::openmp;
     auto pol = omp_exec();

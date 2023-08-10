@@ -481,23 +481,23 @@ namespace zs {
 
   /// @note floatgrid: <3, f32, 3, 4, 5>
   template <int dim, typename ValueT, typename BitSeq, typename AllocatorT = ZSPmrAllocator<>>
-  struct AdaptiveGrid;
+  struct VdbGrid;
 
   template <int dim, typename ValueT, size_t... Ns, typename AllocatorT>
-  struct AdaptiveGrid<dim, ValueT, index_sequence<Ns...>, AllocatorT>
+  struct VdbGrid<dim, ValueT, index_sequence<Ns...>, AllocatorT>
       : AdaptiveGridImpl<dim, ValueT, index_sequence<Ns...>, index_sequence<Ns...>,
                          make_index_sequence<sizeof...(Ns)>, AllocatorT> {
     using base_t = AdaptiveGridImpl<dim, ValueT, index_sequence<Ns...>, index_sequence<Ns...>,
                                     make_index_sequence<sizeof...(Ns)>, AllocatorT>;
-    AdaptiveGrid() = default;
-    ~AdaptiveGrid() = default;
-    AdaptiveGrid(base_t &&ag) : base_t{zs::move(ag)} {}
-    AdaptiveGrid(const base_t &ag) : base_t{ag} {}
+    VdbGrid() = default;
+    ~VdbGrid() = default;
+    VdbGrid(base_t &&ag) : base_t{zs::move(ag)} {}
+    VdbGrid(const base_t &ag) : base_t{ag} {}
 
-    AdaptiveGrid clone(const typename base_t::allocator_type &allocator) const {
+    VdbGrid clone(const typename base_t::allocator_type &allocator) const {
       return base_t::clone(allocator);
     }
-    AdaptiveGrid clone(const zs::MemoryLocation &mloc) const { return base_t::clone(mloc); }
+    VdbGrid clone(const zs::MemoryLocation &mloc) const { return base_t::clone(mloc); }
   };
 
   /// @note bifrost adaptive tile tree: <3, f32, 3, 2>
@@ -529,7 +529,7 @@ namespace zs {
       : true_type {};
   // vdb
   template <int dim, typename ValueT, typename BitSeq, typename AllocatorT>
-  struct is_ag<AdaptiveGrid<dim, ValueT, BitSeq, AllocatorT>> : true_type {};
+  struct is_ag<VdbGrid<dim, ValueT, BitSeq, AllocatorT>> : true_type {};
   // adaptive tile tree
   template <int dim, typename ValueT, int NumLevels, size_t N, typename AllocatorT>
   struct is_ag<AdaptiveTileTree<dim, ValueT, NumLevels, N, AllocatorT>> : true_type {};

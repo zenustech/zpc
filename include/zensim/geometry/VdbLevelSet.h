@@ -29,26 +29,28 @@ namespace zs {
   ZPC_API bool write_floatgrid_to_vdb_file(std::string_view fn, const OpenVDBStruct &grid);
 
   /// adaptive grid
-  ZPC_API AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
+  ZPC_API VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
       const OpenVDBStruct &grid, SmallString propTag = "sdf");
-  ZPC_API AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
+  ZPC_API VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_floatgrid_to_adaptive_grid(
       const OpenVDBStruct &grid, const MemoryHandle mh, SmallString propTag = "sdf");
   ZPC_API OpenVDBStruct convert_adaptive_grid_to_floatgrid(
-      const AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &agIn, SmallString propTag = "sdf", u32 gridClass = 1u,
-      SmallString gridName = "sdf");
+      const VdbGrid<3, f32, index_sequence<3, 4, 5>> &agIn, SmallString propTag = "sdf",
+      u32 gridClass = 1u, SmallString gridName = "sdf");
 
-  ZPC_API AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
+  ZPC_API VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
       const OpenVDBStruct &grid, SmallString propTag = "v");
-  ZPC_API AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
+  ZPC_API VdbGrid<3, f32, index_sequence<3, 4, 5>> convert_float3grid_to_adaptive_grid(
       const OpenVDBStruct &grid, const MemoryHandle mh, SmallString propTag = "v");
   ZPC_API OpenVDBStruct convert_adaptive_grid_to_float3grid(
-      const AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &grid, SmallString propTag = "v",
+      const VdbGrid<3, f32, index_sequence<3, 4, 5>> &grid, SmallString propTag = "v",
       SmallString gridName = "SparseGrid");
 
   void assign_floatgrid_to_adaptive_grid(const OpenVDBStruct &grid,
-                                         AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &ag_, SmallString propTag);
+                                         VdbGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
+                                         SmallString propTag);
   void assign_float3grid_to_adaptive_grid(const OpenVDBStruct &grid,
-                                          AdaptiveGrid<3, f32, index_sequence<3, 4, 5>> &ag_, SmallString propTag);
+                                          VdbGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
+                                          SmallString propTag);
 
   /// floatgrid
   template <typename SplsT> OpenVDBStruct convert_sparse_levelset_to_vdbgrid(const SplsT &grid);

@@ -598,24 +598,28 @@ namespace zs {
       constexpr auto operator()(type_seq<As...>, type_seq<Bs...>) const noexcept {
         return type_seq<As..., Bs...>{};
       }
+      template <size_t I, typename... SeqT> static constexpr auto seq_func() {
+        using T = select_indexed_type<I, SeqT...>;
+        return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+      }
       template <typename... SeqT> constexpr auto operator()(type_seq<SeqT...>) const noexcept {
-        constexpr auto seq_lambda = [](auto I_) noexcept {
-          using T = select_indexed_type<decltype(I_)::value, SeqT...>;
-          return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
-        };
+        // auto seq_lambda = [](auto I_) {
+        //   using T = select_indexed_type<decltype(I_)::value, SeqT...>;
+        //   return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+        // };
         constexpr size_t N = sizeof...(SeqT);
 
         if constexpr (N == 0)
           return type_seq<>{};
         else if constexpr (N == 1)
-          return seq_lambda(index_c<0>);
+          return seq_func<0, SeqT...>();
         else if constexpr (N == 2)
-          return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
+          return (*this)(seq_func<0, SeqT...>(), seq_func<1, SeqT...>());
         else {
           constexpr size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
-                         (*this)(type_seq<SeqT...>{}.shuffle(
-                             typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
+                       (*this)(type_seq<SeqT...>{}.shuffle(
+                           typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
         }
       }
     };
@@ -646,20 +650,23 @@ namespace zs {
                              decltype(get_seq(type_seq<As...>{}, type_seq<Bs...>{},
                                               make_index_sequence<N>{}))>{};
       }
-
+      template <size_t I, typename... SeqT> static constexpr auto seq_func() {
+        using T = select_indexed_type<I, SeqT...>;
+        return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+      }
       /// more general case
       template <typename... SeqT> constexpr auto operator()(type_seq<SeqT...>) const noexcept {
-        constexpr auto seq_lambda = [](auto I_) noexcept {
-          using T = select_indexed_type<decltype(I_)::value, SeqT...>;
-          return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
-        };
+        // constexpr auto seq_lambda = [](auto I_) noexcept {
+        //   using T = select_indexed_type<decltype(I_)::value, SeqT...>;
+        //   return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+        // };
         constexpr size_t N = sizeof...(SeqT);
         if constexpr (N == 0)
           return type_seq<>{};
         else if constexpr (N == 1)
-          return map_t<type_seq, decltype(seq_lambda(index_c<0>))>{};
+          return map_t<type_seq, decltype(seq_func<0, SeqT...>())>{};
         else if constexpr (N == 2)
-          return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
+          return (*this)(seq_func<0, SeqT...>(), seq_func<1, SeqT...>());
         else if constexpr (N > 2) {
           constexpr size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),

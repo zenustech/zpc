@@ -402,7 +402,7 @@ namespace zs {
     using TreeType = GridType::TreeType;
     using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
     using GridPtr = typename GridType::Ptr;
-    const GridPtr &gridPtr = grid.as<GridPtr>();
+    GridPtr gridPtr = grid.as<GridPtr>();
     using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
     using IV = typename AgT::integer_coord_type;
     using TV = typename AgT::packed_value_type;
@@ -423,16 +423,17 @@ namespace zs {
     auto agv = view<space>(ag);
 
     /// update one level
-    auto process_level = [&ompExec, &gridPtr, &agv, &propOffset](auto lNo) {
+    auto process_level = [&ompExec, gridPtr, &agv, &propOffset](auto lNo) {
       using AgvT = RM_CVREF_T(agv);
       using size_type = typename AgvT::size_type;
       auto &l = agv.level(lNo);
       auto nbs = l.numBlocks();
-      ompExec(range(nbs), [&gridPtr, &agv, &l, propOffset, lNo](size_type blockno) mutable {
-        // vdb
-        auto accessor = gridPtr->getConstAccessor();  // openvdb::FloatGrid::ConstAccessor
-        openvdb::tools::GridSampler<RM_CVREF_T(accessor), openvdb::tools::BoxSampler> fastSampler(
-            accessor, gridPtr->transform());
+      ompExec(range(nbs), [gridPtr, &agv, &l, propOffset, lNo](size_type blockno) mutable {
+        auto accessor = gridPtr->getConstAccessor();
+        using AccT = RM_CVREF_T(accessor);
+        static_assert(is_same_v<AccT, openvdb::FloatGrid::ConstAccessor>, "???");
+        auto fastSampler = openvdb::tools::GridSampler<AccT, openvdb::tools::BoxSampler>{
+            accessor, gridPtr->transform()};
 
         auto block = l.grid.tile(blockno);
         auto vm = l.valueMask[blockno];
@@ -461,7 +462,7 @@ namespace zs {
     using TreeType = GridType::TreeType;
     using LeafType = TreeType::LeafNodeType;  // level 0 LeafNode
     using GridPtr = typename GridType::Ptr;
-    const GridPtr &gridPtr = grid.as<GridPtr>();
+    GridPtr gridPtr = grid.as<GridPtr>();
     using AgT = VdbGrid<3, f32, index_sequence<3, 4, 5>>;
     using IV = typename AgT::integer_coord_type;
     using TV = typename AgT::packed_value_type;
@@ -482,16 +483,17 @@ namespace zs {
     auto agv = view<space>(ag);
 
     /// update one level
-    auto process_level = [&ompExec, &gridPtr, &agv, &propOffset](auto lNo) {
+    auto process_level = [&ompExec, gridPtr, &agv, &propOffset](auto lNo) {
       using AgvT = RM_CVREF_T(agv);
       using size_type = typename AgvT::size_type;
       auto &l = agv.level(lNo);
       auto nbs = l.numBlocks();
-      ompExec(range(nbs), [&gridPtr, &agv, &l, propOffset, lNo](size_type blockno) mutable {
-        // vdb
-        auto accessor = gridPtr->getConstAccessor();  // openvdb::Vec3fGrid::ConstAccessor
-        openvdb::tools::GridSampler<RM_CVREF_T(accessor), openvdb::tools::StaggeredBoxSampler>
-            fastSampler(accessor, gridPtr->transform());
+      ompExec(range(nbs), [gridPtr, &agv, &l, propOffset, lNo](size_type blockno) mutable {
+        auto accessor = gridPtr->getConstAccessor();
+        using AccT = RM_CVREF_T(accessor);  // 
+        static_assert(is_same_v<AccT, openvdb::Vec3fGrid::ConstAccessor>, "???");
+        auto fastSampler = openvdb::tools::GridSampler<AccT, openvdb::tools::StaggeredBoxSampler>{
+            accessor, gridPtr->transform()};
 
         auto block = l.grid.tile(blockno);
         auto vm = l.valueMask[blockno];

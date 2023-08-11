@@ -320,6 +320,12 @@ namespace zs {
 #endif
   }
 
+  template <typename TabViewT> struct BhtInsertionOp {
+    TabViewT tb;
+    constexpr void operator()(typename TabViewT::index_type i) noexcept {
+      tb.insert(tb._activeKeys[i], i, false);
+    }
+  };
   template <typename Tn, int dim, typename Index, int B, typename Allocator>
   template <typename Policy>
   void bht<Tn, dim, Index, B, Allocator>::resize(Policy &&pol, size_t newCapacity) {
@@ -332,9 +338,8 @@ namespace zs {
     reset(false);
     _activeKeys.resize(_tableSize);  // previous records are guaranteed to be preserved
     const auto numEntries = size();
-    pol(range(numEntries), [tb = view<space>(*this)] ZS_LAMBDA(index_type i) mutable {
-      tb.insert(tb._activeKeys[i], i, false);
-    });
+    using TabViewT = decltype(view<space>(*this));
+    pol(range(numEntries), BhtInsertionOp<TabViewT>{view<space>(*this)});
   }
 
   template <typename BhtView, typename KeyView, typename MapIter, bool Scatter> struct ReorderBht {
@@ -465,7 +470,7 @@ namespace zs {
     static constexpr auto status_sentinel_v = hash_table_type::status_sentinel_v;
     static constexpr auto failure_token_v = hash_table_type::failure_token_v;
 
-    BHTView() noexcept = default;
+    constexpr BHTView() noexcept = default;
     explicit constexpr BHTView(HashTableT &table)
         : _table{view<space>(table.self().keys, is_base_c, "bht_storage_key"),
                  view<space>(table.self().indices, is_base_c, "bht_indices"),

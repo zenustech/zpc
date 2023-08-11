@@ -329,6 +329,30 @@ namespace zs {
       (void)(get<Is>(_levels).reset(policy, val), ...);
     }
 
+    /// @brief maintain topo (i.e. childMask, table) in a bottom-up fashion
+    template <typename Policy> void updateTopoBottomUp(Policy &&pol) {
+      constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+
+      if (!valid_memspace_for_execution(pol, get_allocator()))
+        throw std::runtime_error(
+            "[AdaptiveGrid::updateTopoBottomUp] current memory location not compatible with the "
+            "execution policy");
+      // ...
+    }
+
+    template <int I, typename TabViewT, typename OffsetsViewT, typename MaskViewT>
+    struct _LocateChildOffset {
+      TabViewT tb;
+      OffsetsViewT offsets;
+      MaskViewT masks;
+      constexpr void operator()(size_type i, const integer_coord_type &coord,
+                                size_type &dst) noexcept {
+        auto parentOrigin = coord_to_key<I>(coord);
+        auto parentBno = tb.query(parentOrigin);
+        auto childOffset = coord_to_hierarchy_offset<I>(coord);
+        dst = offsets[parentBno] + masks[parentBno].countOffset(childOffset);
+      }
+    };
     template <typename Policy, bool SortGridData = true, int I = num_levels - 1>
     void reorder(Policy &&pol, wrapv<SortGridData> = {}, wrapv<I> = {}) {
       constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
@@ -336,7 +360,8 @@ namespace zs {
 
       if (!valid_memspace_for_execution(pol, get_allocator()))
         throw std::runtime_error(
-            "current memory location not compatible with the execution policy");
+            "[AdaptiveGrid::reorder] current memory location not compatible with the execution "
+            "policy");
 
       auto &l = level(wrapv<I>{});
       auto &lc = level(wrapv<I - 1>{});
@@ -350,12 +375,16 @@ namespace zs {
         Vector<u32> sortedMcs{allocator, nbs};
         Vector<size_type> indices{allocator, nbs};
         Vector<size_type> sortedIndices{allocator, nbs};
-        pol(enumerate(l.table._activeKeys, codes, indices),
-            [] ZS_LAMBDA(size_type i, const integer_coord_type &coord, u32 &key, size_type &id) {
-              auto c = ((coord >> Level<I>::sbit) & 1023).template cast<f32>() / 1024;
-              key = morton_code<dim>(c);
-              id = i;
-            });
+
+        struct {
+          constexpr void operator()(size_type i, const integer_coord_type &coord, u32 &key,
+                                    size_type &id) const noexcept {
+            auto c = ((coord >> Level<I>::sbit) & 1023).template cast<f32>() / 1024;
+            key = morton_code<dim>(c);
+            id = i;
+          }
+        } init_op;
+        pol(enumerate(l.table._activeKeys, codes, indices), init_op);
         radix_sort_pair(pol, codes.begin(), indices.begin(), sortedMcs.begin(),
                         sortedIndices.begin(), nbs);
         /// reorder block entries
@@ -367,21 +396,35 @@ namespace zs {
       }
       /// histogram sort
       Vector<size_type> numActiveChildren{allocator, nbs};
-      pol(zip(numActiveChildren, l.childMask),
-          [] ZS_LAMBDA(size_type & n, const auto &mask) { n = mask.countOn(); });
+      struct {
+        using MaskT = typename RM_CVREF_T(l.childMask)::value_type;
+        constexpr void operator()(size_type &n, const MaskT &mask) const noexcept {
+          n = mask.countOn();
+        }
+      } count_mask_on_op;
+      pol(zip(numActiveChildren, l.childMask), count_mask_on_op);
       exclusive_scan(pol, numActiveChildren.begin(), numActiveChildren.end(),
                      l.childOffset.begin());
       /// compute children reorder mapping
       Vector<size_type> dsts{allocator, nchbs};
+
+      auto tbv = view<space>(l.table);
+      auto offsetsv = view<space>(l.childOffset);
+      auto masksv = view<space>(l.childMask);
+      _LocateChildOffset<I, RM_CVREF_T(tbv), RM_CVREF_T(offsetsv), RM_CVREF_T(masksv)>
+          calc_offset_op{tbv, offsetsv, masksv};
       pol(enumerate(lc.table._activeKeys, dsts),
-          [tb = view<space>(l.table), offsets = view<space>(l.childOffset),
-           masks = view<space>(l.childMask)] ZS_LAMBDA(size_type i, const integer_coord_type &coord,
-                                                       size_type &dst) {
+#if 1
+          calc_offset_op
+#else
+          [] ZS_LAMBDA(size_type i, const integer_coord_type &coord, size_type &dst) {
             auto parentOrigin = coord_to_key<I>(coord);
             auto parentBno = tb.query(parentOrigin);
             auto childOffset = coord_to_hierarchy_offset<I>(coord);
             dst = offsets[parentBno] + masks[parentBno].countOffset(childOffset);
-          });
+          }
+#endif
+      );
       // pol(enumerate(dsts),
       //    [nchbs] ZS_LAMBDA(size_type i, size_type & dst) { dst = nchbs - 1 - i; });
       /// reorder block entries

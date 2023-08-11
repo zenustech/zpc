@@ -70,6 +70,19 @@ namespace zs {
     template <typename Policy>
     void refit(Policy &&, const zs::Vector<zs::AABBBox<dim, value_type>> &primBvs);
 
+    template <typename BvhView, typename BoxView> struct _GetBoxHelper {
+      BvhView bvh;
+      BoxView box;
+      constexpr void operator()(int vi) noexcept {
+        constexpr auto space = BvhView::space;
+        auto bv = bvh.getNodeBV(vi);
+        for (int d = 0; d != dim; ++d) {
+          atomic_min(wrapv<space>{}, &box[0]._min[d], bv._min[d]);
+          atomic_max(wrapv<space>{}, &box[0]._max[d], bv._max[d]);
+        }
+      }
+    };
+
     template <typename Policy> Box getTotalBox(Policy &&pol) const {
       using namespace zs;
       constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
@@ -80,14 +93,9 @@ namespace zs {
         using TV = typename Box::TV;
         box.setVal(Box{TV::constant(limits<value_type>::max()),
                        TV::constant(limits<value_type>::lowest())});
-        pol(Collapse{numLeaves},
-            [bvh = proxy<space>(*this), box = proxy<space>(box)] ZS_LAMBDA(int vi) mutable {
-              auto bv = bvh.getNodeBV(vi);
-              for (int d = 0; d != dim; ++d) {
-                atomic_min(wrapv<space>{}, &box[0]._min[d], bv._min[d]);
-                atomic_max(wrapv<space>{}, &box[0]._max[d], bv._max[d]);
-              }
-            });
+        auto bvhv = proxy<space>(*this);
+        auto boxv = proxy<space>(box);
+        pol(Collapse{numLeaves}, _GetBoxHelper<RM_CVREF_T(bvhv), RM_CVREF_T(boxv)>{bvhv, boxv});
         return box.getVal();
       } else {
         return orderedBvs.getVal();
@@ -101,9 +109,10 @@ namespace zs {
   template <zs::execspace_e, typename LBvhT, bool Base = false, typename = void> struct LBvhView;
 
   /// proxy to work within each backends
-  template <zs::execspace_e space, typename LBvhT, bool Base>
-  struct LBvhView<space, const LBvhT, Base> {
+  template <zs::execspace_e space_, typename LBvhT, bool Base>
+  struct LBvhView<space_, const LBvhT, Base> {
     static constexpr int dim = LBvhT::dim;
+    static constexpr auto space = space_;
     using index_t = typename LBvhT::index_type;
     using bv_t = typename LBvhT::Box;
     using bvs_t = typename LBvhT::bvs_t;
@@ -573,8 +582,8 @@ namespace zs {
     lOffsets = proxy<space>(leafOffsets);
 
     // calc trunk order, leaf lca, levels
-    policy(range(numLeaves), [levels = proxy<space>(levels), lDepths, lOffsets, lPars, lLcas, tLs,
-                              tRs, tLcs, tPars, tDst, numTrunk] ZS_LAMBDA(Ti idx) mutable {
+    policy(range(numLeaves), [levels = proxy<space>(levels), lOffsets, lPars, lLcas, tPars, tDst,
+                              numTrunk] ZS_LAMBDA(Ti idx) mutable {
       auto depth = lOffsets[idx + 1] - lOffsets[idx];
       auto dst = lOffsets[idx + 1] - 2;
       Ti node = lPars[idx], ch = idx + numTrunk;
@@ -588,19 +597,19 @@ namespace zs {
     });
 
     // reorder leaf
-    policy(range(numLeaves), [lOffsets, lPars, lLcas, auxIndices = proxy<space>(auxIndices),
-                              parents = proxy<space>(parents), levels = proxy<space>(levels), pInds,
-                              lInds, tDst, numTrunk] ZS_LAMBDA(Ti idx) mutable {
-      auto dst = lOffsets[idx + 1] - 1;
-      // aux (primids)
-      auxIndices[dst] = pInds[idx];
-      // parent
-      parents[dst] = tDst[lPars[idx]];
-      // levels
-      levels[dst] = 0;
-      // leafinds
-      lInds[idx] = dst;
-    });
+    policy(range(numLeaves),
+           [lOffsets, lPars, auxIndices = proxy<space>(auxIndices), parents = proxy<space>(parents),
+            levels = proxy<space>(levels), pInds, lInds, tDst] ZS_LAMBDA(Ti idx) mutable {
+             auto dst = lOffsets[idx + 1] - 1;
+             // aux (primids)
+             auxIndices[dst] = pInds[idx];
+             // parent
+             parents[dst] = tDst[lPars[idx]];
+             // levels
+             levels[dst] = 0;
+             // leafinds
+             lInds[idx] = dst;
+           });
 
 #if 0
     {

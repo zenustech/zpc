@@ -152,9 +152,9 @@ namespace zs {
         + static_cast<signed long long int>(Is) * static_cast<signed long long int>(Step))...>;
     using ascend = arithmetic<0, 1>;
     using descend = arithmetic<sizeof...(Is) - 1, -1>;
-    template <auto J> using uniform = integer_sequence<decltype(J), (Is, J)...>;
-    template <auto J> using constant = integer_sequence<decltype(J), (Is, J)...>;
-    template <auto J> using uniform_vseq = value_seq<(Is, J)...>;
+    template <auto J> using uniform = integer_sequence<decltype(J), ((void)Is, J)...>;
+    template <auto J> using constant = integer_sequence<decltype(J), ((void)Is, J)...>;
+    template <auto J> using uniform_vseq = value_seq<((void)Is, J)...>;
     /// types with uniform type/value params
     template <template <typename...> class T, typename Arg> using uniform_types_t
         = T<enable_if_type<(Is >= 0), Arg>...>;

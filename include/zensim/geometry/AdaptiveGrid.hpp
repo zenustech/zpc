@@ -501,7 +501,8 @@ namespace zs {
   };
 
   /// @note bifrost adaptive tile tree: <3, f32, 3, 2>
-  template <int dim, typename ValueT, int NumLevels, size_t N, typename AllocatorT>
+  template <int dim, typename ValueT, int NumLevels, size_t N,
+            typename AllocatorT = ZSPmrAllocator<>>
   struct AdaptiveTileTree
       : AdaptiveGridImpl<dim, ValueT, typename gen_seq<NumLevels>::template constant<N>,
                          typename gen_seq<NumLevels>::template constant<(size_t)1>,

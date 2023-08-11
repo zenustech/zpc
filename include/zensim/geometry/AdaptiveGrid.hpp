@@ -1168,11 +1168,13 @@ namespace zs {
     static constexpr auto space = Space;
     using container_type = typename base_t::container_type;
     static constexpr int dim = base_t::dim;
+    static constexpr int num_levels = base_t::num_levels;
     using value_type = typename base_t::value_type;
     using size_type = typename base_t::size_type;
     using index_type = typename base_t::index_type;
 
     using integer_coord_component_type = typename base_t::integer_coord_component_type;
+    using coord_mask_type = typename base_t::coord_mask_type;
     using integer_coord_type = typename base_t::integer_coord_type;
     using coord_component_type = typename base_t::coord_component_type;
     using coord_type = typename base_t::coord_type;
@@ -1183,8 +1185,12 @@ namespace zs {
     template <int LevelNo> using level_view_type =
         typename base_t::template level_view_type<LevelNo>;
 
+    using child_offset_type = typename container_type::child_offset_type;
+    using child_offset_view_type = typename container_type::child_offset_view_type;
+
     using table_type = typename base_t::table_type;
     using table_view_type = typename base_t::table_view_type;
+    static constexpr index_type sentinel_v = base_t::sentinel_v;
 
     // grid
     template <int LevelNo> using grid_storage_type =
@@ -1197,9 +1203,14 @@ namespace zs {
                     wrapv<Base>{}));
 
     // mask
+    template <int LevelNo> using tile_mask_storage_type =
+        typename base_t::template tile_mask_storage_type<LevelNo>;
+    template <int LevelNo> using tile_mask_view_type =
+        typename base_t::template tile_mask_view_type<LevelNo>;
     template <int LevelNo> using hierarchy_mask_storage_type =
         typename base_t::template hierarchy_mask_storage_type<LevelNo>;
-    template <int LevelNo> using mask_view_type = typename base_t::template mask_view_type<LevelNo>;
+    template <int LevelNo> using hierarchy_mask_view_type =
+        typename base_t::template hierarchy_mask_view_type<LevelNo>;
 
     using channel_counter_type = typename grid_storage_type<0>::channel_counter_type;
 
@@ -1229,5 +1240,126 @@ namespace zs {
     const channel_counter_type *_tagSizes;
     channel_counter_type _N;
   };
+
+  ///
+  /// @brief view variants for AdaptiveView
+  ///
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
+            size_t... ScalingBits, size_t... Is, typename AllocatorT,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(
+      const std::vector<SmallString> &tagNames,
+      const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
+                             index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
+      wrapv<Base> = {}) {
+    return AdaptiveGridView<
+        ExecSpace,
+        AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                         index_sequence<Is...>, AllocatorT>,
+        /*IsConst*/ true, Base>{ag};
+  }
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
+            size_t... ScalingBits, size_t... Is, typename AllocatorT,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(
+      const std::vector<SmallString> &tagNames,
+      AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                       index_sequence<Is...>, AllocatorT> &ag,
+      wrapv<Base> = {}) {
+    return AdaptiveGridView<
+        ExecSpace,
+        AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                         index_sequence<Is...>, AllocatorT>,
+        /*IsConst*/ false, Base>{ag};
+  }
+
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
+            size_t... ScalingBits, size_t... Is, typename AllocatorT,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(
+      const std::vector<SmallString> &tagNames,
+      const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
+                             index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
+      wrapv<Base>, const SmallString &tagName) {
+    auto ret = AdaptiveGridView<
+        ExecSpace,
+        AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                         index_sequence<Is...>, AllocatorT>,
+        /*IsConst*/ true, Base>{ag};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
+#endif
+    return ret;
+  }
+  template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
+            size_t... ScalingBits, size_t... Is, typename AllocatorT,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(
+      const std::vector<SmallString> &tagNames,
+      AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                       index_sequence<Is...>, AllocatorT> &ag,
+      wrapv<Base>, const SmallString &tagName) {
+    auto ret = AdaptiveGridView<
+        ExecSpace,
+        AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                         index_sequence<Is...>, AllocatorT>,
+        /*IsConst*/ false, Base>{ag};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
+#endif
+    return ret;
+  }
+
+  template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
+            size_t... Is, typename AllocatorT>
+  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                                 const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
+                                                        index_sequence<ScalingBits...>,
+                                                        index_sequence<Is...>, AllocatorT> &ag) {
+    for (auto &&tag : tagNames)
+      if (!ag.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("adaptive grid property [\"{}\"] does not exist", (std::string)tag));
+    return view<space>(tagNames, ag, false_c);
+  }
+  template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
+            size_t... Is, typename AllocatorT>
+  constexpr decltype(auto) proxy(
+      const std::vector<SmallString> &tagNames,
+      AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                       index_sequence<Is...>, AllocatorT> &ag) {
+    for (auto &&tag : tagNames)
+      if (!ag.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("adaptive grid property [\"{}\"] does not exist", (std::string)tag));
+    return view<space>(tagNames, ag, false_c);
+  }
+
+  template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
+            size_t... Is, typename AllocatorT>
+  constexpr decltype(auto) proxy(
+      const std::vector<SmallString> &tagNames,
+      const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
+                             index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
+      const SmallString &tagName) {
+    for (auto &&tag : tagNames)
+      if (!ag.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("adaptive grid property [\"{}\"] does not exist", (std::string)tag));
+    return view<space>(tagNames, ag, false_c, tagName);
+  }
+  template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
+            size_t... Is, typename AllocatorT>
+  constexpr decltype(auto) proxy(
+      const std::vector<SmallString> &tagNames,
+      AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
+                       index_sequence<Is...>, AllocatorT> &ag,
+      const SmallString &tagName) {
+    for (auto &&tag : tagNames)
+      if (!ag.hasProperty(tag))
+        throw std::runtime_error(
+            fmt::format("adaptive grid property [\"{}\"] does not exist", (std::string)tag));
+    return view<space>(tagNames, ag, false_c, tagName);
+  }
 
 }  // namespace zs

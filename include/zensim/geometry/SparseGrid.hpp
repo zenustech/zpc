@@ -535,8 +535,8 @@ namespace zs {
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto do_getMaterialVelocity(const VecInterface<VecT> &x) const noexcept {
-      if (_grid.hasProperty("vel"))
-        return wPack("vel", x);
+      if (_grid.hasProperty("v"))
+        return wPack("v", x);
       else
         return packed_value_type::constant(0);
     }

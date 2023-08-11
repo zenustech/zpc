@@ -1483,7 +1483,7 @@ namespace zs {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
-            fmt::format("tilevector property [\"{}\"] not exists", (std::string)tag));
+            fmt::format("tilevector property [\"{}\"] does not exist", (std::string)tag));
     return view<space>(tagNames, vec, false_c);
   }
   template <execspace_e space, typename T, size_t Length, typename Allocator>
@@ -1492,7 +1492,7 @@ namespace zs {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
-            fmt::format("tilevector property [\"{}\"] not exists\n", (std::string)tag));
+            fmt::format("tilevector property [\"{}\"] does not exist\n", (std::string)tag));
     return view<space>(tagNames, vec, false_c);
   }
 
@@ -1503,7 +1503,7 @@ namespace zs {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
-            fmt::format("tilevector property [\"{}\"] not exists\n", (std::string)tag));
+            fmt::format("tilevector property [\"{}\"] does not exist\n", (std::string)tag));
     return view<space>(tagNames, vec, false_c, tagName);
   }
   template <execspace_e space, typename T, size_t Length, typename Allocator>
@@ -1512,7 +1512,7 @@ namespace zs {
     for (auto &&tag : tagNames)
       if (!vec.hasProperty(tag))
         throw std::runtime_error(
-            fmt::format("tilevector property [\"{}\"] not exists\n", (std::string)tag));
+            fmt::format("tilevector property [\"{}\"] does not exist\n", (std::string)tag));
     return view<space>(tagNames, vec, false_c, tagName);
   }
 

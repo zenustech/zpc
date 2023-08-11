@@ -117,11 +117,15 @@ namespace zs {
 
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
     using exec_tag = host_exec_tag;
-    template <typename Range, typename F> constexpr void operator()(Range &&range, F &&f) const {
+    template <typename Range, typename F>
+    constexpr void operator()(Range &&range, F &&f,
+                              const source_location &loc = source_location::current()) const {
       constexpr auto hasBegin = is_valid(
           [](auto t) -> decltype((void)std::begin(declval<typename decltype(t)::type>())) {});
       constexpr auto hasEnd = is_valid(
           [](auto t) -> decltype((void)std::end(declval<typename decltype(t)::type>())) {});
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
       if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
         /// for iterator-like range (e.g. openvdb)
         /// for openvdb parallel iteration...
@@ -148,10 +152,53 @@ namespace zs {
           }
         }
       }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Seq Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
+    }
+    template <typename Range, typename F, typename... Args>
+    constexpr void operator()(Range &&range, F &&f, const zs::tuple<Args...> &params,
+                              const source_location &loc = source_location::current()) const {
+      constexpr auto hasBegin = is_valid(
+          [](auto t) -> decltype((void)std::begin(declval<typename decltype(t)::type>())) {});
+      constexpr auto hasEnd = is_valid(
+          [](auto t) -> decltype((void)std::end(declval<typename decltype(t)::type>())) {});
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
+      if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
+        /// for iterator-like range (e.g. openvdb)
+        /// for openvdb parallel iteration...
+        auto iter = FWD(range);  // otherwise fails on win
+        for (; iter; ++iter) {
+          if constexpr (is_invocable_v<F, zs::tuple<Args...>>) {
+            f(params);
+          } else {
+            std::invoke(f, iter, params);
+          }
+        }
+      } else {
+        using fts = function_traits<F>;
+        static_assert(fts::arity > 1, "???");
+        if constexpr (fts::arity == 1)
+          for (auto &&it : range) f(params);
+        else {
+          for (auto &&it : range) {
+            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
+              std::apply(f, std::tuple_cat(it, std::tie(params)));
+            else if constexpr (is_tuple<remove_cvref_t<decltype(it)>>::value)
+              zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
+            else
+              std::invoke(f, it, params);
+          }
+        }
+      }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Seq Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
     }
 
-    template <zs::size_t I, size_t... Is, typename... Iters, typename... Policies, typename... Ranges,
-              typename... Bodies>
+    template <zs::size_t I, size_t... Is, typename... Iters, typename... Policies,
+              typename... Ranges, typename... Bodies>
     constexpr void exec(index_sequence<Is...> indices, zs::tuple<Iters...> prefixIters,
                         const zs::tuple<Policies...> &policies, const zs::tuple<Ranges...> &ranges,
                         const Bodies &...bodies) const {
@@ -383,7 +430,8 @@ namespace zs {
   }
   constexpr SequentialExecutionPolicy seq_exec() noexcept { return SequentialExecutionPolicy{}; }
 
-  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const SequentialExecutionPolicy &pol) {
+  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(
+      const SequentialExecutionPolicy &pol) {
     return get_memory_source(memsrc_e::host, (ProcID)-1);
   }
 

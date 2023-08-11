@@ -120,6 +120,77 @@ namespace zs {
         timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
+    template <typename Range, typename F, typename... Args>
+    void operator()(Range &&range, F &&f, const zs::tuple<Args...> &params,
+                    const source_location &loc = source_location::current()) const {
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
+      constexpr auto hasBegin = is_valid(
+          [](auto t) -> decltype((void)std::begin(declval<typename decltype(t)::type>())) {});
+      constexpr auto hasEnd = is_valid(
+          [](auto t) -> decltype((void)std::end(declval<typename decltype(t)::type>())) {});
+      if constexpr (!hasBegin(wrapt<Range>{}) || !hasEnd(wrapt<Range>{})) {
+        /// for iterator-like range (e.g. openvdb)
+        /// for openvdb parallel iteration...
+        auto iter = FWD(range);  // otherwise fails on win
+#pragma omp parallel num_threads(_dop)
+#pragma omp master
+        for (; iter; ++iter)
+#pragma omp task firstprivate(iter)
+        {
+          if constexpr (is_invocable_v<F, zs::tuple<Args...>>) {
+            f(params);
+          } else {
+            std::invoke(f, iter, params);
+          }
+        }
+      } else {
+        /// not stl conforming iterator
+        using IterT = remove_cvref_t<decltype(std::begin(range))>;
+        // random iterator category
+        if constexpr (is_ra_iter_v<IterT>) {
+          using DiffT = typename std::iterator_traits<IterT>::difference_type;
+          auto iter = std::begin(range);
+          const DiffT dist = std::end(range) - iter;
+
+#pragma omp parallel for if (_dop < dist) num_threads(_dop)
+          for (DiffT i = 0; i < dist; ++i) {
+            if constexpr (is_invocable_v<F, zs::tuple<Args...>>)
+              f(params);
+            else {
+              auto &&it = *(iter + i);
+              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+                std::apply(f, std::tuple_cat(it, std::tie(params)));
+              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+                zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
+              else
+                std::invoke(f, it, params);
+            }
+          }
+        } else {
+          // forward iterator category
+#pragma omp parallel num_threads(_dop)
+#pragma omp master
+          for (auto &&it : range)
+#pragma omp task firstprivate(it)
+          {
+            if constexpr (is_invocable_v<F, zs::tuple<Args...>>) {
+              f(params);
+            } else {
+              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+                std::apply(f, std::tuple_cat(it, std::tie(params)));
+              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+                zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
+              else
+                std::invoke(f, it, params);
+            }
+          }
+        }
+      }
+      if (shouldProfile())
+        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+                               loc.column()));
+    }
 
     template <zs::size_t I, size_t... Is, typename... Iters, typename... Policies,
               typename... Ranges, typename... Bodies>

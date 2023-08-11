@@ -408,14 +408,29 @@ namespace zs {
       /// compute children reorder mapping
       Vector<size_type> dsts{allocator, nchbs};
 
+#if 0
       auto tbv = view<space>(l.table);
       auto offsetsv = view<space>(l.childOffset);
       auto masksv = view<space>(l.childMask);
       _LocateChildOffset<I, RM_CVREF_T(tbv), RM_CVREF_T(offsetsv), RM_CVREF_T(masksv)>
           calc_offset_op{tbv, offsetsv, masksv};
+#else
+      const auto &paramPack = zs::make_tuple(view<space>(l.table), view<space>(l.childOffset),
+                                             view<space>(l.childMask));
+      struct {
+        constexpr void operator()(size_type i, const integer_coord_type &coord, size_type &dst,
+                                  decltype(paramPack) params) noexcept {
+          auto &[tb, offsets, masks] = params;
+          auto parentOrigin = coord_to_key<I>(coord);
+          auto parentBno = tb.query(parentOrigin);
+          auto childOffset = coord_to_hierarchy_offset<I>(coord);
+          dst = offsets[parentBno] + masks[parentBno].countOffset(childOffset);
+        }
+      } calc_offset_op;
+#endif
       pol(enumerate(lc.table._activeKeys, dsts),
 #if 1
-          calc_offset_op
+          calc_offset_op, paramPack
 #else
           [] ZS_LAMBDA(size_type i, const integer_coord_type &coord, size_type &dst) {
             auto parentOrigin = coord_to_key<I>(coord);

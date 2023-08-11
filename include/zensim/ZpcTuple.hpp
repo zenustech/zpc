@@ -11,7 +11,8 @@ namespace zs {
   template <typename> struct VecInterface;
 
   template <zs::size_t I, typename TypeSeq> using select_type = typename TypeSeq::template type<I>;
-  template <zs::size_t I, typename... Ts> using select_indexed_type = select_type<I, type_seq<Ts...>>;
+  template <zs::size_t I, typename... Ts> using select_indexed_type
+      = select_type<I, type_seq<Ts...>>;
 
   template <class T> struct unwrap_refwrapper;
   template <class T> using special_decay_t = typename unwrap_refwrapper<decay_t<T>>::type;
@@ -37,11 +38,11 @@ namespace zs {
 
     /// by index
     constexpr T &get(index_t<I>) &noexcept { return *this; }
-    constexpr T &&get(index_t<I>) &&noexcept { return move(*this); }
+    constexpr T &&get(index_t<I>) &&noexcept { return zs::move(*this); }
     constexpr const T &get(index_t<I>) const &noexcept { return *this; }
     /// by type
     constexpr T &get(wrapt<T>) &noexcept { return *this; }
-    constexpr T &&get(wrapt<T>) &&noexcept { return move(*this); }
+    constexpr T &&get(wrapt<T>) &&noexcept { return zs::move(*this); }
     constexpr const T &get(wrapt<T>) const &noexcept { return *this; }
   };
 #else
@@ -63,11 +64,11 @@ namespace zs {
 
     /// by index
     constexpr T &get(index_t<I>) &noexcept { return base; }
-    constexpr T &&get(index_t<I>) &&noexcept { return move(base); }
+    constexpr T &&get(index_t<I>) &&noexcept { return zs::move(base); }
     constexpr const T &get(index_t<I>) const &noexcept { return base; }
     /// by type
     constexpr T &get(wrapt<T>) &noexcept { return base; }
-    constexpr T &&get(wrapt<T>) &&noexcept { return move(base); }
+    constexpr T &&get(wrapt<T>) &&noexcept { return zs::move(base); }
     constexpr const T &get(wrapt<T>) const &noexcept { return base; }
 
     T base;
@@ -95,11 +96,11 @@ namespace zs {
     /// by index
     constexpr conditional_t<is_rvalue_reference_v<T>, T, T &> get(index_t<I>) &noexcept {
       if constexpr (is_rvalue_reference_v<T>)
-        return move(value);
+        return zs::move(value);
       else
         return value;
     }
-    constexpr T &&get(index_t<I>) &&noexcept { return move(value); }
+    constexpr T &&get(index_t<I>) &&noexcept { return zs::move(value); }
     template <bool NonRValRef = !is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
     constexpr decltype(auto) get(index_t<I>) const &noexcept {
       return value;
@@ -107,11 +108,11 @@ namespace zs {
     /// by type
     constexpr conditional_t<is_rvalue_reference_v<T>, T, T &> get(wrapt<T>) &noexcept {
       if constexpr (is_rvalue_reference_v<T>)
-        return move(value);
+        return zs::move(value);
       else
         return value;
     }
-    constexpr T &&get(wrapt<T>) &&noexcept { return move(value); }
+    constexpr T &&get(wrapt<T>) &&noexcept { return zs::move(value); }
     template <bool NonRValRef = !is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
     constexpr decltype(auto) get(wrapt<T>) const &noexcept {
       return value;
@@ -168,7 +169,9 @@ namespace zs {
 
     using tuple_value<Is, Ts>::get...;
     template <zs::size_t I> constexpr decltype(auto) get() noexcept { return get(index_t<I>{}); }
-    template <zs::size_t I> constexpr decltype(auto) get() const noexcept { return get(index_t<I>{}); }
+    template <zs::size_t I> constexpr decltype(auto) get() const noexcept {
+      return get(index_t<I>{});
+    }
     template <typename T> constexpr decltype(auto) get() noexcept { return get(wrapt<T>{}); }
     template <typename T> constexpr decltype(auto) get() const noexcept { return get(wrapt<T>{}); }
     /// compare
@@ -259,7 +262,7 @@ namespace zs {
     template <typename... Vs, enable_if_t<(is_constructible_v<Ts, Vs> && ...)> = 0>
     constexpr tuple(const tuple<Vs...> &o) : base_t(o) {}
     template <typename... Vs, enable_if_t<(is_constructible_v<Ts, Vs> && ...)> = 0>
-    constexpr tuple(tuple<Vs...> &&o) : base_t(move(o)) {}
+    constexpr tuple(tuple<Vs...> &&o) : base_t(zs::move(o)) {}
     template <typename... Vs, enable_if_t<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>> = 0>
     constexpr tuple &operator=(const tuple<Vs...> &o) {
       base_t::operator=(o);
@@ -267,7 +270,7 @@ namespace zs {
     }
     template <typename... Vs, enable_if_t<is_assignable_v<type_seq<Ts...>, type_seq<Vs...>>> = 0>
     constexpr tuple &operator=(tuple<Vs...> &&o) {
-      base_t::operator=(move(o));
+      base_t::operator=(zs::move(o));
       return *this;
     }
 
@@ -325,14 +328,15 @@ namespace zs {
   /** operations */
 
   /** get */
-  template <zs::size_t I, typename... Ts> constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
+  template <zs::size_t I, typename... Ts>
+  constexpr decltype(auto) get(const tuple<Ts...> &t) noexcept {
     return t.template get<I>();
   }
   template <zs::size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &t) noexcept {
     return t.template get<I>();
   }
   template <zs::size_t I, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &&t) noexcept {
-    return move(t).template get<I>();
+    return zs::move(t).template get<I>();
   }
 
   template <typename T, typename... Ts>
@@ -343,7 +347,7 @@ namespace zs {
     return t.template get<T>();
   }
   template <typename T, typename... Ts> constexpr decltype(auto) get(tuple<Ts...> &&t) noexcept {
-    return move(t).template get<T>();
+    return zs::move(t).template get<T>();
   }
 
   /** make_tuple */

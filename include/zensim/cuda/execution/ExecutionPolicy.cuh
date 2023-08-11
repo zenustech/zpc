@@ -118,6 +118,35 @@ namespace zs {
       else
         f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)...);
     }
+
+    template <bool withIndex, typename Tn, typename F, typename ZipIter, typename... Args,
+              size_t... Is>
+    __forceinline__ __device__ void range_foreach_with_params(wrapv<withIndex>, Tn i, F &&f,
+                                                              ZipIter &&iter,
+                                                              const zs::tuple<Args...> &params,
+                                                              index_sequence<Is...>) {
+      ((void)zs::get<Is>(iter.iters).advance(i), ...);
+      if constexpr (withIndex)
+        f(i, *zs::get<Is>(iter.iters)..., params);
+      else {
+        f(*zs::get<Is>(iter.iters)..., params);
+      }
+    }
+    template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
+              typename... Args, size_t... Is>
+    __forceinline__ __device__ void range_foreach_with_params(wrapv<withIndex>, ShmT *shmem, Tn i,
+                                                              F &&f, ZipIter &&iter,
+                                                              const zs::tuple<Args...> &params,
+                                                              index_sequence<Is...>) {
+      ((void)zs::get<Is>(iter.iters).advance(i), ...);
+      using func_traits
+          = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;
+      using shmem_ptr_t = typename func_traits::first_argument_t;
+      if constexpr (withIndex)
+        f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)..., params);
+      else
+        f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)..., params);
+    }
   }  // namespace detail
 
   // =========================  signature  ==============================
@@ -178,16 +207,54 @@ namespace zs {
             "integer");
         if constexpr (is_integral_v<typename func_traits::first_argument_t>)
           detail::range_foreach(true_c, id, f, iter, indices);
-        else if constexpr (std::is_pointer_v<typename func_traits::first_argument_t>)
+        else if constexpr (is_pointer_v<typename func_traits::first_argument_t>)
           detail::range_foreach(false_c,
                                 reinterpret_cast<typename func_traits::first_argument_t>(shmem), id,
                                 f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 2) {
-        static_assert(std::is_pointer_v<typename func_traits::first_argument_t>,
+        static_assert(is_pointer_v<typename func_traits::first_argument_t>,
                       "when arity equals numArgs+2, the first argument should be a shmem pointer");
         detail::range_foreach(true_c,
                               reinterpret_cast<typename func_traits::first_argument_t>(shmem), id,
                               f, iter, indices);
+      }
+    }
+  }
+  template <typename Tn, typename F, typename ZipIter, typename... Args> __global__
+      enable_if_type<is_ra_iter_v<ZipIter>
+                     && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
+                         || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      range_launch_with_params(Tn n, F f, ZipIter iter, zs::tuple<Args...> params) {
+    extern __shared__ std::max_align_t shmem[];
+    Tn id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id < n) {
+      using func_traits = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types>;
+      constexpr auto numArgs = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
+      constexpr auto indices = make_index_sequence<numArgs>{};
+      static_assert(func_traits::arity >= numArgs + 1 && func_traits::arity <= numArgs + 3,
+                    "range_launch_with_params arity does not match with numArgs");
+      if constexpr (func_traits::arity == numArgs + 1) {
+        detail::range_foreach_with_params(false_c, id, f, iter, params, indices);
+      } else if constexpr (func_traits::arity == numArgs + 2) {
+        static_assert(is_integral_v<typename func_traits::first_argument_t>
+                          || is_pointer_v<typename func_traits::first_argument_t>,
+                      "when arity equals numArgs+2 (tail for params), the first argument should be "
+                      "a shmem pointer or an integer");
+        if constexpr (is_integral_v<typename func_traits::first_argument_t>)
+          detail::range_foreach_with_params(true_c, id, f, iter, params, indices);
+        else if constexpr (is_pointer_v<typename func_traits::first_argument_t>)
+          detail::range_foreach_with_params(
+              false_c, reinterpret_cast<typename func_traits::first_argument_t>(shmem), id, f, iter,
+              params, indices);
+        else
+          static_assert(always_false<Tn>, "slot reserved...");
+      } else if constexpr (func_traits::arity == numArgs + 3) {
+        static_assert(is_pointer_v<typename func_traits::first_argument_t>,
+                      "when arity equals numArgs+3 (tail for params), the first argument should be "
+                      "a shmem pointer");
+        detail::range_foreach_with_params(
+            true_c, reinterpret_cast<typename func_traits::first_argument_t>(shmem), id, f, iter,
+            params, indices);
       }
     }
   }
@@ -346,6 +413,50 @@ namespace zs {
       } else {  // wrap the non-zip range in a zip range
         ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
                               std::begin(zip(FWD(range))));
+      }
+
+      if (this->shouldProfile()) context.tock(timer, loc);
+      if (this->shouldSync()) {
+        context.syncStreamSpare(streamid, loc);
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+        if (ec == 0) ec = Cuda::get_last_cuda_rt_error();
+#endif
+      }
+      checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
+      context.recordEventSpare(streamid, loc);
+    }
+    template <typename Range, typename F, typename... Args>
+    auto operator()(Range &&range, F &&f, const zs::tuple<Args...> &params,
+                    const source_location &loc = source_location::current()) const {
+      auto &context = Cuda::context(procid);
+      context.setContext();
+      if (this->shouldWait())
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
+
+      // need to work on __device__ func as well
+      auto iter = std::begin(range);
+      using IterT = remove_cvref_t<decltype(iter)>;
+      using DiffT = typename std::iterator_traits<IterT>::difference_type;
+      const DiffT dist = std::end(range) - iter;
+      using RefT = typename std::iterator_traits<IterT>::reference;
+
+      LaunchConfig lc{};
+      if (blockSize == 0)
+        lc = LaunchConfig{true_c, dist, shmemBytes};
+      else
+        lc = LaunchConfig{(dist + blockSize - 1) / blockSize, blockSize, shmemBytes};
+
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
+
+      u32 ec = 0;
+      if constexpr (is_zip_iterator_v<IterT>) {
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
+                              f, std::begin(FWD(range)), params);
+      } else {  // wrap the non-zip range in a zip range
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
+                              f, std::begin(zip(FWD(range))), params);
       }
 
       if (this->shouldProfile()) context.tock(timer, loc);

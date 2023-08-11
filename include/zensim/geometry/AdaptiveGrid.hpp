@@ -428,9 +428,9 @@ namespace zs {
         }
       } calc_offset_op;
 #endif
-      pol(enumerate(lc.table._activeKeys, dsts),
+      pol(enumerate(lc.table._activeKeys, dsts), paramPack,
 #if 1
-          calc_offset_op, paramPack
+          calc_offset_op
 #else
           [] ZS_LAMBDA(size_type i, const integer_coord_type &coord, size_type &dst) {
             auto parentOrigin = coord_to_key<I>(coord);

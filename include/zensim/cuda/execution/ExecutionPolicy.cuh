@@ -425,8 +425,8 @@ namespace zs {
       checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
       context.recordEventSpare(streamid, loc);
     }
-    template <typename Range, typename F, typename... Args>
-    auto operator()(Range &&range, F &&f, const zs::tuple<Args...> &params,
+    template <typename Range, typename... Args, typename F>
+    auto operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
                     const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();

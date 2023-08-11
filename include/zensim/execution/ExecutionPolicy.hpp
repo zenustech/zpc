@@ -156,8 +156,8 @@ namespace zs {
         timer.tock(fmt::format("[Seq Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
-    template <typename Range, typename F, typename... Args>
-    constexpr void operator()(Range &&range, F &&f, const zs::tuple<Args...> &params,
+    template <typename Range, typename... Args, typename F>
+    constexpr void operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
                               const source_location &loc = source_location::current()) const {
       constexpr auto hasBegin = is_valid(
           [](auto t) -> decltype((void)std::begin(declval<typename decltype(t)::type>())) {});

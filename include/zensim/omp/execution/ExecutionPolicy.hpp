@@ -120,8 +120,8 @@ namespace zs {
         timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
-    template <typename Range, typename F, typename... Args>
-    void operator()(Range &&range, F &&f, const zs::tuple<Args...> &params,
+    template <typename Range, typename... Args, typename F>
+    void operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
                     const source_location &loc = source_location::current()) const {
       CppTimer timer;
       if (shouldProfile()) timer.tick();

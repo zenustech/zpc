@@ -28,6 +28,13 @@ namespace zs {
       u32 rot = oldstate >> 59u;
       return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
     }
+    static constexpr result_type pcg32_random_r(u64 &state, u64 inc) noexcept {
+      u64 oldstate = state;
+      state = oldstate * 6364136223846793005ULL + (inc | 1);
+      u32 xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+      u32 rot = oldstate >> 59u;
+      return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+    }
     // TODO: https://en.wikipedia.org/wiki/Linear_congruential_generator
 
     constexpr result_type operator()() noexcept { return pcg32_random_r(); }

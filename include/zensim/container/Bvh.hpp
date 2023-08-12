@@ -11,6 +11,75 @@
 
 namespace zs {
 
+  struct _compute_bounding_box_naive {
+    template <typename BoxT, typename ParamT>
+    constexpr void operator()(BoxT &bv, const ParamT &params) noexcept {
+      constexpr int dim = BoxT::dim;
+      using value_type = typename BoxT::value_type;
+      auto &[box, execTag] = params;
+      for (int d = 0; d != dim; ++d) {
+        atomic_min(execTag, &box[0]._min[d], bv._min[d] - 10 * limits<value_type>::epsilon());
+        atomic_max(execTag, &box[0]._max[d], bv._max[d] + 10 * limits<value_type>::epsilon());
+      }
+    }
+  };
+  struct _compute_bounding_box_extraction {
+    template <typename Ti, typename Box, typename ParamT>
+    constexpr void operator()(Ti i, const Box &bv, ParamT &&params) noexcept {
+      constexpr int dim = Box::dim;
+      using value_type = typename Box::value_type;
+      auto &[gmins, gmaxs, sz] = params;
+      Ti offset{};
+      for (int d = 0; d < dim; ++d) {
+        offset = d * sz;
+        gmins[offset + i] = bv._min[d] - 10 * limits<value_type>::epsilon();
+        gmaxs[offset + i] = bv._max[d] + 10 * limits<value_type>::epsilon();
+      }
+    }
+  };
+
+  template <typename Policy, typename BoxRange,
+            typename Box = RM_CVREF_T(*declval<BoxRange &&>().begin())>
+  inline Box compute_bounding_box(Policy &&policy, BoxRange &&bvs) {
+    constexpr int dim = Box::dim;
+    constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
+    using value_type = typename Box::value_type;
+    using TV = typename Box::TV;
+    static_assert(sizeof(Box) == sizeof(value_type) * dim * 2, "???");
+
+    Box gbv{};
+    auto allocator = get_temporary_memory_source(policy);
+    const size_t sz = range_size(bvs);
+
+    bool shouldSync = policy.shouldSync();
+    policy.sync(true);
+#if 1
+    Vector<Box> wholeBox{allocator, 1};
+    constexpr auto defaultBox = Box{TV::constant(detail::deduce_numeric_max<value_type>()),
+                                    TV::constant(detail::deduce_numeric_lowest<value_type>())};
+    wholeBox.setVal(defaultBox);
+    const auto &params = zs::make_tuple(proxy<space>(wholeBox), wrapv<space>{});
+    policy(bvs, params, _compute_bounding_box_naive{});
+    gbv = wholeBox.getVal();
+#else
+    Vector<value_type> ret{allocator, dim * 2};
+    Vector<value_type> gmins{allocator, sz * dim}, gmaxs{allocator, sz * dim};
+
+    const auto &params = zs::make_tuple(view<space>(gmins), view<space>(gmaxs), sz);
+    policy(enumerate(bvs), params, _compute_bounding_box_extraction{});
+    for (int d = 0; d != dim; ++d) {
+      reduce(policy, zs::begin(gmins) + d * sz, zs::begin(gmins) + (d + 1) * sz, zs::begin(ret) + d,
+             detail::deduce_numeric_max<value_type>(), getmin<value_type>{});
+      reduce(policy, zs::begin(gmaxs) + d * sz, zs::begin(gmaxs) + (d + 1) * sz,
+             zs::begin(ret) + dim + d, detail::deduce_numeric_lowest<value_type>(),
+             getmax<value_type>{});
+    }
+    ret.retrieveVals((value_type *)(&gbv));
+#endif
+    policy.sync(shouldSync);
+    return gbv;
+  }
+
   template <int dim_ = 3, typename Index = int, typename ValueT = zs::f32,
             typename AllocatorT = zs::ZSPmrAllocator<>>
   struct LBvh {
@@ -106,16 +175,7 @@ namespace zs {
     indices_t parents{}, levels{}, leafInds{}, auxIndices{};  // escape ids/ prim ids
 
     /// build
-    struct _build_compute_bounding_box {
-      template <typename BoxT, typename ParamT>
-      constexpr void operator()(BoxT &bv, const ParamT &params) noexcept {
-        auto &[box, execTag] = params;
-        for (int d = 0; d != dim; ++d) {
-          atomic_min(execTag, &box[0]._min[d], bv._min[d] - 10 * limits<value_type>::epsilon());
-          atomic_max(execTag, &box[0]._max[d], bv._max[d] + 10 * limits<value_type>::epsilon());
-        }
-      }
-    };
+
     struct _build_init_mc_id {
       template <typename ParamT>
       constexpr void operator()(size_type id, const ParamT &params) noexcept {
@@ -622,11 +682,15 @@ namespace zs {
     const auto defaultBox
         = Box{TV::constant(limits<value_type>::max()), TV::constant(limits<value_type>::lowest())};
     Vector<Box> wholeBox{primBvs.get_allocator(), 1};
+#if 0
     wholeBox.setVal(defaultBox);
     {
       const auto &params = zs::make_tuple(proxy<space>(wholeBox), execTag);
       policy(primBvs, params, _build_compute_bounding_box{});
     }
+#else
+    wholeBox.setVal(compute_bounding_box(policy, range(primBvs)));
+#endif
 
     // morton codes
     Vector<mc_t> mcs{allocator, numLeaves};

@@ -643,7 +643,7 @@ namespace zs {
   }
   template <typename IB, typename IE, typename... Args>
   constexpr decltype(auto) range(detail::WrappedIterator<IB, IE> &&r, Args &&...args) {
-    return move(r);
+    return zs::move(r);
   }
 
   template <typename Container, typename... Args>

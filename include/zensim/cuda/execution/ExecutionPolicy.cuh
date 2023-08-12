@@ -94,6 +94,65 @@ namespace zs {
       static_assert(is_same_v<return_t, void>,
                     "callable for execution policy should only return void");
     };
+    template <typename F, typename ArgSeq, typename... Ts>
+    struct deduce_fts<F, ArgSeq, zs::tuple<Ts...>> {
+      using param_arg_t = zs::tuple<Ts...>;
+      static constexpr bool fts_available
+          = is_valid([](auto t) -> decltype(zs::function_traits<typename decltype(t)::type>{},
+                                            void()) {})(zs::wrapt<F>{});
+
+      template <typename IterOrIndex, typename = void> struct iter_arg {
+        using type = IterOrIndex;
+      };
+      template <typename Iter> struct iter_arg<Iter, void_t<decltype(*declval<Iter>())>> {
+        using type = decltype(*declval<Iter>());
+      };
+      template <typename IterOrIndex> using iter_arg_t = typename iter_arg<IterOrIndex>::type;
+
+      template <typename Seq> struct impl;
+      template <typename... Args> struct impl<type_seq<Args...>> {
+        static constexpr auto deduce_args_t() noexcept {
+          if constexpr (fts_available)
+            return typename function_traits<F>::arguments_t{};
+          else {
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>..., param_arg_t>)
+              return type_seq<int, iter_arg_t<Args>..., param_arg_t>{};
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>..., param_arg_t>)
+              return type_seq<void *, iter_arg_t<Args>..., param_arg_t>{};
+            else
+              return type_seq<iter_arg_t<Args>..., param_arg_t>{};
+          }
+        }
+        static constexpr auto deduce_return_t() noexcept {
+          if constexpr (fts_available)
+            return wrapt<typename function_traits<F>::return_t>{};
+          else {
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>..., param_arg_t>)
+              return wrapt<invoke_result_t<F, int, iter_arg_t<Args>..., param_arg_t>>{};
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>..., param_arg_t>)
+              return wrapt<invoke_result_t<F, void *, iter_arg_t<Args>..., param_arg_t>>{};
+            else
+              return wrapt<invoke_result_t<F, iter_arg_t<Args>..., param_arg_t>>{};
+          }
+        }
+        static constexpr size_t deduce_arity() noexcept {
+          if constexpr (fts_available)
+            return function_traits<F>::arity;
+          else
+            return decltype(deduce_args_t())::count;
+        }
+      };
+
+      using arguments_t =
+          typename decltype(impl<ArgSeq>::deduce_args_t())::template functor<zs::tuple>;
+      using first_argument_t = typename decltype(impl<ArgSeq>::deduce_args_t())::template type<0>;
+
+      using return_t = typename decltype(impl<ArgSeq>::deduce_return_t())::type;
+      static constexpr size_t arity = impl<ArgSeq>::deduce_arity();
+
+      static_assert(is_same_v<return_t, void>,
+                    "callable for execution policy should only return void");
+    };
 
     template <bool withIndex, typename Tn, typename F, typename ZipIter, size_t... Is>
     __forceinline__ __device__ void range_foreach(wrapv<withIndex>, Tn i, F &&f, ZipIter &&iter,
@@ -228,17 +287,21 @@ namespace zs {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types>;
-      constexpr auto numArgs = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
-      constexpr auto indices = make_index_sequence<numArgs>{};
-      static_assert(func_traits::arity >= numArgs + 1 && func_traits::arity <= numArgs + 3,
+      /// @note beware of the discrepency here
+      using func_traits
+          = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types, zs::tuple<Args...>>;
+      constexpr auto numArgs
+          = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference> + 1;
+      constexpr auto indices = make_index_sequence<numArgs - 1>{};
+
+      static_assert(func_traits::arity >= numArgs && func_traits::arity <= numArgs + 2,
                     "range_launch_with_params arity does not match with numArgs");
-      if constexpr (func_traits::arity == numArgs + 1) {
+      if constexpr (func_traits::arity == numArgs) {
         detail::range_foreach_with_params(false_c, id, f, iter, params, indices);
-      } else if constexpr (func_traits::arity == numArgs + 2) {
+      } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(is_integral_v<typename func_traits::first_argument_t>
                           || is_pointer_v<typename func_traits::first_argument_t>,
-                      "when arity equals numArgs+2 (tail for params), the first argument should be "
+                      "when arity equals numArgs+1 (tail for params), the first argument should be "
                       "a shmem pointer or an integer");
         if constexpr (is_integral_v<typename func_traits::first_argument_t>)
           detail::range_foreach_with_params(true_c, id, f, iter, params, indices);
@@ -248,9 +311,9 @@ namespace zs {
               params, indices);
         else
           static_assert(always_false<Tn>, "slot reserved...");
-      } else if constexpr (func_traits::arity == numArgs + 3) {
+      } else if constexpr (func_traits::arity == numArgs + 2) {
         static_assert(is_pointer_v<typename func_traits::first_argument_t>,
-                      "when arity equals numArgs+3 (tail for params), the first argument should be "
+                      "when arity equals numArgs+2 (tail for params), the first argument should be "
                       "a shmem pointer");
         detail::range_foreach_with_params(
             true_c, reinterpret_cast<typename func_traits::first_argument_t>(shmem), id, f, iter,

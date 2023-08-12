@@ -340,13 +340,25 @@ namespace zs {
       // ...
     }
 
-    template <int I, typename TabViewT, typename OffsetsViewT, typename MaskViewT>
-    struct _LocateChildOffset {
-      TabViewT tb;
-      OffsetsViewT offsets;
-      MaskViewT masks;
-      constexpr void operator()(size_type i, const integer_coord_type &coord,
-                                size_type &dst) noexcept {
+    template <int I> struct _reorder_init_kv {
+      constexpr void operator()(size_type i, const integer_coord_type &coord, u32 &key,
+                                size_type &id) const noexcept {
+        auto c = ((coord >> Level<I>::sbit) & 1023).template cast<f32>() / 1024;
+        key = morton_code<dim>(c);
+        id = i;
+      }
+    };
+    struct _reorder_count_on {
+      template <typename MaskT>
+      constexpr void operator()(size_type &n, const MaskT &mask) noexcept {
+        n = mask.countOn();
+      }
+    };
+    template <int I> struct _reorder_locate_children {
+      template <typename ParamT>
+      constexpr void operator()(size_type i, const integer_coord_type &coord, size_type &dst,
+                                const ParamT &params) noexcept {
+        auto &[tb, offsets, masks] = params;
         auto parentOrigin = coord_to_key<I>(coord);
         auto parentBno = tb.query(parentOrigin);
         auto childOffset = coord_to_hierarchy_offset<I>(coord);
@@ -376,15 +388,7 @@ namespace zs {
         Vector<size_type> indices{allocator, nbs};
         Vector<size_type> sortedIndices{allocator, nbs};
 
-        struct {
-          constexpr void operator()(size_type i, const integer_coord_type &coord, u32 &key,
-                                    size_type &id) const noexcept {
-            auto c = ((coord >> Level<I>::sbit) & 1023).template cast<f32>() / 1024;
-            key = morton_code<dim>(c);
-            id = i;
-          }
-        } init_op;
-        pol(enumerate(l.table._activeKeys, codes, indices), init_op);
+        pol(enumerate(l.table._activeKeys, codes, indices), _reorder_init_kv<I>{});
         radix_sort_pair(pol, codes.begin(), indices.begin(), sortedMcs.begin(),
                         sortedIndices.begin(), nbs);
         /// reorder block entries
@@ -396,50 +400,17 @@ namespace zs {
       }
       /// histogram sort
       Vector<size_type> numActiveChildren{allocator, nbs};
-      struct {
-        using MaskT = typename RM_CVREF_T(l.childMask)::value_type;
-        constexpr void operator()(size_type &n, const MaskT &mask) const noexcept {
-          n = mask.countOn();
-        }
-      } count_mask_on_op;
-      pol(zip(numActiveChildren, l.childMask), count_mask_on_op);
+      pol(zip(numActiveChildren, l.childMask), _reorder_count_on{});
       exclusive_scan(pol, numActiveChildren.begin(), numActiveChildren.end(),
                      l.childOffset.begin());
       /// compute children reorder mapping
       Vector<size_type> dsts{allocator, nchbs};
+      {
+        const auto &params = zs::make_tuple(view<space>(l.table), view<space>(l.childOffset),
+                                            view<space>(l.childMask));
+        pol(enumerate(lc.table._activeKeys, dsts), params, _reorder_locate_children<I>{});
+      }
 
-#if 0
-      auto tbv = view<space>(l.table);
-      auto offsetsv = view<space>(l.childOffset);
-      auto masksv = view<space>(l.childMask);
-      _LocateChildOffset<I, RM_CVREF_T(tbv), RM_CVREF_T(offsetsv), RM_CVREF_T(masksv)>
-          calc_offset_op{tbv, offsetsv, masksv};
-#else
-      const auto &paramPack = zs::make_tuple(view<space>(l.table), view<space>(l.childOffset),
-                                             view<space>(l.childMask));
-      struct {
-        constexpr void operator()(size_type i, const integer_coord_type &coord, size_type &dst,
-                                  decltype(paramPack) params) noexcept {
-          auto &[tb, offsets, masks] = params;
-          auto parentOrigin = coord_to_key<I>(coord);
-          auto parentBno = tb.query(parentOrigin);
-          auto childOffset = coord_to_hierarchy_offset<I>(coord);
-          dst = offsets[parentBno] + masks[parentBno].countOffset(childOffset);
-        }
-      } calc_offset_op;
-#endif
-      pol(enumerate(lc.table._activeKeys, dsts), paramPack,
-#if 1
-          calc_offset_op
-#else
-          [] ZS_LAMBDA(size_type i, const integer_coord_type &coord, size_type &dst) {
-            auto parentOrigin = coord_to_key<I>(coord);
-            auto parentBno = tb.query(parentOrigin);
-            auto childOffset = coord_to_hierarchy_offset<I>(coord);
-            dst = offsets[parentBno] + masks[parentBno].countOffset(childOffset);
-          }
-#endif
-      );
       // pol(enumerate(dsts),
       //    [nchbs] ZS_LAMBDA(size_type i, size_type & dst) { dst = nchbs - 1 - i; });
       /// reorder block entries

@@ -41,6 +41,12 @@ extern "C" {
                                                 int ch) {                                        \
     v->reset(ch);                                                                                \
   }                                                                                              \
+  T getVal_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                 \
+    return v->getVal();                                                                          \
+  }                                                                                              \
+  void setVal_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, T newVal) {    \
+    v->setVal(newVal);                                                                           \
+  }                                                                                              \
   /* pyview */                                                                                   \
   zs::VectorViewLite<T> *pyview##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {      \
     return new zs::VectorViewLite<T>{v->data()};                                                 \

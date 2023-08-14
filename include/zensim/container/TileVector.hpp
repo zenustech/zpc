@@ -582,7 +582,7 @@ namespace zs {
   template <typename T, size_t Length, typename Allocator> template <typename Policy>
   void TileVector<T, Length, Allocator>::append_channels(
       Policy &&policy, const std::vector<PropertyTag> &appendTags) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     const auto s = size();
     auto tags = getPropertyTags();
     bool modified = false;
@@ -618,7 +618,7 @@ namespace zs {
   };
   template <typename T, size_t Length, typename Allocator> template <typename Policy>
   void TileVector<T, Length, Allocator>::reset(Policy &&policy, value_type val) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     policy(range(size()), TileVectorReset{proxy<space>(*this), val});
   }
   template <typename TileVectorView, typename MapIter, bool Scatter> struct TileVectorTileReorder {
@@ -651,7 +651,7 @@ namespace zs {
   template <typename Policy, typename MapRange, bool Scatter>
   void TileVector<T, Length, Allocator>::reorderTiles(Policy &&pol, MapRange &&mapR,
                                                       wrapv<Scatter>) {
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     using Ti = RM_CVREF_T(*zs::begin(mapR));
     static_assert(is_integral_v<Ti>,
                   "index mapping range\'s dereferenced type is not an integral.");

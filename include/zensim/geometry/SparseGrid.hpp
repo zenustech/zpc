@@ -28,7 +28,7 @@ namespace zs {
       else
         return wrapt<value_type>{};
     }
-    using coord_component_type = typename RM_CVREF_T(deduce_basic_value_type())::type;
+    using coord_component_type = typename RM_REF_T(deduce_basic_value_type())::type;
     static_assert(is_floating_point_v<coord_component_type>,
                   "coord type should be floating point.");
     ///
@@ -210,10 +210,10 @@ namespace zs {
     using packed_value_type = typename container_type::packed_value_type;
 
     using table_type = typename container_type::table_type;
-    using table_view_type = RM_CVREF_T(proxy<space>(
+    using table_view_type = decltype(proxy<space>(
         declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
     using grid_storage_type = typename container_type::grid_storage_type;
-    using grid_view_type = RM_CVREF_T(view<space>(
+    using grid_view_type = decltype(view<space>(
         {},
         declval<
             conditional_t<is_const_structure, const grid_storage_type &, grid_storage_type &>>()));

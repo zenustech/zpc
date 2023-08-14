@@ -99,7 +99,7 @@ namespace zs {
 #if 0
     BasicLevelSet(const BasicLevelSet &ls) : _ls{} {
       match([this](const auto &lsPtr) {
-        using LsT = typename RM_CVREF_T(lsPtr)::element_type;
+        using LsT = typename RM_REF_T(lsPtr)::element_type;
         static_assert(std::is_copy_constructible_v<LsT>,
                       "the levelset should be copy constructible");
         _ls = std::make_shared<LsT>(*lsPtr);

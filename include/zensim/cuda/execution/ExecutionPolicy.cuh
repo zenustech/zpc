@@ -170,7 +170,7 @@ namespace zs {
                                                   ZipIter &&iter, index_sequence<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
       using func_traits
-          = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;
+          = detail::deduce_fts<remove_cvref_t<F>, typename RM_REF_T(iter.iters)::tuple_types>;
       using shmem_ptr_t = typename func_traits::first_argument_t;
       if constexpr (withIndex)
         f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)...);
@@ -198,7 +198,7 @@ namespace zs {
                                                               index_sequence<Is...>) {
       ((void)zs::get<Is>(iter.iters).advance(i), ...);
       using func_traits
-          = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;
+          = detail::deduce_fts<remove_cvref_t<F>, typename RM_REF_T(iter.iters)::tuple_types>;
       using shmem_ptr_t = typename func_traits::first_argument_t;
       if constexpr (withIndex)
         f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)..., FWD(params));
@@ -250,7 +250,7 @@ namespace zs {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types>;
+      using func_traits = detail::deduce_fts<F, typename RM_REF_T(iter.iters)::tuple_types>;
       constexpr auto numArgs = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
       constexpr auto indices = make_index_sequence<numArgs>{};
       static_assert(func_traits::arity >= numArgs && func_traits::arity <= numArgs + 2,
@@ -288,7 +288,7 @@ namespace zs {
     if (id < n) {
       /// @note beware of the discrepency here
       using func_traits
-          = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types, zs::tuple<Args...>>;
+          = detail::deduce_fts<F, typename RM_REF_T(iter.iters)::tuple_types, zs::tuple<Args...>>;
       constexpr auto numArgs
           = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference> + 1;
       constexpr auto indices = make_index_sequence<numArgs - 1>{};

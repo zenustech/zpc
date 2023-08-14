@@ -14,7 +14,7 @@ namespace zs {
     static_assert(std::is_arithmetic_v<ValT>, "weight type should be arithmetic");
 
     using ColorT = RM_CVREF_T(*std::begin(colors));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     static_assert(std::is_arithmetic_v<ColorT>, "color type should be arithmetic");
 
     auto n = range_size(weights);
@@ -98,7 +98,7 @@ namespace zs {
     static_assert(std::is_arithmetic_v<ValT>, "weight type should be arithmetic");
 
     using ColorT = RM_CVREF_T(*std::begin(colors));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     static_assert(std::is_arithmetic_v<ColorT>, "color type should be arithmetic");
 
     auto n = range_size(weights);

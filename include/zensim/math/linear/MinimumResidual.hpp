@@ -72,7 +72,7 @@ namespace zs {
 
     template <class ExecutionPolicy, typename DofViewA, typename DofViewB>
     T dotProduct(ExecutionPolicy&& policy, DofViewA a, DofViewB b) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       using ValueT = typename std::iterator_traits<RM_CVREF_T(std::begin(a))>::value_type;
       auto dofSqr = dof_view<space, dim>(dofSqr_);
       DofCompwiseOp{multiplies<void>{}}(policy, a, b, dofSqr);
@@ -113,7 +113,7 @@ namespace zs {
 
     template <class ExecutionPolicy, typename M, typename XView, typename BView>
     int solve(ExecutionPolicy&& policy, M&& A, XView&& xinout, BView&& b) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       resize(xinout.numEntries());
 
       auto x = dof_view<space, dim>(x_);

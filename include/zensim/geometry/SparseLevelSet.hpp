@@ -217,10 +217,10 @@ namespace zs {
     using size_type = typename ls_t::size_type;
     using index_type = typename ls_t::index_type;
     using table_t = typename ls_t::table_t;
-    using table_view_t = RM_CVREF_T(
+    using table_view_t = RM_REF_T(
         proxy<Space>(declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
     using grid_t = typename ls_t::grid_t;
-    using grid_view_t = RM_CVREF_T(
+    using grid_view_t = RM_REF_T(
         proxy<Space>({}, declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
 
     using T = typename ls_t::value_type;

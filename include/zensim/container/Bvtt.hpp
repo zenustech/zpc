@@ -69,7 +69,7 @@ namespace zs {
 
   template <typename PrimIdT, typename NodeIdT> template <typename Policy>
   void BvttFront<PrimIdT, NodeIdT>::reorder(Policy &&policy) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
     using bvtt_t = BvttFront<PrimIdT, NodeIdT>;
     using index_t = typename bvtt_t::index_t;

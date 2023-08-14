@@ -524,7 +524,7 @@ namespace zs {
   template <typename T, typename Allocator>
   template <typename Policy, typename MapRange, bool Scatter>
   void Vector<T, Allocator>::reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter>) {
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     using Ti = RM_CVREF_T(*zs::begin(mapR));
     static_assert(is_integral_v<Ti>,
                   "index mapping range\'s dereferenced type is not an integral.");

@@ -264,7 +264,7 @@ namespace zs {
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::preserve(Policy &&policy, size_t numExpectedEntries) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     const auto numEntries = size();
     if (numExpectedEntries == numEntries) return;
     using LsvT = decltype(proxy<space>(*this));
@@ -285,7 +285,7 @@ namespace zs {
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy, size_t numExpectedEntries) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     const auto newTableSize = evaluateTableSize(numExpectedEntries);
     if (newTableSize <= _tableSize) return;
     _table.resize(newTableSize);
@@ -298,7 +298,7 @@ namespace zs {
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::reset(Policy &&policy, bool clearCnt) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using LsvT = decltype(proxy<space>(*this));
     policy(range(_tableSize), ResetHashTable<LsvT>{proxy<space>(*this), clearCnt});
   }

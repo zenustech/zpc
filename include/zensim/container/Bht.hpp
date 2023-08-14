@@ -310,7 +310,7 @@ namespace zs {
   template <typename Policy>
   void bht<Tn, dim, Index, B, Allocator>::reset(Policy &&policy, bool clearCnt) {
 #if 0
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using LsvT = decltype(proxy<space>(*this));
     policy(range(_tableSize), ResetBHT<LsvT>{proxy<space>(*this), clearCnt});
 #else
@@ -331,7 +331,7 @@ namespace zs {
   void bht<Tn, dim, Index, B, Allocator>::resize(Policy &&pol, size_t newCapacity) {
     newCapacity = evaluateTableSize(newCapacity);
     if (newCapacity <= _tableSize) return;
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     _tableSize = newCapacity;
     // _numBuckets = newCapacity / bucket_size;
     _table.resize(_tableSize);
@@ -380,7 +380,7 @@ namespace zs {
   template <typename Tn, int dim, typename Index, int B, typename Allocator>
   template <typename Policy, typename MapRange, bool Scatter>
   void bht<Tn, dim, Index, B, Allocator>::reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter>) {
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     using Ti = RM_CVREF_T(*zs::begin(mapR));
     static_assert(is_integral_v<Ti>,
                   "index mapping range\'s dereferenced type is not an integral.");
@@ -438,21 +438,21 @@ namespace zs {
     static constexpr size_type threshold = hash_table_type::threshold;
 
     static constexpr auto is_base_c = wrapv<Base>{};
-    using storage_key_vector_view_type = RM_CVREF_T(view<space>(
+    using storage_key_vector_view_type = decltype(view<space>(
         declval<conditional_t<is_const_structure,
                               const typename hash_table_type::Table::storage_key_vector &,
                               typename hash_table_type::Table::storage_key_vector &>>(),
         is_base_c));
-    using value_vector_view_type = RM_CVREF_T(view<space>(
+    using value_vector_view_type = decltype(view<space>(
         declval<
             conditional_t<is_const_structure, const typename hash_table_type::Table::value_vector &,
                           typename hash_table_type::Table::value_vector &>>(),
         is_base_c));
-    using status_vector_view_type = RM_CVREF_T(
-        view<space>(declval<conditional_t<is_const_structure,
-                                          const typename hash_table_type::Table::status_vector &,
-                                          typename hash_table_type::Table::status_vector &>>(),
-                    is_base_c));
+    using status_vector_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure,
+                              const typename hash_table_type::Table::status_vector &,
+                              typename hash_table_type::Table::status_vector &>>(),
+        is_base_c));
 
     struct table_t {
 #if 0

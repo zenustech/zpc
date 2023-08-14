@@ -412,7 +412,7 @@ namespace zs {
                                                                     size_t newCapacity) {
     newCapacity = padded_capacity(newCapacity) * 2;
     if (newCapacity <= _capacity) return;
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     _capacity = newCapacity;
     _numBuckets = _capacity / bucket_size;
     _table.resize(_capacity);

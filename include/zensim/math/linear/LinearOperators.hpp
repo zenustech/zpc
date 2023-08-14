@@ -61,7 +61,7 @@ namespace zs {
     template <class ExecutionPolicy, typename DofViewA, typename DofViewB, typename DofViewC>
     void operator()(ExecutionPolicy&& policy, DofViewA va, DofViewB vb, DofViewC vc) {
       match([&](auto op) {
-        // constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+        // constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
         if (va.numEntries() != vb.numEntries() || va.numEntries() != vc.numEntries())
           throw std::runtime_error("dof mismatch!");
         policy(range(va.numEntries()), ComputeOp{va, vb, vc, op});
@@ -86,7 +86,7 @@ namespace zs {
 
     template <class ExecutionPolicy, typename DofViewA, typename DofViewB>
     void operator()(ExecutionPolicy&& policy, DofViewA va, DofViewB vb) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       if (va.numEntries() != vb.numEntries()) throw std::runtime_error("dof mismatch!");
       policy(range(va.numEntries()), ComputeOp<DofViewA, DofViewB>{va, vb, op, v});
     }
@@ -114,7 +114,7 @@ namespace zs {
     template <class ExecutionPolicy, typename DofViewA, typename DofViewB>
     void operator()(ExecutionPolicy&& policy, DofViewA va, DofViewB vb) {
       match([&](auto op) {
-        constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+        constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
         if (va.numEntries() != vb.numEntries()) throw std::runtime_error("dof mismatch!");
         policy(range(va.numEntries()), ComputeOp{va, vb, op});
       })(_op);

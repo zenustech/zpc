@@ -30,7 +30,7 @@ namespace zs {
   template <typename ExecPol, int dim, grid_e category>
   auto get_level_set_max_speed(ExecPol &&pol, const SparseLevelSet<dim, category> &ls) ->
       typename SparseLevelSet<dim, category>::value_type {
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
 
     Vector<typename SparseLevelSet<dim, category>::value_type> vel{ls.get_allocator(), 1};
     vel.setVal(0);
@@ -40,8 +40,8 @@ namespace zs {
 #if 0
       pol(Collapse{(sint_t)nbs, (sint_t)ls.block_size},
           [ls = proxy<space>(ls), vel = vel.data()] ZS_LAMBDA(
-              typename RM_CVREF_T(ls)::size_type bi,
-              typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
+              typename RM_REF_T(ls)::size_type bi,
+              typename RM_REF_T(ls)::cell_index_type ci) mutable {
             using ls_t = RM_CVREF_T(ls);
             auto coord = ls._table._activeKeys[bi] + ls_t::grid_view_t::cellid_to_coord(ci);
             typename ls_t::TV vi{};
@@ -67,7 +67,7 @@ namespace zs {
                       = limits<typename SparseLevelSet<dim, category>::value_type>::epsilon()
                         * 128) {
     auto nbs = ls.numBlocks();
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
 
     ls.append_channels(pol, {{"mark", 1}});
 
@@ -76,8 +76,8 @@ namespace zs {
 
     pol(Collapse{nbs, ls.block_size},
         [ls = proxy<space>(ls), threshold, cnt = numActiveVoxels.data()] ZS_LAMBDA(
-            typename RM_CVREF_T(ls)::size_type bi,
-            typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
+            typename RM_REF_T(ls)::size_type bi,
+            typename RM_REF_T(ls)::cell_index_type ci) mutable {
           using ls_t = RM_CVREF_T(ls);
           bool done = false;
           if constexpr (ls_t::category == grid_e::staggered) {
@@ -142,7 +142,7 @@ namespace zs {
       = zs::limits<typename SparseLevelSet<dim, category>::value_type>::epsilon() * 128) {
     using SplsT = SparseLevelSet<dim, category>;
 
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     size_t nbs = ls.numBlocks();
     const auto &allocator = ls.get_allocator();
 
@@ -151,7 +151,7 @@ namespace zs {
       Vector<float> test{ls.get_allocator(), 1};
       test.setVal(0);
       pol(range(nbs), [grid = proxy<space>(ls._grid), test = test.data()] ZS_LAMBDA(
-                          typename RM_CVREF_T(ls)::size_type bi) mutable {
+                          typename RM_REF_T(ls)::size_type bi) mutable {
         using grid_t = RM_CVREF_T(grid);
         const auto block = grid.block(bi);
         if (!block.hasProperty("sdf")) return;
@@ -171,8 +171,8 @@ namespace zs {
     });
     pol(Collapse{nbs, ls.block_size},
         [ls = proxy<space>(ls), marks = proxy<space>(marks)] ZS_LAMBDA(
-            typename RM_CVREF_T(ls)::size_type bi,
-            typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
+            typename RM_REF_T(ls)::size_type bi,
+            typename RM_REF_T(ls)::cell_index_type ci) mutable {
           if ((int)ls._grid("mark", bi, ci) != 0) marks[bi] = 1;
         });
 
@@ -184,8 +184,8 @@ namespace zs {
     Vector<typename SplsT::size_type> preservedBlockNos{allocator, newNbs};
     pol(range(nbs),
         [marks = proxy<space>(marks), offsets = proxy<space>(offsets),
-         blocknos = proxy<space>(
-             preservedBlockNos)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
+         blocknos
+         = proxy<space>(preservedBlockNos)] ZS_LAMBDA(typename RM_REF_T(ls)::size_type bi) mutable {
           if (marks[bi] != 0) blocknos[offsets[bi]] = bi;
         });
 
@@ -199,7 +199,7 @@ namespace zs {
     ls._table.reset(false);  // do not clear cnt
     pol(range(newNbs), [blocknos = proxy<space>(preservedBlockNos),
                         blockids = proxy<space>(prevKeys), newTable = proxy<space>(ls._table),
-                        newNbs] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
+                        newNbs] ZS_LAMBDA(typename RM_REF_T(ls)::size_type bi) mutable {
       auto blockid = blockids[blocknos[bi]];
       newTable.insert(blockid, bi);
       newTable._activeKeys[bi] = blockid;
@@ -211,7 +211,7 @@ namespace zs {
       Vector<float> test{ls.get_allocator(), 1};
       test.setVal(0);
       pol(range(nbs), [grid = proxy<space>(ls), test = test.data()] ZS_LAMBDA(
-                          typename RM_CVREF_T(ls)::size_type bi) mutable {
+                          typename RM_REF_T(ls)::size_type bi) mutable {
         using grid_t = RM_CVREF_T(grid);
         const auto block = grid.block(bi);
         if (!block.hasProperty("sdf")) return;
@@ -226,8 +226,8 @@ namespace zs {
     pol(Collapse{newNbs, ls.block_size},
         [blocknos = proxy<space>(preservedBlockNos), grid = proxy<space>(prevGrid),
          marks = proxy<space>(marks), offsets = proxy<space>(offsets),
-         ls = proxy<space>(ls)] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi,
-                                          typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
+         ls = proxy<space>(ls)] ZS_LAMBDA(typename RM_REF_T(ls)::size_type bi,
+                                          typename RM_REF_T(ls)::cell_index_type ci) mutable {
           using grid_t = RM_CVREF_T(grid);
           const auto block = grid.block(blocknos[bi]);
           auto newBlock = ls._grid.block(bi);
@@ -254,7 +254,7 @@ namespace zs {
     test.setVal(0);
     pol(range(nbs), [grid = proxy<space>(prevGrid), marks = proxy<space>(marks),
                      offsets = proxy<space>(offsets),
-                     test = test.data()] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
+                     test = test.data()] ZS_LAMBDA(typename RM_REF_T(ls)::size_type bi) mutable {
       if (marks[bi] == 0) return;
       using grid_t = RM_CVREF_T(grid);
       const auto block = grid.block(bi);
@@ -271,11 +271,11 @@ namespace zs {
   /// usually shrink before extend
   template <typename ExecPol, int dim, grid_e category>
   void extend_level_set_domain(ExecPol &&pol, SparseLevelSet<dim, category> &ls, int nlayers) {
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
 
     constexpr auto coeff = math::pow_integral(dim, dim) - 1;
     auto nbs = ls.numBlocks();
-    typename RM_CVREF_T(ls)::size_type base = 0;
+    typename RM_REF_T(ls)::size_type base = 0;
     // [base, nbs): candidate blocks to expand from
     // [nbs, newNbs): newly spawned
     while (nlayers--) {
@@ -285,7 +285,7 @@ namespace zs {
         ls.resize(pol, expectedNum);
       }
       pol(range(nbs - base),
-          [ls = proxy<space>(ls), base] ZS_LAMBDA(typename RM_CVREF_T(ls)::size_type bi) mutable {
+          [ls = proxy<space>(ls), base] ZS_LAMBDA(typename RM_REF_T(ls)::size_type bi) mutable {
             bi += base;
             using ls_t = RM_CVREF_T(ls);
             using table_t = RM_CVREF_T(ls._table);
@@ -308,8 +308,8 @@ namespace zs {
       ls._grid.resize(newNbs);
       pol(Collapse{newNbs - nbs, ls.block_size},
           [ls = proxy<space>(ls), nbs] ZS_LAMBDA(
-              typename RM_CVREF_T(ls)::size_type bi,
-              typename RM_CVREF_T(ls)::cell_index_type ci) mutable {
+              typename RM_REF_T(ls)::size_type bi,
+              typename RM_REF_T(ls)::cell_index_type ci) mutable {
             using ls_t = RM_CVREF_T(ls);
             using table_t = RM_CVREF_T(ls._table);
             auto block = ls._grid.block(bi + nbs);
@@ -329,7 +329,7 @@ namespace zs {
                                const SdfLsvT sdfLsv) {
     static_assert(dim == 3, "currently only supports 3d");
     using ls_t = RM_CVREF_T(ls);
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
 
     ls.append_channels(pol, {{"mark", 1}});
     auto markOffset = ls._grid.getPropertyOffset("mark");
@@ -436,7 +436,7 @@ namespace zs {
 
   template <typename ExecPol, int dim, grid_e category>
   void flood_fill_levelset(ExecPol &&policy, SparseLevelSet<dim, category> &ls) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using SpLs = SparseLevelSet<dim, category>;
 
     auto &grid = ls._grid;
@@ -450,7 +450,7 @@ namespace zs {
     if (tags.size()) {
       ls.append_channels(policy, tags);
       policy(range(grid.size()),
-             InitFloodFillGridChannels<RM_CVREF_T(proxy<space>(grid))>{proxy<space>(grid)});
+             InitFloodFillGridChannels<decltype(proxy<space>(grid))>{proxy<space>(grid)});
       fmt::print("tagmask at chn {}, tag at chn {}\n", grid.getPropertyOffset("tagmask"),
                  grid.getPropertyOffset("tag"));
     }

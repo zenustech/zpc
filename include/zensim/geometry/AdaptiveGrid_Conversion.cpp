@@ -324,7 +324,7 @@ namespace zs {
           leaf.setValueMask(vm);
 
           auto block = grid.tile(i);
-          static_assert(LeafType::SIZE == RM_CVREF_T(grid)::lane_width, "???");
+          static_assert(LeafType::SIZE == RM_REF_T(grid)::lane_width, "???");
           int src = 0;
           for (ValueType *dst = leaf.buffer().data(), *end = dst + LeafType::SIZE; dst != end;
                dst += 4, src += 4) {
@@ -336,8 +336,8 @@ namespace zs {
         });
 
     auto build_internal = [&ag, &nodes, &pol, propOffset, space_c = wrapv<space>{}](auto lno) {
-      constexpr auto space = RM_CVREF_T(space_c)::value;
-      constexpr int levelno = RM_CVREF_T(lno)::value;
+      constexpr auto space = RM_REF_T(space_c)::value;
+      constexpr int levelno = RM_REF_T(lno)::value;
       static_assert(levelno == 1 || levelno == 2, "???");
       using CurrentNodeType = conditional_t<levelno == 1, Int1Type, Int2Type>;
       using ChildNodeType = typename CurrentNodeType::ChildNodeType;
@@ -353,7 +353,7 @@ namespace zs {
            vms = proxy<space>(li.valueMask), tb = proxy<space>(lc.table),
            &li = zs::get<levelno>(nodes), &childNodes = zs::get<levelno - 1>(nodes), propOffset,
            current_c = wrapt<CurrentNodeType>{}](size_t i, const auto &origin) mutable {
-            using CurrentNodeType = typename RM_CVREF_T(current_c)::type;
+            using CurrentNodeType = typename RM_REF_T(current_c)::type;
             using ChildNodeType = typename CurrentNodeType::ChildNodeType;
             li[i] = new CurrentNodeType();
             CurrentNodeType &node = *li[i];
@@ -591,7 +591,7 @@ namespace zs {
           leaf.setValueMask(vm);
 
           auto block = grid.tile(i);
-          static_assert(LeafType::SIZE == RM_CVREF_T(grid)::lane_width, "???");
+          static_assert(LeafType::SIZE == RM_REF_T(grid)::lane_width, "???");
           int src = 0;
           for (ValueType *dst = leaf.buffer().data(), *end = dst + LeafType::SIZE; dst != end;
                dst++, src++) {
@@ -600,8 +600,8 @@ namespace zs {
         });
 
     auto build_internal = [&ag, &nodes, &pol, space_c = wrapv<space>{}](auto lno) {
-      constexpr auto space = RM_CVREF_T(space_c)::value;
-      constexpr int levelno = RM_CVREF_T(lno)::value;
+      constexpr auto space = RM_REF_T(space_c)::value;
+      constexpr int levelno = RM_REF_T(lno)::value;
       static_assert(levelno == 1 || levelno == 2, "???");
       using CurrentNodeType = conditional_t<levelno == 1, Int1Type, Int2Type>;
       using ChildNodeType = typename CurrentNodeType::ChildNodeType;
@@ -617,7 +617,7 @@ namespace zs {
            vms = proxy<space>(li.valueMask), tb = proxy<space>(lc.table),
            &li = zs::get<levelno>(nodes), &childNodes = zs::get<levelno - 1>(nodes),
            current_c = wrapt<CurrentNodeType>{}](size_t i, const auto &origin) mutable {
-            using CurrentNodeType = typename RM_CVREF_T(current_c)::type;
+            using CurrentNodeType = typename RM_REF_T(current_c)::type;
             using ChildNodeType = typename CurrentNodeType::ChildNodeType;
             li[i] = new CurrentNodeType();
             CurrentNodeType &node = *li[i];

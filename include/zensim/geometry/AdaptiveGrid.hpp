@@ -341,8 +341,8 @@ namespace zs {
     struct _build_level_entry {
       template <typename ParamT> constexpr void operator()(size_type i, ParamT &&params) {
         auto [keys, parTab, agTag, lvlTag] = params;
-        constexpr int level = RM_CVREF_T(lvlTag)::value;
-        using AgT = typename RM_CVREF_T(agTag)::type;
+        constexpr int level = RM_REF_T(lvlTag)::value;
+        using AgT = typename RM_REF_T(agTag)::type;
         parTab.insert(AgT::template coord_to_key<level>(keys[i]));
       }
     };
@@ -360,8 +360,8 @@ namespace zs {
     struct _update_topo_update_parent_childmask {
       template <typename ParamT> constexpr void operator()(size_type i, ParamT &&params) {
         auto [keys, parTab, parChMask, agTag, parLvlTag, execTag] = params;
-        constexpr int level = RM_CVREF_T(parLvlTag)::value;
-        using AgT = typename RM_CVREF_T(agTag)::type;
+        constexpr int level = RM_REF_T(parLvlTag)::value;
+        using AgT = typename RM_REF_T(agTag)::type;
         integer_coord_type key = keys[i];
         index_type bno = parTab.query(AgT::template coord_to_key<level>(key));
         parChMask[bno].setOn(AgT::template coord_to_hierarchy_offset<level>(key), execTag);
@@ -449,12 +449,12 @@ namespace zs {
         auto [origins, srcValueMask, srcGrid, dstTab, dstValueMask, dstGrid, bsTag, rel_dim_c,
               srcAgTag, srcLvlTag, dstAgTag, dstLvlTag, execTag]
             = params;
-        constexpr auto block_size = RM_CVREF_T(bsTag)::value;
-        constexpr auto rel_dim = RM_CVREF_T(rel_dim_c)::value;
-        constexpr int level = RM_CVREF_T(srcLvlTag)::value;
-        constexpr int dst_level = RM_CVREF_T(dstLvlTag)::value;
-        using AgT = typename RM_CVREF_T(srcAgTag)::type;
-        using DstAgT = typename RM_CVREF_T(dstAgTag)::type;
+        constexpr auto block_size = RM_REF_T(bsTag)::value;
+        constexpr auto rel_dim = RM_REF_T(rel_dim_c)::value;
+        constexpr int level = RM_REF_T(srcLvlTag)::value;
+        constexpr int dst_level = RM_REF_T(dstLvlTag)::value;
+        using AgT = typename RM_REF_T(srcAgTag)::type;
+        using DstAgT = typename RM_REF_T(dstAgTag)::type;
         auto bno = i / block_size;
         const auto &vm = srcValueMask[bno];
         auto cno = i & (block_size - 1);
@@ -600,7 +600,7 @@ namespace zs {
     };
     template <typename Policy, bool SortGridData = true, int I = num_levels - 1>
     void reorder(Policy &&pol, wrapv<SortGridData> = {}, wrapv<I> = {}) {
-      constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
       static_assert(I > 0 && I < num_levels, "???");
 
       if (!valid_memspace_for_execution(pol, get_allocator()))
@@ -841,34 +841,34 @@ namespace zs {
     template <int LevelNo> using level_type = typename container_type::template Level<LevelNo>;
 
     using child_offset_type = typename container_type::child_offset_type;
-    using child_offset_view_type = RM_CVREF_T(view<space>(
+    using child_offset_view_type = decltype(view<space>(
         declval<
             conditional_t<is_const_structure, const child_offset_type &, child_offset_type &>>(),
         wrapv<Base>{}));
 
     using table_type = typename container_type::table_type;
-    using table_view_type = RM_CVREF_T(
-        view<space>(declval<conditional_t<is_const_structure, const table_type &, table_type &>>(),
-                    wrapv<Base>{}));
+    using table_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure, const table_type &, table_type &>>(),
+        wrapv<Base>{}));
     static constexpr index_type sentinel_v = table_type::sentinel_v;
 
     // grid
     template <int LevelNo> using grid_storage_type = typename level_type<LevelNo>::grid_type;
-    template <int LevelNo> using unnamed_grid_view_type = RM_CVREF_T(
-        view<space>(declval<conditional_t<is_const_structure, const grid_storage_type<LevelNo> &,
-                                          grid_storage_type<LevelNo> &>>(),
-                    wrapv<Base>{}));
+    template <int LevelNo> using unnamed_grid_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure, const grid_storage_type<LevelNo> &,
+                              grid_storage_type<LevelNo> &>>(),
+        wrapv<Base>{}));
 
     // mask
     template <int LevelNo> using tile_mask_storage_type =
         typename level_type<LevelNo>::tile_mask_type;
-    template <int LevelNo> using tile_mask_view_type = RM_CVREF_T(view<space>(
+    template <int LevelNo> using tile_mask_view_type = decltype(view<space>(
         declval<conditional_t<is_const_structure, const tile_mask_storage_type<LevelNo> &,
                               tile_mask_storage_type<LevelNo> &>>(),
         wrapv<Base>{}));
     template <int LevelNo> using hierarchy_mask_storage_type =
         typename level_type<LevelNo>::hierarchy_mask_type;
-    template <int LevelNo> using hierarchy_mask_view_type = RM_CVREF_T(view<space>(
+    template <int LevelNo> using hierarchy_mask_view_type = decltype(view<space>(
         declval<conditional_t<is_const_structure, const hierarchy_mask_storage_type<LevelNo> &,
                               hierarchy_mask_storage_type<LevelNo> &>>(),
         wrapv<Base>{}));
@@ -1461,10 +1461,10 @@ namespace zs {
         typename base_t::template grid_storage_type<LevelNo>;
     template <int LevelNo> using unnamed_grid_view_type =
         typename base_t::template unnamed_grid_view_type<LevelNo>;
-    template <int LevelNo> using grid_view_type = RM_CVREF_T(
-        view<space>(declval<conditional_t<is_const_structure, const grid_storage_type<LevelNo> &,
-                                          grid_storage_type<LevelNo> &>>(),
-                    wrapv<Base>{}));
+    template <int LevelNo> using grid_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure, const grid_storage_type<LevelNo> &,
+                              grid_storage_type<LevelNo> &>>(),
+        wrapv<Base>{}));
 
     // mask
     template <int LevelNo> using tile_mask_storage_type =

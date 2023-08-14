@@ -25,7 +25,7 @@ namespace zs {
       auto &table = indexBuckets._table;
       table = RM_CVREF_T(table){allocator, pars.size()};
 
-      constexpr execspace_e space = RM_CVREF_T(execPol)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(execPol)::exec_tag::value;
       constexpr auto execTag = wrapv<space>{};
       execPol(range(table._tableSize), CleanSparsity{execTag, table});
       execPol(range(pars.size()),

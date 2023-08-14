@@ -78,10 +78,10 @@ namespace zs {
     using coord_type = typename ShT::coord_type;
     using integer_coord_type = typename ShT::integer_coord_type;
     using table_type = typename ShT::table_type;
-    using table_view_type = RM_CVREF_T(proxy<space>(
+    using table_view_type = RM_REF_T(proxy<space>(
         declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
     using indices_type = typename ShT::indices_type;
-    using indices_view_type = RM_CVREF_T(proxy<space>(
+    using indices_view_type = RM_REF_T(proxy<space>(
         declval<conditional_t<is_const_structure, const indices_type &, indices_type &>>()));
 
     constexpr SpatialHashView() = default;
@@ -140,7 +140,7 @@ namespace zs {
     using namespace zs;
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     _dx = dx;

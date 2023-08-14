@@ -182,7 +182,7 @@ namespace zs {
         const auto bv = primBvs[id];
         auto c = bv.getBoxCenter();
         auto coord = wholeBox.getUniformCoord(c).template cast<f32>();  // vec<f32, dim>
-        mcs[id] = morton_code<RM_CVREF_T(wholeBox)::dim>(coord);
+        mcs[id] = morton_code<RM_REF_T(wholeBox)::dim>(coord);
         indices[id] = id;
       }
     };
@@ -779,7 +779,7 @@ namespace zs {
                                                  zs::wrapv<Refit>) {
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     if (primBvs.size() == 0) return;
@@ -1062,7 +1062,7 @@ namespace zs {
       Policy &&policy, const zs::Vector<zs::AABBBox<dim, Value>> &primBvs) {
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     if (primBvs.size() == 0) return;
@@ -1197,7 +1197,7 @@ namespace zs {
     using namespace zs;
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     const size_type numLeaves = getNumLeaves();

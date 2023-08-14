@@ -222,7 +222,7 @@ namespace zs {
     _nrows = nrows;
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
     using ICoord = zs::vec<Ti, 2>;
 
@@ -332,7 +332,7 @@ namespace zs {
     _nrows = nrows;
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using ICoord = zs::vec<Ti, 2>;
 
     size_t tabSize = Mirror ? (size_t)size * 2 : (size_t)size;
@@ -423,7 +423,7 @@ namespace zs {
     _nrows = nrows;
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using ICoord = zs::vec<Ti, 2>;
 
     auto allocator = get_temporary_memory_source(policy);
@@ -487,7 +487,7 @@ namespace zs {
       Policy &&policy,
       const SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o,
       wrapv<PostOrder>) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     if (!valid_memspace_for_execution(policy, o.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks

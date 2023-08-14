@@ -196,8 +196,8 @@ namespace zs {
     using index_t = typename LBvsT::index_type;
     using bv_t = typename LBvsT::Box;
     using bvs_t = typename LBvsT::bvs_t;
-    using bvs_view_type = RM_CVREF_T(
-        view<space>(declval<conditional_t<is_const_structure, const bvs_t &, bvs_t &>>()));
+    using bvs_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure, const bvs_t &, bvs_t &>>()));
     using vector_t = typename LBvsT::vector_t;
     using indices_t = typename LBvsT::indices_t;
 

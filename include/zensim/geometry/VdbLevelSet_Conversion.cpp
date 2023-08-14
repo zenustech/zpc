@@ -110,7 +110,7 @@ namespace zs {
         ret.resize(ompExec, newNbs);
         // init additional grid blocks
         ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
-                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+                                      nbs](typename RM_REF_T(ret)::size_type bi) mutable {
           auto block = ls._grid.block(bi + nbs);
           using lsv_t = RM_CVREF_T(ls);
           for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci)
@@ -393,7 +393,7 @@ namespace zs {
         ret.resize(ompExec, newNbs);
         // init additional grid blocks
         ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
-                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+                                      nbs](typename RM_REF_T(ret)::size_type bi) mutable {
           using lsv_t = RM_CVREF_T(ls);
           for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci) {
             const auto offset = (bi + nbs) * ls.block_size + ci;
@@ -557,7 +557,7 @@ namespace zs {
         ret.resize(ompExec, newNbs);
         // init additional grid blocks
         ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret),
-                                      nbs](typename RM_CVREF_T(ret)::size_type bi) mutable {
+                                      nbs](typename RM_REF_T(ret)::size_type bi) mutable {
           using lsv_t = RM_CVREF_T(ls);
           for (typename lsv_t::cell_index_type ci = 0; ci != ls.block_size; ++ci) {
             const auto offset = (bi + nbs) * ls.block_size + ci;

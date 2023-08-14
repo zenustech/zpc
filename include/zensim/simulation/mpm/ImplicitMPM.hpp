@@ -31,7 +31,7 @@ namespace zs {
     };
     template <class ExecutionPolicy, typename In, typename Out>
     void multiply(ExecutionPolicy&& policy, In&& in, Out&& out) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       constexpr auto execTag = wrapv<space>{};
       auto mh = simulator.memDsts[partI];
       for (auto&& [modelId, objId] : simulator.groups[partI]) {
@@ -96,7 +96,7 @@ namespace zs {
 
     template <class ExecutionPolicy, typename InOut>
     void project(ExecutionPolicy&& policy, InOut&& inout) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       auto mh = simulator.memDsts[partI];
       assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
       for (auto& boundary : simulator.boundaries) {
@@ -138,7 +138,7 @@ namespace zs {
 
     template <class ExecutionPolicy, typename In, typename Out>
     void precondition(ExecutionPolicy&& policy, In&& in, Out&& out) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       auto mh = simulator.memDsts[partI];
       assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
       match(

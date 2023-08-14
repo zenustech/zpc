@@ -74,10 +74,10 @@ namespace zs {
     using index_type = typename ib_t::index_type;
     using coord_index_type = typename ib_t::coord_index_type;
     using table_t = typename ib_t::table_t;
-    using table_view_t = RM_CVREF_T(
+    using table_view_t = RM_REF_T(
         proxy<space>(declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
     using vector_t = typename ib_t::vector_t;
-    using vector_view_t = RM_CVREF_T(
+    using vector_view_t = RM_REF_T(
         proxy<space>(declval<conditional_t<is_const_structure, const vector_t &, vector_t &>>()));
 
     static constexpr auto coord_offset

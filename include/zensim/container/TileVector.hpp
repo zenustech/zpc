@@ -365,6 +365,9 @@ namespace zs {
     constexpr const void *tileOffset(size_type tileNo) const noexcept {
       return static_cast<const void *>(data() + tileNo * numChannels() * lane_width);
     }
+    constexpr void *tileOffset(size_type tileNo) noexcept {
+      return static_cast<void *>(data() + tileNo * numChannels() * lane_width);
+    }
     /// ctor, assignment operator
     TileVector(const TileVector &o)
         : _allocator{o._allocator},

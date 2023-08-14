@@ -388,12 +388,17 @@ namespace zs {
     /// @note signed integers being sign-extended should be avoided
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
+#  if defined(__CUDA_ARCH__)
     if constexpr (sizeof(unsigned int) >= nbytes) {
       return __popc((make_unsigned_t<remove_cvref_t<T>>)x);
     } else if constexpr (sizeof(unsigned long long int) >= nbytes) {
       return __popcll((make_unsigned_t<remove_cvref_t<T>>)x);
-    } else
+    }
+#  else
+    if constexpr (!(sizeof(unsigned int) >= nbytes || sizeof(unsigned long long int) >= nbytes)) {
       static_assert(always_false<T>, "error in compiling cuda implementation of [count_ones]!");
+    }
+#  endif
     return -1;
   }
 
@@ -402,13 +407,18 @@ namespace zs {
   count_tailing_zeros(T x, wrapv<space> = {}) {
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
+#  if defined(__CUDA_ARCH__)
     if constexpr (sizeof(int) == nbytes) {
       return __clz(__brev(x));
     } else if constexpr (sizeof(long long int) == nbytes) {
       return __clzll(__brevll(x));
-    } else
+    }
+#  else
+    if constexpr (!(sizeof(int) == nbytes || sizeof(long long int) == nbytes)) {
       static_assert(always_false<T>,
                     "error in compiling cuda implementation of [count_tailing_zeros]!");
+    }
+#  endif
     return -1;
   }
 #endif

@@ -156,8 +156,9 @@ namespace zs {
         timer.tock(fmt::format("[Seq Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
-    template <typename Range, typename... Args, typename F>
-    constexpr void operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
+    template <typename Range, typename ParamTuple, typename F,
+              enable_if_t<is_tuple_v<remove_cvref_t<ParamTuple>>> = 0>
+    constexpr void operator()(Range &&range, ParamTuple &&params, F &&f,
                               const source_location &loc = source_location::current()) const {
       constexpr auto hasBegin = is_valid(
           [](auto t) -> decltype((void)std::begin(declval<typename decltype(t)::type>())) {});
@@ -170,7 +171,7 @@ namespace zs {
         /// for openvdb parallel iteration...
         auto iter = FWD(range);  // otherwise fails on win
         for (; iter; ++iter) {
-          if constexpr (is_invocable_v<F, zs::tuple<Args...>>) {
+          if constexpr (is_invocable_v<F, ParamTuple>) {
             f(params);
           } else {
             std::invoke(f, iter, params);

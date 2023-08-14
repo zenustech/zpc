@@ -178,33 +178,32 @@ namespace zs {
         f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)...);
     }
 
-    template <bool withIndex, typename Tn, typename F, typename ZipIter, typename... Args,
+    template <bool withIndex, typename Tn, typename F, typename ZipIter, typename ParamTuple,
               size_t... Is>
     __forceinline__ __device__ void range_foreach_with_params(wrapv<withIndex>, Tn i, F &&f,
-                                                              ZipIter &&iter,
-                                                              const zs::tuple<Args...> &params,
+                                                              ZipIter &&iter, ParamTuple &&params,
                                                               index_sequence<Is...>) {
       ((void)zs::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
-        f(i, *zs::get<Is>(iter.iters)..., params);
+        f(i, *zs::get<Is>(iter.iters)..., FWD(params));
       else {
-        f(*zs::get<Is>(iter.iters)..., params);
+        f(*zs::get<Is>(iter.iters)..., FWD(params));
       }
     }
     template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
-              typename... Args, size_t... Is>
+              typename ParamTuple, size_t... Is>
     __forceinline__ __device__ void range_foreach_with_params(wrapv<withIndex>, ShmT *shmem, Tn i,
                                                               F &&f, ZipIter &&iter,
-                                                              const zs::tuple<Args...> &params,
+                                                              ParamTuple &&params,
                                                               index_sequence<Is...>) {
       ((void)zs::get<Is>(iter.iters).advance(i), ...);
       using func_traits
           = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;
       using shmem_ptr_t = typename func_traits::first_argument_t;
       if constexpr (withIndex)
-        f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)..., params);
+        f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)..., FWD(params));
       else
-        f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)..., params);
+        f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)..., FWD(params));
     }
   }  // namespace detail
 

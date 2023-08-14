@@ -120,8 +120,9 @@ namespace zs {
         timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
-    template <typename Range, typename... Args, typename F>
-    void operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
+    template <typename Range, typename ParamTuple, typename F,
+              enable_if_t<is_tuple_v<remove_cvref_t<ParamTuple>>> = 0>
+    void operator()(Range &&range, ParamTuple &&params, F &&f,
                     const source_location &loc = source_location::current()) const {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
@@ -138,7 +139,7 @@ namespace zs {
         for (; iter; ++iter)
 #pragma omp task firstprivate(iter)
         {
-          if constexpr (is_invocable_v<F, zs::tuple<Args...>>) {
+          if constexpr (is_invocable_v<F, ParamTuple>) {
             f(params);
           } else {
             std::invoke(f, iter, params);
@@ -155,7 +156,7 @@ namespace zs {
 
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
           for (DiffT i = 0; i < dist; ++i) {
-            if constexpr (is_invocable_v<F, zs::tuple<Args...>>)
+            if constexpr (is_invocable_v<F, ParamTuple>)
               f(params);
             else {
               auto &&it = *(iter + i);
@@ -174,7 +175,7 @@ namespace zs {
           for (auto &&it : range)
 #pragma omp task firstprivate(it)
           {
-            if constexpr (is_invocable_v<F, zs::tuple<Args...>>) {
+            if constexpr (is_invocable_v<F, ParamTuple>) {
               f(params);
             } else {
               if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)

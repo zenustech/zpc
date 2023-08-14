@@ -2,6 +2,7 @@
 // see https://github.com/AcademySoftwareFoundation/openvdb/blob/master/LICENSE
 #pragma once
 #include "zensim/TypeAlias.hpp"
+#include "zensim/execution/Atomics.hpp"
 #include "zensim/execution/Intrinsics.hpp"
 
 namespace zs {
@@ -115,12 +116,26 @@ namespace zs {
 #endif
       words[n >> log_2_word_size] |= word_type(1) << (n & word_mask);
     }
+    template <execspace_e space> void setOn(int n, wrapv<space>) {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (n >= bit_size) printf("[%d]-th bit is out of bound [%d]\n", n, bit_size);
+#endif
+      atomic_or(wrapv<space>{}, &words[n >> log_2_word_size], word_type(1) << (n & word_mask));
+      // words[n >> log_2_word_size] |= word_type(1) << (n & word_mask);
+    }
     /// Set the <i>n</i>th bit off
     constexpr void setOff(int n) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (n >= bit_size) printf("[%d]-th bit is out of bound [%d]\n", n, bit_size);
 #endif
       words[n >> log_2_word_size] &= ~(word_type(1) << (n & word_mask));
+    }
+    template <execspace_e space> constexpr void setOff(int n, wrapv<space>) {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (n >= bit_size) printf("[%d]-th bit is out of bound [%d]\n", n, bit_size);
+#endif
+      atomic_and(wrapv<space>{}, &words[n >> log_2_word_size], ~(word_type(1) << (n & word_mask)));
+      // words[n >> log_2_word_size] &= ~(word_type(1) << (n & word_mask));
     }
     /// Set the <i>n</i>th bit to the specified state
     constexpr void set(int n, bool On) { (void)(On ? setOn(n) : setOff(n)); }

@@ -393,11 +393,11 @@ namespace zs {
       return __popc((make_unsigned_t<remove_cvref_t<T>>)x);
     } else if constexpr (sizeof(unsigned long long int) >= nbytes) {
       return __popcll((make_unsigned_t<remove_cvref_t<T>>)x);
-    }
+    } else
 #  else
     static_assert(always_false<T>, "error in compiling cuda implementation of [count_ones]!");
-    return -1;
 #  endif
+      return -1;
   }
 
   template <typename T, execspace_e space = deduce_execution_space()>
@@ -410,12 +410,12 @@ namespace zs {
       return __clz(__brev(x));
     } else if constexpr (sizeof(long long int) == nbytes) {
       return __clzll(__brevll(x));
-    }
+    } else
 #  else
     static_assert(always_false<T>,
                   "error in compiling cuda implementation of [count_tailing_zeros]!");
-    return -1;
 #  endif
+      return -1;
   }
 #endif
 
@@ -433,11 +433,13 @@ namespace zs {
       ret = (int)__popcnt((unsigned int)(make_unsigned_t<remove_cvref_t<T>>)x);
     else if constexpr (sizeof(unsigned __int64) == nbytes)
       ret = (int)__popcnt64((unsigned __int64)(make_unsigned_t<remove_cvref_t<T>>)x);
+    else
 #elif defined(__clang__) || defined(__GNUC__)
     if constexpr (sizeof(unsigned int) == nbytes)
       ret = __builtin_popcount((unsigned int)(make_unsigned_t<remove_cvref_t<T>>)x);
     else if constexpr (sizeof(unsigned long long) == nbytes)
       ret = __builtin_popcountll((unsigned long long)(make_unsigned_t<remove_cvref_t<T>>)x);
+    else
 #else
     // fall back to software implementation
     if constexpr (true) {
@@ -451,9 +453,8 @@ namespace zs {
       ret = 0;
       for (int n = sizeof(x); n--;) ret += BitsSetTable256[*(p++)];
       ret = c;
-    }
+    } else
 #endif
-    else
       static_assert(always_false<T>,
                     "unsupported type for host implementation of count_tailing_zeros.");
     return ret;
@@ -472,7 +473,7 @@ namespace zs {
     } else if constexpr (sizeof(unsigned __int64) == nbytes) {
       _BitScanForward64(&index, (unsigned __int64)x);
       ret = (int)index;
-    }
+    } else
 #elif defined(__clang__) || defined(__GNUC__)
     if constexpr (sizeof(unsigned int) == nbytes)
       ret = __builtin_ctz((unsigned int)x);
@@ -480,6 +481,7 @@ namespace zs {
       ret = __builtin_ctzl((unsigned long)x);
     else if constexpr (sizeof(unsigned long long) == nbytes)
       ret = __builtin_ctzll((unsigned long long)x);
+    else
 #else
     // fall back to software implementation
     if constexpr (sizeof(u8) == nbytes) {
@@ -499,9 +501,8 @@ namespace zs {
       };
       u64 v = x;
       ret = DeBruijn[(u64)((v & -v) * u64(0x022FDD63CC95386D)) >> 58];
-    }
+    } else
 #endif
-    else
       static_assert(always_false<T>,
                     "unsupported type for host implementation of count_tailing_zeros.");
     return (int)ret;

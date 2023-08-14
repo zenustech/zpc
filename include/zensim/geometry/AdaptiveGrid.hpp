@@ -18,7 +18,8 @@ namespace zs {
                           index_sequence<Is...>, ZSPmrAllocator<>> {
     using value_type = ValueT;
     using allocator_type = ZSPmrAllocator<>;
-    using size_type = size_t;
+    // using size_type = size_t;
+    using size_type = u32;
     using index_type = zs::make_signed_t<size_type>;  // associated with the number of blocks
     using integer_coord_component_type = int;
 
@@ -296,7 +297,7 @@ namespace zs {
     }
 
     constexpr MemoryLocation memoryLocation() const noexcept {
-      return get<0>(_levels)._table.memoryLocation();
+      return get<0>(_levels).table.memoryLocation();
     }
     constexpr ProcID devid() const noexcept { return get<0>(_levels).table.devid(); }
     constexpr memsrc_e memspace() const noexcept { return get<0>(_levels).table.memspace(); }
@@ -330,16 +331,131 @@ namespace zs {
     }
 
     /// @brief maintain topo (i.e. childMask, table) in a bottom-up fashion
-    template <typename Policy> void updateTopoBottomUp(Policy &&pol) {
-      constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
-
+    struct _update_topo_build_parent_entry {
+      template <typename ParamT> constexpr void operator()(size_type i, ParamT &&params) {
+        auto [chTab, parTab, parOriginMask] = params;
+        auto key = chTab._activeKeys[i];
+        parTab.insert(key & parOriginMask);
+      }
+    };
+    struct _update_topo_update_parent_childmask {
+      template <typename ParamT> constexpr void operator()(size_type i, ParamT &&params) {
+        auto [keys, parTab, parChMask, agTag, parLvlTag, execTag] = params;
+        constexpr int level = RM_CVREF_T(parLvlTag)::value;
+        using AgT = typename RM_CVREF_T(agTag)::type;
+        integer_coord_type key = keys[i];
+        index_type bno = parTab.query(AgT::template coord_to_key<level>(key));
+        parChMask[bno].setOn(AgT::template coord_to_hierarchy_offset<level>(key), execTag);
+      }
+    };
+    template <typename Policy, bool SortGridData = true,
+              execspace_e space = remove_reference_t<Policy>::exec_tag::value>
+    void updateTopo(Policy &&pol, wrapv<SortGridData> = {}) {
       if (!valid_memspace_for_execution(pol, get_allocator()))
         throw std::runtime_error(
             "[AdaptiveGrid::updateTopoBottomUp] current memory location not compatible with the "
             "execution policy");
       // ...
+      auto buildUpper = [&pol, this](auto lNoc) {
+        constexpr int level_no = RM_CVREF_T(lNoc)::value;
+        if constexpr (level_no != num_levels - 1) {
+          auto &lc = level(wrapv<level_no>{});
+          auto &lp = level(wrapv<level_no + 1>{});
+          {
+            auto params = zs::make_tuple(view<space>(lc.table), view<space>(lp.table),
+                                         Level<level_no + 1>::origin_mask);
+            pol(range(lc.numBlocks()), params, _update_topo_build_parent_entry{});
+          }
+          {
+            auto params = zs::make_tuple(view<space>(lc.table._activeKeys), view<space>(lp.table),
+                                         view<space>(lp.childMask), wrapt<AdaptiveGridImpl>{},
+                                         wrapv<level_no + 1>{}, wrapv<space>{});
+            pol(range(lc.numBlocks()), params, _update_topo_update_parent_childmask{});
+          }
+        }
+      };
+      (void)((void)buildUpper(wrapv<Is>{}), ...);  // since c++17, sequenced execution
+      /// @note maintain childMask info
+      reorder(FWD(pol), wrapv<SortGridData>{});
     }
 
+    /// @brief restructure (compute childMask upon hash tables)
+    template <integer_coord_component_type CellBits, int I = num_levels - 1>
+    static constexpr int most_suitable_child_level(wrapv<CellBits> parCbs, wrapv<I> = {}) {
+      if constexpr (Level<I>::sbit <= CellBits)
+        return I;
+      else if constexpr (I <= 0)
+        return 0;
+      else
+        return most_suitable_child_level(parCbs, wrapv<I - 1>{});
+    }
+    template <typename Policy, typename ValueDst, size_t... TileBitsDst, size_t... ScalingBitsDst,
+              size_t... Js>
+    void restructure(Policy &&pol,
+                     AdaptiveGridImpl<dim, ValueDst, index_sequence<TileBitsDst...>,
+                                      index_sequence<ScalingBitsDst...>, index_sequence<Js...>,
+                                      ZSPmrAllocator<>> &agDst) {
+      constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+
+      if (!valid_memspace_for_execution(pol, get_allocator()))
+        throw std::runtime_error(
+            "[AdaptiveGrid::reorder] current memory location not compatible with the execution "
+            "policy");
+
+      using AgDstT = RM_CVREF_T(agDst);
+      /// @note allocation prep
+      const auto &tags = getPropertyTags();
+      if (agDst.memoryLocation() != memoryLocation()) {
+        auto allocateTargetLevel = [&tags, &agDst](auto lNo) {
+          auto &lDst = agDst.level(lNo);
+          lDst = RM_CVREF_T(lDst)(tags, 0);
+        };
+        (void)((void)allocateTargetLevel(wrapv<Js>{}), ...);
+      }
+      {
+        // in case missing properties
+        auto prepareTargetLevel = [&pol, &tags, &agDst](auto lNo) {
+          auto &lDst = agDst.level(lNo);
+          lDst.append_channels(pol, tags);
+        };
+        (void)((void)prepareTargetLevel(wrapv<Js>{}), ...);
+      }
+/// @note assign values
+#if 0
+      auto buildTargetLevel = [&pol, &agDst, this](auto lNo) {
+        constexpr int level_no = RM_CVREF_T(lNo)::value;
+        constexpr integer_coord_component_type cell_bits = Level<level_no>::sbit;
+        constexpr int dst_level_no = AgDstT::most_suitable_child_level(wrapv<cell_bits>{});
+        constexpr integer_coord_component_type dst_cell_bits = Level<dst_level_no>::sbit;
+
+        auto &l = level(lNo);
+        auto &lDst = agDst.level(wrapv<dst_level_no>{});
+
+        constexpr integer_coord_component_type rel_bits = cell_bits - dst_cell_bits;
+        static_assert(rel_bits >= 0, "???");
+        constexpr integer_coord_component_type rel_dim = (integer_coord_component_type)1
+                                                         << rel_bits;
+        constexpr size_type rel_size = math::pow_integral((size_type)rel_dim, dim);
+
+        auto nbs = l.numBlocks();
+        auto dstNbs = lDst.numBlocks();
+        lDst.resize(pol, dstNbs + nbs * Level<level_no>::block_size / rel_size);
+
+#  if 0
+        auto params = zs::make_tuple();
+        pol(range(lc.numBlocks()), params, _restructure_assign_values{});
+#  endif
+      };
+      (void)((void)buildTargetLevel(wrapv<Is>{}), ...);
+#endif
+      /// @note complete topo build
+      agDst.updateTopo(FWD(pol), wrapv<true>{});  // include reorder at the end
+      /// @note remaining info
+      agDst._transform = _transform;
+      agDst._background = _background;
+    }
+
+    /// @brief reorder (compute childMask upon hash tables)
     template <int I> struct _reorder_init_kv {
       constexpr void operator()(size_type i, const integer_coord_type &coord, u32 &key,
                                 size_type &id) const noexcept {

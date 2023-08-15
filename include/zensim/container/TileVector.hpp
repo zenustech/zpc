@@ -676,6 +676,7 @@ namespace zs {
   template <execspace_e Space, typename TileVectorT, bool WithinTile, bool Base = false,
             typename = void>
   struct TileVectorUnnamedView {
+    static constexpr auto space = Space;
     static constexpr bool is_const_structure = std::is_const_v<TileVectorT>;
     using tile_vector_type = remove_const_t<TileVectorT>;
     using const_tile_vector_type = std::add_const_t<tile_vector_type>;
@@ -1101,6 +1102,7 @@ namespace zs {
     using base_t::_nameTag;
 #endif
 
+    static constexpr auto space = base_t::space;
     static constexpr bool is_const_structure = base_t::is_const_structure;
     using tile_vector_type = typename base_t::tile_vector_type;
     using const_tile_vector_type = typename base_t::const_tile_vector_type;

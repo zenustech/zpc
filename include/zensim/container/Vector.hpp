@@ -349,7 +349,8 @@ namespace zs {
     return ret;
   }
 
-  template <execspace_e, typename VectorT, bool Base = false, typename = void> struct VectorView {
+  template <execspace_e S, typename VectorT, bool Base = false, typename = void> struct VectorView {
+    static constexpr auto space = S;
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
     using vector_type = remove_const_t<VectorT>;
     using const_vector_type = std::add_const_t<vector_type>;
@@ -426,6 +427,7 @@ namespace zs {
   };
 
   template <execspace_e S, typename VectorT> struct VectorView<S, VectorT, true, void> {
+    static constexpr auto space = S;
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
     using vector_type = remove_const_t<VectorT>;
     using const_vector_type = std::add_const_t<vector_type>;

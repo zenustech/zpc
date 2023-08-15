@@ -403,8 +403,9 @@ namespace zs {
   }
 
   /// proxy to work within each backends
-  template <execspace_e space, typename HashTableT, bool Base = false, typename = void>
+  template <execspace_e space_, typename HashTableT, bool Base = false, typename = void>
   struct BHTView {
+    static constexpr auto space = space_;
     static constexpr auto exectag = wrapv<space>{};
     static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
     using hash_table_type = remove_const_t<HashTableT>;

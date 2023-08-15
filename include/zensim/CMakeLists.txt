@@ -59,6 +59,7 @@ set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
   py_interop/Allocator.cpp
   py_interop/BhtInstantiations.cpp
   py_interop/VectorInstantiations.cpp
+  py_interop/SpmatInstantiations.cpp
   py_interop/TileVectorInstantiations.cpp
 )
 

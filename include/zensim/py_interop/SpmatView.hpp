@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/VectorView.hpp"
+#include "zensim/py_interop/VectorView.hpp"
 
 namespace zs {
 
@@ -11,7 +11,7 @@ namespace zs {
     using size_type = zs::make_unsigned_t<Tn_>;
     using difference_type = zs::make_signed_t<size_type>;
 
-    static constexpr bool is_const_structure = is_const<value_type>::value;
+    static constexpr bool is_const_structure = is_const<T_>::value;
 
     ///
     template <typename T> using decorate_t
@@ -22,7 +22,7 @@ namespace zs {
     SpmatViewLite() noexcept = default;
     SpmatViewLite(index_type nrows, index_type ncols, decorate_t<size_type>* const ptrs,
                   decorate_t<index_type>* const inds, decorate_t<value_type>* const vals) noexcept
-        : _rows{nrows}, _ncols{ncols}, _ptrs{ptrs}, _inds{inds}, _vals{vals} {}
+        : _nrows{nrows}, _ncols{ncols}, _ptrs{ptrs}, _inds{inds}, _vals{vals} {}
 
     constexpr index_type rows() const noexcept { return _nrows; }
     constexpr index_type cols() const noexcept { return _ncols; }

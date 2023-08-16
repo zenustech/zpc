@@ -41,10 +41,10 @@ extern "C" {
                                                 int ch) {                                        \
     v->reset(ch);                                                                                \
   }                                                                                              \
-  T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                 \
+  T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                \
     return v->getVal();                                                                          \
   }                                                                                              \
-  void set_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, T newVal) {    \
+  void set_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, T newVal) {   \
     v->setVal(newVal);                                                                           \
   }                                                                                              \
   /* pyview */                                                                                   \

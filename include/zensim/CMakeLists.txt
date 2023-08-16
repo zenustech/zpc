@@ -61,6 +61,7 @@ set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
   py_interop/VectorInstantiations.cpp
   py_interop/SpmatInstantiations.cpp
   py_interop/TileVectorInstantiations.cpp
+  py_interop/SmallVecInstantiations.cpp
 )
 
 # # headers
@@ -243,6 +244,7 @@ set(ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES
   py_interop/TileVectorView.hpp
   py_interop/BhtView.hpp
   py_interop/HashUtils.hpp
+  py_interop/SmallVec.hpp
 )
 
 if(ZS_ENABLE_CUDA)

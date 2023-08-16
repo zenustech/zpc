@@ -420,7 +420,7 @@ namespace zs {
     }
     struct _restructure_hash_active_cell {
       template <typename ParamT> constexpr void operator()(size_type i, ParamT &&params) {
-        auto [valueMask, keys, dstTab, srcAgTag, srcLvlTag, dstAgTag, dstLvlTag] = params;
+        auto &[valueMask, keys, dstTab, srcAgTag, srcLvlTag, dstAgTag, dstLvlTag] = params;
         constexpr int level = RM_REF_T(srcLvlTag)::value;
         constexpr int dst_level = RM_REF_T(dstLvlTag)::value;
         using AgT = typename RM_REF_T(srcAgTag)::type;
@@ -437,7 +437,7 @@ namespace zs {
     };
     struct _restructure_assign_values {
       template <typename ParamT> constexpr void operator()(size_type i, ParamT &&params) {
-        auto [agv, lvDst] = params;
+        auto &[agv, lvDst] = params;
 
         constexpr size_type block_size = RM_REF_T(lvDst)::block_size;
         constexpr int level = RM_REF_T(lvDst)::level;
@@ -451,7 +451,21 @@ namespace zs {
         value_type val{};  // beware, this is a constexpr func
         auto block = lvDst.grid.tile(bno);
         for (int d = 0; d != lvDst.numChannels(); ++d) {
+#if 1
           hasValue = acc.probeValue(d, coord, val);
+#else
+          hasValue = agv.probeValue(d, coord, val, sentinel_v, wrapv<false>{});
+          int levNo = agv.getValueLevel(coord);
+          if (val != 0.f && hasValue) {
+            value_type vv{};
+            agv.probeValue(d, coord, vv);
+            printf(
+                "cell (b: %d, c: %d) probing (%d, %d, %d) val %f (direct %f) at lev [%d]. "
+                "background (%f)\n",
+                (int)bno, (int)cno, (int)coord[0], (int)coord[1], (int)coord[2], val, vv, levNo,
+                agv._background);
+          }
+#endif
           block(d, cno) = val;
         }
         if (hasValue) lvDst.valueMask[bno].setOn(cno, wrapv<AgvDstT::space>{});
@@ -926,6 +940,71 @@ namespace zs {
       return container_type::template tile_offset_to_coord<I>(offset);
     }
 
+    template <bool Ordered = false, int I = num_levels - 1>
+    constexpr int getValueLevel(const integer_coord_type &coord, index_type bno = sentinel_v,
+                                wrapv<Ordered> = {}, wrapv<I> = {}) const {
+      auto &lev = level(dim_c<I>);
+      if (bno == sentinel_v) {
+        auto c = coord_to_key<I>(coord);
+        bno = lev.table.query(c);
+        if (bno == sentinel_v) {
+          return I;
+        }
+      }
+      const integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
+      auto block = lev.grid.tile(bno);
+      if constexpr (I > 0) {
+        if (lev.childMask[bno].isOff(n)) {
+          return I;
+        }
+        if constexpr (Ordered)
+          return getValueLevel(coord, lev.childOffset[bno] + lev.childMask[bno].countOffset(n),
+                               wrapv<Ordered>{}, wrapv<I - 1>{});
+        else
+          return getValueLevel(coord, sentinel_v, wrapv<Ordered>{}, wrapv<I - 1>{});
+      } else {
+        return 0;
+      }
+    }
+    /// @note only requires the validity of table, valueMask and grid data
+    template <typename T, int I = num_levels - 1>
+    constexpr enable_if_type<!is_const_v<T>, bool> topoObliviousProbeValue(
+        size_type chn, const integer_coord_type &coord, T &val, index_type bno = sentinel_v,
+        wrapv<I> = {}) const {
+      constexpr bool IsVec = is_vec<T>::value;
+      auto &lev = level(dim_c<I>);
+      if (bno == sentinel_v) {
+        auto c = coord_to_key<I>(coord);
+        bno = lev.table.query(c);
+        if (bno == sentinel_v) {
+          if constexpr (IsVec) {
+            val = T::constant(_background);
+          } else
+            val = _background;
+          return false;
+        }
+      }
+      const integer_coord_component_type n = coord_to_tile_offset<I>(coord);
+      auto block = lev.grid.tile(bno);
+      if constexpr (I > 0) {
+        if (lev.valueMask[bno].isOn(n)) {
+          if constexpr (IsVec) {
+            for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
+          } else
+            val = block(chn, n);
+          return true;
+        } else {
+          return topoObliviousProbeValue(chn, coord, val, sentinel_v, wrapv<I - 1>{});
+        }
+      } else {
+        /// @note leaf level
+        if constexpr (IsVec) {
+          for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
+        } else
+          val = block(chn, n);
+        return lev.valueMask[bno].isOn(n);
+      }
+    }
     template <typename T, bool Ordered = false, int I = num_levels - 1>
     constexpr enable_if_type<!is_const_v<T>, bool> probeValue(size_type chn,
                                                               const integer_coord_type &coord,
@@ -945,13 +1024,14 @@ namespace zs {
           return false;
         }
       }
-      const integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
       auto block = lev.grid.tile(bno);
       if constexpr (I > 0) {
+        integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
         // printf("found int-%d [%d] (%d, %d, %d) ch[%d]\n", I, bno, lev.table._activeKeys[bno][0],
         //        lev.table._activeKeys[bno][1], lev.table._activeKeys[bno][2], n);
         /// @note internal level
         if (lev.childMask[bno].isOff(n)) {
+          n = coord_to_tile_offset<I>(coord);
           if constexpr (IsVec) {
             for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
           } else
@@ -966,6 +1046,7 @@ namespace zs {
         else
           return probeValue(chn, coord, val, sentinel_v, wrapv<Ordered>{}, wrapv<I - 1>{});
       } else {
+        const integer_coord_component_type n = coord_to_tile_offset<I>(coord);
         /// @note leaf level
         if constexpr (IsVec) {
           for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
@@ -995,11 +1076,12 @@ namespace zs {
           return false;
         }
       }
-      const integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
       auto block = lev.grid.tile(bno);
       if constexpr (I > 0) {
+        integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
         /// @note internal level
         if (lev.childMask[bno].isOff(n)) {
+          n = coord_to_tile_offset<I>(coord);
           if constexpr (IsVec) {
             for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
           } else
@@ -1016,6 +1098,7 @@ namespace zs {
           return probeValueAndCache(acc, chn, coord, val, sentinel_v, wrapv<Ordered>{},
                                     wrapv<I - 1>{});
       } else {
+        const integer_coord_component_type n = coord_to_tile_offset<I>(coord);
         acc.insert(coord, bno, wrapv<num_levels - 1 - I>{});
         /// @note leaf level
         if constexpr (IsVec) {

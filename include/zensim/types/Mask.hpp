@@ -92,7 +92,7 @@ namespace zs {
     }
 
     /// Return the byte size of this bit_mask
-    static int memUsage() { return static_cast<int>(word_count * sizeof(word_type)); }
+    static constexpr int memUsage() { return static_cast<int>(word_count * sizeof(word_type)); }
     /// Return the total number of on bits
     constexpr int countOn() const {
       int sum = 0, n = word_count;
@@ -110,13 +110,13 @@ namespace zs {
     /// Return the total number of on bits
     constexpr int countOff() const { return bit_size - countOn(); }
     /// Set the <i>n</i>th  bit on
-    void setOn(int n) {
+    constexpr void setOn(int n) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (n >= bit_size) printf("[%d]-th bit is out of bound [%d]\n", n, bit_size);
 #endif
       words[n >> log_2_word_size] |= word_type(1) << (n & word_mask);
     }
-    template <execspace_e space> void setOn(int n, wrapv<space>) {
+    template <execspace_e space> constexpr void setOn(int n, wrapv<space>) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (n >= bit_size) printf("[%d]-th bit is out of bound [%d]\n", n, bit_size);
 #endif
@@ -226,14 +226,14 @@ namespace zs {
 
     //@{
     /// Return the <i>n</i>th word of the bit mask, for a word of arbitrary size.
-    template <typename WordT> WordT getWord(int n) const {
+    template <typename WordT> constexpr WordT getWord(int n) const {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (n * 8 * sizeof(WordT) >= bit_size)
         printf("[%d]-th word is out of bound [%d]\n", n, bit_size);
 #endif
       return reinterpret_cast<const WordT*>(words)[n];
     }
-    template <typename WordT> WordT& getWord(int n) {
+    template <typename WordT> constexpr WordT& getWord(int n) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (n * 8 * sizeof(WordT) >= bit_size)
         printf("[%d]-th word is out of bound [%d]\n", n, bit_size);

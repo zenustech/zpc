@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+
 #include "SparseGrid.hpp"
 #include "zensim/types/Mask.hpp"
 
@@ -435,6 +437,17 @@ namespace zs {
         }
       }
     };
+#if 0
+    struct _restructure_0 {
+      template <typename Tup> constexpr void operator()(int i, integer_coord_type &c, Tup &&) {
+        u64 sd = i;
+        for (int d = 0; d != dim_; ++d) {
+          auto val = zs::PCG::pcg32_random_r(sd, 1442695040888963407ull);
+          c[d] = val % 10000;
+        }
+      }
+    };
+#endif
     struct _restructure_assign_values {
       template <typename ParamT> constexpr void operator()(size_type i, ParamT &&params) {
         auto &[agv, lvDst] = params;
@@ -451,24 +464,13 @@ namespace zs {
         value_type val{};  // beware, this is a constexpr func
         auto block = lvDst.grid.tile(bno);
         for (int d = 0; d != lvDst.numChannels(); ++d) {
-#if 1
-          hasValue = acc.probeValue(d, coord, val);
-#else
-          hasValue = agv.probeValue(d, coord, val, sentinel_v, wrapv<false>{});
-          int levNo = agv.getValueLevel(coord);
-          if (val != 0.f && hasValue) {
-            value_type vv{};
-            agv.probeValue(d, coord, vv);
-            printf(
-                "cell (b: %d, c: %d) probing (%d, %d, %d) val %f (direct %f) at lev [%d]. "
-                "background (%f)\n",
-                (int)bno, (int)cno, (int)coord[0], (int)coord[1], (int)coord[2], val, vv, levNo,
-                agv._background);
-          }
-#endif
+          // hasValue = agv.probeValue(d, coord, val);
+          hasValue |= acc.probeValue(d, coord, val);
           block(d, cno) = val;
         }
-        if (hasValue) lvDst.valueMask[bno].setOn(cno, wrapv<AgvDstT::space>{});
+        if (hasValue) {
+          lvDst.valueMask[bno].setOn(cno, wrapv<AgvDstT::space>{});
+        }
       }
     };
 #if 0
@@ -537,9 +539,10 @@ namespace zs {
       }
     };
     struct _reorder_count_on {
-      template <typename MaskT>
-      constexpr void operator()(size_type &n, const MaskT &mask) noexcept {
-        n = mask.countOn();
+      template <typename MaskT, typename ParamT>
+      constexpr void operator()(size_type &n, const MaskT &mask, ParamT &&params) noexcept {
+        auto &[tag] = params;
+        n = mask.countOn(tag);
       }
     };
     template <int I> struct _reorder_locate_children {
@@ -550,7 +553,8 @@ namespace zs {
         auto parentOrigin = coord_to_key<I>(coord);
         auto parentBno = tb.query(parentOrigin);
         auto childOffset = coord_to_hierarchy_offset<I>(coord);
-        dst = offsets[parentBno] + masks[parentBno].countOffset(childOffset);
+        dst = offsets[parentBno]
+              + masks[parentBno].countOffset(childOffset, wrapv<RM_REF_T(tb)::space>{});
       }
     };
     template <typename Policy, bool SortGridData = true, int I = num_levels - 1>
@@ -589,7 +593,7 @@ namespace zs {
       }
       /// histogram sort
       Vector<size_type> numActiveChildren{allocator, nbs};
-      pol(zip(numActiveChildren, l.childMask), _reorder_count_on{});
+      pol(zip(numActiveChildren, l.childMask), zs::make_tuple(wrapv<space>{}), _reorder_count_on{});
       exclusive_scan(pol, numActiveChildren.begin(), numActiveChildren.end(),
                      l.childOffset.begin());
       // fmt::print("done level [{}] histogram sort.\n", I);
@@ -879,18 +883,18 @@ namespace zs {
 
     using transform_type = typename container_type::transform_type;
 
-    template <auto I = 0, bool isConst = is_const_structure>
-    enable_if_type<!isConst, level_view_type<I> &> level(wrapv<I>) {
+    template <auto I = 0, bool isConst = is_const_structure, enable_if_t<!isConst> = 0>
+    constexpr decltype(auto) level(wrapv<I>) {
       return zs::get<I>(_levels);
     }
-    template <auto I = 0> const level_view_type<I> &level(wrapv<I>) const {
+    template <auto I = 0> constexpr decltype(auto) level(wrapv<I>) const {
       return zs::get<I>(_levels);
     }
-    template <auto I = 0, bool isConst = is_const_structure>
-    enable_if_type<!isConst, level_view_type<I> &> level(value_seq<I>) {
+    template <auto I = 0, bool isConst = is_const_structure, enable_if_t<!isConst> = 0>
+    constexpr decltype(auto) level(value_seq<I>) {
       return zs::get<I>(_levels);
     }
-    template <auto I = 0> const level_view_type<I> &level(value_seq<I>) const {
+    template <auto I = 0> constexpr decltype(auto) level(value_seq<I>) const {
       return zs::get<I>(_levels);
     }
 
@@ -958,8 +962,9 @@ namespace zs {
           return I;
         }
         if constexpr (Ordered)
-          return getValueLevel(coord, lev.childOffset[bno] + lev.childMask[bno].countOffset(n),
-                               wrapv<Ordered>{}, wrapv<I - 1>{});
+          return getValueLevel(
+              coord, lev.childOffset[bno] + lev.childMask[bno].countOffset(n, wrapv<space>{}),
+              wrapv<Ordered>{}, wrapv<I - 1>{});
         else
           return getValueLevel(coord, sentinel_v, wrapv<Ordered>{}, wrapv<I - 1>{});
       } else {
@@ -1040,9 +1045,10 @@ namespace zs {
         }
         /// TODO: an optimal layout should directly give child-n position
         if constexpr (Ordered)
-          return probeValue(chn, coord, val,
-                            lev.childOffset[bno] + lev.childMask[bno].countOffset(n),
-                            wrapv<Ordered>{}, wrapv<I - 1>{});
+          return probeValue(
+              chn, coord, val,
+              lev.childOffset[bno] + lev.childMask[bno].countOffset(n, wrapv<space>{}),
+              wrapv<Ordered>{}, wrapv<I - 1>{});
         else
           return probeValue(chn, coord, val, sentinel_v, wrapv<Ordered>{}, wrapv<I - 1>{});
       } else {
@@ -1091,9 +1097,10 @@ namespace zs {
         acc.insert(coord, bno, wrapv<num_levels - 1 - I>{});
         /// TODO: an optimal layout should directly give child-n position
         if constexpr (Ordered)
-          return probeValueAndCache(acc, chn, coord, val,
-                                    lev.childOffset[bno] + lev.childMask[bno].countOffset(n),
-                                    wrapv<Ordered>{}, wrapv<I - 1>{});
+          return probeValueAndCache(
+              acc, chn, coord, val,
+              lev.childOffset[bno] + lev.childMask[bno].countOffset(n, wrapv<space>{}),
+              wrapv<Ordered>{}, wrapv<I - 1>{});
         else
           return probeValueAndCache(acc, chn, coord, val, sentinel_v, wrapv<Ordered>{},
                                     wrapv<I - 1>{});
@@ -1705,6 +1712,13 @@ namespace zs {
       constexpr int dst_level_no = AgDstT::closest_child_level(wrapv<cell_bits>{});
       static_assert(cell_bits >= AgDstT::template Level<dst_level_no>::sbit, "???");
 
+#if 0
+      fmt::print(fg(fmt::color::light_blue), "hashing level-{} [{}, {}) to dst-level-{} [{}, {})\n",
+                 level_no, cell_bits, Level<level_no>::ebit, dst_level_no,
+                 AgDstT::template Level<dst_level_no>::sbit,
+                 AgDstT::template Level<dst_level_no>::ebit);
+#endif
+
       auto &l = level(lNo);
       auto &lDst = agDst.level(wrapv<dst_level_no>{});
 
@@ -1749,6 +1763,21 @@ namespace zs {
       }
     };
     (void)((void)buildTargetLevel(wrapv<Js>{}), ...);
+
+    /// DEBUG
+#if 0
+    auto agv = view<space>(*this);
+    auto agvDst = view<space>(agDst);
+    Vector<integer_coord_type> coords{allocator, 100000};
+    pol(enumerate(coords), zs::tuple<>{}, _restructure_0{});
+    {
+      auto tup = zs::make_tuple(agv, agvDst);
+      pol(enumerate(coords), tup, _restructure_1{});
+    }
+    fmt::print(fg(fmt::color::red), "done dst ag value check\n");
+#endif
+    /// DEBUG
+
     /// @brief complete topo build
     agDst.complementTopo(FWD(pol), true_c);  // this includes [reorder] at the end
     /// @brief remaining info
@@ -1794,7 +1823,8 @@ namespace zs {
         if constexpr (false) {
           auto allocator = get_temporary_memory_source(pol);
           Vector<size_type> numActiveChildren{allocator, prevParNbs};
-          pol(zip(numActiveChildren, lp.childMask), _reorder_count_on{});
+          pol(zip(numActiveChildren, lp.childMask), zs::make_tuple(wrapv<space>{}),
+              _reorder_count_on{});
           Vector<size_type> numOn{allocator, 1};
           reduce(pol, numActiveChildren.begin(), numActiveChildren.end(), numOn.begin());
           fmt::print("upon topo complementation level [{}]: initial [{}] num active children\n",
@@ -1834,7 +1864,8 @@ namespace zs {
         if constexpr (false) {
           auto allocator = get_temporary_memory_source(pol);
           Vector<size_type> numActiveChildren{allocator, parNbs};
-          pol(zip(numActiveChildren, lp.childMask), _reorder_count_on{});
+          pol(zip(numActiveChildren, lp.childMask), zs::make_tuple(wrapv<space>{}),
+              _reorder_count_on{});
           Vector<size_type> numOn{allocator, 1};
           reduce(pol, numActiveChildren.begin(), numActiveChildren.end(), numOn.begin());
           fmt::print("upon topo complementation level [{}]: after init, [{}] num active children\n",
@@ -1858,7 +1889,8 @@ namespace zs {
         if constexpr (false) {
           auto allocator = get_temporary_memory_source(pol);
           Vector<size_type> numActiveChildren{allocator, parNbs};
-          pol(zip(numActiveChildren, lp.childMask), _reorder_count_on{});
+          pol(zip(numActiveChildren, lp.childMask), zs::make_tuple(wrapv<space>{}),
+              _reorder_count_on{});
           Vector<size_type> numOn{allocator, 1};
           reduce(pol, numActiveChildren.begin(), numActiveChildren.end(), numOn.begin());
           fmt::print(

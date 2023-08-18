@@ -24,14 +24,14 @@ namespace zs {
     word_type words[word_count];  // only member data!
 
   public:
-    constexpr bit_mask() { setOff(); }
+    constexpr bit_mask() noexcept { setOff(); }
     constexpr bit_mask(bool on) { set(on); }
     constexpr bit_mask(const bit_mask& other) = default;
-    constexpr bit_mask(bit_mask&& other) = default;
+    constexpr bit_mask(bit_mask&& other) noexcept = default;
     ~bit_mask() = default;
     /// Assignment operator
     constexpr bit_mask& operator=(const bit_mask& other) = default;
-    constexpr bit_mask& operator=(bit_mask&& other) = default;
+    constexpr bit_mask& operator=(bit_mask&& other) noexcept = default;
 
     constexpr bool operator==(const bit_mask& other) const {
       int n = word_count;
@@ -94,21 +94,26 @@ namespace zs {
     /// Return the byte size of this bit_mask
     static constexpr int memUsage() { return static_cast<int>(word_count * sizeof(word_type)); }
     /// Return the total number of on bits
-    constexpr int countOn() const {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr int countOn(wrapv<space> tag = {}) const {
       int sum = 0, n = word_count;
-      for (const word_type* w = words; n--; ++w) sum += count_ones(*w);
+      for (const word_type* w = words; n--; ++w) sum += count_ones(*w, tag);
       return sum;
     }
     /// Return the total number of on bits
-    constexpr int countOffset(int k) const {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr int countOffset(int k, wrapv<space> tag = {}) const {
       int sum = 0, n = k >> log_2_word_size;
       const word_type* w = words;
-      for (; n--; ++w) sum += count_ones(*w);
-      sum += count_ones((*w) & (((word_type)1 << (word_type)(k & word_mask)) - 1));
+      for (; n--; ++w) sum += count_ones(*w, tag);
+      sum += count_ones((*w) & (((word_type)1 << (word_type)(k & word_mask)) - 1), tag);
       return sum;
     }
     /// Return the total number of on bits
-    constexpr int countOff() const { return bit_size - countOn(); }
+    template <execspace_e space = deduce_execution_space()>
+    constexpr int countOff(wrapv<space> tag = {}) const {
+      return bit_size - countOn(tag);
+    }
     /// Set the <i>n</i>th  bit on
     constexpr void setOn(int n) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -116,7 +121,8 @@ namespace zs {
 #endif
       words[n >> log_2_word_size] |= word_type(1) << (n & word_mask);
     }
-    template <execspace_e space> constexpr void setOn(int n, wrapv<space>) {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr void setOn(int n, wrapv<space>) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (n >= bit_size) printf("[%d]-th bit is out of bound [%d]\n", n, bit_size);
 #endif
@@ -130,7 +136,8 @@ namespace zs {
 #endif
       words[n >> log_2_word_size] &= ~(word_type(1) << (n & word_mask));
     }
-    template <execspace_e space> constexpr void setOff(int n, wrapv<space>) {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr void setOff(int n, wrapv<space>) {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (n >= bit_size) printf("[%d]-th bit is out of bound [%d]\n", n, bit_size);
 #endif
@@ -209,19 +216,21 @@ namespace zs {
       while (w < n && *w == words[0]) ++w;
       return w == n;
     }
-    constexpr int findFirstOn() const {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr int findFirstOn(wrapv<space> tag = {}) const {
       int n = 0;
       const word_type* w = words;
       for (; n < word_count && !*w; ++w, ++n)
         ;
-      return n == word_count ? bit_size : (n << log_2_word_size) + count_tailing_zeros(*w);
+      return n == word_count ? bit_size : (n << log_2_word_size) + count_tailing_zeros(*w, tag);
     }
-    constexpr int findFirstOff() const {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr int findFirstOff(wrapv<space> tag = {}) const {
       int n = 0;
       const word_type* w = words;
       for (; n < word_count && !~*w; ++w, ++n)
         ;
-      return n == word_count ? bit_size : (n << log_2_word_size) + count_tailing_zeros(~*w);
+      return n == word_count ? bit_size : (n << log_2_word_size) + count_tailing_zeros(~*w, tag);
     }
 
     //@{
@@ -242,7 +251,8 @@ namespace zs {
     }
     //@}
 
-    constexpr int findNextOn(int start) const {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr int findNextOn(int start, wrapv<space> tag = {}) const {
       int n = start >> log_2_word_size;      // initiate
       if (n >= word_count) return bit_size;  // check for out of bounds
       int m = start & word_mask;
@@ -251,10 +261,11 @@ namespace zs {
       b &= ~word_type(0) << m;                      // mask out lower bits
       while (!b && ++n < word_count) b = words[n];  // find next none-zero word
       return (!b ? bit_size
-                 : (n << log_2_word_size) + count_tailing_zeros(b));  // catch last word=0
+                 : (n << log_2_word_size) + count_tailing_zeros(b, tag));  // catch last word=0
     }
 
-    constexpr int findNextOff(int start) const {
+    template <execspace_e space = deduce_execution_space()>
+    constexpr int findNextOff(int start, wrapv<space> tag = {}) const {
       int n = start >> log_2_word_size;      // initiate
       if (n >= word_count) return bit_size;  // check for out of bounds
       int m = start & word_mask;
@@ -263,7 +274,7 @@ namespace zs {
       b &= ~word_type(0) << m;                       // mask out lower bits
       while (!b && ++n < word_count) b = ~words[n];  // find next none-zero word
       return (!b ? bit_size
-                 : (n << log_2_word_size) + count_tailing_zeros(b));  // catch last word=0
+                 : (n << log_2_word_size) + count_tailing_zeros(b, tag));  // catch last word=0
     }
   };
 

@@ -177,7 +177,7 @@ namespace zs {
             grid{allocator, propTags, count * block_size},
             valueMask{allocator, count},
             childMask{allocator, count},
-            childOffset{allocator, count} {
+            childOffset{allocator, count + 1} {
         defaultInitialize();
       }
       Level(const allocator_type &allocator, size_t count)
@@ -201,9 +201,7 @@ namespace zs {
       void refitToPartition() {
         size_type nbs = numBlocks();
         grid.resize(nbs * block_size);
-        valueMask.resize(nbs);
-        childMask.resize(nbs);
-        childOffset.resize(nbs);
+        resizeTopo(nbs);
       }
       void defaultInitialize() {
         grid.reset(0);
@@ -213,8 +211,7 @@ namespace zs {
       }
       template <typename ExecPolicy>
       void resize(ExecPolicy &&policy, size_type numBlocks, bool resizeGrid = true) {
-        if (resizeGrid) grid.resize(numBlocks * (size_type)block_size);
-        // table.resize(FWD(policy), numBlocks);
+        if (resizeGrid) resizeGrid(numBlocks);
         resizePartition(FWD(policy), numBlocks);
         resizeTopo(numBlocks);
       }
@@ -226,7 +223,7 @@ namespace zs {
       void resizeTopo(size_type numBlocks) {
         valueMask.resize(numBlocks);
         childMask.resize(numBlocks);
-        childOffset.resize(numBlocks);
+        childOffset.resize(numBlocks + 1);
       }
 
       template <typename Policy>
@@ -592,7 +589,7 @@ namespace zs {
         l.childMask.reorder(pol, range(sortedIndices), false_c);
       }
       /// histogram sort
-      Vector<size_type> numActiveChildren{allocator, nbs};
+      Vector<size_type> numActiveChildren{allocator, nbs + 1};
       pol(zip(numActiveChildren, l.childMask), zs::make_tuple(wrapv<space>{}), _reorder_count_on{});
       exclusive_scan(pol, numActiveChildren.begin(), numActiveChildren.end(),
                      l.childOffset.begin());
@@ -601,7 +598,7 @@ namespace zs {
       /// DEBUG
       if constexpr (false) {
         Vector<size_type> numOn{allocator, 1};
-        reduce(pol, numActiveChildren.begin(), numActiveChildren.end(), numOn.begin());
+        reduce(pol, numActiveChildren.begin(), numActiveChildren.end() - 1, numOn.begin());
         fmt::print("computed [{}] num active children, in reality [{}] children\n", numOn.getVal(),
                    nchbs);
       }

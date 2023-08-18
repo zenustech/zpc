@@ -210,8 +210,8 @@ namespace zs {
         // childOffset will be maintained during reorder
       }
       template <typename ExecPolicy>
-      void resize(ExecPolicy &&policy, size_type numBlocks, bool resizeGrid = true) {
-        if (resizeGrid) resizeGrid(numBlocks);
+      void resize(ExecPolicy &&policy, size_type numBlocks, bool resizeGrid_ = true) {
+        if (resizeGrid_) resizeGrid(numBlocks);
         resizePartition(FWD(policy), numBlocks);
         resizeTopo(numBlocks);
       }

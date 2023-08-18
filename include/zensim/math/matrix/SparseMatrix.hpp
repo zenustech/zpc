@@ -161,16 +161,199 @@ namespace zs {
       }
     }
 
+    ///
+    /// @brief build (include value entries)
+    ///
+    struct _build_hash_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[tab, cnts, localOffsets, is, js] = params;
+        using tab_t = RM_REF_T(tab);
+        constexpr auto space = tab_t::space;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if (auto id = tab.insert(zs::vec<Ti, 2>{i, j}); id != tab_t::sentinel_v) {
+          if constexpr (RowMajor)
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+          else
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+        }
+      }
+    };
+    struct _build_update_entry_with_value {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[tab, localOffsets, is, js, vs, ptrs, inds, vals] = params;
+        using tab_t = RM_REF_T(tab);
+        constexpr auto space = tab_t::space;
+        Ti i = is[k], j = js[k];
+        auto id = tab.query(zs::vec<Ti, 2>{i, j});
+        auto loc = localOffsets[id];
+        size_type offset = 0;
+        if constexpr (RowMajor) {
+          offset = ptrs[i] + loc;
+          inds[offset] = j;
+        } else {
+          offset = ptrs[j] + loc;
+          inds[offset] = i;
+        }
+        if constexpr (std::is_fundamental_v<value_type>)
+          atomic_add(wrapv<space>{}, &vals[offset], (value_type)vs[k]);
+        else if constexpr (is_vec<value_type>::value) {
+          auto &val = vals[offset];
+          const auto &e = vs[k];
+          for (typename value_type::index_type i = 0; i != value_type::extent; ++i)
+            atomic_add(wrapv<space>{}, &val.val(i), (typename value_type::value_type)e.val(i));
+        }
+      }
+    };
     template <typename Policy, typename IRange, typename JRange, typename VRange>
     void build(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
                const JRange &js, VRange &&vs);
+
+    ///
+    /// @brief build (topo only)
+    ///
+    template <bool Mirror> struct _build_hash_entry_mirror {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[tab, cnts, localOffsets, is, js] = params;
+        using tab_t = RM_REF_T(tab);
+        constexpr auto space = tab_t::space;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if (auto id = tab.insert(zs::vec<Ti, 2>{i, j}); id != tab_t::sentinel_v) {
+          if constexpr (RowMajor)
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+          else
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+
+          /// @note spawn symmetric entries
+          if constexpr (Mirror) {
+            if (i != j) {
+              if (id = tab.insert(zs::vec<Ti, 2>{j, i}); id != tab_t::sentinel_v) {
+                if constexpr (RowMajor)
+                  localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+                else
+                  localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+              }
+            }
+          }
+        }
+      }
+    };
+    struct _build_update_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[keys, localOffsets, ptrs, inds] = params;
+        auto ij = keys[k];
+        auto loc = localOffsets[k];
+        if constexpr (RowMajor)
+          inds[ptrs[ij[0]] + loc] = ij[1];
+        else
+          inds[ptrs[ij[1]] + loc] = ij[0];
+      }
+    };
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
     void build(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
                const JRange &js, wrapv<Mirror> = {});
+
+    ///
+    /// @brief fast build (topo only)
+    ///
+    template <bool Mirror> struct _fast_build_record_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[cnts, localOffsets, is, js] = params;
+        constexpr auto space = RM_REF_T(cnts)::space;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if constexpr (RowMajor)
+          localOffsets[k * 2] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+        else
+          localOffsets[k * 2] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+
+        /// @note spawn symmetric entries
+        if constexpr (Mirror) {
+          if (i != j) {
+            if constexpr (RowMajor)
+              localOffsets[k * 2 + 1] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+            else
+              localOffsets[k * 2 + 1] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+          }
+        }
+      }
+    };
+    template <bool Mirror> struct _fast_build_update_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[localOffsets, is, js, ptrs, inds] = params;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if constexpr (RowMajor)
+          inds[ptrs[i] + localOffsets[k * 2]] = j;
+        else
+          inds[ptrs[j] + localOffsets[k * 2]] = i;
+
+        /// @note spawn symmetric entries
+        if constexpr (Mirror) {
+          if (i != j) {
+            if constexpr (RowMajor)
+              inds[ptrs[j] + localOffsets[k * 2 + 1]] = i;
+            else
+              inds[ptrs[i] + localOffsets[k * 2 + 1]] = j;
+          }
+        }
+      }
+    };
     /// @note assume no duplicated entries
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
     void fastBuild(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
                    const JRange &js, wrapv<Mirror> = {});
+
+    ///
+    /// @brief transpose
+    ///
+    struct _transpose_from_transpose_assign {
+      template <typename DstT, typename SrcT, typename ParamT>
+      constexpr void operator()(DstT &dstVal, const SrcT &srcVal, ParamT &&) {
+        dstVal = srcVal.transpose();
+      }
+    };
+    struct _transpose_from_count_offset {
+      template <typename ParamT> constexpr void operator()(index_type outerId, ParamT &&params) {
+        auto &[cnts, localOffsets, ptrs, inds] = params;
+        auto bg = ptrs[outerId];
+        auto ed = ptrs[outerId + 1];
+        for (size_type k = bg; k != ed; ++k) {
+          auto innerId = inds[k];
+          localOffsets[k]
+              = atomic_add(wrapv<RM_REF_T(cnts)::space>{}, &cnts[innerId], (index_type)1);
+        }
+      }
+    };
+    struct _transpose_from_reorder_vals {
+      template <typename ParamT> constexpr void operator()(index_type outerId, ParamT &&params) {
+        auto &[localOffsets, oinds, optrs, ovals, ptrs, inds, vals, valActivated] = params;
+        auto bg = optrs[outerId];
+        auto ed = optrs[outerId + 1];
+        for (size_type k = bg; k != ed; ++k) {
+          auto innerId = oinds[k];
+          auto dst = ptrs[innerId] + localOffsets[k];
+          //
+          inds[dst] = outerId;
+          if (valActivated) {
+            //
+            if constexpr (is_fundamental_v<value_type>) {
+              vals[dst] = ovals[k];
+            } else if constexpr (is_vec<value_type>::value) {
+              static_assert(value_type::dim == 2
+                                && value_type::template range_t<0>::value
+                                       == value_type::template range_t<1>::value,
+                            "the transpose of the matrix is not the same as the original type.");
+              if constexpr (value_type::template range_t<0>::value > 0)
+                vals[dst] = ovals[k].transpose();
+              else
+                vals[dst] = ovals[k];
+            }
+          }
+        }
+      }
+    };
     /// @brief in-place
     template <typename Policy, bool ORowMajor, bool PostOrder = true> void transposeFrom(
         Policy &&policy,
@@ -208,10 +391,9 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(
-        std::is_convertible_v<Tr,
-                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
-        "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
+                      && std::is_convertible_v<Tv, T>,
+                  "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -235,19 +417,9 @@ namespace zs {
 
     do {
       cnts.reset(0);
-      policy(range(size), [tab = proxy<space>(tab), cnts = view<space>(cnts),
-                           localOffsets = view<space>(localOffsets), is = std::begin(is),
-                           js = std::begin(js), execTag] ZS_LAMBDA(size_type k) mutable {
-        using tab_t = RM_CVREF_T(tab);
-        Ti i = is[k], j = js[k];
-        // insertion success
-        if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
-          if constexpr (RowMajor)
-            localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-          else
-            localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
-        }
-      });
+      auto params = zs::make_tuple(proxy<space>(tab), view<space>(cnts), view<space>(localOffsets),
+                                   std::begin(is), std::begin(js));
+      policy(range(size), params, _build_hash_entry{});
       success = tab._buildSuccess.getVal();
       if (!success) {
         tabSize *= 2;
@@ -279,37 +451,11 @@ namespace zs {
       _vals.reset(0);
     else if constexpr (is_vec<value_type>::value) {
       _vals.reset(0);
-#if 0
-      policy(range(numEntries), [vals = view<space>(_vals)] ZS_LAMBDA(size_type k) mutable {
-        vals[k] = value_type::zeros();
-      });
-#endif
     }
-    policy(range(size), [tab = proxy<space>(tab), localOffsets = view<space>(localOffsets),
-                         is = std::begin(is), js = std::begin(js), vs = std::begin(vs),
-                         ptrs = view<space>(_ptrs), inds = view<space>(_inds),
-                         vals = view<space>(_vals), execTag] ZS_LAMBDA(size_type k) mutable {
-      using tab_t = RM_CVREF_T(tab);
-      Ti i = is[k], j = js[k];
-      auto id = tab.query(ICoord{i, j});
-      auto loc = localOffsets[id];
-      size_type offset = 0;
-      if constexpr (RowMajor) {
-        offset = ptrs[i] + loc;
-        inds[offset] = j;
-      } else {
-        offset = ptrs[j] + loc;
-        inds[offset] = i;
-      }
-      if constexpr (std::is_fundamental_v<value_type>)
-        atomic_add(execTag, &vals[offset], (value_type)vs[k]);
-      else if constexpr (is_vec<value_type>::value) {
-        auto &val = vals[offset];
-        const auto &e = vs[k];
-        for (typename value_type::index_type i = 0; i != value_type::extent; ++i)
-          atomic_add(execTag, &val.val(i), (typename value_type::value_type)e.val(i));
-      }
-    });
+    auto params = zs::make_tuple(proxy<space>(tab), view<space>(localOffsets), std::begin(is),
+                                 std::begin(js), std::begin(vs), view<space>(_ptrs),
+                                 view<space>(_inds), view<space>(_vals));
+    policy(range(size), params, _build_update_entry_with_value{});
   }
 
   /// @brief topology only csr sparse matrix build
@@ -343,32 +489,9 @@ namespace zs {
     bool success = false;
     do {
       cnts.reset(0);
-      policy(range(size),
-             [tab = proxy<space>(tab), cnts = view<space>(cnts),
-              localOffsets = view<space>(localOffsets), is = std::begin(is), js = std::begin(js),
-              execTag = wrapv<space>{}] ZS_LAMBDA(size_type k) mutable {
-               using tab_t = RM_CVREF_T(tab);
-               Ti i = is[k], j = js[k];
-               // insertion success
-               if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
-                 if constexpr (RowMajor)
-                   localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-                 else
-                   localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
-
-                 /// @note spawn symmetric entries
-                 if constexpr (Mirror) {
-                   if (i != j) {
-                     if (id = tab.insert(ICoord{j, i}); id != tab_t::sentinel_v) {
-                       if constexpr (RowMajor)
-                         localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
-                       else
-                         localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-                     }
-                   }
-                 }
-               }
-             });
+      auto params = zs::make_tuple(proxy<space>(tab), view<space>(cnts), view<space>(localOffsets),
+                                   std::begin(is), std::begin(js));
+      policy(range(size), params, _build_hash_entry_mirror<Mirror>{});
       success = tab._buildSuccess.getVal();
       if (!success) {
         tabSize *= 2;
@@ -393,16 +516,11 @@ namespace zs {
 
     /// @brief _inds
     _inds.resize(numEntries);
-    policy(range(numEntries),
-           [tab = proxy<space>(tab), localOffsets = view<space>(localOffsets),
-            ptrs = view<space>(_ptrs), inds = view<space>(_inds)] ZS_LAMBDA(size_type k) mutable {
-             auto ij = tab._activeKeys[k];
-             auto loc = localOffsets[k];
-             if constexpr (RowMajor)
-               inds[ptrs[ij[0]] + loc] = ij[1];
-             else
-               inds[ptrs[ij[1]] + loc] = ij[0];
-           });
+    {
+      auto params = zs::make_tuple(proxy<space>(tab._activeKeys), view<space>(localOffsets),
+                                   view<space>(_ptrs), view<space>(_inds));
+      policy(range(numEntries), params, _build_update_entry{});
+    }
   }
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   template <typename Policy, typename IRange, typename JRange, bool Mirror>
@@ -431,26 +549,11 @@ namespace zs {
     Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
     bool success = false;
     cnts.reset(0);
-    policy(range(size),
-           [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets), is = std::begin(is),
-            js = std::begin(js), execTag = wrapv<space>{}] ZS_LAMBDA(size_type k) mutable {
-             Ti i = is[k], j = js[k];
-             // insertion success
-             if constexpr (RowMajor)
-               localOffsets[k * 2] = atomic_add(execTag, &cnts[i], (size_type)1);
-             else
-               localOffsets[k * 2] = atomic_add(execTag, &cnts[j], (size_type)1);
-
-             /// @note spawn symmetric entries
-             if constexpr (Mirror) {
-               if (i != j) {
-                 if constexpr (RowMajor)
-                   localOffsets[k * 2 + 1] = atomic_add(execTag, &cnts[j], (size_type)1);
-                 else
-                   localOffsets[k * 2 + 1] = atomic_add(execTag, &cnts[i], (size_type)1);
-               }
-             }
-           });
+    {
+      auto params = zs::make_tuple(view<space>(cnts), view<space>(localOffsets), std::begin(is),
+                                   std::begin(js));
+      policy(range(size), params, _fast_build_record_entry{});
+    }
 
     /// @brief _ptrs
     _ptrs.resize(nsegs + 1);
@@ -460,26 +563,11 @@ namespace zs {
 
     /// @brief _inds
     _inds.resize(numEntries);
-    policy(range(size),
-           [localOffsets = view<space>(localOffsets), is = std::begin(is), js = std::begin(js),
-            ptrs = view<space>(_ptrs), inds = view<space>(_inds)] ZS_LAMBDA(size_type k) mutable {
-             Ti i = is[k], j = js[k];
-             // insertion success
-             if constexpr (RowMajor)
-               inds[ptrs[i] + localOffsets[k * 2]] = j;
-             else
-               inds[ptrs[j] + localOffsets[k * 2]] = i;
-
-             /// @note spawn symmetric entries
-             if constexpr (Mirror) {
-               if (i != j) {
-                 if constexpr (RowMajor)
-                   inds[ptrs[j] + localOffsets[k * 2 + 1]] = i;
-                 else
-                   inds[ptrs[i] + localOffsets[k * 2 + 1]] = j;
-               }
-             }
-           });
+    {
+      auto params = zs::make_tuple(view<space>(localOffsets), std::begin(is), std::begin(js),
+                                   view<space>(_ptrs), view<space>(_inds));
+      policy(range(size), params, _fast_build_update_entry<Mirror>{});
+    }
   }
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   template <typename Policy, bool ORowMajor, bool PostOrder>
@@ -512,8 +600,7 @@ namespace zs {
                                    == value_type::template range_t<1>::value,
                         "the transpose of the matrix is not the same as the original type.");
           if (value_type::template range_t<0>::value > 0)
-            policy(zip(_vals, o._vals),
-                   [] ZS_LAMBDA(auto &val, const auto &oval) { val = oval.transpose(); });
+            policy(zip(_vals, o._vals), zs::make_tuple(), _transpose_from_transpose_assign{});
         }
     } else {
       /// @note beware: spmat 'o' might be myself
@@ -521,19 +608,13 @@ namespace zs {
       auto nOuter = o.outerSize();
       auto nInner = o.innerSize();
       auto allocator = get_temporary_memory_source(policy);
-      Vector<index_type> localOffsets{allocator, (size_t)nnz};
+      Vector<size_type> localOffsets{allocator, (size_t)nnz};
       Vector<size_type> cnts{allocator, (size_t)(nInner + 1)};
       cnts.reset(0);
-      policy(range(nOuter), [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets),
-                             ptrs = view<space>(o._ptrs), inds = view<space>(o._inds),
-                             execTag = wrapv<space>{}] ZS_LAMBDA(size_type outerId) mutable {
-        auto bg = ptrs[outerId];
-        auto ed = ptrs[outerId + 1];
-        for (int k = bg; k != ed; ++k) {
-          auto innerId = inds[k];
-          localOffsets[k] = atomic_add(execTag, &cnts[innerId], 1);
-        }
-      });
+      policy(range(nOuter),
+             zs::make_tuple(view<space>(cnts), view<space>(localOffsets), view<space>(o._ptrs),
+                            view<space>(o._inds)),
+             _transpose_from_count_offset{});
       _ptrs = zs::Vector<size_type, allocator_type>{o.get_allocator(), (size_t)(nInner + 1)};
       /// _ptrs
       exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
@@ -544,35 +625,11 @@ namespace zs {
       if (valActivated)
         _vals = zs::Vector<value_type, allocator_type>{o.get_allocator(), (size_t)nnz};
 
-      policy(range(nOuter), [localOffsets = view<space>(localOffsets), oinds = view<space>(o._inds),
-                             optrs = view<space>(o._ptrs), ovals = view<space>(o._vals),
-                             ptrs = view<space>(_ptrs), inds = view<space>(_inds),
-                             vals = view<space>(_vals),
-                             valActivated] ZS_LAMBDA(size_type outerId) mutable {
-        auto bg = optrs[outerId];
-        auto ed = optrs[outerId + 1];
-        for (int k = bg; k != ed; ++k) {
-          auto innerId = oinds[k];
-          auto dst = ptrs[innerId] + localOffsets[k];
-          //
-          inds[dst] = outerId;
-          if (valActivated) {
-            //
-            if constexpr (std::is_fundamental_v<value_type>) {
-              vals[dst] = ovals[k];
-            } else if constexpr (is_vec<value_type>::value) {
-              static_assert(value_type::dim == 2
-                                && value_type::template range_t<0>::value
-                                       == value_type::template range_t<1>::value,
-                            "the transpose of the matrix is not the same as the original type.");
-              if constexpr (value_type::template range_t<0>::value > 0)
-                vals[dst] = ovals[k].transpose();
-              else
-                vals[dst] = ovals[k];
-            }
-          }
-        }
-      });
+      policy(range(nOuter),
+             zs::make_tuple(view<space>(localOffsets), view<space>(o._inds), view<space>(o._ptrs),
+                            view<space>(o._vals), view<space>(_ptrs), view<space>(_inds),
+                            view<space>(_vals), valActivated),
+             _transpose_from_reorder_vals{});
     }
     if constexpr (PostOrder) localOrdering(policy);
   }

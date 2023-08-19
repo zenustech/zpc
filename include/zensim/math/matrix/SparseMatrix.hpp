@@ -367,6 +367,7 @@ namespace zs {
         SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o) const {
       o.transposeFrom(FWD(policy), *this);
     }
+
 #if defined(__CUDACC__)
     void localOrdering(CudaExecutionPolicy &policy);
     /// @note do NOT sort _vals
@@ -374,7 +375,11 @@ namespace zs {
     /// @note DO sort _vals
     void localOrdering(CudaExecutionPolicy &policy, true_type);
 #endif
-    // template <typename Policy> void localOrdering(Policy &&policy);
+    template <typename Policy> void localOrdering(Policy &&policy);
+    /// @note do NOT sort _vals
+    template <typename Policy> void localOrdering(Policy &&policy, false_type);
+    /// @note DO sort _vals
+    template <typename Policy> void localOrdering(Policy &&policy, true_type);
 
     index_type _nrows = 0, _ncols = 0;  // for square matrix, nrows = ncols
     zs::Vector<size_type, allocator_type> _ptrs{};
@@ -695,11 +700,12 @@ namespace zs {
     if (_inds.size() != _vals.size())
       throw std::runtime_error("This csr matrix (with active vals) is not in a valid state!");
 
+    auto allocator = get_temporary_memory_source(pol);
     auto orderedIndices = Vector<index_type, allocator_type>{_inds.get_allocator(), nnz};
     auto orderedVals = Vector<value_type, allocator_type>{_vals.get_allocator(), nnz};
-    auto indices = Vector<size_type, allocator_type>{_ptrs.get_allocator(), nnz};
-    auto srcIndices = Vector<size_type, allocator_type>{_ptrs.get_allocator(), nnz};
-    pol(enumerate(indices), [] __device__(int i, size_type &id) { id = i; });
+    auto indices = Vector<size_type, allocator_type>{allocator, nnz};
+    auto srcIndices = Vector<size_type, allocator_type>{allocator, nnz};
+    pol(enumerate(indices), [] __device__(size_type i, size_type & id) { id = i; });
 
     auto &context = pol.context();
     context.setContext();
@@ -717,7 +723,7 @@ namespace zs {
     context.streamMemFree(d_tmp, stream);
 
     pol(range(nnz), [vals = view<space>(_vals), orderedVals = view<space>(orderedVals),
-                     srcIndices = view<space>(srcIndices)] __device__(int no) mutable {
+                     srcIndices = view<space>(srcIndices)] __device__(size_type no) mutable {
       auto srcNo = srcIndices[no];
       orderedVals[no] = vals[srcNo];
     });
@@ -728,6 +734,59 @@ namespace zs {
     _vals = std::move(orderedVals);
   }
 #endif
+
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(Policy &&pol) {
+    if (_vals.size())
+      localOrdering(pol, true_c);
+    else
+      localOrdering(pol, false_c);
+  }
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(Policy &&pol, false_type) {
+    Ti nsegs = is_row_major ? _nrows : _ncols;
+    Ti innerSize = is_row_major ? _ncols : _nrows;
+    auto nnz = _inds.size();
+
+    auto orderedIndices = Vector<index_type, allocator_type>{_inds.get_allocator(), nnz};
+
+    pol(range(nsegs), [&](Ti outerId) {
+      auto st = _ptrs[outerId];
+      auto ed = _ptrs[outerId + 1];
+      radix_sort(seq_exec(), zs::begin(_inds) + st, zs::begin(_inds) + ed,
+                 zs::begin(orderedIndices) + st, 0, std::max((int)bit_count(innerSize), 1));
+    });
+
+    _inds = std::move(orderedIndices);
+  }
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(Policy &&pol, true_type) {
+    Ti nsegs = is_row_major ? _nrows : _ncols;
+    Ti innerSize = is_row_major ? _ncols : _nrows;
+    auto nnz = _inds.size();
+
+    auto allocator = get_temporary_memory_source(pol);
+    auto orderedIndices = Vector<index_type, allocator_type>{_inds.get_allocator(), nnz};
+    auto orderedVals = Vector<value_type, allocator_type>{_vals.get_allocator(), nnz};
+    auto indices = Vector<size_type, allocator_type>{allocator, nnz};
+    auto srcIndices = Vector<size_type, allocator_type>{allocator, nnz};
+
+    pol(enumerate(indices), [](size_type i, size_type &id) { id = i; });
+    pol(range(nsegs), [&](Ti outerId) {
+      auto st = _ptrs[outerId];
+      auto ed = _ptrs[outerId + 1];
+      radix_sort_pair(seq_exec(), zs::begin(_inds) + st, zs::begin(indices) + st,
+                      zs::begin(orderedIndices) + st, zs::begin(srcIndices) + st, ed - st, 0,
+                      std::max((int)bit_count(innerSize), 1));
+    });
+    pol(range(nnz), [&](size_type no) mutable { orderedVals[no] = _vals[srcIndices[no]]; });
+
+    _inds = std::move(orderedIndices);
+    _vals = std::move(orderedVals);
+  }
 
   template <execspace_e Space, typename SpMatT, bool Base = false, typename = void>
   struct SparseMatrixView {

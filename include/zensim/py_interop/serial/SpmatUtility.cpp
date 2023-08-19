@@ -43,7 +43,7 @@ extern "C" {
   void transpose##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(                                \
       zs::SequentialExecutionPolicy *ppol,                                                         \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat) {                   \
-    spmat->transposeFrom(*ppol, *spmat, zs::false_c);                                              \
+    spmat->transposeFrom(*ppol, *spmat, zs::true_c);                                               \
   }
 
 using mat33f = zs::vec<float, 3, 3>;

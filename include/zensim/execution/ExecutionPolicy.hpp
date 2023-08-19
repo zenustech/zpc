@@ -178,9 +178,7 @@ namespace zs {
           }
         }
       } else {
-        using fts = function_traits<F>;
-        static_assert(fts::arity > 1, "???");
-        if constexpr (fts::arity == 1)
+        if constexpr (is_invocable_v<F, ParamTuple>)
           for (auto &&it : range) f(params);
         else {
           for (auto &&it : range) {

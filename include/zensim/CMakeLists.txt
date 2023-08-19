@@ -520,6 +520,7 @@ target_sources(zpc_py_interop
   ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES}
   py_interop/serial/ExecutionPolicy.cpp
   py_interop/serial/TileVectorUtility.cpp
+  py_interop/serial/SpmatUtility.cpp
   py_interop/serial/BhtUtility.cpp
 )
 
@@ -553,6 +554,7 @@ if(ZS_ENABLE_OPENMP)
     PRIVATE
     py_interop/omp/ExecutionPolicy.cpp
     py_interop/omp/TileVectorUtility.cpp
+    py_interop/omp/SpmatUtility.cpp
     py_interop/omp/BhtUtility.cpp
   )
 endif(ZS_ENABLE_OPENMP)

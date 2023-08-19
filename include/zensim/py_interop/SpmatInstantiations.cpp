@@ -90,9 +90,16 @@ extern "C" {
     delete spmat;                                                                                \
   }
 
+using mat33f = zs::vec<float, 3, 3>;
+using mat33d = zs::vec<double, 3, 3>;
+
 INSTANTIATE_SPMAT_CAPIS(float, false, int, unsigned)
 INSTANTIATE_SPMAT_CAPIS(float, true, int, unsigned)
 INSTANTIATE_SPMAT_CAPIS(double, false, int, unsigned)
 INSTANTIATE_SPMAT_CAPIS(double, true, int, unsigned)
+INSTANTIATE_SPMAT_CAPIS(mat33f, false, int, unsigned)
+INSTANTIATE_SPMAT_CAPIS(mat33f, true, int, unsigned)
+INSTANTIATE_SPMAT_CAPIS(mat33d, false, int, unsigned)
+INSTANTIATE_SPMAT_CAPIS(mat33d, true, int, unsigned)
 
 }  // namespace zs

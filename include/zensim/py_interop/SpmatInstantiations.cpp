@@ -1,5 +1,6 @@
 #include "zensim/math/Vec.h"
 #include "zensim/math/matrix/SparseMatrix.hpp"
+#include "zensim/py_interop/SmallVec.hpp"
 #include "zensim/py_interop/SpmatView.hpp"
 
 extern "C" {
@@ -89,7 +90,9 @@ extern "C" {
     delete spmat;                                                                                \
   }
 
+INSTANTIATE_SPMAT_CAPIS(float, false, int, unsigned)
 INSTANTIATE_SPMAT_CAPIS(float, true, int, unsigned)
+INSTANTIATE_SPMAT_CAPIS(double, false, int, unsigned)
 INSTANTIATE_SPMAT_CAPIS(double, true, int, unsigned)
 
 }  // namespace zs

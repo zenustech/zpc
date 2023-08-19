@@ -322,7 +322,7 @@ namespace zs {
         for (size_type k = bg; k != ed; ++k) {
           auto innerId = inds[k];
           localOffsets[k]
-              = atomic_add(wrapv<RM_REF_T(cnts)::space>{}, &cnts[innerId], (index_type)1);
+              = atomic_add(wrapv<RM_REF_T(cnts)::space>{}, &cnts[innerId], (size_type)1);
         }
       }
     };
@@ -552,7 +552,7 @@ namespace zs {
     {
       auto params = zs::make_tuple(view<space>(cnts), view<space>(localOffsets), std::begin(is),
                                    std::begin(js));
-      policy(range(size), params, _fast_build_record_entry{});
+      policy(range(size), params, _fast_build_record_entry<Mirror>{});
     }
 
     /// @brief _ptrs

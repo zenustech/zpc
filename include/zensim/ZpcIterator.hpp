@@ -482,6 +482,21 @@ namespace zs {
   template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral<sint_t, Diff>)
       -> IndexIterator<BaseT, integral<sint_t, Diff>>;
 
+  // pointer iterator
+  template <typename Data> struct PointerIterator : IteratorInterface<PointerIterator<Data>> {
+    using T = Data;
+    using DiffT = sint_t;
+
+    constexpr PointerIterator(T *base = nullptr) : base{base} {}
+    constexpr decltype(auto) dereference() noexcept { return *base; }
+    constexpr bool equal_to(PointerIterator it) const noexcept { return base == it.base; }
+    constexpr void advance(DiffT offset) noexcept { base += offset; }
+    constexpr DiffT distance_to(PointerIterator it) const noexcept { return it.base - base; }
+
+    T *base;
+  };
+  template <typename BaseT> PointerIterator(BaseT *) -> PointerIterator<BaseT>;
+
   // collapse iterator
   template <typename Ts, typename Indices> struct Collapse;
 
@@ -630,10 +645,21 @@ namespace zs {
     using DiffT = conditional_t<
         sizeof(T) <= 1, i8,
         conditional_t<sizeof(T) <= 2, i16, conditional_t<sizeof(T) <= 4, i32, sint_t>>>;
-    return range<DiffT>(begin, end, begin < end ? 1 : -1);
+    return range<DiffT>(begin, end, (DiffT)(begin < end ? 1 : -1));
   }
   template <typename T, enable_if_t<is_integral_v<T>> = 0> constexpr auto range(T end) {
     return range<T>(0, end);
+  }
+
+  // pointer range
+  template <typename T> constexpr auto range(T *begin, T *end) {
+    return detail::iter_range(make_iterator<PointerIterator>(begin),
+                              make_iterator<PointerIterator>(end));
+  }
+  template <typename T, typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+  constexpr auto range(T *st, Ti n) {
+    return detail::iter_range(make_iterator<PointerIterator>(st),
+                              make_iterator<PointerIterator>(st + n));
   }
 
   // container

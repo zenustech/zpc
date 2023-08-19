@@ -535,12 +535,14 @@ if(ZS_ENABLE_CUDA)
     PRIVATE
     py_interop/cuda/ExecutionPolicy.cpp
     py_interop/cuda/TileVectorUtility.cpp
+    py_interop/cuda/SpmatUtility.cpp
     py_interop/cuda/BhtUtility.cpp
     py_interop/cuda/Nvrtc.cpp
   )
   set_source_files_properties(
     py_interop/cuda/ExecutionPolicy.cpp 
     py_interop/cuda/TileVectorUtility.cpp
+    py_interop/cuda/SpmatUtility.cpp
     py_interop/cuda/BhtUtility.cpp
     py_interop/cuda/Nvrtc.cpp
     PROPERTIES LANGUAGE CUDA)

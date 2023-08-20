@@ -165,11 +165,11 @@ namespace zs {
     template <typename... Ts, bool IsPtrStruct = is_pointer_structure,
               enable_if_all<!IsPtrStruct, (sizeof...(Ts) <= extent),
                             (is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)> = 0>
-    constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}
+    constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)FWD(ts)...} {}
     template <typename... Ts, bool IsPtrStruct = is_pointer_structure,
               enable_if_all<IsPtrStruct, (sizeof...(Ts) == extent),
                             ((alignof(Ts) == alignof(value_type)) && ...)> = 0>
-    constexpr vec_impl(Ts &...ts) noexcept : _data{((T)zs::addressof(ts))...} {}
+    constexpr vec_impl(Ts &...ts) noexcept : _data{(T) const_cast<RM_CVREF_T(ts)>(&ts)...} {}
     /// https://github.com/kokkos/kokkos/issues/177
 #if 0
     constexpr volatile vec_impl &operator=(const vec_impl &o) volatile {
@@ -182,11 +182,12 @@ namespace zs {
               enable_if_all<sizeof...(Args) == extent, !IsPtrStruct> = 0>
     static constexpr vec_impl from_tuple(const TupT<Args...> &tup, index_sequence<Is...>) {
       vec_impl ret{};
-      ((void)(base_t::val(Is) = get<Is>(tup)), ...);  // ADL
+      ((void)(ret.val(Is) = get<Is>(tup)), ...);  // ADL
       return ret;
     }
     template <template <typename...> class TupT, typename... Args,
-              enable_if_t<sizeof...(Args) == extent> = 0>
+              bool IsPtrStruct = is_pointer_structure,
+              enable_if_all<sizeof...(Args) == extent, !IsPtrStruct> = 0>
     static constexpr auto from_tuple(const TupT<Args...> &tup)
         -> decltype(get<0>(tup), declval<vec_impl>()) {
       return from_tuple(tup, index_sequence_for<Args...>{});
@@ -297,7 +298,7 @@ namespace zs {
     ///
     template <typename TT> constexpr explicit operator vec_impl<TT, extents>() const noexcept {
       vec_impl<TT, extents> r{};
-      for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = val(idx);
+      for (Tn idx = 0; idx != extent; ++idx) r.val(idx) = base_t::val(idx);
       return r;
     }
   };

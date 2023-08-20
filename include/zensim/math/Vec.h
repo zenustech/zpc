@@ -30,6 +30,7 @@ namespace zs {
     static constexpr bool is_pointer_structure = is_pointer_v<T>;
     using base_t = VecInterface<vec_view<T, integer_sequence<Tn, Ns...>>>;
     // essential defs for any VecInterface
+    using primitive_type = T;
     using value_type = remove_pointer_t<T>;
     using index_type = Tn;
     using indexer_type = indexer<index_type, Ns...>;
@@ -44,6 +45,10 @@ namespace zs {
     constexpr vec_view &operator=(const vec_view &) = delete;  // prevents accidental copy of view
     template <bool IsPtrStruct = is_pointer_structure, enable_if_t<!IsPtrStruct> = 0>
     constexpr explicit vec_view(T *ptr) : _data{ptr} {}
+    template <bool IsPtrStruct = is_pointer_structure, enable_if_t<IsPtrStruct> = 0>
+    constexpr explicit vec_view(T ptrs[]) : _data{} {
+      for (index_type i = 0; i != base_t::extent; ++i) base_t::data()[i] = ptrs[i];
+    }
 
     constexpr explicit operator variant_vec<value_type, extents>() const noexcept {
       variant_vec<value_type, extents> r{};
@@ -128,6 +133,7 @@ namespace zs {
     //              "Vec element type is not trivial!\n");
     static constexpr bool is_pointer_structure = is_pointer_v<T>;
     using base_t = VecInterface<vec_impl<T, integer_sequence<Tn, Ns...>>>;
+    using primitive_type = T;
     using value_type = remove_pointer_t<T>;
     using index_type = Tn;
     using indexer_type = indexer<index_type, Ns...>;
@@ -156,10 +162,14 @@ namespace zs {
     constexpr vec_impl(vec_impl &&) noexcept = default;
     constexpr vec_impl &operator=(const vec_impl &) &noexcept = default;
     constexpr vec_impl &operator=(vec_impl &&) &noexcept = default;
-    template <typename... Ts,
-              enable_if_all<(sizeof...(Ts) <= extent),
+    template <typename... Ts, bool IsPtrStruct = is_pointer_structure,
+              enable_if_all<!IsPtrStruct, (sizeof...(Ts) <= extent),
                             (is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)> = 0>
     constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)ts...} {}
+    template <typename... Ts, bool IsPtrStruct = is_pointer_structure,
+              enable_if_all<IsPtrStruct, (sizeof...(Ts) == extent),
+                            ((alignof(Ts) == alignof(value_type)) && ...)> = 0>
+    constexpr vec_impl(Ts &...ts) noexcept : _data{((T)zs::addressof(ts))...} {}
     /// https://github.com/kokkos/kokkos/issues/177
 #if 0
     constexpr volatile vec_impl &operator=(const vec_impl &o) volatile {
@@ -168,7 +178,8 @@ namespace zs {
     }
 #endif
     template <template <typename...> class TupT, typename... Args, size_t... Is,
-              enable_if_t<sizeof...(Args) == extent> = 0>
+              bool IsPtrStruct = is_pointer_structure,
+              enable_if_all<sizeof...(Args) == extent, !IsPtrStruct> = 0>
     static constexpr vec_impl from_tuple(const TupT<Args...> &tup, index_sequence<Is...>) {
       vec_impl ret{};
       ((void)(base_t::val(Is) = get<Is>(tup)), ...);  // ADL
@@ -185,7 +196,8 @@ namespace zs {
       return vec_impl{};
     }
     template <template <typename...> class TupT, typename... Args,
-              enable_if_t<sizeof...(Args) == extent> = 0>
+              bool IsPtrStruct = is_pointer_structure,
+              enable_if_all<sizeof...(Args) == extent, !IsPtrStruct> = 0>
     constexpr vec_impl &operator=(const TupT<Args...> &tup) {
       *this = from_tuple(tup);
       return *this;
@@ -234,8 +246,10 @@ namespace zs {
       if constexpr (dim == 1) {
         return base_t::val(index);
       } else {
-        using R = vec_view<add_const_t<T>,
-                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
+        using TT = conditional_t<is_pointer_structure, add_pointer_t<add_const_t<value_type>>,
+                                 add_const_t<value_type>>;
+        using R
+            = vec_view<TT, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
         auto offset = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};

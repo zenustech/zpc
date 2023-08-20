@@ -73,15 +73,22 @@ namespace zs {
   using base_t::uniform;                                                                     \
   using base_t::constant;                                                                    \
   using base_t::zeros;                                                                       \
-  template <typename OtherVecT,                                                              \
-            enable_if_all<OtherVecT::extent == extent,                                       \
+  template <typename OtherVecT, bool IsPtrStruct = is_pointer_v<primitive_type>,             \
+            enable_if_all<!IsPtrStruct, OtherVecT::extent == extent,                         \
                           is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
   constexpr base_t operator=(const VecInterface<OtherVecT>& rhs)&& noexcept = delete; /**/   \
   template <typename OtherVecT,                                                              \
             enable_if_all<OtherVecT::extent == extent,                                       \
                           is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
   constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs)& noexcept {         \
-    for (index_type i = 0; i != extent; ++i) this->val(i) = rhs.val(i);                      \
+    for (index_type i = 0; i != extent; ++i) base_t::val(i) = rhs.val(i);                    \
+    return *this;                                                                            \
+  }                                                                                          \
+  template <typename OtherVecT, bool IsPtrStruct = is_pointer_v<primitive_type>,             \
+            enable_if_all<IsPtrStruct, OtherVecT::extent == extent,                          \
+                          is_convertible_v<typename OtherVecT::value_type, value_type>> = 0> \
+  constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs)&& noexcept {        \
+    for (index_type i = 0; i != extent; ++i) base_t::val(i) = rhs.val(i);                    \
     return *this;                                                                            \
   }
 

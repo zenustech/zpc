@@ -13,6 +13,7 @@ namespace zs {
     using base_t = VecInterface<tensor_view<Tensor, integer_sequence<Tn, Ns...>>>;
     static constexpr bool is_const_structure = is_const_v<Tensor>;
     using tensor_type = remove_const_t<Tensor>;
+    using primitive_type = typename tensor_type::primitive_type;
     using value_type = typename tensor_type::value_type;
     using extents = integer_sequence<Tn, Ns...>;
     using index_type = typename vseq_t<extents>::value_type;
@@ -28,7 +29,8 @@ namespace zs {
     template <typename OtherT, typename ExtentsT> using variant_vec =
         typename tensor_type::template variant_vec<OtherT, ExtentsT>;
 
-    tensor_view() noexcept = default;
+    constexpr tensor_view() noexcept = default;
+    ~tensor_view() = default;
     constexpr tensor_view(Tensor &tensor, extents) noexcept
         : _tensorPtr{&tensor},
           _prefix{make_uniform_tuple<prefix_dim>(0)},
@@ -49,15 +51,13 @@ namespace zs {
 
     /// random access
     // ()
-    template <typename... Args,
-              enable_if_t<sizeof...(Args) <= dim && (is_integral_v<remove_cvref_t<Args>> && ...)>
-              = 0>
+    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
+                                            && (is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
     constexpr decltype(auto) operator()(Args &&...args) noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
-    template <typename... Args,
-              enable_if_t<sizeof...(Args) <= dim && (is_integral_v<remove_cvref_t<Args>> && ...)>
-              = 0>
+    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
+                                            && (is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
     constexpr decltype(auto) operator()(Args &&...args) const noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
@@ -114,7 +114,8 @@ namespace zs {
         T, integer_sequence<Tn, Ns...>,
         indexer_impl<integer_sequence<Tm, Ms...>, index_sequence<Is...>, index_sequence<Js...>>>;
     using base_t = VecInterface<self_t>;
-    using value_type = T;
+    using primitive_type = T;
+    using value_type = remove_pointer_t<T>;
     using index_type = Tn;
     using indexer_type
         = indexer_impl<integer_sequence<Tm, Ms...>, index_sequence<Is...>, index_sequence<Js...>>;

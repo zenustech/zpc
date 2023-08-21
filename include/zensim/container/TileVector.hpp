@@ -141,7 +141,7 @@ namespace zs {
           RetT ret{};
           auto ptr = (PtrT)_base + (_idx / lane_width * _numChannels + _chn) * lane_width
                      + (_idx % lane_width);
-          for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret.data(d) = ptr;
+          for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret._data[d] = ptr;
           return ret;
         }
       }
@@ -202,7 +202,7 @@ namespace zs {
           auto ptr = (PtrT)(_base + (_idx / lane_width * _numChannels + _chn) * lane_width)
                      + _segOffset + _idx % lane_width;
           for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width * num_segments)
-            ret.data(d) = ptr;
+            ret._data[d] = ptr;
           return ret;
         }
       }
@@ -940,7 +940,6 @@ namespace zs {
               = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_sequence<Is...>, wrapt<TT>) const noexcept {
-      constexpr channel_counter_type d = sizeof...(Is);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if ((TT *)_vector == nullptr) {
         /// @note TBD : insert type reflection info here

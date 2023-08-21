@@ -78,7 +78,7 @@ namespace zs {
         const auto st = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
-          for (index_type i = 0; i != R::extent; ++i) ret.data(i) = base_t::data(st + i);
+          for (index_type i = 0; i != R::extent; ++i) ret._data[i] = base_t::data(st + i);
           return ret;
         } else
           return R{base_t::data(st)};
@@ -95,7 +95,7 @@ namespace zs {
         const auto st = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
-          for (index_type i = 0; i != R::extent; ++i) ret.data(i) = base_t::data(st + i);
+          for (index_type i = 0; i != R::extent; ++i) ret._data[i] = base_t::data(st + i);
           return ret;
         } else {
           return R{base_t::data(st)};

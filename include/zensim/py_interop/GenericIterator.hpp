@@ -46,7 +46,7 @@ namespace zs {
         RetT ret{};
         auto ptr
             = (PtrT)base + ((((idx >> numTileBits) * numChns) << numTileBits) | (idx & tileMask));
-        for (int d = 0; d != extent; ++d, ptr += (tileMask + 1)) ret.data(d) = ptr;
+        for (int d = 0; d != extent; ++d, ptr += (tileMask + 1)) ret._data[d] = ptr;
         return ret;
       }
     }
@@ -68,9 +68,13 @@ namespace zs {
 extern "C" {
 
 #define ZS_DECLARE_GENERIC_ITERATOR_TYPE(T, n)                       \
+  template struct zs::aosoa_iterator<T, n>;                          \
   typedef zs::aosoa_iterator<T, n> aosoa_iter_##T##_##n;             \
+  template struct zs::aosoa_iterator<const T, n>;                    \
   typedef zs::aosoa_iterator<const T, n> aosoa_iter_const_##T##_##n; \
+  template struct zs::aosoa_iterator<T, n, n>;                       \
   typedef zs::aosoa_iterator<T, n, n> aosoa_iter_##T##_##n##_##n;    \
+  template struct zs::aosoa_iterator<const T, n, n>;                 \
   typedef zs::aosoa_iterator<const T, n, n> aosoa_iter_const_##T##_##n##_##n;
 
 ZS_DECLARE_GENERIC_ITERATOR_TYPE(float, 1)

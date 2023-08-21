@@ -74,24 +74,28 @@ void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
   }                                                                                               \
   /* iterator */                                                                                  \
   aosoa_iter_##T##_1 get_iterator_1##__##tv##_##T##_##L(                                          \
-      zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, size_t id, size_t chnOffset) {          \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, zs::u32 id, zs::u32 chnOffset) {        \
     return aosoa_iter_##T##_1{                                                                    \
-        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, (zs::u32)L, chnOffset,                   \
+        (zs::u32)v->numChannels()};                                                               \
   }                                                                                               \
   aosoa_iter_const_##T##_1 get_iterator_1##__##tv##_##const##_##T##_##L(                          \
-      const zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, size_t id, size_t chnOffset) {    \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, zs::u32 id, zs::u32 chnOffset) {  \
     return aosoa_iter_const_##T##_1{                                                              \
-        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, (zs::u32)L, chnOffset,                   \
+        (zs::u32)v->numChannels()};                                                               \
   }                                                                                               \
   aosoa_iter_##T##_1 get_iterator_1##__##tv##_##T##_##L##_##virtual(                              \
-      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, size_t id, size_t chnOffset) {          \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, zs::u32 id, zs::u32 chnOffset) {        \
     return aosoa_iter_##T##_1{                                                                    \
-        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, (zs::u32)L, chnOffset,                   \
+        (zs::u32)v->numChannels()};                                                               \
   }                                                                                               \
   aosoa_iter_const_##T##_1 get_iterator_1##__##tv##_##const##_##T##_##L##_##virtual(              \
-      const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v, size_t id, size_t chnOffset) {     \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v, zs::u32 id, zs::u32 chnOffset) {   \
     return aosoa_iter_const_##T##_1{                                                              \
-        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, (zs::u32)L, chnOffset,                   \
+        (zs::u32)v->numChannels()};                                                               \
   }                                                                                               \
   /* custom */                                                                                    \
   int property_offset##__##tv##_##T##_##L(                                                        \

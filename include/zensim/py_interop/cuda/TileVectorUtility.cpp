@@ -1,16 +1,16 @@
-#include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/cuda/Cuda.h"
+#include "zensim/cuda/execution/ExecutionPolicy.cuh"
 
 extern "C" {
 
 #define INSTANTIATE_TILE_VECTOR_CAPIS(T, L)                                               \
-  void append_properties##__##cuda##_##tv##_##T##_##L(                                    \
+  void append_properties__##cuda##_##tv##_##T##_##L(                                      \
       zs::CudaExecutionPolicy *ppol, zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,  \
       const std::vector<zs::PropertyTag> *tags) {                                         \
     v->append_channels(*ppol, *tags);                                                     \
   }                                                                                       \
-  void append_properties##__##cuda##_##tv##_##T##_##L##_##virtual(                        \
+  void append_properties__##cuda##_##tv##_##T##_##L##_##virtual(                          \
       zs::CudaExecutionPolicy * ppol, zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, \
       const std::vector<zs::PropertyTag> *tags) {                                         \
     v->append_channels(*ppol, *tags);                                                     \

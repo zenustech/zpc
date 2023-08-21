@@ -18,6 +18,22 @@ namespace zs {
     using difference_type = make_signed_t<size_type>;
 
     constexpr aosoa_iterator() noexcept = default;
+    template <bool IsConst = is_const_structure, enable_if_t<IsConst> = 0>
+    constexpr aosoa_iterator(const aosoa_iterator<iter_value_type, Ns...>& o) noexcept
+        : base{o.base},
+          idx{o.idx},
+          numTileBits{o.numTileBits},
+          tileMask{o.tileMask},
+          numChns{o.numChns} {}
+    template <bool IsConst = is_const_structure, enable_if_t<IsConst> = 0>
+    constexpr aosoa_iterator& operator=(const aosoa_iterator<iter_value_type, Ns...>& o) noexcept {
+      base = o.base;
+      idx = o.idx;
+      numTileBits = o.numTileBits;
+      tileMask = o.tileMask;
+      numChns = o.numChns;
+    }
+
     ~aosoa_iterator() = default;
 
     /// aos
@@ -67,15 +83,25 @@ namespace zs {
 
 extern "C" {
 
-#define ZS_DECLARE_GENERIC_ITERATOR_TYPE(T, n)                       \
-  template struct zs::aosoa_iterator<T, n>;                          \
-  typedef zs::aosoa_iterator<T, n> aosoa_iter_##T##_##n;             \
-  template struct zs::aosoa_iterator<const T, n>;                    \
-  typedef zs::aosoa_iterator<const T, n> aosoa_iter_const_##T##_##n; \
-  template struct zs::aosoa_iterator<T, n, n>;                       \
-  typedef zs::aosoa_iterator<T, n, n> aosoa_iter_##T##_##n##_##n;    \
-  template struct zs::aosoa_iterator<const T, n, n>;                 \
-  typedef zs::aosoa_iterator<const T, n, n> aosoa_iter_const_##T##_##n##_##n;
+/// @note make sure these are POD types
+#define ZS_DECLARE_GENERIC_ITERATOR_TYPE(T, n)                                               \
+  template struct zs::aosoa_iterator<T, n>;                                                  \
+  template struct zs::LegacyIterator<zs::aosoa_iterator<T, n>>;                              \
+  typedef zs::aosoa_iterator<T, n> aosoa_iter_##T##_##n;                                     \
+  typedef zs::LegacyIterator<zs::aosoa_iterator<T, n>> aosoa_iterator_##T##_##n;             \
+  template struct zs::aosoa_iterator<const T, n>;                                            \
+  template struct zs::LegacyIterator<zs::aosoa_iterator<const T, n>>;                        \
+  typedef zs::aosoa_iterator<const T, n> aosoa_iter_const_##T##_##n;                         \
+  typedef zs::LegacyIterator<zs::aosoa_iterator<const T, n>> aosoa_iterator_const_##T##_##n; \
+  template struct zs::aosoa_iterator<T, n, n>;                                               \
+  template struct zs::LegacyIterator<zs::aosoa_iterator<T, n, n>>;                           \
+  typedef zs::aosoa_iterator<T, n, n> aosoa_iter_##T##_##n##_##n;                            \
+  typedef zs::LegacyIterator<zs::aosoa_iterator<T, n, n>> aosoa_iterator_##T##_##n##_##n;    \
+  template struct zs::aosoa_iterator<const T, n, n>;                                         \
+  template struct zs::LegacyIterator<zs::aosoa_iterator<const T, n, n>>;                     \
+  typedef zs::aosoa_iterator<const T, n, n> aosoa_iter_const_##T##_##n##_##n;                \
+  typedef zs::LegacyIterator<zs::aosoa_iterator<const T, n, n>>                              \
+      aosoa_iterator_const_##T##_##n##_##n;
 
 ZS_DECLARE_GENERIC_ITERATOR_TYPE(float, 1)
 ZS_DECLARE_GENERIC_ITERATOR_TYPE(float, 2)

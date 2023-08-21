@@ -63,16 +63,26 @@ namespace zs {
     size_type idx, numTileBits, tileMask, numChns;
   };
 
-  using aosoa_iter_1_f = aosoa_iterator<float, 1>;
-  using aosoa_iter_2_f = aosoa_iterator<float, 2>;
-  using aosoa_iter_3_f = aosoa_iterator<float, 3>;
-  using aosoa_iter_4_f = aosoa_iterator<float, 4>;
-  using aosoa_iter_1_i = aosoa_iterator<int, 1>;
-  using aosoa_iter_2_i = aosoa_iterator<int, 2>;
-  using aosoa_iter_3_i = aosoa_iterator<int, 3>;
-  using aosoa_iter_4_i = aosoa_iterator<int, 4>;
-  using aosoa_iter_2_2_f = aosoa_iterator<float, 2, 2>;
-  using aosoa_iter_3_3_f = aosoa_iterator<float, 3, 3>;
-  using aosoa_iter_4_4_f = aosoa_iterator<float, 4, 4>;
-
 }  // namespace zs
+
+extern "C" {
+
+#define ZS_DECLARE_GENERIC_ITERATOR_TYPE(T, n)                       \
+  typedef zs::aosoa_iterator<T, n> aosoa_iter_##T##_##n;             \
+  typedef zs::aosoa_iterator<const T, n> aosoa_iter_const_##T##_##n; \
+  typedef zs::aosoa_iterator<T, n, n> aosoa_iter_##T##_##n##_##n;    \
+  typedef zs::aosoa_iterator<const T, n, n> aosoa_iter_const_##T##_##n##_##n;
+
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(float, 1)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(float, 2)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(float, 3)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(float, 4)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(double, 1)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(double, 2)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(double, 3)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(double, 4)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(int, 1)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(int, 2)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(int, 3)
+ZS_DECLARE_GENERIC_ITERATOR_TYPE(int, 4)
+}

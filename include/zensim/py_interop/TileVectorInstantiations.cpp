@@ -1,4 +1,5 @@
 #include "zensim/container/TileVector.hpp"
+#include "zensim/py_interop/GenericIterator.hpp"
 #include "zensim/py_interop/TileVectorView.hpp"
 
 extern "C" {
@@ -71,21 +72,42 @@ void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
       const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v) {                                  \
     return v->capacity();                                                                         \
   }                                                                                               \
+  /* iterator */                                                                                  \
+  aosoa_iter_##T##_1 get_iterator_1##__##tv##_##T##_##L(                                          \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, size_t id, size_t chnOffset) {          \
+    return aosoa_iter_##T##_1{                                                                    \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+  }                                                                                               \
+  aosoa_iter_const_##T##_1 get_iterator_1##__##tv##_##const##_##T##_##L(                          \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, size_t id, size_t chnOffset) {    \
+    return aosoa_iter_const_##T##_1{                                                              \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+  }                                                                                               \
+  aosoa_iter_##T##_1 get_iterator_1##__##tv##_##T##_##L##_##virtual(                              \
+      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, size_t id, size_t chnOffset) {          \
+    return aosoa_iter_##T##_1{                                                                    \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+  }                                                                                               \
+  aosoa_iter_const_##T##_1 get_iterator_1##__##tv##_##const##_##T##_##L##_##virtual(              \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v, size_t id, size_t chnOffset) {     \
+    return aosoa_iter_const_##T##_1{                                                              \
+        zs::wrapv<zs::layout_e::aosoa>{}, v->data(), id, L, chnOffset, v->numChannels()};         \
+  }                                                                                               \
   /* custom */                                                                                    \
-  int property_offset##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,     \
-                                          const char *tag) {                                      \
+  int property_offset##__##tv##_##T##_##L(                                                        \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, const char *tag) {                \
     return v->getPropertyOffset(tag);                                                             \
   }                                                                                               \
   int property_offset##__##tv##_##T##_##L##_##virtual(                                            \
-      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, const char *tag) {                      \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v, const char *tag) {                 \
     return v->getPropertyOffset(tag);                                                             \
   }                                                                                               \
-  int property_size##__##tv##_##T##_##L(zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,       \
+  int property_size##__##tv##_##T##_##L(const zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v, \
                                         const char *tag) {                                        \
     return v->getPropertySize(tag);                                                               \
   }                                                                                               \
   int property_size##__##tv##_##T##_##L##_##virtual(                                              \
-      zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, const char *tag) {                      \
+      const zs::TileVector<T, L, zs::ZSPmrAllocator<true>> *v, const char *tag) {                 \
     return v->getPropertySize(tag);                                                               \
   }                                                                                               \
   /* pyview */                                                                                    \

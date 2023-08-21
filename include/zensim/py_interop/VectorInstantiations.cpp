@@ -1,5 +1,6 @@
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
+#include "zensim/py_interop/GenericIterator.hpp"
 #include "zensim/py_interop/VectorView.hpp"
 
 extern "C" {
@@ -54,6 +55,39 @@ extern "C" {
   size_t container_capacity##__##v##_##T##_##virtual(                                            \
       const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
     return v->capacity();                                                                        \
+  }                                                                                              \
+  /* iterator */                                                                                 \
+  aosoa_iter_##T##_1 get_iterator_1##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,    \
+                                                 zs::u32 id) {                                   \
+    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                    \
+  }                                                                                              \
+  aosoa_iter_const_##T##_1 get_iterator_1##__##v##_##const##_##T(                                \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                           \
+    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};              \
+  }                                                                                              \
+  aosoa_iter_##T##_1 get_iterator_1##__##v##_##T##_##virtual(                                    \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                 \
+    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                    \
+  }                                                                                              \
+  aosoa_iter_const_##T##_1 get_iterator_1##__##v##_##const##_##T##_##virtual(                    \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                            \
+    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};              \
+  }                                                                                              \
+  aosoa_iter_##T##_3 get_iterator_3##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,    \
+                                                 zs::u32 id) {                                   \
+    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                    \
+  }                                                                                              \
+  aosoa_iter_const_##T##_3 get_iterator_3##__##v##_##const##_##T(                                \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                           \
+    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};              \
+  }                                                                                              \
+  aosoa_iter_##T##_3 get_iterator_3##__##v##_##T##_##virtual(                                    \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                 \
+    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                    \
+  }                                                                                              \
+  aosoa_iter_const_##T##_3 get_iterator_3##__##v##_##const##_##T##_##virtual(                    \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                            \
+    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};              \
   }                                                                                              \
   /* custom */                                                                                   \
   T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                \

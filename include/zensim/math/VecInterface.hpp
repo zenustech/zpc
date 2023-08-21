@@ -142,6 +142,26 @@ namespace zs {
         volatile noexcept {
       return derivedPtr()->do_data(i);
     }
+    template <typename VecT = Derived> constexpr auto do_data(typename VecT::index_type) noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      return (value_type*)nullptr;
+    }
+    template <typename VecT = Derived>
+    constexpr auto do_data(typename VecT::index_type) volatile noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      return (volatile value_type*)nullptr;
+    }
+    template <typename VecT = Derived>
+    constexpr auto do_data(typename VecT::index_type) const noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      return (const value_type*)nullptr;
+    }
+    template <typename VecT = Derived> constexpr auto do_data(typename VecT::index_type) const
+        volatile noexcept {
+      DECLARE_VEC_INTERFACE_ATTRIBUTES
+      return (const volatile value_type*)nullptr;
+    }
+
     /// property query
     static constexpr auto get_extent() noexcept { return Derived::extent; }
     static constexpr auto get_dim() noexcept { return Derived::dim; }
@@ -167,13 +187,11 @@ namespace zs {
     template <typename VecT = Derived, typename... Tis,
               enable_if_all<sizeof...(Tis) <= VecT::dim, (is_integral_v<Tis> && ...)> = 0>
     constexpr decltype(auto) operator()(Tis... is) noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
       return derivedPtr()->operator()(is...);
     }
     template <typename VecT = Derived, typename... Tis,
               enable_if_all<sizeof...(Tis) <= VecT::dim, (is_integral_v<Tis> && ...)> = 0>
     constexpr decltype(auto) operator()(Tis... is) const noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
       return derivedPtr()->operator()(is...);
     }
     // val (one dimension index)
@@ -192,6 +210,22 @@ namespace zs {
     template <typename VecT = Derived>
     constexpr decltype(auto) val(typename VecT::index_type i) const volatile noexcept {
       return derivedPtr()->do_val(i);
+    }
+    template <typename VecT = Derived>
+    constexpr decltype(auto) do_val(typename VecT::index_type i) noexcept {
+      return *derivedPtr()->data(i);
+    }
+    template <typename VecT = Derived>
+    constexpr decltype(auto) do_val(typename VecT::index_type i) const noexcept {
+      return *derivedPtr()->data(i);
+    }
+    template <typename VecT = Derived>
+    constexpr decltype(auto) do_val(typename VecT::index_type i) volatile noexcept {
+      return *derivedPtr()->data(i);
+    }
+    template <typename VecT = Derived>
+    constexpr decltype(auto) do_val(typename VecT::index_type i) const volatile noexcept {
+      return *derivedPtr()->data(i);
     }
     // [] (one dimension index)
     template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
@@ -951,27 +985,6 @@ namespace zs {
     friend constexpr bool operator!=(VecInterface const& lhs,
                                      VecInterface<OtherVecT> const& rhs) noexcept {
       return !(lhs == rhs);
-    }
-
-  protected:
-    template <typename VecT = Derived> constexpr auto do_data(typename VecT::index_type) noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      return (value_type*)nullptr;
-    }
-    template <typename VecT = Derived>
-    constexpr auto do_data(typename VecT::index_type) volatile noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      return (volatile value_type*)nullptr;
-    }
-    template <typename VecT = Derived>
-    constexpr auto do_data(typename VecT::index_type) const noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      return (const value_type*)nullptr;
-    }
-    template <typename VecT = Derived> constexpr auto do_data(typename VecT::index_type) const
-        volatile noexcept {
-      DECLARE_VEC_INTERFACE_ATTRIBUTES
-      return (const volatile value_type*)nullptr;
     }
   };
 

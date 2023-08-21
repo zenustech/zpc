@@ -102,30 +102,6 @@ namespace zs {
         }
       }
     }
-    constexpr decltype(auto) do_val(index_type index) noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
-    }
-    constexpr decltype(auto) do_val(index_type index) const noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
-    }
-    constexpr decltype(auto) do_val(index_type index) volatile noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
-    }
-    constexpr decltype(auto) do_val(index_type index) const volatile noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
-    }
     constexpr auto do_data(index_type i) noexcept {
       if constexpr (is_pointer_structure)
         return _data[i];
@@ -319,30 +295,6 @@ namespace zs {
 #else
       return base_t::reinterpret_bits(wrapt<TT>{});
 #endif
-    }
-    constexpr decltype(auto) do_val(index_type index) noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
-    }
-    constexpr decltype(auto) do_val(index_type index) const noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
-    }
-    constexpr decltype(auto) do_val(index_type index) volatile noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
-    }
-    constexpr decltype(auto) do_val(index_type index) const volatile noexcept {
-      if constexpr (is_pointer_structure)
-        return *_data[index];
-      else
-        return _data[index];
     }
     ///
     template <typename TT> constexpr explicit operator vec_impl<TT, extents>() const noexcept {

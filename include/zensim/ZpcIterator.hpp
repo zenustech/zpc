@@ -648,7 +648,7 @@ namespace zs {
     return range<DiffT>(begin, end, (DiffT)(begin < end ? 1 : -1));
   }
   template <typename T, enable_if_t<is_integral_v<T>> = 0> constexpr auto range(T end) {
-    return range<T>(0, end);
+    return range<T>((T)0, end);
   }
 
   // pointer range

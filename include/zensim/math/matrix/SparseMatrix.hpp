@@ -550,7 +550,7 @@ namespace zs {
     using ICoord = zs::vec<Ti, 2>;
 
     auto allocator = get_temporary_memory_source(policy);
-    Vector<index_type> localOffsets{allocator, size * 2};
+    Vector<index_type> localOffsets{allocator, (size_t)size * 2};
     Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
     bool success = false;
     cnts.reset(0);
@@ -782,7 +782,7 @@ namespace zs {
                       zs::begin(orderedIndices) + st, zs::begin(srcIndices) + st, ed - st, 0,
                       std::max((int)bit_count(innerSize), 1));
     });
-    pol(range(nnz), [&](size_type no) mutable { orderedVals[no] = _vals[srcIndices[no]]; });
+    pol(range(nnz), [&](size_type no) { orderedVals[no] = _vals[srcIndices[no]]; });
 
     _inds = std::move(orderedIndices);
     _vals = std::move(orderedVals);

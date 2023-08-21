@@ -169,7 +169,7 @@ namespace zs {
     static constexpr T e{0};
     static constexpr auto identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
-      return (forward<Args>(args) + ...);
+      return (args + ...);
     }
   };
   template <typename T> struct monoid<multiplies<T>, T> {
@@ -177,7 +177,10 @@ namespace zs {
     static constexpr T e{1};
     static constexpr T identity() noexcept { return e; }
     template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
-      return (forward<Args>(args) * ...);
+      if constexpr (sizeof...(Args) == 0)
+        return e;
+      else
+        return (args * ...);
     }
   };
   template <typename T> struct monoid<logical_or<T>, T> {
@@ -185,7 +188,7 @@ namespace zs {
     static constexpr bool e{false};
     static constexpr bool identity() noexcept { return e; }
     template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
-      return (forward<Args>(args) || ...);
+      return (args || ...);
     }
   };
   template <typename T> struct monoid<logical_and<T>, T> {
@@ -193,7 +196,7 @@ namespace zs {
     static constexpr bool e{true};
     static constexpr bool identity() noexcept { return e; }
     template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
-      return (forward<Args>(args) && ...);
+      return (args && ...);
     }
   };
   namespace detail {

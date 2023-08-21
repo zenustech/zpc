@@ -68,8 +68,7 @@ namespace zs {
       return base_t::val(indexer_type::offset(forward<Args>(args)...));
     }
     // []
-    template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
-    constexpr decltype(auto) operator[](Index index) noexcept {
+    constexpr decltype(auto) operator[](index_type index) noexcept {
       if constexpr (dim == 1) {
         return base_t::val(index);
       } else {
@@ -77,14 +76,13 @@ namespace zs {
         const auto st = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
-          for (index_type i = 0; i != R::extent; ++i) ret.data()[i] = base_t::data()[st + i];
+          for (index_type i = 0; i != R::extent; ++i) ret.data(i) = base_t::data(st + i);
           return ret;
         } else
-          return R{base_t::data() + st};
+          return R{base_t::data(st)};
       }
     }
-    template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
-    constexpr decltype(auto) operator[](Index index) const noexcept {
+    constexpr decltype(auto) operator[](index_type index) const noexcept {
       if constexpr (dim == 1) {
         return base_t::val(index);
       } else {
@@ -95,41 +93,61 @@ namespace zs {
         const auto st = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
-          for (index_type i = 0; i != R::extent; ++i) ret.data()[i] = base_t::data()[st + i];
+          for (index_type i = 0; i != R::extent; ++i) ret.data(i) = base_t::data(st + i);
           return ret;
         } else {
-          return R{base_t::data() + st};
+          return R{base_t::data(st)};
         }
       }
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) noexcept {
+    constexpr decltype(auto) do_val(index_type index) noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else
         return _data[index];
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) const noexcept {
+    constexpr decltype(auto) do_val(index_type index) const noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else
         return _data[index];
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) volatile noexcept {
+    constexpr decltype(auto) do_val(index_type index) volatile noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else
         return _data[index];
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) const volatile noexcept {
+    constexpr decltype(auto) do_val(index_type index) const volatile noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else
         return _data[index];
     }
-    constexpr auto do_data() noexcept { return _data; }
-    constexpr auto do_data() const volatile noexcept { return _data; }
-    constexpr auto do_data() volatile noexcept { return _data; }
-    constexpr auto do_data() const noexcept { return _data; }
+    constexpr auto do_data(index_type i) noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
+    }
+    constexpr auto do_data(index_type i) const volatile noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
+    }
+    constexpr auto do_data(index_type i) volatile noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
+    }
+    constexpr auto do_data(index_type i) const noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
+    }
 
     conditional_t<is_pointer_structure, T[extent], T *> _data;
   };
@@ -155,14 +173,30 @@ namespace zs {
 
   public:
     /// expose internal
-    constexpr auto do_data() noexcept -> T * { return _data; }
-    constexpr auto do_data() const volatile noexcept -> const volatile T * {
-      return const_cast<const volatile T *>(_data);
+    constexpr auto do_data(index_type i) noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
     }
-    constexpr auto do_data() volatile noexcept -> volatile T * {
-      return const_cast<volatile T *>(_data);
+    constexpr auto do_data(index_type i) const volatile noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
     }
-    constexpr auto do_data() const noexcept -> const T * { return const_cast<const T *>(_data); }
+    constexpr auto do_data(index_type i) volatile noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
+    }
+    constexpr auto do_data(index_type i) const noexcept {
+      if constexpr (is_pointer_structure)
+        return _data[i];
+      else
+        return _data + i;
+    }
 
     /// think this does not break rule of five
     constexpr vec_impl() noexcept = default;
@@ -246,10 +280,10 @@ namespace zs {
         auto offset = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
-          for (index_type i = 0; i != R::extent; ++i) ret.data()[i] = base_t::data()[offset + i];
+          for (index_type i = 0; i != R::extent; ++i) ret.data(i) = base_t::data(offset + i);
           return ret;
         } else
-          return R{base_t::data() + offset};
+          return R{base_t::data(offset)};
       }
     }
     template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
@@ -264,10 +298,10 @@ namespace zs {
         auto offset = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
-          for (index_type i = 0; i != R::extent; ++i) ret.data()[i] = base_t::data()[offset + i];
+          for (index_type i = 0; i != R::extent; ++i) ret.data(i) = base_t::data(offset + i);
           return ret;
         } else
-          return R{base_t::data() + offset};
+          return R{base_t::data(offset)};
       }
     }
     template <typename TT, enable_if_all<(alignof(value_type) >= alignof(TT)),
@@ -281,25 +315,25 @@ namespace zs {
       return base_t::reinterpret_bits(wrapt<TT>{});
 #endif
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) noexcept {
+    constexpr decltype(auto) do_val(index_type index) noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else
         return _data[index];
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) const noexcept {
+    constexpr decltype(auto) do_val(index_type index) const noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else
         return _data[index];
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) volatile noexcept {
+    constexpr decltype(auto) do_val(index_type index) volatile noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else
         return _data[index];
     }
-    template <typename Index> constexpr decltype(auto) do_val(Index index) const volatile noexcept {
+    constexpr decltype(auto) do_val(index_type index) const volatile noexcept {
       if constexpr (is_pointer_structure)
         return *_data[index];
       else

@@ -51,13 +51,15 @@ namespace zs {
 
     /// random access
     // ()
-    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
-                                            && (is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
+    template <typename... Args,
+              enable_if_t<sizeof...(Args) <= dim && (is_integral_v<remove_cvref_t<Args>> && ...)>
+              = 0>
     constexpr decltype(auto) operator()(Args &&...args) noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
-    template <typename... Args, enable_if_t<sizeof...(Args) <= dim
-                                            && (is_integral_v<remove_cvref_t<Args>> && ...)> = 0>
+    template <typename... Args,
+              enable_if_t<sizeof...(Args) <= dim && (is_integral_v<remove_cvref_t<Args>> && ...)>
+              = 0>
     constexpr decltype(auto) operator()(Args &&...args) const noexcept {
       return _tensorPtr->val(getTensorCoord(forward_as_tuple(FWD(args)...), indices{}));
     }
@@ -185,18 +187,12 @@ namespace zs {
             make_tuple((index_type)index), make_uniform_tuple<dim - 1>((index_type)0)};
     }
     // val (in ascending access order rather than memory storage order)
-    template <typename Index> constexpr T &do_val(Index index) noexcept {
+    decltype(auto) do_val(index_type index) noexcept {
       return _data[indexer_type::offset(index_to_coord(index, vseq_t<extents>{}))];
     }
-    template <typename Index> constexpr const T &do_val(Index index) const noexcept {
+    decltype(auto) do_val(index_type index) const noexcept {
       return _data[indexer_type::offset(index_to_coord(index, vseq_t<extents>{}))];
     }
-#if 0
-    static void print() {
-      printf("indexer_type: %s\n", get_type_str<indexer_type>().data());
-      printf("tensor size check: %d\n", (int)indexer_type::extent);
-    }
-#endif
 
     T _data[indexer_type::extent];
   };

@@ -53,6 +53,31 @@ extern "C" {
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<true>> * spmat) {                 \
     spmat->_vals.reset(0);                                                                       \
   }                                                                                              \
+  /* custom */                                                                                   \
+  size_t nnz##__##spm##_##T##_##RowMajor##_##Ti##_##Tn(                                          \
+      const zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat) {           \
+    return spmat->nnz();                                                                         \
+  }                                                                                              \
+  size_t nnz##__##spm##_##T##_##RowMajor##_##Ti##_##Tn##_##virtual(                              \
+      const zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<true>> *spmat) {            \
+    return spmat->nnz();                                                                         \
+  }                                                                                              \
+  size_t outer_size##__##spm##_##T##_##RowMajor##_##Ti##_##Tn(                                   \
+      const zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat) {           \
+    return spmat->outerSize();                                                                   \
+  }                                                                                              \
+  size_t outer_size##__##spm##_##T##_##RowMajor##_##Ti##_##Tn##_##virtual(                       \
+      const zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<true>> *spmat) {            \
+    return spmat->outerSize();                                                                   \
+  }                                                                                              \
+  size_t inner_size##__##spm##_##T##_##RowMajor##_##Ti##_##Tn(                                   \
+      const zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat) {           \
+    return spmat->innerSize();                                                                   \
+  }                                                                                              \
+  size_t inner_size##__##spm##_##T##_##RowMajor##_##Ti##_##Tn##_##virtual(                       \
+      const zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<true>> *spmat) {            \
+    return spmat->innerSize();                                                                   \
+  }                                                                                              \
   /* pyview */                                                                                   \
   zs::SpmatViewLite<T, RowMajor, Ti, Tn> *pyview##__##spm##_##T##_##RowMajor##_##Ti##_##Tn(      \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat) {                 \

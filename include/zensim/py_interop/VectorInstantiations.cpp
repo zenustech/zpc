@@ -41,6 +41,21 @@ extern "C" {
                                                 int ch) {                                        \
     v->reset(ch);                                                                                \
   }                                                                                              \
+  size_t container_size##__##v##_##T(const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {        \
+    return v->size();                                                                            \
+  }                                                                                              \
+  size_t container_size##__##v##_##T##_##virtual(                                                \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
+    return v->size();                                                                            \
+  }                                                                                              \
+  size_t container_capacity##__##v##_##T(const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {    \
+    return v->capacity();                                                                        \
+  }                                                                                              \
+  size_t container_capacity##__##v##_##T##_##virtual(                                            \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
+    return v->capacity();                                                                        \
+  }                                                                                              \
+  /* custom */                                                                                   \
   T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                \
     return v->getVal();                                                                          \
   }                                                                                              \

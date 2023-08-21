@@ -43,6 +43,24 @@ extern "C" {
       zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<true>> * v, int clearCnt) {                   \
     v->reset(clearCnt);                                                                           \
   }                                                                                               \
+  size_t container_size##__##bht##_##Tn##_##Dim##_##Index##_##B(                                  \
+      const zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<false>> *v) {                           \
+    return v->size();                                                                             \
+  }                                                                                               \
+  size_t container_size##__##bht##_##Tn##_##Dim##_##Index##_##B##_##virtual(                      \
+      const zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<true>> *v) {                            \
+    return v->size();                                                                             \
+  }                                                                                               \
+  size_t container_capacity##__##bht##_##Tn##_##Dim##_##Index##_##B(                              \
+      const zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<false>> *v) {                           \
+    return v->_tableSize;                                                                         \
+  }                                                                                               \
+  size_t container_capacity##__##bht##_##Tn##_##Dim##_##Index##_##B##_##virtual(                  \
+      const zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<true>> *v) {                            \
+    return v->_tableSize;                                                                         \
+  }                                                                                               \
+  /* custom */                                                                                    \
+  /* pyview */                                                                                    \
   zs::BhtViewLite<Tn, Dim, Index, B> *pyview##__##bht##_##Tn##_##Dim##_##Index##_##B(             \
       zs::bht<Tn, Dim, Index, B, zs::ZSPmrAllocator<false>> *v) {                                 \
     return new zs::BhtViewLite<Tn, Dim, Index, B>{v->self().keys.data(),                          \

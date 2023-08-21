@@ -129,20 +129,19 @@ namespace zs {
                               channel_counter_type nchns) noexcept
           : _base{base}, _idx{idx}, _chn{chn}, _numChannels{nchns} {}
 
-      constexpr conditional_t<is_scalar_access,
-                              conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
-                              vec<iter_value_type, Ns...>>
-      dereference() const {
+      constexpr decltype(auto) dereference() const {
         if constexpr (is_scalar_access)
           return *(
               (conditional_t<is_const_structure, const iter_value_type *, iter_value_type *>)_base
               + (_idx / lane_width * _numChannels + _chn) * lane_width + _idx % lane_width);
         else {
-          using RetT = vec<iter_value_type, Ns...>;
+          using PtrT
+              = conditional_t<is_const_structure, const iter_value_type *, iter_value_type *>;
+          using RetT = vec<PtrT, Ns...>;
           RetT ret{};
-          auto ptr = (const iter_value_type *)_base
-                     + (_idx / lane_width * _numChannels + _chn) * lane_width + (_idx % lane_width);
-          for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret.val(d) = *ptr;
+          auto ptr = (PtrT)_base + (_idx / lane_width * _numChannels + _chn) * lane_width
+                     + (_idx % lane_width);
+          for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width) ret.data(d) = ptr;
           return ret;
         }
       }
@@ -187,10 +186,7 @@ namespace zs {
         if (segNo >= num_segments) throw std::runtime_error("not a valid segment index.");
       }
 
-      constexpr conditional_t<is_scalar_access,
-                              conditional_t<is_const_structure, iter_value_type, iter_value_type &>,
-                              vec<iter_value_type, Ns...>>
-      dereference() const {
+      constexpr decltype(auto) dereference() const {
         /// @note ref: https://en.cppreference.com/w/cpp/language/reinterpret_cast
         if constexpr (is_scalar_access) {
           return *((conditional_t<is_const_structure, const iter_value_type *,
@@ -199,15 +195,14 @@ namespace zs {
                                                             * lane_width)
                    + _segOffset + _idx % lane_width);
         } else {
-          using RetT = vec<iter_value_type, Ns...>;
+          using PtrT
+              = conditional_t<is_const_structure, const iter_value_type *, iter_value_type *>;
+          using RetT = vec<PtrT, Ns...>;
           RetT ret{};
-          auto ptr = (conditional_t<is_const_structure, const iter_value_type *,
-                                    iter_value_type *>)(_base
-                                                        + (_idx / lane_width * _numChannels + _chn)
-                                                              * lane_width)
+          auto ptr = (PtrT)(_base + (_idx / lane_width * _numChannels + _chn) * lane_width)
                      + _segOffset + _idx % lane_width;
           for (channel_counter_type d = 0; d != extent; ++d, ptr += lane_width * num_segments)
-            ret.val(d) = *ptr;
+            ret.data(d) = ptr;
           return ret;
         }
       }
@@ -713,7 +708,8 @@ namespace zs {
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
                                                          const size_type i,
                                                          wrapt<TT> = {}) noexcept {
@@ -753,7 +749,8 @@ namespace zs {
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr TT operator()(const channel_counter_type chn, const size_type i,
                             wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -790,10 +787,10 @@ namespace zs {
       }
     }
 
-    template <
-        typename TT = value_type, bool V = is_const_structure, bool InTile = WithinTile,
-        enable_if_all<!V, !InTile, sizeof(TT) == sizeof(value_type),
-                      is_same_v<TT, remove_cvref_t<TT>>, (alignof(TT) == alignof(value_type))> = 0>
+    template <typename TT = value_type, bool V = is_const_structure, bool InTile = WithinTile,
+              enable_if_all<!V, !InTile, sizeof(TT) == sizeof(value_type),
+                            is_same_v<TT, remove_cvref_t<TT>>, (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const channel_counter_type chn,
                                                          const size_type tileNo,
                                                          const size_type localNo,
@@ -817,10 +814,10 @@ namespace zs {
 #endif
       return *((TT *)_vector + ((tileNo * _dims._numChannels + chn) * lane_width + localNo));
     }
-    template <
-        typename TT = value_type, bool InTile = WithinTile,
-        enable_if_all<!InTile, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                      (alignof(TT) == alignof(value_type))> = 0>
+    template <typename TT = value_type, bool InTile = WithinTile,
+              enable_if_all<!InTile, sizeof(TT) == sizeof(value_type),
+                            is_same_v<TT, remove_cvref_t<TT>>, (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr TT operator()(const channel_counter_type chn, const size_type tileNo,
                             const size_type localNo, wrapt<TT> = {}) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -873,7 +870,8 @@ namespace zs {
     // use dim_c<Ns...> for the first parameter
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto pack(value_seq<Ns...>, channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
       using RetT = vec<TT, Ns...>;
@@ -919,7 +917,8 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto pack(channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
       return pack(dim_c<Ns...>, chn, i, wrapt<TT>{});
@@ -937,7 +936,8 @@ namespace zs {
     /// tuple
     template <size_t... Is, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_sequence<Is...>, wrapt<TT>) const noexcept {
       constexpr channel_counter_type d = sizeof...(Is);
@@ -981,24 +981,26 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto tuple(value_seq<Ns...>, const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return tuple_impl(chn, i, make_index_sequence<(Ns * ...)>{}, wrapt<TT>{});
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto tuple(const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return tuple(dim_c<d>, chn, i, wrapt<TT>{});
     }
 
     /// mount
-    template <
-        auto... Ns, typename TT, size_t... Is,
-        enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                      (alignof(TT) == alignof(value_type)), (sizeof...(Is) == (Ns * ...))> = 0>
+    template <auto... Ns, typename TT, size_t... Is,
+              enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
+                            (alignof(TT) == alignof(value_type)), (sizeof...(Is) == (Ns * ...))>
+              = 0>
     constexpr auto mount_impl(value_seq<Ns...>, const channel_counter_type chnOffset,
                               const size_type i, wrapt<TT>, index_sequence<Is...>) const noexcept {
       // using R = zs::vec<const value_type *, (int)Ns...>;
@@ -1016,7 +1018,8 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto mount(value_seq<Ns...>, const channel_counter_type chnOffset, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return mount_impl(value_seq<Ns...>{}, chnOffset, i, wrapt<TT>{},
@@ -1202,7 +1205,8 @@ namespace zs {
     ///
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
                                                          const channel_counter_type chn,
                                                          const size_type i,
@@ -1222,7 +1226,8 @@ namespace zs {
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr TT operator()(const SmallString &propName, const channel_counter_type chn,
                             const size_type i, wrapt<TT> = {}) const noexcept {
       auto propNo = propertyIndex(propName);
@@ -1240,7 +1245,8 @@ namespace zs {
     }
     template <bool V = is_const_structure, typename TT = value_type,
               enable_if_all<!V, sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr std::add_lvalue_reference_t<TT> operator()(const SmallString &propName,
                                                          const size_type i,
                                                          wrapt<TT> = {}) noexcept {
@@ -1259,7 +1265,8 @@ namespace zs {
     }
     template <typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr TT operator()(const SmallString &propName, const size_type i,
                             wrapt<TT> = {}) const noexcept {
       auto propNo = propertyIndex(propName);
@@ -1312,7 +1319,8 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto pack(value_seq<Ns...>, const SmallString &propName, const size_type i,
                         wrapt<TT> = {}) const noexcept {
       auto propNo = propertyIndex(propName);
@@ -1335,7 +1343,8 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto pack(const SmallString &propName, const size_type i,
                         wrapt<TT> = {}) const noexcept {
       return pack(dim_c<Ns...>, propName, i, wrapt<TT>{});
@@ -1343,7 +1352,8 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto pack(value_seq<Ns...>, const SmallString &propName,
                         const channel_counter_type chn, const size_type i,
                         wrapt<TT> = {}) const noexcept {
@@ -1368,7 +1378,8 @@ namespace zs {
     }
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto pack(const SmallString &propName, const channel_counter_type chn,
                         const size_type i, wrapt<TT> = {}) const noexcept {
       return pack(dim_c<Ns...>, propName, chn, i, wrapt<TT>{});
@@ -1393,7 +1404,8 @@ namespace zs {
     /// @brief tieing
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto tuple(value_seq<Ns...>, const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       auto propNo = propertyIndex(propName);
@@ -1413,7 +1425,8 @@ namespace zs {
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto tuple(const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return tuple(dim_c<d>, propName, i, wrapt<TT>{});
@@ -1421,7 +1434,8 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto tuple(value_seq<Ns...>, const SmallString &propName,
                          const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
@@ -1442,7 +1456,8 @@ namespace zs {
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto tuple(const SmallString &propName, const channel_counter_type chn,
                          const size_type i, wrapt<TT> = {}) const noexcept {
       return tuple(dim_c<d>, propName, chn, i, wrapt<TT>{});
@@ -1450,7 +1465,8 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto mount(value_seq<Ns...>, const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       auto propNo = propertyIndex(propName);
@@ -1459,7 +1475,8 @@ namespace zs {
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto mount(const SmallString &propName, const size_type i,
                          wrapt<TT> = {}) const noexcept {
       return mount(dim_c<d>, propName, i, wrapt<TT>{});
@@ -1467,7 +1484,8 @@ namespace zs {
 
     template <auto... Ns, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto mount(value_seq<Ns...>, const SmallString &propName,
                          const channel_counter_type chn, const size_type i,
                          wrapt<TT> = {}) const noexcept {
@@ -1477,7 +1495,8 @@ namespace zs {
     }
     template <auto d, typename TT = value_type,
               enable_if_all<sizeof(TT) == sizeof(value_type), is_same_v<TT, remove_cvref_t<TT>>,
-                            (alignof(TT) == alignof(value_type))> = 0>
+                            (alignof(TT) == alignof(value_type))>
+              = 0>
     constexpr auto mount(const SmallString &propName, const channel_counter_type chn,
                          const size_type i, wrapt<TT> = {}) const noexcept {
       return mount(dim_c<d>, propName, chn, i, wrapt<TT>{});

@@ -4,6 +4,7 @@
 #include <numeric>
 
 #include "zensim/TypeAlias.hpp"
+#include "zensim/container/Vector.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/resource/Resource.h"
@@ -121,6 +122,9 @@ namespace zs {
       dst = src;
     }
   };
+
+  struct SequentialExecutionPolicy;
+  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const SequentialExecutionPolicy &pol);
 
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
     using exec_tag = host_exec_tag;
@@ -309,8 +313,11 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
 
-      std::vector<KeyT> okeys_(dist);
-      std::vector<ValueT> ovals_(dist);
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<KeyT> okeys_{allocator, (size_t)dist};
+      Vector<ValueT> ovals_{allocator, (size_t)dist};
+      // std::vector<KeyT> okeys_(dist);
+      // std::vector<ValueT> ovals_(dist);
       auto okeys = std::begin(okeys_);
       auto ovals = std::begin(ovals_);
 
@@ -454,12 +461,15 @@ namespace zs {
       int binCount = 1 << binBits;
       int binMask = binCount - 1;
 
-      std::vector<DiffT> binGlobalSizes(binCount);
-      std::vector<DiffT> binOffsets(binCount);
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<DiffT> binGlobalSizes{allocator, (size_t)binCount};
+      Vector<DiffT> binOffsets{allocator, (size_t)binCount};
+      // std::vector<DiffT> binGlobalSizes(binCount);
+      // std::vector<DiffT> binOffsets(binCount);
 
-      std::vector<InputValueT> buffers[2];
-      buffers[0].resize(dist);
-      buffers[1].resize(dist);
+      Vector<InputValueT> buffers[2] = {{allocator, (size_t)dist}, {allocator, (size_t)dist}};
+      // buffers[0].resize(dist);
+      // buffers[1].resize(dist);
       InputValueT *cur{buffers[0].data()}, *next{buffers[1].data()};
 
       /// sign-related handling
@@ -524,15 +534,16 @@ namespace zs {
       int binCount = 1 << binBits;
       int binMask = binCount - 1;
 
-      std::vector<DiffT> binGlobalSizes(binCount);
-      std::vector<DiffT> binOffsets(binCount);
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<DiffT> binGlobalSizes{allocator, (size_t)binCount};
+      Vector<DiffT> binOffsets{allocator, (size_t)binCount};
 
-      std::vector<KeyT> keyBuffers[2];
-      std::vector<ValueT> valBuffers[2];
-      keyBuffers[0].resize(count);
-      keyBuffers[1].resize(count);
-      valBuffers[0].resize(count);
-      valBuffers[1].resize(count);
+      Vector<KeyT> keyBuffers[2] = {{allocator, (size_t)count}, {allocator, (size_t)count}};
+      Vector<ValueT> valBuffers[2] = {{allocator, (size_t)count}, {allocator, (size_t)count}};
+      // keyBuffers[0].resize(count);
+      // keyBuffers[1].resize(count);
+      // valBuffers[0].resize(count);
+      // valBuffers[1].resize(count);
       KeyT *cur{keyBuffers[0].data()}, *next{keyBuffers[1].data()};
       ValueT *curVals{valBuffers[0].data()}, *nextVals{valBuffers[1].data()};
 

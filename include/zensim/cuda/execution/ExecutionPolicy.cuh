@@ -13,7 +13,6 @@
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_scan.cuh>
 
-#include "zensim/container/Vector.hpp"
 #include "zensim/cuda/Cuda.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/types/Tuple.h"
@@ -791,8 +790,8 @@ namespace zs {
                             thrust::device_pointer_cast(valsOut.operator->()));
 #else
         auto allocator = get_temporary_memory_source(*this);
-        Vector<KeyT> ksIn{allocator, count}, ksOut{allocator, count};
-        Vector<ValueT> vsIn{allocator, count}, vsOut{allocator, count};
+        Vector<KeyT> ksIn{allocator, (size_t)count}, ksOut{allocator, (size_t)count};
+        Vector<ValueT> vsIn{allocator, (size_t)count}, vsOut{allocator, (size_t)count};
 
         (*this)(zip(range(keysIn, keysIn + count), ksIn), zs::make_tuple(),
                 _zs_policy_assign_operator{}, loc);
@@ -846,7 +845,7 @@ namespace zs {
                    thrust::device_pointer_cast(d_first.operator->() + dist));
 #else
       auto allocator = get_temporary_memory_source(*this);
-      Vector<KeyT> ksIn{allocator, dist}, ksOut{allocator, dist};
+      Vector<KeyT> ksIn{allocator, (size_t)dist}, ksOut{allocator, (size_t)dist};
       (*this)(zip(range(first, last), ksIn), zs::make_tuple(), _zs_policy_assign_operator{}, loc);
 
       size_t temp_bytes = 0;

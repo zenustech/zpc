@@ -11,7 +11,9 @@ namespace zs {
                   "Vector only works with zspmrallocator for now.");
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
-    static_assert(std::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
+    // static_assert(zs::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
+    static_assert(zs::is_trivially_copyable_v<T> || std::is_copy_assignable_v<T>,
+                  "element is not copyable!");
 
     using value_type = T;
     using allocator_type = AllocatorT;
@@ -157,9 +159,18 @@ namespace zs {
           _base{allocate(sizeof(value_type) * o._capacity)},
           _size{o.size()},
           _capacity{o._capacity} {
-      if (o.data() && o.size() > 0)
-        Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
-                       MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
+      if (o.data() && o.size() > 0) {
+        if constexpr (zs::is_trivially_copyable_v<T>)
+          Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
+                         MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
+        else {
+          if (o.memspace() == memsrc_e::host) {
+            for (auto &[dst, src] : zip(*this, o)) dst = src;
+          } else
+            throw std::runtime_error(fmt::format(
+                "unable to perform Vector::copy-ctor when the memory space is not the host."));
+        }
+      }
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
@@ -284,15 +295,31 @@ namespace zs {
     }
 
     void append(const Vector &other) {
+      const auto oldSize = size();
       difference_type count = other.size();  //< def standard iterator
       if (count <= 0) return;
-      size_type unusedCapacity = capacity() - size();
+      size_type unusedCapacity = capacity() - oldSize;
       if (count > unusedCapacity)
-        resize(size() + count);
+        resize(oldSize + count);
       else
         _size += count;
-      Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + size())},
-                     MemoryEntity{other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
+      if constexpr (zs::is_trivially_copyable_v<T>)
+        Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + oldSize)},
+                       MemoryEntity{other.memoryLocation(), (void *)other.data()},
+                       sizeof(T) * count);
+      else {
+        if (memspace() == memsrc_e::host) {
+          const value_type *ptr = other.data();
+          if (other.memspace() != memsrc_e::host) {
+            Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + oldSize)},
+                           MemoryEntity{other.memoryLocation(), (void *)other.data()},
+                           sizeof(T) * count);
+          } else
+            for (size_type i = 0; i != count; ++i) (*this)[oldSize + i] = other[i];
+        } else
+          throw std::runtime_error(fmt::format(
+              "unable to perform Vector::append when the memory space is not the host."));
+      }
     }
 
     template <typename Policy, typename MapRange, bool Scatter = false>

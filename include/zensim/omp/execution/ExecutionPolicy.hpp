@@ -16,6 +16,9 @@
 
 namespace zs {
 
+  struct OmpExecutionPolicy;
+  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const OmpExecutionPolicy &pol);
+
   /// use pragma syntax instead of attribute syntax
   struct OmpExecutionPolicy : ExecutionPolicyInterface<OmpExecutionPolicy> {
     using exec_tag = omp_exec_tag;
@@ -255,7 +258,8 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       const auto dist = last - first;
-      std::vector<ValueT> localRes{};
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<ValueT> localRes{allocator, (size_t)0};
       DiffT nths{};
 #pragma omp parallel if (_dop < dist) num_threads(_dop) \
     shared(dist, nths, first, last, d_first, localRes, binary_op)
@@ -330,7 +334,8 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       const auto dist = last - first;
-      std::vector<ValueT> localRes{};
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<ValueT> localRes{allocator, (size_t)0};
       DiffT nths{};
 #pragma omp parallel if (_dop < dist) num_threads(_dop) \
     shared(dist, nths, first, last, d_first, localRes, binary_op)
@@ -410,7 +415,8 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       const auto dist = last - first;
-      std::vector<ValueT> localRes{};
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<ValueT> localRes{allocator, (size_t)0};
       DiffT nths{}, n{};
 #pragma omp parallel if (_dop < dist) num_threads(_dop) shared(dist, nths, first, last, d_first)
       {
@@ -498,8 +504,9 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
 
-      std::vector<KeyT> okeys_(dist);
-      std::vector<ValueT> ovals_(dist);
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<KeyT> okeys_{allocator, (size_t)dist};
+      Vector<ValueT> ovals_{allocator, (size_t)dist};
       auto okeys = std::begin(okeys_);
       auto ovals = std::begin(ovals_);
 
@@ -704,7 +711,8 @@ namespace zs {
       if (shouldProfile()) timer.tick();
       const auto dist = last - first;
 
-      std::vector<KeyT> tmp(dist);
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<KeyT> tmp{allocator, (size_t)dist};
       auto ofirst = std::begin(tmp);
 
       DiffT nths{}, nwork{};
@@ -886,14 +894,14 @@ namespace zs {
       constexpr int binBits = 8;  // by byte
       int binCount = 1 << binBits;
       int binMask = binCount - 1;
-      std::vector<std::vector<DiffT>> binSizes{};
-      std::vector<DiffT> binGlobalSizes(binCount);
-      std::vector<DiffT> binOffsets(binCount);
+
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<DiffT> binGlobalSizes{allocator, (size_t)binCount};
+      Vector<DiffT> binOffsets{allocator, (size_t)binCount};
+      std::vector<Vector<DiffT>> binSizes{};
 
       /// double buffer strategy
-      std::vector<InputValueT> buffers[2];
-      buffers[0].resize(dist);
-      buffers[1].resize(dist);
+      Vector<InputValueT> buffers[2] = {{allocator, (size_t)dist}, {allocator, (size_t)dist}};
       InputValueT *cur{buffers[0].data()}, *next{buffers[1].data()};
 
       /// move to local buffer first (bit hack for signed type)
@@ -921,6 +929,7 @@ namespace zs {
             nths = omp_get_num_threads();
             nwork = (dist + nths - 1) / nths;
             binSizes.resize(nths);
+            for (auto &v : binSizes) v = Vector<DiffT>{allocator, (size_t)0};
             skip = false;
           }
 #pragma omp barrier
@@ -1018,17 +1027,15 @@ namespace zs {
       constexpr int binBits = 8;  // by byte
       int binCount = 1 << binBits;
       int binMask = binCount - 1;
-      std::vector<std::vector<DiffT>> binSizes{};
-      std::vector<DiffT> binGlobalSizes(binCount);
-      std::vector<DiffT> binOffsets(binCount);
+
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<DiffT> binGlobalSizes{allocator, (size_t)binCount};
+      Vector<DiffT> binOffsets{allocator, (size_t)binCount};
+      std::vector<Vector<DiffT>> binSizes{};
 
       /// double buffer strategy
-      std::vector<KeyT> keyBuffers[2];
-      std::vector<ValueT> valBuffers[2];
-      keyBuffers[0].resize(count);
-      keyBuffers[1].resize(count);
-      valBuffers[0].resize(count);
-      valBuffers[1].resize(count);
+      Vector<KeyT> keyBuffers[2] = {{allocator, (size_t)count}, {allocator, (size_t)count}};
+      Vector<ValueT> valBuffers[2] = {{allocator, (size_t)count}, {allocator, (size_t)count}};
       KeyT *cur{keyBuffers[0].data()}, *next{keyBuffers[1].data()};
       ValueT *curVals{valBuffers[0].data()}, *nextVals{valBuffers[1].data()};
 
@@ -1058,6 +1065,7 @@ namespace zs {
             nths = omp_get_num_threads();
             nwork = (dist + nths - 1) / nths;
             binSizes.resize(nths);
+            for (auto &v : binSizes) v = Vector<DiffT>{allocator, (size_t)0};
             skip = false;
           }
 #pragma omp barrier

@@ -267,6 +267,171 @@ namespace zs {
                     const source_location &loc = source_location::current()) {
       std::stable_sort(FWD(first), FWD(last), FWD(compOp));
     }
+
+    template <typename KeyIter, typename ValueIter, typename DiffT, typename CompareOpT>
+    static void quick_sort_impl(KeyIter &&keys, ValueIter &&vals, DiffT l, DiffT r,
+                                CompareOpT &&compOp) {
+      // ref: https://www.geeksforgeeks.org/quick-sort/
+      DiffT pi = l;
+      if (l < r) {
+        const auto &pivot = keys[r];
+        for (DiffT j = l; j != r; ++j) {
+          if (keys[j] < pivot) {
+            std::swap(keys[pi], keys[j]);
+            std::swap(vals[pi], vals[j]);
+            pi++;
+          }
+        }
+        std::swap(keys[pi], keys[r]);
+        std::swap(vals[pi], vals[r]);
+        quick_sort_impl(keys, vals, l, pi - 1, compOp);
+        quick_sort_impl(keys, vals, pi + 1, r, compOp);
+      }
+    }
+    template <typename KeyIter, typename ValueIter, typename CompareOpT, bool Stable>
+    void merge_sort_pair_impl(
+        KeyIter &&keys, ValueIter &&vals,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type dist,
+        CompareOpT &&compOp, wrapv<Stable>, const source_location &loc) const {
+      using KeyIterT = remove_cvref_t<KeyIter>;
+      using ValueIterT = remove_cvref_t<ValueIter>;
+      using DiffT = typename std::iterator_traits<KeyIterT>::difference_type;
+      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
+      using ValueT = typename std::iterator_traits<ValueIterT>::value_type;
+
+      CppTimer timer;
+      if (shouldProfile()) timer.tick();
+
+      std::vector<KeyT> okeys_(dist);
+      std::vector<ValueT> ovals_(dist);
+      auto okeys = std::begin(okeys_);
+      auto ovals = std::begin(ovals_);
+
+      bool switched = false;
+
+      {
+        const DiffT l = 0;
+        const DiffT r = dist;
+
+        bool flipped = false;
+
+        /// @note currently [unstable] adopts the [stable] routine
+        if constexpr (Stable) {
+          //  bottom-up fashion
+          // insertion sort for segments of granularity <= 16
+          for (DiffT ll = l; ll < r;) {
+            auto rr = std::min(ll + 16, r);
+            // [ll, rr)
+            for (DiffT i = ll + 1; i != rr; ++i) {
+              for (DiffT k = i; k != ll; --k) {  // insert k
+                auto j = k - 1;
+                if (compOp(keys[k], keys[j])) {
+                  std::swap(keys[k], keys[j]);
+                  std::swap(vals[k], vals[j]);
+                } else
+                  break;
+              }
+            }
+            ll = rr;
+          }
+          for (DiffT halfStride = 16; halfStride < (r - l);) {
+            DiffT stride = halfStride * 2;
+            // auto bgCur = flipped ? okeys : keys;
+            // auto bgCurVals = flipped ? ovals : vals;
+            // auto bgNext = flipped ? keys : okeys;
+            // auto bgNextVals = flipped ? vals : ovals;
+            if (flipped) {
+              for (DiffT ll = l; ll < r; ll += stride) {
+                DiffT mid = std::min(ll + halfStride, r);
+                DiffT rr = std::min(ll + stride, r);
+                // [ll, mid) [mid, rr)
+                DiffT left = ll, right = mid, k = ll;
+                while (left < mid && right < rr) {
+                  const auto &a = okeys[left];
+                  const auto &b = okeys[right];
+                  if (!compOp(b, a)) {
+                    keys[k] = a;
+                    vals[k++] = ovals[left++];
+                  } else {
+                    keys[k] = b;
+                    vals[k++] = ovals[right++];
+                  }
+                }
+                while (left < mid) {
+                  keys[k] = okeys[left];
+                  vals[k++] = ovals[left++];
+                }
+                while (right < rr) {
+                  keys[k] = okeys[right];
+                  vals[k++] = ovals[right++];
+                }
+              }
+            } else {
+              for (DiffT ll = l; ll < r; ll += stride) {
+                DiffT mid = std::min(ll + halfStride, r);
+                DiffT rr = std::min(ll + stride, r);
+                // [ll, mid) [mid, rr)
+                DiffT left = ll, right = mid, k = ll;
+                while (left < mid && right < rr) {
+                  const auto &a = keys[left];
+                  const auto &b = keys[right];
+                  if (!compOp(b, a)) {
+                    okeys[k] = a;
+                    ovals[k++] = vals[left++];
+                  } else {
+                    okeys[k] = b;
+                    ovals[k++] = vals[right++];
+                  }
+                }
+                while (left < mid) {
+                  okeys[k] = keys[left];
+                  ovals[k++] = vals[left++];
+                }
+                while (right < rr) {
+                  okeys[k] = keys[right];
+                  ovals[k++] = vals[right++];
+                }
+              }
+            }
+            flipped = !flipped;
+            halfStride = stride;
+          }
+        } else {
+          quick_sort_impl(keys, vals, l, r - 1, compOp);
+        }
+
+        switched = flipped;
+
+        if (switched) {
+          for (DiffT k = l; k < r; ++k) {
+            keys[k] = okeys[k];
+            vals[k] = ovals[k];
+          }
+        }
+      }
+
+      if (shouldProfile())
+        timer.tock(fmt::format("[Seq merge_sort_pair | File {}, Ln {}, Col {}]", loc.file_name(),
+                               loc.line(), loc.column()));
+    }
+    template <typename KeyIter, typename ValueIter,
+              typename CompareOpT
+              = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+    void sort_pair(
+        KeyIter &&keys, ValueIter &&vals,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
+        CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) const {
+      merge_sort_pair_impl(FWD(keys), FWD(vals), count, FWD(compOp), false_c, loc);  // unstable
+    }
+    template <class KeyIter, class ValueIter,
+              typename CompareOpT
+              = std::less<typename std::iterator_traits<remove_cvref_t<KeyIter>>::value_type>>
+    void merge_sort_pair(
+        KeyIter &&keys, ValueIter &&vals,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
+        CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) const {
+      merge_sort_pair_impl(FWD(keys), FWD(vals), count, FWD(compOp), true_c, loc);  // stable
+    }
     template <class InputIt, class OutputIt> constexpr void radix_sort(
         InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
         int ebit

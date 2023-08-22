@@ -102,6 +102,12 @@ void launch__device(zs::CudaExecutionPolicy *ppol, void *kernel, zs::size_t dim,
                   "parallel primitives only available for arithmetic types");                     \
     zs::merge_sort(*pol, first, last);                                                            \
   }                                                                                               \
+  void merge_sort_pair__cuda##_##T##_1(zs::CudaExecutionPolicy *pol, aosoa_iterator_##T##_1 keys, \
+                                       aosoa_iterator_##int##_1 vals, size_t count) {             \
+    static_assert(zs::is_arithmetic_v<T>,                                                         \
+                  "parallel primitives only available for arithmetic types");                     \
+    zs::merge_sort_pair(*pol, keys, vals, count);                                                 \
+  }                                                                                               \
   /* radix sort */                                                                                \
   void radix_sort__cuda##_##T##_1(zs::CudaExecutionPolicy *pol, aosoa_iterator_##T##_1 first,     \
                                   aosoa_iterator_##T##_1 last, aosoa_iterator_##T##_1 output) {   \

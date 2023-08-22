@@ -672,7 +672,7 @@ namespace zs {
       }
 
       if (shouldProfile())
-        timer.tock(fmt::format("[Omp merge_sort | File {}, Ln {}, Col {}]", loc.file_name(),
+        timer.tock(fmt::format("[Omp merge_sort_pair | File {}, Ln {}, Col {}]", loc.file_name(),
                                loc.line(), loc.column()));
     }
     template <typename KeyIter, typename ValueIter,

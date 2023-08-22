@@ -1004,9 +1004,9 @@ namespace zs {
     void radix_sort_pair_impl(std::random_access_iterator_tag, KeyIter &&keysIn, ValueIter &&valsIn,
                               KeyIter &&keysOut, ValueIter &&valsOut, Tn count, int sbit, int ebit,
                               const source_location &loc) const {
-      using KeyT = typename std::iterator_traits<KeyIter>::value_type;
-      using ValueT = typename std::iterator_traits<ValueIter>::value_type;
-      using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
+      using KeyT = typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type;
+      using ValueT = typename std::iterator_traits<remove_reference_t<ValueIter>>::value_type;
+      using DiffT = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type;
       static_assert(is_integral_v<KeyT>, "key type not integral");
 
       CppTimer timer;

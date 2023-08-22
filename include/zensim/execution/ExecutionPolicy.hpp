@@ -342,9 +342,9 @@ namespace zs {
         int ebit
         = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type) * 8,
         const source_location &loc = source_location::current()) const {
-      using KeyT = typename std::iterator_traits<KeyIter>::value_type;
-      using ValueT = typename std::iterator_traits<ValueIter>::value_type;
-      using DiffT = typename std::iterator_traits<KeyIter>::difference_type;
+      using KeyT = typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type;
+      using ValueT = typename std::iterator_traits<remove_reference_t<ValueIter>>::value_type;
+      using DiffT = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type;
 
       const auto dist = count;
       bool skip = false;

@@ -36,3 +36,33 @@ namespace zs {
   };
 
 }  // namespace zs
+
+namespace std {
+
+  template <typename Iter> struct iterator_traits<zs::LegacyIterator<Iter>> {
+    // reference
+    using reference = typename zs::iterator_traits<Iter>::reference;
+    // pointer
+    using pointer = typename zs::iterator_traits<Iter>::pointer;
+    // difference type
+    using difference_type = typename zs::iterator_traits<Iter>::difference_type;
+    // value type
+    using value_type = typename zs::iterator_traits<Iter>::value_type;
+    // iterator category
+    using zs_iterator_category = typename zs::iterator_traits<Iter>::iterator_category;
+    using iterator_category = conditional_t<
+        is_same_v<zs_iterator_category, zs::input_iterator_tag>, std::input_iterator_tag,
+        conditional_t<
+            is_same_v<zs_iterator_category, zs::output_iterator_tag>, std::output_iterator_tag,
+            conditional_t<
+                is_same_v<zs_iterator_category, zs::forward_iterator_tag>,
+                std::forward_iterator_tag,
+                conditional_t<
+                    is_same_v<zs_iterator_category, zs::bidirectional_iterator_tag>,
+                    std::bidirectional_iterator_tag,
+                    conditional_t<is_same_v<zs_iterator_category, zs::random_access_iterator_tag>,
+                                  std::random_access_iterator_tag,
+                                  std::random_access_iterator_tag>>>>>;
+  };
+
+}  // namespace std

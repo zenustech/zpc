@@ -138,7 +138,7 @@ namespace zs {
   }
 
   struct input_iterator_tag {
-    template <typename T> constexpr operator T();
+    // template <typename T> constexpr operator T();
 #if 0
     {
       static_assert(always_false<T>, "should not include this default conversion overload");
@@ -146,19 +146,19 @@ namespace zs {
 #endif
   };
   struct output_iterator_tag {
-    template <typename T> constexpr operator T();
+    // template <typename T> constexpr operator T();
   };
   struct forward_iterator_tag : public input_iterator_tag {
-    template <typename T> constexpr operator T();
+    // template <typename T> constexpr operator T();
   };
   struct bidirectional_iterator_tag : public forward_iterator_tag {
-    template <typename T> constexpr operator T();
+    // template <typename T> constexpr operator T();
   };
   struct random_access_iterator_tag : public bidirectional_iterator_tag {
-    template <typename T> constexpr operator T();
+    // template <typename T> constexpr operator T();
   };
   struct contiguous_iterator_tag : public random_access_iterator_tag {
-    template <typename T> constexpr operator T();
+    // template <typename T> constexpr operator T();
   };
 
   /// standard-conforming iterator

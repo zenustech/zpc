@@ -941,6 +941,7 @@ namespace zs {
     constexpr auto tuple_impl(const channel_counter_type chnOffset, const size_type i,
                               index_sequence<Is...>, wrapt<TT>) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
+      constexpr channel_counter_type d = sizeof...(Is);
       if ((TT *)_vector == nullptr) {
         /// @note TBD : insert type reflection info here
         printf("tilevector [%s] tieing reinterpret_cast failed!\n", _nameTag.asChars());

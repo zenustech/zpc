@@ -115,6 +115,13 @@ namespace zs {
     // DeviceHandle handle{0, -1};
   };
 
+  struct _zs_policy_assign_operator {
+    template <typename Src, typename Dst, typename ParamT>
+    constexpr void operator()(const Src &src, Dst &dst, ParamT &&) noexcept {
+      dst = src;
+    }
+  };
+
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
     using exec_tag = host_exec_tag;
     template <typename Range, typename F>

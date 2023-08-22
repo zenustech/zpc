@@ -299,8 +299,8 @@ namespace zs {
         }
       }
       if (shouldProfile())
-        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
-                               loc.column()));
+        timer.tock(fmt::format("[Omp InclScan | File {}, Ln {}, Col {}]", loc.file_name(),
+                               loc.line(), loc.column()));
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
@@ -374,8 +374,8 @@ namespace zs {
         }
       }
       if (shouldProfile())
-        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
-                               loc.column()));
+        timer.tock(fmt::format("[Omp ExclScan | File {}, Ln {}, Col {}]", loc.file_name(),
+                               loc.line(), loc.column()));
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation
@@ -446,7 +446,7 @@ namespace zs {
         if (tid == 0) *d_first = tmp;
       }
       if (shouldProfile())
-        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+        timer.tock(fmt::format("[Omp Reduce | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
     template <class InputIt, class OutputIt,

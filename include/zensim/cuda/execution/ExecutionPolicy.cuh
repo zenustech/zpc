@@ -13,6 +13,7 @@
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_scan.cuh>
 
+#include "zensim/container/Vector.hpp"
 #include "zensim/cuda/Cuda.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/types/Tuple.h"
@@ -575,12 +576,10 @@ namespace zs {
                              thrust::device_pointer_cast(first.operator->() + dist),
                              thrust::device_pointer_cast(d_first.operator->()), FWD(binary_op));
 #else
-      cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
-                                     binary_op, dist, stream);
+      cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, dist, stream);
 
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
-                                     binary_op, dist, stream);
+      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, dist, stream);
       context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
@@ -763,6 +762,11 @@ namespace zs {
                     = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type)
                       * 8,
                     const source_location &loc = source_location::current()) const {
+      using KeyIterT = remove_cvref_t<KeyIter>;
+      using ValueIterT = remove_cvref_t<ValueIter>;
+      using DiffT = typename std::iterator_traits<KeyIterT>::difference_type;
+      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
+      using ValueT = typename std::iterator_traits<ValueIterT>::value_type;
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -786,21 +790,33 @@ namespace zs {
                             thrust::device_pointer_cast(keysOut.operator->() + count),
                             thrust::device_pointer_cast(valsOut.operator->()));
 #else
-        cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
-                                        keysOut.operator->(), valsIn.operator->(),
-                                        valsOut.operator->(), count, sbit, ebit, stream);
+        auto allocator = get_temporary_memory_source(*this);
+        Vector<KeyT> ksIn{allocator, count}, ksOut{allocator, count};
+        Vector<ValueT> vsIn{allocator, count}, vsOut{allocator, count};
+
+        (*this)(zip(range(keysIn, keysIn + count), ksIn), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
+        (*this)(zip(range(valsIn, valsIn + count), vsIn), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
+
+        cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, ksIn.data(), ksOut.data(), vsIn.data(),
+                                        vsOut.data(), count, sbit, ebit, stream);
         // context.syncStreamSpare(streamid, loc);
         void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
 #  if 0
         void *d_tmp;
         cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
 #  endif
-        cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, keysIn.operator->(),
-                                        keysOut.operator->(), valsIn.operator->(),
-                                        valsOut.operator->(), count, sbit, ebit, stream);
+        cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, ksIn.data(), ksOut.data(), vsIn.data(),
+                                        vsOut.data(), count, sbit, ebit, stream);
         // context.syncStreamSpare(streamid, loc);
         // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
         context.streamMemFree(d_tmp, stream, loc);
+
+        (*this)(zip(ksOut, range(keysOut, keysOut + count)), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
+        (*this)(zip(vsOut, range(valsOut, valsOut + count)), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
 #endif
         if (this->shouldProfile()) context.tock(timer, loc);
       }
@@ -811,6 +827,8 @@ namespace zs {
     template <class InputIt, class OutputIt>
     void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
                          OutputIt &&d_first, int sbit, int ebit, const source_location &loc) const {
+      using KeyIterT = remove_cvref_t<InputIt>;
+      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -827,13 +845,20 @@ namespace zs {
       thrust::sort(thrust::cuda::par.on(stream), thrust::device_pointer_cast(d_first.operator->()),
                    thrust::device_pointer_cast(d_first.operator->() + dist));
 #else
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<KeyT> ksIn{allocator, dist}, ksOut{allocator, dist};
+      (*this)(zip(range(first, last), ksIn), zs::make_tuple(), _zs_policy_assign_operator{}, loc);
+
       size_t temp_bytes = 0;
-      cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
-                                     dist, sbit, ebit, stream);
+      cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, ksIn.data(), ksOut.data(), dist, sbit,
+                                     ebit, stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
-                                     dist, sbit, ebit, stream);
+      cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, ksIn.data(), ksOut.data(), dist, sbit, ebit,
+                                     stream);
       context.streamMemFree(d_tmp, stream, loc);
+
+      (*this)(zip(ksOut, range(d_first, d_first + dist)), zs::make_tuple(),
+              _zs_policy_assign_operator{}, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid, loc);

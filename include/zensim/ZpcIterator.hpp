@@ -219,7 +219,7 @@ namespace zs {
     }
 
   public:
-    constexpr decltype(auto) operator->() { return getAddress(**this); }
+    constexpr auto operator->() { return getAddress(**this); }
     /// compare
     friend constexpr bool operator==(const Derived &left, const Derived &right) {
       if constexpr (detail::has_equal_to<Derived>::value)
@@ -676,6 +676,11 @@ namespace zs {
   constexpr auto range(Container &&container, Args &&...args)
       -> decltype(detail::iter_range(container.begin(args...), container.end(args...))) {
     return detail::iter_range(container.begin(args...), container.end(args...));
+  }
+
+  template <typename Iter>
+  constexpr auto range(const LegacyIterator<Iter> &st, const LegacyIterator<Iter> &ed) {
+    return detail::iter_range(st, ed);
   }
 
   // zip range

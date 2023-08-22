@@ -15,7 +15,7 @@ namespace zs {
 
     static constexpr bool is_const_structure = is_const<T_>::value;
 
-    TileVectorViewLite() noexcept = default;
+    constexpr TileVectorViewLite() noexcept = default;
     TileVectorViewLite(T_* const v, const channel_counter_type nchns) noexcept
         : _vector{v}, _numChannels{nchns} {}
 

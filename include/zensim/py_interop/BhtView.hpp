@@ -89,7 +89,8 @@ namespace zs {
     static constexpr status_type status_sentinel_v{-1};
     static constexpr value_type failure_token_v = detail::deduce_numeric_lowest<value_type>();
 
-    BhtViewLite() noexcept = default;
+    constexpr BhtViewLite() noexcept = default;
+    ~BhtViewLite() = default;
     BhtViewLite(decorate_t<storage_key_type> *const keys, decorate_t<value_type> *const indices,
                 decorate_t<status_type> *const status, decorate_t<key_type> *const activeKeys,
                 decorate_t<status_type> *const cnt, decorate_t<int> *const success,

@@ -19,7 +19,8 @@ namespace zs {
 
     ///
 
-    SpmatViewLite() noexcept = default;
+    constexpr SpmatViewLite() noexcept = default;
+    ~SpmatViewLite() = default;
     SpmatViewLite(index_type nrows, index_type ncols, decorate_t<size_type>* const ptrs,
                   decorate_t<index_type>* const inds, decorate_t<value_type>* const vals) noexcept
         : _nrows{nrows}, _ncols{ncols}, _ptrs{ptrs}, _inds{inds}, _vals{vals} {}

@@ -137,35 +137,36 @@ namespace zs {
   // ref
   // https://locklessinc-com.translate.goog/articles/mutex_cv_futex/
   void Mutex::lock() noexcept {
-    u32 state = this->load(std::memory_order_relaxed);
-    if (state == 0
-        && this->compare_exchange_weak(state, (u32)1, std::memory_order_acquire,
+    u32 oldState = this->load(std::memory_order_relaxed);
+    if (oldState == 0
+        && this->compare_exchange_weak(oldState, oldState | _kMask, std::memory_order_acquire,
                                        std::memory_order_relaxed))
       return;
 
     {
       size_t spinCount = 0;
-      constexpr size_t spin_limit = 1028;
-      u32 oldState = state, newState;
+      constexpr size_t spin_limit = 1024;
+      u32 newState;
     mutex_lock_retry:
-      if (oldState != 0) {
+      if ((oldState & _kMask) != 0) {
         ++spinCount;
         if (spinCount > spin_limit) {
-          newState = oldState | (u32)1;
+          newState = oldState | _kMask;
           if (newState != oldState) {
             if (!this->compare_exchange_weak(oldState, newState, std::memory_order_relaxed,
                                              std::memory_order_relaxed))
               goto mutex_lock_retry;
           }
-          Futex::wait(this, (u32)1);
+          Futex::wait_for(this, newState, (i64)-1, _kMask);
         } else {
-          zs::pause_cpu();
+          // zs::pause_cpu();
+          std::this_thread::yield();
         }
         oldState = this->load(std::memory_order_relaxed);
         goto mutex_lock_retry;
       }
 
-      newState = oldState | (u32)1;
+      newState = oldState | _kMask;
       if (!this->compare_exchange_weak(oldState, newState, std::memory_order_acquire,
                                        std::memory_order_relaxed))
         goto mutex_lock_retry;
@@ -173,15 +174,15 @@ namespace zs {
   }
 
   void Mutex::unlock() noexcept {
-    auto oldState = this->load(std::memory_order_relaxed);
+    u32 oldState = this->load(std::memory_order_relaxed);
     u32 newState;
     do {
-      newState = 0;
+      newState = oldState & ~_kMask;
     } while (!this->compare_exchange_weak(oldState, newState, std::memory_order_release,
                                           std::memory_order_relaxed));
 
-    if (oldState) {
-      Futex::wake(this);
+    if (oldState & _kMask) {
+      Futex::wake(this, limits<int>::max(), _kMask);
     }
   }
 
@@ -189,7 +190,7 @@ namespace zs {
     u32 state = this->load(std::memory_order_relaxed);
     do {
       if (state) return false;
-    } while (!this->compare_exchange_weak(state, (u32)1, std::memory_order_acquire,
+    } while (!this->compare_exchange_weak(state, state | _kMask, std::memory_order_acquire,
                                           std::memory_order_relaxed));
     return true;
   }

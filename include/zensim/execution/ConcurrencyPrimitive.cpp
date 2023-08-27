@@ -1,7 +1,8 @@
 #include "ConcurrencyPrimitive.hpp"
 
-#include <time.h>
 #include <atomic>
+#include <ctime>
+#include <thread>
 
 #include "zensim/execution/Atomics.hpp"
 #include "zensim/execution/Intrinsics.hpp"
@@ -70,7 +71,11 @@ namespace zs {
       };
       /// @note ref: https://www.man7.org/linux/man-pages/man3/clock_gettime.3.html
       clock_gettime(CLOCK_MONOTONIC, &tm);
-      clock_add(&tm, offset);
+      // clock_add(&tm, offset);
+      tm.tv_sec += offset.tv_sec;
+      tm.tv_nsec += offset.tv_nsec;
+      tm.tv_sec += tm.tv_nsec / 1000000000;
+      tm.tv_nsec %= 1000000000;
       timeout = &tm;
     }
     int const op = FUTEX_WAIT_BITSET | FUTEX_PRIVATE_FLAG;

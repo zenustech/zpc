@@ -32,7 +32,7 @@ namespace zs {
       for (int i = 0; i != 1024; ++i) {
         if (v.load(std::memory_order_relaxed) != cur)  // finally changes
           return;
-        pause_cpu();
+        std::this_thread::yield();
       }
 
       Futex::wait(&v, cur);  // system call
@@ -46,7 +46,7 @@ namespace zs {
         cur = v.load(std::memory_order_relaxed);
         if (cur == desired)  // finally equals
           return;
-        pause_cpu();
+        std::this_thread::yield();
       }
 
       Futex::wait(&v, cur, (u32)1 << (desired & (u32)0x1f));  // system call
@@ -158,9 +158,12 @@ namespace zs {
               goto mutex_lock_retry;
           }
           Futex::wait_for(this, newState, (i64)-1, _kMask);
-        } else {
+        } else if (spinCount > spin_limit + 1) {
           // zs::pause_cpu();
           std::this_thread::yield();
+        } else {
+          using namespace std::chrono_literals;
+          std::this_thread::sleep_for(1ms);
         }
         oldState = this->load(std::memory_order_relaxed);
         goto mutex_lock_retry;

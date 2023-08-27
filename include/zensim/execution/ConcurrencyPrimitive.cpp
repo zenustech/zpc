@@ -20,6 +20,8 @@
 #  include <unistd.h>
 #endif
 
+#define ZS_USE_NATIVE_LINUX_FUTEX 0
+
 namespace zs {
 
   namespace detail {
@@ -61,7 +63,7 @@ namespace zs {
     return wait_for(v, expected, (i64)-1, waitMask);
   }
   FutexResult Futex::wait_for(std::atomic<u32> *v, u32 expected, i64 duration, u32 waitMask) {
-#if defined(ZS_PLATFORM_LINUX)
+#if defined(ZS_PLATFORM_LINUX) && ZS_USE_NATIVE_LINUX_FUTEX
     struct timespec tm {};
     struct timespec *timeout = nullptr;
     if (duration > -1) {
@@ -116,7 +118,7 @@ namespace zs {
   // wake up the thread(s) if (wakeMask & waitMask == true)
   // WakeByAddressSingle/All
   int Futex::wake(std::atomic<u32> *v, int count, u32 wakeMask) {
-#if defined(ZS_PLATFORM_LINUX)
+#if defined(ZS_PLATFORM_LINUX) && ZS_USE_NATIVE_LINUX_FUTEX
     int const op = FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG;
     long rc = syscall(SYS_futex, reinterpret_cast<u32 *>(v), op, count, nullptr, nullptr, wakeMask);
     if (rc < 0) return 0;
@@ -149,7 +151,7 @@ namespace zs {
       return;
 
     {
-      size_t spinCount = 0;
+      u32 spinCount = 0;
       constexpr size_t spin_limit = 1024;
       u32 newState;
     mutex_lock_retry:

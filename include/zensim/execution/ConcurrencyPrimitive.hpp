@@ -257,12 +257,12 @@ namespace zs {
     // 0: unlocked
     // 1: locked
     // 257: locked and contended (...0001 | 00000001)
-    Mutex(u32 offset = 0) noexcept : _kMask{(u32)1 << (offset & (u32)31)} {}
-    ~Mutex() = default;
+    // Mutex(u32 offset = 0) noexcept : _kMask{(u32)1 << (offset & (u32)31)} {}
+    // ~Mutex() = default;
     void lock() noexcept;
     void unlock() noexcept;
     bool trylock() noexcept;
-    const u32 _kMask{1};
+    static constexpr u32 _kMask{1};
   };
 
 #if 0

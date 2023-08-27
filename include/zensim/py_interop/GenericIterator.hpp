@@ -17,6 +17,12 @@ namespace zs {
     using size_type = u32;
     using difference_type = make_signed_t<size_type>;
 
+    using element_pointer_type
+        = conditional_t<is_const_structure, const iter_value_type*, iter_value_type*>;
+    using reference_type
+        = conditional_t<is_scalar_access, decltype(*declval<element_pointer_type>()),
+                        vec<element_pointer_type, Ns...>>;
+
     constexpr aosoa_iterator() noexcept = default;
     template <bool IsConst = is_const_structure, enable_if_t<IsConst> = 0>
     constexpr aosoa_iterator(const aosoa_iterator<iter_value_type, Ns...>& o) noexcept
@@ -50,18 +56,17 @@ namespace zs {
           tileMask{tileSize - (size_type)1},
           numChns{numChns} {}
 
-    constexpr decltype(auto) dereference() const noexcept {
+    constexpr reference_type dereference() const noexcept {
       if constexpr (is_scalar_access) {
         /// @note (i >> numTileBits) full tiles
         /// @note each tile covers (numChns << numTileBits) entries
-        return *(base + ((((idx >> numTileBits) * numChns) << numTileBits) | (idx & tileMask)));
+        return *((element_pointer_type)base
+                 + ((((idx >> numTileBits) * numChns) << numTileBits) | (idx & tileMask)));
       } else {
-        using PtrT = conditional_t<is_const_structure, const iter_value_type*, iter_value_type*>;
         /// @note when T is non-const, remove the constness of base
-        using RetT = vec<PtrT, Ns...>;
-        RetT ret{};
-        auto ptr
-            = (PtrT)base + ((((idx >> numTileBits) * numChns) << numTileBits) | (idx & tileMask));
+        reference_type ret{};
+        auto ptr = (element_pointer_type)base
+                   + ((((idx >> numTileBits) * numChns) << numTileBits) | (idx & tileMask));
         for (int d = 0; d != extent; ++d, ptr += (tileMask + 1)) ret._data[d] = ptr;
         return ret;
       }

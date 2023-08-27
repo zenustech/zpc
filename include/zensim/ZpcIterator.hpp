@@ -354,7 +354,9 @@ namespace zs {
     template <typename... Args> constexpr LegacyIterator(Args &&...args) : Iterator{FWD(args)...} {}
 
     /// @brief dereference
-    constexpr decltype(auto) operator*() { return *(*static_cast<base_t *>(this)); }
+    constexpr decltype(auto) operator*() const {
+      return *(*const_cast<base_t *>(static_cast<const base_t *>(this)));
+    }
 
     /// @brief prefix-increment
     constexpr LegacyIterator &operator++() {
@@ -377,7 +379,7 @@ namespace zs {
     /// @brief advance (random access iterator)
     template <typename Self = base_t, enable_if_t<detail::has_advance<Self>::value> = 0>
     constexpr LegacyIterator &operator+=(detail::infer_difference_type_t<Iterator> offset) {
-      static_cast<Iterator *>(this)->advance(offset);
+      static_cast<base_t *>(this)->advance(offset);
       return static_cast<LegacyIterator &>(*this);
     }
     template <typename Self = base_t, enable_if_t<detail::has_advance<Self>::value> = 0>
@@ -396,7 +398,7 @@ namespace zs {
     }
     template <typename Self = base_t, enable_if_t<detail::has_advance<Self>::value> = 0>
     constexpr LegacyIterator &operator-=(detail::infer_difference_type_t<Iterator> offset) {
-      static_cast<Iterator *>(this)->advance(-(difference_type)offset);
+      static_cast<base_t *>(this)->advance(-(difference_type)offset);
       return static_cast<LegacyIterator &>(*this);
     }
   };
@@ -648,7 +650,7 @@ namespace zs {
     return range<DiffT>(begin, end, (DiffT)(begin < end ? 1 : -1));
   }
   template <typename T, enable_if_t<is_integral_v<T>> = 0> constexpr auto range(T end) {
-    return range<T>((T)0, end);
+    return range((T)0, end);
   }
 
   // pointer range

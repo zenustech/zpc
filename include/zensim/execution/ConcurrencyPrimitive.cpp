@@ -20,7 +20,11 @@
 
 namespace zs {
 
-  void await_change(std::atomic<i32> &v, i32 cur) {
+  namespace detail {
+    std::atomic<u32> g_idCache = 0;
+  }
+
+  void await_change(std::atomic<u32> &v, u32 cur) {
     while (true) {
       // spin lock
       for (int i = 0; i != 1024; ++i) {
@@ -32,7 +36,7 @@ namespace zs {
       Futex::wait(&v, cur);  // system call
     }
   }
-  void await_equal(std::atomic<i32> &v, i32 desired) {
+  void await_equal(std::atomic<u32> &v, u32 desired) {
     u32 cur{};
     while (true) {
       // spin lock
@@ -43,84 +47,110 @@ namespace zs {
         pause_cpu();
       }
 
-      Futex::wait(&v, cur, (i32)1 << (desired & (i32)0x1f));  // system call
+      Futex::wait(&v, cur, (u32)1 << (desired & (u32)0x1f));  // system call
     }
   }
 
   // int futex(int *uaddr, int op, int val, const struct timespec *timeout, int *uaddr2, int val3);
   // long syscall(SYS_futex, u32 *uaddr, int op, u32 val, const timespec *, u32 *uaddr2, u32 val3);
   // bool WaitOnAddress(volatile void *addr, void *compareAddress, size_t, addressSize, dword dwMs)
-  Futex::result_t Futex::wait(std::atomic<i32> *v, i32 expected, i32 waitMask) {
-    return waitUntil(v, expected, (i64)-1, waitMask);
+  FutexResult Futex::wait(std::atomic<u32> *v, u32 expected, u32 waitMask) {
+    return wait_for(v, expected, (i64)-1, waitMask);
   }
-  Futex::result_t Futex::waitUntil(std::atomic<i32> *v, i32 expected, i64 deadline, i32 waitMask) {
-#if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
-    /// windows
-    i32 undesired = expected;
-    bool rc = WaitOnAddress((void *)v, &undesired, sizeof(i32),
-                            deadline == (i64)-1 ? INFINITE : deadline);
-    if (rc) return result_t::awoken;
-    if (undesired != expected) return result_t::value_changed;
-    if (GetLastError() == ERROR_TIMEOUT) return result_t::timedout;
-    return result_t::interrupted;
-
-#elif defined(__clang__) || defined(__GNUC__)
-#ifdef ZS_PLATFORM_OSX
-    throw std::runtime_error("no futex implementation for now on macos.");
-    return result_t::timedout;
-#else
-    /// linux
+  FutexResult Futex::wait_for(std::atomic<u32> *v, u32 expected, i64 duration, u32 waitMask) {
+#if defined(ZS_PLATFORM_LINUX)
     struct timespec tm {};
     struct timespec *timeout = nullptr;
-    if (deadline > -1) {
-      // seconds, nanoseconds
-      tm = timespec{deadline / 1000, (deadline % 1000) * 1000000};
+    if (duration > -1) {
+      /// @note seconds, nanoseconds
+      struct timespec offset {
+        duration / 1000, (duration % 1000) * 1000000
+      };
+      /// @note ref: https://www.man7.org/linux/man-pages/man3/clock_gettime.3.html
+      clock_gettime(CLOCK_MONOTONIC, &tm);
+      clock_add(&tm, offset);
       timeout = &tm;
     }
     int const op = FUTEX_WAIT_BITSET | FUTEX_PRIVATE_FLAG;
+    /// @note ref: https://man7.org/linux/man-pages/man2/futex.2.html
     long rc
-        = syscall(SYS_futex, reinterpret_cast<i32 *>(v), op, expected, timeout, nullptr, waitMask);
+        = syscall(SYS_futex, reinterpret_cast<u32 *>(v), op, expected, timeout, nullptr, waitMask);
     if (rc == 0)
-      return result_t::awoken;
+      return FutexResult::awoken;
     else {
       switch (rc) {
         case ETIMEDOUT:
-          return result_t::timedout;
+          return FutexResult::timedout;
         case EINTR:
-          return result_t::interrupted;
+          return FutexResult::interrupted;
         case EWOULDBLOCK:
-          return result_t::value_changed;
+          return FutexResult::value_changed;
         default:
-          return result_t::value_changed;
+          return FutexResult::value_changed;
       }
     }
+
+#else
+    return emulated_futex_wait_for(v, expected, duration, waitMask);
 #endif
+
+      /// deprecated
+#if 0
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+    /// windows
+    u32 undesired = expected;
+    bool rc = WaitOnAddress((void *)v, &undesired, sizeof(u32),
+                            duration == -1 ? INFINITE : duration);
+    if (rc) return FutexResult::awoken;
+    if (undesired != expected) return FutexResult::value_changed;
+    if (GetLastError() == ERROR_TIMEOUT) return FutexResult::timedout;
+    return FutexResult::interrupted;
+
+#  elif defined(__clang__) || defined(__GNUC__)
+#    ifdef ZS_PLATFORM_OSX
+    throw std::runtime_error("no futex implementation for now on macos.");
+    return FutexResult::timedout;
+#    else
+    /// linux
+#    endif
+#  endif
 #endif
   }
-  // wake up the thread if (wakeMask & waitMask == true)
+  // wake up the thread(s) if (wakeMask & waitMask == true)
   // WakeByAddressSingle/All
-  int Futex::wake(std::atomic<i32> *v, int count, i32 wakeMask) {
-#if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+  int Futex::wake(std::atomic<u32> *v, int count, u32 wakeMask) {
+#if defined(ZS_PLATFORM_LINUX)
+    int const op = FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG;
+    long rc = syscall(SYS_futex, reinterpret_cast<u32 *>(v), op, count, nullptr, nullptr, wakeMask);
+    if (rc < 0) return 0;
+    return rc;
+#else
+    return emulated_futex_wake(v, count, wakeMask);
+#endif
+// deprecated
+#if 0
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     if (count == limits<int>::max()) {
       WakeByAddressAll((void *)v);
       return limits<int>::max();
     } else if (count > 0) {
-      for (int i = 0; i != count; ++i) WakeByAddressSingle((void *)v);
+      for (int i = 0; i < count; ++i) WakeByAddressSingle((void *)v);
       return count;
     } else
       return 0;
 
-#elif defined(__clang__) || defined(__GNUC__)
-#ifdef ZS_PLATFORM_OSX
+#  elif defined(__clang__) || defined(__GNUC__)
+#    ifdef ZS_PLATFORM_OSX
     long rc{0};
     throw std::runtime_error("no futex implementation for now on macos.");
     return rc;
-#else
+#    else
     int const op = FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG;
-    long rc = syscall(SYS_futex, reinterpret_cast<i32 *>(v), op, count, nullptr, nullptr, wakeMask);
+    long rc = syscall(SYS_futex, reinterpret_cast<u32 *>(v), op, count, nullptr, nullptr, wakeMask);
     if (rc < 0) return 0;
     return rc;
-#endif
+#    endif
+#  endif
 #endif
   }
 
@@ -180,7 +210,7 @@ namespace zs {
 #else
     /* Locked and not contended */
     if (this->load(std::memory_order_consume) == 1) {
-      i32 c = 1;
+      u32 c = 1;
       if (this->compare_exchange_strong(c, 0)) return;
     }
     /* Unlock */
@@ -202,7 +232,7 @@ namespace zs {
   }
 
   bool Mutex::trylock() {
-    i32 c = 0;
+    u32 c = 0;
     if (this->compare_exchange_strong(c, 1, std::memory_order_acq_rel)) return true;
     return false;  // resource busy or locked
   }

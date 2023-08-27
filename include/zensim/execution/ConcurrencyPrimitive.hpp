@@ -1,36 +1,223 @@
 #pragma once
 #include <any>
 #include <atomic>
+#include <list>
+#include <mutex>
+#include <condition_variable>
 
 #include "zensim/TypeAlias.hpp"
 #include "zensim/meta/Functional.h"
 
 namespace zs {
 
+#if 0
+  struct ttas_lock {
+    void lock() {
+      for (;;) {
+        if (!_lock.exchange(true, std::memory_order_acquire))
+          break;
+        while (_lock.load(std::memory_order_relaxed))
+          pause_cpu();
+      }
+    }
+
+    std::atomic<bool> _lock;
+  };
+#endif
+
+  namespace detail {
+    struct WaitNodeBase {
+      const u64 _key;
+      const u64 _lotid;
+      std::mutex _mtx;
+      std::condition_variable _cv;
+      bool _signaled;
+
+      WaitNodeBase(u64 key, u64 lotid)
+          : _key{key}, _lotid{lotid}, _mtx{}, _cv{}, _signaled{false} {}
+
+      std::cv_status waitFor(i64 waitMs = -1) noexcept {
+        using namespace std::chrono_literals;
+        std::cv_status status = std::cv_status::no_timeout;
+        std::unique_lock<std::mutex> lk(_mtx);
+        /// @note may be woken spuriously rather than signaling
+        while (!_signaled && status != std::cv_status::timeout) {
+          if (waitMs != -1)
+            status = _cv.wait_for(lk, waitMs * 1ms);
+          else
+            _cv.wait(lk);
+        }
+        return status;
+      }
+
+      void wake() noexcept {
+        std::lock_guard<std::mutex> lk(_mtx);
+        _signaled = true;
+        _cv.notify_one();
+      }
+
+      bool signaled() const noexcept { return _signaled; }
+    };
+
+    struct WaitQueue {
+      std::mutex _mtx;
+      std::list<std::unique_ptr<WaitNodeBase>> _list;
+      std::atomic<u64> _count;
+
+      static WaitQueue *get_queue(u64 key) {
+        static constexpr size_t num_queues = 4096;
+        static WaitQueue queues[num_queues];
+        return &queues[key & (num_queues - 1)];
+      }
+
+      void pushBack(std::unique_ptr<WaitNodeBase> &&node) noexcept {
+        _list.push_front(std::move(node));
+      }
+
+      void erase(WaitNodeBase *node) noexcept {
+        _list.remove_if([node](const std::unique_ptr<WaitNodeBase> &e) { return e.get() == node; });
+      }
+    };
+
+    extern std::atomic<u32> g_idCache;
+
+    enum UnparkControl { RetainContinue, RemoveContinue, RetainBreak, RemoveBreak };
+    enum ParkResult { Skip, Unpark, Timeout };
+
+    template <typename Data> struct ParkingLot {
+      static_assert(std::is_trivially_destructible_v<Data>,
+                    "Data type here should be both trivially and nothrow destructible!");
+
+      const u32 _lotid;
+      ParkingLot() noexcept : _lotid{g_idCache++} {}
+      ParkingLot(const ParkingLot &) = delete;
+
+      struct WaitNode final : WaitNodeBase {
+        const Data _data;
+
+        template <typename T> WaitNode(u64 key, u64 lotid, T &&data) noexcept
+            : WaitNodeBase{key, lotid}, _data(FWD(data)) {}
+      };
+
+      // @note Key is generally the address of a variable
+      // @note D is generally the waitmask
+      template <typename Key,            // index wait queue
+                typename D,              // wait mask
+                typename ParkCondition,  // lambda called before parking threads
+                typename PreWait         // lambda called right before putting to actual sleep
+                >
+      ParkResult parkFor(const Key bits, D &&data, ParkCondition &&parkCondition, PreWait &&preWait,
+                         i64 timeoutMs) noexcept {
+        u64 key = (u64)bits;
+        WaitQueue *queue = WaitQueue::get_queue(key);
+        auto pnode = std::make_unique<WaitNode>(key, _lotid, FWD(data));
+        auto node = pnode.get();
+        {
+          queue->_count.fetch_add(1, std::memory_order_seq_cst);
+          std::unique_lock queueLock{queue->_mtx};
+          if (!FWD(parkCondition)()) {
+            // current one being put to sleep is already awoken by another thread
+            queueLock.unlock();
+            queue->_count.fetch_sub(1, std::memory_order_relaxed);
+            return ParkResult::Skip;
+          }
+
+          queue->pushBack(std::move(pnode));
+        }
+        FWD(preWait)();
+
+        auto status = node->waitFor(timeoutMs);
+        if (status == std::cv_status::timeout) {
+          std::lock_guard queueLock{queue->_mtx};
+          if (!node->signaled()) {
+            queue->erase(node);
+            return ParkResult::Timeout;
+          }
+        }
+        return ParkResult::Unpark;
+      }
+
+      template <typename Key, typename Unparker> void unpark(const Key bits, Unparker &&func) {
+        u64 key = (u64)bits;
+        WaitQueue *queue = WaitQueue::get_queue(key);
+
+        if (queue->_count.load(std::memory_order_seq_cst) == 0) return;
+
+        std::lock_guard queueLock(queue->_mtx);
+        for (std::unique_ptr<WaitNodeBase> &iter : queue->_list) {
+          auto node = static_cast<WaitNode *>(iter.get());
+          if (node->_key == key && node->_lotid == _lotid) {
+            auto result = FWD(func)(node->_data);
+            if (result == UnparkControl::RemoveBreak || result == UnparkControl::RemoveContinue) {
+              queue->erase(node);
+              node->wake();
+            }
+            if (result == UnparkControl::RemoveBreak || result == UnparkControl::RetainContinue) {
+              return;
+            }
+          }
+        }
+      }
+    };
+  }  // namespace detail
+
+  extern detail::ParkingLot<u32> g_lot;
+
+  int emulated_futex_wake(void *addr, int count = limits<int>::max(), u32 wakeMask = 0xffffffff) {
+    int woken = 0;
+    g_lot.unpark(addr, [&count, &woken, &wakeMask](u32 const &mask) {
+      if ((mask & wakeMask) == 0) return detail::UnparkControl::RetainContinue;
+      count--;
+      woken++;
+      return count > 0 ? detail::UnparkControl::RemoveContinue : detail::UnparkControl::RemoveBreak;
+    });
+    return woken;
+  }
+  enum FutexResult {
+    value_changed,  // when expected != atomic value
+    awoken,         // awoken from 'wake' (success state)
+    interrupted,    // interrupted by certain signal
+    timedout        // not applicable to wait, applicable to wait until
+  };
+
+  FutexResult emulated_futex_wait_for(std::atomic<u32> *addr, u32 expected, i64 duration = -1,
+                                      u32 waitMask = 0xffffffff) {
+    detail::ParkResult res;
+    res = g_lot.parkFor(
+        addr, waitMask, [&]() -> bool { return addr->load(std::memory_order_seq_cst) == expected; },
+        []() {}, duration);
+    switch (res) {
+      case detail::ParkResult::Skip:
+        return FutexResult::value_changed;
+      case detail::ParkResult::Unpark:
+        return FutexResult::awoken;
+      case detail::ParkResult::Timeout:
+        return FutexResult::timedout;
+    }
+    return FutexResult::interrupted;
+  }
+
+
+  /// @note ref: Multithreading 101 concurrency primitive from scratch
   /// shared within a single process
   /// blocking construct in the context of shared-memory synchronization
   struct ZPC_API Futex {
-    enum result_t {
-      value_changed,  // when expected != atomic value
-      awoken,         // awoken from 'wake' (success state)
-      interrupted,    //
-      timedout        // not applicable to wait, applicable to wait until
-    };
     // put the current thread to sleep if the expected value matches the value in the atomic
     // waitmask will be saved and compared to the wakemask later in the wake call
     // to check if you wanna wake up this thread or keep it sleeping
-    static result_t wait(std::atomic<i32> *v, i32 expected, i32 waitMask = 0xffffffff);
-    static result_t waitUntil(std::atomic<i32> *v, i32 expected, i64 deadline,
-                              i32 waitMask = 0xffffffff);
+    static FutexResult wait(std::atomic<u32> *v, u32 expected, u32 waitMask = 0xffffffff);
+    /// @note duration in milli-seconds
+    static FutexResult wait_for(std::atomic<u32> *v, u32 expected, i64 duration = -1,
+                              u32 waitMask = 0xffffffff);
     // wake up the thread if (wakeMask & waitMask == true)
-    static int wake(std::atomic<i32> *v, int count = limits<int>::max(), i32 wakeMask = 0xffffffff);
+    static int wake(std::atomic<u32> *v, int count = limits<int>::max(), u32 wakeMask = 0xffffffff);
   };
 
-  ZPC_API void await_change(std::atomic<i32> &v, i32 cur);
-  ZPC_API void await_equal(std::atomic<i32> &v, i32 desired);
+  ZPC_API void await_change(std::atomic<u32> &v, u32 cur);
+  ZPC_API void await_equal(std::atomic<u32> &v, u32 desired);
 
   // process-local mutex
-  struct ZPC_API Mutex : std::atomic<i32> {
+  struct ZPC_API Mutex : std::atomic<u32> {
     // 0: unlocked
     // 1: locked
     // 257: locked and contended (...0001 | 00000001)
@@ -47,7 +234,7 @@ namespace zs {
     bool wait(Mutex &mut);
 
     Mutex *m{nullptr};        // 4 bytes, the cv belongs to this mutex
-    std::atomic<i32> seq{0};  // 4 bytes, sequence lock for concurrent wakes and sleeps
+    std::atomic<u32> seq{0};  // 4 bytes, sequence lock for concurrent wakes and sleeps
   };
 
 #if 0

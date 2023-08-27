@@ -89,6 +89,8 @@ namespace zs {
 #  else
     _mm_pause();
 #  endif
+#else
+    static_assert(always_false<ExecTag>, "cannot determinate appropriate pause() intrinsics");
 #endif
   }
 

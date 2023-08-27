@@ -1,6 +1,7 @@
 #include "ConcurrencyPrimitive.hpp"
 
 #include <time.h>
+#include <atomic>
 
 #include "zensim/execution/Atomics.hpp"
 #include "zensim/execution/Intrinsics.hpp"
@@ -91,30 +92,20 @@ namespace zs {
       }
     }
 
-#else
-    return emulated_futex_wait_for(v, expected, duration, waitMask);
-#endif
-
-      /// deprecated
-#if 0
-#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+#  if 0
+#  elif defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     /// windows
     u32 undesired = expected;
-    bool rc = WaitOnAddress((void *)v, &undesired, sizeof(u32),
-                            duration == -1 ? INFINITE : duration);
+    bool rc
+        = WaitOnAddress((void *)v, &undesired, sizeof(u32), duration == -1 ? INFINITE : duration);
     if (rc) return FutexResult::awoken;
     if (undesired != expected) return FutexResult::value_changed;
     if (GetLastError() == ERROR_TIMEOUT) return FutexResult::timedout;
     return FutexResult::interrupted;
-
-#  elif defined(__clang__) || defined(__GNUC__)
-#    ifdef ZS_PLATFORM_OSX
-    throw std::runtime_error("no futex implementation for now on macos.");
-    return FutexResult::timedout;
-#    else
-    /// linux
-#    endif
 #  endif
+
+#else
+    return emulated_futex_wait_for(v, expected, duration, waitMask);
 #endif
   }
   // wake up the thread(s) if (wakeMask & waitMask == true)
@@ -125,12 +116,9 @@ namespace zs {
     long rc = syscall(SYS_futex, reinterpret_cast<u32 *>(v), op, count, nullptr, nullptr, wakeMask);
     if (rc < 0) return 0;
     return rc;
-#else
-    return emulated_futex_wake(v, count, wakeMask);
-#endif
-// deprecated
-#if 0
-#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+
+#  if 0
+#  elif defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     if (count == limits<int>::max()) {
       WakeByAddressAll((void *)v);
       return limits<int>::max();
@@ -139,105 +127,74 @@ namespace zs {
       return count;
     } else
       return 0;
-
-#  elif defined(__clang__) || defined(__GNUC__)
-#    ifdef ZS_PLATFORM_OSX
-    long rc{0};
-    throw std::runtime_error("no futex implementation for now on macos.");
-    return rc;
-#    else
-    int const op = FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG;
-    long rc = syscall(SYS_futex, reinterpret_cast<u32 *>(v), op, count, nullptr, nullptr, wakeMask);
-    if (rc < 0) return 0;
-    return rc;
-#    endif
 #  endif
+
+#else
+    return emulated_futex_wake(v, count, wakeMask);
 #endif
   }
 
   // ref
   // https://locklessinc-com.translate.goog/articles/mutex_cv_futex/
-  void Mutex::lock() {
-#if 0
-    int c;
-    /* Spin and try to take lock */
-    for (int i = 0; i != 128; ++i) {
-      c = 0;
-      if (this->compare_exchange_strong(c, 1, std::memory_order_acq_rel)) return;
-      pause_cpu();
-    }
-
-    /* The lock is now contended */
-    if (c == 1) {
-      c = this->exchange(2, std::memory_order_acq_rel);
-    }
-
-    while (c) {
-      /* Wait in the kernel */
-      Futex::wait(this, 2);
-      c = this->exchange(2, std::memory_order_acq_rel);
-    }
-#else
-    for (int i = 0; i != 128; ++i) {
-      if ((this->fetch_or(1, std::memory_order_acq_rel) & 1) == 0) return;
-      pause_cpu();
-    }
-
-    while ((this->exchange(257) & 1) == 1) Futex::wait(this, 257);
-#endif
-  }
-
-  void Mutex::unlock() {
-#if 0
-    /* Unlock, and if not contended then exit. */
-    if (this->load(std::memory_order_consume) == 2) {
-      this->store(0, std::memory_order_release);
-    } else if (this->exchange(0, std::memory_order_acq_rel) == 1)
+  void Mutex::lock() noexcept {
+    u32 state = this->load(std::memory_order_relaxed);
+    if (state == 0
+        && this->compare_exchange_weak(state, (u32)1, std::memory_order_acquire,
+                                       std::memory_order_relaxed))
       return;
 
-    /* Spin and hope someone takes the lock */
-    for (int i = 0; i != 128; ++i) {
-      if (this->load(std::memory_order_consume)) { /* Need to set to state 2 because there may be waiters */
-        i32 c = 1; 
-        bool switched = this->compare_exchange_strong(c, 2, std::memory_order_acq_rel);
-        if (switched || c > 0) return;
+    {
+      size_t spinCount = 0;
+      constexpr size_t spin_limit = 1028;
+      u32 oldState = state, newState;
+    mutex_lock_retry:
+      if (oldState != 0) {
+        ++spinCount;
+        if (spinCount > spin_limit) {
+          newState = oldState | (u32)1;
+          if (newState != oldState) {
+            if (!this->compare_exchange_weak(oldState, newState, std::memory_order_relaxed,
+                                             std::memory_order_relaxed))
+              goto mutex_lock_retry;
+          }
+          Futex::wait(this, (u32)1);
+        } else {
+          zs::pause_cpu();
+        }
+        oldState = this->load(std::memory_order_relaxed);
+        goto mutex_lock_retry;
       }
-      pause_cpu();
-    }
 
-    /* We need to wake someone up */
-    Futex::wake(this, 1);
-    return;
-#else
-    /* Locked and not contended */
-    if (this->load(std::memory_order_consume) == 1) {
-      u32 c = 1;
-      if (this->compare_exchange_strong(c, 0)) return;
+      newState = oldState | (u32)1;
+      if (!this->compare_exchange_weak(oldState, newState, std::memory_order_acquire,
+                                       std::memory_order_relaxed))
+        goto mutex_lock_retry;
     }
-    /* Unlock */
-    this->fetch_and(~1, std::memory_order_acq_rel);  // bit-wise not
-    std::atomic_thread_fence(
-        std::
-            memory_order_seq_cst);  // https://stackoverflow.com/questions/19965076/gcc-memory-barrier-sync-synchronize-vs-asm-volatile-memory
-
-    /* Spin and hope someone takes the lock */
-    for (int i = 0; i != 128; ++i) {
-      if ((this->load(std::memory_order_consume) & 1) == 1) return;
-      pause_cpu();
-    }
-
-    /* We need to wake someone up */
-    this->fetch_and(~256, std::memory_order_acq_rel);
-    Futex::wake(this, 1);
-#endif
   }
 
-  bool Mutex::trylock() {
-    u32 c = 0;
-    if (this->compare_exchange_strong(c, 1, std::memory_order_acq_rel)) return true;
-    return false;  // resource busy or locked
+  void Mutex::unlock() noexcept {
+    auto oldState = this->load(std::memory_order_relaxed);
+    u32 newState;
+    do {
+      newState = 0;
+    } while (!this->compare_exchange_weak(oldState, newState, std::memory_order_release,
+                                          std::memory_order_relaxed));
+
+    if (oldState) {
+      Futex::wake(this);
+    }
   }
 
+  bool Mutex::trylock() noexcept {
+    u32 state = this->load(std::memory_order_relaxed);
+    do {
+      if (state) return false;
+    } while (!this->compare_exchange_weak(state, (u32)1, std::memory_order_acquire,
+                                          std::memory_order_relaxed));
+    return true;
+  }
+
+#if 0
   void ConditionVariable::notify_one() {
     seq.fetch_add(1, std::memory_order_acq_rel);
     Futex::wake(&seq, 1);
@@ -246,17 +203,17 @@ namespace zs {
   void ConditionVariable::notify_all() {
     if (m == nullptr) return;
     seq.fetch_add(1, std::memory_order_acq_rel);
-#if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
+#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     // cannot find win32 alternative for FUTEX_REQUEUE
     WakeByAddressAll((void *)&seq);
-#elif defined(__clang__) || defined(__GNUC__)
-#ifdef ZS_PLATFORM_OSX
+#  elif defined(__clang__) || defined(__GNUC__)
+#    ifdef ZS_PLATFORM_OSX
     throw std::runtime_error("no futex implementation for now on macos.");
-#else
+#    else
     syscall(SYS_futex, reinterpret_cast<i32 *>(&seq), FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1,
             limits<i32>::max(), m, 0);
-#endif
-#endif
+#    endif
+#  endif
   }
 
   bool ConditionVariable::wait(Mutex &mut) {
@@ -272,5 +229,6 @@ namespace zs {
     while (m->exchange(257, std::memory_order_acq_rel) & 1) Futex::wait(m, 257);
     return true;
   }
+#endif
 
 }  // namespace zs

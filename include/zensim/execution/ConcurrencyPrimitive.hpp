@@ -1,7 +1,6 @@
 #pragma once
 #include <any>
 #include <atomic>
-#include <list>
 #include <mutex>
 #include <condition_variable>
 
@@ -50,7 +49,7 @@ namespace zs {
     struct WaitNodeBase {
       const u64 _key;
       const u64 _lotid;
-      std::mutex _mtx;
+      std::mutex _mtx;  // neither copyable nor movable
       std::condition_variable _cv;
       bool _signaled;
 
@@ -80,16 +79,59 @@ namespace zs {
       bool signaled() const noexcept { return _signaled; }
     };
 
+    struct WaitNode final : WaitNodeBase {
+      WaitNode *_prev, *_next;
+      const u32 _data;  // wait/wake mask type
+
+      WaitNode(u64 key, u64 lotid, u32 data) noexcept
+          : WaitNodeBase{key, lotid}, _prev{nullptr}, _next{nullptr}, _data(FWD(data)) {}
+    };
+
     struct WaitQueue {
-      std::mutex _mtx;
-      std::list<std::unique_ptr<WaitNodeBase>> _list;
-      std::atomic<u64> _count;
+      std::mutex _mtx{};
+      WaitNode *_list{nullptr};
+      std::atomic<u64> _count{0};
 
       static WaitQueue *get_queue(u64 key) {
         /// @note must be power of two
         static constexpr size_t num_queues = 4096;
         static WaitQueue queues[num_queues];
         return &queues[key & (num_queues - 1)];
+      }
+
+      WaitQueue() = default;
+      ~WaitQueue() {
+        WaitNode *node = _list;
+        while (node != nullptr) {
+          auto cur = node;
+          node = node->_next;
+          delete cur;
+        }
+      }
+
+      [[nodiscard]] WaitNode *insertHead(const WaitNode &newNode_) {
+        WaitNode *newNode = new WaitNode{newNode_._key, newNode_._lotid, newNode_._data};
+        if (_list != nullptr) {
+          _list->_prev = newNode;
+          newNode->_next = _list;
+          newNode->_prev = nullptr;
+        }
+        _list = newNode;
+        return _list;
+      }
+      [[maybe_unused]] WaitNode *erase(WaitNode *node) {
+        WaitNode *cur = _list;
+        while (cur != nullptr) {
+          if (node == cur) {
+            auto next = node->_next;
+            auto prev = node->_prev;
+            if (prev != nullptr) prev->_next = next;
+            if (next != nullptr) next->_prev = prev;
+            return next;
+          }
+          cur = cur->_next;
+        }
+        return nullptr;
       }
     };
 
@@ -106,13 +148,6 @@ namespace zs {
       ParkingLot() noexcept : _lotid{g_idCache++} {}
       ParkingLot(const ParkingLot &) = delete;
 
-      struct WaitNode final : WaitNodeBase {
-        const Data _data;
-
-        template <typename T> WaitNode(u64 key, u64 lotid, T &&data) noexcept
-            : WaitNodeBase{key, lotid}, _data(FWD(data)) {}
-      };
-
       // @note Key is generally the address of a variable
       // @note D is generally the waitmask
       template <typename Key,            // index wait queue
@@ -124,8 +159,8 @@ namespace zs {
                          i64 timeoutMs) noexcept {
         u64 key = twang_mix64((u64)bits);
         WaitQueue *queue = WaitQueue::get_queue(key);
-        auto pnode = std::make_unique<WaitNode>(key, _lotid, FWD(data));
-        typename RM_CVREF_T(queue->_list)::iterator node;
+        WaitNode node{key, _lotid, FWD(data)};
+        WaitNode *pnode = nullptr;
         {
           queue->_count.fetch_add(1, std::memory_order_seq_cst);
           std::unique_lock queueLock{queue->_mtx};
@@ -136,16 +171,15 @@ namespace zs {
             return ParkResult::Skip;
           }
 
-          node = queue->_list.insert(queue->_list.begin(), std::move(pnode));
+          pnode = queue->insertHead(node);
         }
         FWD(preWait)();
 
-        auto status = (*node)->waitFor(timeoutMs);
+        auto status = (*pnode).waitFor(timeoutMs);
         if (status == std::cv_status::timeout) {
           std::lock_guard queueLock{queue->_mtx};
-          if (!(*node)->signaled()) {
-            // queue->erase(node);
-            queue->_list.erase(node);
+          if (!(*pnode).signaled()) {
+            queue->erase(pnode);
             return ParkResult::Timeout;
           }
         }
@@ -159,19 +193,18 @@ namespace zs {
         if (queue->_count.load(std::memory_order_seq_cst) == 0) return;
 
         std::lock_guard queueLock(queue->_mtx);
-        auto st = queue->_list.begin();
-        auto ed = queue->_list.end();
-        for (; st != ed;) {
-          auto node = static_cast<WaitNode *>(st->get());
-          if (node->_key == key && node->_lotid == _lotid) {
-            UnparkControl result = FWD(func)(node->_data);
+        WaitNode *st = queue->_list;
+        while (st != nullptr) {
+          auto &node = *st;
+          st = st->_next;
+          if (node._key == key && node._lotid == _lotid) {
+            UnparkControl result = FWD(func)(node._data);
             if (result == UnparkControl::RemoveBreak || result == UnparkControl::RemoveContinue) {
               // queue->erase(node);
-              st = queue->_list.erase(st);
-              node->wake();
-            } else
-              ++st;
-            if (result == UnparkControl::RemoveBreak || result == UnparkControl::RetainContinue) {
+              queue->erase(st);
+              node.wake();
+            }
+            if (result == UnparkControl::RemoveBreak || result == UnparkControl::RetainBreak) {
               return;
             }
           }
@@ -182,7 +215,8 @@ namespace zs {
 
   extern detail::ParkingLot<u32> g_lot;
 
-  int emulated_futex_wake(void *addr, int count = limits<int>::max(), u32 wakeMask = 0xffffffff) {
+  inline int emulated_futex_wake(void *addr, int count = limits<int>::max(),
+                                 u32 wakeMask = 0xffffffff) {
     int woken = 0;
     g_lot.unpark(addr, [&count, &woken, &wakeMask](u32 const &mask) {
       if ((mask & wakeMask) == 0) return detail::UnparkControl::RetainContinue;
@@ -199,8 +233,8 @@ namespace zs {
     timedout        // not applicable to wait, applicable to wait until
   };
 
-  FutexResult emulated_futex_wait_for(std::atomic<u32> *addr, u32 expected, i64 duration = -1,
-                                      u32 waitMask = 0xffffffff) {
+  inline FutexResult emulated_futex_wait_for(std::atomic<u32> *addr, u32 expected,
+                                             i64 duration = -1, u32 waitMask = 0xffffffff) {
     detail::ParkResult res;
     res = g_lot.parkFor(
         addr, waitMask, [&]() -> bool { return addr->load(std::memory_order_seq_cst) == expected; },
@@ -216,7 +250,6 @@ namespace zs {
     return FutexResult::interrupted;
   }
 
-
   /// @note ref: Multithreading 101 concurrency primitive from scratch
   /// shared within a single process
   /// blocking construct in the context of shared-memory synchronization
@@ -227,7 +260,7 @@ namespace zs {
     static FutexResult wait(std::atomic<u32> *v, u32 expected, u32 waitMask = 0xffffffff);
     /// @note duration in milli-seconds
     static FutexResult wait_for(std::atomic<u32> *v, u32 expected, i64 duration = -1,
-                              u32 waitMask = 0xffffffff);
+                                u32 waitMask = 0xffffffff);
     // wake up the thread if (wakeMask & waitMask == true)
     static int wake(std::atomic<u32> *v, int count = limits<int>::max(), u32 wakeMask = 0xffffffff);
   };
@@ -240,11 +273,12 @@ namespace zs {
     // 0: unlocked
     // 1: locked
     // 257: locked and contended (...0001 | 00000001)
-    void lock();
-    void unlock();
-    bool trylock();
+    void lock() noexcept;
+    void unlock() noexcept;
+    bool trylock() noexcept;
   };
 
+#if 0
   // 8 bytes alignment for rollover issue
   // https://docs.ntpsec.org/latest/rollover.html
   struct alignas(16) ConditionVariable {
@@ -255,6 +289,7 @@ namespace zs {
     Mutex *m{nullptr};        // 4 bytes, the cv belongs to this mutex
     std::atomic<u32> seq{0};  // 4 bytes, sequence lock for concurrent wakes and sleeps
   };
+#endif
 
 #if 0
   struct Mutex : std::atomic<u8> {

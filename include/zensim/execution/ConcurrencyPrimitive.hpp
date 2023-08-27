@@ -26,6 +26,27 @@ namespace zs {
 #endif
 
   namespace detail {
+    /// @note ref: meta folly
+    constexpr u64 twang_mix64(u64 key) noexcept {
+      key = (~key) + (key << 21);  // key *= (1 << 21) - 1; key -= 1;
+      key = key ^ (key >> 24);
+      key = key + (key << 3) + (key << 8);  // key *= 1 + (1 << 3) + (1 << 8)
+      key = key ^ (key >> 14);
+      key = key + (key << 2) + (key << 4);  // key *= 1 + (1 << 2) + (1 << 4)
+      key = key ^ (key >> 28);
+      key = key + (key << 31);  // key *= 1 + (1 << 31)
+      return key;
+    }
+    constexpr u64 twang_unmix64(u64 key) noexcept {
+      key *= 4611686016279904257U;
+      key ^= (key >> 28) ^ (key >> 56);
+      key *= 14933078535860113213U;
+      key ^= (key >> 14) ^ (key >> 28) ^ (key >> 42) ^ (key >> 56);
+      key *= 15244667743933553977U;
+      key ^= (key >> 24) ^ (key >> 48);
+      key = (key + 1) * 9223367638806167551U;
+      return key;
+    }
     struct WaitNodeBase {
       const u64 _key;
       const u64 _lotid;
@@ -42,7 +63,7 @@ namespace zs {
         std::unique_lock<std::mutex> lk(_mtx);
         /// @note may be woken spuriously rather than signaling
         while (!_signaled && status != std::cv_status::timeout) {
-          if (waitMs != -1)
+          if (waitMs > -1)
             status = _cv.wait_for(lk, waitMs * 1ms);
           else
             _cv.wait(lk);
@@ -65,17 +86,10 @@ namespace zs {
       std::atomic<u64> _count;
 
       static WaitQueue *get_queue(u64 key) {
+        /// @note must be power of two
         static constexpr size_t num_queues = 4096;
         static WaitQueue queues[num_queues];
         return &queues[key & (num_queues - 1)];
-      }
-
-      void pushBack(std::unique_ptr<WaitNodeBase> &&node) noexcept {
-        _list.push_front(std::move(node));
-      }
-
-      void erase(WaitNodeBase *node) noexcept {
-        _list.remove_if([node](const std::unique_ptr<WaitNodeBase> &e) { return e.get() == node; });
       }
     };
 
@@ -108,10 +122,10 @@ namespace zs {
                 >
       ParkResult parkFor(const Key bits, D &&data, ParkCondition &&parkCondition, PreWait &&preWait,
                          i64 timeoutMs) noexcept {
-        u64 key = (u64)bits;
+        u64 key = twang_mix64((u64)bits);
         WaitQueue *queue = WaitQueue::get_queue(key);
         auto pnode = std::make_unique<WaitNode>(key, _lotid, FWD(data));
-        auto node = pnode.get();
+        typename RM_CVREF_T(queue->_list)::iterator node;
         {
           queue->_count.fetch_add(1, std::memory_order_seq_cst);
           std::unique_lock queueLock{queue->_mtx};
@@ -122,15 +136,16 @@ namespace zs {
             return ParkResult::Skip;
           }
 
-          queue->pushBack(std::move(pnode));
+          node = queue->_list.insert(queue->_list.begin(), std::move(pnode));
         }
         FWD(preWait)();
 
-        auto status = node->waitFor(timeoutMs);
+        auto status = (*node)->waitFor(timeoutMs);
         if (status == std::cv_status::timeout) {
           std::lock_guard queueLock{queue->_mtx};
-          if (!node->signaled()) {
-            queue->erase(node);
+          if (!(*node)->signaled()) {
+            // queue->erase(node);
+            queue->_list.erase(node);
             return ParkResult::Timeout;
           }
         }
@@ -138,20 +153,24 @@ namespace zs {
       }
 
       template <typename Key, typename Unparker> void unpark(const Key bits, Unparker &&func) {
-        u64 key = (u64)bits;
+        u64 key = twang_mix64((u64)bits);
         WaitQueue *queue = WaitQueue::get_queue(key);
 
         if (queue->_count.load(std::memory_order_seq_cst) == 0) return;
 
         std::lock_guard queueLock(queue->_mtx);
-        for (std::unique_ptr<WaitNodeBase> &iter : queue->_list) {
-          auto node = static_cast<WaitNode *>(iter.get());
+        auto st = queue->_list.begin();
+        auto ed = queue->_list.end();
+        for (; st != ed;) {
+          auto node = static_cast<WaitNode *>(st->get());
           if (node->_key == key && node->_lotid == _lotid) {
-            auto result = FWD(func)(node->_data);
+            UnparkControl result = FWD(func)(node->_data);
             if (result == UnparkControl::RemoveBreak || result == UnparkControl::RemoveContinue) {
-              queue->erase(node);
+              // queue->erase(node);
+              st = queue->_list.erase(st);
               node->wake();
-            }
+            } else
+              ++st;
             if (result == UnparkControl::RemoveBreak || result == UnparkControl::RetainContinue) {
               return;
             }

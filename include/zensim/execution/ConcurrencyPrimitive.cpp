@@ -23,6 +23,7 @@ namespace zs {
   namespace detail {
     std::atomic<u32> g_idCache = 0;
   }
+  detail::ParkingLot<u32> g_lot;
 
   void await_change(std::atomic<u32> &v, u32 cur) {
     while (true) {

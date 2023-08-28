@@ -48,7 +48,7 @@ namespace zs {
     // ~Mutex() = default;
     void lock() noexcept;
     void unlock() noexcept;
-    bool trylock() noexcept;
+    bool try_lock() noexcept;
     static constexpr u32 _kMask{1};
   };
 

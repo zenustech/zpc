@@ -412,7 +412,7 @@ namespace zs {
     }
   }
 
-  bool Mutex::trylock() noexcept {
+  bool Mutex::try_lock() noexcept {
     u32 state = this->load(std::memory_order_relaxed);
     do {
       if (state) return false;

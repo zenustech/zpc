@@ -1,7 +1,9 @@
 #include "ConcurrencyPrimitive.hpp"
 
 #include <atomic>
+#include <condition_variable>
 #include <ctime>
+#include <mutex>
 #include <thread>
 
 #include "zensim/execution/Atomics.hpp"
@@ -25,9 +27,220 @@
 namespace zs {
 
   namespace detail {
-    std::atomic<u32> g_idCache = 0;
+    /// @note ref: meta folly
+    constexpr u64 twang_mix64(u64 key) noexcept {
+      key = (~key) + (key << 21);  // key *= (1 << 21) - 1; key -= 1;
+      key = key ^ (key >> 24);
+      key = key + (key << 3) + (key << 8);  // key *= 1 + (1 << 3) + (1 << 8)
+      key = key ^ (key >> 14);
+      key = key + (key << 2) + (key << 4);  // key *= 1 + (1 << 2) + (1 << 4)
+      key = key ^ (key >> 28);
+      key = key + (key << 31);  // key *= 1 + (1 << 31)
+      return key;
+    }
+    constexpr u64 twang_unmix64(u64 key) noexcept {
+      key *= 4611686016279904257U;
+      key ^= (key >> 28) ^ (key >> 56);
+      key *= 14933078535860113213U;
+      key ^= (key >> 14) ^ (key >> 28) ^ (key >> 42) ^ (key >> 56);
+      key *= 15244667743933553977U;
+      key ^= (key >> 24) ^ (key >> 48);
+      key = (key + 1) * 9223367638806167551U;
+      return key;
+    }
+    struct WaitNodeBase {
+      const u64 _key;
+      const u64 _lotid;
+      std::mutex _mtx;  // neither copyable nor movable
+      std::condition_variable _cv;
+      bool _signaled;
+
+      WaitNodeBase(u64 key, u64 lotid)
+          : _key{key}, _lotid{lotid}, _mtx{}, _cv{}, _signaled{false} {}
+
+      std::cv_status waitFor(i64 waitMs = -1) noexcept {
+        using namespace std::chrono_literals;
+        std::cv_status status = std::cv_status::no_timeout;
+        std::unique_lock<std::mutex> lk(_mtx);
+        /// @note may be woken spuriously rather than signaling
+        while (!_signaled && status != std::cv_status::timeout) {
+          if (waitMs > -1)
+            status = _cv.wait_for(lk, waitMs * 1ms);
+          else
+            _cv.wait(lk);
+        }
+        return status;
+      }
+
+      void wake() noexcept {
+        std::lock_guard<std::mutex> lk(_mtx);
+        _signaled = true;
+        _cv.notify_one();
+      }
+
+      bool signaled() const noexcept { return _signaled; }
+    };
+
+    struct WaitNode final : WaitNodeBase {
+      WaitNode *_next;
+      const u32 _data;  // wait/wake mask type
+
+      WaitNode(u64 key, u64 lotid, u32 data) noexcept
+          : WaitNodeBase{key, lotid}, _next{nullptr}, _data(FWD(data)) {}
+    };
+
+    struct WaitQueue {
+      std::mutex _mtx{};
+      WaitNode *_list{nullptr};
+      std::atomic<u64> _count{0};
+
+      static WaitQueue *get_queue(u64 key) {
+        /// @note must be power of two
+        static constexpr size_t num_queues = 4096;
+        static WaitQueue queues[num_queues];
+        return &queues[key & (num_queues - 1)];
+      }
+
+      WaitQueue() = default;
+      ~WaitQueue() {
+        WaitNode *node = _list;
+        while (node != nullptr) {
+          auto cur = node;
+          node = node->_next;
+          delete cur;
+        }
+      }
+
+      [[nodiscard]] WaitNode *insertHead(const WaitNode &newNode_) {
+        WaitNode *newNode = new WaitNode{newNode_._key, newNode_._lotid, newNode_._data};
+        newNode->_next = _list;
+        _list = newNode;
+        return _list;
+      }
+      void erase(WaitNode *node) {
+        if (_list == node) {
+          delete _list;
+          _list = _list->_next;
+          return;
+        }
+        WaitNode *cur = _list->_next, *prev = _list;
+        while (cur != nullptr) {
+          if (node == cur) {
+            prev->_next = cur->_next;
+            delete cur;
+            return;
+          }
+          prev = cur;
+          cur = cur->_next;
+        }
+      }
+    };
+
+    static std::atomic<u32> g_idCache = 0;
+
+    template <typename Data> struct ParkingLot {
+      static_assert(std::is_trivially_destructible_v<Data>,
+                    "Data type here should be both trivially and nothrow destructible!");
+
+      const u32 _lotid;
+      ParkingLot() noexcept : _lotid{g_idCache++} {}
+      ParkingLot(const ParkingLot &) = delete;
+
+      // @note Key is generally the address of a variable
+      // @note D is generally the waitmask
+      template <typename Key,            // index wait queue
+                typename D,              // wait mask
+                typename ParkCondition,  // lambda called before parking threads
+                typename PreWait         // lambda called right before putting to actual sleep
+                >
+      ParkResult parkFor(const Key bits, D &&data, ParkCondition &&parkCondition, PreWait &&preWait,
+                         i64 timeoutMs) noexcept {
+        u64 key = twang_mix64((u64)bits);
+        WaitQueue *queue = WaitQueue::get_queue(key);
+        WaitNode node{key, _lotid, FWD(data)};
+        WaitNode *pnode = nullptr;
+        {
+          queue->_count.fetch_add(1, std::memory_order_seq_cst);
+          std::unique_lock queueLock{queue->_mtx};
+          if (!FWD(parkCondition)()) {
+            // current one being put to sleep is already awoken by another thread
+            queueLock.unlock();
+            queue->_count.fetch_sub(1, std::memory_order_relaxed);
+            return ParkResult::Skip;
+          }
+
+          pnode = queue->insertHead(node);
+        }
+        FWD(preWait)();
+
+        auto status = (*pnode).waitFor(timeoutMs);
+        if (status == std::cv_status::timeout) {
+          std::lock_guard queueLock{queue->_mtx};
+          if (!(*pnode).signaled()) {
+            queue->erase(pnode);
+            return ParkResult::Timeout;
+          }
+        }
+        return ParkResult::Unpark;
+      }
+
+      template <typename Key, typename Unparker> void unpark(const Key bits, Unparker &&func) {
+        u64 key = twang_mix64((u64)bits);
+        WaitQueue *queue = WaitQueue::get_queue(key);
+
+        // std::atomic_thread_fence(std::memory_order_seq_cst);
+        if (queue->_count.load(std::memory_order_seq_cst) == 0) return;
+
+        std::lock_guard queueLock(queue->_mtx);
+        WaitNode *st = queue->_list;
+        while (st != nullptr) {
+          auto &node = *st;
+          st = st->_next;
+          if (node._key == key && node._lotid == _lotid) {
+            UnparkControl result = FWD(func)(node._data);
+            if (result == UnparkControl::RemoveBreak || result == UnparkControl::RemoveContinue) {
+              queue->erase(st);
+              node.wake();
+            }
+            if (result == UnparkControl::RemoveBreak || result == UnparkControl::RetainBreak) {
+              return;
+            }
+          }
+        }
+      }
+    };
+  }  // namespace detail
+
+  static detail::ParkingLot<u32> g_lot;
+
+  static int emulated_futex_wake(void *addr, int count = limits<int>::max(),
+                                 u32 wakeMask = 0xffffffff) {
+    int woken = 0;
+    g_lot.unpark(addr, [&count, &woken, wakeMask](u32 const &mask) {
+      if ((mask & wakeMask) == 0) return detail::UnparkControl::RetainContinue;
+      count--;
+      woken++;
+      return count > 0 ? detail::UnparkControl::RemoveContinue : detail::UnparkControl::RemoveBreak;
+    });
+    return woken;
   }
-  detail::ParkingLot<u32> g_lot;
+
+  static FutexResult emulated_futex_wait_for(std::atomic<u32> *addr, u32 expected,
+                                             i64 duration = -1, u32 waitMask = 0xffffffff) {
+    detail::ParkResult res;
+    res = g_lot.parkFor(
+        addr, waitMask, [&]() -> bool { return addr->load(std::memory_order_seq_cst) == expected; },
+        []() {}, duration);
+    switch (res) {
+      case detail::ParkResult::Skip:
+        return FutexResult::value_changed;
+      case detail::ParkResult::Unpark:
+        return FutexResult::awoken;
+      case detail::ParkResult::Timeout:
+        return FutexResult::timedout;
+    }
+    return FutexResult::interrupted;
+  }
 
   void await_change(std::atomic<u32> &v, u32 cur) {
     while (true) {
@@ -164,7 +377,9 @@ namespace zs {
                                              std::memory_order_relaxed))
               goto mutex_lock_retry;
           }
-          Futex::wait_for(this, newState, (i64)-1, _kMask);
+          // Futex::wait_for(this, newState, (i64)-1, _kMask);
+          g_lot.parkFor(
+              this, _kMask, [this, newState]() { return this->load() == newState; }, []() {}, -1);
         } else if (spinCount > spin_limit + 1) {
           // zs::pause_cpu();
           std::this_thread::yield();
@@ -192,7 +407,8 @@ namespace zs {
                                           std::memory_order_relaxed));
 
     if (oldState & _kMask) {
-      Futex::wake(this, limits<int>::max(), _kMask);
+      // Futex::wake(this, limits<int>::max(), _kMask);
+      g_lot.unpark(this, [](const u32 &) { return detail::UnparkControl::RemoveBreak; });
     }
   }
 
@@ -205,29 +421,27 @@ namespace zs {
     return true;
   }
 
-#if 0
-  void ConditionVariable::notify_one() {
-    seq.fetch_add(1, std::memory_order_acq_rel);
-    Futex::wake(&seq, 1);
+  void ConditionVariable::wait(Mutex &lk) noexcept {
+    g_lot.parkFor(
+        &seq, 0 /* mask data used for unpark is irrelevant here*/,
+        [this]() {
+          seq.store(1, std::memory_order_acquire);
+          return true;
+        },
+        [&lk]() { lk.unlock(); }, (i64)-1);
+    lk.lock();
   }
-
-  void ConditionVariable::notify_all() {
-    if (m == nullptr) return;
-    seq.fetch_add(1, std::memory_order_acq_rel);
-#  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
-    // cannot find win32 alternative for FUTEX_REQUEUE
-    WakeByAddressAll((void *)&seq);
-#  elif defined(__clang__) || defined(__GNUC__)
-#    ifdef ZS_PLATFORM_OSX
-    throw std::runtime_error("no futex implementation for now on macos.");
-#    else
-    syscall(SYS_futex, reinterpret_cast<i32 *>(&seq), FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1,
-            limits<i32>::max(), m, 0);
-#    endif
-#  endif
-  }
-
-  bool ConditionVariable::wait(Mutex &mut) {
+  CvStatus ConditionVariable::wait_for(Mutex &lk, i64 duration) noexcept {
+    detail::ParkResult res = g_lot.parkFor(
+        &seq, 0 /* mask data used for unpark is irrelevant here*/,
+        [this]() {
+          seq.store(1, std::memory_order_acquire);
+          return true;
+        },
+        [&lk]() { lk.unlock(); }, duration);
+    lk.lock();
+    return res == detail::ParkResult::Timeout ? CvStatus::timeout : CvStatus::no_timeout;
+#if 0 
     // https://www.cnblogs.com/bbqzsl/p/6808176.html
     if (m != &mut) {
       if (m != nullptr) return false;  // invalid argument
@@ -239,7 +453,21 @@ namespace zs {
     // value (257) is coupled with mutex internal representation
     while (m->exchange(257, std::memory_order_acq_rel) & 1) Futex::wait(m, 257);
     return true;
-  }
 #endif
+  }
+
+  void ConditionVariable::notify_one() noexcept {
+    if (!seq.load(std::memory_order_relaxed)) return;
+    g_lot.unpark(&seq, [](const u32 &) { return detail::UnparkControl::RemoveBreak; });
+  }
+
+  // WakeByAddressAll((void *)&seq);
+  // syscall(SYS_futex, reinterpret_cast<i32 *>(&seq), FUTEX_REQUEUE | FUTEX_PRIVATE_FLAG, 1,
+  //         limits<i32>::max(), m, 0);
+  void ConditionVariable::notify_all() noexcept {
+    if (!seq.load(std::memory_order_relaxed)) return;
+    seq.store(0, std::memory_order_release);
+    g_lot.unpark(&seq, [](const u32 &) { return detail::UnparkControl::RemoveContinue; });
+  }
 
 }  // namespace zs

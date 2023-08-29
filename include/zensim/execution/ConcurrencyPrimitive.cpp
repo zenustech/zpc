@@ -157,7 +157,7 @@ namespace zs {
                          i64 timeoutMs) noexcept {
         u64 key = twang_mix64((u64)bits);
         WaitQueue *queue = WaitQueue::get_queue(key);
-        WaitNode node{key, _lotid, FWD(data)};
+        WaitNode node{key, _lotid, (u32)FWD(data)};
         WaitNode *pnode = nullptr;
         {
           queue->_count.fetch_add(1, std::memory_order_seq_cst);

@@ -12,6 +12,14 @@ std::vector<zs::PropertyTag> *property_tags(const char *names[], int sizes[], zs
   return ret;
 }
 void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
+void property_tags_get_item(std::vector<zs::PropertyTag> *v, zs::size_t index, 
+  const char** name, zs::size_t *size) {
+    *name = (*v)[index].name; 
+    *size = (*v)[index].numChannels; 
+}
+zs::size_t property_tags_get_size(std::vector<zs::PropertyTag> *v) {
+  return v->size(); 
+}
 
 #define INSTANTIATE_TILE_VECTOR_CAPIS(T, L)                                                       \
   /* container */                                                                                 \

@@ -134,7 +134,13 @@ namespace zs {
   template <typename Tup> constexpr enable_if_type<is_tuple_v<Tup>, zs::size_t> tuple_size_v
       = tuple_size<Tup>::value;
 
-  template <size_t... Is, typename... Ts> struct tuple_base<index_sequence<Is...>, type_seq<Ts...>>
+  template <size_t... Is, typename... Ts> struct 
+#if defined(ZS_COMPILER_MSVC)
+      ///  ref: https://stackoverflow.com/questions/12701469/why-is-the-empty-base-class-optimization-ebo-is-not-working-in-msvc
+      ///  ref: https://devblogs.microsoft.com/cppblog/optimizing-the-layout-of-empty-base-classes-in-vs2015-update-2-3/
+      __declspec(empty_bases)
+#endif
+      tuple_base<index_sequence<Is...>, type_seq<Ts...>>
       : tuple_value<Is, Ts>... {
     using tuple_types = type_seq<Ts...>;
     static constexpr size_t tuple_size = sizeof...(Ts);

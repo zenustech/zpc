@@ -7,6 +7,7 @@
 // #  include <utility>
 
 #include "VecInterface.hpp"
+#include "zensim/ImplPattern.hpp"
 #include "zensim/ZpcMathUtils.hpp"
 #include "zensim/ZpcTuple.hpp"
 
@@ -26,7 +27,7 @@ namespace zs {
 
   /// vec without lifetime managing
   template <typename T, typename Tn, Tn... Ns> struct vec_view<T, integer_sequence<Tn, Ns...>>
-      : VecInterface<vec_view<T, integer_sequence<Tn, Ns...>>> {
+      : Mixin<vec_view<T, integer_sequence<Tn, Ns...>>, VecInterface, Visitee> {
     static constexpr bool is_pointer_structure = is_pointer_v<T>;
     using base_t = VecInterface<vec_view<T, integer_sequence<Tn, Ns...>>>;
     // essential defs for any VecInterface
@@ -132,7 +133,7 @@ namespace zs {
 
   /// vec
   template <typename T, typename Tn, Tn... Ns> struct vec_impl<T, integer_sequence<Tn, Ns...>>
-      : VecInterface<vec_impl<T, integer_sequence<Tn, Ns...>>> {
+      : Mixin<vec_impl<T, integer_sequence<Tn, Ns...>>, VecInterface, Visitee> {
     // static_assert(std::is_trivial<T>::value,
     //              "Vec element type is not trivial!\n");
     static constexpr bool is_pointer_structure = is_pointer_v<T>;

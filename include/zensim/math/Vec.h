@@ -7,7 +7,7 @@
 // #  include <utility>
 
 #include "VecInterface.hpp"
-#include "zensim/ImplPattern.hpp"
+#include "zensim/ZpcImplPattern.hpp"
 #include "zensim/ZpcMathUtils.hpp"
 #include "zensim/ZpcTuple.hpp"
 

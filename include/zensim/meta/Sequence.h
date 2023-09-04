@@ -255,11 +255,15 @@ namespace zs {
   template <auto... Ns> struct is_vseq<value_seq<Ns...>> : std::true_type {};
 
   template <typename> struct vseq;
-  template <auto... Ns> struct vseq<value_seq<Ns...>> { using type = value_seq<Ns...>; };
+  template <auto... Ns> struct vseq<value_seq<Ns...>> {
+    using type = value_seq<Ns...>;
+  };
   template <typename Ti, Ti... Ns> struct vseq<integer_seq<Ti, Ns...>> {
     using type = value_seq<Ns...>;
   };
-  template <typename Ti, Ti N> struct vseq<integral_t<Ti, N>> { using type = value_seq<N>; };
+  template <typename Ti, Ti N> struct vseq<integral_t<Ti, N>> {
+    using type = value_seq<N>;
+  };
   template <typename Seq> using vseq_t = typename vseq<Seq>::type;
 
   /// select (constant integral) value (integral_constant<T, N>) by index
@@ -312,19 +316,23 @@ namespace zs {
       constexpr auto operator()(type_seq<As...>, type_seq<Bs...>) const noexcept {
         return type_seq<As..., Bs...>{};
       }
+      template <size_t I, typename... SeqT> static constexpr auto seq_func() {
+        using T = select_indexed_type<I, SeqT...>;
+        return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+      }
       template <typename... SeqT> constexpr auto operator()(type_seq<SeqT...>) const noexcept {
-        constexpr auto seq_lambda = [](auto I_) noexcept {
-          using T = select_indexed_type<decltype(I_)::value, SeqT...>;
-          return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
-        };
+        // constexpr auto seq_lambda = [](auto I_) noexcept {
+        // using T = select_indexed_type<decltype(I_)::value, SeqT...>;
+        // return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+        // };
         constexpr std::size_t N = sizeof...(SeqT);
 
         if constexpr (N == 0)
           return type_seq<>{};
         else if constexpr (N == 1)
-          return seq_lambda(index_c<0>);
+          return seq_func<0, SeqT...>();
         else if constexpr (N == 2)
-          return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
+          return (*this)(seq_func<0, SeqT...>(), seq_func<1, SeqT...>());
         else {
           constexpr std::size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
@@ -360,19 +368,23 @@ namespace zs {
                                               std::make_index_sequence<N>{}))>{};
       }
 
+      template <size_t I, typename... SeqT> static constexpr auto seq_func() {
+        using T = select_indexed_type<I, SeqT...>;
+        return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+      }
       /// more general case
       template <typename... SeqT> constexpr auto operator()(type_seq<SeqT...>) const noexcept {
-        constexpr auto seq_lambda = [](auto I_) noexcept {
-          using T = select_indexed_type<decltype(I_)::value, SeqT...>;
-          return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
-        };
+        // constexpr auto seq_lambda = [](auto I_) noexcept {
+        //   using T = select_indexed_type<decltype(I_)::value, SeqT...>;
+        //   return conditional_t<is_type_seq_v<T>, T, type_seq<T>>{};
+        // };
         constexpr std::size_t N = sizeof...(SeqT);
         if constexpr (N == 0)
           return type_seq<>{};
         else if constexpr (N == 1)
-          return map_t<type_seq, decltype(seq_lambda(index_c<0>))>{};
+          return map_t<type_seq, decltype(seq_func<0, SeqT...>())>{};
         else if constexpr (N == 2)
-          return (*this)(seq_lambda(index_c<0>), seq_lambda(index_c<1>));
+          return (*this)(seq_func<0, SeqT...>(), seq_func<1, SeqT...>());
         else if constexpr (N > 2) {
           constexpr std::size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
@@ -410,7 +422,9 @@ namespace zs {
   struct is_value_specialized<Ref<Args...>, Ref> : std::true_type {};
 
   /** direct operations on sequences */
-  template <typename> struct seq_tail { using type = index_seq<>; };
+  template <typename> struct seq_tail {
+    using type = index_seq<>;
+  };
   template <std::size_t I, std::size_t... Is> struct seq_tail<index_seq<I, Is...>> {
     using type = index_seq<Is...>;
   };

@@ -29,6 +29,9 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
   # simulation
   simulation/init/Scene.cpp
 )
+set(ZENSIM_LIBRARY_VULKAN_SOURCE_FILES
+  vulkan/Vulkan.cpp
+)
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
   cuda/Cuda.cu
   cuda/profile/CudaTimers.cu
@@ -183,6 +186,9 @@ set(ZENSIM_LIBRARY_TOOL_INCLUDE_FILES
   geometry/VdbLevelSet.h
   geometry/VdbSampler.h
 )
+set(ZENSIM_LIBRARY_VULKAN_INCLUDE_FILES
+  vulkan/Vulkan.hpp
+)
 set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
   cuda/Cuda.h
   cuda/DeviceUtils.cuh
@@ -286,6 +292,12 @@ target_sources(zpccore
   PRIVATE
   ${ZENSIM_LIBRARY_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
 )
+if(ZS_ENABLE_VULKAN)
+  target_sources(zpccore
+    PRIVATE
+    ${ZENSIM_LIBRARY_VULKAN_SOURCE_FILES} ${ZENSIM_LIBRARY_VULKAN_INCLUDE_FILES}
+  )
+endif(ZS_ENABLE_VULKAN)
 
 if(ENABLE_PCH)
   target_precompile_headers(zpccore INTERFACE
@@ -332,6 +344,12 @@ if(ZS_ENABLE_CUDA)
 else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_CUDA=0)
 endif(ZS_ENABLE_CUDA)
+
+if(ZS_ENABLE_VULKAN)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_VULKAN=1)
+else()
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_VULKAN=0)
+endif(ZS_ENABLE_VULKAN)
 
 if(ZS_ENABLE_SYCL_COMPUTECPP)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_COMPUTECPP=1)

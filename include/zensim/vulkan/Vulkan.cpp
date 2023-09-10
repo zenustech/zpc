@@ -1,8 +1,9 @@
 #include "Vulkan.hpp"
 
+#include <vulkan/vulkan_structs.hpp>
+
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
-#include "zensim/ZpcIterator.hpp"
 #include "zensim/ZpcReflection.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
@@ -93,17 +94,40 @@ namespace zs {
         = physicalDevice.enumerateDeviceExtensionProperties();
     vk::PhysicalDeviceProperties devProps = physicalDevice.getProperties();
 
-    fmt::print("\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}\n", devid,
-               devProps.deviceName);
+    /// queue family
+    auto queueFamilyProps = physicalDevice.getQueueFamilyProperties();
+    u32 graphicsQueueFamilyIndex = queueFamilyProps.size();
+    for (int i = 0; i != queueFamilyProps.size(); ++i) {
+      auto& q = queueFamilyProps[i];
+      if (q.queueFlags & vk::QueueFlagBits::eGraphics) {
+        graphicsQueueFamilyIndex = i;
+        ZS_WARN_IF(!(q.queueFlags & vk::QueueFlagBits::eTransfer),
+                   "the selected graphics queue family cannot transfer!");
+        break;
+      }
+    }
+    ZS_ERROR_IF(graphicsQueueFamilyIndex == queueFamilyProps.size(), "graphics");
+    fmt::print("selected queue family [{}] for graphics!\n", graphicsQueueFamilyIndex);
 
     float priority = 1.f;
-    vk::DeviceQueueCreateInfo dqCI{{}, 0, 1, &priority};
-    std::vector<const char*> expectedExtensions{"VK_KHR_swapchain"};
+    vk::DeviceQueueCreateInfo dqCI{{}, graphicsQueueFamilyIndex, 1, &priority};
+
+    /// extensions
+    int rtPreds = 0;
+    constexpr int rtRequiredPreds = 5;
+    /// @note the first 5 extensions are required for rt support
+    std::vector<const char*> expectedExtensions{
+        "VK_KHR_ray_tracing_pipeline",     "VK_KHR_acceleration_structure",
+        "VK_EXT_descriptor_indexing",      "VK_KHR_buffer_device_address",
+        "VK_KHR_deferred_host_operations", "VK_KHR_swapchain"};
     std::vector<const char*> enabledExtensions(0);
-    for (auto ext : expectedExtensions) {
+    // pick up supported extensions
+    for (int i = 0; i != expectedExtensions.size(); ++i) {
+      auto ext = expectedExtensions[i];
       for (auto& devExt : devExts) {
         if (strcmp(ext, devExt.extensionName) == 0) {
           enabledExtensions.push_back(ext);
+          if (i < rtRequiredPreds) rtPreds++;
           break;
         }
       }
@@ -111,9 +135,31 @@ namespace zs {
     vk::DeviceCreateInfo devCI{
         {}, 1, &dqCI, 0, nullptr, (u32)enabledExtensions.size(), enabledExtensions.data()};
 
+    /// features
+    // ref: TU Wien Vulkan Tutorial Ep1
+    vk::PhysicalDeviceVulkan12Features vk12Features{};
+    vk12Features.descriptorIndexing = VK_TRUE;
+    vk12Features.bufferDeviceAddress = VK_TRUE;
+    vk::PhysicalDeviceAccelerationStructureFeaturesKHR asFeatures{};
+    asFeatures.accelerationStructure = VK_TRUE;
+    asFeatures.pNext = &vk12Features;
+    vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipeFeatures{};
+    rtPipeFeatures.rayTracingPipeline = VK_TRUE;
+    rtPipeFeatures.pNext = &asFeatures;
+    if (rtPreds == rtRequiredPreds) {
+      devCI.pNext = &rtPipeFeatures;
+    }
+
     device = physicalDevice.createDevice(devCI, nullptr, dispatcher);
     dispatcher.init(device);
     ZS_ERROR_IF(!device, fmt::format("Vulkan device [{}] failed initialization!\n", devid));
+
+    fmt::print(
+        "\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}."
+        "\n\t\t(Graphics) queue family index: {}."
+        "\n\tEnabled the following device tensions ({} in total):\n",
+        devid, devProps.deviceName, graphicsQueueFamilyIndex, enabledExtensions.size());
+    for (auto ext : enabledExtensions) fmt::print("\t\t{}\n", ext);
   }
 
 }  // namespace zs

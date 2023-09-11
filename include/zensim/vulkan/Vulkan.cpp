@@ -1,6 +1,6 @@
 #include "Vulkan.hpp"
 
-#include <vulkan/vulkan_structs.hpp>
+#include <iostream>
 
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
@@ -33,7 +33,20 @@ namespace zs {
 
     vk::ApplicationInfo appInfo{"zpc_app", 0, "zpc", 0, VK_API_VERSION_1_3};
 
-    std::vector<const char*> extensions = {"VK_KHR_surface", "VK_EXT_debug_utils"};
+    /// @ref: VkBootstrap
+    std::vector<const char*> extensions
+        = { "VK_KHR_surface",
+            "VK_EXT_debug_utils",
+#if defined(ZS_PLATFORM_WINDOWS)
+            "VK_KHR_win32_surface"
+#elif defined(ZS_PLATFORM_OSX)
+            "VK_EXT_metal_surface"
+#elif defined(ZS_PLATFORM_LINUX)
+            "VK_KHR_xcb_surface"  // or "VK_KHR_xlib_surface", "VK_KHR_wayland_surface"
+#else
+            static_assert(false, "unsupported platform for vulkan instance creation!");
+#endif
+          };
     std::vector<const char*> enabledLayers = {"VK_LAYER_KHRONOS_validation"};
     vk::InstanceCreateInfo instCI{{},
                                   &appInfo,
@@ -67,16 +80,17 @@ namespace zs {
     auto physicalDevices = _instance.enumeratePhysicalDevices(_dispatcher);
     fmt::print("\t[InitInfo -- DevNum] Detected {} Vulkan Capable physical device(s)\n",
                physicalDevices.size());
+
+    _defaultContext = -1;
     for (int i = 0; i != physicalDevices.size(); ++i) {
       auto& physDev = physicalDevices[i];
       _contexts.emplace_back(i, physDev, _dispatcher);
+      if (_defaultContext == -1 && _contexts.back().supportGraphics()) _defaultContext = i;
     }
-  }
+  }  // namespace zs
   Vulkan::~Vulkan() {
     /// @note clear contexts
-    for (auto& ctx : _contexts) {
-      ctx.device.destroy(nullptr, ctx.dispatcher);
-    }
+    for (auto& ctx : _contexts) ctx.reset();
     _contexts.clear();
 
     /// @note clear instance-created objects
@@ -84,6 +98,13 @@ namespace zs {
 
     /// @note destroy instance itself
     _instance.destroy(nullptr, _dispatcher);
+  }
+
+  void Vulkan::VulkanContext::reset() {
+    // clear builders
+    // if (swapchainBuilder) swapchainBuilder.reset(nullptr);
+    // destroy logical device
+    device.destroy(nullptr, dispatcher);
   }
 
   Vulkan::VulkanContext::VulkanContext(int devId, vk::PhysicalDevice phydev,
@@ -96,7 +117,7 @@ namespace zs {
 
     /// queue family
     auto queueFamilyProps = physicalDevice.getQueueFamilyProperties();
-    u32 graphicsQueueFamilyIndex = queueFamilyProps.size();
+    graphicsQueueFamilyIndex = -1;
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
       auto& q = queueFamilyProps[i];
       if (q.queueFlags & vk::QueueFlagBits::eGraphics) {
@@ -106,11 +127,11 @@ namespace zs {
         break;
       }
     }
-    ZS_ERROR_IF(graphicsQueueFamilyIndex == queueFamilyProps.size(), "graphics");
+    ZS_ERROR_IF(graphicsQueueFamilyIndex == -1, "graphics");
     fmt::print("selected queue family [{}] for graphics!\n", graphicsQueueFamilyIndex);
 
     float priority = 1.f;
-    vk::DeviceQueueCreateInfo dqCI{{}, graphicsQueueFamilyIndex, 1, &priority};
+    vk::DeviceQueueCreateInfo dqCI{{}, (u32)graphicsQueueFamilyIndex, 1, &priority};
 
     /// extensions
     int rtPreds = 0;
@@ -154,12 +175,78 @@ namespace zs {
     dispatcher.init(device);
     ZS_ERROR_IF(!device, fmt::format("Vulkan device [{}] failed initialization!\n", devid));
 
+    queue = device.getQueue(graphicsQueueFamilyIndex, 0u, dispatcher);
+
     fmt::print(
         "\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}."
-        "\n\t\t(Graphics) queue family index: {}."
+        "\n\t\t(Graphics) queue family index: {}. Ray-tracing support: {}. "
         "\n\tEnabled the following device tensions ({} in total):\n",
-        devid, devProps.deviceName, graphicsQueueFamilyIndex, enabledExtensions.size());
+        devid, devProps.deviceName, graphicsQueueFamilyIndex, rtPreds == rtRequiredPreds,
+        enabledExtensions.size());
     for (auto ext : enabledExtensions) fmt::print("\t\t{}\n", ext);
+  }
+
+  ///
+  /// swapchain
+  ///
+  SwapchainBuilder::SwapchainBuilder(Vulkan::VulkanContext& ctx, vk::SurfaceKHR targetSurface)
+      : ctx{ctx}, surface{targetSurface} {
+    ZS_ERROR_IF(
+        !ctx.supportSurface(surface),
+        fmt::format("queue [{}] does not support this surface!\n", ctx.graphicsQueueFamilyIndex));
+    surfFormats = ctx.physicalDevice.getSurfaceFormatsKHR(surface, ctx.dispatcher);
+    surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(surface, ctx.dispatcher);
+    surfPresentModes = ctx.physicalDevice.getSurfacePresentModesKHR(surface, ctx.dispatcher);
+
+    ci.surface = surface;
+
+    /// @brief default setup
+    ci.minImageCount = surfCapabilities.minImageCount;
+    ci.imageArrayLayers = 1;
+    ci.preTransform = surfCapabilities.currentTransform;
+    ci.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+    ci.clipped = true;
+    ci.oldSwapchain = nullptr;
+
+    // format and colorspace selection
+    if (surfFormats.size() == 1 && surfFormats.front().format == vk::Format::eUndefined) {
+      // no preferred format, select this
+      ci.imageFormat = vk::Format::eR8G8B8A8Srgb;
+      ci.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
+    } else {
+      ci.imageFormat = surfFormats.front().format;
+      ci.imageColorSpace = surfFormats.front().colorSpace;
+      for (const auto& fmt : surfFormats)
+        if (fmt.format == vk::Format::eR8G8B8A8Srgb
+            && fmt.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+          ci.imageFormat = vk::Format::eR8G8B8A8Srgb;
+          ci.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
+          break;
+        }
+    }
+
+    // extent
+    if (surfCapabilities.currentExtent.width == std::numeric_limits<u32>::max())
+      ci.imageExtent = surfCapabilities.maxImageExtent;
+    else
+      ci.imageExtent = surfCapabilities.currentExtent;
+
+    // could also be eTransferDst (other view) or eStorage (shader)
+    ci.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+
+    // present mode selection
+    ci.presentMode = vk::PresentModeKHR::eFifo;  //  required to be supported by all vendors
+
+    // images queue owndership, alpha...
+  }
+  void SwapchainBuilder::presentMode(vk::PresentModeKHR mode) {
+    if (mode == ci.presentMode) return;
+    for (auto& m : surfPresentModes)
+      if (m == mode) {
+        ci.presentMode = mode;
+        return;
+      }
+    ZS_WARN(fmt::format("present mode [{}] is not supported in this context.\n", mode));
   }
 
 }  // namespace zs

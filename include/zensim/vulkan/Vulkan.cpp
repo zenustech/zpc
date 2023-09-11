@@ -1,6 +1,7 @@
 #include "Vulkan.hpp"
 
 #include <iostream>
+#include <set>
 
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
@@ -117,21 +118,33 @@ namespace zs {
 
     /// queue family
     auto queueFamilyProps = physicalDevice.getQueueFamilyProperties();
-    graphicsQueueFamilyIndex = -1;
+    graphicsQueueFamilyIndex = computeQueueFamilyIndex = transferQueueFamilyIndex = -1;
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
       auto& q = queueFamilyProps[i];
-      if (q.queueFlags & vk::QueueFlagBits::eGraphics) {
+      if (graphicsQueueFamilyIndex == -1 && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
         graphicsQueueFamilyIndex = i;
         ZS_WARN_IF(!(q.queueFlags & vk::QueueFlagBits::eTransfer),
                    "the selected graphics queue family cannot transfer!");
-        break;
       }
+      if (computeQueueFamilyIndex == -1 && (q.queueFlags & vk::QueueFlagBits::eCompute))
+        computeQueueFamilyIndex = i;
+      if (transferQueueFamilyIndex == -1 && (q.queueFlags & vk::QueueFlagBits::eTransfer))
+        transferQueueFamilyIndex = i;
     }
-    ZS_ERROR_IF(graphicsQueueFamilyIndex == -1, "graphics");
+    ZS_ERROR_IF(graphicsQueueFamilyIndex == -1, "graphics queue family does not exist!");
     fmt::print("selected queue family [{}] for graphics!\n", graphicsQueueFamilyIndex);
 
+    std::set<u32> uniqueQueueFamilyIndices{
+        (u32)graphicsQueueFamilyIndex, (u32)computeQueueFamilyIndex, (u32)transferQueueFamilyIndex};
+    std::vector<vk::DeviceQueueCreateInfo> dqCIs(uniqueQueueFamilyIndices.size());
     float priority = 1.f;
-    vk::DeviceQueueCreateInfo dqCI{{}, (u32)graphicsQueueFamilyIndex, 1, &priority};
+    {
+      int i;
+      for (auto index : uniqueQueueFamilyIndices) {
+        auto& dqCI = dqCIs[i++];
+        dqCI.setQueueFamilyIndex(index).setQueueCount(1).setPQueuePriorities(&priority);
+      }
+    }
 
     /// extensions
     int rtPreds = 0;
@@ -153,8 +166,13 @@ namespace zs {
         }
       }
     }
-    vk::DeviceCreateInfo devCI{
-        {}, 1, &dqCI, 0, nullptr, (u32)enabledExtensions.size(), enabledExtensions.data()};
+    vk::DeviceCreateInfo devCI{{},
+                               (u32)dqCIs.size(),
+                               dqCIs.data(),
+                               0,
+                               nullptr,
+                               (u32)enabledExtensions.size(),
+                               enabledExtensions.data()};
 
     /// features
     // ref: TU Wien Vulkan Tutorial Ep1

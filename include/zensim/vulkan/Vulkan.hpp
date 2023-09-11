@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 //
@@ -64,7 +63,8 @@ namespace zs {
       vk::PhysicalDevice physicalDevice;
       vk::Device device;                     // currently dedicated for rendering
       vk::DispatchLoaderDynamic dispatcher;  // store device-specific calls
-      int graphicsQueueFamilyIndex;
+      // graphics queue family should also be used for presentation if swapchain required
+      int graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex;
       vk::Queue queue;
 
     protected:

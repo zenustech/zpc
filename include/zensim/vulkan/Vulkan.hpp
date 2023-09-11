@@ -45,6 +45,43 @@ namespace zs {
       auto getDevId() const noexcept { return devid; }
 
       /// queries
+      bool retrieveGraphicsQueue(vk::Queue &q) const noexcept {
+        if (graphicsQueueFamilyIndex != -1) {
+          q = device.getQueue(graphicsQueueFamilyIndex, 0, dispatcher);
+          return true;
+        }
+        return false;
+      }
+      vk::Queue getGraphicsQueue() const {
+        if (graphicsQueueFamilyIndex != -1)
+          throw std::runtime_error("graphics queue does not exist.");
+        return device.getQueue(graphicsQueueFamilyIndex, 0, dispatcher);
+      }
+      bool retrieveTransferQueue(vk::Queue &q) const noexcept {
+        if (transferQueueFamilyIndex != -1) {
+          q = device.getQueue(transferQueueFamilyIndex, 0, dispatcher);
+          return true;
+        }
+        return false;
+      }
+      vk::Queue getTransferQueue() const {
+        if (transferQueueFamilyIndex != -1)
+          throw std::runtime_error("transfer queue does not exist.");
+        return device.getQueue(transferQueueFamilyIndex, 0, dispatcher);
+      }
+      bool retrieveComputeQueue(vk::Queue &q) const noexcept {
+        if (computeQueueFamilyIndex != -1) {
+          q = device.getQueue(computeQueueFamilyIndex, 0, dispatcher);
+          return true;
+        }
+        return false;
+      }
+      vk::Queue getComputeQueue() const {
+        if (computeQueueFamilyIndex != -1)
+          throw std::runtime_error("compute queue does not exist.");
+        return device.getQueue(computeQueueFamilyIndex, 0, dispatcher);
+      }
+
       bool supportGraphics() const { return graphicsQueueFamilyIndex != -1; }
       /// @note usually called right before swapchain creation for assurance
       bool supportSurface(vk::SurfaceKHR surface) const {
@@ -130,12 +167,16 @@ namespace zs {
   };
 
   struct Swapchain {
+    Swapchain() = delete;
     Swapchain(Vulkan::VulkanContext &ctx) : ctx{ctx}, swapchain{} {}
     Swapchain(const Swapchain &) = delete;
     Swapchain(Swapchain &&) noexcept = default;
-    ~Swapchain() { ctx.device.destroySwapchainKHR(swapchain, nullptr, ctx.dispatcher); }
+    ~Swapchain() {
+      resetAux();
+      ctx.device.destroySwapchainKHR(swapchain, nullptr, ctx.dispatcher);
+    }
 
-    std::vector<vk::Image> images() const {
+    std::vector<vk::Image> getImages() const {
       return ctx.device.getSwapchainImagesKHR(swapchain, ctx.dispatcher);
     }
 
@@ -144,10 +185,19 @@ namespace zs {
     operator vk::SwapchainKHR() const { return swapchain; }
 
   protected:
+    void resetAux() {
+      for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
+      for (auto &s : readSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      for (auto &s : writeSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+    }
     friend struct SwapchainBuilder;
 
     Vulkan::VulkanContext &ctx;
     vk::SwapchainKHR swapchain;
+    std::vector<vk::Image> images;
+    std::vector<vk::ImageView> imageViews;
+    std::vector<vk::Semaphore> readSemaphores;
+    std::vector<vk::Semaphore> writeSemaphores;
   };
 
   // ref: LegitEngine (https://github.com/Raikiri/LegitEngine), nvpro_core
@@ -163,13 +213,23 @@ namespace zs {
                                     (u32)surfCapabilities.maxImageCount);
     }
     void extent(u32 width, u32 height) { ci.imageExtent = vk::Extent2D{width, height}; }
-    void presentMode(vk::PresentModeKHR mode);
+    void presentMode(vk::PresentModeKHR mode = vk::PresentModeKHR::eMailbox);
     void usage(vk::ImageUsageFlags flags) { ci.imageUsage = flags; }
 
+    void build(Swapchain &obj);
     Swapchain build() {
       Swapchain obj(ctx);
-      obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
+      build(obj);
       return obj;
+    }
+    void resize(Swapchain &obj, u32 width, u32 height) {
+      width = std::clamp(width, surfCapabilities.minImageExtent.width,
+                         surfCapabilities.maxImageExtent.width);
+      height = std::clamp(height, surfCapabilities.minImageExtent.height,
+                          surfCapabilities.maxImageExtent.height);
+      ci.imageExtent = vk::Extent2D{width, height};
+
+      build(obj);
     }
 
   private:

@@ -224,7 +224,7 @@ namespace zs {
     ci.preTransform = surfCapabilities.currentTransform;
     ci.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
     ci.clipped = true;
-    ci.oldSwapchain = nullptr;
+    // ci.oldSwapchain = nullptr;
 
     // format and colorspace selection
     if (surfFormats.size() == 1 && surfFormats.front().format == vk::Format::eUndefined) {
@@ -255,7 +255,7 @@ namespace zs {
     // present mode selection
     ci.presentMode = vk::PresentModeKHR::eFifo;  //  required to be supported by all vendors
 
-    // images queue owndership, alpha...
+    ci.imageSharingMode = vk::SharingMode::eExclusive;
   }
   void SwapchainBuilder::presentMode(vk::PresentModeKHR mode) {
     if (mode == ci.presentMode) return;
@@ -264,7 +264,44 @@ namespace zs {
         ci.presentMode = mode;
         return;
       }
-    ZS_WARN(fmt::format("present mode [{}] is not supported in this context.\n", mode));
+    ZS_WARN(fmt::format("Present mode [{}] is not supported in this context. Ignored.\n", mode));
+  }
+  void SwapchainBuilder::build(Swapchain& obj) {
+    // kept the previously built swapchain for this
+    ci.oldSwapchain = obj.swapchain;
+    obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
+    obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
+
+    /// reset previous resources (if any)
+    obj.resetAux();
+    if (ci.oldSwapchain) ctx.device.destroySwapchainKHR(ci.oldSwapchain, nullptr, ctx.dispatcher);
+
+    /// construct current swapchain
+    obj.imageViews.resize(obj.images.size());
+    obj.readSemaphores.resize(obj.images.size());
+    obj.writeSemaphores.resize(obj.images.size());
+    for (int i = 0; i != obj.images.size(); ++i) {
+      auto& img = obj.images[i];
+      // image views
+      auto subresourceRange = vk::ImageSubresourceRange()
+                                  .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                  .setBaseMipLevel(0)
+                                  .setLevelCount(1)
+                                  .setBaseArrayLayer(0)
+                                  .setLayerCount(1);
+      auto ivCI = vk::ImageViewCreateInfo{{},
+                                          img,
+                                          vk::ImageViewType::e2D,
+                                          ci.imageFormat,
+                                          vk::ComponentMapping(),
+                                          subresourceRange};
+      obj.imageViews[i] = ctx.device.createImageView(ivCI, nullptr, ctx.dispatcher);
+      // semaphores
+      obj.readSemaphores[i]
+          = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
+      obj.writeSemaphores[i]
+          = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
+    }
   }
 
 }  // namespace zs

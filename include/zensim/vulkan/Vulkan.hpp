@@ -20,7 +20,9 @@ namespace zs {
   struct SwapchainBuilder;
   struct ExecutionContext;
 
-  enum vk_queue_e { graphics = 0, transfer, compute };
+  /// @note CAUTION: must match the member order defined in VulkanContext
+  enum vk_queue_e { graphics = 0, compute, transfer };
+  enum vk_cmd_usage_e { reuse = 0, single_use, reset };
 
   struct Vulkan : Singleton<Vulkan> {
   public:
@@ -52,41 +54,19 @@ namespace zs {
       /// queries
       u32 numDistinctQueueFamilies() const noexcept { return uniqueQueueFamilyIndices.size(); }
 
-      bool retrieveGraphicsQueue(vk::Queue &q) const noexcept {
-        if (graphicsQueueFamilyIndex != -1) {
-          q = device.getQueue(graphicsQueueFamilyIndex, 0, dispatcher);
+      bool retrieveQueue(vk::Queue &q, vk_queue_e e = vk_queue_e::graphics,
+                         u32 i = 0) const noexcept {
+        auto index = queueFamilyIndices[e];
+        if (index != -1) {
+          q = device.getQueue(index, i, dispatcher);
           return true;
         }
         return false;
       }
-      vk::Queue getGraphicsQueue() const {
-        if (graphicsQueueFamilyIndex != -1)
-          throw std::runtime_error("graphics queue does not exist.");
-        return device.getQueue(graphicsQueueFamilyIndex, 0, dispatcher);
-      }
-      bool retrieveTransferQueue(vk::Queue &q) const noexcept {
-        if (transferQueueFamilyIndex != -1) {
-          q = device.getQueue(transferQueueFamilyIndex, 0, dispatcher);
-          return true;
-        }
-        return false;
-      }
-      vk::Queue getTransferQueue() const {
-        if (transferQueueFamilyIndex != -1)
-          throw std::runtime_error("transfer queue does not exist.");
-        return device.getQueue(transferQueueFamilyIndex, 0, dispatcher);
-      }
-      bool retrieveComputeQueue(vk::Queue &q) const noexcept {
-        if (computeQueueFamilyIndex != -1) {
-          q = device.getQueue(computeQueueFamilyIndex, 0, dispatcher);
-          return true;
-        }
-        return false;
-      }
-      vk::Queue getComputeQueue() const {
-        if (computeQueueFamilyIndex != -1)
-          throw std::runtime_error("compute queue does not exist.");
-        return device.getQueue(computeQueueFamilyIndex, 0, dispatcher);
+      vk::Queue getComputeQueue(vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const {
+        auto index = queueFamilyIndices[e];
+        if (index != -1) throw std::runtime_error("compute queue does not exist.");
+        return device.getQueue(index, i, dispatcher);
       }
 
       bool supportGraphics() const { return graphicsQueueFamilyIndex != -1; }
@@ -118,8 +98,6 @@ namespace zs {
         int graphicsQueueFamilyMap, computeQueueFamilyMap, transferQueueFamilyMap;
       };
       std::vector<u32> uniqueQueueFamilyIndices;
-      // following are graphics-related
-      vk::Queue queue;
 
     protected:
       /// resource builders
@@ -142,8 +120,16 @@ namespace zs {
     ExecutionContext(Vulkan::VulkanContext &ctx);
     ~ExecutionContext() {
       for (auto &family : poolFamilies) {
+        ctx.device.resetCommandPool(
+            family.reusePool, vk::CommandPoolResetFlagBits::eReleaseResources, ctx.dispatcher);
         ctx.device.destroyCommandPool(family.reusePool, nullptr, ctx.dispatcher);
+
+        ctx.device.resetCommandPool(
+            family.singleUsePool, vk::CommandPoolResetFlagBits::eReleaseResources, ctx.dispatcher);
         ctx.device.destroyCommandPool(family.singleUsePool, nullptr, ctx.dispatcher);
+
+        ctx.device.resetCommandPool(
+            family.resetPool, vk::CommandPoolResetFlagBits::eReleaseResources, ctx.dispatcher);
         ctx.device.destroyCommandPool(family.resetPool, nullptr, ctx.dispatcher);
       }
     }
@@ -152,10 +138,26 @@ namespace zs {
       vk::CommandPool reusePool;      // submit multiple times
       vk::CommandPool singleUsePool;  // submit once
       vk::CommandPool resetPool;      // reset and re-record
+
+      vk::CommandPool pool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) {
+        switch (usage) {
+          case vk_cmd_usage_e::reuse:
+            return reusePool;
+          case vk_cmd_usage_e::single_use:
+            return singleUsePool;
+          case vk_cmd_usage_e::reset:
+            return resetPool;
+          default:
+            return resetPool;
+        }
+      }
     };
 
     PoolFamily &pools(vk_queue_e e = vk_queue_e::graphics) {
       return poolFamilies[ctx.queueFamilyMaps[e]];
+    }
+    void resetCmds(vk_cmd_usage_e usage, vk_queue_e e = vk_queue_e::graphics) {
+      ctx.device.resetCommandPool(pools(e).pool(usage), {}, ctx.dispatcher);
     }
 
     std::vector<PoolFamily> poolFamilies;

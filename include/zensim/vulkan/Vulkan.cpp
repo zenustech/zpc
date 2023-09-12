@@ -172,8 +172,7 @@ namespace zs {
       for (auto index : uniqueQueueFamilyIndices) {
         auto& dqCI = dqCIs[i];
         this->uniqueQueueFamilyIndices.push_back(index);
-        /// @note set 2 for potential execution overlap in case graphics/compute queues are the same
-        dqCI.setQueueFamilyIndex(index).setQueueCount(2).setPQueuePriorities(&priority);
+        dqCI.setQueueFamilyIndex(index).setQueueCount(1).setPQueuePriorities(&priority);
 
         if (graphicsQueueFamilyIndex == index) graphicsQueueFamilyMap = i;
         if (computeQueueFamilyIndex == index) computeQueueFamilyMap = i;
@@ -229,14 +228,13 @@ namespace zs {
     dispatcher.init(device);
     ZS_ERROR_IF(!device, fmt::format("Vulkan device [{}] failed initialization!\n", devid));
 
-    queue = device.getQueue(graphicsQueueFamilyIndex, 0u, dispatcher);
-
     fmt::print(
         "\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}."
-        "\n\t\t(Graphics) queue family index: {}. Ray-tracing support: {}. "
+        "\n\t\t(Graphics/Compute/Transfer) queue family index: {}, {}, {}. Ray-tracing support: "
+        "{}. "
         "\n\tEnabled the following device tensions ({} in total):\n",
-        devid, devProps.deviceName, graphicsQueueFamilyIndex, rtPreds == rtRequiredPreds,
-        enabledExtensions.size());
+        devid, devProps.deviceName, graphicsQueueFamilyIndex, computeQueueFamilyIndex,
+        transferQueueFamilyIndex, rtPreds == rtRequiredPreds, enabledExtensions.size());
     for (auto ext : enabledExtensions) fmt::print("\t\t{}\n", ext);
   }
 

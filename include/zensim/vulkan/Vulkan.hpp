@@ -9,6 +9,7 @@
 //
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
+#include "zensim/execution/ConcurrencyPrimitive.hpp"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
@@ -17,6 +18,9 @@
 namespace zs {
 
   struct SwapchainBuilder;
+  struct ExecutionContext;
+
+  enum vk_queue_e { graphics = 0, transfer, compute };
 
   struct Vulkan : Singleton<Vulkan> {
   public:
@@ -32,6 +36,7 @@ namespace zs {
     static auto &context(int devid) { return driver()._contexts[devid]; }
     static auto &context() { return instance()._contexts[instance()._defaultContext]; }
 
+    /// begin vulkan context
     struct VulkanContext {
       auto &driver() const noexcept { return Vulkan::driver(); }
       VulkanContext(int devid, vk::PhysicalDevice device,
@@ -45,6 +50,8 @@ namespace zs {
       auto getDevId() const noexcept { return devid; }
 
       /// queries
+      u32 numDistinctQueueFamilies() const noexcept { return uniqueQueueFamilyIndices.size(); }
+
       bool retrieveGraphicsQueue(vk::Queue &q) const noexcept {
         if (graphicsQueueFamilyIndex != -1) {
           q = device.getQueue(graphicsQueueFamilyIndex, 0, dispatcher);
@@ -95,13 +102,23 @@ namespace zs {
 
       /// resource builders
       inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
+      ExecutionContext &env();  // thread-safe
 
       int devid;
       vk::PhysicalDevice physicalDevice;
       vk::Device device;                     // currently dedicated for rendering
       vk::DispatchLoaderDynamic dispatcher;  // store device-specific calls
       // graphics queue family should also be used for presentation if swapchain required
-      int graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex;
+      union {
+        int queueFamilyIndices[3];
+        int graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex;
+      };
+      union {
+        int queueFamilyMaps[3];
+        int graphicsQueueFamilyMap, computeQueueFamilyMap, transferQueueFamilyMap;
+      };
+      std::vector<u32> uniqueQueueFamilyIndices;
+      // following are graphics-related
       vk::Queue queue;
 
     protected:
@@ -109,61 +126,42 @@ namespace zs {
       // generally at most one swapchain is associated with a context, thus reuse preferred
       std::unique_ptr<SwapchainBuilder> swapchainBuilder;
     };
+    /// end vulkan context
 
   private:
     vk::Instance _instance;
     vk::DispatchLoaderDynamic _dispatcher;  // store vulkan-instance calls
     vk::DebugUtilsMessengerEXT _messenger;
     std::vector<VulkanContext> _contexts;  ///< generally one per device
-    int _defaultContext;
+    int _defaultContext = 0;
   };
 
-  struct Buffer {
-    Buffer(Vulkan::VulkanContext &ctx) : ctx{ctx}, buffer{} {}
-    ~Buffer() { ctx.device.destroyBuffer(buffer, nullptr, ctx.dispatcher); }
-    vk::Buffer operator*() const { return buffer; }
-    operator vk::Buffer() const { return buffer; }
+  u32 check_current_working_contexts();
 
-  protected:
-    Vulkan::VulkanContext &ctx;
-    vk::Buffer buffer;
-  };
-  struct BufferView {
-    BufferView(Vulkan::VulkanContext &ctx) : ctx{ctx}, bufv{} {}
-    ~BufferView() { ctx.device.destroyBufferView(bufv, nullptr, ctx.dispatcher); }
-    vk::BufferView operator*() const { return bufv; }
-    operator vk::BufferView() const { return bufv; }
+  struct ExecutionContext {
+    ExecutionContext(Vulkan::VulkanContext &ctx);
+    ~ExecutionContext() {
+      for (auto &family : poolFamilies) {
+        ctx.device.destroyCommandPool(family.reusePool, nullptr, ctx.dispatcher);
+        ctx.device.destroyCommandPool(family.singleUsePool, nullptr, ctx.dispatcher);
+        ctx.device.destroyCommandPool(family.resetPool, nullptr, ctx.dispatcher);
+      }
+    }
 
-  protected:
-    Vulkan::VulkanContext &ctx;
-    vk::BufferView bufv;
-  };
+    struct PoolFamily {
+      vk::CommandPool reusePool;      // submit multiple times
+      vk::CommandPool singleUsePool;  // submit once
+      vk::CommandPool resetPool;      // reset and re-record
+    };
 
-  struct Image {
-    Image(Vulkan::VulkanContext &ctx) : ctx{ctx}, image{} {}
-    ~Image() { ctx.device.destroyImage(image, nullptr, ctx.dispatcher); }
-    vk::Image operator*() const { return image; }
-    operator vk::Image() const { return image; }
+    PoolFamily &pools(vk_queue_e e = vk_queue_e::graphics) {
+      return poolFamilies[ctx.queueFamilyMaps[e]];
+    }
+
+    std::vector<PoolFamily> poolFamilies;
 
   protected:
     Vulkan::VulkanContext &ctx;
-    vk::Image image;
-  };
-  struct ImageBuilder {
-    ;
-  };
-  struct ImageView {
-    ImageView(Vulkan::VulkanContext &ctx) : ctx{ctx}, imgv{} {}
-    ~ImageView() { ctx.device.destroyImageView(imgv, nullptr, ctx.dispatcher); }
-    vk::ImageView operator*() const { return imgv; }
-    operator vk::ImageView() const { return imgv; }
-
-  protected:
-    Vulkan::VulkanContext &ctx;
-    vk::ImageView imgv;
-  };
-  struct ImageViewBuilder {
-    ;
   };
 
   struct Swapchain {

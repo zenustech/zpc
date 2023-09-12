@@ -1,11 +1,14 @@
 #include "Vulkan.hpp"
 
 #include <iostream>
+#include <map>
 #include <set>
+#include <thread>
 
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
 #include "zensim/ZpcReflection.hpp"
+#include "zensim/types/Iterator.h"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
@@ -22,6 +25,12 @@ namespace zs {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
   }
+  using ContextEnvs = std::map<int, ExecutionContext>;
+  using WorkerEnvs = std::map<std::thread::id, ContextEnvs>;
+  namespace {
+    static WorkerEnvs g_workingContexts;
+    static Mutex g_mtx{};
+  }  // namespace
 
   /// @ref:
   /// https://github.com/KhronosGroup/Vulkan-Hpp/blob/main/README.md#extensions--per-device-function-pointers
@@ -101,10 +110,27 @@ namespace zs {
     _instance.destroy(nullptr, _dispatcher);
   }
 
+  ///
+  ///
+  /// vulkan context
+  ///
+  ///
   void Vulkan::VulkanContext::reset() {
-    // clear builders
+    /// clear builders
     // if (swapchainBuilder) swapchainBuilder.reset(nullptr);
-    // destroy logical device
+    /// clear resources
+    {
+      // g_mtx.lock();
+      if (g_mtx.try_lock()) {
+        g_workingContexts.clear();
+        g_mtx.unlock();
+      } else
+        throw std::runtime_error(
+            "Other worker threads are still accessing vk command contexts while the ctx is being "
+            "destroyed!");
+      // g_mtx.unlock();
+    }
+    /// destroy logical device
     device.destroy(nullptr, dispatcher);
   }
 
@@ -118,7 +144,9 @@ namespace zs {
 
     /// queue family
     auto queueFamilyProps = physicalDevice.getQueueFamilyProperties();
-    graphicsQueueFamilyIndex = computeQueueFamilyIndex = transferQueueFamilyIndex = -1;
+    // graphicsQueueFamilyIndex = computeQueueFamilyIndex = transferQueueFamilyIndex = -1;
+    for (auto& queueFamilyIndex : queueFamilyIndices) queueFamilyIndex = -1;
+    for (auto& queueFamilyMap : queueFamilyMaps) queueFamilyMap = -1;
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
       auto& q = queueFamilyProps[i];
       if (graphicsQueueFamilyIndex == -1 && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
@@ -136,13 +164,21 @@ namespace zs {
 
     std::set<u32> uniqueQueueFamilyIndices{
         (u32)graphicsQueueFamilyIndex, (u32)computeQueueFamilyIndex, (u32)transferQueueFamilyIndex};
+    this->uniqueQueueFamilyIndices.reserve(uniqueQueueFamilyIndices.size());
     std::vector<vk::DeviceQueueCreateInfo> dqCIs(uniqueQueueFamilyIndices.size());
     float priority = 1.f;
     {
       int i;
       for (auto index : uniqueQueueFamilyIndices) {
-        auto& dqCI = dqCIs[i++];
-        dqCI.setQueueFamilyIndex(index).setQueueCount(1).setPQueuePriorities(&priority);
+        auto& dqCI = dqCIs[i];
+        this->uniqueQueueFamilyIndices.push_back(index);
+        /// @note set 2 for potential execution overlap in case graphics/compute queues are the same
+        dqCI.setQueueFamilyIndex(index).setQueueCount(2).setPQueuePriorities(&priority);
+
+        if (graphicsQueueFamilyIndex == index) graphicsQueueFamilyMap = i;
+        if (computeQueueFamilyIndex == index) computeQueueFamilyMap = i;
+        if (transferQueueFamilyIndex == index) transferQueueFamilyMap = i;
+        i++;
       }
     }
 
@@ -205,7 +241,44 @@ namespace zs {
   }
 
   ///
+  ///
+  /// working context (CmdContext)
+  ///
+  ///
+  ExecutionContext::ExecutionContext(Vulkan::VulkanContext& ctx)
+      : ctx{ctx}, poolFamilies(ctx.numDistinctQueueFamilies()) {
+    for (const auto& [family, queueFamilyIndex] : zip(poolFamilies, ctx.uniqueQueueFamilyIndices)) {
+      family.reusePool = ctx.device.createCommandPool(
+          vk::CommandPoolCreateInfo{{}, queueFamilyIndex}, nullptr, ctx.dispatcher);
+      /// @note for memory allcations, etc.
+      family.singleUsePool = ctx.device.createCommandPool(
+          vk::CommandPoolCreateInfo{vk::CommandPoolCreateFlagBits::eTransient, queueFamilyIndex},
+          nullptr, ctx.dispatcher);
+      family.resetPool = ctx.device.createCommandPool(
+          vk::CommandPoolCreateInfo{vk::CommandPoolCreateFlagBits::eTransient
+                                        | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                    queueFamilyIndex},
+          nullptr, ctx.dispatcher);
+    }
+  }
+
+  ExecutionContext& Vulkan::VulkanContext::env() {
+    WorkerEnvs::iterator workerIter;
+    ContextEnvs::iterator iter;
+    g_mtx.lock();
+    bool tag;
+    std::tie(workerIter, tag)
+        = g_workingContexts.emplace(std::this_thread::get_id(), ContextEnvs{});
+    std::tie(iter, tag) = workerIter->second.emplace(devid, *this);
+    g_mtx.unlock();
+    return iter->second;
+  }
+  u32 check_current_working_contexts() { return g_workingContexts.size(); }
+
+  ///
+  ///
   /// swapchain
+  ///
   ///
   SwapchainBuilder::SwapchainBuilder(Vulkan::VulkanContext& ctx, vk::SurfaceKHR targetSurface)
       : ctx{ctx}, surface{targetSurface} {

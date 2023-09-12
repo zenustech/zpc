@@ -108,6 +108,8 @@ namespace zs {
 
     /// @note destroy instance itself
     _instance.destroy(nullptr, _dispatcher);
+    _instance = vk::Instance{};
+    fmt::print("zpc vulkan instance has been destroyed.\n");
   }
 
   ///
@@ -132,6 +134,8 @@ namespace zs {
     }
     /// destroy logical device
     device.destroy(nullptr, dispatcher);
+    fmt::print("vulkan context [{}] (of {}) has been successfully reset.\n", devid,
+               driver().num_devices());
   }
 
   Vulkan::VulkanContext::VulkanContext(int devId, vk::PhysicalDevice phydev,

@@ -18,11 +18,23 @@
 namespace zs {
 
   struct SwapchainBuilder;
+  struct Buffer;
   struct ExecutionContext;
 
   /// @note CAUTION: must match the member order defined in VulkanContext
   enum vk_queue_e { graphics = 0, compute, transfer };
   enum vk_cmd_usage_e { reuse = 0, single_use, reset };
+
+  template <typename BitType> constexpr auto get_flag_value(vk::Flags<BitType> flags) {
+    // using MaskType = typename vk::Flags<BitType>::MaskType;
+    using MaskType = typename std::underlying_type_t<BitType>;
+    return static_cast<MaskType>(flags);
+  }
+  inline vk::DeviceSize get_aligned_size(vk::DeviceSize size, vk::DeviceSize alignment) {
+    /// @note both size and alignment are in bytes
+    if (alignment > 0) return (size + alignment - 1) & ~(alignment - 1);
+    return size;
+  }
 
   struct Vulkan : Singleton<Vulkan> {
   public:
@@ -75,6 +87,7 @@ namespace zs {
         if (graphicsQueueFamilyIndex == -1) return false;
         return physicalDevice.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface, dispatcher);
       }
+      u32 numMemoryTypes() const { return memoryProperties.memoryTypeCount; }
 
       /// behaviors
       void reset();
@@ -83,6 +96,19 @@ namespace zs {
       /// resource builders
       inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
       ExecutionContext &env();  // thread-safe
+      u32 findMemoryType(u32 memoryTypeBits, vk::MemoryPropertyFlags properties) {
+        for (u32 i = 0; i < memoryProperties.memoryTypeCount; i++)
+          if ((memoryTypeBits & (1 << i))
+              && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+          }
+        throw std::runtime_error(
+            fmt::format("Failed to find a suitable memory type (within {:b} typebits) satisfying "
+                        "the property flag [{:0>10b}]!\n",
+                        memoryTypeBits, get_flag_value(properties)));
+      }
+      Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+                          vk::MemoryPropertyFlags props);
 
       int devid;
       vk::PhysicalDevice physicalDevice;
@@ -98,6 +124,7 @@ namespace zs {
         int graphicsQueueFamilyMap, computeQueueFamilyMap, transferQueueFamilyMap;
       };
       std::vector<u32> uniqueQueueFamilyIndices;
+      vk::PhysicalDeviceMemoryProperties memoryProperties;
 
     protected:
       /// resource builders

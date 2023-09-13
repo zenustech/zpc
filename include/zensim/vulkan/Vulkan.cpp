@@ -4,7 +4,9 @@
 #include <map>
 #include <set>
 #include <thread>
-
+// resources
+#include "zensim/vulkan/VkBuffer.hpp"
+//
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
 #include "zensim/ZpcReflection.hpp"
@@ -232,14 +234,81 @@ namespace zs {
     dispatcher.init(device);
     ZS_ERROR_IF(!device, fmt::format("Vulkan device [{}] failed initialization!\n", devid));
 
+    VkPhysicalDeviceMemoryProperties tmp;
+    dispatcher.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &tmp);
+    memoryProperties = tmp;
+
     fmt::print(
         "\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}."
         "\n\t\t(Graphics/Compute/Transfer) queue family index: {}, {}, {}. Ray-tracing support: "
         "{}. "
-        "\n\tEnabled the following device tensions ({} in total):\n",
+        "\n\tEnabled the following device tensions ({} in total):",
         devid, devProps.deviceName, graphicsQueueFamilyIndex, computeQueueFamilyIndex,
         transferQueueFamilyIndex, rtPreds == rtRequiredPreds, enabledExtensions.size());
-    for (auto ext : enabledExtensions) fmt::print("\t\t{}\n", ext);
+    u32 accum = 0;
+    for (auto ext : enabledExtensions) {
+      if ((accum++) % 2 == 0) fmt::print("\n\t\t");
+      fmt::print("{}\t", ext);
+    }
+    fmt::print("\n\tManaging the following [{}] memory type(s) in total:\n",
+               memoryProperties.memoryTypeCount);
+    for (u32 typeIndex = 0; typeIndex < memoryProperties.memoryTypeCount; ++typeIndex) {
+      auto propertyFlags = memoryProperties.memoryTypes[typeIndex].propertyFlags;
+      using BitType = typename RM_REF_T(propertyFlags)::MaskType;
+      std::string tag;
+      if (propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal) tag += "device_local; ";
+      if (propertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) tag += "host_coherent; ";
+      if (propertyFlags & vk::MemoryPropertyFlagBits::eHostCached) tag += "host_cached; ";
+      if (propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible) tag += "host_visible; ";
+      if (propertyFlags & vk::MemoryPropertyFlagBits::eProtected) tag += "protected; ";
+      if (propertyFlags & vk::MemoryPropertyFlagBits::eLazilyAllocated) tag += "lazily_allocated; ";
+      tag += "...";
+      fmt::print("\t\t[{}] flag:\t{:0>10b} ({})\n", typeIndex, static_cast<BitType>(propertyFlags),
+                 tag);
+    }
+  }
+
+  ExecutionContext& Vulkan::VulkanContext::env() {
+    WorkerEnvs::iterator workerIter;
+    ContextEnvs::iterator iter;
+    g_mtx.lock();
+    bool tag;
+    std::tie(workerIter, tag)
+        = g_workingContexts.emplace(std::this_thread::get_id(), ContextEnvs{});
+    std::tie(iter, tag) = workerIter->second.emplace(devid, *this);
+    g_mtx.unlock();
+    return iter->second;
+  }
+  u32 check_current_working_contexts() { return g_workingContexts.size(); }
+
+  Buffer Vulkan::VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+                                             vk::MemoryPropertyFlags props) {
+    Buffer buffer(*this);
+
+    vk::BufferCreateInfo bufCI{};
+    bufCI.setUsage(usage);
+    bufCI.setSize(size);
+    bufCI.setSharingMode(vk::SharingMode::eExclusive);
+    auto buf = device.createBuffer(bufCI, nullptr, dispatcher);
+
+    vk::MemoryRequirements memRequirements = device.getBufferMemoryRequirements(buf, dispatcher);
+    u32 memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, props);
+    vk::MemoryAllocateInfo allocInfo{memRequirements.size, memoryTypeIndex};
+    auto mem = device.allocateMemory(allocInfo, nullptr, dispatcher);
+
+    device.bindBufferMemory(buf, mem, 0, dispatcher);
+
+    VkMemory memory{*this};
+    memory.mem = mem;
+    memory.memSize = memRequirements.size;
+    memory.memoryPropertyFlags = memoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
+
+    buffer.size = size;
+    buffer.usageFlags = usage;
+    buffer.alignment = memRequirements.alignment;
+    buffer.buffer = buf;
+    buffer.pmem = std::make_shared<VkMemory>(std::move(memory));
+    return buffer;
   }
 
   ///
@@ -264,22 +333,9 @@ namespace zs {
     }
   }
 
-  ExecutionContext& Vulkan::VulkanContext::env() {
-    WorkerEnvs::iterator workerIter;
-    ContextEnvs::iterator iter;
-    g_mtx.lock();
-    bool tag;
-    std::tie(workerIter, tag)
-        = g_workingContexts.emplace(std::this_thread::get_id(), ContextEnvs{});
-    std::tie(iter, tag) = workerIter->second.emplace(devid, *this);
-    g_mtx.unlock();
-    return iter->second;
-  }
-  u32 check_current_working_contexts() { return g_workingContexts.size(); }
-
   ///
   ///
-  /// swapchain
+  /// swapchain builder
   ///
   ///
   SwapchainBuilder::SwapchainBuilder(Vulkan::VulkanContext& ctx, vk::SurfaceKHR targetSurface)

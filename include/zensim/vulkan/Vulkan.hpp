@@ -108,7 +108,8 @@ namespace zs {
                         memoryTypeBits, get_flag_value(properties)));
       }
       Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
-                          vk::MemoryPropertyFlags props);
+                          vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
+      Buffer createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
 
       int devid;
       vk::PhysicalDevice physicalDevice;

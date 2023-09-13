@@ -310,7 +310,12 @@ namespace zs {
     buffer.pmem = std::make_shared<VkMemory>(std::move(memory));
     return buffer;
   }
-
+  Buffer Vulkan::VulkanContext::createStagingBuffer(vk::DeviceSize size,
+                                                    vk::BufferUsageFlags usage) {
+    return createBuffer(
+        size, usage,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+  }
   ///
   ///
   /// working context (CmdContext)
@@ -355,7 +360,7 @@ namespace zs {
           frameIndex, res.result));
     return res.value;
   }
-  
+
   SwapchainBuilder::SwapchainBuilder(Vulkan::VulkanContext& ctx, vk::SurfaceKHR targetSurface)
       : ctx{ctx}, surface{targetSurface} {
     ZS_ERROR_IF(

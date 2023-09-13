@@ -176,9 +176,27 @@ namespace zs {
       ctx.device.destroySwapchainKHR(swapchain, nullptr, ctx.dispatcher);
     }
 
-    std::vector<vk::Image> getImages() const {
-      return ctx.device.getSwapchainImagesKHR(swapchain, ctx.dispatcher);
+    std::vector<vk::Image> getImages() const { return images; }
+    u32 imageCount() const { return images.size(); }
+    u32 acquireNextImage() {
+      if (vk::Result res
+          = ctx.device.waitForFences(1, &readFences[frameIndex], VK_TRUE,
+                                     detail::deduce_numeric_max<u64>(), ctx.dispatcher);
+          res != vk::Result::eSuccess)
+        throw std::runtime_error(fmt::format(
+            "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
+            frameIndex, res));
+      auto res = ctx.device.acquireNextImageKHR(
+          swapchain, detail::deduce_numeric_max<u64>(),
+          readSemaphores[frameIndex],  // must be a not signaled semaphore
+          VK_NULL_HANDLE, ctx.dispatcher);
+      if (res.result != vk::Result::eSuccess)
+        throw std::runtime_error(fmt::format(
+            "[acquireNextImage]: Failed to acquire next image at frame [{}] with result [{}]\n",
+            frameIndex, res.result));
+      return res.value;
     }
+    void nextFrame() { frameIndex = (frameIndex + 1) % imageCount(); }
 
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }
@@ -189,6 +207,8 @@ namespace zs {
       for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
       for (auto &s : readSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
       for (auto &s : writeSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      for (auto &f : readFences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
+      for (auto &f : writeFences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
     }
     friend struct SwapchainBuilder;
 
@@ -198,6 +218,10 @@ namespace zs {
     std::vector<vk::ImageView> imageViews;
     std::vector<vk::Semaphore> readSemaphores;
     std::vector<vk::Semaphore> writeSemaphores;
+    // littleVulkanEngine-alike setup
+    std::vector<vk::Fence> readFences;
+    std::vector<vk::Fence> writeFences;
+    int frameIndex;
   };
 
   // ref: LegitEngine (https://github.com/Raikiri/LegitEngine), nvpro_core
@@ -205,6 +229,9 @@ namespace zs {
     SwapchainBuilder(Vulkan::VulkanContext &ctx, vk::SurfaceKHR targetSurface);
     SwapchainBuilder(const SwapchainBuilder &) = delete;
     SwapchainBuilder(SwapchainBuilder &&) noexcept = default;
+    ~SwapchainBuilder() {
+      zs::Vulkan::vk_inst().destroySurfaceKHR(surface, nullptr, zs::Vulkan::vk_inst_dispatcher());
+    }
 
     vk::SurfaceKHR getSurface() const { return surface; }
 

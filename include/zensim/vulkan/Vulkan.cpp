@@ -345,6 +345,7 @@ namespace zs {
     // kept the previously built swapchain for this
     ci.oldSwapchain = obj.swapchain;
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
+    obj.frameIndex = 0;
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
 
     /// reset previous resources (if any)
@@ -355,6 +356,8 @@ namespace zs {
     obj.imageViews.resize(obj.images.size());
     obj.readSemaphores.resize(obj.images.size());
     obj.writeSemaphores.resize(obj.images.size());
+    obj.readFences.resize(obj.images.size());
+    obj.writeFences.resize(obj.images.size());
     for (int i = 0; i != obj.images.size(); ++i) {
       auto& img = obj.images[i];
       // image views
@@ -376,6 +379,8 @@ namespace zs {
           = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
       obj.writeSemaphores[i]
           = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
+      obj.readFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
+      obj.writeFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
     }
   }
 

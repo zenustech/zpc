@@ -9,7 +9,12 @@ namespace zs {
     VkMemory() = default;
     VkMemory(Vulkan::VulkanContext& ctx)
         : ctx{ctx}, mem{VK_NULL_HANDLE}, memSize{0}, memoryPropertyFlags{} {}
-    VkMemory(VkMemory&& o) noexcept = default;
+    VkMemory(VkMemory&& o) noexcept
+        : ctx{o.ctx}, mem{o.mem}, memSize{o.memSize}, memoryPropertyFlags{o.memoryPropertyFlags} {
+      o.mem = VK_NULL_HANDLE;
+      o.memSize = 0;
+      o.memoryPropertyFlags = {};
+    }
     ~VkMemory() { ctx.device.freeMemory(mem, nullptr, ctx.dispatcher); }
 
     vk::DeviceSize size() const { return memSize; }
@@ -38,7 +43,21 @@ namespace zs {
           mapped{nullptr},
           usageFlags{} {}
     Buffer(const Buffer&) = delete;
-    Buffer(Buffer&&) noexcept = default;
+    Buffer(Buffer&& o) noexcept
+        : ctx{o.ctx},
+          buffer{o.buffer},
+          size{o.size},
+          alignment{o.alignment},
+          pmem{std::move(o.pmem)},
+          pview{std::move(o.pview)},
+          mapped{o.mapped},
+          usageFlags{o.usageFlags} {
+      o.buffer = VK_NULL_HANDLE;
+      o.size = 0;
+      o.alignment = 0;
+      o.mapped = nullptr;
+      o.usageFlags = {};
+    }
     ~Buffer() { ctx.device.destroyBuffer(buffer, nullptr, ctx.dispatcher); }
 
     struct BufferView {

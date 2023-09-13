@@ -338,6 +338,24 @@ namespace zs {
   /// swapchain builder
   ///
   ///
+  u32 Swapchain::acquireNextImage() {
+    if (vk::Result res = ctx.device.waitForFences(
+            1, &readFences[frameIndex], VK_TRUE, detail::deduce_numeric_max<u64>(), ctx.dispatcher);
+        res != vk::Result::eSuccess)
+      throw std::runtime_error(fmt::format(
+          "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
+          frameIndex, res));
+    auto res = ctx.device.acquireNextImageKHR(
+        swapchain, detail::deduce_numeric_max<u64>(),
+        readSemaphores[frameIndex],  // must be a not signaled semaphore
+        VK_NULL_HANDLE, ctx.dispatcher);
+    if (res.result != vk::Result::eSuccess)
+      throw std::runtime_error(fmt::format(
+          "[acquireNextImage]: Failed to acquire next image at frame [{}] with result [{}]\n",
+          frameIndex, res.result));
+    return res.value;
+  }
+  
   SwapchainBuilder::SwapchainBuilder(Vulkan::VulkanContext& ctx, vk::SurfaceKHR targetSurface)
       : ctx{ctx}, surface{targetSurface} {
     ZS_ERROR_IF(

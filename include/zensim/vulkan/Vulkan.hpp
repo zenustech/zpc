@@ -197,7 +197,19 @@ namespace zs {
     Swapchain() = delete;
     Swapchain(Vulkan::VulkanContext &ctx) : ctx{ctx}, swapchain{} {}
     Swapchain(const Swapchain &) = delete;
-    Swapchain(Swapchain &&) noexcept = default;
+    Swapchain(Swapchain &&o) noexcept
+        : ctx{o.ctx},
+          swapchain{o.swapchain},
+          images{std::move(o.images)},
+          imageViews{std::move(o.imageViews)},
+          readSemaphores{std::move(o.readSemaphores)},
+          writeSemaphores{std::move(o.writeSemaphores)},
+          readFences{std::move(o.readFences)},
+          writeFences{std::move(o.writeFences)},
+          frameIndex(o.frameIndex) {
+      o.swapchain = VK_NULL_HANDLE;
+      o.frameIndex = 0;
+    }
     ~Swapchain() {
       resetAux();
       ctx.device.destroySwapchainKHR(swapchain, nullptr, ctx.dispatcher);
@@ -205,24 +217,7 @@ namespace zs {
 
     std::vector<vk::Image> getImages() const { return images; }
     u32 imageCount() const { return images.size(); }
-    u32 acquireNextImage() {
-      if (vk::Result res
-          = ctx.device.waitForFences(1, &readFences[frameIndex], VK_TRUE,
-                                     detail::deduce_numeric_max<u64>(), ctx.dispatcher);
-          res != vk::Result::eSuccess)
-        throw std::runtime_error(fmt::format(
-            "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
-            frameIndex, res));
-      auto res = ctx.device.acquireNextImageKHR(
-          swapchain, detail::deduce_numeric_max<u64>(),
-          readSemaphores[frameIndex],  // must be a not signaled semaphore
-          VK_NULL_HANDLE, ctx.dispatcher);
-      if (res.result != vk::Result::eSuccess)
-        throw std::runtime_error(fmt::format(
-            "[acquireNextImage]: Failed to acquire next image at frame [{}] with result [{}]\n",
-            frameIndex, res.result));
-      return res.value;
-    }
+    u32 acquireNextImage();
     void nextFrame() { frameIndex = (frameIndex + 1) % imageCount(); }
 
     // update width, height

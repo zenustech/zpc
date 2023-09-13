@@ -80,11 +80,19 @@ namespace zs {
     bool hasView() const { return static_cast<bool>(pview); }
     const BufferView& view() const { return *pview; }
 
+    void map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) {
+      mapped = ctx.device.mapMemory(memory(), offset, size, vk::MemoryMapFlags{}, ctx.dispatcher);
+    }
+    void unmap() {
+      if (mapped) {
+        ctx.device.unmapMemory(memory(), ctx.dispatcher);
+        mapped = nullptr;
+      };
+    }
+    void* mappedAddress() const { return mapped; }
 #if 0
     // vk::DescriptorBufferInfo descriptor();
 
-    vk::Result map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
-    void unmap();
     vk::Result bind(vk::DeviceSize offset = 0);
     void setupDescriptor(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
     void copyTo(void* data, vk::DeviceSize size);
@@ -97,8 +105,7 @@ namespace zs {
 
     Vulkan::VulkanContext& ctx;
     vk::Buffer buffer;
-    vk::DeviceSize size;
-    vk::DeviceSize alignment;
+    vk::DeviceSize size, alignment;
     std::shared_ptr<VkMemory> pmem;
 
     std::unique_ptr<BufferView> pview;

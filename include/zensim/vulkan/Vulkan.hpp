@@ -17,9 +17,12 @@
 
 namespace zs {
 
-  struct SwapchainBuilder;
+  struct Swapchain;
   struct Buffer;
+  struct Framebuffer;
+  struct Pipeline;
   struct ExecutionContext;
+  struct SwapchainBuilder;
 
   /// @note CAUTION: must match the member order defined in VulkanContext
   enum vk_queue_e { graphics = 0, compute, transfer };
@@ -110,6 +113,8 @@ namespace zs {
       Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                           vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
       Buffer createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
+      Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
+                                    vk::RenderPass renderPass);
 
       int devid;
       vk::PhysicalDevice physicalDevice;
@@ -128,6 +133,13 @@ namespace zs {
       vk::PhysicalDeviceMemoryProperties memoryProperties;
 
     protected:
+      friend struct VkPipeline;
+      vk::ShaderModule createShaderModule(const std::vector<char> &code) {
+        vk::ShaderModuleCreateInfo smCI{
+            {}, code.size(), reinterpret_cast<const u32 *>(code.data())};
+        return device.createShaderModule(smCI, nullptr, dispatcher);
+      }
+
       /// resource builders
       // generally at most one swapchain is associated with a context, thus reuse preferred
       std::unique_ptr<SwapchainBuilder> swapchainBuilder;

@@ -5,7 +5,9 @@
 #include <set>
 #include <thread>
 // resources
+#include "zensim/vulkan/VkPipeline.hpp"
 #include "zensim/vulkan/VkBuffer.hpp"
+#include "zensim/vulkan/VkImage.hpp"
 //
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
@@ -315,6 +317,15 @@ namespace zs {
     return createBuffer(
         size, usage,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+  }
+  Framebuffer Vulkan::VulkanContext::createFramebuffer(const std::vector<vk::ImageView>& imageViews,
+                                                       vk::Extent2D extent,
+                                                       vk::RenderPass renderPass) {
+    Framebuffer obj{*this};
+    auto ci = vk::FramebufferCreateInfo{
+        {}, renderPass, imageViews.size(), imageViews.data(), extent.width, extent.height, (u32)1};
+    obj.framebuffer = device.createFramebuffer(ci, nullptr, dispatcher);
+    return obj;
   }
   ///
   ///

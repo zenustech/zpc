@@ -47,6 +47,9 @@ namespace zs {
       ctx.device.destroyPipeline(pipeline, nullptr, ctx.dispatcher);
     }
 
+    vk::Pipeline operator*() const { return pipeline; }
+    operator vk::Pipeline() const { return pipeline; }
+
   protected:
     friend struct Vulkan::VulkanContext;
 

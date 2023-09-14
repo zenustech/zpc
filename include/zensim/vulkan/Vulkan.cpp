@@ -5,9 +5,12 @@
 #include <set>
 #include <thread>
 // resources
-#include "zensim/vulkan/VkPipeline.hpp"
 #include "zensim/vulkan/VkBuffer.hpp"
+#include "zensim/vulkan/VkDescriptor.hpp"
 #include "zensim/vulkan/VkImage.hpp"
+#include "zensim/vulkan/VkPipeline.hpp"
+#include "zensim/vulkan/VkRenderPass.hpp"
+
 //
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
@@ -270,6 +273,19 @@ namespace zs {
     }
   }
 
+  DescriptorPool Vulkan::VulkanContext::createDescriptorPool(
+      const std::vector<vk::DescriptorPoolSize>& poolSizes, u32 maxSets) {
+    /// @note DescriptorPoolSize: descriptorCount, vk::DescriptorType::eUniformBufferDynamic
+    auto poolCreateInfo = vk::DescriptorPoolCreateInfo()
+                              .setMaxSets(maxSets)
+                              .setPoolSizeCount((u32)poolSizes.size())
+                              .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+                              .setPPoolSizes(poolSizes.data());
+    DescriptorPool ret{*this};
+    ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
+    return ret;
+  }
+
   ExecutionContext& Vulkan::VulkanContext::env() {
     WorkerEnvs::iterator workerIter;
     ContextEnvs::iterator iter;
@@ -323,7 +339,8 @@ namespace zs {
                                                        vk::RenderPass renderPass) {
     Framebuffer obj{*this};
     auto ci = vk::FramebufferCreateInfo{
-        {}, renderPass, imageViews.size(), imageViews.data(), extent.width, extent.height, (u32)1};
+        {},    renderPass, (u32)imageViews.size(), imageViews.data(), extent.width, extent.height,
+        (u32)1};
     obj.framebuffer = device.createFramebuffer(ci, nullptr, dispatcher);
     return obj;
   }
@@ -346,6 +363,21 @@ namespace zs {
                                         | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                                     queueFamilyIndex},
           nullptr, ctx.dispatcher);
+    }
+  }
+  ExecutionContext::~ExecutionContext() {
+    for (auto& family : poolFamilies) {
+      ctx.device.resetCommandPool(family.reusePool, vk::CommandPoolResetFlagBits::eReleaseResources,
+                                  ctx.dispatcher);
+      ctx.device.destroyCommandPool(family.reusePool, nullptr, ctx.dispatcher);
+
+      ctx.device.resetCommandPool(family.singleUsePool,
+                                  vk::CommandPoolResetFlagBits::eReleaseResources, ctx.dispatcher);
+      ctx.device.destroyCommandPool(family.singleUsePool, nullptr, ctx.dispatcher);
+
+      ctx.device.resetCommandPool(family.resetPool, vk::CommandPoolResetFlagBits::eReleaseResources,
+                                  ctx.dispatcher);
+      ctx.device.destroyCommandPool(family.resetPool, nullptr, ctx.dispatcher);
     }
   }
 

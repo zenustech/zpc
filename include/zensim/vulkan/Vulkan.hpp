@@ -21,6 +21,7 @@ namespace zs {
   struct Buffer;
   struct Framebuffer;
   struct Pipeline;
+  struct DescriptorPool;
   struct ExecutionContext;
   struct SwapchainBuilder;
 
@@ -115,6 +116,8 @@ namespace zs {
       Buffer createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
       Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
                                     vk::RenderPass renderPass);
+      DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
+                                          u32 maxSets);
 
       int devid;
       vk::PhysicalDevice physicalDevice;
@@ -158,21 +161,7 @@ namespace zs {
 
   struct ExecutionContext {
     ExecutionContext(Vulkan::VulkanContext &ctx);
-    ~ExecutionContext() {
-      for (auto &family : poolFamilies) {
-        ctx.device.resetCommandPool(
-            family.reusePool, vk::CommandPoolResetFlagBits::eReleaseResources, ctx.dispatcher);
-        ctx.device.destroyCommandPool(family.reusePool, nullptr, ctx.dispatcher);
-
-        ctx.device.resetCommandPool(
-            family.singleUsePool, vk::CommandPoolResetFlagBits::eReleaseResources, ctx.dispatcher);
-        ctx.device.destroyCommandPool(family.singleUsePool, nullptr, ctx.dispatcher);
-
-        ctx.device.resetCommandPool(
-            family.resetPool, vk::CommandPoolResetFlagBits::eReleaseResources, ctx.dispatcher);
-        ctx.device.destroyCommandPool(family.resetPool, nullptr, ctx.dispatcher);
-      }
-    }
+    ~ExecutionContext();
 
     struct PoolFamily {
       vk::CommandPool reusePool;      // submit multiple times

@@ -18,6 +18,11 @@ namespace zs {
     return buffer;
   }
 
+  /// @ref legit engine
+  inline bool is_depth_format(vk::Format format) noexcept {
+    return format >= vk::Format::eD16Unorm && format < vk::Format::eD32SfloatS8Uint;
+  }
+
   template <typename ET = float> inline vk::Format deduce_attribute_format(wrapt<ET> = {}) {
     if constexpr (is_arithmetic_v<ET>) {
       using T = ET;

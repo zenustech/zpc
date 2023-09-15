@@ -19,6 +19,7 @@ namespace zs {
 
     vk::Image operator*() const { return image; }
     operator vk::Image() const { return image; }
+    operator vk::ImageView() const { return *pview; }
     const VkMemory &memory() const { return *pmem; }
     bool hasView() const { return static_cast<bool>(pview); }
     const vk::ImageView &view() const { return *pview; }

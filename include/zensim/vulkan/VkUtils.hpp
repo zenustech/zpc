@@ -29,7 +29,7 @@ namespace zs {
     return static_cast<MaskType>(flags);
   }
 
-  inline vk::DeviceSize get_aligned_size(vk::DeviceSize size, vk::DeviceSize alignment) {
+  constexpr vk::DeviceSize get_aligned_size(vk::DeviceSize size, vk::DeviceSize alignment) {
     /// @note both size and alignment are in bytes
     if (alignment > 0) return (size + alignment - 1) & ~(alignment - 1);
     return size;
@@ -44,9 +44,25 @@ namespace zs {
   }
 
   /// @ref legit engine
-  inline bool is_depth_format(vk::Format format) noexcept {
+  constexpr bool is_depth_format(vk::Format format) noexcept {
     return format >= vk::Format::eD16Unorm && format < vk::Format::eD32SfloatS8Uint;
   }
+  constexpr vk::ImageUsageFlags get_general_usage_flags(vk::Format format) {
+    vk::ImageUsageFlags usageFlags = vk::ImageUsageFlagBits::eSampled;
+    if (is_depth_format(format)) {
+      usageFlags
+          |= vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+    } else {
+      usageFlags |= vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst
+                    | vk::ImageUsageFlagBits::eSampled;
+    }
+    return usageFlags;
+  }
+  constexpr vk::ImageUsageFlags g_colorImageUsage = vk::ImageUsageFlagBits::eColorAttachment
+                                                    | vk::ImageUsageFlagBits::eTransferDst
+                                                    | vk::ImageUsageFlagBits::eSampled;
+  constexpr vk::ImageUsageFlags g_depthImageUsage
+      = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
 
 #if 0
   /// @ref nvpro core

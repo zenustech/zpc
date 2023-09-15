@@ -83,14 +83,6 @@ namespace zs {
         return physicalDevice.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface, dispatcher);
       }
       u32 numMemoryTypes() const { return memoryProperties.memoryTypeCount; }
-
-      /// behaviors
-      void reset();
-      void sync() const { device.waitIdle(dispatcher); }
-
-      /// resource builders
-      inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
-      ExecutionContext &env();  // thread-safe
       u32 findMemoryType(u32 memoryTypeBits, vk::MemoryPropertyFlags properties) {
         for (u32 i = 0; i < memoryProperties.memoryTypeCount; i++)
           if ((memoryTypeBits & (1 << i))
@@ -102,6 +94,38 @@ namespace zs {
                         "the property flag [{:0>10b}]!\n",
                         memoryTypeBits, get_flag_value(properties)));
       }
+      vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates,
+                                     vk::ImageTiling tiling,
+                                     vk::FormatFeatureFlags features) const {
+        for (vk::Format format : candidates) {
+          VkFormatProperties props;
+          dispatcher.vkGetPhysicalDeviceFormatProperties(physicalDevice,
+                                                         static_cast<VkFormat>(format), &props);
+
+          if (tiling == vk::ImageTiling::eLinear
+              && (vk::FormatFeatureFlags{props.linearTilingFeatures} & features) == features) {
+            return format;
+          } else if (tiling == vk::ImageTiling::eOptimal
+                     && (vk::FormatFeatureFlags{props.optimalTilingFeatures} & features)
+                            == features) {
+            return format;
+          }
+        }
+        throw std::runtime_error(fmt::format(
+            "cannot find a suitable candidate (among {}) format that supports [{}] "
+            "tiling and has [{}] features",
+            candidates.size(), static_cast<std::underlying_type_t<vk::ImageTiling>>(tiling),
+            get_flag_value(features)));
+      }
+
+      /// behaviors
+      void reset();
+      void sync() const { device.waitIdle(dispatcher); }
+
+      /// resource builders
+      inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
+      ExecutionContext &env();  // thread-safe
+
       Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                           vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
       Buffer createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
@@ -226,6 +250,7 @@ namespace zs {
     u32 imageCount() const { return images.size(); }
     u32 acquireNextImage();
     void nextFrame() { frameIndex = (frameIndex + 1) % num_buffered_frames; }
+    void initFramebuffers(vk::RenderPass renderPass);
 
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }
@@ -234,18 +259,31 @@ namespace zs {
   protected:
     void resetAux() {
       for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
+      imageViews.clear();
+      depthBuffers.clear();
+      frameBuffers.clear();
+      resetSyncPrimitives();
+    }
+    void resetSyncPrimitives() {
       for (auto &s : readSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      readSemaphores.clear();
       for (auto &s : writeSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      writeSemaphores.clear();
       for (auto &f : readFences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
+      readFences.clear();
       for (auto &f : writeFences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
+      writeFences.clear();
     }
     friend struct SwapchainBuilder;
 
     Vulkan::VulkanContext &ctx;
     vk::SwapchainKHR swapchain;
+    vk::Extent2D extent;
     ///
     std::vector<vk::Image> images;
     std::vector<vk::ImageView> imageViews;
+    std::vector<Image> depthBuffers;        // optional
+    std::vector<Framebuffer> frameBuffers;  // initialized later
     ///
     // littleVulkanEngine-alike setup
     std::vector<vk::Semaphore> readSemaphores;
@@ -266,13 +304,24 @@ namespace zs {
 
     vk::SurfaceKHR getSurface() const { return surface; }
 
-    void imageCount(u32 count) {
+    SwapchainBuilder &imageCount(u32 count) {
       ci.minImageCount = std::clamp(count, (u32)surfCapabilities.minImageCount,
                                     (u32)surfCapabilities.maxImageCount);
+      return *this;
     }
-    void extent(u32 width, u32 height) { ci.imageExtent = vk::Extent2D{width, height}; }
-    void presentMode(vk::PresentModeKHR mode = vk::PresentModeKHR::eMailbox);
-    void usage(vk::ImageUsageFlags flags) { ci.imageUsage = flags; }
+    SwapchainBuilder &extent(u32 width, u32 height) {
+      ci.imageExtent = vk::Extent2D{width, height};
+      return *this;
+    }
+    SwapchainBuilder &presentMode(vk::PresentModeKHR mode = vk::PresentModeKHR::eMailbox);
+    SwapchainBuilder &usage(vk::ImageUsageFlags flags) {
+      ci.imageUsage = flags;
+      return *this;
+    }
+    SwapchainBuilder &enableDepth() {
+      buildDepthBuffer = true;
+      return *this;
+    }
 
     void build(Swapchain &obj);
     Swapchain build() {
@@ -296,8 +345,10 @@ namespace zs {
     std::vector<vk::SurfaceFormatKHR> surfFormats;
     std::vector<vk::PresentModeKHR> surfPresentModes;
     vk::SurfaceCapabilitiesKHR surfCapabilities;
+    vk::Format swapchainDepthFormat;
 
     vk::SwapchainCreateInfoKHR ci;
+    bool buildDepthBuffer{false};
   };
 
   SwapchainBuilder &Vulkan::VulkanContext::swapchain(vk::SurfaceKHR surface, bool reset) {

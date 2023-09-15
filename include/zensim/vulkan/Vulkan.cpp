@@ -351,16 +351,18 @@ namespace zs {
     image.image = img;
     image.pmem = std::make_shared<VkMemory>(std::move(memory));
     if (createView) {
-      image.pview
-          = device.createImageView(vk::ImageViewCreateInfo{}
-                                       .setImage(img)
-                                       .setPNext(nullptr)
-                                       .setViewType(vk::ImageViewType::e2D)
-                                       .setFormat(format)
-                                       .setSubresourceRange(vk::ImageSubresourceRange{
-                                           vk::ImageAspectFlagBits::eColor, 0,
-                                           VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS}),
-                                   nullptr, dispatcher);
+      image.pview = device.createImageView(
+          vk::ImageViewCreateInfo{}
+              .setImage(img)
+              .setPNext(nullptr)
+              .setViewType(vk::ImageViewType::e2D)
+              .setFormat(format)
+              .setSubresourceRange(vk::ImageSubresourceRange{
+                  is_depth_format(format) ? vk::ImageAspectFlagBits::eDepth
+                                          : vk::ImageAspectFlagBits::eColor,
+                  0, 1 /*VK_REMAINING_MIP_LEVELS*/, 0, 1
+                  /*VK_REMAINING_ARRAY_LAYERS*/}),
+          nullptr, dispatcher);
     }
     return image;
   }
@@ -462,6 +464,24 @@ namespace zs {
     return res.value;
   }
 
+  void Swapchain::initFramebuffers(vk::RenderPass renderPass) {
+    frameBuffers.clear();
+    auto cnt = imageCount();
+    if (depthBuffers.size() != cnt) {
+      // color + depth
+      for (int i = 0; i != cnt; ++i) {
+        frameBuffers.emplace_back(ctx.createFramebuffer(
+            {(vk::ImageView)imageViews[i], (vk::ImageView)depthBuffers[i]}, extent, renderPass));
+      }
+    } else {
+      // color only
+      for (int i = 0; i != imageCount(); ++i) {
+        frameBuffers.emplace_back(
+            ctx.createFramebuffer({(vk::ImageView)imageViews[i]}, extent, renderPass));
+      }
+    }
+  }
+
   SwapchainBuilder::SwapchainBuilder(Vulkan::VulkanContext& ctx, vk::SurfaceKHR targetSurface)
       : ctx{ctx}, surface{targetSurface} {
     ZS_ERROR_IF(
@@ -470,6 +490,9 @@ namespace zs {
     surfFormats = ctx.physicalDevice.getSurfaceFormatsKHR(surface, ctx.dispatcher);
     surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(surface, ctx.dispatcher);
     surfPresentModes = ctx.physicalDevice.getSurfacePresentModesKHR(surface, ctx.dispatcher);
+    swapchainDepthFormat = ctx.findSupportedFormat(
+        {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+        vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
     ci.surface = surface;
 
@@ -512,14 +535,15 @@ namespace zs {
 
     ci.imageSharingMode = vk::SharingMode::eExclusive;
   }
-  void SwapchainBuilder::presentMode(vk::PresentModeKHR mode) {
-    if (mode == ci.presentMode) return;
+  SwapchainBuilder& SwapchainBuilder::presentMode(vk::PresentModeKHR mode) {
+    if (mode == ci.presentMode) return *this;
     for (auto& m : surfPresentModes)
       if (m == mode) {
         ci.presentMode = mode;
-        return;
+        return *this;
       }
     ZS_WARN(fmt::format("Present mode [{}] is not supported in this context. Ignored.\n", mode));
+    return *this;
   }
   void SwapchainBuilder::build(Swapchain& obj) {
     constexpr auto num_buffered_frames = Swapchain::num_buffered_frames;
@@ -527,6 +551,7 @@ namespace zs {
     ci.oldSwapchain = obj.swapchain;
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
     obj.frameIndex = 0;
+    obj.extent = ci.imageExtent;
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
 
     /// reset previous resources (if any)
@@ -552,19 +577,29 @@ namespace zs {
                                           subresourceRange};
       obj.imageViews[i] = ctx.device.createImageView(ivCI, nullptr, ctx.dispatcher);
     }
-    //
-    obj.readSemaphores.resize(num_buffered_frames);
-    obj.writeSemaphores.resize(num_buffered_frames);
-    obj.readFences.resize(num_buffered_frames);
-    obj.writeFences.resize(num_buffered_frames);
-    for (int i = 0; i != num_buffered_frames; ++i) {
-      // semaphores
-      obj.readSemaphores[i]
-          = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
-      obj.writeSemaphores[i]
-          = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
-      obj.readFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
-      obj.writeFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
+    if (buildDepthBuffer) {
+      for (int i = 0; i != obj.images.size(); ++i) {
+        obj.depthBuffers.emplace_back(ctx.create2DImage(
+            ci.imageExtent, swapchainDepthFormat, vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true));
+      }
+    }
+
+    /// sync primitives
+    if (obj.readSemaphores.size() != num_buffered_frames) {
+      obj.readSemaphores.resize(num_buffered_frames);
+      obj.writeSemaphores.resize(num_buffered_frames);
+      obj.readFences.resize(num_buffered_frames);
+      obj.writeFences.resize(num_buffered_frames);
+      for (int i = 0; i != num_buffered_frames; ++i) {
+        // semaphores
+        obj.readSemaphores[i]
+            = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
+        obj.writeSemaphores[i]
+            = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
+        obj.readFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
+        obj.writeFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
+      }
     }
   }
 

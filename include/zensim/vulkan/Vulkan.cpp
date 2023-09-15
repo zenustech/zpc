@@ -15,12 +15,11 @@
 #include "zensim/Logger.hpp"
 #include "zensim/Platform.hpp"
 #include "zensim/ZpcReflection.hpp"
+#include "zensim/execution/ConcurrencyPrimitive.hpp"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
-
-#define MEM_POOL_CTRL 3
 
 namespace zs {
 
@@ -273,19 +272,6 @@ namespace zs {
     }
   }
 
-  DescriptorPool Vulkan::VulkanContext::createDescriptorPool(
-      const std::vector<vk::DescriptorPoolSize>& poolSizes, u32 maxSets) {
-    /// @note DescriptorPoolSize: descriptorCount, vk::DescriptorType::eUniformBufferDynamic
-    auto poolCreateInfo = vk::DescriptorPoolCreateInfo()
-                              .setMaxSets(maxSets)
-                              .setPoolSizeCount((u32)poolSizes.size())
-                              .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-                              .setPPoolSizes(poolSizes.data());
-    DescriptorPool ret{*this};
-    ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
-    return ret;
-  }
-
   ExecutionContext& Vulkan::VulkanContext::env() {
     WorkerEnvs::iterator workerIter;
     ContextEnvs::iterator iter;
@@ -334,6 +320,64 @@ namespace zs {
         size, usage,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
   }
+  Image Vulkan::VulkanContext::create2DImage(const vk::Extent2D& dim, vk::Format format,
+                                             vk::ImageUsageFlags usage,
+                                             vk::MemoryPropertyFlags props, bool mipmaps,
+                                             bool createView) {
+    Image image{*this};
+    auto img = device.createImage(vk::ImageCreateInfo{}
+                                      .setImageType(vk::ImageType::e2D)
+                                      .setFormat(format)
+                                      .setExtent({dim.width, dim.height, (u32)1})
+                                      .setMipLevels((mipmaps ? get_num_mip_levels(dim) : 1))
+                                      .setArrayLayers(1)
+                                      .setUsage(usage | vk::ImageUsageFlagBits::eTransferSrc
+                                                | vk::ImageUsageFlagBits::eTransferDst)
+                                      .setSamples(vk::SampleCountFlagBits::e1),
+                                  nullptr, dispatcher);
+
+    vk::MemoryRequirements memRequirements = device.getImageMemoryRequirements(img, dispatcher);
+    u32 memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, props);
+    vk::MemoryAllocateInfo allocInfo{memRequirements.size, memoryTypeIndex};
+    auto mem = device.allocateMemory(allocInfo, nullptr, dispatcher);
+
+    device.bindImageMemory(img, mem, 0, dispatcher);
+
+    VkMemory memory{*this};
+    memory.mem = mem;
+    memory.memSize = memRequirements.size;
+    memory.memoryPropertyFlags = memoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
+
+    image.image = img;
+    image.pmem = std::make_shared<VkMemory>(std::move(memory));
+    if (createView) {
+      image.pview
+          = device.createImageView(vk::ImageViewCreateInfo{}
+                                       .setImage(img)
+                                       .setPNext(nullptr)
+                                       .setViewType(vk::ImageViewType::e2D)
+                                       .setFormat(format)
+                                       .setSubresourceRange(vk::ImageSubresourceRange{
+                                           vk::ImageAspectFlagBits::eColor, 0,
+                                           VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS}),
+                                   nullptr, dispatcher);
+    }
+    return image;
+  }
+  ImageView Vulkan::VulkanContext::create2DImageView(vk::Image image, vk::Format format,
+                                                     vk::ImageAspectFlags aspect, u32 levels,
+                                                     const void* pNextImageView) {
+    ImageView imgv{*this};
+    imgv.imgv = device.createImageView(
+        vk::ImageViewCreateInfo{}
+            .setImage(image)
+            .setPNext(pNextImageView)
+            .setViewType(vk::ImageViewType::e2D)
+            .setFormat(format)
+            .setSubresourceRange(vk::ImageSubresourceRange{aspect, 0, levels, 0, 1}),
+        nullptr, dispatcher);
+    return imgv;
+  }
   Framebuffer Vulkan::VulkanContext::createFramebuffer(const std::vector<vk::ImageView>& imageViews,
                                                        vk::Extent2D extent,
                                                        vk::RenderPass renderPass) {
@@ -344,6 +388,20 @@ namespace zs {
     obj.framebuffer = device.createFramebuffer(ci, nullptr, dispatcher);
     return obj;
   }
+
+  DescriptorPool Vulkan::VulkanContext::createDescriptorPool(
+      const std::vector<vk::DescriptorPoolSize>& poolSizes, u32 maxSets) {
+    /// @note DescriptorPoolSize: descriptorCount, vk::DescriptorType::eUniformBufferDynamic
+    auto poolCreateInfo = vk::DescriptorPoolCreateInfo()
+                              .setMaxSets(maxSets)
+                              .setPoolSizeCount((u32)poolSizes.size())
+                              .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
+                              .setPPoolSizes(poolSizes.data());
+    DescriptorPool ret{*this};
+    ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
+    return ret;
+  }
+
   ///
   ///
   /// working context (CmdContext)
@@ -464,6 +522,7 @@ namespace zs {
     ZS_WARN(fmt::format("Present mode [{}] is not supported in this context. Ignored.\n", mode));
   }
   void SwapchainBuilder::build(Swapchain& obj) {
+    constexpr auto num_buffered_frames = Swapchain::num_buffered_frames;
     // kept the previously built swapchain for this
     ci.oldSwapchain = obj.swapchain;
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
@@ -476,10 +535,6 @@ namespace zs {
 
     /// construct current swapchain
     obj.imageViews.resize(obj.images.size());
-    obj.readSemaphores.resize(obj.images.size());
-    obj.writeSemaphores.resize(obj.images.size());
-    obj.readFences.resize(obj.images.size());
-    obj.writeFences.resize(obj.images.size());
     for (int i = 0; i != obj.images.size(); ++i) {
       auto& img = obj.images[i];
       // image views
@@ -496,6 +551,13 @@ namespace zs {
                                           vk::ComponentMapping(),
                                           subresourceRange};
       obj.imageViews[i] = ctx.device.createImageView(ivCI, nullptr, ctx.dispatcher);
+    }
+    //
+    obj.readSemaphores.resize(num_buffered_frames);
+    obj.writeSemaphores.resize(num_buffered_frames);
+    obj.readFences.resize(num_buffered_frames);
+    obj.writeFences.resize(num_buffered_frames);
+    for (int i = 0; i != num_buffered_frames; ++i) {
       // semaphores
       obj.readSemaphores[i]
           = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);

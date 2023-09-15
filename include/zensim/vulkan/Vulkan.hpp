@@ -7,17 +7,19 @@
 //
 #include "vulkan/vulkan.hpp"
 //
+#include "zensim/vulkan/VkUtils.hpp"
+//
 #include "zensim/Reflection.h"
 #include "zensim/Singleton.h"
-#include "zensim/execution/ConcurrencyPrimitive.hpp"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/SourceLocation.hpp"
-#include "zensim/types/Tuple.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 
 namespace zs {
 
   struct Swapchain;
+  struct Image;
+  struct ImageView;
   struct Buffer;
   struct Framebuffer;
   struct Pipeline;
@@ -28,17 +30,6 @@ namespace zs {
   /// @note CAUTION: must match the member order defined in VulkanContext
   enum vk_queue_e { graphics = 0, compute, transfer };
   enum vk_cmd_usage_e { reuse = 0, single_use, reset };
-
-  template <typename BitType> constexpr auto get_flag_value(vk::Flags<BitType> flags) {
-    // using MaskType = typename vk::Flags<BitType>::MaskType;
-    using MaskType = typename std::underlying_type_t<BitType>;
-    return static_cast<MaskType>(flags);
-  }
-  inline vk::DeviceSize get_aligned_size(vk::DeviceSize size, vk::DeviceSize alignment) {
-    /// @note both size and alignment are in bytes
-    if (alignment > 0) return (size + alignment - 1) & ~(alignment - 1);
-    return size;
-  }
 
   struct Vulkan : Singleton<Vulkan> {
   public:
@@ -114,10 +105,21 @@ namespace zs {
       Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                           vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
       Buffer createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
+
+      Image create2DImage(const vk::Extent2D &dim, vk::Format format = vk::Format::eR8G8B8A8Unorm,
+                          vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled,
+                          vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          bool mipmaps = false, bool createView = true);
+
+      ImageView create2DImageView(vk::Image image, vk::Format format = vk::Format::eR8G8B8A8Unorm,
+                                  vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor,
+                                  u32 levels = VK_REMAINING_MIP_LEVELS,
+                                  const void *pNextImageView = nullptr);
+
       Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
                                     vk::RenderPass renderPass);
       DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
-                                          u32 maxSets);
+                                          u32 maxSets = 1000);
 
       int devid;
       vk::PhysicalDevice physicalDevice;
@@ -196,6 +198,9 @@ namespace zs {
   };
 
   struct Swapchain {
+    /// triple buffering
+    static constexpr u32 num_buffered_frames = 3;
+
     Swapchain() = delete;
     Swapchain(Vulkan::VulkanContext &ctx) : ctx{ctx}, swapchain{} {}
     Swapchain(const Swapchain &) = delete;
@@ -220,7 +225,7 @@ namespace zs {
     std::vector<vk::Image> getImages() const { return images; }
     u32 imageCount() const { return images.size(); }
     u32 acquireNextImage();
-    void nextFrame() { frameIndex = (frameIndex + 1) % imageCount(); }
+    void nextFrame() { frameIndex = (frameIndex + 1) % num_buffered_frames; }
 
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }
@@ -238,11 +243,13 @@ namespace zs {
 
     Vulkan::VulkanContext &ctx;
     vk::SwapchainKHR swapchain;
+    ///
     std::vector<vk::Image> images;
     std::vector<vk::ImageView> imageViews;
+    ///
+    // littleVulkanEngine-alike setup
     std::vector<vk::Semaphore> readSemaphores;
     std::vector<vk::Semaphore> writeSemaphores;
-    // littleVulkanEngine-alike setup
     std::vector<vk::Fence> readFences;
     std::vector<vk::Fence> writeFences;
     int frameIndex;

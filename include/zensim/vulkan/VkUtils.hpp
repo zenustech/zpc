@@ -1,14 +1,19 @@
 #pragma once
+#include <cmath>
 #include <fstream>
 #include <string_view>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
+#include "zensim/ZpcMeta.hpp"
+
 namespace zs {
 
+  /// @ref little vulkan engine
   inline std::vector<char> read_binary_file(std::string_view filePath) {
-    std::ifstream file(filePath, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) throw std::runtime_error("failed to open file" + filePath);
+    std::ifstream file(filePath.data(), std::ios::ate | std::ios::binary);
+    if (!file.is_open())
+      throw std::runtime_error(std::string("failed to open file") + filePath.data());
     size_t fileSize = static_cast<size_t>(file.tellg());
     std::vector<char> buffer(fileSize);
 
@@ -18,11 +23,99 @@ namespace zs {
     return buffer;
   }
 
+  template <typename BitType> constexpr auto get_flag_value(vk::Flags<BitType> flags) {
+    // using MaskType = typename vk::Flags<BitType>::MaskType;
+    using MaskType = typename std::underlying_type_t<BitType>;
+    return static_cast<MaskType>(flags);
+  }
+
+  inline vk::DeviceSize get_aligned_size(vk::DeviceSize size, vk::DeviceSize alignment) {
+    /// @note both size and alignment are in bytes
+    if (alignment > 0) return (size + alignment - 1) & ~(alignment - 1);
+    return size;
+  }
+
+  inline u32 get_num_mip_levels(const vk::Extent2D &extent) {
+    return static_cast<u32>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
+  }
+
+  inline u32 get_num_mip_levels(const vk::Extent3D &extent) {
+    return static_cast<u32>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
+  }
+
   /// @ref legit engine
   inline bool is_depth_format(vk::Format format) noexcept {
     return format >= vk::Format::eD16Unorm && format < vk::Format::eD32SfloatS8Uint;
   }
 
+#if 0
+  /// @ref nvpro core
+  inline vk::PipelineStageFlags make_access_mask_pipeline_stage_flags(
+      vk::AccessFlags accessMask, vk::PipelineStageFlags supportedShaderBits) {
+    static constexpr vk::AccessFlagBits accessBits[]
+        = { vk::AccessFlagBits::eIndirectCommandRead,
+            vk::AccessFlagBits::eIndexRead,
+            vk::AccessFlagBits::eVertexAttributeRead,
+            vk::AccessFlagBits::eUniformRead,
+            vk::AccessFlagBits::eInputAttachmentRead,
+
+            vk::AccessFlagBits::eShaderRead,
+            vk::AccessFlagBits::eShaderWrite vk::AccessFlagBits:: :
+                eColorAttachmentRead;  // VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+  };
+  vk::AccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT,
+      vk::AccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+
+      vk::AccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+      vk::AccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+      vk::AccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
+      vk::AccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT, vk::AccessFlagBits::VK_ACCESS_HOST_READ_BIT,
+
+      vk::AccessFlagBits::VK_ACCESS_HOST_WRITE_BIT, vk::AccessFlagBits::VK_ACCESS_MEMORY_READ_BIT,
+      vk::AccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT,
+};
+static constexpr vk::PipelineStageFlags pipeStages[]
+    = {vk::PipelineStageFlagBits::eDrawIndirect,
+       vk::PipelineStageFlagBits::eVertexInput,
+       vk::PipelineStageFlagBits::eVertexInput,
+       supportedShaderBits,
+       vk::PipelineStageFlagBits::eFragmentShader,
+
+       supportedShaderBits,
+       supportedShaderBits,
+       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+
+       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+           | vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+           | vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
+
+       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
+       {},
+       {}};
+if (!accessMask) return vk::PipelineStageFlagBits::eTopOfPipe;
+
+vk::PipelineStageFlags pipes = 0;
+
+for (u32 i = 0; i < sizeof(accessBits); i++) {
+  if (accessBits[i] & accessMask) {
+    pipes |= pipeStages[i];
+  }
+}
+if (!pipes)
+  throw std::runtime_error(
+      fmt::format("none of the pipeline stages compatible with the access mask [{}]",
+                  static_cast<typename vk::AccessFlags::MaskType>(accessMask)));
+
+return pipes;
+}
+
+#endif
   template <typename ET = float> inline vk::Format deduce_attribute_format(wrapt<ET> = {}) {
     if constexpr (is_arithmetic_v<ET>) {
       using T = ET;

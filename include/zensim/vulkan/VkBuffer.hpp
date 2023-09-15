@@ -1,9 +1,11 @@
 #pragma once
+#include <optional>
+
 #include "zensim/vulkan/Vulkan.hpp"
 
 namespace zs {
 
-  struct Vulkan;
+  struct BufferView;
 
   struct VkMemory {
     VkMemory() = delete;
@@ -55,30 +57,21 @@ namespace zs {
       o.buffer = VK_NULL_HANDLE;
       o.size = 0;
       o.alignment = 0;
+      o.pview = {};
       o.mapped = nullptr;
       o.usageFlags = {};
     }
-    ~Buffer() { ctx.device.destroyBuffer(buffer, nullptr, ctx.dispatcher); }
-
-    struct BufferView {
-      BufferView(Vulkan::VulkanContext& ctx) : ctx{ctx}, bufv{} {}
-      BufferView(const BufferView&) = delete;
-      BufferView(BufferView&&) noexcept = default;
-      ~BufferView() { ctx.device.destroyBufferView(bufv, nullptr, ctx.dispatcher); }
-      vk::BufferView operator*() const { return bufv; }
-      operator vk::BufferView() const { return bufv; }
-
-    protected:
-      Vulkan::VulkanContext& ctx;
-      vk::BufferView bufv;
-    };
+    ~Buffer() {
+      if (pview.has_value()) ctx.device.destroyBufferView(*pview, nullptr, ctx.dispatcher);
+      ctx.device.destroyBuffer(buffer, nullptr, ctx.dispatcher);
+    }
 
     /// access
     vk::Buffer operator*() const { return buffer; }
     operator vk::Buffer() const { return buffer; }
     const VkMemory& memory() const { return *pmem; }
     bool hasView() const { return static_cast<bool>(pview); }
-    const BufferView& view() const { return *pview; }
+    const vk::BufferView& view() const { return *pview; }
 
     void map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) {
       mapped = ctx.device.mapMemory(memory(), offset, size, vk::MemoryMapFlags{}, ctx.dispatcher);
@@ -108,10 +101,23 @@ namespace zs {
     vk::DeviceSize size, alignment;
     std::shared_ptr<VkMemory> pmem;
 
-    std::unique_ptr<BufferView> pview;
+    std::optional<vk::BufferView> pview;
     void* mapped;
 
     vk::BufferUsageFlags usageFlags;
+  };
+
+  struct BufferView {
+    BufferView(Vulkan::VulkanContext& ctx) : ctx{ctx}, bufv{} {}
+    BufferView(const BufferView&) = delete;
+    BufferView(BufferView&&) noexcept = default;
+    ~BufferView() { ctx.device.destroyBufferView(bufv, nullptr, ctx.dispatcher); }
+    vk::BufferView operator*() const { return bufv; }
+    operator vk::BufferView() const { return bufv; }
+
+  protected:
+    Vulkan::VulkanContext& ctx;
+    vk::BufferView bufv;
   };
 
 }  // namespace zs

@@ -17,15 +17,15 @@
 
 namespace zs {
 
-  struct Swapchain;
   struct Image;
   struct ImageView;
   struct Buffer;
   struct Framebuffer;
+  struct Swapchain;
+  struct SwapchainBuilder;
   struct Pipeline;
   struct DescriptorPool;
   struct ExecutionContext;
-  struct SwapchainBuilder;
 
   /// @note CAUTION: must match the member order defined in VulkanContext
   enum vk_queue_e { graphics = 0, compute, transfer };
@@ -193,6 +193,8 @@ namespace zs {
       vk::CommandPool reusePool;      // submit multiple times
       vk::CommandPool singleUsePool;  // submit once
       vk::CommandPool resetPool;      // reset and re-record
+      vk::Queue queue;
+      Vulkan::VulkanContext *pctx{nullptr};
 
       vk::CommandPool pool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) {
         switch (usage) {
@@ -205,6 +207,41 @@ namespace zs {
           default:
             return resetPool;
         }
+      }
+
+      vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level
+                                            = vk::CommandBufferLevel::ePrimary,
+                                            bool begin = true,
+                                            const vk::CommandBufferInheritanceInfo *pInheritanceInfo
+                                            = nullptr,
+                                            vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {
+        auto cmdPool = pool(usage);
+        vk::CommandBufferUsageFlags usageFlags{};
+        if (usage == vk_cmd_usage_e::single_use || usage == vk_cmd_usage_e::reset)
+          usageFlags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+        else
+          usageFlags = vk::CommandBufferUsageFlagBits::eSimultaneousUse;
+
+        std::vector<vk::CommandBuffer> cmd = pctx->device.allocateCommandBuffers(
+            vk::CommandBufferAllocateInfo{cmdPool, level, (u32)1}, pctx->dispatcher);
+
+        // if (usage == vk_cmd_usage_e::reset) cmds.push_back(cmd[0]);
+
+        if (begin) cmd[0].begin(vk::CommandBufferBeginInfo{usageFlags, pInheritanceInfo});
+
+        return cmd[0];
+      }
+      void submit(u32 count, const vk::CommandBuffer *cmds, vk::Fence fence,
+                  vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {
+        for (u32 i = 0; i < count; i++) cmds[i].end();
+
+        vk::SubmitInfo submit{};
+        submit.setCommandBufferCount(count).setPCommandBuffers(cmds);
+        if (auto res = queue.submit(1, &submit, fence, pctx->dispatcher);
+            res != vk::Result::eSuccess)
+          throw std::runtime_error(fmt::format("failed to submit {} commands to queue.", count));
+        if (usage == vk_cmd_usage_e::single_use)
+          pctx->device.freeCommandBuffers(singleUsePool, count, cmds, pctx->dispatcher);
       }
     };
 
@@ -250,7 +287,7 @@ namespace zs {
     u32 imageCount() const { return images.size(); }
     u32 acquireNextImage();
     void nextFrame() { frameIndex = (frameIndex + 1) % num_buffered_frames; }
-    void initFramebuffers(vk::RenderPass renderPass);
+    void initFramebuffersFor(vk::RenderPass renderPass);
 
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }

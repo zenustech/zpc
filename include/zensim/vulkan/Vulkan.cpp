@@ -423,10 +423,19 @@ namespace zs {
                                         | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                                     queueFamilyIndex},
           nullptr, ctx.dispatcher);
+      family.queue = ctx.device.getQueue(queueFamilyIndex, 0, ctx.dispatcher);
+      family.pctx = &ctx;
     }
   }
   ExecutionContext::~ExecutionContext() {
     for (auto& family : poolFamilies) {
+#if 0
+      // reset and reuse
+      for (auto& cmd : family.cmds)
+        ctx.device.freeCommandBuffers(family.singleUsePool, cmd, ctx.dispatcher);
+      family.cmds.clear();
+#endif
+
       ctx.device.resetCommandPool(family.reusePool, vk::CommandPoolResetFlagBits::eReleaseResources,
                                   ctx.dispatcher);
       ctx.device.destroyCommandPool(family.reusePool, nullptr, ctx.dispatcher);
@@ -464,7 +473,7 @@ namespace zs {
     return res.value;
   }
 
-  void Swapchain::initFramebuffers(vk::RenderPass renderPass) {
+  void Swapchain::initFramebuffersFor(vk::RenderPass renderPass) {
     frameBuffers.clear();
     auto cnt = imageCount();
     if (depthBuffers.size() != cnt) {

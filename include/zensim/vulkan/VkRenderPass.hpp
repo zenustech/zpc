@@ -5,7 +5,7 @@ namespace zs {
 
   /// @note https://www.khronos.org/blog/streamlining-render-passes
   struct RenderPass {
-    RenderPass(Vulkan::VulkanContext& ctx) : ctx{ctx}, renderpass{VK_NULL_HANDLE} {}
+    RenderPass(VulkanContext& ctx) : ctx{ctx}, renderpass{VK_NULL_HANDLE} {}
     RenderPass(RenderPass&& o) noexcept : ctx{o.ctx}, renderpass{o.renderpass} {
       o.renderpass = VK_NULL_HANDLE;
     }
@@ -15,10 +15,10 @@ namespace zs {
     operator vk::RenderPass() const { return renderpass; }
 
   protected:
-    friend struct Vulkan::VulkanContext;
+    friend struct VulkanContext;
     friend struct Swapchain;
 
-    Vulkan::VulkanContext& ctx;
+    VulkanContext& ctx;
     vk::RenderPass renderpass;
   };
 

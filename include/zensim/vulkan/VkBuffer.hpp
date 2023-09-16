@@ -9,7 +9,7 @@ namespace zs {
 
   struct VkMemory {
     VkMemory() = delete;
-    VkMemory(Vulkan::VulkanContext& ctx)
+    VkMemory(VulkanContext& ctx)
         : ctx{ctx}, mem{VK_NULL_HANDLE}, memSize{0}, memoryPropertyFlags{} {}
     VkMemory(VkMemory&& o) noexcept
         : ctx{o.ctx}, mem{o.mem}, memSize{o.memSize}, memoryPropertyFlags{o.memoryPropertyFlags} {
@@ -25,9 +25,9 @@ namespace zs {
     operator vk::DeviceMemory() const { return mem; }
 
   protected:
-    friend struct Vulkan::VulkanContext;
+    friend struct VulkanContext;
 
-    Vulkan::VulkanContext& ctx;
+    VulkanContext& ctx;
     vk::DeviceMemory mem;
     vk::DeviceSize memSize;
     vk::MemoryPropertyFlags memoryPropertyFlags;
@@ -35,7 +35,7 @@ namespace zs {
 
   struct Buffer {
     Buffer() = delete;
-    Buffer(Vulkan::VulkanContext& ctx)
+    Buffer(VulkanContext& ctx)
         : ctx{ctx},
           buffer{VK_NULL_HANDLE},
           size{0},
@@ -94,9 +94,9 @@ namespace zs {
 #endif
 
   protected:
-    friend struct Vulkan::VulkanContext;
+    friend struct VulkanContext;
 
-    Vulkan::VulkanContext& ctx;
+    VulkanContext& ctx;
     vk::Buffer buffer;
     vk::DeviceSize size, alignment;
     std::shared_ptr<VkMemory> pmem;
@@ -108,7 +108,7 @@ namespace zs {
   };
 
   struct BufferView {
-    BufferView(Vulkan::VulkanContext& ctx) : ctx{ctx}, bufv{} {}
+    BufferView(VulkanContext& ctx) : ctx{ctx}, bufv{} {}
     BufferView(const BufferView&) = delete;
     BufferView(BufferView&&) noexcept = default;
     ~BufferView() { ctx.device.destroyBufferView(bufv, nullptr, ctx.dispatcher); }
@@ -116,7 +116,7 @@ namespace zs {
     operator vk::BufferView() const { return bufv; }
 
   protected:
-    Vulkan::VulkanContext& ctx;
+    VulkanContext& ctx;
     vk::BufferView bufv;
   };
 

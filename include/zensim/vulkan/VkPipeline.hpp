@@ -30,7 +30,7 @@ namespace zs {
   };
 
   struct Pipeline {
-    Pipeline(Vulkan::VulkanContext& ctx)
+    Pipeline(VulkanContext& ctx)
         : ctx{ctx},
           vertexShader{VK_NULL_HANDLE},
           fragShader{VK_NULL_HANDLE},
@@ -51,9 +51,9 @@ namespace zs {
     operator vk::Pipeline() const { return pipeline; }
 
   protected:
-    friend struct Vulkan::VulkanContext;
+    friend struct VulkanContext;
 
-    Vulkan::VulkanContext& ctx;
+    VulkanContext& ctx;
     vk::ShaderModule vertexShader, fragShader;
     vk::Pipeline pipeline;
   };

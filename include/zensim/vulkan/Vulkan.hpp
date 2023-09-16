@@ -21,6 +21,7 @@ namespace zs {
   struct ImageView;
   struct Buffer;
   struct Framebuffer;
+  struct RenderPass;
   struct Swapchain;
   struct SwapchainBuilder;
   struct Pipeline;
@@ -287,6 +288,7 @@ namespace zs {
     u32 imageCount() const { return images.size(); }
     u32 acquireNextImage();
     void nextFrame() { frameIndex = (frameIndex + 1) % num_buffered_frames; }
+    RenderPass getRenderPass();
     void initFramebuffersFor(vk::RenderPass renderPass);
 
     // update width, height
@@ -316,6 +318,7 @@ namespace zs {
     Vulkan::VulkanContext &ctx;
     vk::SwapchainKHR swapchain;
     vk::Extent2D extent;
+    vk::Format colorFormat, depthFormat;
     ///
     std::vector<vk::Image> images;
     std::vector<vk::ImageView> imageViews;

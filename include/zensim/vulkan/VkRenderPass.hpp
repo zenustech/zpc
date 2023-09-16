@@ -16,6 +16,7 @@ namespace zs {
 
   protected:
     friend struct Vulkan::VulkanContext;
+    friend struct Swapchain;
 
     Vulkan::VulkanContext& ctx;
     vk::RenderPass renderpass;

@@ -472,7 +472,74 @@ namespace zs {
           frameIndex, res.result));
     return res.value;
   }
+  RenderPass Swapchain::getRenderPass() {
+    RenderPass ret{ctx};
+    const bool includeDepthBuffer = depthBuffers.size() == num_buffered_frames;
+    std::vector<vk::AttachmentDescription> attachments(1 + (includeDepthBuffer ? 1 : 0));
+    std::vector<vk::AttachmentReference> refs(attachments.size());
+    // color
+    auto& colorAttachment = attachments[0];
+    colorAttachment = vk::AttachmentDescription{}
+                          .setFormat(colorFormat)
+                          .setSamples(vk::SampleCountFlagBits::e1)
+                          .setLoadOp(vk::AttachmentLoadOp::eClear)
+                          .setStoreOp(vk::AttachmentStoreOp::eStore)
+                          .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                          .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                          .setInitialLayout(vk::ImageLayout::eUndefined)
+                          .setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
 
+    auto& colorAttachmentRef = refs[0];
+    colorAttachmentRef = vk::AttachmentReference{0, vk::ImageLayout::eColorAttachmentOptimal};
+
+    // depth
+    if (includeDepthBuffer) {
+      auto& depthAttachment = attachments[1];
+      depthAttachment = vk::AttachmentDescription{}
+                            .setFormat(depthFormat)
+                            .setSamples(vk::SampleCountFlagBits::e1)
+                            .setLoadOp(vk::AttachmentLoadOp::eClear)
+                            .setStoreOp(vk::AttachmentStoreOp::eDontCare)
+                            .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+                            .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+                            .setInitialLayout(vk::ImageLayout::eUndefined)
+                            .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+      auto& depthAttachmentRef = refs[1];
+      depthAttachmentRef
+          = vk::AttachmentReference{1, vk::ImageLayout::eDepthStencilAttachmentOptimal};
+    }
+
+    /// @note here color attachment index corresponding to
+    /// 'layout(location = k) out vec4 outColor' directive in the fragment shader
+    auto subpass = vk::SubpassDescription{}
+                       .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                       .setColorAttachmentCount(1)
+                       .setPColorAttachments(&refs[0]);
+    if (includeDepthBuffer) subpass.setPDepthStencilAttachment(&refs[1]);
+
+    vk::AccessFlags accessFlag;
+    if (includeDepthBuffer)
+      accessFlag = vk::AccessFlagBits::eColorAttachmentWrite
+                   | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+    else
+      accessFlag = vk::AccessFlagBits::eColorAttachmentWrite;
+    auto dependency = vk::SubpassDependency{}
+                          .setDstSubpass(0)
+                          .setDstAccessMask(accessFlag)
+                          .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
+                                           | vk::PipelineStageFlagBits::eEarlyFragmentTests)
+                          .setSrcSubpass(VK_SUBPASS_EXTERNAL)
+                          .setSrcAccessMask({})
+                          .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
+                                           | vk::PipelineStageFlagBits::eEarlyFragmentTests);
+
+    ret.renderpass = ctx.device.createRenderPass(
+        vk::RenderPassCreateInfo{
+            {}, (u32)attachments.size(), attachments.data(), (u32)1, &subpass, (u32)1, &dependency},
+        nullptr, ctx.dispatcher);
+    return ret;
+  }
   void Swapchain::initFramebuffersFor(vk::RenderPass renderPass) {
     frameBuffers.clear();
     auto cnt = imageCount();
@@ -561,6 +628,8 @@ namespace zs {
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
     obj.frameIndex = 0;
     obj.extent = ci.imageExtent;
+    obj.colorFormat = ci.imageFormat;
+    obj.depthFormat = swapchainDepthFormat;
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
 
     /// reset previous resources (if any)

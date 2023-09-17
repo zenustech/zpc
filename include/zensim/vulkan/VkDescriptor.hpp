@@ -51,6 +51,17 @@ namespace zs {
     }
     ~DescriptorPool() { ctx.device.destroyDescriptorPool(descriptorPool, nullptr, ctx.dispatcher); }
 
+    // should not delete this then acquire again for same usage
+    void acquireSet(vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet& set) const {
+      set = ctx.device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{}
+                                                  .setDescriptorPool(descriptorPool)
+                                                  .setPSetLayouts(&descriptorSetLayout)
+                                                  .setDescriptorSetCount(1))[0];
+      /// @note from lve
+      // Might want to create a "DescriptorPoolManager" class that handles this case, and builds
+      // a new pool whenever an old pool fills up. But this is beyond our current scope
+    }
+
     vk::DescriptorPool operator*() const { return descriptorPool; }
     operator vk::DescriptorPool() const { return descriptorPool; }
 

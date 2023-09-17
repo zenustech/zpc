@@ -56,6 +56,8 @@ namespace zs {
       if (index != -1) throw std::runtime_error("compute queue does not exist.");
       return device.getQueue(index, i, dispatcher);
     }
+    DescriptorPool &descriptorPool() { return *defaultDescriptorPool; }
+    const DescriptorPool &descriptorPool() const { return *defaultDescriptorPool; }
 
     bool supportGraphics() const { return graphicsQueueFamilyIndex != -1; }
     /// @note usually called right before swapchain creation for assurance
@@ -103,6 +105,7 @@ namespace zs {
     void sync() const { device.waitIdle(dispatcher); }
 
     /// resource builders
+    void setupDefaultDescriptorPool();
     inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
     PipelineBuilder pipeline();
     ExecutionContext &env();  // thread-safe
@@ -141,6 +144,7 @@ namespace zs {
     };
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
+    std::unique_ptr<DescriptorPool> defaultDescriptorPool;
 
   protected:
     friend struct VkPipeline;

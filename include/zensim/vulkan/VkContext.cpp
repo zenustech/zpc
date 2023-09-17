@@ -155,6 +155,9 @@ namespace zs {
     dispatcher.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &tmp);
     memoryProperties = tmp;
 
+    setupDefaultDescriptorPool();
+
+    /// display info
     fmt::print(
         "\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}."
         "\n\t\t(Graphics/Compute/Transfer) queue family index: {}, {}, {}. Ray-tracing support: "
@@ -183,6 +186,28 @@ namespace zs {
       fmt::print("\t\t[{}] flag:\t{:0>10b} ({})\n", typeIndex, static_cast<BitType>(propertyFlags),
                  tag);
     }
+  }
+
+  void VulkanContext::setupDefaultDescriptorPool() {
+    std::vector<vk::DescriptorPoolSize> poolSizes;
+    auto uniformPoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
+        vk::DescriptorType::eUniformBufferDynamic);
+    poolSizes.push_back(uniformPoolSize);
+
+    auto imageSamplerPoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
+        vk::DescriptorType::eCombinedImageSampler);
+    poolSizes.push_back(imageSamplerPoolSize);
+
+    auto storagePoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
+        vk::DescriptorType::eStorageBuffer);
+    poolSizes.push_back(storagePoolSize);
+
+    auto storageImagePoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
+        vk::DescriptorType::eStorageImage);
+    poolSizes.push_back(storageImagePoolSize);
+
+    defaultDescriptorPool = std::make_unique<DescriptorPool>(
+        *this, poolSizes, 1000, vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
   }
 
   ExecutionContext& VulkanContext::env() {

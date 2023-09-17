@@ -17,6 +17,7 @@ namespace zs {
   struct Swapchain;
   struct SwapchainBuilder;
   struct Pipeline;
+  struct PipelineBuilder;
   struct DescriptorPool;
   struct ExecutionContext;
 
@@ -103,6 +104,7 @@ namespace zs {
 
     /// resource builders
     inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
+    PipelineBuilder pipeline();
     ExecutionContext &env();  // thread-safe
 
     Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,

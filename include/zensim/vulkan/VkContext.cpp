@@ -198,6 +198,8 @@ namespace zs {
   }
   u32 check_current_working_contexts() { return g_workingContexts.size(); }
 
+  PipelineBuilder VulkanContext::pipeline() { return PipelineBuilder{*this}; }
+
   Buffer VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                      vk::MemoryPropertyFlags props) {
     Buffer buffer(*this);

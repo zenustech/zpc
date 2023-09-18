@@ -45,8 +45,17 @@ namespace zs {
     Swapchain(Swapchain &&o) noexcept
         : ctx{o.ctx},
           swapchain{o.swapchain},
+          extent{o.extent},
+          colorFormat{o.colorFormat},
+          depthFormat{o.depthFormat},
+          imageColorSpace{o.imageColorSpace},
+          presentMode{o.presentMode},
+          //
           images{std::move(o.images)},
           imageViews{std::move(o.imageViews)},
+          depthBuffers{std::move(o.depthBuffers)},
+          frameBuffers{std::move(o.frameBuffers)},
+          // sync prims
           readSemaphores{std::move(o.readSemaphores)},
           writeSemaphores{std::move(o.writeSemaphores)},
           readFences{std::move(o.readFences)},
@@ -79,6 +88,7 @@ namespace zs {
 
   protected:
     void resetAux() {
+      images.clear();
       for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
       imageViews.clear();
       depthBuffers.clear();

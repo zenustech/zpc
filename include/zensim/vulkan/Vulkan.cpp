@@ -136,7 +136,10 @@ namespace zs {
   }
   RenderPass Swapchain::getRenderPass() {
     RenderPass ret{ctx};
-    const bool includeDepthBuffer = depthBuffers.size() == num_buffered_frames;
+    const bool includeDepthBuffer = depthBuffers.size() == imageCount() && depthBuffers.size() != 0;
+
+    // fmt::print("\n\ncheck depthbuffers: {} (image count {})\n\n", depthBuffers.size(),
+    //           imageCount());
     std::vector<vk::AttachmentDescription> attachments(1 + (includeDepthBuffer ? 1 : 0));
     std::vector<vk::AttachmentReference> refs(attachments.size());
     // color
@@ -196,16 +199,21 @@ namespace zs {
                           .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
                                            | vk::PipelineStageFlagBits::eEarlyFragmentTests);
 
-    ret.renderpass = ctx.device.createRenderPass(
-        vk::RenderPassCreateInfo{
-            {}, (u32)attachments.size(), attachments.data(), (u32)1, &subpass, (u32)1, &dependency},
-        nullptr, ctx.dispatcher);
+    ret.renderpass = ctx.device.createRenderPass(vk::RenderPassCreateInfo{}
+                                                     .setAttachmentCount(attachments.size())
+                                                     .setPAttachments(attachments.data())
+                                                     .setSubpassCount(1)
+                                                     .setPSubpasses(&subpass)
+                                                     .setDependencyCount(1)
+                                                     .setPDependencies(&dependency),
+                                                 nullptr, ctx.dispatcher);
+
     return ret;
   }
   void Swapchain::initFramebuffersFor(vk::RenderPass renderPass) {
     frameBuffers.clear();
     auto cnt = imageCount();
-    if (depthBuffers.size() != cnt) {
+    if (depthBuffers.size() == cnt) {
       // color + depth
       for (int i = 0; i != cnt; ++i) {
         frameBuffers.emplace_back(ctx.createFramebuffer(
@@ -245,15 +253,15 @@ namespace zs {
     // format and colorspace selection
     if (surfFormats.size() == 1 && surfFormats.front().format == vk::Format::eUndefined) {
       // no preferred format, select this
-      ci.imageFormat = vk::Format::eR8G8B8A8Srgb;
+      ci.imageFormat = vk::Format::eB8G8R8A8Srgb;
       ci.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
     } else {
       ci.imageFormat = surfFormats.front().format;
       ci.imageColorSpace = surfFormats.front().colorSpace;
       for (const auto& fmt : surfFormats)
-        if (fmt.format == vk::Format::eR8G8B8A8Srgb
+        if (fmt.format == vk::Format::eB8G8R8A8Srgb
             && fmt.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-          ci.imageFormat = vk::Format::eR8G8B8A8Srgb;
+          ci.imageFormat = vk::Format::eB8G8R8A8Srgb;
           ci.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
           break;
         }
@@ -294,10 +302,11 @@ namespace zs {
     obj.depthFormat = swapchainDepthFormat;
     obj.presentMode = ci.presentMode;
     obj.imageColorSpace = ci.imageColorSpace;
+
+    obj.resetAux();
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
 
     /// reset previous resources (if any)
-    obj.resetAux();
     if (ci.oldSwapchain) ctx.device.destroySwapchainKHR(ci.oldSwapchain, nullptr, ctx.dispatcher);
 
     /// construct current swapchain

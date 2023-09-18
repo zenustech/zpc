@@ -4,6 +4,7 @@
 #include "zensim/types/Iterator.h"
 #include "zensim/vulkan/VkImage.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
+#include "zensim/vulkan/Vulkan.hpp"
 
 namespace zs {
 
@@ -123,6 +124,9 @@ namespace zs {
     }
   }
 
+  SwapchainBuilder::~SwapchainBuilder() {
+    zs::Vulkan::vk_inst().destroySurfaceKHR(surface, nullptr, zs::Vulkan::vk_inst_dispatcher());
+  }
   SwapchainBuilder::SwapchainBuilder(VulkanContext& ctx, vk::SurfaceKHR targetSurface)
       : ctx{ctx}, surface{targetSurface} {
     ZS_ERROR_IF(

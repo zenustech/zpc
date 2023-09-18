@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/vulkan/Vulkan.hpp"
+#include "zensim/vulkan/VkContext.hpp"
 
 namespace zs {
 
@@ -100,9 +100,7 @@ namespace zs {
     SwapchainBuilder(VulkanContext &ctx, vk::SurfaceKHR targetSurface);
     SwapchainBuilder(const SwapchainBuilder &) = delete;
     SwapchainBuilder(SwapchainBuilder &&) noexcept = default;
-    ~SwapchainBuilder() {
-      zs::Vulkan::vk_inst().destroySurfaceKHR(surface, nullptr, zs::Vulkan::vk_inst_dispatcher());
-    }
+    ~SwapchainBuilder();
 
     vk::SurfaceKHR getSurface() const { return surface; }
 

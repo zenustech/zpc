@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/vulkan/Vulkan.hpp"
+#include "zensim/vulkan/VkContext.hpp"
 
 namespace zs {
 

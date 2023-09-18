@@ -1,7 +1,7 @@
 #pragma once
 #include <map>
 
-#include "zensim/vulkan/Vulkan.hpp"
+#include "zensim/vulkan/VkContext.hpp"
 
 namespace zs {
 

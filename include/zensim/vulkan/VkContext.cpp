@@ -12,6 +12,7 @@
 #include "zensim/vulkan/VkRenderPass.hpp"
 #include "zensim/vulkan/VkShader.hpp"
 #include "zensim/vulkan/VkSwapchain.hpp"
+#include "zensim/vulkan/Vulkan.hpp"
 
 //
 #include "zensim/Logger.hpp"

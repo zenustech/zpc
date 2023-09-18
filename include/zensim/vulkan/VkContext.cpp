@@ -241,11 +241,14 @@ namespace zs {
   ///
   /// builders
   ///
-  PipelineBuilder VulkanContext::pipeline() { return PipelineBuilder{*this}; }
   SwapchainBuilder& VulkanContext::swapchain(vk::SurfaceKHR surface, bool reset) {
     if (!swapchainBuilder || reset || swapchainBuilder->getSurface() != surface)
       swapchainBuilder.reset(new SwapchainBuilder(*this, surface));
     return *swapchainBuilder;
+  }
+  PipelineBuilder VulkanContext::pipeline() { return PipelineBuilder{*this}; }
+  DescriptorSetLayoutBuilder VulkanContext::setlayout() {
+    return DescriptorSetLayoutBuilder{*this};
   }
 
   Buffer VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,

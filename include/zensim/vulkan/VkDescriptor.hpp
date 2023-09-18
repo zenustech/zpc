@@ -1,4 +1,6 @@
 #pragma once
+#include <map>
+
 #include "zensim/vulkan/Vulkan.hpp"
 
 namespace zs {
@@ -11,7 +13,7 @@ namespace zs {
         : ctx{ctx}, bindings{descrLayoutBindings} {
       std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings{};
       for (auto kv : bindings) setLayoutBindings.push_back(kv.second);
-      auto descriptorSetLayout
+      descriptorSetLayout
           = ctx.device.createDescriptorSetLayout(vk::DescriptorSetLayoutCreateInfo{}
                                                      .setBindingCount(setLayoutBindings.size())
                                                      .setPBindings(setLayoutBindings.data()),
@@ -35,6 +37,23 @@ namespace zs {
     VulkanContext& ctx;
     std::map<u32, vk::DescriptorSetLayoutBinding> bindings;
     vk::DescriptorSetLayout descriptorSetLayout;
+  };
+
+  class DescriptorSetLayoutBuilder {
+  public:
+    DescriptorSetLayoutBuilder(VulkanContext& ctx) noexcept : ctx{ctx} {}
+
+    DescriptorSetLayoutBuilder& addBinding(u32 binding, vk::DescriptorType descriptorType,
+                                           vk::ShaderStageFlags stageFlags, u32 count = 1) {
+      bindings[binding]
+          = vk::DescriptorSetLayoutBinding{binding, descriptorType, count, stageFlags, nullptr};
+      return *this;
+    }
+    DescriptorSetLayout build() { return DescriptorSetLayout{ctx, bindings}; }
+
+  private:
+    VulkanContext& ctx;
+    std::map<u32, vk::DescriptorSetLayoutBinding> bindings{};
   };
 
   struct DescriptorPool {

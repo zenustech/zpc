@@ -30,6 +30,7 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
   simulation/init/Scene.cpp
 )
 set(ZENSIM_LIBRARY_VULKAN_SOURCE_FILES
+  vulkan/VkSwapchain.cpp
   vulkan/VkPipeline.cpp
   vulkan/VkContext.cpp
   vulkan/Vulkan.cpp

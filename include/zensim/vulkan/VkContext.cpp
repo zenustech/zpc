@@ -10,6 +10,8 @@
 #include "zensim/vulkan/VkImage.hpp"
 #include "zensim/vulkan/VkPipeline.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
+#include "zensim/vulkan/VkShader.hpp"
+#include "zensim/vulkan/VkSwapchain.hpp"
 
 //
 #include "zensim/Logger.hpp"
@@ -236,7 +238,15 @@ namespace zs {
   }
   u32 check_current_working_contexts() { return g_workingContexts.size(); }
 
+  ///
+  /// builders
+  ///
   PipelineBuilder VulkanContext::pipeline() { return PipelineBuilder{*this}; }
+  SwapchainBuilder& VulkanContext::swapchain(vk::SurfaceKHR surface, bool reset) {
+    if (!swapchainBuilder || reset || swapchainBuilder->getSurface() != surface)
+      swapchainBuilder.reset(new SwapchainBuilder(*this, surface));
+    return *swapchainBuilder;
+  }
 
   Buffer VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                      vk::MemoryPropertyFlags props) {
@@ -351,6 +361,12 @@ namespace zs {
                               .setPPoolSizes(poolSizes.data());
     DescriptorPool ret{*this};
     ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
+    return ret;
+  }
+  ShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) {
+    ShaderModule ret{*this};
+    vk::ShaderModuleCreateInfo smCI{{}, code.size(), reinterpret_cast<const u32*>(code.data())};
+    ret.shaderModule = device.createShaderModule(smCI, nullptr, dispatcher);
     return ret;
   }
 

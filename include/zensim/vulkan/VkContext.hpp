@@ -16,6 +16,7 @@ namespace zs {
   struct RenderPass;
   struct Swapchain;
   struct SwapchainBuilder;
+  struct ShaderModule;
   struct Pipeline;
   struct PipelineBuilder;
   struct DescriptorPool;
@@ -120,7 +121,7 @@ namespace zs {
       // Might want to create a "DescriptorPoolManager" class that handles this case, and builds
       // a new pool whenever an old pool fills up. But this is beyond our current scope
     }
-    inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
+    SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
     PipelineBuilder pipeline();
     ExecutionContext &env();  // thread-safe
 
@@ -142,6 +143,7 @@ namespace zs {
                                   vk::RenderPass renderPass);
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
                                         u32 maxSets = 1000);
+    ShaderModule createShaderModule(const std::vector<char> &code);
 
     int devid;
     vk::PhysicalDevice physicalDevice;
@@ -162,10 +164,6 @@ namespace zs {
 
   protected:
     friend struct VkPipeline;
-    vk::ShaderModule createShaderModule(const std::vector<char> &code) {
-      vk::ShaderModuleCreateInfo smCI{{}, code.size(), reinterpret_cast<const u32 *>(code.data())};
-      return device.createShaderModule(smCI, nullptr, dispatcher);
-    }
 
     /// resource builders
     // generally at most one swapchain is associated with a context, thus reuse preferred
@@ -249,5 +247,7 @@ namespace zs {
   protected:
     VulkanContext &ctx;
   };
+
+  u32 check_current_working_contexts();
 
 }  // namespace zs

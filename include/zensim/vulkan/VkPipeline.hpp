@@ -77,11 +77,23 @@ namespace zs {
 
     /// default minimum setup
     void default_pipeline_configs();
-    template <typename ET> PipelineBuilder& pushInputBinding(wrapt<ET>) {  // for soa layout
-      bindingDescriptions.emplace_back(/*binding*/ bindingDescriptions.size(),
-                                       /*stride*/ (u32)sizeof(ET), vk::VertexInputRate::eVertex);
-      attributeDescriptions.emplace_back(/*location*/ 0, /*binding*/ bindingDescriptions.size() - 1,
-                                         deduce_attribute_format(wrapt<ET>{}), /*offset*/ (u32)0);
+
+    /// @note assume no padding and alignment involved
+    template <typename... ETs> PipelineBuilder& pushInputBinding(wrapt<ETs>...) {  // for aos layout
+      constexpr int N = sizeof...(ETs);
+      constexpr size_t szs[] = {sizeof(ETs)...};
+      constexpr vk::Format fmts[N] = {deduce_attribute_format(wrapt<ETs>{})...};
+
+      u32 binding = bindingDescriptions.size();
+      u32 offset = 0;
+      for (int i = 0; i < N; ++i) {
+        attributeDescriptions.emplace_back(/*location*/ i,
+                                           /*binding*/ binding, fmts[i],
+                                           /*offset*/ offset);
+        offset += szs[i];
+      }
+      bindingDescriptions.emplace_back(/*binding*/ binding,
+                                       /*stride*/ (u32)offset, vk::VertexInputRate::eVertex);
       return *this;
     }
     PipelineBuilder& setShader(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule) {

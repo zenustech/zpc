@@ -132,15 +132,15 @@ return pipes;
 }
 
 #endif
-  template <typename ET = float> inline vk::Format deduce_attribute_format(wrapt<ET> = {}) {
+  template <typename ET = float> constexpr vk::Format deduce_attribute_format(wrapt<ET> = {}) {
     if constexpr (is_arithmetic_v<ET>) {
       using T = ET;
       ///
       if constexpr (is_floating_point_v<T>) {
         // floating point scalar
-        if constexpr (is_same_v<float>)
+        if constexpr (is_same_v<T, float>)
           return vk::Format::eR32Sfloat;
-        else if constexpr (is_same_v<double>)
+        else if constexpr (is_same_v<T, double>)
           return vk::Format::eR64Sfloat;
         else
           static_assert(always_false<T>, "unable to deduce this attribute format!\n");
@@ -180,9 +180,9 @@ return pipes;
         /// N = 1
         if constexpr (is_floating_point_v<T>) {
           // floating point scalar
-          if constexpr (is_same_v<float>)
+          if constexpr (is_same_v<T, float>)
             return vk::Format::eR32Sfloat;
-          else if constexpr (is_same_v<double>)
+          else if constexpr (is_same_v<T, double>)
             return vk::Format::eR64Sfloat;
           else
             static_assert(always_false<T>, "unable to deduce this attribute format!\n");
@@ -219,9 +219,9 @@ return pipes;
         /// N = 2
         if constexpr (is_floating_point_v<T>) {
           // floating point scalar
-          if constexpr (is_same_v<float>)
+          if constexpr (is_same_v<T, float>)
             return vk::Format::eR32G32Sfloat;
-          else if constexpr (is_same_v<double>)
+          else if constexpr (is_same_v<T, double>)
             return vk::Format::eR64G64Sfloat;
           else
             static_assert(always_false<T>, "unable to deduce this attribute format!\n");
@@ -258,9 +258,9 @@ return pipes;
         /// N = 3
         if constexpr (is_floating_point_v<T>) {
           // floating point scalar
-          if constexpr (is_same_v<float>)
+          if constexpr (is_same_v<T, float>)
             return vk::Format::eR32G32B32Sfloat;
-          else if constexpr (is_same_v<double>)
+          else if constexpr (is_same_v<T, double>)
             return vk::Format::eR64G64B64Sfloat;
           else
             static_assert(always_false<T>, "unable to deduce this attribute format!\n");
@@ -297,9 +297,9 @@ return pipes;
         /// N = 4
         if constexpr (is_floating_point_v<T>) {
           // floating point scalar
-          if constexpr (is_same_v<float>)
+          if constexpr (is_same_v<T, float>)
             return vk::Format::eR32G32B32A32Sfloat;
-          else if constexpr (is_same_v<double>)
+          else if constexpr (is_same_v<T, double>)
             return vk::Format::eR64G64B64A64Sfloat;
           else
             static_assert(always_false<T>, "unable to deduce this attribute format!\n");

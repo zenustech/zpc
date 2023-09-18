@@ -36,11 +36,13 @@ namespace zs {
   ///
   ///
   Vulkan& VulkanContext::driver() const noexcept { return Vulkan::driver(); }
+
   void VulkanContext::reset() {
     /// clear builders
     // if (swapchainBuilder) swapchainBuilder.reset(nullptr);
     /// clear resources
     {
+      // working contexts (command pool resources)
       // g_mtx.lock();
       if (g_mtx.try_lock()) {
         g_workingContexts.clear();
@@ -50,6 +52,12 @@ namespace zs {
             "Other worker threads are still accessing vk command contexts while the ctx is being "
             "destroyed!");
       // g_mtx.unlock();
+    }
+    {
+      // descriptor pool resources
+      device.resetDescriptorPool(defaultDescriptorPool, vk::DescriptorPoolResetFlags{}, dispatcher);
+      device.destroyDescriptorPool(defaultDescriptorPool, nullptr, dispatcher);
+      defaultDescriptorPool = VK_NULL_HANDLE;
     }
     /// destroy logical device
     device.destroy(nullptr, dispatcher);
@@ -206,8 +214,13 @@ namespace zs {
         vk::DescriptorType::eStorageImage);
     poolSizes.push_back(storageImagePoolSize);
 
-    defaultDescriptorPool = std::make_unique<DescriptorPool>(
-        *this, poolSizes, 1000, vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
+    defaultDescriptorPool = device.createDescriptorPool(
+        vk::DescriptorPoolCreateInfo{}
+            .setPoolSizeCount(poolSizes.size())
+            .setPPoolSizes(poolSizes.data())
+            .setMaxSets(1000)
+            .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet),
+        nullptr, dispatcher);
   }
 
   ExecutionContext& VulkanContext::env() {

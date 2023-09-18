@@ -292,6 +292,8 @@ namespace zs {
     obj.extent = ci.imageExtent;
     obj.colorFormat = ci.imageFormat;
     obj.depthFormat = swapchainDepthFormat;
+    obj.presentMode = ci.presentMode;
+    obj.imageColorSpace = ci.imageColorSpace;
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
 
     /// reset previous resources (if any)

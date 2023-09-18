@@ -42,6 +42,11 @@ namespace zs {
     /// queries
     u32 numDistinctQueueFamilies() const noexcept { return uniqueQueueFamilyIndices.size(); }
 
+    vk::PhysicalDevice getPhysicalDevice() const noexcept { return physicalDevice; }
+    vk::Device getDevice() const noexcept { return device; }
+    int getQueueFamilyIndex(vk_queue_e e = vk_queue_e::graphics) const noexcept {
+      return queueFamilyIndices[e];
+    }
     bool retrieveQueue(vk::Queue &q, vk_queue_e e = vk_queue_e::graphics,
                        u32 i = 0) const noexcept {
       auto index = queueFamilyIndices[e];
@@ -51,13 +56,12 @@ namespace zs {
       }
       return false;
     }
-    vk::Queue getComputeQueue(vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const {
+    vk::Queue getQueue(vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const {
       auto index = queueFamilyIndices[e];
       if (index != -1) throw std::runtime_error("compute queue does not exist.");
       return device.getQueue(index, i, dispatcher);
     }
-    DescriptorPool &descriptorPool() { return *defaultDescriptorPool; }
-    const DescriptorPool &descriptorPool() const { return *defaultDescriptorPool; }
+    vk::DescriptorPool descriptorPool() const noexcept { return defaultDescriptorPool; }
 
     bool supportGraphics() const { return graphicsQueueFamilyIndex != -1; }
     /// @note usually called right before swapchain creation for assurance
@@ -106,6 +110,16 @@ namespace zs {
 
     /// resource builders
     void setupDefaultDescriptorPool();
+    // should not delete this then acquire again for same usage
+    void acquireSet(vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet &set) const {
+      set = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{}
+                                              .setDescriptorPool(defaultDescriptorPool)
+                                              .setPSetLayouts(&descriptorSetLayout)
+                                              .setDescriptorSetCount(1))[0];
+      /// @note from lve
+      // Might want to create a "DescriptorPoolManager" class that handles this case, and builds
+      // a new pool whenever an old pool fills up. But this is beyond our current scope
+    }
     inline SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
     PipelineBuilder pipeline();
     ExecutionContext &env();  // thread-safe
@@ -144,7 +158,7 @@ namespace zs {
     };
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
-    std::unique_ptr<DescriptorPool> defaultDescriptorPool;
+    vk::DescriptorPool defaultDescriptorPool;
 
   protected:
     friend struct VkPipeline;

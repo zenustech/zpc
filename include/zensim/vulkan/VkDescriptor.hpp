@@ -38,12 +38,12 @@ namespace zs {
   };
 
   struct DescriptorPool {
-    DescriptorPool(VulkanContext& ctx) noexcept : ctx{ctx}, descriptorPool{VK_NULL_HANDLE} {}
+    DescriptorPool(VulkanContext& ctx) noexcept : pctx{&ctx}, descriptorPool{VK_NULL_HANDLE} {}
     DescriptorPool(VulkanContext& ctx, const std::vector<vk::DescriptorPoolSize>& poolSizes,
                    u32 maxSets = 1000,
                    vk::DescriptorPoolCreateFlags poolFlags
                    = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
-        : ctx{ctx} {
+        : pctx{&ctx} {
       descriptorPool = ctx.device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
                                                            .setPoolSizeCount(poolSizes.size())
                                                            .setPPoolSizes(poolSizes.data())
@@ -51,21 +51,29 @@ namespace zs {
                                                            .setFlags(poolFlags),
                                                        nullptr, ctx.dispatcher);
     }
-    DescriptorPool(DescriptorPool&& o) noexcept : ctx{o.ctx}, descriptorPool{o.descriptorPool} {
+    DescriptorPool(const DescriptorPool& o) = delete;
+    DescriptorPool(DescriptorPool&& o) noexcept : pctx{o.pctx}, descriptorPool{o.descriptorPool} {
       o.descriptorPool = VK_NULL_HANDLE;
     }
+    DescriptorPool& operator=(const DescriptorPool& o) = delete;
+    DescriptorPool& operator=(DescriptorPool&& o) noexcept {
+      pctx = o.pctx;
+      descriptorPool = o.descriptorPool;
+      o.descriptorPool = VK_NULL_HANDLE;
+      return *this;
+    }
     ~DescriptorPool() {
-      ctx.device.resetDescriptorPool(descriptorPool, vk::DescriptorPoolResetFlags{},
-                                     ctx.dispatcher);
-      ctx.device.destroyDescriptorPool(descriptorPool, nullptr, ctx.dispatcher);
+      pctx->device.resetDescriptorPool(descriptorPool, vk::DescriptorPoolResetFlags{},
+                                       pctx->dispatcher);
+      pctx->device.destroyDescriptorPool(descriptorPool, nullptr, pctx->dispatcher);
     }
 
     // should not delete this then acquire again for same usage
     void acquireSet(vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet& set) const {
-      set = ctx.device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{}
-                                                  .setDescriptorPool(descriptorPool)
-                                                  .setPSetLayouts(&descriptorSetLayout)
-                                                  .setDescriptorSetCount(1))[0];
+      set = pctx->device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{}
+                                                    .setDescriptorPool(descriptorPool)
+                                                    .setPSetLayouts(&descriptorSetLayout)
+                                                    .setDescriptorSetCount(1))[0];
       /// @note from lve
       // Might want to create a "DescriptorPoolManager" class that handles this case, and builds
       // a new pool whenever an old pool fills up. But this is beyond our current scope
@@ -77,15 +85,14 @@ namespace zs {
   protected:
     friend struct VulkanContext;
 
-    VulkanContext& ctx;
+    VulkanContext* pctx{nullptr};
     vk::DescriptorPool descriptorPool;
   };
 
   /// @ref little vulkan engine
   struct DescriptorWriter {
-    DescriptorWriter(VulkanContext& ctx, DescriptorSetLayout& setLayout,
-                     DescriptorPool& pool) noexcept
-        : ctx{ctx}, setLayout{setLayout}, pool{pool} {}
+    DescriptorWriter(VulkanContext& ctx, DescriptorSetLayout& setLayout) noexcept
+        : ctx{ctx}, setLayout{setLayout} {}
 
     DescriptorWriter& writeBuffer(u32 binding, vk::DescriptorBufferInfo* bufferInfo) {
       if (setLayout.bindings.count(binding) != 1)
@@ -133,7 +140,6 @@ namespace zs {
 
     VulkanContext& ctx;
     DescriptorSetLayout& setLayout;
-    DescriptorPool& pool;
     std::vector<vk::WriteDescriptorSet> writes;
   };
 

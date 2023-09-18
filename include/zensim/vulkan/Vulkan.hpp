@@ -62,6 +62,12 @@ namespace zs {
 
     std::vector<vk::Image> getImages() const { return images; }
     u32 imageCount() const { return images.size(); }
+    vk::Extent2D getExtent() const noexcept { return extent; }
+    vk::Format getColorFormat() const noexcept { return colorFormat; }
+    vk::Format getDepthFormat() const noexcept { return depthFormat; }
+    vk::PresentModeKHR getPresentMode() const noexcept { return presentMode; }
+    vk::ColorSpaceKHR getImageColorSpace() const noexcept { return imageColorSpace; }
+
     u32 acquireNextImage();
     void nextFrame() { frameIndex = (frameIndex + 1) % num_buffered_frames; }
     RenderPass getRenderPass();
@@ -95,6 +101,8 @@ namespace zs {
     vk::SwapchainKHR swapchain;
     vk::Extent2D extent;
     vk::Format colorFormat, depthFormat;
+    vk::ColorSpaceKHR imageColorSpace;
+    vk::PresentModeKHR presentMode;
     ///
     std::vector<vk::Image> images;
     std::vector<vk::ImageView> imageViews;

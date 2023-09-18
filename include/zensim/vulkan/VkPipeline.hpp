@@ -19,21 +19,27 @@ namespace zs {
         : ctx{ctx},
           vertexShader{VK_NULL_HANDLE},
           fragShader{VK_NULL_HANDLE},
-          pipeline{VK_NULL_HANDLE} {}
+          pipeline{VK_NULL_HANDLE},
+          layout{VK_NULL_HANDLE} {}
     Pipeline(Pipeline&& o) noexcept
-        : ctx{o.ctx}, vertexShader{o.vertexShader}, fragShader{o.fragShader}, pipeline{o.pipeline} {
+        : ctx{o.ctx},
+          vertexShader{o.vertexShader},
+          fragShader{o.fragShader},
+          pipeline{o.pipeline},
+          layout{o.layout} {
       o.vertexShader = VK_NULL_HANDLE;
       o.fragShader = VK_NULL_HANDLE;
       o.pipeline = VK_NULL_HANDLE;
+      o.layout = VK_NULL_HANDLE;
     }
     ~Pipeline() {
-      ctx.device.destroyShaderModule(vertexShader, nullptr, ctx.dispatcher);
-      ctx.device.destroyShaderModule(fragShader, nullptr, ctx.dispatcher);
       ctx.device.destroyPipeline(pipeline, nullptr, ctx.dispatcher);
+      ctx.device.destroyPipelineLayout(layout, nullptr, ctx.dispatcher);
     }
 
     vk::Pipeline operator*() const { return pipeline; }
     operator vk::Pipeline() const { return pipeline; }
+    operator vk::PipelineLayout() const { return layout; }
 
   protected:
     friend struct VulkanContext;
@@ -41,7 +47,9 @@ namespace zs {
 
     VulkanContext& ctx;
     vk::ShaderModule vertexShader, fragShader;
+    /// @note manage the following constructs
     vk::Pipeline pipeline;
+    vk::PipelineLayout layout;
   };
 
   struct PipelineBuilder {
@@ -61,7 +69,6 @@ namespace zs {
           dynamicStateEnables{std::move(o.dynamicStateEnables)},
           pushConstantRanges{std::move(pushConstantRanges)},
           descriptorSetLayouts{std::move(descriptorSetLayouts)},
-          pipelineLayout{o.pipelineLayout},
           renderPass{o.renderPass},
           subpass{o.subpass} {
       o.reset();
@@ -105,8 +112,6 @@ namespace zs {
       pushConstantRanges.clear();
       descriptorSetLayouts.clear();
       //
-      ctx.device.destroyPipelineLayout(pipelineLayout, nullptr, ctx.dispatcher);
-      pipelineLayout = VK_NULL_HANDLE;
       renderPass = VK_NULL_HANDLE;
       subpass = 0;
     }
@@ -138,7 +143,6 @@ namespace zs {
     std::vector<vk::PushConstantRange> pushConstantRanges;
     std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;  // managed outside
 
-    vk::PipelineLayout pipelineLayout = VK_NULL_HANDLE;  // manage this
     /// render pass
     vk::RenderPass renderPass = VK_NULL_HANDLE;  // managed outside
     u32 subpass = 0;

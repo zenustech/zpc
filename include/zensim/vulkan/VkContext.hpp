@@ -216,6 +216,11 @@ namespace zs {
         if (usage == vk_cmd_usage_e::single_use)
           pctx->device.freeCommandBuffers(singleUsePool, count, cmds, pctx->dispatcher);
       }
+
+      void submit(const vk::CommandBuffer &cmd, vk::Fence fence,
+                  vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {
+        submit(1, &cmd, fence, usage);
+      }
     };
 
     PoolFamily &pools(vk_queue_e e = vk_queue_e::graphics) {

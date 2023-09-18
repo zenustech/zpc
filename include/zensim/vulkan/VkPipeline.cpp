@@ -84,7 +84,6 @@ namespace zs {
     pushConstantRanges.clear();
     descriptorSetLayouts.clear();
 
-    pipelineLayout = VK_NULL_HANDLE;
     renderPass = VK_NULL_HANDLE;
     subpass = 0;
   }
@@ -96,13 +95,14 @@ namespace zs {
     if (renderPass == VK_NULL_HANDLE) throw std::runtime_error("renderpass not yet specified.");
 
     // pipeline layout
-    pipelineLayout
+    auto pipelineLayout
         = ctx.device.createPipelineLayout(vk::PipelineLayoutCreateInfo{}
                                               .setSetLayoutCount(descriptorSetLayouts.size())
                                               .setPSetLayouts(descriptorSetLayouts.data())
                                               .setPushConstantRangeCount(pushConstantRanges.size())
                                               .setPPushConstantRanges(pushConstantRanges.data()),
                                           nullptr, ctx.dispatcher);
+    ret.layout = pipelineLayout;
 
     // shaders
     std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;

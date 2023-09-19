@@ -45,7 +45,7 @@ namespace zs {
     vk::PresentModeKHR getPresentMode() const noexcept { return presentMode; }
     vk::ColorSpaceKHR getImageColorSpace() const noexcept { return imageColorSpace; }
 
-    u32 acquireNextImage();
+    vk::Result acquireNextImage(u32 &imageId);
     u32 getCurrentFrame() const noexcept { return frameIndex; }
     u32 nextFrame() noexcept { return frameIndex = (frameIndex + 1) % num_buffered_frames; }
     void initFramebuffersFor(vk::RenderPass renderPass);

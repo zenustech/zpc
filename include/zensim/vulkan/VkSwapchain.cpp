@@ -13,7 +13,7 @@ namespace zs {
   /// swapchain builder
   ///
   ///
-  u32 Swapchain::acquireNextImage() {
+  vk::Result Swapchain::acquireNextImage(u32& imageId) {
     if (vk::Result res = ctx.device.waitForFences(
             1, &currentFence(), VK_TRUE, detail::deduce_numeric_max<u64>(), ctx.dispatcher);
         res != vk::Result::eSuccess)
@@ -24,11 +24,15 @@ namespace zs {
         swapchain, detail::deduce_numeric_max<u64>(),
         currentWriteSemaphore(),  // must be a not signaled semaphore
         VK_NULL_HANDLE, ctx.dispatcher);
+    imageId = res.value;
+    return res.result;
+#if 0
     if (res.result != vk::Result::eSuccess)
       throw std::runtime_error(fmt::format(
           "[acquireNextImage]: Failed to acquire next image at frame [{}] with result [{}]\n",
           frameIndex, res.result));
     return res.value;
+#endif
   }
   RenderPass Swapchain::getRenderPass() {
     RenderPass ret{ctx};

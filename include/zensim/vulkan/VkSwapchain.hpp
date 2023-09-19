@@ -48,8 +48,10 @@ namespace zs {
     u32 acquireNextImage();
     u32 getCurrentFrame() const noexcept { return frameIndex; }
     u32 nextFrame() noexcept { return frameIndex = (frameIndex + 1) % num_buffered_frames; }
-    RenderPass getRenderPass();
     void initFramebuffersFor(vk::RenderPass renderPass);
+
+    RenderPass getRenderPass();
+    Framebuffer &frameBuffer(u32 imageIndex) { return frameBuffers[imageIndex]; }
 
     vk::Fence &imageFence(u32 id) noexcept { return imageFences[id]; }
     vk::Fence &currentFence() noexcept { return fences[frameIndex]; }

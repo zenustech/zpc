@@ -8,7 +8,7 @@ namespace zs {
     static constexpr u32 num_buffered_frames = 3;
 
     Swapchain() = delete;
-    Swapchain(VulkanContext &ctx) : ctx{ctx}, swapchain{} {}
+    Swapchain(VulkanContext &ctx) : ctx{ctx}, swapchain{VK_NULL_HANDLE} {}
     Swapchain(const Swapchain &) = delete;
     Swapchain(Swapchain &&o) noexcept
         : ctx{o.ctx},

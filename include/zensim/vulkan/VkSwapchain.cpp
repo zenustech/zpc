@@ -210,7 +210,7 @@ namespace zs {
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
 
     /// reset previous resources (if any)
-    if (ci.oldSwapchain) ctx.device.destroySwapchainKHR(ci.oldSwapchain, nullptr, ctx.dispatcher);
+    ctx.device.destroySwapchainKHR(ci.oldSwapchain, nullptr, ctx.dispatcher);
 
     /// construct current swapchain
     obj.imageViews.resize(obj.images.size());

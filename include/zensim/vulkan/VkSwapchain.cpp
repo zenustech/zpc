@@ -15,14 +15,14 @@ namespace zs {
   ///
   u32 Swapchain::acquireNextImage() {
     if (vk::Result res = ctx.device.waitForFences(
-            1, &readFences[frameIndex], VK_TRUE, detail::deduce_numeric_max<u64>(), ctx.dispatcher);
+            1, &currentFence(), VK_TRUE, detail::deduce_numeric_max<u64>(), ctx.dispatcher);
         res != vk::Result::eSuccess)
       throw std::runtime_error(fmt::format(
           "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
           frameIndex, res));
     auto res = ctx.device.acquireNextImageKHR(
         swapchain, detail::deduce_numeric_max<u64>(),
-        readSemaphores[frameIndex],  // must be a not signaled semaphore
+        currentWriteSemaphore(),  // must be a not signaled semaphore
         VK_NULL_HANDLE, ctx.dispatcher);
     if (res.result != vk::Result::eSuccess)
       throw std::runtime_error(fmt::format(
@@ -236,19 +236,20 @@ namespace zs {
     }
 
     /// sync primitives
+    obj.imageFences.resize(obj.images.size(), VK_NULL_HANDLE);
     if (obj.readSemaphores.size() != num_buffered_frames) {
       obj.readSemaphores.resize(num_buffered_frames);
       obj.writeSemaphores.resize(num_buffered_frames);
-      obj.readFences.resize(num_buffered_frames);
-      obj.writeFences.resize(num_buffered_frames);
+      obj.fences.resize(num_buffered_frames);
       for (int i = 0; i != num_buffered_frames; ++i) {
         // semaphores
         obj.readSemaphores[i]
             = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
         obj.writeSemaphores[i]
             = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
-        obj.readFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
-        obj.writeFences[i] = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
+        obj.fences[i] = ctx.device.createFence(
+            vk::FenceCreateInfo{}.setFlags(vk::FenceCreateFlagBits::eSignaled), nullptr,
+            ctx.dispatcher);
       }
     }
   }

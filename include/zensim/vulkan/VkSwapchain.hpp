@@ -26,8 +26,8 @@ namespace zs {
           // sync prims
           readSemaphores{std::move(o.readSemaphores)},
           writeSemaphores{std::move(o.writeSemaphores)},
-          readFences{std::move(o.readFences)},
-          writeFences{std::move(o.writeFences)},
+          fences{std::move(o.fences)},
+          imageFences{std::move(o.imageFences)},
           frameIndex(o.frameIndex) {
       o.swapchain = VK_NULL_HANDLE;
       o.frameIndex = 0;
@@ -46,9 +46,15 @@ namespace zs {
     vk::ColorSpaceKHR getImageColorSpace() const noexcept { return imageColorSpace; }
 
     u32 acquireNextImage();
-    void nextFrame() { frameIndex = (frameIndex + 1) % num_buffered_frames; }
+    u32 getCurrentFrame() const noexcept { return frameIndex; }
+    u32 nextFrame() noexcept { return frameIndex = (frameIndex + 1) % num_buffered_frames; }
     RenderPass getRenderPass();
     void initFramebuffersFor(vk::RenderPass renderPass);
+
+    vk::Fence &imageFence(u32 id) noexcept { return imageFences[id]; }
+    vk::Fence &currentFence() noexcept { return fences[frameIndex]; }
+    vk::Semaphore &currentReadSemaphore() noexcept { return readSemaphores[frameIndex]; }
+    vk::Semaphore &currentWriteSemaphore() noexcept { return writeSemaphores[frameIndex]; }
 
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }
@@ -57,6 +63,7 @@ namespace zs {
   protected:
     void resetAux() {
       images.clear();
+
       for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
       imageViews.clear();
       depthBuffers.clear();
@@ -64,14 +71,14 @@ namespace zs {
       resetSyncPrimitives();
     }
     void resetSyncPrimitives() {
+      imageFences.clear();
+
       for (auto &s : readSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
       readSemaphores.clear();
       for (auto &s : writeSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
       writeSemaphores.clear();
-      for (auto &f : readFences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
-      readFences.clear();
-      for (auto &f : writeFences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
-      writeFences.clear();
+      for (auto &f : fences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
+      fences.clear();
     }
     friend struct SwapchainBuilder;
 
@@ -88,10 +95,10 @@ namespace zs {
     std::vector<Framebuffer> frameBuffers;  // initialized later
     ///
     // littleVulkanEngine-alike setup
-    std::vector<vk::Semaphore> readSemaphores;
-    std::vector<vk::Semaphore> writeSemaphores;
-    std::vector<vk::Fence> readFences;
-    std::vector<vk::Fence> writeFences;
+    std::vector<vk::Semaphore> readSemaphores;   // ready to read
+    std::vector<vk::Semaphore> writeSemaphores;  // ready to write
+    std::vector<vk::Fence> fences;               // ready to submit
+    std::vector<vk::Fence> imageFences;          // directed to the above 'fences' objects
     int frameIndex;
   };
 

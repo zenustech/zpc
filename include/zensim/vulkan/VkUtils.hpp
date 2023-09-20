@@ -11,7 +11,7 @@ namespace zs {
 
   /// @ref little vulkan engine
   inline std::vector<char> read_binary_file(std::string_view filePath) {
-    std::ifstream file(filePath.data(), std::ios::ate | std::ios::binary);
+    std::ifstream file(filePath.data(), std::ios::ate | std::ios::binary | std::ios::in);
     if (!file.is_open())
       throw std::runtime_error(std::string("failed to open file") + filePath.data());
     size_t fileSize = static_cast<size_t>(file.tellg());

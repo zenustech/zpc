@@ -1,4 +1,3 @@
-#pragma once
 #include "zensim/vulkan/VkPipeline.hpp"
 
 #include <vulkan/vulkan_core.h>

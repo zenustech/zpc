@@ -368,8 +368,14 @@ namespace zs {
     return ret;
   }
   ShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) {
+    if (code.size() & (sizeof(u32) - 1))
+      throw std::runtime_error(
+          "the number of bytes of the spirv code should be a multiple of u32 type size.");
+    return createShaderModule(reinterpret_cast<const u32*>(code.data()), code.size() / sizeof(u32));
+  }
+  ShaderModule VulkanContext::createShaderModule(const u32* code, size_t size) {
     ShaderModule ret{*this};
-    vk::ShaderModuleCreateInfo smCI{{}, code.size(), reinterpret_cast<const u32*>(code.data())};
+    vk::ShaderModuleCreateInfo smCI{{}, size * sizeof(u32), code};
     ret.shaderModule = device.createShaderModule(smCI, nullptr, dispatcher);
     return ret;
   }

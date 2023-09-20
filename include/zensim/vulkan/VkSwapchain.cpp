@@ -184,6 +184,16 @@ namespace zs {
 
     ci.imageSharingMode = vk::SharingMode::eExclusive;
   }
+  void SwapchainBuilder::resize(Swapchain& obj, u32 width, u32 height) {
+    surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(surface, ctx.dispatcher);
+    width = std::clamp(width, surfCapabilities.minImageExtent.width,
+                       surfCapabilities.maxImageExtent.width);
+    height = std::clamp(height, surfCapabilities.minImageExtent.height,
+                        surfCapabilities.maxImageExtent.height);
+    ci.imageExtent = vk::Extent2D{width, height};
+
+    build(obj);
+  }
   SwapchainBuilder& SwapchainBuilder::presentMode(vk::PresentModeKHR mode) {
     if (mode == ci.presentMode) return *this;
     for (auto& m : surfPresentModes)
@@ -199,12 +209,14 @@ namespace zs {
     // kept the previously built swapchain for this
     ci.oldSwapchain = obj.swapchain;
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
+
     obj.frameIndex = 0;
+
     obj.extent = ci.imageExtent;
     obj.colorFormat = ci.imageFormat;
+    obj.imageColorSpace = ci.imageColorSpace;
     obj.depthFormat = swapchainDepthFormat;
     obj.presentMode = ci.presentMode;
-    obj.imageColorSpace = ci.imageColorSpace;
 
     obj.resetAux();
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);

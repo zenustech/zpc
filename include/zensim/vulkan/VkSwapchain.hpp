@@ -66,10 +66,10 @@ namespace zs {
     void resetAux() {
       images.clear();
 
+      frameBuffers.clear();
       for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
       imageViews.clear();
       depthBuffers.clear();
-      frameBuffers.clear();
       resetSyncPrimitives();
     }
     void resetSyncPrimitives() {
@@ -138,15 +138,7 @@ namespace zs {
       build(obj);
       return obj;
     }
-    void resize(Swapchain &obj, u32 width, u32 height) {
-      width = std::clamp(width, surfCapabilities.minImageExtent.width,
-                         surfCapabilities.maxImageExtent.width);
-      height = std::clamp(height, surfCapabilities.minImageExtent.height,
-                          surfCapabilities.maxImageExtent.height);
-      ci.imageExtent = vk::Extent2D{width, height};
-
-      build(obj);
-    }
+    void resize(Swapchain &obj, u32 width, u32 height);
 
   private:
     VulkanContext &ctx;

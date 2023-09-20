@@ -206,7 +206,7 @@ namespace zs {
     poolSizes.push_back(uniformPoolSize);
 
     auto imageSamplerPoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
-        vk::DescriptorType::eCombinedImageSampler);
+        vk::DescriptorType::eSampledImage);  // eCombinedImageSampler
     poolSizes.push_back(imageSamplerPoolSize);
 
     auto storagePoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(

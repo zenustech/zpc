@@ -8,6 +8,13 @@
 
 namespace zs {
 
+  PipelineBuilder& PipelineBuilder::setDescriptorSetLayouts(
+      const std::map<u32, DescriptorSetLayout>& layouts, bool reset) {
+    if (reset) descriptorSetLayouts.clear();
+    for (const auto& layout : layouts) descriptorSetLayouts[layout.first] = layout.second;
+    return *this;
+  }
+
   void PipelineBuilder::default_pipeline_configs() {
     shaders.clear();
     bindingDescriptions.clear();
@@ -94,10 +101,15 @@ namespace zs {
     if (renderPass == VK_NULL_HANDLE) throw std::runtime_error("renderpass not yet specified.");
 
     // pipeline layout
+    u32 nSets = descriptorSetLayouts.size();
+    std::vector<vk::DescriptorSetLayout> descrSetLayouts(nSets);
+    for (const auto& layout : descriptorSetLayouts) {
+      if (layout.first < nSets) descrSetLayouts[layout.first] = layout.second;
+    }
     auto pipelineLayout
         = ctx.device.createPipelineLayout(vk::PipelineLayoutCreateInfo{}
-                                              .setSetLayoutCount(descriptorSetLayouts.size())
-                                              .setPSetLayouts(descriptorSetLayouts.data())
+                                              .setSetLayoutCount(descrSetLayouts.size())
+                                              .setPSetLayouts(descrSetLayouts.data())
                                               .setPushConstantRangeCount(pushConstantRanges.size())
                                               .setPPushConstantRanges(pushConstantRanges.data()),
                                           nullptr, ctx.dispatcher);

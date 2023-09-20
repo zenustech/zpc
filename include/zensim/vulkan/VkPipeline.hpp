@@ -2,6 +2,7 @@
 #include <map>
 
 #include "zensim/vulkan/VkContext.hpp"
+#include "zensim/vulkan/VkDescriptor.hpp"
 
 namespace zs {
 
@@ -100,10 +101,15 @@ namespace zs {
       shaders[stage] = shaderModule;
       return *this;
     }
-    PipelineBuilder& addDescriptorSetLayout(vk::DescriptorSetLayout descrSetLayout) {
-      descriptorSetLayouts.push_back(descrSetLayout);
+    PipelineBuilder& addDescriptorSetLayout(vk::DescriptorSetLayout descrSetLayout, int no = -1) {
+      if (no == -1) {
+        descriptorSetLayouts[descriptorSetLayouts.size()] = descrSetLayout;
+      } else
+        descriptorSetLayouts[no] = descrSetLayout;
       return *this;
     }
+    PipelineBuilder& setDescriptorSetLayouts(const std::map<u32, DescriptorSetLayout>& layouts,
+                                             bool reset = false);
     PipelineBuilder& setRenderPass(vk::RenderPass rp) {
       this->renderPass = rp;
       return *this;
@@ -152,8 +158,8 @@ namespace zs {
     std::vector<vk::DynamicState> dynamicStateEnables;
 
     // resources (descriptors/ push constants)
-    std::vector<vk::PushConstantRange> pushConstantRanges;
-    std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;  // managed outside
+    std::vector<vk::PushConstantRange> pushConstantRanges;        // at most one range
+    std::map<u32, vk::DescriptorSetLayout> descriptorSetLayouts;  // managed outside
 
     /// render pass
     vk::RenderPass renderPass = VK_NULL_HANDLE;  // managed outside

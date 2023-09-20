@@ -185,6 +185,8 @@ namespace zs {
     ci.imageSharingMode = vk::SharingMode::eExclusive;
   }
   void SwapchainBuilder::resize(Swapchain& obj, u32 width, u32 height) {
+    /// @note credits
+    /// https://www.reddit.com/r/vulkan/comments/cc3edr/swapchain_recreation_repeatedly_returns_vk_error/
     surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(surface, ctx.dispatcher);
     width = std::clamp(width, surfCapabilities.minImageExtent.width,
                        surfCapabilities.maxImageExtent.width);

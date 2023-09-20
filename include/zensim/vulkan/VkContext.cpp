@@ -377,6 +377,7 @@ namespace zs {
     ShaderModule ret{*this};
     vk::ShaderModuleCreateInfo smCI{{}, size * sizeof(u32), code};
     ret.shaderModule = device.createShaderModule(smCI, nullptr, dispatcher);
+    ret.analyzeLayout(code, size);
     return ret;
   }
 

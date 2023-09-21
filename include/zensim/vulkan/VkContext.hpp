@@ -145,8 +145,10 @@ namespace zs {
                                   vk::RenderPass renderPass);
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
                                         u32 maxSets = 1000);
-    ShaderModule createShaderModule(const std::vector<char> &code);
-    ShaderModule createShaderModule(const u32 *code, size_t size);
+    ShaderModule createShaderModule(const std::vector<char> &code,
+                                    vk::ShaderStageFlagBits stageFlag);
+    ShaderModule createShaderModule(const u32 *code, size_t size,
+                                    vk::ShaderStageFlagBits stageFlag);
 
     int devid;
     vk::PhysicalDevice physicalDevice;

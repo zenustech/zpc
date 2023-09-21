@@ -367,17 +367,22 @@ namespace zs {
     ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
     return ret;
   }
-  ShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) {
+  ShaderModule VulkanContext::createShaderModule(const std::vector<char>& code,
+                                                 vk::ShaderStageFlagBits stageFlag) {
     if (code.size() & (sizeof(u32) - 1))
       throw std::runtime_error(
           "the number of bytes of the spirv code should be a multiple of u32 type size.");
-    return createShaderModule(reinterpret_cast<const u32*>(code.data()), code.size() / sizeof(u32));
+    return createShaderModule(reinterpret_cast<const u32*>(code.data()), code.size() / sizeof(u32),
+                              stageFlag);
   }
-  ShaderModule VulkanContext::createShaderModule(const u32* code, size_t size) {
+  ShaderModule VulkanContext::createShaderModule(const u32* code, size_t size,
+                                                 vk::ShaderStageFlagBits stageFlag) {
     ShaderModule ret{*this};
     vk::ShaderModuleCreateInfo smCI{{}, size * sizeof(u32), code};
     ret.shaderModule = device.createShaderModule(smCI, nullptr, dispatcher);
+    ret.stageFlag = stageFlag;
     ret.analyzeLayout(code, size);
+    ret.initializeDescriptorSetLayouts();
     return ret;
   }
 

@@ -103,12 +103,12 @@ namespace zs {
         [](void const *data) { delete static_cast<spirv_cross::ShaderResources const *>(data); });
   }
 
-  void ShaderModule::initializeDescriptorSetLayouts(vk::ShaderStageFlags stageFlags) {
+  void ShaderModule::initializeDescriptorSetLayouts() {
     setLayouts.clear();
     auto &glsl = *static_cast<spirv_cross::CompilerGLSL *>(compiled.get());
     auto &resources_ = *static_cast<spirv_cross::ShaderResources *>(resources.get());
     auto generateDescriptors
-        = [&glsl, stageFlags, this](const auto &resources, vk::DescriptorType descriptorType) {
+        = [&glsl, this](const auto &resources, vk::DescriptorType descriptorType) {
             for (auto &resource : resources) {
               u32 set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
               u32 binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
@@ -117,7 +117,7 @@ namespace zs {
               fmt::print("{} at set = {}, binding = {}, location = {}\n", resource.name.c_str(),
                          set, binding, location);
               setLayouts.emplace(
-                  set, ctx.setlayout().addBinding(binding, descriptorType, stageFlags, 1).build());
+                  set, ctx.setlayout().addBinding(binding, descriptorType, stageFlag, 1).build());
             }
           };
     generateDescriptors(resources_.uniform_buffers, vk::DescriptorType::eUniformBufferDynamic);

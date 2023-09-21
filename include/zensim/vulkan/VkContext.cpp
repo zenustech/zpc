@@ -102,7 +102,7 @@ namespace zs {
     std::vector<vk::DeviceQueueCreateInfo> dqCIs(uniqueQueueFamilyIndices.size());
     float priority = 1.f;
     {
-      int i;
+      u32 i = 0;
       for (auto index : uniqueQueueFamilyIndices) {
         auto& dqCI = dqCIs[i];
         this->uniqueQueueFamilyIndices.push_back(index);

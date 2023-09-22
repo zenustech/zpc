@@ -122,7 +122,8 @@ namespace zs {
     std::vector<const char*> expectedExtensions{
         "VK_KHR_ray_tracing_pipeline",     "VK_KHR_acceleration_structure",
         "VK_EXT_descriptor_indexing",      "VK_KHR_buffer_device_address",
-        "VK_KHR_deferred_host_operations", "VK_KHR_swapchain"};
+        "VK_KHR_deferred_host_operations", "VK_KHR_swapchain",
+        "VK_KHR_driver_properties"};
     std::vector<const char*> enabledExtensions(0);
     // pick up supported extensions
     for (int i = 0; i != expectedExtensions.size(); ++i) {

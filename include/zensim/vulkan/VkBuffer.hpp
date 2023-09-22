@@ -83,6 +83,45 @@ namespace zs {
       };
     }
     void* mappedAddress() const { return mapped; }
+
+    /// @ref sascha willems Vulkan examples
+    /**
+     * Flush a memory range of the buffer to make it visible to the device
+     *
+     * @note Only required for non-coherent memory
+     *
+     * @param size (Optional) Size of the memory range to flush. Pass VK_WHOLE_SIZE to flush the
+     * complete buffer range.
+     * @param offset (Optional) Byte offset from beginning
+     *
+     * @return VkResult of the flush call
+     */
+    void flush(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) {
+      vk::MappedMemoryRange mappedRange{};
+      mappedRange.memory = *pmem;
+      mappedRange.offset = offset;
+      mappedRange.size = size;
+      return ctx.device.flushMappedMemoryRanges({mappedRange}, ctx.dispatcher);
+    }
+
+    /**
+     * Invalidate a memory range of the buffer to make it visible to the host
+     *
+     * @note Only required for non-coherent memory
+     *
+     * @param size (Optional) Size of the memory range to invalidate. Pass VK_WHOLE_SIZE to
+     * invalidate the complete buffer range.
+     * @param offset (Optional) Byte offset from beginning
+     *
+     * @return VkResult of the invalidate call
+     */
+    void invalidate(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) {
+      vk::MappedMemoryRange mappedRange{};
+      mappedRange.memory = *pmem;
+      mappedRange.offset = offset;
+      mappedRange.size = size;
+      return ctx.device.invalidateMappedMemoryRanges({mappedRange}, ctx.dispatcher);
+    }
 #if 0
     // vk::DescriptorBufferInfo descriptor();
 

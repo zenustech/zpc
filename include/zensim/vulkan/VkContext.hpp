@@ -186,7 +186,7 @@ namespace zs {
       vk::Queue queue;
       VulkanContext *pctx{nullptr};
 
-      vk::CommandPool pool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) {
+      vk::CommandPool cmdpool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) {
         switch (usage) {
           case vk_cmd_usage_e::reuse:
             return reusePool;
@@ -205,7 +205,7 @@ namespace zs {
                                             const vk::CommandBufferInheritanceInfo *pInheritanceInfo
                                             = nullptr,
                                             vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {
-        auto cmdPool = pool(usage);
+        auto cmdPool = cmdpool(usage);
         vk::CommandBufferUsageFlags usageFlags{};
         if (usage == vk_cmd_usage_e::single_use || usage == vk_cmd_usage_e::reset)
           usageFlags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
@@ -244,7 +244,7 @@ namespace zs {
       return poolFamilies[ctx.queueFamilyMaps[e]];
     }
     void resetCmds(vk_cmd_usage_e usage, vk_queue_e e = vk_queue_e::graphics) {
-      ctx.device.resetCommandPool(pools(e).pool(usage), {}, ctx.dispatcher);
+      ctx.device.resetCommandPool(pools(e).cmdpool(usage), {}, ctx.dispatcher);
     }
 
     std::vector<PoolFamily> poolFamilies;

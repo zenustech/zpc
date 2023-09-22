@@ -48,7 +48,7 @@ namespace zs {
                             .setPolygonMode(vk::PolygonMode::eFill)
                             .setLineWidth(1.f)
                             .setCullMode(vk::CullModeFlagBits::eNone)
-                            .setFrontFace(vk::FrontFace::eClockwise)
+                            .setFrontFace(vk::FrontFace::eCounterClockwise)
                             .setDepthBiasEnable(false)
                             // optional
                             .setDepthBiasConstantFactor(0.f)
@@ -99,7 +99,7 @@ namespace zs {
 
     dynamicStateEnables = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 
-    pushConstantRanges.clear();
+    pushConstantRange.reset();
     descriptorSetLayouts.clear();
 
     renderPass = VK_NULL_HANDLE;
@@ -118,13 +118,13 @@ namespace zs {
     for (const auto& layout : descriptorSetLayouts) {
       if (layout.first < nSets) descrSetLayouts[layout.first] = layout.second;
     }
+    auto pipelineLayoutCI = vk::PipelineLayoutCreateInfo{}
+                                .setSetLayoutCount(descrSetLayouts.size())
+                                .setPSetLayouts(descrSetLayouts.data());
+    if (pushConstantRange.has_value())
+      pipelineLayoutCI.setPushConstantRangeCount(1).setPPushConstantRanges(&(*pushConstantRange));
     auto pipelineLayout
-        = ctx.device.createPipelineLayout(vk::PipelineLayoutCreateInfo{}
-                                              .setSetLayoutCount(descrSetLayouts.size())
-                                              .setPSetLayouts(descrSetLayouts.data())
-                                              .setPushConstantRangeCount(pushConstantRanges.size())
-                                              .setPPushConstantRanges(pushConstantRanges.data()),
-                                          nullptr, ctx.dispatcher);
+        = ctx.device.createPipelineLayout(pipelineLayoutCI, nullptr, ctx.dispatcher);
     ret.layout = pipelineLayout;
 
     // shaders
@@ -159,10 +159,11 @@ namespace zs {
         // this requirement guarantee no padding bits inside
         if (attribInfo.alignmentBits != alignment) {
           if (alignment != 0)
-            throw std::runtime_error(fmt::format(
-                "[pipeline building location {} attribute alignment] expect {}-bits alignment, "
-                "encountered {}-bits\n",
-                location, alignment, attribInfo.alignmentBits));
+            throw std::runtime_error(
+                fmt::format("[pipeline building location {} attribute alignment] expect "
+                            "{}-bits alignment, "
+                            "encountered {}-bits\n",
+                            location, alignment, attribInfo.alignmentBits));
           alignment = attribInfo.alignmentBits;
         }
 

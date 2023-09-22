@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <optional>
 
 #include "zensim/vulkan/VkContext.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
@@ -69,7 +70,7 @@ namespace zs {
           colorBlendInfo{o.colorBlendInfo},
           depthStencilInfo{o.depthStencilInfo},
           dynamicStateEnables{std::move(o.dynamicStateEnables)},
-          pushConstantRanges{std::move(pushConstantRanges)},
+          pushConstantRange{std::move(pushConstantRange)},
           descriptorSetLayouts{std::move(descriptorSetLayouts)},
           renderPass{o.renderPass},
           subpass{o.subpass} {
@@ -87,7 +88,8 @@ namespace zs {
     PipelineBuilder& setShader(const zs::ShaderModule& shaderModule);
 
     /// @note assume no padding and alignment involved
-    /// @note
+    /// @note if shaders are set through zs::ShaderModule and aos layout assumed, no need to
+    /// explicitly configure input bindings here
     template <typename... ETs> PipelineBuilder& pushInputBinding(wrapt<ETs>...) {  // for aos layout
       constexpr int N = sizeof...(ETs);
       constexpr size_t szs[] = {sizeof(ETs)...};
@@ -121,6 +123,23 @@ namespace zs {
       this->renderPass = rp;
       return *this;
     }
+
+    /// @note provide alternatives for overwrite
+    PipelineBuilder& setPushConstantRange(const vk::PushConstantRange& range) {
+      this->pushConstantRange = range;
+      return *this;
+    }
+    PipelineBuilder& setBindingDescriptions(
+        const std::vector<vk::VertexInputBindingDescription>& bindingDescriptions) {
+      this->bindingDescriptions = bindingDescriptions;
+      return *this;
+    }
+    PipelineBuilder& setAttributeDescriptions(
+        const std::vector<vk::VertexInputAttributeDescription>& attributeDescriptions) {
+      this->attributeDescriptions = attributeDescriptions;
+      return *this;
+    }
+
     //
     void reset() {
       shaders.clear();
@@ -135,7 +154,7 @@ namespace zs {
       colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{};
       depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{};
       dynamicStateEnables.clear();
-      pushConstantRanges.clear();
+      pushConstantRange.reset();
       descriptorSetLayouts.clear();
       //
       renderPass = VK_NULL_HANDLE;
@@ -168,7 +187,7 @@ namespace zs {
     std::vector<vk::DynamicState> dynamicStateEnables;
 
     // resources (descriptors/ push constants)
-    std::vector<vk::PushConstantRange> pushConstantRanges;        // at most one range
+    std::optional<vk::PushConstantRange> pushConstantRange;
     std::map<u32, vk::DescriptorSetLayout> descriptorSetLayouts;  // managed outside
 
     /// render pass

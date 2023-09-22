@@ -58,6 +58,7 @@ namespace zs {
     PipelineBuilder(PipelineBuilder&& o) noexcept
         : ctx{o.ctx},
           shaders{std::move(o.shaders)},
+          inputAttributes{std::move(o.inputAttributes)},
           bindingDescriptions{std::move(o.bindingDescriptions)},
           attributeDescriptions{std::move(o.attributeDescriptions)},
           viewportInfo{o.viewportInfo},
@@ -79,7 +80,14 @@ namespace zs {
     /// default minimum setup
     void default_pipeline_configs();
 
+    PipelineBuilder& setShader(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule) {
+      shaders[stage] = shaderModule;
+      return *this;
+    }
+    PipelineBuilder& setShader(const zs::ShaderModule& shaderModule);
+
     /// @note assume no padding and alignment involved
+    /// @note
     template <typename... ETs> PipelineBuilder& pushInputBinding(wrapt<ETs>...) {  // for aos layout
       constexpr int N = sizeof...(ETs);
       constexpr size_t szs[] = {sizeof(ETs)...};
@@ -97,10 +105,9 @@ namespace zs {
                                        /*stride*/ (u32)offset, vk::VertexInputRate::eVertex);
       return *this;
     }
-    PipelineBuilder& setShader(vk::ShaderStageFlagBits stage, vk::ShaderModule shaderModule) {
-      shaders[stage] = shaderModule;
-      return *this;
-    }
+
+    /// @note if shaders are set through zs::ShaderModule, no need to explicitly configure
+    /// descriptor set layouts anymore
     PipelineBuilder& addDescriptorSetLayout(vk::DescriptorSetLayout descrSetLayout, int no = -1) {
       if (no == -1) {
         descriptorSetLayouts[descriptorSetLayouts.size()] = descrSetLayout;
@@ -117,6 +124,7 @@ namespace zs {
     //
     void reset() {
       shaders.clear();
+      inputAttributes.clear();
       bindingDescriptions.clear();
       attributeDescriptions.clear();
       viewportInfo = vk::PipelineViewportStateCreateInfo{};
@@ -145,6 +153,8 @@ namespace zs {
     std::map<vk::ShaderStageFlagBits, vk::ShaderModule> shaders;  // managed outside
     /// fixed function states
     // vertex input state
+    /// @note structure <binding, attributes (<location, <alignment bits, size, format, dims>>)>
+    std::map<u32, AttributeDescriptor> inputAttributes;
     std::vector<vk::VertexInputBindingDescription> bindingDescriptions{};
     std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{};
     vk::PipelineViewportStateCreateInfo viewportInfo;

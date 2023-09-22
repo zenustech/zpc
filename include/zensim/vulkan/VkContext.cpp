@@ -381,8 +381,10 @@ namespace zs {
     vk::ShaderModuleCreateInfo smCI{{}, size * sizeof(u32), code};
     ret.shaderModule = device.createShaderModule(smCI, nullptr, dispatcher);
     ret.stageFlag = stageFlag;
+    /// @note strictly call in this order
     ret.analyzeLayout(code, size);
     ret.initializeDescriptorSetLayouts();
+    ret.initializeInputAttributes();
     return ret;
   }
 

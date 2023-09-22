@@ -2,12 +2,23 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <type_traits>
+
 #include "zensim/vulkan/VkBuffer.hpp"
 #include "zensim/vulkan/VkImage.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
+#include "zensim/vulkan/VkShader.hpp"
 
 namespace zs {
 
+  PipelineBuilder& PipelineBuilder::setShader(const zs::ShaderModule& shaderModule) {
+    auto stage = shaderModule.getStage();
+    setShader(stage, shaderModule);
+    setDescriptorSetLayouts(shaderModule.layouts());
+    if (stage == vk::ShaderStageFlagBits::eVertex)
+      inputAttributes = shaderModule.getInputAttributes();
+    return *this;
+  }
   PipelineBuilder& PipelineBuilder::setDescriptorSetLayouts(
       const std::map<u32, DescriptorSetLayout>& layouts, bool reset) {
     if (reset) descriptorSetLayouts.clear();
@@ -17,6 +28,7 @@ namespace zs {
 
   void PipelineBuilder::default_pipeline_configs() {
     shaders.clear();
+    inputAttributes.clear();
     bindingDescriptions.clear();
     attributeDescriptions.clear();
 
@@ -127,6 +139,45 @@ namespace zs {
     }
 
     // vertex input bindings
+    /// @ref https://gist.github.com/SaschaWillems/428d15ed4b5d71ead462bc63adffa93a
+    /// @ref
+    /// https://github.com/KhronosGroup/Vulkan-Guide/blob/main/chapters/vertex_input_data_processing.adoc
+    /// @ref https://www.reddit.com/r/vulkan/comments/8zx1hn/matrix_as_vertex_input/
+    if ((bindingDescriptions.size() == 0 || attributeDescriptions.size() == 0)
+        && inputAttributes.size() > 0) {
+      bindingDescriptions.resize(1);
+      attributeDescriptions.clear();
+      // attributeDescriptions.resize(inputAttributes.size());
+      auto& bindingDescription = bindingDescriptions[0];
+      /// @note assume aos layout here, binding is 0
+      u32 attribNo = 0;
+      u32 offset = 0, alignment = 0;
+
+      for (const auto& attrib : inputAttributes) {
+        const auto& [location, attribInfo] = attrib;
+
+        // this requirement guarantee no padding bits inside
+        if (attribInfo.alignmentBits != alignment) {
+          if (alignment != 0)
+            throw std::runtime_error(fmt::format(
+                "[pipeline building location {} attribute alignment] expect {}-bits alignment, "
+                "encountered {}-bits\n",
+                location, alignment, attribInfo.alignmentBits));
+          alignment = attribInfo.alignmentBits;
+        }
+
+        // push back attribute description
+        attributeDescriptions.emplace_back(/*location*/ location,
+                                           /*binding*/ 0, attribInfo.format,
+                                           /*offset*/ offset);
+        offset += attribInfo.size;
+
+        attribNo++;
+      }
+
+      bindingDescription
+          = vk::VertexInputBindingDescription{0, offset, vk::VertexInputRate::eVertex};
+    }
     auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo{}
                                .setVertexAttributeDescriptionCount(attributeDescriptions.size())
                                .setPVertexAttributeDescriptions(attributeDescriptions.data())

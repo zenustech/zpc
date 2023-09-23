@@ -151,7 +151,7 @@ namespace zs {
         u32 location = glsl.get_decoration(resource.id, spv::DecorationLocation);
 
         fmt::print(
-            "---->\tadding descriptor set layout {} at set [{}], binding [{}], location [{}]\n",
+            "---->\tadding descriptor set layout [{}] at set [{}], binding [{}], location [{}]\n",
             resource.name.c_str(), set, binding, location);
         setLayouts.emplace(
             set, ctx.setlayout().addBinding(binding, descriptorType, stageFlag, 1).build());
@@ -184,7 +184,7 @@ namespace zs {
         for (int j = 0; j < typeArraySize; ++j) dims[j] = type.array[j];
 
         fmt::print(
-            "{} at location = {}, basetype: {} (dim: width [{}], "
+            "---->\tprepare input attrb [{}] at location = {}, basetype: {} (dim: width [{}], "
             "vecsize[{}], cols[{}]), typeArraySize: {}, count(s): {}",
             resource.name.c_str(), location, typestr, type.width, type.vecsize, type.columns,
             typeArraySize, count);

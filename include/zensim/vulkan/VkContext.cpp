@@ -299,7 +299,9 @@ namespace zs {
                                       .setArrayLayers(1)
                                       .setUsage(usage | vk::ImageUsageFlagBits::eTransferSrc
                                                 | vk::ImageUsageFlagBits::eTransferDst)
-                                      .setSamples(vk::SampleCountFlagBits::e1),
+                                      .setSamples(vk::SampleCountFlagBits::e1)
+                                      //.setTiling(vk::ImageTiling::eOptimal)
+                                      .setSharingMode(vk::SharingMode::eExclusive),
                                   nullptr, dispatcher);
 
     vk::MemoryRequirements memRequirements = device.getImageMemoryRequirements(img, dispatcher);

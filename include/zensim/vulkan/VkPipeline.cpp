@@ -68,13 +68,13 @@ namespace zs {
         = vk::PipelineColorBlendAttachmentState{}
               .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
                                  | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-              .setBlendEnable(false)
+              .setBlendEnable(true)
               // optional
-              .setSrcColorBlendFactor(vk::BlendFactor::eOne)
-              .setDstColorBlendFactor(vk::BlendFactor::eZero)
+              .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)          // eOne
+              .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
               .setColorBlendOp(vk::BlendOp::eAdd)
-              .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
-              .setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+              .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)               // eOne
+              .setDstAlphaBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
               .setAlphaBlendOp(vk::BlendOp::eAdd);
 
     colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{}

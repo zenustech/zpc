@@ -60,7 +60,7 @@ namespace zs {
     }
     vk::Queue getQueue(vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const {
       auto index = queueFamilyIndices[e];
-      if (index != -1) throw std::runtime_error("compute queue does not exist.");
+      if (index == -1) throw std::runtime_error("queue does not exist.");
       return device.getQueue(index, i, dispatcher);
     }
     vk::DescriptorPool descriptorPool() const noexcept { return defaultDescriptorPool; }

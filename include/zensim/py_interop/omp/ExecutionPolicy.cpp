@@ -79,25 +79,27 @@ void del_policy__parallel(zs::OmpExecutionPolicy *v) { delete v; }
     static_assert(zs::is_arithmetic_v<T>,                                                          \
                   "parallel primitives only available for arithmetic types");                      \
     zs::merge_sort_pair(*pol, keys, vals, count);                                                  \
-  }                                                                                                \
+  }
+
+#define ZS_DEFINE_PARALLEL_PRIMITIVES_RADIX_SORT(T)                                                \
   /* radix sort */                                                                                 \
   void radix_sort__omp##_##T##_1(zs::OmpExecutionPolicy *pol, aosoa_iterator_##T##_1 first,        \
                                  aosoa_iterator_##T##_1 last, aosoa_iterator_##T##_1 output) {     \
     static_assert(zs::is_arithmetic_v<T>,                                                          \
                   "parallel primitives only available for arithmetic types");                      \
-    if constexpr (zs::is_integral_v<T>)                                                            \
-      zs::radix_sort(*pol, first, last, output, 0, sizeof(T) * 8);                                 \
+    zs::radix_sort(*pol, first, last, output, 0, sizeof(T) * 8);                                   \
   }                                                                                                \
   void radix_sort_pair__omp##_##T##_1(                                                             \
       zs::OmpExecutionPolicy *pol, aosoa_iterator_##T##_1 keysIn, aosoa_iterator_##int##_1 valsIn, \
       aosoa_iterator_##T##_1 keysOut, aosoa_iterator_##int##_1 valsOut, size_t count) {            \
     static_assert(zs::is_arithmetic_v<T>,                                                          \
                   "parallel primitives only available for arithmetic types");                      \
-    if constexpr (zs::is_integral_v<T>)                                                            \
-      zs::radix_sort_pair(*pol, keysIn, valsIn, keysOut, valsOut, count, 0, sizeof(T) * 8);        \
+    zs::radix_sort_pair(*pol, keysIn, valsIn, keysOut, valsOut, count, 0, sizeof(T) * 8);          \
   }
 
 ZS_DEFINE_PARALLEL_PRIMITIVES(int)
 ZS_DEFINE_PARALLEL_PRIMITIVES(float)
 ZS_DEFINE_PARALLEL_PRIMITIVES(double)
+
+ZS_DEFINE_PARALLEL_PRIMITIVES_RADIX_SORT(int)
 }

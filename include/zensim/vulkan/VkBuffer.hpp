@@ -103,6 +103,7 @@ namespace zs {
     }
     ~Buffer() {
       if (pview.has_value()) ctx.device.destroyBufferView(*pview, nullptr, ctx.dispatcher);
+      unmap();
       ctx.device.destroyBuffer(buffer, nullptr, ctx.dispatcher);
 #if ZS_VULKAN_USE_VMA
       vmaFreeMemory(ctx.allocator(), allocation);
@@ -204,13 +205,9 @@ namespace zs {
     }
 #endif
 
-#if 0
-    // vk::DescriptorBufferInfo descriptor();
-
-    vk::Result bind(vk::DeviceSize offset = 0);
-    void setupDescriptor(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
-    void copyTo(void* data, vk::DeviceSize size);
-#endif
+    vk::DescriptorBufferInfo descriptorInfo() {
+      return vk::DescriptorBufferInfo{buffer, (u32)0, size};
+    }
 
   protected:
     friend struct VulkanContext;

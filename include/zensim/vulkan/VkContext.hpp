@@ -4,6 +4,11 @@
 #include <vector>
 //
 #include "vulkan/vulkan.hpp"
+
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#include "vma/vk_mem_alloc.h"
+//
 #include "zensim/vulkan/VkUtils.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
@@ -31,7 +36,7 @@ namespace zs {
 
   struct VulkanContext {
     Vulkan &driver() const noexcept;
-    VulkanContext(int devid, vk::PhysicalDevice device,
+    VulkanContext(int devid, vk::Instance instance, vk::PhysicalDevice device,
                   const vk::DispatchLoaderDynamic &instDispatcher);
     ~VulkanContext() noexcept = default;
     VulkanContext(VulkanContext &&) = default;
@@ -64,6 +69,8 @@ namespace zs {
       return device.getQueue(index, i, dispatcher);
     }
     vk::DescriptorPool descriptorPool() const noexcept { return defaultDescriptorPool; }
+    VmaAllocator &allocator() noexcept { return defaultAllocator; }
+    const VmaAllocator &allocator() const noexcept { return defaultAllocator; }
 
     bool supportGraphics() const { return graphicsQueueFamilyIndex != -1; }
     /// @note usually called right before swapchain creation for assurance
@@ -166,6 +173,7 @@ namespace zs {
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
     vk::DescriptorPool defaultDescriptorPool;
+    VmaAllocator defaultAllocator;
 
   protected:
     friend struct VkPipeline;

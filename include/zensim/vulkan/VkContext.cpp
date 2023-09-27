@@ -1,5 +1,11 @@
+// vulkan memory allocator impl
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#define VMA_IMPLEMENTATION
+#include "vma/vk_mem_alloc.h"
+//
 #include "zensim/vulkan/VkContext.hpp"
-
+//
 #include <iostream>
 #include <map>
 #include <set>
@@ -43,7 +49,7 @@ namespace zs {
   void VulkanContext::reset() {
     /// clear builders
     // if (swapchainBuilder) swapchainBuilder.reset(nullptr);
-    /// clear resources
+    /// clear execution resources
     {
       // working contexts (command pool resources)
       // g_mtx.lock();
@@ -56,19 +62,24 @@ namespace zs {
             "destroyed!");
       // g_mtx.unlock();
     }
+    /// clear resources
     {
       // descriptor pool resources
       device.resetDescriptorPool(defaultDescriptorPool, vk::DescriptorPoolResetFlags{}, dispatcher);
       device.destroyDescriptorPool(defaultDescriptorPool, nullptr, dispatcher);
       defaultDescriptorPool = VK_NULL_HANDLE;
     }
+
+    vmaDestroyAllocator(defaultAllocator);
+    defaultAllocator = {};
+
     /// destroy logical device
     device.destroy(nullptr, dispatcher);
     fmt::print("vulkan context [{}] (of {}) has been successfully reset.\n", devid,
                driver().num_devices());
   }
 
-  VulkanContext::VulkanContext(int devId, vk::PhysicalDevice phydev,
+  VulkanContext::VulkanContext(int devId, vk::Instance instance, vk::PhysicalDevice phydev,
                                const vk::DispatchLoaderDynamic& instDispatcher)
       : devid{devId}, physicalDevice{phydev}, device{}, dispatcher{instDispatcher} {
     /// @note logical device
@@ -167,7 +178,25 @@ namespace zs {
     dispatcher.vkGetPhysicalDeviceMemoryProperties(physicalDevice, &tmp);
     memoryProperties = tmp;
 
+    /// setup additional resources
+    // descriptor pool
     setupDefaultDescriptorPool();
+
+    // allocator
+    {
+      VmaVulkanFunctions vulkanFunctions = {};
+      vulkanFunctions.vkGetInstanceProcAddr = dispatcher.vkGetInstanceProcAddr;
+      vulkanFunctions.vkGetDeviceProcAddr = dispatcher.vkGetDeviceProcAddr;
+
+      VmaAllocatorCreateInfo allocatorCreateInfo = {};
+      allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
+      allocatorCreateInfo.physicalDevice = physicalDevice;
+      allocatorCreateInfo.device = device;
+      allocatorCreateInfo.instance = instance;
+      allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+      vmaCreateAllocator(&allocatorCreateInfo, &this->defaultAllocator);
+    }
 
     /// display info
     fmt::print(

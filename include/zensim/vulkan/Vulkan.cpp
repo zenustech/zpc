@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <thread>
+
 // resources
 #include "zensim/vulkan/VkBuffer.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
@@ -95,7 +96,7 @@ namespace zs {
     _defaultContext = -1;
     for (int i = 0; i != physicalDevices.size(); ++i) {
       auto& physDev = physicalDevices[i];
-      _contexts.emplace_back(i, physDev, _dispatcher);
+      _contexts.emplace_back(i, _instance, physDev, _dispatcher);
       if (_defaultContext == -1 && _contexts.back().supportGraphics()) _defaultContext = i;
     }
   }  // namespace zs

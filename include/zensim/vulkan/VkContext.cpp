@@ -71,7 +71,7 @@ namespace zs {
     }
 
     vmaDestroyAllocator(defaultAllocator);
-    defaultAllocator = {};
+    defaultAllocator = 0;  // ref: nvpro-core
 
     /// destroy logical device
     device.destroy(nullptr, dispatcher);
@@ -292,23 +292,55 @@ namespace zs {
     bufCI.setSharingMode(vk::SharingMode::eExclusive);
     auto buf = device.createBuffer(bufCI, nullptr, dispatcher);
 
+#if ZS_VULKAN_USE_VMA
+    auto bufferReqs = vk::BufferMemoryRequirementsInfo2{}.setBuffer(buf);
+    auto dedicatedReqs = vk::MemoryDedicatedRequirements{};
+    auto memReqs2 = vk::MemoryRequirements2{};
+    memReqs2.pNext = &dedicatedReqs;
+
+    device.getBufferMemoryRequirements2(&bufferReqs, &memReqs2, dispatcher);
+
+    auto& memRequirements = memReqs2.memoryRequirements;
+
+    VmaAllocationCreateInfo vmaAllocCI = {};
+    if (dedicatedReqs.requiresDedicatedAllocation)
+      vmaAllocCI.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+    vmaAllocCI.usage = vk_to_vma_memory_usage(props);
+    vmaAllocCI.priority = 1.f;
+
+    VmaAllocationInfo allocationDetail;
+    VmaAllocation allocation = nullptr;
+    VkResult result
+        = vmaAllocateMemory(allocator(), reinterpret_cast<VkMemoryRequirements*>(&memRequirements),
+                            &vmaAllocCI, &allocation, &allocationDetail);
+    if (result != VK_SUCCESS)
+      throw std::runtime_error(fmt::format("buffer allocation of {} bytes failed!", size));
+
+    device.bindBufferMemory(buf, allocationDetail.deviceMemory, allocationDetail.offset,
+                            dispatcher);
+#else
     vk::MemoryRequirements memRequirements = device.getBufferMemoryRequirements(buf, dispatcher);
     u32 memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, props);
     vk::MemoryAllocateInfo allocInfo{memRequirements.size, memoryTypeIndex};
     auto mem = device.allocateMemory(allocInfo, nullptr, dispatcher);
 
     device.bindBufferMemory(buf, mem, 0, dispatcher);
-
-    VkMemory memory{*this};
-    memory.mem = mem;
-    memory.memSize = memRequirements.size;
-    memory.memoryPropertyFlags = memoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
+#endif
 
     buffer.size = size;
     buffer.usageFlags = usage;
     buffer.alignment = memRequirements.alignment;
     buffer.buffer = buf;
+
+#if ZS_VULKAN_USE_VMA
+    buffer.allocation = allocation;
+#else
+    VkMemory memory{*this};
+    memory.mem = mem;
+    memory.memSize = memRequirements.size;
+    memory.memoryPropertyFlags = memoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
     buffer.pmem = std::make_shared<VkMemory>(std::move(memory));
+#endif
     return buffer;
   }
   Buffer VulkanContext::createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage) {

@@ -12,6 +12,8 @@
 #include "zensim/vulkan/VkUtils.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
+#define ZS_VULKAN_USE_VMA 1
+
 namespace zs {
 
   struct Image;

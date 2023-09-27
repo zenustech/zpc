@@ -5,6 +5,19 @@
 
 namespace zs {
 
+  inline VmaMemoryUsage vk_to_vma_memory_usage(vk::MemoryPropertyFlags flags) {
+    if ((flags & vk::MemoryPropertyFlagBits::eDeviceLocal)
+        == vk::MemoryPropertyFlagBits::eDeviceLocal)
+      return VMA_MEMORY_USAGE_GPU_ONLY;
+    else if ((flags & vk::MemoryPropertyFlagBits::eHostCoherent)
+             == vk::MemoryPropertyFlagBits::eHostCoherent)
+      return VMA_MEMORY_USAGE_CPU_ONLY;
+    else if ((flags & vk::MemoryPropertyFlagBits::eHostVisible)
+             == vk::MemoryPropertyFlagBits::eHostVisible)
+      return VMA_MEMORY_USAGE_CPU_TO_GPU;
+    return VMA_MEMORY_USAGE_UNKNOWN;
+  }
+
   struct BufferView;
 
   struct VkMemory {
@@ -19,8 +32,6 @@ namespace zs {
     }
     ~VkMemory() { ctx.device.freeMemory(mem, nullptr, ctx.dispatcher); }
 
-    vk::DeviceSize size() const { return memSize; }
-
     vk::DeviceMemory operator*() const { return mem; }
     operator vk::DeviceMemory() const { return mem; }
 
@@ -33,6 +44,23 @@ namespace zs {
     vk::MemoryPropertyFlags memoryPropertyFlags;
   };
 
+  struct VkMemoryRange {
+    vk::DeviceMemory operator*() const { return memory; }
+    operator vk::DeviceMemory() const { return memory; }
+
+    operator vk::MappedMemoryRange() const {
+      vk::MappedMemoryRange mappedRange{};
+      mappedRange.memory = memory;
+      mappedRange.offset = offset;
+      mappedRange.size = size;
+      return mappedRange;
+    }
+
+    vk::DeviceMemory memory;
+    vk::DeviceSize offset;
+    vk::DeviceSize size;
+  };
+
   struct Buffer {
     Buffer() = delete;
     Buffer(VulkanContext& ctx)
@@ -40,23 +68,35 @@ namespace zs {
           buffer{VK_NULL_HANDLE},
           size{0},
           alignment{0},
+#if ZS_VULKAN_USE_VMA
+          allocation{0},
+#else
           pmem{},
+#endif
           pview{},
           mapped{nullptr},
-          usageFlags{} {}
+          usageFlags{} {
+    }
     Buffer(const Buffer&) = delete;
     Buffer(Buffer&& o) noexcept
         : ctx{o.ctx},
           buffer{o.buffer},
           size{o.size},
           alignment{o.alignment},
+#if ZS_VULKAN_USE_VMA
+          allocation{o.allocation},
+#else
           pmem{std::move(o.pmem)},
+#endif
           pview{std::move(o.pview)},
           mapped{o.mapped},
           usageFlags{o.usageFlags} {
       o.buffer = VK_NULL_HANDLE;
       o.size = 0;
       o.alignment = 0;
+#if ZS_VULKAN_USE_VMA
+      o.allocation = 0;
+#endif
       o.pview = {};
       o.mapped = nullptr;
       o.usageFlags = {};
@@ -64,21 +104,46 @@ namespace zs {
     ~Buffer() {
       if (pview.has_value()) ctx.device.destroyBufferView(*pview, nullptr, ctx.dispatcher);
       ctx.device.destroyBuffer(buffer, nullptr, ctx.dispatcher);
+      vmaFreeMemory(ctx.allocator(), allocation);
     }
 
     /// access
     vk::Buffer operator*() const { return buffer; }
     operator vk::Buffer() const { return buffer; }
+#if ZS_VULKAN_USE_VMA
+    VkMemoryRange memory() const {
+      VmaAllocationInfo allocInfo;
+      vmaGetAllocationInfo(ctx.allocator(), allocation, &allocInfo);
+
+      VkMemoryRange memRange;
+      memRange.memory = allocInfo.deviceMemory;
+      memRange.offset = allocInfo.offset;
+      memRange.size = allocInfo.size;
+      return memRange;
+    }
+#else
     const VkMemory& memory() const { return *pmem; }
+#endif
     bool hasView() const { return static_cast<bool>(pview); }
     const vk::BufferView& view() const { return *pview; }
 
+#if ZS_VULKAN_USE_VMA
+    void map() {
+      VkResult result = vmaMapMemory(ctx.allocator(), allocation, &mapped);
+      if (result != VK_SUCCESS) throw std::runtime_error("unable to map this buffer memory");
+    }
+#else
     void map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) {
       mapped = ctx.device.mapMemory(memory(), offset, size, vk::MemoryMapFlags{}, ctx.dispatcher);
     }
+#endif
     void unmap() {
       if (mapped) {
+#if ZS_VULKAN_USE_VMA
+        vmaUnmapMemory(ctx.allocator(), allocation);
+#else
         ctx.device.unmapMemory(memory(), ctx.dispatcher);
+#endif
         mapped = nullptr;
       };
     }
@@ -96,6 +161,12 @@ namespace zs {
      *
      * @return VkResult of the flush call
      */
+#if ZS_VULKAN_USE_VMA
+    void flush() {
+      auto mappedRange = memory();
+      vmaFlushAllocation(ctx.allocator(), allocation, mappedRange.offset, mappedRange.size);
+    }
+#else
     void flush(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) {
       vk::MappedMemoryRange mappedRange{};
       mappedRange.memory = *pmem;
@@ -103,6 +174,7 @@ namespace zs {
       mappedRange.size = size;
       return ctx.device.flushMappedMemoryRanges({mappedRange}, ctx.dispatcher);
     }
+#endif
 
     /**
      * Invalidate a memory range of the buffer to make it visible to the host
@@ -115,6 +187,12 @@ namespace zs {
      *
      * @return VkResult of the invalidate call
      */
+#if ZS_VULKAN_USE_VMA
+    void invalidate() {
+      auto mappedRange = memory();
+      vmaInvalidateAllocation(ctx.allocator(), allocation, mappedRange.offset, mappedRange.size);
+    }
+#else
     void invalidate(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) {
       vk::MappedMemoryRange mappedRange{};
       mappedRange.memory = *pmem;
@@ -122,14 +200,14 @@ namespace zs {
       mappedRange.size = size;
       return ctx.device.invalidateMappedMemoryRanges({mappedRange}, ctx.dispatcher);
     }
+#endif
+
 #if 0
     // vk::DescriptorBufferInfo descriptor();
 
     vk::Result bind(vk::DeviceSize offset = 0);
     void setupDescriptor(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
     void copyTo(void* data, vk::DeviceSize size);
-    vk::Result flush(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
-    vk::Result invalidate(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 #endif
 
   protected:
@@ -138,7 +216,12 @@ namespace zs {
     VulkanContext& ctx;
     vk::Buffer buffer;
     vk::DeviceSize size, alignment;
+
+#if ZS_VULKAN_USE_VMA
+    VmaAllocation allocation;
+#else
     std::shared_ptr<VkMemory> pmem;
+#endif
 
     std::optional<vk::BufferView> pview;
     void* mapped;

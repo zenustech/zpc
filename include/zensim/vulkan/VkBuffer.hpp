@@ -104,7 +104,9 @@ namespace zs {
     ~Buffer() {
       if (pview.has_value()) ctx.device.destroyBufferView(*pview, nullptr, ctx.dispatcher);
       ctx.device.destroyBuffer(buffer, nullptr, ctx.dispatcher);
+#if ZS_VULKAN_USE_VMA
       vmaFreeMemory(ctx.allocator(), allocation);
+#endif
     }
 
     /// access

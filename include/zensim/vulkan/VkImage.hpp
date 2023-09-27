@@ -6,21 +6,56 @@ namespace zs {
 
   struct Image {
     Image() = delete;
-    Image(VulkanContext &ctx) : ctx{ctx}, image{VK_NULL_HANDLE}, pmem{}, pview{} {}
+    Image(VulkanContext &ctx)
+        : ctx{ctx},
+          image{VK_NULL_HANDLE},
+#if ZS_VULKAN_USE_VMA
+          allocation{0},
+#else
+          pmem{},
+#endif
+          pview{} {
+    }
     Image(Image &&o) noexcept
-        : ctx{o.ctx}, image{o.image}, pmem{std::move(o.pmem)}, pview{std::move(o.pview)} {
+        : ctx{o.ctx},
+          image{o.image},
+#if ZS_VULKAN_USE_VMA
+          allocation{o.allocation},
+#else
+          pmem{std::move(o.pmem)},
+#endif
+          pview{std::move(o.pview)} {
       o.pview = {};
       o.image = VK_NULL_HANDLE;
+#if ZS_VULKAN_USE_VMA
+      o.allocation = 0;
+#endif
     }
     ~Image() {
       if (pview.has_value()) ctx.device.destroyImageView(*pview, nullptr, ctx.dispatcher);
       ctx.device.destroyImage(image, nullptr, ctx.dispatcher);
+#if ZS_VULKAN_USE_VMA
+      vmaFreeMemory(ctx.allocator(), allocation);
+#endif
     }
 
     vk::Image operator*() const { return image; }
     operator vk::Image() const { return image; }
     operator vk::ImageView() const { return *pview; }
+#if ZS_VULKAN_USE_VMA
+    VkMemoryRange memory() const {
+      VmaAllocationInfo allocInfo;
+      vmaGetAllocationInfo(ctx.allocator(), allocation, &allocInfo);
+
+      VkMemoryRange memRange;
+      memRange.memory = allocInfo.deviceMemory;
+      memRange.offset = allocInfo.offset;
+      memRange.size = allocInfo.size;
+      return memRange;
+    }
+#else
     const VkMemory &memory() const { return *pmem; }
+#endif
     bool hasView() const { return static_cast<bool>(pview); }
     const vk::ImageView &view() const { return *pview; }
 
@@ -29,7 +64,11 @@ namespace zs {
 
     VulkanContext &ctx;
     vk::Image image;
+#if ZS_VULKAN_USE_VMA
+    VmaAllocation allocation;
+#else
     std::shared_ptr<VkMemory> pmem;
+#endif
 
     std::optional<vk::ImageView> pview;
   };

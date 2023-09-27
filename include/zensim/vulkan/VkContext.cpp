@@ -365,20 +365,51 @@ namespace zs {
                                       .setSharingMode(vk::SharingMode::eExclusive),
                                   nullptr, dispatcher);
 
+#if ZS_VULKAN_USE_VMA
+    auto imageReqs = vk::ImageMemoryRequirementsInfo2{}.setImage(img);
+    auto dedicatedReqs = vk::MemoryDedicatedRequirements{};
+    auto memReqs2 = vk::MemoryRequirements2{};
+    memReqs2.pNext = &dedicatedReqs;
+
+    device.getImageMemoryRequirements2(&imageReqs, &memReqs2, dispatcher);
+
+    auto& memRequirements = memReqs2.memoryRequirements;
+
+    VmaAllocationCreateInfo vmaAllocCI = {};
+    if (dedicatedReqs.requiresDedicatedAllocation)
+      vmaAllocCI.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+    vmaAllocCI.usage = vk_to_vma_memory_usage(props);
+    vmaAllocCI.priority = 1.f;
+
+    VmaAllocationInfo allocationDetail;
+    VmaAllocation allocation = nullptr;
+    VkResult result
+        = vmaAllocateMemory(allocator(), reinterpret_cast<VkMemoryRequirements*>(&memRequirements),
+                            &vmaAllocCI, &allocation, &allocationDetail);
+    if (result != VK_SUCCESS)
+      throw std::runtime_error(
+          fmt::format("image allocation of dim [{}, {}] failed!", dim.width, dim.height));
+
+    device.bindImageMemory(img, allocationDetail.deviceMemory, allocationDetail.offset, dispatcher);
+#else
     vk::MemoryRequirements memRequirements = device.getImageMemoryRequirements(img, dispatcher);
     u32 memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, props);
     vk::MemoryAllocateInfo allocInfo{memRequirements.size, memoryTypeIndex};
     auto mem = device.allocateMemory(allocInfo, nullptr, dispatcher);
 
     device.bindImageMemory(img, mem, 0, dispatcher);
+#endif
 
+    image.image = img;
+#if ZS_VULKAN_USE_VMA
+    image.allocation = allocation;
+#else
     VkMemory memory{*this};
     memory.mem = mem;
     memory.memSize = memRequirements.size;
     memory.memoryPropertyFlags = memoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
-
-    image.image = img;
     image.pmem = std::make_shared<VkMemory>(std::move(memory));
+#endif
     if (createView) {
       image.pview = device.createImageView(
           vk::ImageViewCreateInfo{}

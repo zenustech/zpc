@@ -18,12 +18,6 @@ namespace zs {
     return static_cast<MaskType>(flags);
   }
 
-  constexpr vk::DeviceSize get_aligned_size(vk::DeviceSize size, vk::DeviceSize alignment) {
-    /// @note both size and alignment are in bytes
-    if (alignment > 0) return (size + alignment - 1) & ~(alignment - 1);
-    return size;
-  }
-
   inline u32 get_num_mip_levels(const vk::Extent2D &extent) {
     return static_cast<u32>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
   }
@@ -52,6 +46,30 @@ namespace zs {
                                                     | vk::ImageUsageFlagBits::eSampled;
   constexpr vk::ImageUsageFlags g_depthImageUsage
       = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+
+  constexpr vk::DeviceSize get_aligned_size(vk::DeviceSize size, vk::DeviceSize alignment) {
+    /// @note both size and alignment are in bytes
+    if (alignment > 0) return (size + alignment - 1) & ~(alignment - 1);
+    return size;
+  }
+
+  constexpr vk::BufferCreateInfo default_buffer_CI(vk::DeviceSize size,
+                                                   vk::BufferUsageFlags usage) noexcept {
+    return vk::BufferCreateInfo{}.setSize(size).setUsage(usage).setSharingMode(
+        vk::SharingMode::eExclusive);
+  }
+  constexpr vk::ImageCreateInfo default_image2d_CI(vk::Format format, u32 width, u32 height) noexcept {
+    return vk::ImageCreateInfo{}
+        .setImageType(vk::ImageType::e2D)
+        .setFormat(format)
+        .setExtent({width, height, (u32)1})
+        .setMipLevels(1)
+        .setArrayLayers(1)
+        .setUsage(get_general_usage_flags(format))
+        .setSamples(vk::SampleCountFlagBits::e1)
+        .setTiling(vk::ImageTiling::eLinear)
+        .setSharingMode(vk::SharingMode::eExclusive);
+  }
 
 #if 0
   /// @ref nvpro core

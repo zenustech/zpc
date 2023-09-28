@@ -348,22 +348,11 @@ namespace zs {
         size, usage,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
   }
-  Image VulkanContext::create2DImage(const vk::Extent2D& dim, vk::Format format,
-                                     vk::ImageUsageFlags usage, vk::MemoryPropertyFlags props,
-                                     bool mipmaps, bool createView) {
+
+  Image VulkanContext::createImage(vk::ImageCreateInfo imageCI, vk::MemoryPropertyFlags props,
+                                   bool createView) {
     Image image{*this};
-    auto img = device.createImage(vk::ImageCreateInfo{}
-                                      .setImageType(vk::ImageType::e2D)
-                                      .setFormat(format)
-                                      .setExtent({dim.width, dim.height, (u32)1})
-                                      .setMipLevels((mipmaps ? get_num_mip_levels(dim) : 1))
-                                      .setArrayLayers(1)
-                                      .setUsage(usage | vk::ImageUsageFlagBits::eTransferSrc
-                                                | vk::ImageUsageFlagBits::eTransferDst)
-                                      .setSamples(vk::SampleCountFlagBits::e1)
-                                      //.setTiling(vk::ImageTiling::eOptimal)
-                                      .setSharingMode(vk::SharingMode::eExclusive),
-                                  nullptr, dispatcher);
+    auto img = device.createImage(imageCI, nullptr, dispatcher);
 
 #if ZS_VULKAN_USE_VMA
     auto imageReqs = vk::ImageMemoryRequirementsInfo2{}.setImage(img);
@@ -387,8 +376,8 @@ namespace zs {
         = vmaAllocateMemory(allocator(), reinterpret_cast<VkMemoryRequirements*>(&memRequirements),
                             &vmaAllocCI, &allocation, &allocationDetail);
     if (result != VK_SUCCESS)
-      throw std::runtime_error(
-          fmt::format("image allocation of dim [{}, {}] failed!", dim.width, dim.height));
+      throw std::runtime_error(fmt::format("image allocation of dim [{}, {}] failed!",
+                                           imageCI.extent.width, imageCI.extent.height));
 
     device.bindImageMemory(img, allocationDetail.deviceMemory, allocationDetail.offset, dispatcher);
 #else
@@ -416,15 +405,31 @@ namespace zs {
               .setImage(img)
               .setPNext(nullptr)
               .setViewType(vk::ImageViewType::e2D)
-              .setFormat(format)
+              .setFormat(imageCI.format)
               .setSubresourceRange(vk::ImageSubresourceRange{
-                  is_depth_format(format) ? vk::ImageAspectFlagBits::eDepth
-                                          : vk::ImageAspectFlagBits::eColor,
+                  is_depth_format(imageCI.format) ? vk::ImageAspectFlagBits::eDepth
+                                                  : vk::ImageAspectFlagBits::eColor,
                   0, 1 /*VK_REMAINING_MIP_LEVELS*/, 0, 1
                   /*VK_REMAINING_ARRAY_LAYERS*/}),
           nullptr, dispatcher);
     }
     return image;
+  }
+  Image VulkanContext::create2DImage(const vk::Extent2D& dim, vk::Format format,
+                                     vk::ImageUsageFlags usage, vk::MemoryPropertyFlags props,
+                                     bool mipmaps, bool createView) {
+    return createImage(vk::ImageCreateInfo{}
+                           .setImageType(vk::ImageType::e2D)
+                           .setFormat(format)
+                           .setExtent({dim.width, dim.height, (u32)1})
+                           .setMipLevels((mipmaps ? get_num_mip_levels(dim) : 1))
+                           .setArrayLayers(1)
+                           .setUsage(usage | vk::ImageUsageFlagBits::eTransferSrc
+                                     | vk::ImageUsageFlagBits::eTransferDst)
+                           .setSamples(vk::SampleCountFlagBits::e1)
+                           //.setTiling(vk::ImageTiling::eOptimal)
+                           .setSharingMode(vk::SharingMode::eExclusive),
+                       props, createView);
   }
   ImageView VulkanContext::create2DImageView(vk::Image image, vk::Format format,
                                              vk::ImageAspectFlags aspect, u32 levels,

@@ -143,6 +143,10 @@ static llvm::orc::LLJIT *jit = nullptr;
 
 // Load an object file into an in-memory DLL named `module_name`
 ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const char *module_name) {
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmPrinters();
   if (!jit) {
     auto jit_expected = llvm::orc::LLJITBuilder().create();
 
@@ -246,6 +250,7 @@ ZENSIM_EXPORT int unload_obj(const char *module_name) {
     return -1;
   }
 
+  jit = nullptr;
   return 0;
 }
 

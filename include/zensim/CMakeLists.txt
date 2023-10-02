@@ -304,6 +304,13 @@ if(ZS_ENABLE_VULKAN)
   )
 endif(ZS_ENABLE_VULKAN)
 
+if(ZS_ENABLE_JIT)
+  target_sources(zpccore
+    PRIVATE
+    llvm/LLVM.cpp
+  )
+endif(ZS_ENABLE_JIT)
+
 if(ENABLE_PCH)
   target_precompile_headers(zpccore INTERFACE
     ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}

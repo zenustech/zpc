@@ -6,7 +6,7 @@ namespace zs {
   /*
    *	@note	Singleton
    */
-  enum singleton_op_e { init = 0, reinit, deinit };
+  enum singleton_op_e { init = 0, reinit, deinit, query };
   template <typename T> struct Singleton {
     /// @brief allow early deinitialization, recreation, initialization with params, etc.
     static T *maintain(singleton_op_e op) {
@@ -22,6 +22,8 @@ namespace zs {
       } else if (op == singleton_op_e::deinit) {
         if (p_instance) delete p_instance;
         p_instance = nullptr;
+      } else if (op == singleton_op_e::query) {
+        // return p_instance;
       } else {
         throw std::runtime_error("Please use a valid op index for maintenance!");
       }
@@ -29,6 +31,7 @@ namespace zs {
     }
 
     static T &instance() { return *maintain(singleton_op_e::init); }
+    static bool initialized() { return maintain(singleton_op_e::query) != nullptr ? true : false; }
   };
 
 }  // namespace zs

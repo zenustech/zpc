@@ -173,7 +173,7 @@ ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const 
       return -1;
     }
     dll->addGenerator(std::move(*search));
-    std::cout << "done load omp runtime";
+    std::cout << "done load omp runtime" << std::endl;
   }
 #endif
 

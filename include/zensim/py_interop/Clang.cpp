@@ -239,7 +239,7 @@ ZENSIM_EXPORT int unload_obj(const char *module_name) {
 }
 
 ZENSIM_EXPORT zs::u64 lookup(const char *dll_name, const char *function_name) {
-  if (zs::LLVM::initialized()) throw std::runtime_error("llvm orc jit engine not yet initialied!");
+  if (!zs::LLVM::initialized()) throw std::runtime_error("llvm orc jit engine not yet initialied!");
   auto jit = zs::LLVM::jit();
   auto *dll = jit->getJITDylibByName(dll_name);
 

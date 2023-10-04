@@ -32,7 +32,7 @@ namespace zs {
         : ctx{ctx}, _colorAttachments{}, _depthAttachment{} {}
     ~RenderPassBuilder() = default;
 
-    RenderPassBuilder& addAttachment(vk::Format format,
+    RenderPassBuilder& addAttachment(vk::Format format = vk::Format::eR8G8B8A8Unorm,
                                      vk::AttachmentLoadOp op = vk::AttachmentLoadOp::eClear) {
       if (is_depth_format(format)) {
         _depthAttachment = AttachmentDesc{format, op};

@@ -58,7 +58,8 @@ namespace zs {
     return vk::BufferCreateInfo{}.setSize(size).setUsage(usage).setSharingMode(
         vk::SharingMode::eExclusive);
   }
-  constexpr vk::ImageCreateInfo default_image2d_CI(vk::Format format, u32 width, u32 height) noexcept {
+  constexpr vk::ImageCreateInfo default_image2d_CI(vk::Format format, u32 width,
+                                                   u32 height) noexcept {
     return vk::ImageCreateInfo{}
         .setImageType(vk::ImageType::e2D)
         .setFormat(format)
@@ -67,7 +68,7 @@ namespace zs {
         .setArrayLayers(1)
         .setUsage(get_general_usage_flags(format))
         .setSamples(vk::SampleCountFlagBits::e1)
-        .setTiling(vk::ImageTiling::eLinear)
+        .setTiling(vk::ImageTiling::eOptimal)  // linear supported is limited
         .setSharingMode(vk::SharingMode::eExclusive);
   }
 

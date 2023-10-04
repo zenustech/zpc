@@ -4,6 +4,7 @@
 
 namespace zs {
 
+  struct VkTexture;
   struct Image {
     Image() = delete;
     Image(VulkanContext &ctx)
@@ -61,6 +62,7 @@ namespace zs {
 
   protected:
     friend struct VulkanContext;
+    friend struct VkTexture;
 
     VulkanContext &ctx;
     vk::Image image;

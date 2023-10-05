@@ -278,6 +278,7 @@ namespace zs {
     return *swapchainBuilder;
   }
   PipelineBuilder VulkanContext::pipeline() { return PipelineBuilder{*this}; }
+  RenderPassBuilder VulkanContext::renderpass() { return RenderPassBuilder(*this); }
   DescriptorSetLayoutBuilder VulkanContext::setlayout() {
     return DescriptorSetLayoutBuilder{*this};
   }

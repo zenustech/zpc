@@ -21,6 +21,7 @@ namespace zs {
   struct Buffer;
   struct Framebuffer;
   struct RenderPass;
+  struct RenderPassBuilder;
   struct Swapchain;
   struct SwapchainBuilder;
   struct ShaderModule;
@@ -133,6 +134,7 @@ namespace zs {
     }
     SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
     PipelineBuilder pipeline();
+    RenderPassBuilder renderpass();
     DescriptorSetLayoutBuilder setlayout();
     ExecutionContext &env();  // thread-safe
 

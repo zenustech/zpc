@@ -27,17 +27,20 @@ namespace zs {
     struct AttachmentDesc {
       vk::Format format;
       vk::AttachmentLoadOp loadOp;
+      vk::ImageLayout layout;
     };
     RenderPassBuilder(VulkanContext& ctx) noexcept
         : ctx{ctx}, _colorAttachments{}, _depthAttachment{} {}
     ~RenderPassBuilder() = default;
 
     RenderPassBuilder& addAttachment(vk::Format format = vk::Format::eR8G8B8A8Unorm,
-                                     vk::AttachmentLoadOp op = vk::AttachmentLoadOp::eClear) {
+                                     vk::AttachmentLoadOp op = vk::AttachmentLoadOp::eClear,
+                                     vk::ImageLayout layout
+                                     = vk::ImageLayout::eColorAttachmentOptimal) {
       if (is_depth_format(format)) {
-        _depthAttachment = AttachmentDesc{format, op};
+        _depthAttachment = AttachmentDesc{format, op, layout};
       } else {
-        _colorAttachments.push_back(AttachmentDesc{format, op});
+        _colorAttachments.push_back(AttachmentDesc{format, op, layout});
       }
       return *this;
     }
@@ -48,11 +51,11 @@ namespace zs {
       std::vector<vk::AttachmentReference> refs;
       refs.reserve(attachments.size());
       for (int i = 0; i != _colorAttachments.size(); ++i) {
-        //
-        refs.push_back(vk::AttachmentReference{(u32)attachments.size(),
-                                               vk::ImageLayout::eColorAttachmentOptimal});
-        //
         const auto& colorAttachmentDesc = _colorAttachments[i];
+        //
+        refs.push_back(
+            vk::AttachmentReference{(u32)attachments.size(), colorAttachmentDesc.layout});
+        //
         attachments.push_back(vk::AttachmentDescription{}
                                   .setFormat(colorAttachmentDesc.format)
                                   .setSamples(vk::SampleCountFlagBits::e1)
@@ -60,40 +63,66 @@ namespace zs {
                                   .setStoreOp(vk::AttachmentStoreOp::eStore)
                                   .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                                   .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                                  .setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
-                                  .setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal));
+                                  .setInitialLayout(colorAttachmentDesc.layout)
+                                  .setFinalLayout(colorAttachmentDesc.layout));
       }
 
-      auto subpass = vk::SubpassDescription{}
-                         .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-                         .setColorAttachmentCount((u32)attachments.size())
-                         .setPColorAttachments(refs.data());
+      auto subpass
+          = vk::SubpassDescription{}
+                .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                .setColorAttachmentCount((u32)attachments.size() - (_depthAttachment ? 1 : 0))
+                .setPColorAttachments(refs.data());
 
       if (_depthAttachment) {
+        const auto& depthAttachmentDesc = *_depthAttachment;
         //
-        refs.push_back(vk::AttachmentReference{(u32)attachments.size(),
-                                               vk::ImageLayout::eDepthStencilAttachmentOptimal});
+        refs.push_back(vk::AttachmentReference{
+            (u32)attachments.size(),
+            depthAttachmentDesc.layout});  // vk::ImageLayout::eDepthStencilAttachmentOptimal
         //
-        const auto& depthAttachmntDesc = *_depthAttachment;
         attachments.push_back(vk::AttachmentDescription{}
-                                  .setFormat(depthAttachmntDesc.format)
+                                  .setFormat(depthAttachmentDesc.format)
                                   .setSamples(vk::SampleCountFlagBits::e1)
-                                  .setLoadOp(depthAttachmntDesc.loadOp)
+                                  .setLoadOp(depthAttachmentDesc.loadOp)
                                   .setStoreOp(vk::AttachmentStoreOp::eStore)
                                   .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                                   .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                                  .setInitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-                                  .setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal));
+                                  .setInitialLayout(depthAttachmentDesc.layout)
+                                  .setFinalLayout(depthAttachmentDesc.layout));
         //
         subpass.setPDepthStencilAttachment(&refs.back());
       }
+#if 0
+      vk::AccessFlags accessFlag;
+      if (_depthAttachment)
+        accessFlag = vk::AccessFlagBits::eColorAttachmentWrite
+                     | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+      else
+        accessFlag = vk::AccessFlagBits::eColorAttachmentWrite;
+      auto dependency = vk::SubpassDependency{}
+                            .setDstSubpass(0)
+                            .setDstAccessMask(accessFlag)
+                            .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
+                                             | vk::PipelineStageFlagBits::eEarlyFragmentTests)
+                            .setSrcSubpass(VK_SUBPASS_EXTERNAL)
+                            .setSrcAccessMask({})
+                            .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
+                                             | vk::PipelineStageFlagBits::eEarlyFragmentTests);
+#endif
+
       ret.renderpass = ctx.device.createRenderPass(vk::RenderPassCreateInfo{}
                                                        .setAttachmentCount(attachments.size())
                                                        .setPAttachments(attachments.data())
                                                        .setSubpassCount(1)
                                                        .setPSubpasses(&subpass)
+#if 1
                                                        .setDependencyCount(0)
-                                                       .setPDependencies(nullptr),
+                                                       .setPDependencies(nullptr)
+#else
+                                                       .setDependencyCount(1)
+                                                       .setPDependencies(&dependency)
+#endif
+                                                       ,
                                                    nullptr, ctx.dispatcher);
       return ret;
     }

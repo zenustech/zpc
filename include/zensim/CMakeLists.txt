@@ -606,6 +606,12 @@ set_target_properties(zpc_py_interop PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
   ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+set_target_properties(zpc_py_interop PROPERTIES
+  SKIP_BUILD_RPATH OFF
+  BUILD_WITH_INSTALL_RPATH TRUE
+  INSTALL_RPATH "\$ORIGIN/lib"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 
 add_dependencies(zensim zpc_py_interop)
 # do not link the target (zpc_py_interop) to zensim!

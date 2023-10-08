@@ -674,7 +674,7 @@ add_custom_command(
 
   VERBATIM
   DEPENDS zpc_jit_clang 
-    COMMENT "copying nvrtc related runtime shared libraries"
+    COMMENT "copying JIT-dependent runtime shared libraries"
 )
 endif(ZS_BUILD_SHARED_LIBS)
 ### nvrtc-specific shared library installation

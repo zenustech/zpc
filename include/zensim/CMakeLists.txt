@@ -309,6 +309,7 @@ if(ZS_ENABLE_JIT)
     PRIVATE
     llvm/LLVM.cpp
   )
+  target_link_libraries(zpccore PUBLIC zpc_jit_deps)
 endif(ZS_ENABLE_JIT)
 
 if(ENABLE_PCH)

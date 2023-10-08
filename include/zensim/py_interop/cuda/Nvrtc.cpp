@@ -251,4 +251,19 @@ ZENSIM_EXPORT void *cuda_get_kernel(void *pol, void *module, const char *name) {
   return kernel;
 }
 
+ZENSIM_EXPORT size_t cuda_launch_kernel(void *context, void *kernel, size_t dim,
+                                        void **args, void *stream = nullptr) {
+  zs::Cuda::ContextGuard guard(context);
+
+  const int block_dim = 256;
+  const int grid_dim = (dim + block_dim - 1) / block_dim;
+
+  CUresult res = cuLaunchKernel((CUfunction)kernel, grid_dim, 1, 1, block_dim,
+                                1, 1, 0, (CUstream)stream, args, 0);
+
+  zs::checkCuApiError(res, "[Zpc-JIT::cuLaunchKernel]"); 
+
+  return res;
+}
+
 }  // extern "C"

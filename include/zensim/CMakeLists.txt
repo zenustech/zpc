@@ -304,14 +304,6 @@ if(ZS_ENABLE_VULKAN)
   )
 endif(ZS_ENABLE_VULKAN)
 
-if(ZS_ENABLE_JIT)
-  target_sources(zpccore
-    PRIVATE
-    llvm/LLVM.cpp
-  )
-  target_link_libraries(zpccore PUBLIC zpc_jit_deps)
-endif(ZS_ENABLE_JIT)
-
 if(ENABLE_PCH)
   target_precompile_headers(zpccore INTERFACE
     ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
@@ -609,6 +601,8 @@ set_target_properties(zpc_jit_clang
 )
 target_sources(zpc_jit_clang  
   PRIVATE
+  llvm/LLVM.cpp
+
   py_interop/Clang.cpp  # may include omp backend
 )
 target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
@@ -695,6 +689,19 @@ add_custom_command(
   DEPENDS zpc_jit_nvrtc 
     COMMENT "copying nvrtc related runtime shared libraries"
 )
+#[=[
+if (TARGET CUDA::nvJitLink)
+  add_custom_command(
+    TARGET zpc_jit_nvrtc
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvJitLink> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+
+    VERBATIM
+    DEPENDS zpc_jit_nvrtc 
+    COMMENT "copying nvJitLink shared library"
+  )
+  endif()
+#]=]
 endif(ZS_ENABLE_CUDA)
 
 # openvdb, partio
@@ -761,7 +768,7 @@ if(ZS_ENABLE_CUDA)
   )
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
 
-  target_link_libraries(zs_cu_wrangler PRIVATE zpc)
+  target_link_libraries(zs_cu_wrangler PRIVATE zpc CUDA::nvrtc)
   set(ZS_PTX_SOURCE_DIR cuda/simulation/wrangler)
 
   # set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})  # not valid for win platform

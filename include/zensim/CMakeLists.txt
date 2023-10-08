@@ -463,7 +463,7 @@ if(ZS_ENABLE_CUDA)
 
   set_target_properties(zpccuda
     PROPERTIES # LINKER_LANGUAGE CUDA
-    CUDA_SEPARABLE_COMPILATION OFF
+    CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
 
     # CUDA_VISIBILITY_PRESET default
@@ -546,7 +546,30 @@ target_link_libraries(zensim INTERFACE zpc) # zpc -> zensim
 # ################
 # zpc_py_interop #
 # ################
-add_library(zpc_py_interop SHARED)
+add_library(zpc_jit_py INTERFACE)  # cmake helper target for zpc JIT
+find_package(Python3 COMPONENTS Interpreter Development)
+if (Python3_FOUND)
+  target_link_libraries(zpc_jit_py INTERFACE ${Python3_LIBRARIES})
+  target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
+endif(Python3_FOUND)
+
+add_library(zpc_py_interop SHARED)  # 
+set_target_properties(zpc_py_interop 
+  PROPERTIES 
+  POSITION_INDEPENDENT_CODE ON
+  #
+  # ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  #
+  # ref: https://stackoverflow.com/questions/58360502/how-to-set-rpath-origin-in-cmake
+  # ref: https://stackoverflow.com/questions/57915564/cmake-how-to-set-rpath-to-origin-with-cmake
+  SKIP_BUILD_RPATH OFF
+  BUILD_WITH_INSTALL_RPATH TRUE
+  INSTALL_RPATH "\$ORIGIN"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
 target_sources(zpc_py_interop 
   PRIVATE
   ${ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES}
@@ -556,22 +579,71 @@ target_sources(zpc_py_interop
   py_interop/serial/SpmatUtility.cpp
   py_interop/serial/BhtUtility.cpp
 )
+if(ZS_ENABLE_OPENMP)
+  target_sources(zpc_py_interop
+    PRIVATE
+    py_interop/omp/ExecutionPolicy.cpp
+    py_interop/omp/TileVectorUtility.cpp
+    py_interop/omp/SpmatUtility.cpp
+    py_interop/omp/BhtUtility.cpp
+  )
+endif(ZS_ENABLE_OPENMP)
+target_link_libraries(zpc_py_interop PUBLIC zpc)
+target_link_libraries(zpc_jit_py INTERFACE zpc_py_interop)
 
 if(ZS_ENABLE_JIT)
-target_sources(zpc_py_interop 
+add_library(zpc_jit_clang SHARED)
+set_target_properties(zpc_jit_clang 
+  PROPERTIES 
+  POSITION_INDEPENDENT_CODE ON
+  #
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  #
+  SKIP_BUILD_RPATH OFF
+  BUILD_WITH_INSTALL_RPATH TRUE
+  INSTALL_RPATH "\$ORIGIN"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+target_sources(zpc_jit_clang  
   PRIVATE
   py_interop/Clang.cpp  # may include omp backend
 )
+target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
+target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
 endif(ZS_ENABLE_JIT)
 
 if(ZS_ENABLE_CUDA)
+  add_library(zpc_jit_nvrtc SHARED)
+  set_target_properties(zpc_jit_nvrtc 
+    PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_SEPARABLE_COMPILATION OFF  # single file
+    CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    #
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    #
+    SKIP_BUILD_RPATH OFF
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "\$ORIGIN"
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+  )
+  target_sources(zpc_jit_nvrtc
+    PRIVATE
+    py_interop/cuda/Nvrtc.cpp
+  )
+  target_link_libraries(zpc_jit_nvrtc PRIVATE zpc CUDA::nvrtc)
+  target_link_libraries(zpc_jit_py INTERFACE zpc_jit_nvrtc)
+
   target_sources(zpc_py_interop
     PRIVATE
     py_interop/cuda/ExecutionPolicy.cpp
     py_interop/cuda/TileVectorUtility.cpp
     py_interop/cuda/SpmatUtility.cpp
     py_interop/cuda/BhtUtility.cpp
-    py_interop/cuda/Nvrtc.cpp
   )
   set_source_files_properties(
     py_interop/cuda/ExecutionPolicy.cpp 
@@ -582,39 +654,47 @@ if(ZS_ENABLE_CUDA)
     PROPERTIES LANGUAGE CUDA)
 endif(ZS_ENABLE_CUDA)
 
-if(ZS_ENABLE_OPENMP)
-  target_sources(zpc_py_interop
-    PRIVATE
-    py_interop/omp/ExecutionPolicy.cpp
-    py_interop/omp/TileVectorUtility.cpp
-    py_interop/omp/SpmatUtility.cpp
-    py_interop/omp/BhtUtility.cpp
-  )
-endif(ZS_ENABLE_OPENMP)
-
-set_target_properties(zpc_py_interop 
-  PROPERTIES POSITION_INDEPENDENT_CODE ON
-)
 if(ENABLE_PCH)
   target_precompile_headers(zpc_py_interop INTERFACE ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
-target_link_libraries(zpc_py_interop PUBLIC zpc zpc_jit_deps)
-# ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
-set_target_properties(zpc_py_interop PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-set_target_properties(zpc_py_interop PROPERTIES
-  SKIP_BUILD_RPATH OFF
-  BUILD_WITH_INSTALL_RPATH TRUE
-  INSTALL_RPATH "\$ORIGIN/lib"
-  INSTALL_RPATH_USE_LINK_PATH TRUE
-)
-
 add_dependencies(zensim zpc_py_interop)
 # do not link the target (zpc_py_interop) to zensim!
+
+### general JIT-dependent shared library installation
+add_dependencies(
+    zpc_jit_py zpc_jit_clang
+)
+if (ZS_BUILD_SHARED_LIBS)
+add_custom_command(
+  TARGET zpc_jit_clang
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_clang>
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zswhereami> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+  VERBATIM
+  DEPENDS zpc_jit_clang 
+    COMMENT "copying nvrtc related runtime shared libraries"
+)
+endif(ZS_BUILD_SHARED_LIBS)
+### nvrtc-specific shared library installation
+if (ZS_ENABLE_CUDA)
+add_dependencies(
+    zpc_jit_py zpc_jit_nvrtc 
+)
+add_custom_command(
+  TARGET zpc_jit_nvrtc
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvrtc> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cuda_driver> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cudart> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+
+  VERBATIM
+  DEPENDS zpc_jit_nvrtc 
+    COMMENT "copying nvrtc related runtime shared libraries"
+)
+endif(ZS_ENABLE_CUDA)
 
 # openvdb, partio
 # ##########

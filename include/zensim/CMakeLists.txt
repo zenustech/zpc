@@ -661,17 +661,50 @@ add_dependencies(
     zpc_jit_py zpc_jit_clang
 )
 if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
-add_custom_command(
-  TARGET zpc_jit_clang
-  POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_clang>
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zswhereami> $<TARGET_FILE_DIR:zpc_jit_clang>
+  add_custom_command(
+    TARGET zpc_jit_clang
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_clang>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zswhereami> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-  VERBATIM
-  DEPENDS zpc_jit_clang 
-    COMMENT "copying JIT-dependent runtime shared libraries"
+    VERBATIM
+    DEPENDS zpc_jit_clang 
+      COMMENT "copying JIT-dependent 3rd party runtime shared libraries"
+  )
+endif(ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
+
+if (ZS_BUILD_SHARED_LIBS)
+  add_custom_command(
+    TARGET zpc_jit_clang
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccore> $<TARGET_FILE_DIR:zpc_jit_clang>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpc> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+    DEPENDS zpc_jit_clang 
+      COMMENT "copying JIT-dependent zpc core runtime shared libraries"
 )
+if (ZS_ENABLE_OPENMP)
+  add_custom_command(
+    TARGET zpc_jit_clang
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpcomp> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+    DEPENDS zpc_jit_clang 
+      COMMENT "copying JIT-dependent zpc (omp) runtime shared libraries"
+  )
+endif(ZS_ENABLE_OPENMP)
+if (ZS_ENABLE_CUDA)
+  add_custom_command(
+    TARGET zpc_jit_clang
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccuda> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+    DEPENDS zpc_jit_clang 
+      COMMENT "copying JIT-dependent zpc (cuda) runtime shared libraries"
+  )
+endif(ZS_ENABLE_CUDA)
 endif(ZS_BUILD_SHARED_LIBS)
+
 ### nvrtc-specific shared library installation
 if (ZS_ENABLE_CUDA)
 add_dependencies(

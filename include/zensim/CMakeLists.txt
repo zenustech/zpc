@@ -660,7 +660,7 @@ add_dependencies(zensim zpc_py_interop)
 add_dependencies(
     zpc_jit_py zpc_jit_clang
 )
-if (ZS_BUILD_SHARED_LIBS)
+if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
 add_custom_command(
   TARGET zpc_jit_clang
   POST_BUILD

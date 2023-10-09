@@ -433,7 +433,7 @@ if(ZS_ENABLE_CUDA)
     PROPERTIES POSITION_INDEPENDENT_CODE ON
   )
 
-  target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+  target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore CUDA::nvrtc) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
     PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
@@ -610,6 +610,7 @@ target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
 endif(ZS_ENABLE_JIT)
 
 if(ZS_ENABLE_CUDA)
+  find_package(CUDAToolkit)
   add_library(zpc_jit_nvrtc SHARED)
   set_target_properties(zpc_jit_nvrtc 
     PROPERTIES 

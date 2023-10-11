@@ -552,7 +552,7 @@ namespace zs {
     auto allocator = get_temporary_memory_source(policy);
     Vector<index_type> localOffsets{allocator, (size_t)size * 2};
     Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
-    bool success = false;
+    // bool success = false;
     cnts.reset(0);
     {
       auto params = zs::make_tuple(view<space>(cnts), view<space>(localOffsets), std::begin(is),

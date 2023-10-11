@@ -2,6 +2,8 @@
 #include "zensim/math/MathUtils.h"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Property.h"
+#include "zensim/types/Tuple.h"
+#include "zensim/ZpcIterator.hpp"
 
 namespace zs {
 

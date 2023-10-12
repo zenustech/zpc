@@ -26,7 +26,6 @@ int main() {
 
     static_assert(is_same_v<decltype(0_th), index_t<0>>, "index literal error!");
 
-
     tuple a{1};
     const tuple b{2.f};
     const Dummy bb{};

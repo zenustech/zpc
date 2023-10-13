@@ -345,14 +345,14 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       const auto dist = last - first;
-      std::vector<ValueT> localRes{};
-      DiffT nths{}, n{};
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<ValueT> localRes{allocator, (size_t)0};
+      DiffT nths{};
 #pragma omp parallel if (_dop < dist) num_threads(_dop) shared(dist, nths, first, last, d_first)
       {
 #pragma omp single
         {
           nths = omp_get_num_threads();
-          n = nths < dist ? nths : dist;
           localRes.resize(nths);
         }
 #pragma omp barrier
@@ -362,26 +362,25 @@ namespace zs {
         DiffT ed = st + nwork;
         if (ed > dist) ed = dist;
 
-        ValueT res{};
+        ValueT res{init};
         if (st < ed) {
-          res = *(first + st);
-          for (auto offset = st + 1; offset < ed; ++offset) res = binary_op(res, *(first + offset));
-          localRes[tid] = res;
+          for (auto offset = st; offset < ed; ++offset) res = binary_op(res, *(first + offset));
         }
+        localRes[tid] = res;
 #pragma omp barrier
 
         ValueT tmp = res;
-        for (DiffT stride = 1; stride < n; stride *= 2) {
-          if (tid + stride < n) tmp = binary_op(tmp, localRes[tid + stride]);
+        for (DiffT stride = 1; stride < nths; stride *= 2) {
+          if (tid + stride < nths) tmp = binary_op(tmp, localRes[tid + stride]);
 #pragma omp barrier
-          if (tid + stride < n) localRes[tid] = tmp;
+          if (tid + stride < nths) localRes[tid] = tmp;
 #pragma omp barrier
         }
 
         if (tid == 0) *d_first = tmp;
       }
       if (shouldProfile())
-        timer.tock(fmt::format("[Omp Exec | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
+        timer.tock(fmt::format("[Omp Reduce | File {}, Ln {}, Col {}]", loc.file_name(), loc.line(),
                                loc.column()));
     }
     template <class InputIt, class OutputIt,

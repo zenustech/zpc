@@ -1,5 +1,6 @@
 #pragma once
 
+#include "zensim/ZpcIntrinsics.hpp"
 #include "zensim/ZpcMeta.hpp"
 
 namespace zs {
@@ -24,9 +25,12 @@ namespace zs {
       }
 #endif
     }
-    template <typename StrT, enable_if_t<is_assignable_v<char_type &, decltype(declval<StrT>()[0])>
-                                         && is_integral_v<decltype(declval<StrT>().size())>>
-                             = 0>
+    template <
+        typename StrT,
+        enable_if_t<is_assignable_v<
+                        char_type &,
+                        decltype(declval<StrT>()
+                                     [0])> && is_integral_v<decltype(declval<StrT>().size())>> = 0>
     BasicSmallString(const StrT &str) noexcept {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;
       buf[n] = '\0';

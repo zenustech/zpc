@@ -84,7 +84,7 @@ namespace zs {
     }
   };
   template <typename T = void> struct getmax {
-    constexpr T operator()(const T &lhs, const T &rhs) const noexcept {
+    constexpr T operator()(const T &lhs, const T &rhs) const noexcept(noexcept(lhs > rhs)) {
       return lhs > rhs ? lhs : rhs;
     }
   };
@@ -100,7 +100,7 @@ namespace zs {
     }
   };
   template <typename T = void> struct getmin {
-    constexpr T operator()(const T &lhs, const T &rhs) const noexcept {
+    constexpr T operator()(const T &lhs, const T &rhs) const noexcept(noexcept(lhs < rhs)) {
       return lhs < rhs ? lhs : rhs;
     }
   };
@@ -209,6 +209,8 @@ namespace zs {
         return ZS_FLT_EPSILON;
       else if constexpr (is_same_v<T, double>)
         return ZS_DBL_EPSILON;
+      else
+        static_assert(always_false<T>, "not implemented for this type!");
     }
     template <typename T> constexpr T deduce_numeric_max() {
       static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
@@ -222,6 +224,8 @@ namespace zs {
         return ZS_FLT_MAX;
       else if constexpr (is_same_v<T, double>)
         return ZS_DBL_MAX;
+      else
+        static_assert(always_false<T>, "not implemented for this type!");
     }
     template <typename T> constexpr T deduce_numeric_lowest() {
       static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
@@ -235,6 +239,8 @@ namespace zs {
         return -ZS_FLT_MAX;
       else if constexpr (is_same_v<T, double>)
         return -ZS_DBL_MAX;
+      else
+        static_assert(always_false<T>, "not implemented for this type!");
     }
     template <typename T> constexpr T deduce_numeric_infinity() {
       static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
@@ -245,6 +251,8 @@ namespace zs {
         return __builtin_huge_valf();
       else if constexpr (is_same_v<T, double>)
         return __builtin_huge_val();
+      else
+        static_assert(always_false<T>, "not implemented for this type!");
     }
   }  // namespace detail
   template <typename T> struct monoid<getmax<T>, T> {
@@ -621,8 +629,8 @@ namespace zs {
         else {
           constexpr size_t halfN = N / 2;
           return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
-                       (*this)(type_seq<SeqT...>{}.shuffle(
-                           typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
+                         (*this)(type_seq<SeqT...>{}.shuffle(
+                             typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
         }
       }
     };

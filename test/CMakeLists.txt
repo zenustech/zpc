@@ -20,8 +20,17 @@ add_test(ZsParallelPrimitive paraprim)
 add_dependencies(zensim paraprim)
 
 # cuda backends
+if (ZS_ENABLE_CUDA)
+#
 add_executable(cutests cuda/main.cu)
 target_link_libraries(cutests PRIVATE zpc)
 
 add_test(ZsCudaTests cutests)
 add_dependencies(zensim cutests)
+#
+add_executable(cucontainer cuda/basic.cu)
+target_link_libraries(cucontainer PRIVATE zpc)
+
+add_test(ZsCudaBasic cucontainer)
+add_dependencies(zensim cucontainer)
+endif (ZS_ENABLE_CUDA)

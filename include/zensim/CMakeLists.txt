@@ -582,7 +582,7 @@ if(ZS_ENABLE_OPENMP)
   )
 endif(ZS_ENABLE_OPENMP)
 target_link_libraries(zpc_py_interop PUBLIC zpc)
-target_link_libraries(zpc_jit_py INTERFACE zpc_py_interop)
+# target_link_libraries(zpc_jit_py INTERFACE zpc_py_interop)
 
 if(ZS_ENABLE_JIT)
 add_library(zpc_jit_clang SHARED)
@@ -606,7 +606,7 @@ target_sources(zpc_jit_clang
   py_interop/Clang.cpp  # may include omp backend
 )
 target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
-target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
+# target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
 endif(ZS_ENABLE_JIT)
 
 if(ZS_ENABLE_CUDA)
@@ -632,7 +632,7 @@ if(ZS_ENABLE_CUDA)
     py_interop/cuda/Nvrtc.cpp
   )
   target_link_libraries(zpc_jit_nvrtc PRIVATE zpc CUDA::nvrtc)
-  target_link_libraries(zpc_jit_py INTERFACE zpc_jit_nvrtc)
+  # target_link_libraries(zpc_jit_py INTERFACE zpc_jit_nvrtc)
 
   target_sources(zpc_py_interop
     PRIVATE
@@ -658,71 +658,75 @@ add_dependencies(zensim zpc_py_interop)
 # do not link the target (zpc_py_interop) to zensim!
 
 ### general JIT-dependent shared library installation
-add_dependencies(
-    zpc_jit_py zpc_jit_clang
-)
-if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
-  add_custom_command(
-    TARGET zpc_jit_clang
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_clang>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zswhereami> $<TARGET_FILE_DIR:zpc_jit_clang>
-
-    VERBATIM
-    DEPENDS zpc_jit_clang 
-      COMMENT "copying JIT-dependent 3rd party runtime shared libraries"
+if(ZS_ENABLE_JIT)
+  add_dependencies(
+      zpc_jit_py zpc_jit_clang
   )
-endif(ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
+  if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_clang>
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zswhereami> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-if (ZS_BUILD_SHARED_LIBS)
-  add_custom_command(
-    TARGET zpc_jit_clang
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccore> $<TARGET_FILE_DIR:zpc_jit_clang>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpc> $<TARGET_FILE_DIR:zpc_jit_clang>
+      VERBATIM
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent 3rd party runtime shared libraries"
+    )
+  endif(ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
 
-    DEPENDS zpc_jit_clang 
-      COMMENT "copying JIT-dependent zpc core runtime shared libraries"
-)
-if (ZS_ENABLE_OPENMP)
-  add_custom_command(
-    TARGET zpc_jit_clang
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpcomp> $<TARGET_FILE_DIR:zpc_jit_clang>
+  if (ZS_BUILD_SHARED_LIBS)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccore> $<TARGET_FILE_DIR:zpc_jit_clang>
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpc> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-    DEPENDS zpc_jit_clang 
-      COMMENT "copying JIT-dependent zpc (omp) runtime shared libraries"
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent zpc core runtime shared libraries"
   )
-endif(ZS_ENABLE_OPENMP)
-if (ZS_ENABLE_CUDA)
-  add_custom_command(
-    TARGET zpc_jit_clang
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccuda> $<TARGET_FILE_DIR:zpc_jit_clang>
+  if (ZS_ENABLE_OPENMP)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpcomp> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-    DEPENDS zpc_jit_clang 
-      COMMENT "copying JIT-dependent zpc (cuda) runtime shared libraries"
-  )
-endif(ZS_ENABLE_CUDA)
-endif(ZS_BUILD_SHARED_LIBS)
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent zpc (omp) runtime shared libraries"
+    )
+  endif(ZS_ENABLE_OPENMP)
+  if (ZS_ENABLE_CUDA)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccuda> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent zpc (cuda) runtime shared libraries"
+    )
+  endif(ZS_ENABLE_CUDA)
+  endif(ZS_BUILD_SHARED_LIBS)
+endif(ZS_ENABLE_JIT)
 
 ### nvrtc-specific shared library installation
 if (ZS_ENABLE_CUDA)
-add_dependencies(
-    zpc_jit_py zpc_jit_nvrtc 
-)
-add_custom_command(
-  TARGET zpc_jit_nvrtc
-  POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_nvrtc>
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvrtc> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cuda_driver> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cudart> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+  add_dependencies(
+      zpc_jit_py zpc_jit_nvrtc 
+  )
+  get_target_property(nvrtc_target_type CUDA::nvrtc TYPE)
+  if (nvrtc_target_type STREQUAL "SHARED_LIBRARY")
+  add_custom_command(
+    TARGET zpc_jit_nvrtc
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvrtc> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cuda_driver> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cudart> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
 
-  VERBATIM
-  DEPENDS zpc_jit_nvrtc 
-    COMMENT "copying nvrtc related runtime shared libraries"
-)
+    VERBATIM
+    DEPENDS zpc_jit_nvrtc 
+      COMMENT "copying nvrtc related runtime shared libraries"
+  )
 #[=[
 if (TARGET CUDA::nvJitLink)
   add_custom_command(
@@ -736,6 +740,7 @@ if (TARGET CUDA::nvJitLink)
   )
   endif()
 #]=]
+  endif (nvrtc_target_type STREQUAL "SHARED_LIBRARY")
 endif(ZS_ENABLE_CUDA)
 
 # openvdb, partio

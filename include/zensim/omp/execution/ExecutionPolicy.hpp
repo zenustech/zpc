@@ -345,8 +345,7 @@ namespace zs {
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       const auto dist = last - first;
-      auto allocator = get_temporary_memory_source(*this);
-      Vector<ValueT> localRes{allocator, (size_t)0};
+      std::vector<ValueT> localRes{};
       DiffT nths{};
 #pragma omp parallel if (_dop < dist) num_threads(_dop) shared(dist, nths, first, last, d_first)
       {

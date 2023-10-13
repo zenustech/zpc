@@ -2,6 +2,12 @@
 
 #include "zensim/ZpcIntrinsics.hpp"
 #include "zensim/ZpcMeta.hpp"
+#if defined(__CUDACC__)
+#  ifdef ZPC_JIT_MODE
+#  else
+#    include <stdio.h>
+#  endif
+#endif
 
 namespace zs {
 

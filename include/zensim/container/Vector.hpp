@@ -82,6 +82,11 @@ namespace zs {
                      MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v},
                      sizeof(value_type));
     }
+    inline void assignVals(const value_type *src) const {
+      Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
+                     MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)src},
+                     sizeof(value_type) * size());
+    }
 
     struct iterator_impl : IteratorInterface<iterator_impl> {
       template <typename Ti> constexpr iterator_impl(pointer base, Ti &&idx)

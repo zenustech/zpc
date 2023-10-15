@@ -118,6 +118,7 @@ namespace zs {
     }
 
     /// capacity
+    constexpr size_type dims() const noexcept { return _shape.size() - 1; }
     constexpr size_type size() const noexcept { return _field.size(); }
     constexpr size_type capacity() const noexcept { return _field.capacity(); }
     constexpr bool empty() const noexcept { return size() == 0; }

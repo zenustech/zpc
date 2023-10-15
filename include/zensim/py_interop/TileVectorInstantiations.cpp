@@ -7,19 +7,18 @@ extern "C" {
 /* tags */
 std::vector<zs::PropertyTag> *property_tags(const char *names[], int sizes[], zs::size_t numTags) {
   auto ret = new std::vector<zs::PropertyTag>(numTags);
+  auto &tmp = *ret;
   for (zs::size_t i = 0; i != numTags; ++i)
-    (*ret)[i] = zs::PropertyTag{zs::SmallString{names[i]}, sizes[i]};
+    tmp[i] = zs::PropertyTag{zs::SmallString{names[i]}, sizes[i]};
   return ret;
 }
 void del_property_tags(std::vector<zs::PropertyTag> *v) { delete v; }
-void property_tags_get_item(std::vector<zs::PropertyTag> *v, zs::size_t index, 
-  const char** name, zs::size_t *size) {
-    *name = (*v)[index].name; 
-    *size = (*v)[index].numChannels; 
+void property_tags_get_item(std::vector<zs::PropertyTag> *v, zs::size_t index, const char **name,
+                            zs::size_t *size) {
+  *name = (*v)[index].name;
+  *size = (*v)[index].numChannels;
 }
-zs::size_t property_tags_get_size(std::vector<zs::PropertyTag> *v) {
-  return v->size(); 
-}
+zs::size_t property_tags_get_size(std::vector<zs::PropertyTag> *v) { return v->size(); }
 
 #define INSTANTIATE_TILE_VECTOR_CAPIS(T, L)                                                       \
   /* container */                                                                                 \

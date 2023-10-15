@@ -66,6 +66,7 @@ set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
   py_interop/Allocator.cpp
+  py_interop/DenseFieldInstantiations.cpp
   py_interop/BhtInstantiations.cpp
   py_interop/VectorInstantiations.cpp
   py_interop/SpmatInstantiations.cpp
@@ -252,6 +253,7 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
 
 )
 set(ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES
+  py_interop/DenseFieldView.hpp
   py_interop/VectorView.hpp
   py_interop/TileVectorView.hpp
   py_interop/BhtView.hpp

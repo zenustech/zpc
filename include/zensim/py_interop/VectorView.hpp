@@ -7,7 +7,7 @@ namespace zs {
     using value_type = remove_const_t<T_>;
     using size_type = size_t;
 
-    static constexpr bool is_const_structure = is_const<value_type>::value;
+    static constexpr bool is_const_structure = is_const<T_>::value;
 
     constexpr VectorViewLite() noexcept = default;
     VectorViewLite(T_* const v) noexcept : _vector{v} {}

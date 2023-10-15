@@ -4,9 +4,9 @@
 
 namespace zs {
 
-  template <typename T, typename AllocatorT = ZSPmrAllocator<>> struct DenseVector {
+  template <typename T, typename AllocatorT = ZSPmrAllocator<>> struct DenseField {
     static_assert(is_zs_allocator<AllocatorT>::value,
-                  "DenseVector only works with zspmrallocator for now.");
+                  "DenseField only works with zspmrallocator for now.");
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
     // static_assert(zs::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
@@ -17,16 +17,16 @@ namespace zs {
 
     using value_type = T;
     using field_type = Vector<value_type, allocator_type>;
+    using size_type = typename field_type::size_type;
     using shape_type = Vector<size_type, allocator_type>;
 
-    using size_type = typename field_type::size_type;
     using difference_type = typename field_type::difference_type;
     using reference = typename field_type::reference;
     using const_reference = typename field_type::const_reference;
     using pointer = typename field_type::pointer;
     using const_pointer = typename field_type::const_pointer;
 
-    constexpr decltype(auto) memoryLocation() const noexcept { return _field.location; }
+    constexpr decltype(auto) memoryLocation() const noexcept { return _field.memoryLocation(); }
     constexpr ProcID devid() const noexcept { return _field.devid(); }
     constexpr memsrc_e memspace() const noexcept { return _field.memspace(); }
     decltype(auto) get_allocator() const noexcept { return _field.get_allocator(); }
@@ -34,13 +34,13 @@ namespace zs {
       return _field.get_default_allocator(mre, devid);
     }
 
-    static size_type shape_size(const std::vector<size_type> &shape) const noexcept {
+    static size_type shape_size(const std::vector<size_type> &shape) noexcept {
       size_type sz = 1;
       for (size_type d : shape) sz *= d;
       return sz;
     }
     /// allocator-aware
-    DenseVector(const allocator_type &allocator, const std::vector<size_type> &shape)
+    DenseField(const allocator_type &allocator, const std::vector<size_type> &shape)
         : _field{allocator, shape_size(shape)}, _shape{shape.size()} {
       size_type base = 1;
       for (sint_t i = shape.size() - 1; i >= 0; --i) {
@@ -50,45 +50,70 @@ namespace zs {
       if (allocator.location.memspace() != memsrc_e::host)
         _shape = _shape.clone(allocator.location);
     }
-    explicit DenseVector(const std::vector<size_type> &shape, memsrc_e mre = memsrc_e::host,
-                         ProcID devid = -1)
-        : DenseVector{get_default_allocator(mre, devid), shape} {}
-    DenseVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : DenseVector{get_default_allocator(mre, devid), {}} {}
+    explicit DenseField(const std::vector<size_type> &shape, memsrc_e mre = memsrc_e::host,
+                        ProcID devid = -1)
+        : DenseField{get_default_allocator(mre, devid), shape} {}
+    DenseField(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+        : DenseField{get_default_allocator(mre, devid), {}} {}
 
-    ~DenseVector() = default;
+    ~DenseField() = default;
 
     inline value_type getVal(size_type i = 0) const { return _field.getVal(i); }
     inline void retrieveVals(value_type *dst) const { _field.retrieveVals(dst); }
     inline void setVal(value_type v, size_type i = 0) const { _field.setVal(v, i); }
 
-    struct iterator_impl : typename field_type::iterator_impl {
-      using base_t = typename field_type::iterator_impl;
+    struct iterator_impl : IteratorInterface<iterator_impl> {
       constexpr iterator_impl(pointer base, size_type idx, const size_type *bases, size_type dim)
-          : base_t{base, idx}, _bases{bases}, _dim{dim} {}
+          : _iter{base, idx}, _bases{bases}, _dim{dim} {}
+
+      constexpr reference dereference() { return _iter.dereference(); }
+      constexpr bool equal_to(iterator_impl it) const noexcept { return it._iter.equal_to(_iter); }
+      constexpr void advance(difference_type offset) noexcept { _iter.advance(offset); }
+      constexpr difference_type distance_to(iterator_impl it) const noexcept {
+        return _iter.distance_to(it._iter);
+      }
 
     protected:
+      typename field_type::iterator_impl _iter;
       const size_type *_bases{nullptr};
       size_type _dim{};
     };
-    struct const_iterator_impl : typename field_type::const_iterator_impl {
-      using base_t = typename field_type::const_iterator_impl;
+    struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
       constexpr const_iterator_impl(const_pointer base, size_type idx, const size_type *bases,
                                     size_type dim)
-          : base_t{base, idx}, _bases{bases}, _dim{dim} {}
+          : _iter{base, idx}, _bases{bases}, _dim{dim} {}
+
+      constexpr const_reference dereference() { return _iter.dereference(); }
+      constexpr bool equal_to(const_iterator_impl it) const noexcept {
+        return it._iter.equal_to(_iter);
+      }
+      constexpr void advance(difference_type offset) noexcept { _iter.advance(offset); }
+      constexpr difference_type distance_to(const_iterator_impl it) const noexcept {
+        return _iter.distance_to(it._iter);
+      }
 
     protected:
+      typename field_type::const_iterator_impl _iter;
       const size_type *_bases{nullptr};
       size_type _dim{};
     };
     using iterator = LegacyIterator<iterator_impl>;
     using const_iterator = LegacyIterator<const_iterator_impl>;
 
-    constexpr auto begin() noexcept { return make_iterator<iterator_impl>(_base, 0); }
-    constexpr auto end() noexcept { return make_iterator<iterator_impl>(_base, size()); }
-    constexpr auto begin() const noexcept { return make_iterator<const_iterator_impl>(_base, 0); }
+    constexpr auto begin() noexcept {
+      return make_iterator<iterator_impl>(_field.data(), (size_type)0, _shape.data(),
+                                          _shape.size());
+    }
+    constexpr auto end() noexcept {
+      return make_iterator<iterator_impl>(_field.data(), size(), _shape.data(), _shape.size());
+    }
+    constexpr auto begin() const noexcept {
+      return make_iterator<const_iterator_impl>(_field.data(), (size_type)0, _shape.data(),
+                                                _shape.size());
+    }
     constexpr auto end() const noexcept {
-      return make_iterator<const_iterator_impl>(_base, size());
+      return make_iterator<const_iterator_impl>(_field.data(), size(), _shape.data(),
+                                                _shape.size());
     }
 
     /// capacity
@@ -123,11 +148,11 @@ namespace zs {
         printf("densevector ofb! num indices (%d) does not equal the dim of shape (%d)\n",
                (int)(sizeof...(is)), (int)_shape.size());
 #endif
-      std::vector<size_type> bases(_shape.size());
+      std::vector<size_type> bases(_shape.size() + 1);
       _shape.retrieveVals(bases.data());
+      bases.back() = static_cast<size_type>(1);
       size_type offset = 1, i = 0;
-      (void)((offset += (size_type)is * (i != _shape.size() - 1 ? bases[i + 1] : (size_type)1)),
-             ...);
+      (void)((offset += (size_type)is * bases[++i]), ...);
       return offset;
     }
 
@@ -148,39 +173,39 @@ namespace zs {
       return _field[offset];
     }
     /// ctor, assignment operator
-    DenseVector(const DenseVector &o) : _field{o._field}, _shape{o._shape} {}
-    DenseVector &operator=(const DenseVector &o) {
+    DenseField(const DenseField &o) : _field{o._field}, _shape{o._shape} {}
+    DenseField &operator=(const DenseField &o) {
       if (this == &o) return *this;
-      DenseVector tmp(o);
+      DenseField tmp(o);
       swap(tmp);
       return *this;
     }
-    DenseVector clone(const allocator_type &allocator) const {
-      DenseVector ret{};
+    DenseField clone(const allocator_type &allocator) const {
+      DenseField ret{};
       ret._field = _field.clone(allocator);
       ret._shape = _shape.clone(allocator);
       return ret;
     }
-    DenseVector clone(const MemoryLocation &mloc) const {
+    DenseField clone(const MemoryLocation &mloc) const {
       return clone(get_default_allocator(mloc.memspace(), mloc.devid()));
     }
-    DenseVector(DenseVector &&o) noexcept {
-      const DenseVector defaultVector{};
+    DenseField(DenseField &&o) noexcept {
+      const DenseField defaultVector{};
       _field = std::exchange(o._field, defaultVector._field);
       _shape = std::exchange(o._shape, defaultVector._shape);
     }
     /// make move-assignment safe for self-assignment
-    DenseVector &operator=(DenseVector &&o) noexcept {
+    DenseField &operator=(DenseField &&o) noexcept {
       if (this == &o) return *this;
-      DenseVector tmp(zs::move(o));
+      DenseField tmp(zs::move(o));
       swap(tmp);
       return *this;
     }
-    void swap(DenseVector &o) noexcept {
+    void swap(DenseField &o) noexcept {
       std::swap(_field, o._field);
       std::swap(_shape, o._shape);
     }
-    friend void swap(DenseVector &a, DenseVector &b) noexcept { a.swap(b); }
+    friend void swap(DenseField &a, DenseField &b) noexcept { a.swap(b); }
 
     void reset(int ch) { _field.reset(ch); }
     /// @note field is invalidated
@@ -202,22 +227,22 @@ namespace zs {
     shape_type _shape;
   };
 
-  extern template struct DenseVector<u8, ZSPmrAllocator<>>;
-  extern template struct DenseVector<u32, ZSPmrAllocator<>>;
-  extern template struct DenseVector<u64, ZSPmrAllocator<>>;
-  extern template struct DenseVector<i8, ZSPmrAllocator<>>;
-  extern template struct DenseVector<i32, ZSPmrAllocator<>>;
-  extern template struct DenseVector<i64, ZSPmrAllocator<>>;
-  extern template struct DenseVector<f32, ZSPmrAllocator<>>;
-  extern template struct DenseVector<f64, ZSPmrAllocator<>>;
+  extern template struct DenseField<u8, ZSPmrAllocator<>>;
+  extern template struct DenseField<u32, ZSPmrAllocator<>>;
+  extern template struct DenseField<u64, ZSPmrAllocator<>>;
+  extern template struct DenseField<i8, ZSPmrAllocator<>>;
+  extern template struct DenseField<i32, ZSPmrAllocator<>>;
+  extern template struct DenseField<i64, ZSPmrAllocator<>>;
+  extern template struct DenseField<f32, ZSPmrAllocator<>>;
+  extern template struct DenseField<f64, ZSPmrAllocator<>>;
 
-  extern template struct DenseVector<u8, ZSPmrAllocator<true>>;
-  extern template struct DenseVector<u32, ZSPmrAllocator<true>>;
-  extern template struct DenseVector<u64, ZSPmrAllocator<true>>;
-  extern template struct DenseVector<i8, ZSPmrAllocator<true>>;
-  extern template struct DenseVector<i32, ZSPmrAllocator<true>>;
-  extern template struct DenseVector<i64, ZSPmrAllocator<true>>;
-  extern template struct DenseVector<f32, ZSPmrAllocator<true>>;
-  extern template struct DenseVector<f64, ZSPmrAllocator<true>>;
+  extern template struct DenseField<u8, ZSPmrAllocator<true>>;
+  extern template struct DenseField<u32, ZSPmrAllocator<true>>;
+  extern template struct DenseField<u64, ZSPmrAllocator<true>>;
+  extern template struct DenseField<i8, ZSPmrAllocator<true>>;
+  extern template struct DenseField<i32, ZSPmrAllocator<true>>;
+  extern template struct DenseField<i64, ZSPmrAllocator<true>>;
+  extern template struct DenseField<f32, ZSPmrAllocator<true>>;
+  extern template struct DenseField<f64, ZSPmrAllocator<true>>;
 
 }  // namespace zs

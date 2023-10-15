@@ -53,6 +53,7 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   container/HashTable.cpp
   container/Vector.cpp
   container/TileVector.cpp
+  container/DenseField.cpp
   math/matrix/Matrix.cpp
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp

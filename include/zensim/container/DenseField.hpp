@@ -41,11 +41,12 @@ namespace zs {
     }
     /// allocator-aware
     DenseField(const allocator_type &allocator, const std::vector<size_type> &shape)
-        : _field{allocator, shape_size(shape)}, _shape{shape.size()} {
+        : _field{allocator, shape_size(shape)}, _shape{shape.size() + 1} {
       size_type base = 1;
-      for (sint_t i = shape.size() - 1; i >= 0; --i) {
+      _shape[shape.size()] = 1;
+      for (sint_t i = shape.size() - 1; i >= 0;) {
         base *= shape[i];
-        _shape[i] = base;
+        _shape[i--] = base;
       }
       if (allocator.location.memspace() != memsrc_e::host)
         _shape = _shape.clone(allocator.location);
@@ -141,27 +142,26 @@ namespace zs {
     }
 
     /// element access
-    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
+    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
     constexpr size_type linearOffset(Args... is) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-      if (sizeof...(is) != _shape.size())
-        printf("densevector ofb! num indices (%d) does not equal the dim of shape (%d)\n",
-               (int)(sizeof...(is)), (int)_shape.size());
+      if (sizeof...(is) + 1 != _shape.size())
+        printf("densefield ofb! num indices (%d) does not equal the dim of shape (%d)\n",
+               (int)(sizeof...(is)), (int)_shape.size() - 1);
 #endif
-      std::vector<size_type> bases(_shape.size() + 1);
+      std::vector<size_type> bases(_shape.size());
       _shape.retrieveVals(bases.data());
-      bases.back() = static_cast<size_type>(1);
-      size_type offset = 1, i = 0;
+      size_type offset = 0, i = 0;
       (void)((offset += (size_type)is * bases[++i]), ...);
       return offset;
     }
 
-    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
+    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
     constexpr reference operator()(Args... is) noexcept {
       size_type offset = linearOffset(zs::move(is)...);
       return _field[offset];
     }
-    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
+    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
     constexpr conditional_t<is_fundamental_v<value_type>, value_type, const_reference> operator()(
         Args... is) const noexcept {
       size_type offset = linearOffset(zs::move(is)...);
@@ -211,18 +211,20 @@ namespace zs {
     /// @note field is invalidated
 
     void reshape(const std::vector<size_type> &newShape) {
-      // _shape = newShape;
+      shape_type shape{newShape.size() + 1};
       size_type base = 1;
-      shape_type shape{newShape.size()};
-      for (sint_t i = newShape.size() - 1; i >= 0; --i) {
+      shape[newShape.size()] = 1;
+      for (sint_t i = newShape.size() - 1; i >= 0;) {
         base *= newShape[i];
-        shape[i] = base;
+        shape[i--] = base;
       }
       _field.resize(base);
-      _shape = shape.clone(_shape.memoryLocation());
+      if (_shape.memspace() != memsrc_e::host)
+        _shape = shape.clone(_shape.memoryLocation());
+      else
+        _shape = zs::move(shape);
     }
 
-  protected:
     field_type _field;
     shape_type _shape;
   };
@@ -244,5 +246,129 @@ namespace zs {
   extern template struct DenseField<i64, ZSPmrAllocator<true>>;
   extern template struct DenseField<f32, ZSPmrAllocator<true>>;
   extern template struct DenseField<f64, ZSPmrAllocator<true>>;
+
+  template <execspace_e S, typename DenseFieldT, bool Base, typename = void> struct DenseFieldView {
+    static constexpr auto space = S;
+    static constexpr bool is_const_structure = is_const_v<DenseFieldT>;
+    using container_type = remove_const_t<DenseFieldT>;
+    using const_container_type = add_const_t<container_type>;
+    using pointer = conditional_t<is_const_structure, typename container_type::const_pointer,
+                                  typename container_type::pointer>;
+    using value_type = typename container_type::value_type;
+    using size_type = typename container_type::size_type;
+    using difference_type = typename container_type::difference_type;
+
+    /// @note may not need to embed 'Base' variant, for the shape info already includes the size.
+    template <typename VectorT, bool B> using vector_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure, const VectorT &, VectorT &>>(), wrapv<B>{}));
+
+    DenseFieldView() noexcept = default;
+    explicit constexpr DenseFieldView(DenseFieldT &df)
+        : field{view<space>(df._field, true_c)}, shape{view<space>(df._shape, wrapv<Base>{})} {}
+
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    constexpr decltype(auto) operator[](size_type offset) {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (offset >= shape[0]) {
+        printf("densefield [%s] ofb! accessing %lld out of [0, %lld)\n", field._nameTag.asChars(),
+               (long long)offset, (long long)shape[0]);
+        return field[limits<std::uintptr_t>::max()];
+      }
+#endif
+      return field[offset];
+    }
+    constexpr decltype(auto) operator[](size_type offset) const {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if (offset >= shape[0]) {
+        printf("densefield [%s] ofb! accessing %lld out of [0, %lld)\n", field._nameTag.asChars(),
+               (long long)offset, (long long)shape[0]);
+        return field[limits<std::uintptr_t>::max()];
+      }
+#endif
+      return field[offset];
+    }
+    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
+    constexpr size_type linearOffset(Args... is) const noexcept {
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+      if constexpr (!Base) {
+        if (sizeof...(is) + 1 != shape.size())
+          printf("densefield ofb! num indices (%d) does not equal the dim of shape (%d)\n",
+                 (int)(sizeof...(is)), (int)shape.size() - 1);
+      }
+#endif
+      size_type offset = 0, i = 0;
+      (void)((offset += (size_type)is * shape[++i]), ...);
+      return offset;
+    }
+    template <typename... Args, bool V = is_const_structure,
+              enable_if_all<!V, (is_integral_v<Args> && ...)> = 0>
+    constexpr decltype(auto) operator()(Args... is) {
+      const size_type offset = linearOffset(zs::move(is)...);
+      return operator[](offset);
+    }
+    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
+    constexpr decltype(auto) operator()(Args... is) const {
+      const size_type offset = linearOffset(zs::move(is)...);
+      return operator[](offset);
+    }
+
+    constexpr pointer data() noexcept { return field.data(); }
+    constexpr typename container_type::const_pointer data() const noexcept { return field.data(); }
+
+    vector_view_type<typename DenseFieldT::field_type, true> field;
+    vector_view_type<typename DenseFieldT::shape_type, Base> shape;
+  };
+
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base> = {}) {
+    return DenseFieldView<ExecSpace, DenseField<T, Allocator>, Base>{df};
+  }
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base> = {}) {
+    return DenseFieldView<ExecSpace, const DenseField<T, Allocator>, Base>{df};
+  }
+
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base>,
+                                const SmallString &tagName) {
+    auto ret = DenseFieldView<ExecSpace, DenseField<T, Allocator>, Base>{df};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret.field._nameTag = tagName;
+    ret.shape._nameTag = tagName;
+#endif
+    return ret;
+  }
+  template <execspace_e ExecSpace, typename T, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base>,
+                                const SmallString &tagName) {
+    auto ret = DenseFieldView<ExecSpace, const DenseField<T, Allocator>, Base>{df};
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+    ret.field._nameTag = tagName;
+    ret.shape._nameTag = tagName;
+#endif
+    return ret;
+  }
+
+  template <execspace_e space, typename T, typename Allocator>
+  constexpr decltype(auto) proxy(DenseField<T, Allocator> &df) {
+    return view<space>(df, false_c);
+  }
+  template <execspace_e space, typename T, typename Allocator>
+  constexpr decltype(auto) proxy(const DenseField<T, Allocator> &df) {
+    return view<space>(df, false_c);
+  }
+
+  template <execspace_e space, typename T, typename Allocator>
+  constexpr decltype(auto) proxy(DenseField<T, Allocator> &df, const SmallString &tagName) {
+    return view<space>(df, false_c, tagName);
+  }
+  template <execspace_e space, typename T, typename Allocator>
+  constexpr decltype(auto) proxy(const DenseField<T, Allocator> &df, const SmallString &tagName) {
+    return view<space>(df, false_c, tagName);
+  }
 
 }  // namespace zs

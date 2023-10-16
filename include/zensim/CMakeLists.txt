@@ -539,6 +539,7 @@ target_link_libraries(zensim INTERFACE zpctool) # zpctool -> zensim
 # zs_cu_wrangler #
 # #################
 if(ZS_ENABLE_CUDA)
+  find_package(CUDAToolkit REQUIRED)
   add_library(zs_cu_wrangler OBJECT)
 
   target_sources(zs_cu_wrangler
@@ -549,7 +550,7 @@ if(ZS_ENABLE_CUDA)
   )
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_WRANGLER_INCLUDE_FILES} ${ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
 
-  target_link_libraries(zs_cu_wrangler PRIVATE zpc)
+  target_link_libraries(zs_cu_wrangler PRIVATE zpc CUDA::nvrtc)
   set(ZS_PTX_SOURCE_DIR cuda/simulation/wrangler)
 
   # set(ZS_PTX_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/zs_cu_wrangler.dir/${ZS_PTX_SOURCE_DIR})  # not valid for win platform

@@ -46,10 +46,11 @@ namespace zs {
     }
     RenderPass build() const {
       RenderPass ret{ctx};
+      const auto num = _colorAttachments.size() + (_depthAttachment ? 1 : 0);
       std::vector<vk::AttachmentDescription> attachments;
-      attachments.reserve(_colorAttachments.size() + (_depthAttachment ? 1 : 0));
+      attachments.reserve(num);
       std::vector<vk::AttachmentReference> refs;
-      refs.reserve(attachments.size());
+      refs.reserve(num);
       for (int i = 0; i != _colorAttachments.size(); ++i) {
         const auto& colorAttachmentDesc = _colorAttachments[i];
         //
@@ -67,11 +68,10 @@ namespace zs {
                                   .setFinalLayout(colorAttachmentDesc.layout));
       }
 
-      auto subpass
-          = vk::SubpassDescription{}
-                .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-                .setColorAttachmentCount((u32)attachments.size() - (_depthAttachment ? 1 : 0))
-                .setPColorAttachments(refs.data());
+      auto subpass = vk::SubpassDescription{}
+                         .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                         .setColorAttachmentCount((u32)attachments.size())
+                         .setPColorAttachments(refs.data());
 
       if (_depthAttachment) {
         const auto& depthAttachmentDesc = *_depthAttachment;

@@ -94,6 +94,13 @@ namespace zs {
       ctx.device.freeCommandBuffers(pool.cmdpool(zs::vk_cmd_usage_e::single_use), cmd,
                                     ctx.dispatcher);
     }
+    void reset() {
+      verts.pos.reset();
+      verts.nrm.reset();
+      verts.clr.reset();
+      indices.reset();
+    }
+    ~VkModel() { reset(); }
 
     static std::vector<vk::VertexInputBindingDescription> get_binding_descriptions() noexcept {
       return std::vector<vk::VertexInputBindingDescription>{

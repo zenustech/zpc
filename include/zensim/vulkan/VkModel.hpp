@@ -57,7 +57,7 @@ namespace zs {
       cmd.copyBuffer(stagingColorBuffer, *verts.clr, {copyRegion});
 
       /// @note normals
-      compute_mesh_normal(surfs, 1.f, vals);
+      compute_mesh_normal<float, Ti, std::vector, std::array<float, 3>>(surfs, 1.f, vals);
       auto stagingNrmBuffer
           = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
       stagingNrmBuffer.map();
@@ -126,7 +126,7 @@ namespace zs {
       vk::DeviceSize offsets[] = {0, 0, 0};
       cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos->ctx.dispatcher);
 
-      cmd.bindIndexBuffer({*indices}, /*offset*/ 0, vk::IndexType::eUint32,
+      cmd.bindIndexBuffer({(vk::Buffer)(*indices)}, /*offset*/ (u32)0, vk::IndexType::eUint32,
                           indices->ctx.dispatcher);
     }
 

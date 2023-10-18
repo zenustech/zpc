@@ -143,7 +143,7 @@ namespace zs {
     }
 
     /// element access
-    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
+    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
     constexpr size_type linearOffset(Args... is) const noexcept {
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (sizeof...(is) + 1 != _shape.size())
@@ -157,12 +157,12 @@ namespace zs {
       return offset;
     }
 
-    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
+    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
     constexpr reference operator()(Args... is) noexcept {
       size_type offset = linearOffset(zs::move(is)...);
       return _field[offset];
     }
-    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
+    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
     constexpr conditional_t<is_fundamental_v<value_type>, value_type, const_reference> operator()(
         Args... is) const noexcept {
       size_type offset = linearOffset(zs::move(is)...);
@@ -307,7 +307,7 @@ namespace zs {
       const size_type offset = linearOffset(zs::move(is)...);
       return operator[](offset);
     }
-    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
+    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
     constexpr decltype(auto) operator()(Args... is) const {
       const size_type offset = linearOffset(zs::move(is)...);
       return operator[](offset);

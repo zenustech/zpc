@@ -410,7 +410,7 @@ namespace zs {
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
     constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
-    constexpr auto execTag = wrapv<space>{};
+    // constexpr auto execTag = wrapv<space>{};
     using ICoord = zs::vec<Ti, 2>;
 
     size_t tabSize = size;

@@ -51,11 +51,13 @@ namespace zs {
     });
   };
 
-  template void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float,
-                                    std::vector<std::array<float, 3>> &);
-  template void compute_mesh_normal(const Mesh<float, 3, u32, 3> &, float,
-                                    std::vector<std::array<float, 3>> &);
-  template void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float, Vector<vec<float, 3>> &);
-  template void compute_mesh_normal(const Mesh<float, 3, u32, 3> &, float, Vector<vec<float, 3>> &);
+  template void compute_mesh_normal<float, int, std::vector, std::array<float, 3>>(
+      const Mesh<float, 3, int, 3> &, float, std::vector<std::array<float, 3>> &);
+  template void compute_mesh_normal<float, u32, std::vector, std::array<float, 3>>(
+      const Mesh<float, 3, u32, 3> &, float, std::vector<std::array<float, 3>> &);
+  template void compute_mesh_normal<float, int, Vector, vec<float, 3>>(
+      const Mesh<float, 3, int, 3> &, float, Vector<vec<float, 3>> &);
+  template void compute_mesh_normal<float, u32, Vector, vec<float, 3>>(
+      const Mesh<float, 3, u32, 3> &, float, Vector<vec<float, 3>> &);
 
 }  // namespace zs

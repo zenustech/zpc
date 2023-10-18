@@ -26,12 +26,12 @@ namespace zs {
       return offset;
     }
     template <typename... Args, bool V = is_const_structure,
-              enable_if_t<!V && (is_integral_v<Args> && ...)> = 0>
+              enable_if_all<!V, is_integral_v<Args>...> = 0>
     constexpr decltype(auto) operator()(Args... is) {
       const size_type offset = linearOffset(zs::move(is)...);
       return operator[](offset);
     }
-    template <typename... Args, enable_if_t<(is_integral_v<Args> && ...)> = 0>
+    template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
     constexpr auto operator()(Args... is) const {
       const size_type offset = linearOffset(zs::move(is)...);
       return operator[](offset);

@@ -225,6 +225,7 @@ namespace zs {
 
   protected:
     friend struct VulkanContext;
+    friend struct VkModel;
 
     VulkanContext& ctx;
     vk::Buffer buffer;

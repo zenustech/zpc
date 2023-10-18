@@ -109,6 +109,20 @@ namespace zs {
       vmaFreeMemory(ctx.allocator(), allocation);
 #endif
     }
+    void moveAssign(Buffer&& o) {
+      if (&ctx != &o.ctx) throw std::runtime_error("unable to swap vk buffers due to ctx mismatch");
+      std::swap(buffer, o.buffer);
+      std::swap(size, o.size);
+      std::swap(alignment, o.alignment);
+#if ZS_VULKAN_USE_VMA
+      std::swap(allocation, o.allocation);
+#else
+      std::swap(pmem, o.pmem);
+#endif
+      std::swap(pview, o.pview);
+      std::swap(mapped, o.mapped);
+      std::swap(usageFlags, o.usageFlags);
+    }
 
     /// access
     vk::Buffer operator*() const { return buffer; }

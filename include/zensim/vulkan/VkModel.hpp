@@ -116,13 +116,13 @@ namespace zs {
           {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0}};
     }
 
-    void draw(const vk::CommandBuffer &cmd) {
+    void draw(const vk::CommandBuffer &cmd) const {
       cmd.drawIndexed(/*index count*/ indexCount, /*instance count*/ 1,
                       /*first index*/ 0, /*vertex offset*/ 0,
                       /*first instance*/ 0, indices->ctx.dispatcher);
     }
 
-    void bind(const vk::CommandBuffer &cmd) {
+    void bind(const vk::CommandBuffer &cmd) const {
       vk::Buffer buffers[] = {*verts.pos, *verts.nrm, *verts.clr};
       vk::DeviceSize offsets[] = {0, 0, 0};
       cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos->ctx.dispatcher);

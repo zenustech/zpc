@@ -301,8 +301,8 @@ namespace zs {
       (void)((offset += (size_type)is * shape[++i]), ...);
       return offset;
     }
-    template <typename... Args, bool V = is_const_structure,
-              enable_if_all<!V, (is_integral_v<Args> && ...)> = 0>
+    template <typename... Args, bool V = !is_const_structure && (... && is_integral_v<Args>),
+              enable_if_t<V> = 0>
     constexpr decltype(auto) operator()(Args... is) {
       const size_type offset = linearOffset(zs::move(is)...);
       return operator[](offset);

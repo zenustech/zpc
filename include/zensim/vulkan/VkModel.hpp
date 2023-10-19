@@ -1,5 +1,6 @@
 #pragma once
 #include "zensim/vulkan/VkBuffer.hpp"
+#include "zensim/vulkan/VkTexture.hpp"
 
 namespace zs {
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <map>
 #include <optional>
+#include <set>
 
 #include "zensim/vulkan/VkContext.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
@@ -144,6 +145,15 @@ namespace zs {
       this->rasterizationInfo.setPolygonMode(mode);
       return *this;
     }
+    PipelineBuilder& setCullMode(vk::CullModeFlagBits cm) {
+      this->rasterizationInfo.setCullMode(cm);
+      return *this;
+    }
+
+    PipelineBuilder& enableDynamicState(vk::DynamicState state) {
+      dynamicStateEnables.insert(state);
+      return *this;
+    }
 
     //
     void reset() {
@@ -189,7 +199,7 @@ namespace zs {
     vk::PipelineColorBlendAttachmentState colorBlendAttachment;
     vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
     vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
-    std::vector<vk::DynamicState> dynamicStateEnables;
+    std::set<vk::DynamicState> dynamicStateEnables;
 
     // resources (descriptors/ push constants)
     std::optional<vk::PushConstantRange> pushConstantRange;

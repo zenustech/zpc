@@ -179,6 +179,7 @@ namespace zs {
     };
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
+    vk::PhysicalDeviceFeatures deviceFeatures;
     vk::DescriptorPool defaultDescriptorPool;
     VmaAllocator defaultAllocator;
 

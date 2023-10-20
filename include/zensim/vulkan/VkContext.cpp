@@ -147,6 +147,15 @@ namespace zs {
         }
       }
     }
+
+    VkPhysicalDeviceFeatures devFeatures;
+    dispatcher.vkGetPhysicalDeviceFeatures(physicalDevice, &devFeatures);
+    deviceFeatures = devFeatures;
+
+    vk::PhysicalDeviceFeatures features;
+    if (deviceFeatures.fillModeNonSolid) features.fillModeNonSolid = VK_TRUE;
+    if (deviceFeatures.wideLines) features.wideLines = VK_TRUE;
+
     vk::DeviceCreateInfo devCI{{},
                                (u32)dqCIs.size(),
                                dqCIs.data(),
@@ -154,6 +163,8 @@ namespace zs {
                                nullptr,
                                (u32)enabledExtensions.size(),
                                enabledExtensions.data()};
+
+    devCI.setPEnabledFeatures(&features);
 
     /// features
     // ref: TU Wien Vulkan Tutorial Ep1

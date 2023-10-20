@@ -186,8 +186,10 @@ namespace zs {
                                .setPVertexBindingDescriptions(bindingDescriptions.data());
 
     // dynamic state
+    std::vector<vk::DynamicState> enabledDynamicStates{dynamicStateEnables.begin(),
+                                                       dynamicStateEnables.end()};
     vk::PipelineDynamicStateCreateInfo dynamicStateInfo{
-        {}, (u32)dynamicStateEnables.size(), dynamicStateEnables.data()};
+        {}, (u32)enabledDynamicStates.size(), enabledDynamicStates.data()};
 
     // pipeline
     auto pipelineInfo = vk::GraphicsPipelineCreateInfo{{},

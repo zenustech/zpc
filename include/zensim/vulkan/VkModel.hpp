@@ -46,7 +46,7 @@ namespace zs {
       cmd.copyBuffer(stagingBuffer, *verts.pos, {copyRegion});
 
       /// @note colors
-      std::vector<std::array<float, 3>> vals(vs.size(), std::array<float, 3>{1.f, 1.f, 1.f});
+      std::vector<std::array<float, 3>> vals(vs.size(), std::array<float, 3>{0.7f, 0.7f, 0.7f});
       auto stagingColorBuffer
           = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
       stagingColorBuffer.map();

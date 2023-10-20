@@ -140,6 +140,11 @@ namespace zs {
       return *this;
     }
 
+    PipelineBuilder& setPolygonMode(vk::PolygonMode mode) {
+      this->rasterizationInfo.setPolygonMode(mode);
+      return *this;
+    }
+
     //
     void reset() {
       shaders.clear();

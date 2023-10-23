@@ -127,7 +127,12 @@ namespace zs {
     static constexpr size_t num_bytes = sizeof(T) > sizeof(T*) ? sizeof(T) : sizeof(T*);
 
     explicit constexpr ValueOrRef(T* ptr) noexcept : _isValue{false}, _destroyed{false} {
-      *reinterpret_cast<T**>(_buffer) = ptr;
+      if (ptr)
+        *reinterpret_cast<T**>(_buffer) = ptr;
+      else {
+        *reinterpret_cast<T**>(_buffer) = nullptr;
+        _destroyed = true;
+      }
     }
     explicit constexpr ValueOrRef(T& obj) noexcept : ValueOrRef{&obj} {}
     template <typename... Args> constexpr ValueOrRef(Args&&... args)
@@ -136,35 +141,78 @@ namespace zs {
     }
     ~ValueOrRef() { destroy(); }
 
-    constexpr ValueOrRef(ValueOrRef&& o) {
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
-      o.destroy();  // move
+    template <bool V = is_move_constructible_v<T>, enable_if_t<V> = 0>
+    constexpr ValueOrRef(ValueOrRef&& o) noexcept(noexcept(construct_at(declval<ValueOrRef*>(),
+                                                                        zs::move(o.get())))) {
+      if (o.isValid()) {
+        construct_at(pimpl(), zs::move(o.get()));
+        _isValue = true;
+        _destroyed = false;
+        o._destroyed = true;
+        return;
+      }
+      // _isValue actually does not matter here
+      _isValue = false;
+      _destroyed = true;
     }
-    constexpr ValueOrRef& operator=(ValueOrRef&& o) {
-      destroy();  // assignment
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
-      o.destroy();
-    }
-    constexpr ValueOrRef(const ValueOrRef& o) {
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
-    }
-    constexpr ValueOrRef& operator=(const ValueOrRef& o) {
+    template <bool V = is_move_assignable_v<T>>
+    constexpr enable_if_type<V, ValueOrRef&> operator=(ValueOrRef&& o) noexcept(
+        noexcept(declval<T&>() = zs::move(o.get())) && noexcept(declval<ValueOrRef&>().destroy())) {
+      // _isValue should not change here
       destroy();
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
+      if (o.isValid()) {
+        get() = zs::move(o.get());
+        _destroyed = false;
+        o._destroyed = true;
+      }
+      return *this;
+    }
+
+    template <bool V = is_copy_constructible_v<T>, enable_if_t<V> = 0>
+    constexpr ValueOrRef(const ValueOrRef& o) noexcept(noexcept(construct_at(declval<ValueOrRef*>(),
+                                                                             o.get()))) {
+      if (o.isValid()) {
+        construct_at(pimpl(), o.get());
+        _isValue = true;
+        _destroyed = false;
+        return;
+      }
+      _isValue = false;
+      _destroyed = true;
+    }
+    template <bool V = is_copy_assignable_v<T>>
+    constexpr enable_if_type<V, ValueOrRef&> operator=(const ValueOrRef& o) noexcept(
+        noexcept(declval<T&>() = o.get()) && noexcept(declval<ValueOrRef&>().destroy())) {
+      destroy();
+      if (o.isValid()) {
+        get() = o.get();
+        _destroyed = false;
+      }
+      return *this;
+    }
+
+    constexpr void overwrite(T* ptr) noexcept {
+      destroy();
+      _isValue = false;
+      *reinterpret_cast<T**>(_buffer) = ptr;
+      if (ptr)
+        _destroyed = false;
+      else
+        _destroyed = true;
+    }
+    constexpr void overwrite(T& obj) noexcept { overwrite(&obj); }
+    template <typename... Args> constexpr void overwrite(Args&&... args) {
+      destroy();
+      _isValue = true;
+      construct_at(pimpl(), FWD(args)...);
+      _destroyed = false;
     }
 
     constexpr T& get() { return *pimpl(); }
     constexpr const T& get() const { return *pimpl(); }
     constexpr bool holdsValue() const noexcept { return _isValue; }
     constexpr bool holdsReference() const noexcept { return !_isValue; }
+    constexpr bool isValid() const noexcept { return _destroyed; }
 
   protected:
     constexpr void destroy() {
@@ -189,12 +237,19 @@ namespace zs {
     bool _isValue{false}, _destroyed{false};
   };
 
+  ///
+  /// @note this version is usable in kernel
   template <typename T> struct ValueOrRef<T, enable_if_type<is_trivially_destructible_v<T>, void>> {
     // T must be trivially destructible
     static constexpr size_t num_bytes = sizeof(T) > sizeof(T*) ? sizeof(T) : sizeof(T*);
 
     explicit constexpr ValueOrRef(T* ptr) noexcept : _isValue{false}, _destroyed{false} {
-      *reinterpret_cast<T**>(_buffer) = ptr;
+      if (ptr)
+        *reinterpret_cast<T**>(_buffer) = ptr;
+      else {
+        *reinterpret_cast<T**>(_buffer) = nullptr;
+        _destroyed = true;
+      }
     }
     explicit constexpr ValueOrRef(T& obj) noexcept : ValueOrRef{&obj} {}
     template <typename... Args> constexpr ValueOrRef(Args&&... args)
@@ -202,29 +257,81 @@ namespace zs {
       construct_at(pimpl(), FWD(args)...);
     }
     ~ValueOrRef() noexcept = default;  /// NOTICE THIS
-    constexpr ValueOrRef(ValueOrRef&& o) {
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
-      o.destroy();  // move
+
+    template <bool V = is_move_constructible_v<T>, enable_if_t<V> = 0>
+    constexpr ValueOrRef(ValueOrRef&& o) noexcept(noexcept(construct_at(declval<ValueOrRef*>(),
+                                                                        zs::move(o.get())))) {
+      if (o.isValid()) {
+        construct_at(pimpl(), zs::move(o.get()));
+        _isValue = true;
+        _destroyed = false;
+        o._destroyed = true;
+        return;
+      }
+#if 0
+        /// @note extended behavior
+        if (o.isValid()) {
+          for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
+          _isValue = o._isValue;
+          _destroyed = o._destroyed;
+          o.destroy();  // move
+        }
+#endif
+      // _isValue actually does not matter here
+      _isValue = false;
+      _destroyed = true;
     }
-    constexpr ValueOrRef& operator=(ValueOrRef&& o) {
-      destroy();  // assignment
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
-      o.destroy();
-    }
-    constexpr ValueOrRef(const ValueOrRef& o) {
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
-    }
-    constexpr ValueOrRef& operator=(const ValueOrRef& o) {
+    template <bool V = is_move_assignable_v<T>>
+    constexpr enable_if_type<V, ValueOrRef&> operator=(ValueOrRef&& o) noexcept(
+        noexcept(declval<T&>() = zs::move(o.get())) && noexcept(declval<ValueOrRef&>().destroy())) {
+      // _isValue should not change here
       destroy();
-      for (size_t i = 0; i != num_bytes; ++i) _buffer[i] = o._buffer[i];
-      _isValue = o._isValue;
-      _destroyed = o._destroyed;
+      if (o.isValid()) {
+        get() = zs::move(o.get());
+        _destroyed = false;
+        o._destroyed = true;
+      }
+      return *this;
+    }
+
+    template <bool V = is_copy_constructible_v<T>, enable_if_t<V> = 0>
+    constexpr ValueOrRef(const ValueOrRef& o) noexcept(noexcept(construct_at(declval<ValueOrRef*>(),
+                                                                             o.get()))) {
+      if (o.isValid()) {
+        construct_at(pimpl(), o.get());
+        _isValue = true;
+        _destroyed = false;
+        return;
+      }
+      _isValue = false;
+      _destroyed = true;
+    }
+    template <bool V = is_copy_assignable_v<T>>
+    constexpr enable_if_type<V, ValueOrRef&> operator=(const ValueOrRef& o) noexcept(
+        noexcept(declval<T&>() = o.get()) && noexcept(declval<ValueOrRef&>().destroy())) {
+      destroy();
+      if (o.isValid()) {
+        get() = o.get();
+        _destroyed = false;
+      }
+      return *this;
+    }
+
+    constexpr void overwrite(T* ptr) noexcept {
+      destroy();
+      _isValue = false;
+      *reinterpret_cast<T**>(_buffer) = ptr;
+      if (ptr)
+        _destroyed = false;
+      else
+        _destroyed = true;
+    }
+    constexpr void overwrite(T& obj) noexcept { overwrite(&obj); }
+    template <typename... Args> constexpr void overwrite(Args&&... args) {
+      destroy();
+      _isValue = true;
+      construct_at(pimpl(), FWD(args)...);
+      _destroyed = false;
     }
 
     constexpr T& get() { return *pimpl(); }
@@ -236,7 +343,8 @@ namespace zs {
   protected:
     constexpr void destroy() {
       if (!_destroyed) {
-        if (_isValue) destroy_at(pimpl());
+        /// @note since trivially destructible, no need for manual destruction
+        // if (_isValue) destroy_at(pimpl());
         _destroyed = true;
       }
     }

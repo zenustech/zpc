@@ -189,7 +189,7 @@ namespace zs {
   template <typename T, size_t S> struct rank<T[S]>
       : integral_constant<size_t, 1 + rank<T>::value> {};
   template <typename T> struct rank<T[]> : integral_constant<size_t, 1 + rank<T>::value> {};
-  // extent (of a certain dimension, from left to right indexed [n - 1, ..., 1, 0])
+  // extent (of a certain dimension, from left to right indexed [0, 1, ..., n - 1])
   template <typename, unsigned dim = 0> struct extent : integral_constant<size_t, 0> {};
   template <typename T, unsigned dim, size_t S> struct extent<T[S], dim>
       : integral_constant<size_t, dim == 0 ? S : extent<T, dim - 1>::value> {};
@@ -223,6 +223,10 @@ namespace zs {
   template <class T> struct is_reference<T &> : true_type {};
   template <class T> struct is_reference<T &&> : true_type {};
   template <class T> constexpr bool is_reference_v = is_reference<T>::value;
+
+  template <class T, typename = void> struct is_referenceable : false_type {};
+  template <class T> struct is_referenceable<T, void_t<T &>> : true_type {};
+  template <class T> constexpr bool is_referenceable_v = is_referenceable<T>::value;
   // function
   /// @note
   /// https://github.com/Quuxplusone/from-scratch/blob/master/include/scratch/bits/type-traits/compiler-magic.md
@@ -776,6 +780,14 @@ namespace zs {
     // is_class
     template <class T> bool_constant<!is_union<T>::value> test_is_class(int T::*);
     template <class> false_type test_is_class(...);
+
+  }  // namespace detail
+  template <class T> struct is_class : decltype(detail::test_is_class<T>(nullptr)) {};
+  // template <class _Tp> struct is_class : bool_constant<__is_class(_Tp)> {};
+  template <class T> constexpr bool is_class_v = is_class<T>::value;
+
+  // destructible
+  namespace detail {
     // is_destructible
     template <class T, typename = decltype(declval<T &>().~T())>
     true_type test_is_destructible(int);
@@ -812,11 +824,6 @@ namespace zs {
       }
     }
   }  // namespace detail
-
-  template <class T> struct is_class : decltype(detail::test_is_class<T>(nullptr)) {};
-  // template <class _Tp> struct is_class : bool_constant<__is_class(_Tp)> {};
-  template <class T> constexpr bool is_class_v = is_class<T>::value;
-
   template <class T> struct is_destructible : bool_constant<detail::is_destructible<T>()> {};
   template <class T> constexpr bool is_destructible_v = is_destructible<T>::value;
   template <class T> struct is_nothrow_destructible
@@ -827,12 +834,46 @@ namespace zs {
       : bool_constant<detail::is_destructible<T>() && __has_trivial_destructor(T)> {};
   template <class T> constexpr bool is_trivially_destructible_v
       = is_trivially_destructible<T>::value;
-  // relation
+
+  // constructible
   template <typename T, typename... Args> struct is_constructible
       : bool_constant<__is_constructible(T, Args...)> {};
   template <typename T, typename... Args> constexpr bool is_constructible_v
       = __is_constructible(T, Args...);
+  template <typename T, typename... Args> struct is_nothrow_constructible
+      : bool_constant<__is_nothrow_constructible(T, Args...)> {};
+  template <typename T, typename... Args> constexpr bool is_nothrow_constructible_v
+      = __is_nothrow_constructible(T, Args...);
 
+  template <typename T> struct is_default_constructible : is_constructible<T> {};
+  template <typename T> constexpr bool is_default_constructible_v
+      = is_default_constructible<T>::value;
+  template <typename T> struct is_nothrow_default_constructible
+      : bool_constant<__is_nothrow_constructible(T)> {};
+  template <typename T> constexpr bool is_nothrow_default_constructible_v
+      = __is_nothrow_constructible(T);
+
+  template <typename T, typename = void> struct is_copy_constructible : false_type {};
+  template <typename T> struct is_copy_constructible<T, void_t<const T &>>
+      : is_constructible<T, const T &> {};
+  template <typename T> constexpr bool is_copy_constructible_v = is_copy_constructible<T>::value;
+  template <typename T, typename = void> struct is_nothrow_copy_constructible : false_type {};
+  template <typename T> struct is_nothrow_copy_constructible<T, void_t<const T &>>
+      : is_nothrow_constructible<T, const T &> {};
+  template <typename T> constexpr bool is_nothrow_copy_constructible_v
+      = is_nothrow_copy_constructible<T>::value;
+
+  template <typename T, typename = void> struct is_move_constructible : false_type {};
+  template <typename T> struct is_move_constructible<T, void_t<T &&>> : is_constructible<T, T &&> {
+  };
+  template <typename T> constexpr bool is_move_constructible_v = is_move_constructible<T>::value;
+  template <typename T, typename = void> struct is_nothrow_move_constructible : false_type {};
+  template <typename T> struct is_nothrow_move_constructible<T, void_t<T &&>>
+      : is_nothrow_constructible<T, T &&> {};
+  template <typename T> constexpr bool is_nothrow_move_constructible_v
+      = is_nothrow_move_constructible<T>::value;
+
+  // is base of
   namespace details {
     template <typename B> true_type test_ptr_conv(const volatile B *);
     template <typename> false_type test_ptr_conv(const volatile void *);
@@ -893,7 +934,24 @@ namespace zs {
   template <typename TT, typename T> constexpr bool is_nothrow_assignable_v
       = is_nothrow_assignable<TT, T>::value;
 
-  // is_constructible
+  template <typename T, typename = void> struct is_copy_assignable : false_type {};
+  template <typename T> struct is_copy_assignable<T, void_t<const T &>>
+      : is_assignable<T, const T &> {};
+  template <typename T> constexpr bool is_copy_assignable_v = is_copy_assignable<T>::value;
+  template <typename T, typename = void> struct is_nothrow_copy_assignable : false_type {};
+  template <typename T> struct is_nothrow_copy_assignable<T, void_t<const T &>>
+      : is_nothrow_assignable<T, const T &> {};
+  template <typename T> constexpr bool is_nothrow_copy_assignable_v = is_nothrow_copy_assignable<T>::value;
+
+  template <typename T, typename = void> struct is_move_assignable : false_type {};
+  template <typename T> struct is_move_assignable<T, void_t<T &&>> : is_assignable<T, T &&> {};
+  template <typename T> constexpr bool is_move_assignable_v = is_move_assignable<T>::value;
+  template <typename T, typename = void> struct is_nothrow_move_assignable : false_type {};
+  template <typename T> struct is_nothrow_move_assignable<T, void_t<T &&>>
+      : is_nothrow_assignable<T, T &&> {};
+  template <typename T> constexpr bool is_nothrow_move_assignable_v
+      = is_nothrow_move_assignable<T>::value;
+
   // is_convertible (from cppref)
   namespace detail {
     template <class T> auto test_returnable(int)

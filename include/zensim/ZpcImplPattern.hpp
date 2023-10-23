@@ -212,7 +212,7 @@ namespace zs {
     constexpr const T& get() const { return *pimpl(); }
     constexpr bool holdsValue() const noexcept { return _isValue; }
     constexpr bool holdsReference() const noexcept { return !_isValue; }
-    constexpr bool isValid() const noexcept { return _destroyed; }
+    constexpr bool isValid() const noexcept { return !_destroyed; }
 
   protected:
     constexpr void destroy() {
@@ -338,7 +338,7 @@ namespace zs {
     constexpr const T& get() const { return *pimpl(); }
     constexpr bool holdsValue() const noexcept { return _isValue; }
     constexpr bool holdsReference() const noexcept { return !_isValue; }
-    constexpr bool isValid() const noexcept { return _destroyed; }
+    constexpr bool isValid() const noexcept { return !_destroyed; }
 
   protected:
     constexpr void destroy() {

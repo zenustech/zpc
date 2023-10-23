@@ -184,6 +184,17 @@ namespace zs {
   template <typename T1, typename T2> using is_same
       = bool_constant<wrapper<T1>::is_same((wrapper<T2> *)nullptr)>;
   template <typename T1, typename T2> constexpr auto is_same_v = is_same<T1, T2>::value;
+  // rank
+  template <typename> struct rank : integral_constant<size_t, 0> {};
+  template <typename T, size_t S> struct rank<T[S]>
+      : integral_constant<size_t, 1 + rank<T>::value> {};
+  template <typename T> struct rank<T[]> : integral_constant<size_t, 1 + rank<T>::value> {};
+  // extent (of a certain dimension, from left to right indexed [n - 1, ..., 1, 0])
+  template <typename, unsigned dim = 0> struct extent : integral_constant<size_t, 0> {};
+  template <typename T, unsigned dim, size_t S> struct extent<T[S], dim>
+      : integral_constant<size_t, dim == 0 ? S : extent<T, dim - 1>::value> {};
+  template <typename T, unsigned dim> struct extent<T[], dim>
+      : integral_constant<size_t, dim == 0 ? 0 : extent<T, dim - 1>::value> {};
   // (C) array
   template <class T> struct is_array : false_type {};
   template <class T> struct is_array<T[]> : true_type {};
@@ -192,6 +203,7 @@ namespace zs {
   template <class T> struct is_unbounded_array : false_type {};
   template <class T> struct is_unbounded_array<T[]> : true_type {};
   template <class T> constexpr bool is_unbounded_array_v = is_unbounded_array<T>::value;
+  template <class T> constexpr bool is_array_unknown_bounds_v = is_array_v<T> && !extent<T>::value;
   // const
   template <class T> struct is_const : false_type {};
   template <class T> struct is_const<const T> : true_type {};
@@ -374,7 +386,17 @@ namespace zs {
   template <class T, size_t N> struct remove_extent<T[N]> {
     using type = T;
   };
+  template <class T> struct remove_all_extents {
+    using type = T;
+  };
+  template <class T> struct remove_all_extents<T[]> {
+    using type = typename remove_all_extents<T>::type;
+  };
+  template <class T, size_t N> struct remove_all_extents<T[N]> {
+    using type = typename remove_all_extents<T>::type;
+  };
   template <typename T> using remove_extent_t = typename remove_extent<T>::type;
+  template <typename T> using remove_all_extents_t = typename remove_all_extents<T>::type;
   // underlying_type
   template <class T, bool = is_enum_v<T>> struct underlying_type {
     using type = __underlying_type(T);
@@ -751,12 +773,60 @@ namespace zs {
   template <class _Tp> struct is_union : bool_constant<__is_union(_Tp)> {};
   template <class T> constexpr bool is_union_v = is_union<T>::value;
   namespace detail {
+    // is_class
     template <class T> bool_constant<!is_union<T>::value> test_is_class(int T::*);
     template <class> false_type test_is_class(...);
+    // is_destructible
+    template <class T, typename = decltype(declval<T &>().~T())>
+    true_type test_is_destructible(int);
+    template <class> false_type test_is_destructible(...);
+    template <class T> constexpr bool is_destructible() noexcept {
+      constexpr bool pred0 = is_void_v<T> || is_function_v<T> || is_array_unknown_bounds_v<T>;
+      constexpr bool pred1 = is_reference_v<T> || is_scalar_v<T>;
+      // gcc11 std impl
+      if constexpr (pred0 || pred1 == false) {
+        return decltype(test_is_destructible<remove_all_extents_t<T>>(0))::value;
+      } else if constexpr (pred0 && !pred1) {
+        return false;
+      } else if constexpr (!pred0 && pred1) {
+        return true;
+      } else {
+        static_assert(always_false<T>, "T should never be both");
+      }
+    }
+    // is_nothrow_destructible
+    template <class T>
+    bool_constant<noexcept(declval<T &>().~T())> test_is_nothrow_destructible(int);
+    template <class> false_type test_is_nothrow_destructible(...);
+    template <class T> constexpr bool is_nothrow_destructible() noexcept {
+      constexpr bool pred0 = is_void_v<T> || is_function_v<T> || is_array_unknown_bounds_v<T>;
+      constexpr bool pred1 = is_reference_v<T> || is_scalar_v<T>;
+      if constexpr (pred0 || pred1 == false) {
+        return decltype(test_is_nothrow_destructible<remove_all_extents_t<T>>(0))::value;
+      } else if constexpr (pred0 && !pred1) {
+        return false;
+      } else if constexpr (!pred0 && pred1) {
+        return true;
+      } else {
+        static_assert(always_false<T>, "T should never be both");
+      }
+    }
   }  // namespace detail
+
   template <class T> struct is_class : decltype(detail::test_is_class<T>(nullptr)) {};
   // template <class _Tp> struct is_class : bool_constant<__is_class(_Tp)> {};
   template <class T> constexpr bool is_class_v = is_class<T>::value;
+
+  template <class T> struct is_destructible : bool_constant<detail::is_destructible<T>()> {};
+  template <class T> constexpr bool is_destructible_v = is_destructible<T>::value;
+  template <class T> struct is_nothrow_destructible
+      : bool_constant<detail::is_nothrow_destructible<T>()> {};
+  template <class T> constexpr bool is_nothrow_destructible_v = is_nothrow_destructible<T>::value;
+
+  template <class T> struct is_trivially_destructible
+      : bool_constant<detail::is_destructible<T>() && __has_trivial_destructor(T)> {};
+  template <class T> constexpr bool is_trivially_destructible_v
+      = is_trivially_destructible<T>::value;
   // relation
   template <typename T, typename... Args> struct is_constructible
       : bool_constant<__is_constructible(T, Args...)> {};

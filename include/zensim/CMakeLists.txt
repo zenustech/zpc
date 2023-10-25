@@ -547,6 +547,8 @@ target_link_libraries(zensim INTERFACE zpc) # zpc -> zensim
 add_library(zpc_jit_py INTERFACE)  # cmake helper target for zpc JIT
 find_package(Python3 COMPONENTS Interpreter Development)
 if (Python3_FOUND)
+  message(STATUS "python3 libraries for zpc_jit_py: ${Python3_LIBRARIES}")
+  message(STATUS "python3 include directories for zpc_jit_py: ${Python3_INCLUDE_DIRS}")
   target_link_libraries(zpc_jit_py INTERFACE ${Python3_LIBRARIES})
   target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
 endif(Python3_FOUND)

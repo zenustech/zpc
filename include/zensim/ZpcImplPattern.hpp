@@ -384,6 +384,7 @@ namespace zs {
       return reinterpret_cast<T const*>(_ptr);
     }
 
+  private:
     void* _ptr{nullptr};
   };
 
@@ -404,11 +405,28 @@ namespace zs {
       return reinterpret_cast<T const*>(_buffer);
     }
 
+  private:
     alignas(Alignment) byte _buffer[Capacity] = {};
   };
 
   template <typename T, size_t Cap = 128>  // 128 bytes as cap
   struct DefaultStorage
       : conditional_t<sizeof(T) <= Cap, InplaceStorage<sizeof(T), alignof(T)>, DynamicStorage> {};
+
+  template <typename Type, typename StoragePolicy = DefaultStorage<Type>> struct Owner {
+    using storage_type = StoragePolicy;
+
+    template <bool V = is_move_constructible_v<Type>, enable_if_t<V> = 0>
+    Owner(Type obj) noexcept(is_nothrow_move_constructible_v<Type>) {
+      _storage.template create<Type>(zs::move(obj));
+    }
+    ~Owner() noexcept(is_nothrow_destructible_v<Type>) { _storage.destroy(); };
+
+    Type& get() { return *_storage.data(); }
+    const Type& get() const { return *_storage.data(); }
+
+  private:
+    storage_type _storage;
+  };
 
 }  // namespace zs

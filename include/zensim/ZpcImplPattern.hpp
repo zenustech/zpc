@@ -37,6 +37,11 @@ namespace zs {
     constexpr auto typeName() const { return get_type_str<Derived>(); }
   };
 
+  struct ObjectVisitor;
+  struct VisitableObjectConcept : ObjectConcept {
+    virtual void accept(ObjectVisitor&);
+  };
+
   template <typename Derived> struct Visitee {
     ZS_SUPPLEMENT_IMPL_PATTERN_DERIVED_ACCESS
     constexpr void accept(...) {}

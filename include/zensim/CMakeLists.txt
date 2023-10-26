@@ -10,6 +10,12 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   types/Iterator.cpp
   Logger.cpp
 
+  #
+  visitors/ObjectVisitor.cpp
+
+  #
+  ZpcImplPattern.cpp
+
   resource/Filesystem.cpp
   # simulation
 )
@@ -134,6 +140,9 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   meta/Functional.h
   meta/Meta.h
   meta/Sequence.h
+
+  # visitors
+  visitors/ObjectVisitor.hpp
 
   # profile
   profile/CppTimers.hpp

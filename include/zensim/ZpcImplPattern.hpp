@@ -364,4 +364,46 @@ namespace zs {
     bool _isValue{false}, _destroyed{false};
   };
 
+  /// @ref <c++ software design> Klaus Iglberger
+  struct DynamicStorage {
+    template <typename T, typename... Args>
+    [[maybe_unused]] constexpr T* create(Args&&... args) const {
+      return _ptr = ::new T(FWD(args)...);
+    }
+    template <typename T> constexpr void destroy() const noexcept { ::delete data<T>(); }
+
+    template <typename T> constexpr T* data() noexcept {
+      return const_cast<T*>(reinterpret_cast<T const*>(_ptr));
+    }
+    template <typename T> constexpr const T* data() const noexcept {
+      return reinterpret_cast<T const*>(_ptr);
+    }
+
+    void* _ptr{nullptr};
+  };
+
+  template <size_t Capacity, size_t Alignment> struct InplaceStorage {
+    template <typename T, typename... Args>
+    [[maybe_unused]] constexpr T* create(Args&&... args) const {
+      static_assert(sizeof(T) <= Capacity, "The given type is too large.");
+      static_assert(alignof(T) <= Alignment, "The given type is misaligned.");
+      T* addr = const_cast<T*>(reinterpret_cast<T const*>(_buffer));
+      return construct_at(addr, FWD(args)...);
+    }
+    template <typename T> constexpr void destroy() const noexcept { destroy_at(data<T>()); }
+
+    template <typename T> constexpr T* data() noexcept {
+      return const_cast<T*>(reinterpret_cast<T const*>(_buffer));
+    }
+    template <typename T> constexpr const T* data() const noexcept {
+      return reinterpret_cast<T const*>(_buffer);
+    }
+
+    alignas(Alignment) byte _buffer[Capacity] = {};
+  };
+
+  template <typename T, size_t Cap = 128>  // 128 bytes as cap
+  struct DefaultStorage
+      : conditional_t<sizeof(T) <= Cap, InplaceStorage<sizeof(T), alignof(T)>, DynamicStorage> {};
+
 }  // namespace zs

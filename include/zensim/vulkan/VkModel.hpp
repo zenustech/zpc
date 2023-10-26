@@ -58,7 +58,7 @@ namespace zs {
       cmd.copyBuffer(stagingColorBuffer, *verts.clr, {copyRegion});
 
       /// @note normals
-      compute_mesh_normal<float, Ti, std::vector, std::array<float, 3>>(surfs, 1.f, vals);
+      compute_mesh_normal(surfs, 1.f, vals);
       auto stagingNrmBuffer
           = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
       stagingNrmBuffer.map();

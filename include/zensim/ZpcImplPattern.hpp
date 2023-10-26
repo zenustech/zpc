@@ -416,14 +416,44 @@ namespace zs {
   template <typename Type, typename StoragePolicy = DefaultStorage<Type>> struct Owner {
     using storage_type = StoragePolicy;
 
+    template <bool V = is_copy_constructible_v<Type>, enable_if_t<V> = 0>
+    Owner(const Type& obj) noexcept(is_nothrow_copy_constructible_v<Type>) {
+      _storage.template create<Type>(obj);
+    }
     template <bool V = is_move_constructible_v<Type>, enable_if_t<V> = 0>
-    Owner(Type obj) noexcept(is_nothrow_move_constructible_v<Type>) {
+    Owner(Type&& obj) noexcept(is_nothrow_move_constructible_v<Type>) {
       _storage.template create<Type>(zs::move(obj));
     }
+
+    template <bool V = is_move_constructible_v<Type>, enable_if_t<V> = 0>
+    Owner(Owner&& o) noexcept(is_nothrow_move_constructible_v<Type>) : Owner(zs::move(o.get())) {}
+    template <bool V = is_copy_constructible_v<Type>, enable_if_t<V> = 0>
+    Owner(const Owner& o) noexcept(is_nothrow_copy_constructible_v<Type>) : Owner(o.get()) {}
+
     ~Owner() noexcept(is_nothrow_destructible_v<Type>) { _storage.destroy(); };
+
+    template <bool V = is_copy_assignable_v<Type>, enable_if_t<V> = 0>
+    Owner& operator=(const Type& obj) noexcept(is_nothrow_copy_assignable_v<Type>) {
+      get() = obj;
+    }
+    template <bool V = is_move_assignable_v<Type>, enable_if_t<V> = 0>
+    Owner& operator=(Type&& obj) noexcept(is_nothrow_move_assignable_v<Type>) {
+      get() = zs::move(obj);
+    }
+
+    template <bool V = is_copy_assignable_v<Type>, enable_if_t<V> = 0>
+    Owner& operator=(const Owner& obj) noexcept(is_nothrow_copy_assignable_v<Type>) {
+      operator=(obj.get());
+    }
+    template <bool V = is_move_assignable_v<Type>, enable_if_t<V> = 0>
+    Owner& operator=(Owner&& obj) noexcept(is_nothrow_move_assignable_v<Type>) {
+      operator=(zs::move(obj.get()));
+    }
 
     Type& get() { return *_storage.data(); }
     const Type& get() const { return *_storage.data(); }
+    operator Type&() { return *_storage.data(); }
+    operator const Type&() const { return *_storage.data(); }
 
   private:
     storage_type _storage;

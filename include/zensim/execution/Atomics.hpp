@@ -1,7 +1,9 @@
 #pragma once
 #include <atomic>
+#include <stdexcept>
 
-#include "zensim/execution/ExecutionPolicy.hpp"
+// #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/types/Property.h"
 #include "zensim/math/bit/Bits.h"
 #if defined(_WIN32)
 #  include <windows.h>

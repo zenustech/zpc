@@ -5,7 +5,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   memory/Allocator.cpp
   profile/CppTimers.cpp
   execution/Stacktrace.cpp
-  execution/ExecutionPolicy.cpp
+  # execution/ExecutionPolicy.cpp
   execution/ConcurrencyPrimitive.cpp
   Logger.cpp
 
@@ -36,7 +36,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
   omp/math/matrix/MatrixTransform.cpp
-  omp/execution/ExecutionPolicy.cpp
+  # omp/execution/ExecutionPolicy.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
 
@@ -370,6 +370,7 @@ endif(ZS_ENABLE_OPENMP)
 # zpc: cuda #
 # ############
 if(ZS_ENABLE_CUDA)
+  find_package(CUDAToolkit REQUIRED)
   if(ZS_BUILD_SHARED_LIBS)
     add_library(zpccuda SHARED)
   else()
@@ -385,7 +386,7 @@ if(ZS_ENABLE_CUDA)
   endif()
 
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES LANGUAGE CUDA)
-  target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+  target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore CUDA::nvrtc) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
     PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true>

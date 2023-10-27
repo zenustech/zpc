@@ -12,7 +12,7 @@ include("project_info.in")
 project(${project_name}
   VERSION ${project_version}
   DESCRIPTION ${project_description}
-  LANGUAGES CXX)
+  LANGUAGES C CXX)
 
 if(MSVC)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)

@@ -396,9 +396,9 @@ if(ZS_ENABLE_CUDA)
     # lto issue: https://forums.developer.nvidia.com/t/using-dlink-time-opt-together-with-gencode-in-cmake/165224
   )
 
-  target_link_options(zpccuda
-    PRIVATE $<DEVICE_LINK:-dlto>
-  )
+  # target_link_options(zpccuda
+  #   PRIVATE $<DEVICE_LINK:-dlto>
+  # )
 
   # -dlto $<IF:$<AND:$<BOOL:${ZS_AUTO_DETECT_CUDA_ARCH}>,$<VERSION_GREATER_EQUAL:${CUDAToolkit_VERSION},11.5.1>>,-arch=native,>>
 

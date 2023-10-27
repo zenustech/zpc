@@ -21,7 +21,7 @@
 #include <nvfunctional>
 #include <type_traits>
 
-#include "zensim/types/Function.h"
+#include "zensim/ZpcFunction.hpp"
 
 #if ZS_ENABLE_CUDA && !defined(__CUDACC__)
 #  error "ZS_ENABLE_CUDA defined but the compiler is not defining the __CUDACC__ macro as expected"

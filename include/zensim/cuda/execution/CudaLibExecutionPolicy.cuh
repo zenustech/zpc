@@ -5,7 +5,7 @@
 
 #include "ExecutionPolicy.cuh"
 #include "zensim/Reflection.h"
-#include "zensim/types/Function.h"
+#include "zensim/ZpcFunction.hpp"
 
 namespace zs {
 
@@ -24,11 +24,21 @@ namespace zs {
                    static_cast<int>(result));
       }
     }
-    template <CudaLibraryComponentFlagBit flagbit> struct CudaLibStatusType { using type = void; };
-    template <> struct CudaLibStatusType<culib_cusparse> { using type = cusparseStatus_t; };
-    template <> struct CudaLibStatusType<culib_cublas> { using type = cublasStatus_t; };
-    template <> struct CudaLibStatusType<culib_cusolversp> { using type = cusolverStatus_t; };
-    template <> struct CudaLibStatusType<culib_cusolverdn> { using type = cusolverStatus_t; };
+    template <CudaLibraryComponentFlagBit flagbit> struct CudaLibStatusType {
+      using type = void;
+    };
+    template <> struct CudaLibStatusType<culib_cusparse> {
+      using type = cusparseStatus_t;
+    };
+    template <> struct CudaLibStatusType<culib_cublas> {
+      using type = cublasStatus_t;
+    };
+    template <> struct CudaLibStatusType<culib_cusolversp> {
+      using type = cusolverStatus_t;
+    };
+    template <> struct CudaLibStatusType<culib_cusolverdn> {
+      using type = cusolverStatus_t;
+    };
   }  // namespace detail
   template <CudaLibraryComponentFlagBit flagbit> using cudaLibStatus_t =
       typename detail::CudaLibStatusType<flagbit>::type;

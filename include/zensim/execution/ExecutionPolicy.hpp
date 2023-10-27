@@ -4,11 +4,11 @@
 #include <numeric>
 
 #include "zensim/TypeAlias.hpp"
+#include "zensim/ZpcFunction.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/resource/Resource.h"
-#include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"

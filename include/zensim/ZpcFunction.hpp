@@ -3,6 +3,9 @@
 
 namespace zs {
 
+  ///
+  /// traits
+  ///
   namespace detail {
     /// currently only support free functions & lambdas/functors
     /// exclude member functions
@@ -71,5 +74,9 @@ namespace zs {
     }
   };
   template <typename F> recursive_lambda(F &&) -> recursive_lambda<F>;
+
+  ///
+  /// function ref
+  ///
 
 }  // namespace zs

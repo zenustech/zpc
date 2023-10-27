@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include "zensim/Platform.hpp"
-#include "zensim/types/Function.h"
+#include "zensim/ZpcFunction.hpp"
 #include "zensim/types/Polymorphism.h"
 #include "zensim/types/Property.h"
 #include "zensim/types/SourceLocation.hpp"

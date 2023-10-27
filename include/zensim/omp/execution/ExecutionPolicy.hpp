@@ -8,6 +8,7 @@
 #  error "ZS_ENABLE_OPENMP defined but the compiler is not defining the _OPENMP macro as expected"
 #endif
 
+#include <thread>
 #include <omp.h>
 
 #include "zensim/execution/ExecutionPolicy.hpp"
@@ -1107,7 +1108,7 @@ namespace zs {
   constexpr bool is_backend_available(OmpExecutionPolicy) noexcept { return true; }
   constexpr bool is_backend_available(omp_exec_tag) noexcept { return true; }
 
-  uint get_hardware_concurrency() noexcept;
+  inline uint get_hardware_concurrency() noexcept { return std::thread::hardware_concurrency(); }
   inline OmpExecutionPolicy omp_exec() noexcept {
     return OmpExecutionPolicy{}.threads(get_hardware_concurrency() - 1);
   }

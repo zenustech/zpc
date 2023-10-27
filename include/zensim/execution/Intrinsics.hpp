@@ -9,7 +9,7 @@
 /// (2)
 /// inside a certain source file
 
-#include "zensim/execution/ExecutionPolicy.hpp"
+// #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
 #if defined(_WIN32)
 #  include <intrin.h>

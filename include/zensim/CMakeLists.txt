@@ -5,7 +5,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   memory/Allocator.cpp
   profile/CppTimers.cpp
   execution/Stacktrace.cpp
-  execution/ExecutionPolicy.cpp
+  # execution/ExecutionPolicy.cpp
   execution/ConcurrencyPrimitive.cpp
   types/Iterator.cpp
   Logger.cpp
@@ -53,7 +53,7 @@ set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
   omp/math/matrix/MatrixTransform.cpp
-  omp/execution/ExecutionPolicy.cpp
+  # omp/execution/ExecutionPolicy.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   # ref: https://stackoverflow.com/questions/2351148/explicit-template-instantiation-when-is-it-used
@@ -626,7 +626,7 @@ target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
 endif(ZS_ENABLE_JIT)
 
 if(ZS_ENABLE_CUDA)
-  find_package(CUDAToolkit)
+  find_package(CUDAToolkit REQUIRED)
   add_library(zpc_jit_nvrtc SHARED)
   set_target_properties(zpc_jit_nvrtc 
     PROPERTIES 

@@ -48,8 +48,7 @@ namespace zs {
     class ContextGuard {
     public:
       // default policy for restoring contexts
-      static bool alwaysRestore;
-      explicit ContextGuard(void *context, bool restore = alwaysRestore,
+      explicit ContextGuard(void *context, bool restore = false,
                             const source_location &loc = source_location::current());
       ~ContextGuard();
 

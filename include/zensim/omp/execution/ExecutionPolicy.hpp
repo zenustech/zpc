@@ -1170,7 +1170,7 @@ namespace zs {
   constexpr bool is_backend_available(OmpExecutionPolicy) noexcept { return true; }
   constexpr bool is_backend_available(omp_exec_tag) noexcept { return true; }
 
-  uint get_hardware_concurrency() noexcept;
+  inline uint get_hardware_concurrency() noexcept { return std::thread::hardware_concurrency(); }
   inline OmpExecutionPolicy omp_exec() noexcept {
     return OmpExecutionPolicy{}.threads(get_hardware_concurrency() - 1);
   }

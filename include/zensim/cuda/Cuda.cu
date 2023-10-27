@@ -37,7 +37,6 @@ namespace zs {
           checkCuApiError((u32)ec, loc, fmt::format("on restoring context {}", prevContext));
       }
   }
-  bool Cuda::ContextGuard::alwaysRestore = false;
   /*
     __device__ __constant__ char g_cuda_constant_cache[8192];  // 1024 words
 

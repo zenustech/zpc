@@ -291,18 +291,20 @@ namespace zs {
     }
 
     void push_back(const value_type &val) {
-      if (size() >= capacity()) resize(size() + 1);
-      (*this)[_size++] = val;
+      const auto sz = size();
+      resize(sz + 1);
+      (*this)[sz] = val;
     }
     void push_back(value_type &&val) {
-      if (size() >= capacity()) resize(size() + 1);
-      (*this)[_size++] = std::move(val);
+      const auto sz = size();
+      resize(sz + 1);
+      (*this)[sz] = zs::move(val);
     }
 
     void append(const Vector &other) {
       const auto oldSize = size();
-      difference_type count = other.size();  //< def standard iterator
-      if (count <= 0) return;
+      size_type count = other.size();  //< def standard iterator
+      if (count == 0) return;
       size_type unusedCapacity = capacity() - oldSize;
       if (count > unusedCapacity)
         resize(oldSize + count);
@@ -319,8 +321,11 @@ namespace zs {
             Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + oldSize)},
                            MemoryEntity{other.memoryLocation(), (void *)other.data()},
                            sizeof(T) * count);
-          } else
+          } else {
+            static_assert(zs::is_copy_assignable_v<T>,
+                          "T should be at least copy assignable for append operation.");
             for (size_type i = 0; i != count; ++i) (*this)[oldSize + i] = other[i];
+          }
         } else
           throw std::runtime_error(fmt::format(
               "unable to perform Vector::append when the memory space is not the host."));

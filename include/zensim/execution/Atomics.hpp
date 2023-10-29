@@ -3,8 +3,9 @@
 #include <stdexcept>
 
 // #include "zensim/execution/ExecutionPolicy.hpp"
-#include "zensim/types/Property.h"
 #include "zensim/math/bit/Bits.h"
+#include "zensim/types/Property.h"
+#include "zensim/zpc_tpls/fmt/format.h"
 #if defined(_WIN32)
 #  include <windows.h>
 // # include <winnt.h>

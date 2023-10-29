@@ -276,24 +276,45 @@ namespace zs {
     }
 
     void push_back(const value_type &val) {
-      if (size() >= capacity()) resize(size() + 1);
-      (*this)[_size++] = val;
+      const auto sz = size();
+      resize(sz + 1);
+      (*this)[sz] = val;
     }
     void push_back(value_type &&val) {
-      if (size() >= capacity()) resize(size() + 1);
-      (*this)[_size++] = std::move(val);
+      const auto sz = size();
+      resize(sz + 1);
+      (*this)[sz] = std::move(val);
     }
 
     void append(const Vector &other) {
-      difference_type count = other.size();  //< def standard iterator
-      if (count <= 0) return;
-      size_type unusedCapacity = capacity() - size();
+      const auto oldSize = size();
+      size_type count = other.size();  //< def standard iterator
+      if (count == 0) return;
+      size_type unusedCapacity = capacity() - oldSize;
       if (count > unusedCapacity)
-        resize(size() + count);
+        resize(oldSize + count);
       else
         _size += count;
-      Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + size())},
-                     MemoryEntity{other.memoryLocation(), (void *)other.data()}, sizeof(T) * count);
+      if constexpr (std::is_trivially_copyable_v<T>)
+        Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + oldSize)},
+                       MemoryEntity{other.memoryLocation(), (void *)other.data()},
+                       sizeof(T) * count);
+      else {
+        if (memspace() == memsrc_e::host) {
+          const value_type *ptr = other.data();
+          if (other.memspace() != memsrc_e::host) {
+            Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + oldSize)},
+                           MemoryEntity{other.memoryLocation(), (void *)other.data()},
+                           sizeof(T) * count);
+          } else {
+            static_assert(std::is_copy_assignable_v<T>,
+                          "T should be at least copy assignable for append operation.");
+            for (size_type i = 0; i != count; ++i) (*this)[oldSize + i] = other[i];
+          }
+        } else
+          throw std::runtime_error(fmt::format(
+              "unable to perform Vector::append when the memory space is not the host."));
+      }
     }
 
   protected:

@@ -8,12 +8,14 @@
 #  error "ZS_ENABLE_OPENMP defined but the compiler is not defining the _OPENMP macro as expected"
 #endif
 
+#include <thread>
+
 #include "zensim/ZpcFunction.hpp"
 #include "zensim/execution/ExecutionPolicy.hpp"
 #include "zensim/math/bit/Bits.h"
 #include "zensim/omp/Omp.h"
-#include "zensim/types/Function.h"
 #include "zensim/types/Iterator.h"
+
 
 namespace zs {
 

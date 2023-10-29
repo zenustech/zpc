@@ -149,7 +149,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
   # types
   types/Pointers.hpp
-  types/Function.h
   types/Iterator.h
   types/Optional.h
   types/Polymorphism.h

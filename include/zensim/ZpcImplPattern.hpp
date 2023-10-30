@@ -90,7 +90,114 @@ namespace zs {
     return ::new (static_cast<void*>(p)) T(FWD(args)...);
   }
 
-  template <typename T, typename = void> struct ValueOrRef {
+  template <typename T, typename RefT = T*, typename = void> struct ValueOrRef {
+    // T must be trivially destructible
+    static constexpr size_t num_bytes = sizeof(T) > sizeof(RefT) ? sizeof(T) : sizeof(RefT);
+
+    explicit constexpr ValueOrRef(RefT const ptr) noexcept : _isValue{false}, _destroyed{false} {
+      *reinterpret_cast<RefT*>(_buffer) = ptr;
+    }
+#if 0
+    ~ValueOrRef() { destroy(); }
+
+    template <bool V = is_move_constructible_v<T>, enable_if_t<V> = 0>
+    constexpr ValueOrRef(ValueOrRef&& o) noexcept(noexcept(construct_at(declval<ValueOrRef*>(),
+                                                                        zs::move(o.get())))) {
+      if (o.isValid()) {
+        construct_at(pimpl(), zs::move(o.get()));
+        _isValue = true;
+        _destroyed = false;
+        o._destroyed = true;
+        return;
+      }
+      // _isValue actually does not matter here
+      _isValue = false;
+      _destroyed = true;
+    }
+    template <bool V = is_move_assignable_v<T>>
+    constexpr enable_if_type<V, ValueOrRef&> operator=(ValueOrRef&& o) noexcept(
+        noexcept(declval<T&>() = zs::move(o.get())) && noexcept(declval<ValueOrRef&>().destroy())) {
+      // _isValue should not change here
+      destroy();
+      if (o.isValid()) {
+        get() = zs::move(o.get());
+        _destroyed = false;
+        o._destroyed = true;
+      }
+      return *this;
+    }
+
+    template <bool V = is_copy_constructible_v<T>, enable_if_t<V> = 0>
+    constexpr ValueOrRef(const ValueOrRef& o) noexcept(noexcept(construct_at(declval<ValueOrRef*>(),
+                                                                             o.get()))) {
+      if (o.isValid()) {
+        construct_at(pimpl(), o.get());
+        _isValue = true;
+        _destroyed = false;
+        return;
+      }
+      _isValue = false;
+      _destroyed = true;
+    }
+    template <bool V = is_copy_assignable_v<T>>
+    constexpr enable_if_type<V, ValueOrRef&> operator=(const ValueOrRef& o) noexcept(
+        noexcept(declval<T&>() = o.get()) && noexcept(declval<ValueOrRef&>().destroy())) {
+      destroy();
+      if (o.isValid()) {
+        get() = o.get();
+        _destroyed = false;
+      }
+      return *this;
+    }
+
+    constexpr void overwrite(T* ptr) noexcept {
+      destroy();
+      _isValue = false;
+      *reinterpret_cast<T**>(_buffer) = ptr;
+      if (ptr)
+        _destroyed = false;
+      else
+        _destroyed = true;
+    }
+    constexpr void overwrite(T& obj) noexcept { overwrite(&obj); }
+    template <typename... Args> constexpr void overwrite(Args&&... args) {
+      destroy();
+      _isValue = true;
+      construct_at(pimpl(), FWD(args)...);
+      _destroyed = false;
+    }
+
+    constexpr T& get() { return *pimpl(); }
+    constexpr const T& get() const { return *pimpl(); }
+    constexpr bool holdsValue() const noexcept { return _isValue; }
+    constexpr bool holdsReference() const noexcept { return !_isValue; }
+    constexpr bool isValid() const noexcept { return !_destroyed; }
+
+  protected:
+    constexpr void destroy() {
+      if (!_destroyed) {
+        if (_isValue) destroy_at(pimpl());
+        _destroyed = true;
+      }
+    }
+    constexpr T* pimpl() {
+      if (_isValue)
+        return reinterpret_cast<T*>(_buffer);
+      else
+        return *reinterpret_cast<T**>(_buffer);
+    }
+    constexpr T const* pimpl() const {
+      if (_isValue)
+        return reinterpret_cast<T const*>(_buffer);
+      else
+        return *reinterpret_cast<T* const*>(_buffer);
+    }
+#endif
+    alignas(alignof(T) > alignof(RefT) ? alignof(T) : alignof(RefT)) byte _buffer[num_bytes] = {};
+    bool _isValue{false}, _destroyed{false};
+  };
+
+  template <typename T> struct ValueOrRef<T, T*> {
     // T must be trivially destructible
     static constexpr size_t num_bytes = sizeof(T) > sizeof(T*) ? sizeof(T) : sizeof(T*);
 
@@ -207,7 +314,8 @@ namespace zs {
 
   ///
   /// @note this version is usable in kernel
-  template <typename T> struct ValueOrRef<T, enable_if_type<is_trivially_destructible_v<T>, void>> {
+  template <typename T>
+  struct ValueOrRef<T, T*, enable_if_type<is_trivially_destructible_v<T>, void>> {
     // T must be trivially destructible
     static constexpr size_t num_bytes = sizeof(T) > sizeof(T*) ? sizeof(T) : sizeof(T*);
 

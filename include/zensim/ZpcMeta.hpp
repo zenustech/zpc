@@ -1169,7 +1169,7 @@ namespace zs {
         else
           return failure_type{};
       } else if constexpr (IsMemberFuncPtr) {
-        if constexpr (sizeof...(Args) > 1)
+        if constexpr (sizeof...(Args) > 0)
           return typename decltype(__result_of_memfun_delegate<decay_t<Fn>, Args...>())::type{};
         else
           return failure_type{};

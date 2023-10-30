@@ -80,43 +80,6 @@ namespace zs {
     // constexpr void onError(...) {}
   };
 
-  /// @ref from cppreference
-  enum class byte : unsigned char {};
-  template <typename IntT>
-  constexpr enable_if_type<is_integral_v<IntT>, IntT> to_integer(byte b) noexcept {
-    return IntT(b);
-  }
-  template <typename IntT>
-  constexpr enable_if_type<is_integral_v<IntT>, byte&> operator<<=(byte& b, IntT shift) noexcept {
-    return b = b << shift;
-  }
-  template <typename IntT>
-  constexpr enable_if_type<is_integral_v<IntT>, byte&> operator>>=(byte& b, IntT shift) noexcept {
-    return b = b >> shift;
-  }
-  template <typename IntT>
-  constexpr enable_if_type<is_integral_v<IntT>, byte> operator<<(byte b, IntT shift) noexcept {
-    // cpp17 relaxed enum class initialization rules
-    return byte(static_cast<unsigned int>(b) << shift);
-  }
-  template <typename IntT>
-  constexpr enable_if_type<is_integral_v<IntT>, byte> operator>>(byte b, IntT shift) noexcept {
-    return byte(static_cast<unsigned int>(b) >> shift);
-  }
-  constexpr byte operator|(byte l, byte r) noexcept {
-    return byte(static_cast<unsigned int>(l) | static_cast<unsigned int>(r));
-  }
-  constexpr byte operator&(byte l, byte r) noexcept {
-    return byte(static_cast<unsigned int>(l) & static_cast<unsigned int>(r));
-  }
-  constexpr byte operator^(byte l, byte r) noexcept {
-    return byte(static_cast<unsigned int>(l) ^ static_cast<unsigned int>(r));
-  }
-  constexpr byte operator~(byte b) noexcept { return byte(~static_cast<unsigned int>(b)); }
-  constexpr byte& operator|=(byte& l, byte r) noexcept { return l = l | r; }
-  constexpr byte& operator&=(byte& l, byte r) noexcept { return l = l & r; }
-  constexpr byte& operator^=(byte& l, byte r) noexcept { return l = l ^ r; }
-
   template <typename T> constexpr void destroy_at(T* p) {
     if constexpr (zs::is_array_v<T>)
       for (auto& elem : *p) (destroy_at)(addressof(elem));
@@ -398,10 +361,10 @@ namespace zs {
     }
     template <typename T> constexpr void destroy() const noexcept { destroy_at(data<T>()); }
 
-    template <typename T> constexpr T* data() noexcept {
+    template <typename T = void> constexpr T* data() noexcept {
       return const_cast<T*>(reinterpret_cast<T const*>(_buffer));
     }
-    template <typename T> constexpr const T* data() const noexcept {
+    template <typename T = void> constexpr const T* data() const noexcept {
       return reinterpret_cast<T const*>(_buffer);
     }
 

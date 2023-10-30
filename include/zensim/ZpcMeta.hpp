@@ -1302,7 +1302,7 @@ namespace zs {
   template <class F, class... Args> constexpr invoke_result_t<F, Args...> invoke(
       F &&f, Args &&...args) noexcept(is_nothrow_invocable_v<F, Args...>) {
     if constexpr (is_member_pointer_v<decay_t<F>>)
-      return detail::invoke_memptr(f, forward<Args>(args)...);
+      return detail::invoke_memptr(forward<F>(f), forward<Args>(args)...);
     else
       return forward<F>(f)(forward<Args>(args)...);
   }
@@ -1374,5 +1374,42 @@ namespace zs {
   template <class T> struct is_refwrapper : false_type {};
   template <class T> struct is_refwrapper<reference_wrapper<T>> : true_type {};
   template <class T> static constexpr bool is_refwrapper_v = is_refwrapper<decay_t<T>>::value;
+
+  /// @ref from cppreference
+  enum class byte : unsigned char {};
+  template <typename IntT>
+  constexpr enable_if_type<is_integral_v<IntT>, IntT> to_integer(byte b) noexcept {
+    return IntT(b);
+  }
+  template <typename IntT>
+  constexpr enable_if_type<is_integral_v<IntT>, byte &> operator<<=(byte &b, IntT shift) noexcept {
+    return b = b << shift;
+  }
+  template <typename IntT>
+  constexpr enable_if_type<is_integral_v<IntT>, byte &> operator>>=(byte &b, IntT shift) noexcept {
+    return b = b >> shift;
+  }
+  template <typename IntT>
+  constexpr enable_if_type<is_integral_v<IntT>, byte> operator<<(byte b, IntT shift) noexcept {
+    // cpp17 relaxed enum class initialization rules
+    return byte(static_cast<unsigned int>(b) << shift);
+  }
+  template <typename IntT>
+  constexpr enable_if_type<is_integral_v<IntT>, byte> operator>>(byte b, IntT shift) noexcept {
+    return byte(static_cast<unsigned int>(b) >> shift);
+  }
+  constexpr byte operator|(byte l, byte r) noexcept {
+    return byte(static_cast<unsigned int>(l) | static_cast<unsigned int>(r));
+  }
+  constexpr byte operator&(byte l, byte r) noexcept {
+    return byte(static_cast<unsigned int>(l) & static_cast<unsigned int>(r));
+  }
+  constexpr byte operator^(byte l, byte r) noexcept {
+    return byte(static_cast<unsigned int>(l) ^ static_cast<unsigned int>(r));
+  }
+  constexpr byte operator~(byte b) noexcept { return byte(~static_cast<unsigned int>(b)); }
+  constexpr byte &operator|=(byte &l, byte r) noexcept { return l = l | r; }
+  constexpr byte &operator&=(byte &l, byte r) noexcept { return l = l & r; }
+  constexpr byte &operator^=(byte &l, byte r) noexcept { return l = l ^ r; }
 
 }  // namespace zs

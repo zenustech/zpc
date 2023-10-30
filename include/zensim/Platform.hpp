@@ -103,3 +103,9 @@ static_assert(false, "32-bit Windows systems are not supported")
 #else
 #  define ZPC_API ZPC_IMPORT
 #endif
+
+#if defined(ZS_COMPILER_MSVC)
+#  define ZS_NO_INLINE __declspec(noinline)
+#else
+#  define ZS_NO_INLINE __attribute__((noinline))
+#endif

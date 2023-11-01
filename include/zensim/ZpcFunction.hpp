@@ -80,8 +80,8 @@ namespace zs {
   ///
 
   /// @ref vittorio romeo, sy brand
-  template <class Signature> struct function_ref;
   template <class Signature> struct function;
+  template <class Signature> struct function_ref;
   namespace detail {
     struct function_ref_dummy {
       void foo();
@@ -102,81 +102,6 @@ namespace zs {
     static_assert(function_ref_dummy_member_pointer_alignment >= alignof(void *),
                   "this is not anticipated...");
   }  // namespace detail
-
-  template <class R, class... Args> struct function_ref<R(Args...)> {
-    using non_member_callable_signature = R(Args...);
-
-    using function_member_pointer_type = void (detail::function_ref_dummy::*)();
-    using data_member_pointer_type = byte(detail::function_ref_dummy::*);
-    using callable_type = R(const function_ref *, Args...);
-
-    /// @note rule of three
-    constexpr function_ref() noexcept = delete;
-
-    constexpr function_ref(const function_ref &rhs) noexcept = default;
-    constexpr function_ref &operator=(const function_ref &rhs) noexcept = default;
-
-    template <typename F,
-              enable_if_t<!is_same_v<decay_t<F>, function_ref> && !is_member_pointer_v<decay_t<F>>
-                          && is_invocable_r_v<R, F &&, Args...>>
-              = 0>
-    constexpr function_ref(F &&f) noexcept : _object{nullptr}, _erasedFn{nullptr} {
-      operator=(FWD(f));
-    }
-    template <typename F,
-              enable_if_t<!is_member_pointer_v<decay_t<F>> && is_invocable_r_v<R, F &&, Args...>>
-              = 0>
-    constexpr function_ref &operator=(F &&f) noexcept {
-      _object = const_cast<void *>(reinterpret_cast<const void *>(zs::addressof(f)));
-
-      _erasedFn = [](const function_ref *self, Args... args) -> R {
-        return zs::invoke(*reinterpret_cast<add_pointer_t<F>>(const_cast<void *>(self->_object)),
-                          zs::forward<Args>(args)...);
-      };
-      return *this;
-    }
-
-    template <typename Pointed, class C,
-              enable_if_t<zs::is_invocable_r_v<R, Pointed(C::*), Args...>> = 0>
-    constexpr function_ref(Pointed C::*f) noexcept {
-      operator=(f);
-    }
-    template <typename Pointed, class C,
-              enable_if_t<zs::is_invocable_r_v<R, Pointed(C::*), Args...>> = 0>
-    constexpr function_ref &operator=(Pointed C::*f) noexcept {
-      using F = Pointed(C::*);
-      if constexpr (is_function_v<Pointed>) {
-        _funcMember = *reinterpret_cast<function_member_pointer_type *>(&f);
-
-        _erasedFn = [](const function_ref *self, Args... args) -> R {
-          return zs::invoke(*reinterpret_cast<F *>(&const_cast<function_ref *>(self)->_funcMember),
-                            zs::forward<Args>(args)...);
-        };
-      } else {
-        static_assert(is_object_v<Pointed> && sizeof...(Args) == 1, "???");
-        _dataMember = *reinterpret_cast<data_member_pointer_type *>(&f);
-
-        _erasedFn = [](const function_ref *self, Args... args) -> R {
-          return zs::invoke(*reinterpret_cast<F *>(&const_cast<function_ref *>(self)->_dataMember),
-                            zs::forward<Args>(args)...);
-        };
-      }
-      return *this;
-    }
-
-    constexpr R operator()(Args... args) const {
-      return _erasedFn(this, zs::forward<Args>(args)...);
-    }
-
-  private:
-    union {
-      void *_object{nullptr};
-      function_member_pointer_type _funcMember;
-      data_member_pointer_type _dataMember;
-    };
-    // detail::function_ref_storage _storage{};
-    callable_type *_erasedFn = nullptr;
-  };
 
   /// @note trade space for time (one less indirection due to the omission of vtable)
   /// @note currently ignoring const handling
@@ -298,6 +223,77 @@ namespace zs {
     function_storage _storage{};
     callable_type *_erasedFn = nullptr;
     manager_fn *_manageFn = nullptr;
+  };
+
+  template <class R, class... Args> struct function_ref<R(Args...)> {
+    using function_ref_storage
+        = InplaceStorage<detail::function_ref_dummy_member_pointer_size,
+                         detail::function_ref_dummy_member_pointer_alignment>;
+    // using non_member_callable_signature = R(Args...);
+    // using function_member_pointer_type = void (detail::function_ref_dummy::*)();
+    // using data_member_pointer_type = byte(detail::function_ref_dummy::*);
+    using callable_type = R(const void *, Args...);
+
+    template <typename Handle> struct Ref {
+      static_assert(true, "...");
+      Ref(Handle handle) noexcept : _handle{zs::move(handle)} {}
+      ~Ref() = default;
+      Ref(const Ref &) = default;
+      Ref &operator=(const Ref &) = default;
+
+      constexpr R operator()(Args... args) const {
+        if constexpr (is_member_pointer_v<Handle>)
+          return zs::invoke(const_cast<Handle &>(_handle), zs::forward<Args>(args)...);
+        else
+          return zs::invoke(*const_cast<Handle &>(_handle), zs::forward<Args>(args)...);
+      }
+      Handle _handle;
+    };
+
+    /// @note rule of three
+    constexpr function_ref() noexcept = delete;
+
+    constexpr function_ref(const function_ref &rhs) noexcept = default;
+    constexpr function_ref &operator=(const function_ref &rhs) noexcept = default;
+
+    template <
+        typename F,
+        enable_if_t<!is_same_v<decay_t<F>, function_ref> && is_invocable_r_v<R, F &&, Args...>> = 0>
+    constexpr function_ref(F &&f) noexcept : _storage{}, _erasedFn{nullptr} {
+      operator=(FWD(f));
+    }
+    template <typename F, enable_if_t<is_invocable_r_v<R, F &&, Args...>> = 0>
+    constexpr function_ref &operator=(F &&f) noexcept {
+      if constexpr (!is_member_pointer_v<decay_t<F>>) {
+        using FuncRef = Ref<add_pointer_t<F>>;
+        _storage.template create<add_pointer_t<F>>(zs::addressof(f));
+        _erasedFn = [](const void *obj, Args... args) -> R {
+          zs::invoke(*static_cast<const function_ref_storage *>(obj)->template data<FuncRef>(),
+                     zs::forward<Args>(args)...);
+        };
+      } else {
+        using FuncRef = Ref<decay_t<F>>;
+        _storage.template create<FuncRef>(FWD(f));
+        _erasedFn = [](const void *obj, Args... args) -> R {
+          zs::invoke(*static_cast<const function_ref_storage *>(obj)->template data<FuncRef>(),
+                     zs::forward<Args>(args)...);
+        };
+      }
+      return *this;
+    }
+
+    constexpr R operator()(Args... args) const {
+      return _erasedFn(_storage.data(), zs::forward<Args>(args)...);
+    }
+
+  private:
+    // union {
+    //   void *_object{nullptr};
+    //   function_member_pointer_type _funcMember;
+    //   data_member_pointer_type _dataMember;
+    // };
+    function_ref_storage _storage{};
+    callable_type *_erasedFn = nullptr;
   };
 
 }  // namespace zs

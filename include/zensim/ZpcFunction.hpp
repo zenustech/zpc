@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/ZpcMeta.hpp"
+#include "zensim/ZpcImplPattern.hpp"
 
 namespace zs {
 
@@ -81,6 +81,7 @@ namespace zs {
 
   /// @ref vittorio romeo, sy brand
   template <class Signature> struct function_ref;
+  template <class Signature> struct function;
   namespace detail {
     struct function_ref_dummy {
       void foo();
@@ -175,6 +176,128 @@ namespace zs {
     };
     // detail::function_ref_storage _storage{};
     callable_type *_erasedFn = nullptr;
+  };
+
+  /// @note trade space for time (one less indirection due to the omission of vtable)
+  /// @note currently ignoring const handling
+  template <class R, class... Args> struct function<R(Args...)> {
+    enum class manage_op_e { destruct = 0, clone = 1 };
+    using function_storage = InplaceStorage<detail::function_ref_dummy_member_pointer_size,
+                                            detail::function_ref_dummy_member_pointer_alignment>;
+    using callable_type = R(const void *, Args...);
+    using manager_fn = void(void *self, void *o, manage_op_e);
+
+    template <typename Callable> struct Owner {
+      Owner(Callable callable) noexcept : _callable{zs::move(callable)} {}
+      ~Owner() = default;
+      Owner(const Owner &) = default;
+      Owner &operator=(const Owner &) = default;
+
+      constexpr R operator()(Args... args) const {
+        return zs::invoke(const_cast<Callable &>(_callable), zs::forward<Args>(args)...);
+      }
+      Callable _callable;
+    };
+
+    function() noexcept = default;
+    ~function() {
+      if (_manageFn) (*_manageFn)(_storage.data(), nullptr, manage_op_e::destruct);
+    }
+
+    template <typename F,
+              enable_if_t<!is_same_v<decay_t<F>, function> && is_invocable_r_v<R, F &&, Args...>>
+              = 0>
+    function(F &&f) noexcept : _storage{}, _erasedFn{nullptr}, _manageFn{nullptr} {
+      operator=(FWD(f));
+    }
+    template <typename F, enable_if_t<is_invocable_r_v<R, F &&, Args...>> = 0>
+    function &operator=(F &&f) noexcept {
+      if (_manageFn) (*_manageFn)(_storage.data(), nullptr, manage_op_e::destruct);
+
+      constexpr bool fit = sizeof(f) <= function_storage::capacity
+                           && alignof(decay_t<F>) <= function_storage::alignment;
+
+      if constexpr (fit) {
+        using FuncOwner = Owner<decay_t<F>>;
+        _storage.template create<FuncOwner>(FWD(f));
+
+        _erasedFn = [](const void *obj, Args... args) -> R {
+          zs::invoke(*static_cast<const function_storage *>(obj)->template data<FuncOwner>(),
+                     zs::forward<Args>(args)...);
+        };
+        _manageFn = [](void *self, void *o, manage_op_e op) {
+          if (op == manage_op_e::destruct) {
+            static_cast<const function_storage *>(self)->template destroy<FuncOwner>();
+          } else {  // manage_op_e::clone
+            if constexpr (is_copy_constructible_v<FuncOwner>) {
+              const auto &me
+                  = *static_cast<const function_storage *>(self)->template data<FuncOwner>();
+              static_cast<const function_storage *>(o)->template create<FuncOwner>(me);
+            } else {
+              throw StaticException();
+            }
+          }
+        };
+      } else {
+        using FuncOwner = Unique<decay_t<F>>;
+        _storage.template create<FuncOwner>(FuncOwner::make(FWD(f)));
+
+        _erasedFn = [](const void *obj, Args... args) -> R {
+          zs::invoke(**static_cast<const function_storage *>(obj)->template data<FuncOwner>(),
+                     zs::forward<Args>(args)...);
+        };
+        _manageFn = [](void *self, void *o, manage_op_e op) {
+          if (op == manage_op_e::destruct) {
+            static_cast<const function_storage *>(self)->template destroy<FuncOwner>();
+          } else {  // manage_op_e::clone
+            if constexpr (is_copy_constructible_v<decay_t<F>>) {
+              const auto &me
+                  = **static_cast<const function_storage *>(self)->template data<FuncOwner>();
+              static_cast<const function_storage *>(o)->template create<FuncOwner>(
+                  FuncOwner::make(me));
+            } else {
+              // currently hold functor is not copyable!
+              throw StaticException();
+            }
+          }
+        };
+      }
+      return *this;
+    }
+
+    function(const function &o) { operator=(o); }
+    function &operator=(const function &o) {
+      o._manageFn(o._storage.data(), _storage.data(), manage_op_e::clone);
+      _erasedFn = o._erasedFn;
+      _manageFn = o._manageFn;
+      return *this;
+    }
+
+    function(function &&o) noexcept { operator=(zs::move(o)); }
+    function &operator=(function &&o) noexcept {
+      memcpy(_storage.data(), o._storage.data(), function_storage::capacity);
+      exchange(_erasedFn, o._erasedFn, nullptr);
+      exchange(_manageFn, o._manageFn, nullptr);
+      return *this;
+    }
+
+    void swap(function &o) noexcept {
+      function_storage tmp = o._storage;
+      _storage = tmp;
+      o._storage = zs::move(tmp);
+      swap(_erasedFn, o._erasedFn);
+      swap(_manageFn, o._manageFn);
+    }
+
+    R operator()(Args... args) const {
+      if (!_erasedFn) throw StaticException();
+      return _erasedFn(_storage.data(), zs::forward<Args>(args)...);
+    }
+
+  private:
+    function_storage _storage{};
+    callable_type *_erasedFn = nullptr;
+    manager_fn *_manageFn = nullptr;
   };
 
 }  // namespace zs

@@ -14,14 +14,20 @@ namespace zs {
   /// SFINAE
   ///
   template <bool B> struct enable_if;
-  template <> struct enable_if<true> { using type = int; };
+  template <> struct enable_if<true> {
+    using type = int;
+  };
   template <bool B> using enable_if_t = typename enable_if<B>::type;
   template <bool... Bs> using enable_if_all = typename enable_if<(Bs && ...)>::type;
   template <bool... Bs> using enable_if_any = typename enable_if<(Bs || ...)>::type;
 
   // conditional
-  template <bool B> struct conditional_impl { template <class T, class F> using type = T; };
-  template <> struct conditional_impl<false> { template <class T, class F> using type = F; };
+  template <bool B> struct conditional_impl {
+    template <class T, class F> using type = T;
+  };
+  template <> struct conditional_impl<false> {
+    template <class T, class F> using type = F;
+  };
   template <bool B, class T, class F> using conditional_t =
       typename conditional_impl<B>::template type<T, F>;
   template <bool B, typename T = void> using enable_if_type = conditional_t<B, T, enable_if_t<B>>;
@@ -58,7 +64,9 @@ namespace zs {
   template <class...> using void_t = void;
   struct failure_type {};  // no [type] member, should never be used publically
 
-  template <typename T> struct wrapt { using type = T; };
+  template <typename T> struct wrapt {
+    using type = T;
+  };
   template <typename T> struct wrapt<wrapt<T>> {
     // wrap at most 1 layer
     using type = T;
@@ -265,24 +273,46 @@ namespace zs {
   /// type decoration
   ///
   // remove_reference
-  template <class T> struct remove_reference { using type = T; };
-  template <class T> struct remove_reference<T &> { using type = T; };
-  template <class T> struct remove_reference<T &&> { using type = T; };
+  template <class T> struct remove_reference {
+    using type = T;
+  };
+  template <class T> struct remove_reference<T &> {
+    using type = T;
+  };
+  template <class T> struct remove_reference<T &&> {
+    using type = T;
+  };
   template <typename T> using remove_reference_t = typename remove_reference<T>::type;
 #define RM_REF_T(...) ::zs::remove_reference_t<decltype(__VA_ARGS__)>
 #define ZS_TYPE(...) typename ::zs::remove_reference_t<decltype(__VA_ARGS__)>::type
 #define ZS_VALUE(...) typename ::zs::remove_reference_t<decltype(__VA_ARGS__)>::value
   // remove cv
-  template <class T> struct remove_cv { using type = T; };
-  template <class T> struct remove_cv<const T> { using type = T; };
-  template <class T> struct remove_cv<volatile T> { using type = T; };
-  template <class T> struct remove_cv<const volatile T> { using type = T; };
+  template <class T> struct remove_cv {
+    using type = T;
+  };
+  template <class T> struct remove_cv<const T> {
+    using type = T;
+  };
+  template <class T> struct remove_cv<volatile T> {
+    using type = T;
+  };
+  template <class T> struct remove_cv<const volatile T> {
+    using type = T;
+  };
   template <typename T> using remove_cv_t = typename remove_cv<T>::type;
-  template <class T> struct remove_const { using type = T; };
-  template <class T> struct remove_const<const T> { using type = T; };
+  template <class T> struct remove_const {
+    using type = T;
+  };
+  template <class T> struct remove_const<const T> {
+    using type = T;
+  };
   template <typename T> using remove_const_t = typename remove_const<T>::type;
-  template <class T> struct remove_volatile { using type = T; };
-  template <class T> struct remove_volatile<volatile T> { using type = T; };
+  template <class T> struct remove_volatile {
+    using type = T;
+  };
+  template <class T> struct remove_volatile<volatile T> {
+    using type = T;
+  };
   template <typename T> using remove_volatile_t = typename remove_volatile<T>::type;
   template <class T> struct remove_cvref {
     using type = typename remove_cv<typename remove_reference<T>::type>::type;
@@ -296,11 +326,21 @@ namespace zs {
 #define RM_CVREF_T(...) ::zs::remove_cvref_t<decltype(__VA_ARGS__)>
   // #define RM_CVREF_T(...) ::std::remove_cvref_t<decltype(__VA_ARGS__)>
 
-  template <class T> struct remove_pointer { using type = T; };
-  template <class T> struct remove_pointer<T *> { using type = T; };
-  template <class T> struct remove_pointer<T *const> { using type = T; };
-  template <class T> struct remove_pointer<T *volatile> { using type = T; };
-  template <class T> struct remove_pointer<T *const volatile> { using type = T; };
+  template <class T> struct remove_pointer {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *> {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *const> {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *volatile> {
+    using type = T;
+  };
+  template <class T> struct remove_pointer<T *const volatile> {
+    using type = T;
+  };
   template <typename T> using remove_pointer_t = typename remove_pointer<T>::type;
 
   // add_pointer
@@ -328,17 +368,31 @@ namespace zs {
       : decltype(detail::try_add_rvalue_reference<T>(0)) {};
   template <typename T> using add_rvalue_reference_t = typename add_rvalue_reference<T>::type;
   // add_cv/const/volatile
-  template <class T> struct add_cv { typedef const volatile T type; };
+  template <class T> struct add_cv {
+    typedef const volatile T type;
+  };
   template <class T> using add_cv_t = typename add_cv<T>::type;
-  template <class T> struct add_const { typedef const T type; };
+  template <class T> struct add_const {
+    typedef const T type;
+  };
   template <class T> using add_const_t = typename add_const<T>::type;
-  template <class T> struct add_volatile { typedef volatile T type; };
+  template <class T> struct add_volatile {
+    typedef volatile T type;
+  };
   template <class T> using add_volatile_t = typename add_volatile<T>::type;
   // remove_extent
-  template <class T> struct remove_extent { using type = T; };
-  template <class T> struct remove_extent<T[]> { using type = T; };
-  template <class T, size_t N> struct remove_extent<T[N]> { using type = T; };
-  template <class T> struct remove_all_extents { using type = T; };
+  template <class T> struct remove_extent {
+    using type = T;
+  };
+  template <class T> struct remove_extent<T[]> {
+    using type = T;
+  };
+  template <class T, size_t N> struct remove_extent<T[N]> {
+    using type = T;
+  };
+  template <class T> struct remove_all_extents {
+    using type = T;
+  };
   template <class T> struct remove_all_extents<T[]> {
     using type = typename remove_all_extents<T>::type;
   };
@@ -518,12 +572,9 @@ namespace zs {
     template <typename T> static auto test_integral(T t, T *p, void (*f)(T))
         -> decltype(reinterpret_cast<T>(t), f(0), p + t, true_type{});
 #else
-    template <
-        typename T,
-        typename = enable_if_t<
-            !is_void_v<
-                T> && !is_const_v<T> && !is_volatile_v<T> && !is_reference_v<T> && !__is_enum(T)
-            && !__is_class(T)>>
+    template <typename T,
+              typename = enable_if_t<!is_void_v<T> && !is_const_v<T> && !is_volatile_v<T>
+                                     && !is_reference_v<T> && !__is_enum(T) && !__is_class(T)>>
     static auto test_integral(T t) -> decltype((char *)(nullptr) + t, true_type{});
 #endif
     static false_type test_integral(...) noexcept;
@@ -561,11 +612,9 @@ namespace zs {
   template <class T> struct is_floating_point
       : bool_constant<
             // Note: standard floating-point types
-            is_same_v<
-                float,
-                typename remove_cv<T>::
-                    type> || is_same_v<double, typename remove_cv<T>::type> || is_same_v<long double, typename remove_cv<T>::type>> {
-  };
+            is_same_v<float, typename remove_cv<T>::type>
+            || is_same_v<double, typename remove_cv<T>::type>
+            || is_same_v<long double, typename remove_cv<T>::type>> {};
   template <class T> constexpr bool is_floating_point_v = is_floating_point<T>::value;
   template <class T> struct is_arithmetic
       : bool_constant<is_integral<T>::value || is_floating_point<T>::value> {};
@@ -608,7 +657,9 @@ namespace zs {
   template <class T, typename = void> struct make_unsigned;
   template <> struct make_unsigned<bool>;
 #define ZS_SPECIALIZE_MAKE_UNSIGNED(FROM, TO) \
-  template <> struct make_unsigned<FROM> { using type = TO; };
+  template <> struct make_unsigned<FROM> {    \
+    using type = TO;                          \
+  };
   ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned char, unsigned char)
   ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned short, unsigned short)
   ZS_SPECIALIZE_MAKE_UNSIGNED(unsigned int, unsigned int)
@@ -651,7 +702,9 @@ namespace zs {
   template <class T, typename = void> struct make_signed;
   template <> struct make_signed<bool>;
 #define ZS_SPECIALIZE_MAKE_SIGNED(FROM, TO) \
-  template <> struct make_signed<FROM> { using type = TO; };
+  template <> struct make_signed<FROM> {    \
+    using type = TO;                        \
+  };
   ZS_SPECIALIZE_MAKE_SIGNED(unsigned char, signed char)
   ZS_SPECIALIZE_MAKE_SIGNED(unsigned short, signed short)
   ZS_SPECIALIZE_MAKE_SIGNED(unsigned int, signed int)
@@ -779,6 +832,7 @@ namespace zs {
 
   template <class T> struct is_trivially_destructible
       : bool_constant<detail::is_destructible<T>() && __has_trivial_destructor(T)> {};
+  // __has_trivial_destructor deprecated
   template <class T> constexpr bool is_trivially_destructible_v
       = is_trivially_destructible<T>::value;
 
@@ -852,10 +906,9 @@ namespace zs {
         -> true_type;  // private or ambiguous base
   }                    // namespace details
   template <typename Base, typename Derived> struct is_base_of
-      : bool_constant<
-            is_class_v<
-                Base> && is_class_v<Derived> &&decltype(details::test_is_base_of<Base, Derived>(0))::value> {
-  };
+      : bool_constant<is_class_v<Base>
+                      && is_class_v<Derived> &&decltype(details::test_is_base_of<Base, Derived>(
+                          0))::value> {};
   template <typename Base, typename Derived> constexpr bool is_base_of_v
       = is_base_of<Base, Derived>::value;
   // is_fundamental
@@ -899,7 +952,7 @@ namespace zs {
   };
   template <typename TT, typename T> constexpr bool is_assignable_v = is_assignable<TT, T>::value;
   template <typename TT, typename T> struct is_nothrow_assignable
-      : bool_constant<is_assignable_v<TT, T> &&noexcept(declval<TT>() = declval<T>())> {};
+      : bool_constant<is_assignable_v<TT, T> && noexcept(declval<TT>() = declval<T>())> {};
   template <typename TT, typename T> constexpr bool is_nothrow_assignable_v
       = is_nothrow_assignable<TT, T>::value;
 
@@ -934,8 +987,8 @@ namespace zs {
 
   }  // namespace detail
   template <class From, class To> struct is_convertible
-      : bool_constant<(decltype(detail::test_returnable<To>(0))::value &&decltype(
-                          detail::test_implicitly_convertible<From, To>(0))::value)
+      : bool_constant<(decltype(detail::test_returnable<To>(0))::value
+                       && decltype(detail::test_implicitly_convertible<From, To>(0))::value)
                       || (is_void<From>::value && is_void<To>::value)> {};
   template <class From, class To> constexpr bool is_convertible_v = is_convertible<From, To>::value;
 
@@ -1149,10 +1202,9 @@ namespace zs {
   /// ref: https://en.cppreference.com/w/cpp/utility/functional
   /// invoke_result
   template <typename Functor, typename... Args> struct invoke_result
-      : decltype(
-            detail::deduce_invoke_result<is_member_object_pointer_v<remove_reference_t<Functor>>,
-                                         is_member_function_pointer_v<remove_reference_t<Functor>>,
-                                         Functor, Args...>()) {
+      : decltype(detail::deduce_invoke_result<
+                 is_member_object_pointer_v<remove_reference_t<Functor>>,
+                 is_member_function_pointer_v<remove_reference_t<Functor>>, Functor, Args...>()) {
     // _Fn must be a complete class or an unbounded array
     // each argument type must be a complete class or an unbounded array
   };
@@ -1333,8 +1385,12 @@ namespace zs {
   template <class T> void cref(const T &&) = delete;
 
   /// special_decay = decay + unref
-  template <class T> struct unwrap_refwrapper { using type = T; };
-  template <class T> struct unwrap_refwrapper<reference_wrapper<T>> { using type = T &; };
+  template <class T> struct unwrap_refwrapper {
+    using type = T;
+  };
+  template <class T> struct unwrap_refwrapper<reference_wrapper<T>> {
+    using type = T &;
+  };
   template <class T> using special_decay_t = typename unwrap_refwrapper<decay_t<T>>::type;
 
   template <class T> struct is_refwrapper : false_type {};

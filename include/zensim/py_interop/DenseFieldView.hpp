@@ -22,7 +22,7 @@ namespace zs {
     template <typename... Args, enable_if_all<is_integral_v<Args>...> = 0>
     constexpr size_type linearOffset(Args... is) const noexcept {
       size_type offset = 0, i = 0;
-      (void)((offset += (size_type)is * _bases[++i]), ...);
+      ((void)(offset += (size_type)is * _bases[++i]), ...);
       return offset;
     }
     template <typename... Args, bool V = !is_const_structure && (is_integral_v<Args> && ...),

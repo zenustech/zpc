@@ -8,9 +8,10 @@
 
 namespace zs {
 
-  template <typename T, typename Ti, template <typename> class VectorT, typename ValueT>
+  template <typename T, typename Ti, typename VectorT>
   static void compute_mesh_normal_impl(const Mesh<T, /*dim*/ 3, Ti, /*codim*/ 3> &surfs,
-                                       float scale, VectorT<ValueT> &nrms) {
+                                       float scale, VectorT &nrms) {
+    using ValueT = typename VectorT::value_type;
     static_assert(std::is_arithmetic_v<T>, "input mesh value type should be an arithmetic type");
     static_assert(
         sizeof(T) * 3 == sizeof(ValueT) && std::alignment_of_v<ValueT> == std::alignment_of_v<T>,
@@ -53,19 +54,19 @@ namespace zs {
 
   void compute_mesh_normal(const Mesh<float, 3, int, 3> &surfs, float scale,
                            std::vector<std::array<float, 3>> &nrms) {
-    compute_mesh_normal_impl<float, int, std::vector, std::array<float, 3>>(surfs, scale, nrms);
+    compute_mesh_normal_impl<float, int, std::vector<std::array<float, 3>>>(surfs, scale, nrms);
   }
   void compute_mesh_normal(const Mesh<float, 3, u32, 3> &surfs, float scale,
                            std::vector<std::array<float, 3>> &nrms) {
-    compute_mesh_normal_impl<float, u32, std::vector, std::array<float, 3>>(surfs, scale, nrms);
+    compute_mesh_normal_impl<float, u32, std::vector<std::array<float, 3>>>(surfs, scale, nrms);
   }
   void compute_mesh_normal(const Mesh<float, 3, int, 3> &surfs, float scale,
                            Vector<vec<float, 3>> &nrms) {
-    compute_mesh_normal_impl<float, int, Vector, vec<float, 3>>(surfs, scale, nrms);
+    compute_mesh_normal_impl<float, int, Vector<vec<float, 3>>>(surfs, scale, nrms);
   }
   void compute_mesh_normal(const Mesh<float, 3, u32, 3> &surfs, float scale,
                            Vector<vec<float, 3>> &nrms) {
-    compute_mesh_normal_impl<float, u32, Vector, vec<float, 3>>(surfs, scale, nrms);
+    compute_mesh_normal_impl<float, u32, Vector<vec<float, 3>>>(surfs, scale, nrms);
   }
 
 #if 0

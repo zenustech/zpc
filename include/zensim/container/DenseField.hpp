@@ -153,7 +153,7 @@ namespace zs {
       std::vector<size_type> bases(_shape.size());
       _shape.retrieveVals(bases.data());
       size_type offset = 0, i = 0;
-      (void)((offset += (size_type)is * bases[++i]), ...);
+      ((void)(offset += (size_type)is * bases[++i]), ...);
       return offset;
     }
 
@@ -298,7 +298,7 @@ namespace zs {
       }
 #endif
       size_type offset = 0, i = 0;
-      (void)((offset += (size_type)is * shape[++i]), ...);
+      ((void)(offset += (size_type)is * shape[++i]), ...);
       return offset;
     }
     template <typename... Args, bool V = !is_const_structure && (... && is_integral_v<Args>),

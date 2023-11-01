@@ -446,11 +446,12 @@ namespace zs {
         CompareOpT &&compOp = {}, const source_location &loc = source_location::current()) const {
       merge_sort_pair_impl(FWD(keys), FWD(vals), count, FWD(compOp), true_c, loc);  // stable
     }
-    template <class InputIt, class OutputIt> constexpr void radix_sort(
-        InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-        int ebit
-        = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type) * 8,
-        const source_location &loc = source_location::current()) const {
+    template <class InputIt, class OutputIt>
+    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
+                    int ebit
+                    = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type)
+                      * 8,
+                    const source_location &loc = source_location::current()) const {
       using IterT = remove_cvref_t<InputIt>;
       using DiffT = typename std::iterator_traits<IterT>::difference_type;
       using InputValueT = typename std::iterator_traits<IterT>::value_type;

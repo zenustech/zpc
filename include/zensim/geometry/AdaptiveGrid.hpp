@@ -66,7 +66,7 @@ namespace zs {
       // static_assert(I >= 0 && I < num_levels, "???");
       // return decltype(declval<tile_bits_type>().template scan<1>())::template value<I>;
       integer_coord_component_type ret = 0;
-      (void)((ret += (Is <= I ? get_tile_bits<Is>() : (integer_coord_component_type)0)), ...);
+      ((void)(ret += (Is <= I ? get_tile_bits<Is>() : (integer_coord_component_type)0)), ...);
       return ret;
     }
 
@@ -95,7 +95,7 @@ namespace zs {
     static constexpr integer_coord_component_type get_accum_hierarchy_bits() noexcept {
       // return decltype(declval<hierarchy_bits_type>().template scan<1>())::template value<I>;
       integer_coord_component_type ret = 0;
-      (void)((ret += (Is <= I ? get_hierarchy_bits<Is>() : (integer_coord_component_type)0)), ...);
+      ((void)(ret += (Is <= I ? get_hierarchy_bits<Is>() : (integer_coord_component_type)0)), ...);
       return ret;
     }
     static_assert(((get_hierarchy_bits<Is>() > 0) && ...),
@@ -330,11 +330,11 @@ namespace zs {
       return get<I>(_levels).numBlocks();
     }
     constexpr void nodeCount(std::vector<size_type> &cnts) {
-      (void)((void)(cnts[Is] = numBlocks(wrapv<Is>{})), ...);
+      ((void)(cnts[Is] = numBlocks(wrapv<Is>{})), ...);
     }
     constexpr size_t numTotalBlocks() const noexcept {
       size_t ret = 0;
-      (void)((ret += numBlocks(wrapv<Is>{})), ...);
+      ((void)(ret += numBlocks(wrapv<Is>{})), ...);
       return ret;
     }
     template <size_t I = 0> constexpr auto numReservedBlocks() const noexcept {
@@ -342,12 +342,12 @@ namespace zs {
     }
     template <typename Policy>
     void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
-      (void)(get<Is>(_levels).append_channels(FWD(policy), tags), ...);
+      ((void)get<Is>(_levels).append_channels(FWD(policy), tags), ...);
     }
-    void reset(value_type val) { (void)(get<Is>(_levels).reset(val), ...); }
+    void reset(value_type val) { ((void)get<Is>(_levels).reset(val), ...); }
     // value-wise reset
     template <typename Policy> void reset(Policy &&policy, value_type val) {
-      (void)(get<Is>(_levels).reset(policy, val), ...);
+      ((void)get<Is>(_levels).reset(policy, val), ...);
     }
 
     ///
@@ -669,7 +669,7 @@ namespace zs {
 
     AdaptiveGridImpl clone(const allocator_type &allocator) const {
       AdaptiveGridImpl ret{};
-      (void)((get<Is>(ret._levels) = get<Is>(_levels).clone(allocator)), ...);
+      ((void)(get<Is>(ret._levels) = get<Is>(_levels).clone(allocator)), ...);
       ret._transform = _transform;
       ret._background = _background;
       return ret;
@@ -900,7 +900,7 @@ namespace zs {
     constexpr AdaptiveGridUnnamedView(
         conditional_t<is_const_structure, add_const_t<container_type>, container_type> &ag)
         : _levels{}, _transform{ag._transform}, _background{ag._background} {
-      (void)((zs::get<Is>(_levels) = level_view_type<Is>{ag.level(dim_c<Is>)}), ...);
+      ((void)(zs::get<Is>(_levels) = level_view_type<Is>{ag.level(dim_c<Is>)}), ...);
     }
 
     template <int L = num_levels> constexpr auto getAccessor(wrapv<L> = {}) const {
@@ -1384,7 +1384,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ true, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
+    ((void)(ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
 #endif
     return ret;
   }
@@ -1401,7 +1401,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ false, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
+    ((void)(ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
 #endif
     return ret;
   }
@@ -1592,7 +1592,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ true, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
+    ((void)(ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
 #endif
     return ret;
   }
@@ -1610,7 +1610,7 @@ namespace zs {
                          index_sequence<Is...>, AllocatorT>,
         /*IsConst*/ false, Base>{ag};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-    (void)((ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
+    ((void)(ret.level(dim_c<Is>).grid._nameTag = tagName), ...);
 #endif
     return ret;
   }
@@ -1696,7 +1696,7 @@ namespace zs {
         auto &lDst = agDst.level(lNo);
         lDst = RM_CVREF_T(lDst)(get_allocator(), tags, 0);
       };
-      (void)((void)allocateTargetLevel(wrapv<Js>{}), ...);
+      ((void)allocateTargetLevel(wrapv<Js>{}), ...);
     }
 
     bool shouldSync = pol.shouldSync();
@@ -1738,11 +1738,11 @@ namespace zs {
         pol(range(nbs * Level<level_no>::block_size), params, _restructure_hash_active_cell{});
       }
     };
-    (void)((void)hashTargetLevel(wrapv<Is>{}), ...);
+    ((void)hashTargetLevel(wrapv<Is>{}), ...);
 
     /// @brief default initialize target grid
-    (void)((void)agDst.level(wrapv<Js>{}).refitToPartition(), ...);
-    (void)((void)agDst.level(wrapv<Js>{}).defaultInitialize(), ...);
+    ((void)agDst.level(wrapv<Js>{}).refitToPartition(), ...);
+    ((void)agDst.level(wrapv<Js>{}).defaultInitialize(), ...);
 
     /// @brief assign values
     auto agv = view<space>(*this);
@@ -1759,7 +1759,7 @@ namespace zs {
             _restructure_assign_values{});
       }
     };
-    (void)((void)buildTargetLevel(wrapv<Js>{}), ...);
+    ((void)buildTargetLevel(wrapv<Js>{}), ...);
 
     /// DEBUG
 #if 0
@@ -1899,7 +1899,7 @@ namespace zs {
         /// DEBUG
       }
     };
-    (void)((void)complementParentTopo(wrapv<Is>{}), ...);  // since c++17, sequenced execution
+    ((void)complementParentTopo(wrapv<Is>{}), ...);  // since c++17, sequenced execution
     pol.sync(shouldSync);
     /// @note maintain childMask info
     reorder(FWD(pol), wrapv<SortGridData>{});

@@ -811,7 +811,7 @@ target_link_libraries(zensim INTERFACE zpctool) # zpctool -> zensim
 # #################
 # zs_cu_wrangler #
 # #################
-if(ZS_ENABLE_CUDA)
+if(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
   add_library(zs_cu_wrangler OBJECT)
 
   target_sources(zs_cu_wrangler
@@ -885,7 +885,7 @@ add_custom_command(
   # $<TARGET_OBJECTS:zs_cu_wrangler>
   add_dependencies(zpctool zs_cu_wrangler)
   target_link_libraries(zensim INTERFACE zs_cu_wrangler) # zs_cu_wrangler -> zensim
-endif(ZS_ENABLE_CUDA)
+endif(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
 
 # poisson disk resource file
 add_custom_command(

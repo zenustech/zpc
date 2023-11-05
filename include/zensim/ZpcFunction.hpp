@@ -190,7 +190,9 @@ namespace zs {
       return *this;
     }
 
-    function(const function &o) { operator=(o); }
+    function(const function &o) : _storage{}, _erasedFn{nullptr}, _manageFn{nullptr} {
+      operator=(o);
+    }
     function &operator=(const function &o) {
       if (this != &o) {
         o._manageFn(const_cast<void *>(o._storage.data()), _storage.data(), manage_op_e::clone);
@@ -218,6 +220,8 @@ namespace zs {
       swap(_manageFn, o._manageFn);
     }
 
+    explicit operator bool() const noexcept { return _erasedFn != nullptr; }
+
     R operator()(Args... args) const {
       if (!_erasedFn) throw StaticException();
       return _erasedFn(_storage.data(), zs::forward<Args>(args)...);
@@ -229,6 +233,7 @@ namespace zs {
     manager_fn *_manageFn = nullptr;
   };
 
+  /// @note function_ref is assumed to always hold a valid reference
   template <class R, class... Args> struct function_ref<R(Args...)> {
     using non_member_callable_signature = R(Args...);
 

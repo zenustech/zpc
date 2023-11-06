@@ -197,7 +197,7 @@ namespace zs {
     bool _isValue{false}, _destroyed{false};
   };
 
-  template <typename T> struct ValueOrRef<T, T*> {
+  template <typename T> struct ValueOrRef<T, T*, enable_if_type<!is_trivially_destructible_v<T>, void>> {
     // T must be trivially destructible
     static constexpr size_t num_bytes = sizeof(T) > sizeof(T*) ? sizeof(T) : sizeof(T*);
 

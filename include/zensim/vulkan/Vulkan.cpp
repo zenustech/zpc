@@ -23,6 +23,10 @@
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 
+namespace {
+  static zs::Vulkan* g_vulkanInstance = nullptr;
+}
+
 namespace zs {
 
   /// @ref: dokipen3d/vulkanHppMinimalExample
@@ -32,6 +36,11 @@ namespace zs {
                       const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
+  }
+
+  Vulkan& Vulkan::instance() {
+    if (!g_vulkanInstance) g_vulkanInstance = new Vulkan;
+    return *g_vulkanInstance;
   }
 
   /// @ref:

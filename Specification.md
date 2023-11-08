@@ -94,7 +94,7 @@ struct MemoryLocation {
   /// FILE: zpc/include/zensim/memory/Allocator.h
   /// Reference: https://en.cppreference.com/w/cpp/named_req/Allocator
   template <typename MemTag = host_mem_tag>
-  struct raw_memory_resource : std::memory_resource, Singleton<raw_memory_resource> {...};
+  struct raw_memory_resource : std::memory_resource {...};  // Singleton
   struct default_memory_resource : std::memory_resource {...};
   struct advisor_memory_resource : std::memory_resource {...};
   /// FILE: zpc/include/zensim/resource/Resource.h

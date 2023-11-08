@@ -6,7 +6,16 @@
 #include <fstream>
 #include <iostream>
 
+namespace {
+  static zs::IO *g_ioInstance = nullptr;
+}
+
 namespace zs {
+
+  IO &IO::instance() {
+    if (!g_ioInstance) g_ioInstance = new IO;
+    return *g_ioInstance;
+  }
 
   std::string file_get_content(std::string const &path) {
     std::ifstream fin(path);

@@ -16,9 +16,12 @@
 
 namespace zs {
 
-  struct Vulkan : Singleton<Vulkan> {
-  public:
+  struct Vulkan {
+  private:
     Vulkan();
+
+  public:
+    ZPC_BACKEND_API static Vulkan &instance();
     ~Vulkan();
 
     static auto &driver() noexcept { return instance(); }

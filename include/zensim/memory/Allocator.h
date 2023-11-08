@@ -13,8 +13,12 @@
 
 namespace zs {
 
-  template <typename MemTag> struct raw_memory_resource : mr_t,
-                                                          Singleton<raw_memory_resource<MemTag>> {
+  template <typename MemTag> struct raw_memory_resource : mr_t {
+    ZPC_BACKEND_API static raw_memory_resource &instance() {
+      static raw_memory_resource s_instance{};
+      return s_instance;
+    }
+    
     using value_type = std::byte;
     using size_type = size_t;
     using difference_type = std::ptrdiff_t;
@@ -269,7 +273,7 @@ namespace zs {
 
 #if 0
   /// for automatic dynamic memory management
-  struct memory_pools : Singleton<memory_pools>, mr_t {
+  struct memory_pools : mr_t {
     /// https://stackoverflow.com/questions/46509152/why-in-x86-64-the-virtual-address-are-4-bits-shorter-than-physical-48-bits-vs
 
     using poolid = unsigned char;

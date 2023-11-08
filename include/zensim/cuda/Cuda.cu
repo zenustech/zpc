@@ -11,7 +11,16 @@
 
 #define MEM_POOL_CTRL 3
 
+namespace {
+  static zs::Cuda *g_cudaInstance = nullptr;
+}
+
 namespace zs {
+
+  Cuda &Cuda::instance() {
+    if (!g_cudaInstance) g_cudaInstance = new Cuda;
+    return *g_cudaInstance;
+  }
 
   Cuda::ContextGuard::ContextGuard(void *context, bool restore, const source_location &loc)
       : needRestore(false), loc(loc) {

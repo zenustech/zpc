@@ -28,9 +28,12 @@ namespace zs {
 
   std::string get_cuda_error_message(uint32_t err);
 
-  struct Cuda : Singleton<Cuda> {
-  public:
+  struct Cuda {
+  private:
     Cuda();
+
+  public:
+    ZPC_BACKEND_API static Cuda &instance();
     ~Cuda();
 
     /// kernel launching

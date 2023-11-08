@@ -103,6 +103,10 @@ static_assert(false, "32-bit Windows systems are not supported")
 #  define ZPC_EXPORT __attribute__((visibility("default")))
 #  define ZPC_IMPORT __attribute__((visibility("default")))
 
+#elif defined(ZPC_JIT_MODE)
+#  define ZPC_EXPORT
+#  define ZPC_IMPORT
+
 #else
 #  error "unknown compiler!"
 #endif

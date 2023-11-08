@@ -8,9 +8,23 @@
 #include "zensim/memory/Allocator.h"
 #include "zensim/types/Iterator.h"
 
+namespace {
+  static zs::raw_memory_resource<zs::device_mem_tag> *g_rawCudaMemInstance = nullptr;
+  static zs::raw_memory_resource<zs::um_mem_tag> *g_rawCudaUmInstance = nullptr;
+}  // namespace
+
 namespace zs {
 
+  raw_memory_resource<device_mem_tag> &raw_memory_resource<device_mem_tag>::instance() {
+    if (!g_rawCudaMemInstance) g_rawCudaMemInstance = new raw_memory_resource<device_mem_tag>;
+    return *g_rawCudaMemInstance;
+  }
   raw_memory_resource<device_mem_tag>::raw_memory_resource() noexcept { (void)Cuda::instance(); }
+
+  raw_memory_resource<um_mem_tag> &raw_memory_resource<um_mem_tag>::instance() {
+    if (!g_rawCudaUmInstance) g_rawCudaUmInstance = new raw_memory_resource<um_mem_tag>;
+    return *g_rawCudaUmInstance;
+  }
   raw_memory_resource<um_mem_tag>::raw_memory_resource() noexcept { (void)Cuda::instance(); }
 
   void *temporary_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,

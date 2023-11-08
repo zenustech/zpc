@@ -24,7 +24,7 @@ namespace zs {
   /// @note ref: Multithreading 101 concurrency primitive from scratch
   /// shared within a single process
   /// blocking construct in the context of shared-memory synchronization
-  struct ZPC_API Futex {
+  struct Futex {
     // put the current thread to sleep if the expected value matches the value in the atomic
     // waitmask will be saved and compared to the wakemask later in the wake call
     // to check if you wanna wake up this thread or keep it sleeping
@@ -36,11 +36,11 @@ namespace zs {
     static int wake(std::atomic<u32> *v, int count = limits<int>::max(), u32 wakeMask = 0xffffffff);
   };
 
-  ZPC_API void await_change(std::atomic<u32> &v, u32 cur);
-  ZPC_API void await_equal(std::atomic<u32> &v, u32 desired);
+  ZPC_BACKEND_API void await_change(std::atomic<u32> &v, u32 cur);
+  ZPC_BACKEND_API void await_equal(std::atomic<u32> &v, u32 desired);
 
   // process-local mutex
-  struct ZPC_API Mutex : std::atomic<u32> {
+  struct Mutex : std::atomic<u32> {
     // 0: unlocked
     // 1: locked
     // 257: locked and contended (...0001 | 00000001)
@@ -54,7 +54,7 @@ namespace zs {
 
   // 8 bytes alignment for rollover issue
   // https://docs.ntpsec.org/latest/rollover.html
-  struct ZPC_API ConditionVariable {
+  struct ConditionVariable {
     void notify_one() noexcept;
     void notify_all() noexcept;
 

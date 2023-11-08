@@ -16,7 +16,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   #
   ZpcImplPattern.cpp
 
-  resource/Filesystem.cpp
+  io/Filesystem.cpp
   # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
@@ -190,6 +190,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
   # tpp
   simulation/sparsity/SparsityCompute.tpp
+
+  io/Filesystem.hpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
   io/IO.h
@@ -302,6 +304,7 @@ add_library(zensim INTERFACE)
 # ############
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpccore SHARED)
+  target_compile_definitions(zpccore PRIVATE ZPC_BACKEND_PRIVATE)
 else()
   add_library(zpccore STATIC)
 endif()
@@ -345,11 +348,6 @@ set_target_properties(zpccore
 )
 
 # target_link_libraries(zpc_cxx_deps INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>, synchronization.lib, >)
-if(ZS_BUILD_SHARED_LIBS)
-  target_compile_definitions(zpc_cxx_deps INTERFACE ZPC_PRIVATE=1)
-else()
-  target_compile_definitions(zpc_cxx_deps INTERFACE ZPC_PRIVATE=0)
-endif()
 
 if(ZS_ENABLE_OPENMP)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_OPENMP=1)
@@ -393,6 +391,7 @@ endif(ZS_ENABLE_SYCL)
 if(ZS_ENABLE_OPENMP)
   if(ZS_BUILD_SHARED_LIBS)
     add_library(zpcomp SHARED)
+    target_compile_definitions(zpcomp PRIVATE ZPC_BACKEND_PRIVATE)
   else()
     add_library(zpcomp STATIC)
   endif()
@@ -428,6 +427,7 @@ endif(ZS_ENABLE_OPENMP)
 if(ZS_ENABLE_CUDA)
   if(ZS_BUILD_SHARED_LIBS)
     add_library(zpccuda SHARED)
+    target_compile_definitions(zpccuda PRIVATE ZPC_BACKEND_PRIVATE)
   else()
     add_library(zpccuda STATIC)
   endif()
@@ -506,6 +506,7 @@ endif(ZS_ENABLE_OPENCL)
 # ######
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpc SHARED)
+  target_compile_definitions(zpc PRIVATE ZPC_PRIVATE)
 else()
   add_library(zpc STATIC)
 endif()
@@ -514,6 +515,7 @@ target_sources(zpc
   PRIVATE
   ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
   ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
+  resource/ExecutionPolicy.cpp
 )
 set_target_properties(zpc
   PROPERTIES POSITION_INDEPENDENT_CODE ON
@@ -523,6 +525,10 @@ target_link_libraries(zpc PUBLIC zpccore)
 if(ZS_ENABLE_OPENMP)
   target_link_libraries(zpc PUBLIC zpcomp)
 
+  target_sources(zpc
+    PRIVATE resource/omp/ExecutionPolicy.cpp
+  )
+
   # target_sources(zpc PUBLIC $<TARGET_OBJECTS:zpcomp>)
   # target_link_libraries(zpc PUBLIC zpc_omp_deps)
 endif(ZS_ENABLE_OPENMP)
@@ -531,6 +537,9 @@ if(ZS_ENABLE_CUDA)
   # set_source_files_properties(${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
   target_link_libraries(zpc PUBLIC zpccuda)
 
+  target_sources(zpc
+    PRIVATE resource/cuda/ExecutionPolicy.cu
+  )
   # target_sources(zpc PRIVATE $<TARGET_OBJECTS:zpccuda>)
   # target_link_libraries(zpc PUBLIC zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
@@ -764,6 +773,7 @@ endif(ZS_ENABLE_CUDA)
 # ##########
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpctool SHARED)
+  target_compile_definitions(zpctool PRIVATE ZPC_EXTENSION_PRIVATE)
 else()
   add_library(zpctool STATIC)
 endif()
@@ -838,7 +848,7 @@ if(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
     # CUDA_VISIBILITY_PRESET default
   )
 
-  #[=[
+#[=[
 # ref: developer.nvidia.com/blog/building-cuda-applications-cmake/
 find_program(bin_to_c
   NAMES bin2c

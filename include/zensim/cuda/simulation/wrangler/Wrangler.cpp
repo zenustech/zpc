@@ -6,7 +6,7 @@
 #include <filesystem>
 
 #include "zensim/cuda/Cuda.h"
-#include "zensim/resource/Filesystem.hpp"
+#include "zensim/io/Filesystem.hpp"
 #include "zensim/types/Tuple.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/zpc_tpls/jitify/jitify2.hpp"

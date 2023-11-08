@@ -124,7 +124,7 @@ namespace zs {
   };
 
   struct SequentialExecutionPolicy;
-  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const SequentialExecutionPolicy &pol);
+  ZPC_API extern ZSPmrAllocator<> get_temporary_memory_source(const SequentialExecutionPolicy &pol);
 
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
     using exec_tag = host_exec_tag;
@@ -612,11 +612,6 @@ namespace zs {
     return SequentialExecutionPolicy{};
   }
   constexpr SequentialExecutionPolicy seq_exec() noexcept { return SequentialExecutionPolicy{}; }
-
-  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(
-      const SequentialExecutionPolicy &pol) {
-    return get_memory_source(memsrc_e::host, (ProcID)-1);
-  }
 
   /// ========================================================================
   /// kernel, for_each, reduce, scan, gather, sort

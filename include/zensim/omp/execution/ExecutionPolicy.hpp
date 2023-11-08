@@ -20,7 +20,7 @@
 namespace zs {
 
   struct OmpExecutionPolicy;
-  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const OmpExecutionPolicy &pol);
+  ZPC_API extern ZSPmrAllocator<> get_temporary_memory_source(const OmpExecutionPolicy &pol);
 
   /// use pragma syntax instead of attribute syntax
   struct OmpExecutionPolicy : ExecutionPolicyInterface<OmpExecutionPolicy> {
@@ -1179,10 +1179,6 @@ namespace zs {
   }
   inline OmpExecutionPolicy par_exec(omp_exec_tag) noexcept {
     return OmpExecutionPolicy{}.threads(get_hardware_concurrency() - 1);
-  }
-
-  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(const OmpExecutionPolicy &pol) {
-    return get_memory_source(memsrc_e::host, (ProcID)-1);
   }
 
 }  // namespace zs

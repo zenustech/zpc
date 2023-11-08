@@ -1,6 +1,9 @@
 #pragma once
 // from taichi/common/core.h
 
+///
+/// system
+///
 // Windows
 #if defined(_WIN64)
 #  define ZS_PLATFORM_WINDOWS
@@ -37,11 +40,16 @@ static_assert(false, "32-bit Windows systems are not supported")
 
 #if defined(ZS_PLATFORM_WINDOWS)
 #  define ZS_UNREACHABLE __assume(0);
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
 #else
 #  define ZS_UNREACHABLE __builtin_unreachable();
 #endif
 
+///
 /// compiler
+///
 #if defined(SYCL_LANGUAGE_VERSION)
 #  define ZS_COMPILER_SYCL
 #endif
@@ -77,15 +85,8 @@ static_assert(false, "32-bit Windows systems are not supported")
 #ifdef ZPC_IMPORT
 #  undef ZPC_IMPORT
 #endif
-#ifdef ZS_COMPILER_GCC
-#  define ZPC_EXPORT __attribute__((visibility("default")))
-#  define ZPC_IMPORT __attribute__((visibility("default")))
-#endif
-#ifdef ZS_COMPILER_CLANG
-#  define ZPC_EXPORT __attribute__((visibility("default")))
-#  define ZPC_IMPORT __attribute__((visibility("default")))
-#endif
-#if defined(ZS_COMPILER_MSVC) && !defined(ZS_COMPILER_CLANG)
+
+#if defined(ZS_COMPILER_MSVC)  // && !defined(ZS_COMPILER_CLANG)
 #  if ZS_BUILD_SHARED_LIBS
 #    define ZPC_EXPORT __declspec(dllexport)
 #    define ZPC_IMPORT __declspec(dllimport)
@@ -93,15 +94,47 @@ static_assert(false, "32-bit Windows systems are not supported")
 #    define ZPC_EXPORT
 #    define ZPC_IMPORT
 #  endif
+
+#elif defined(ZS_COMPILER_GCC)
+#  define ZPC_EXPORT __attribute__((visibility("default")))
+#  define ZPC_IMPORT __attribute__((visibility("default")))
+
+#elif defined(ZS_COMPILER_CLANG)
+#  define ZPC_EXPORT __attribute__((visibility("default")))
+#  define ZPC_IMPORT __attribute__((visibility("default")))
+
+#else
+#  error "unknown compiler!"
 #endif
 
+/// @note for individual zpc backends
+#ifdef ZPC_BACKEND_API
+#  undef ZPC_BACKEND_API
+#endif
+#ifdef ZPC_BACKEND_PRIVATE
+#  define ZPC_BACKEND_API ZPC_EXPORT
+#else
+#  define ZPC_BACKEND_API ZPC_IMPORT
+#endif
+
+/// @note for the assembled zpc target
 #ifdef ZPC_API
 #  undef ZPC_API
 #endif
-#if ZPC_PRIVATE
+#ifdef ZPC_PRIVATE
 #  define ZPC_API ZPC_EXPORT
 #else
 #  define ZPC_API ZPC_IMPORT
+#endif
+
+/// @note for extension utilities built upon the zpc target (i.e. zpctool)
+#ifdef ZPC_EXTENSION_API
+#  undef ZPC_EXTENSION_API
+#endif
+#ifdef ZPC_EXTENSION_PRIVATE
+#  define ZPC_EXTENSION_API ZPC_EXPORT
+#else
+#  define ZPC_EXTENSION_API ZPC_IMPORT
 #endif
 
 #if defined(ZS_COMPILER_MSVC)

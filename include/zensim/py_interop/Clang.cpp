@@ -18,10 +18,17 @@
 #include <string>
 #include <vector>
 
-#include "zensim/llvm/LLVM.hpp"
-#define Zensim_EXPORT
-#include "zensim/ZensimExport.hpp"
-#include "zensim/ZpcReflection.hpp"
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+#  define ZENSIM_EXPORT __declspec(dllexport)
+#elif defined(__clang__) || defined(__GNUC__)
+#  define ZENSIM_EXPORT __attribute__((visibility("default")))
+#else
+#  error "unknown compiler!"
+#endif
+
+namespace {
+  static llvm::orc::LLJIT *g_jit = nullptr;
+}
 
 namespace zs {
 
@@ -96,7 +103,17 @@ ZENSIM_EXPORT int cpp_compile_program(const char *cpp_src, const char *include_d
   std::string input_file
       = std::string(output_file).substr(0, std::strlen(output_file) - std::strlen(obj_ext));
 
-  zs::LLVM::maintain(zs::singleton_op_e::init);
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmPrinters();
+  auto jit_expected = llvm::orc::LLJITBuilder().create();
+
+  if (!jit_expected) {
+    std::cerr << "Zpc-JIT error: failed to create JIT instance: "
+              << llvm::toString(jit_expected.takeError()) << std::endl;
+  }
+  g_jit = (*jit_expected).release();
 
   llvm::LLVMContext context;
   std::unique_ptr<llvm::Module> module
@@ -141,7 +158,7 @@ ZENSIM_EXPORT int cpp_compile_program(const char *cpp_src, const char *include_d
 
 // Load an object file into an in-memory DLL named `module_name`
 ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const char *module_name) {
-  auto jit = zs::LLVM::jit();
+  auto jit = g_jit;
 
   auto dll = jit->createJITDylib(module_name);
 
@@ -223,9 +240,9 @@ ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const 
 }
 
 ZENSIM_EXPORT int unload_obj(const char *module_name) {
-  if (!zs::LLVM::initialized()) return 0;
+  if (g_jit == nullptr) return 0;
 
-  auto jit = zs::LLVM::jit();
+  auto jit = g_jit;
   auto *dll = jit->getJITDylibByName(module_name);
   llvm::Error error = jit->getExecutionSession().removeJITDylib(*dll);
 
@@ -238,9 +255,9 @@ ZENSIM_EXPORT int unload_obj(const char *module_name) {
   return 0;
 }
 
-ZENSIM_EXPORT zs::u64 lookup(const char *dll_name, const char *function_name) {
-  if (!zs::LLVM::initialized()) throw std::runtime_error("llvm orc jit engine not yet initialied!");
-  auto jit = zs::LLVM::jit();
+ZENSIM_EXPORT uint64_t lookup(const char *dll_name, const char *function_name) {
+  if (g_jit == nullptr) throw std::runtime_error("llvm orc jit engine not yet initialied!");
+  auto jit = g_jit;
   auto *dll = jit->getJITDylibByName(dll_name);
 
   auto func = jit->lookup(*dll, function_name);
@@ -248,7 +265,7 @@ ZENSIM_EXPORT zs::u64 lookup(const char *dll_name, const char *function_name) {
   if (!func) {
     std::cerr << "Zpc-JIT error: failed to lookup symbol: " << llvm::toString(func.takeError())
               << std::endl;
-    return (zs::u64)-1;
+    return (uint64_t)-1;
   }
 
   return func->getValue();

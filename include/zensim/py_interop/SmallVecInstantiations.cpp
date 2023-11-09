@@ -8,7 +8,20 @@ extern "C" {
   }                                                                           \
   void del_small_vec__##T##_##M##_##N(zs::SmallVec* vec) {                    \
     delete vec;                                                               \
-  }                                                               
+  }                                                                           \
+  T* small_vec_data_ptr__##T##_##M##_##N(zs::SmallVec* vec) {                 \
+    T* ptr;                                                                   \
+    std::visit([&ptr](auto v) {                                               \
+      if constexpr (!zs::is_scalar_v<T>)                                      \
+      {                                                                       \
+      using vec_t = typename std::decay_t<decltype(v)>;                       \
+      using val_t = typename vec_t::value_type;                               \
+      if constexpr (std::is_same_v<val_t, T>)                                 \
+        ptr = v._data;                                                        \
+      }                                                                       \
+    }, *vec);                                                                 \
+    return ptr;                                                               \
+  }
 
 #define INSTANTIATE_SMALL_VEC_CAPIS_2D_WITH_ROW(T, M)                         \
   INSTANTIATE_SMALL_VEC_CAPIS_2D(T, M, 1)                                     \
@@ -28,7 +41,20 @@ extern "C" {
   }                                                                            \
   void del_small_vec__##T##_##N(zs::SmallVec* vec) {                           \
     delete vec;                                                                \
-  } 
+  }                                                                            \
+  T* small_vec_data_ptr__##T##_##N(zs::SmallVec* vec) {                        \
+    T* ptr;                                                                    \
+    std::visit([&ptr](auto v) {                                                \
+      if constexpr (!zs::is_scalar_v<T>)                                       \
+      {                                                                        \
+      using vec_t = typename std::decay_t<decltype(v)>;                        \
+      using val_t = typename vec_t::value_type;                                \
+      if constexpr (std::is_same_v<val_t, T>)                                  \
+        ptr = v._data;                                                         \
+      }                                                                        \
+    }, *vec);                                                                  \
+    return ptr;                                                                \
+  }
 
 #define INSTANTIATE_SMALL_VEC_CAPIS_1D_ALL(T)                              \
   INSTANTIATE_SMALL_VEC_CAPIS_1D(T, 1)                                     \
@@ -42,7 +68,14 @@ extern "C" {
   }                                                                        \
   void del_small_vec__##T(zs::SmallVec* vec) {                             \
     delete vec;                                                            \
-  } 
+  }                                                                        \
+  uint64_t small_vec_data_ptr__##T(zs::SmallVec* vec) {                    \
+    uint64_t ptr;                                                          \
+    std::visit([&ptr](auto v) {                                            \
+      ptr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(&v));        \
+    }, *vec);                                                              \
+    return ptr;                                                            \
+  }
 
 #define INSTANTIATE_SMALL_VEC_CAPIS(T)                                     \
   INSTANTIATE_SMALL_VEC_CAPIS_2D_ALL(T)                                    \

@@ -1,6 +1,7 @@
 #include "zensim/Zpc.hpp"
 #include "zensim/execution/ConcurrencyPrimitive.hpp"
 
+#include "zensim/io/IO.h"
 #if ZS_ENABLE_CUDA
 #  include "zensim/cuda/Cuda.h"
 #endif

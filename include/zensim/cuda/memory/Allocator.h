@@ -13,7 +13,7 @@ namespace zs {
 
   template <> struct raw_memory_resource<device_mem_tag> : mr_t {
   private:
-    raw_memory_resource() noexcept;
+    raw_memory_resource();
 
   public:
     using value_type = std::byte;
@@ -23,7 +23,10 @@ namespace zs {
     using propagate_on_container_copy_assignment = true_type;
     using propagate_on_container_swap = true_type;
 
-    ZPC_BACKEND_API static raw_memory_resource &instance();
+    ZPC_BACKEND_API static raw_memory_resource &instance() {
+      static raw_memory_resource s_instance{};
+      return s_instance;
+    }
     ~raw_memory_resource() = default;
 
     void *do_allocate(size_t bytes, size_t alignment) override {
@@ -63,7 +66,7 @@ namespace zs {
 
   template <> struct raw_memory_resource<um_mem_tag> : mr_t {
   private:
-    raw_memory_resource() noexcept;
+    raw_memory_resource();
 
   public:
     using value_type = std::byte;
@@ -73,7 +76,10 @@ namespace zs {
     using propagate_on_container_copy_assignment = true_type;
     using propagate_on_container_swap = true_type;
 
-    ZPC_BACKEND_API static raw_memory_resource &instance();
+    ZPC_BACKEND_API static raw_memory_resource &instance() {
+      static raw_memory_resource s_instance{};
+      return s_instance;
+    }
     ~raw_memory_resource() = default;
 
     void *do_allocate(size_t bytes, size_t alignment) override {

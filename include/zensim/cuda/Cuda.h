@@ -33,7 +33,10 @@ namespace zs {
     Cuda();
 
   public:
-    ZPC_BACKEND_API static Cuda &instance();
+    ZPC_BACKEND_API static Cuda &instance() {
+      static Cuda s_instance{};
+      return s_instance;
+    }
     ~Cuda();
 
     /// kernel launching

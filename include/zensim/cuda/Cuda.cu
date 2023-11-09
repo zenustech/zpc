@@ -12,14 +12,17 @@
 
 #define MEM_POOL_CTRL 3
 
+#if 0
 namespace {
   static zs::Mutex g_cudaMutex;
   static std::atomic<bool> g_isCudaInitialized = false;
   static zs::Cuda *g_cudaInstance = nullptr;
 }  // namespace
+#endif
 
 namespace zs {
 
+#if 0
   Cuda &Cuda::instance() {
     if (g_isCudaInitialized.load(std::memory_order_acquire)) return *g_cudaInstance;
     g_cudaMutex.lock();
@@ -31,6 +34,7 @@ namespace zs {
     g_cudaMutex.unlock();
     return *g_cudaInstance;
   }
+#endif
 
   Cuda::ContextGuard::ContextGuard(void *context, bool restore, const source_location &loc)
       : needRestore(false), loc(loc) {

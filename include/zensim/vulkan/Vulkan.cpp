@@ -23,9 +23,11 @@
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 
+#if 0
 namespace {
   static zs::Vulkan* g_vulkanInstance = nullptr;
 }
+#endif
 
 namespace zs {
 
@@ -38,10 +40,12 @@ namespace zs {
     return VK_FALSE;
   }
 
+#if 0
   Vulkan& Vulkan::instance() {
     if (!g_vulkanInstance) g_vulkanInstance = new Vulkan;
     return *g_vulkanInstance;
   }
+#endif
 
   /// @ref:
   /// https://github.com/KhronosGroup/Vulkan-Hpp/blob/main/README.md#extensions--per-device-function-pointers

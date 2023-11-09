@@ -22,7 +22,10 @@ namespace zs {
     }
 
   public:
-    ZPC_BACKEND_API static IO &instance();
+    ZPC_BACKEND_API static IO &instance() {
+      static IO s_instance{};
+      return s_instance;
+    }
     ~IO() {
       while (!jobs.empty()) cv.notify_all();
       bRunning = false;

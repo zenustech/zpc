@@ -6,16 +6,20 @@
 #include <fstream>
 #include <iostream>
 
+#if 0
 namespace {
   static zs::IO *g_ioInstance = nullptr;
 }
+#endif
 
 namespace zs {
 
+#if 0
   IO &IO::instance() {
     if (!g_ioInstance) g_ioInstance = new IO;
     return *g_ioInstance;
   }
+#endif
 
   std::string file_get_content(std::string const &path) {
     std::ifstream fin(path);

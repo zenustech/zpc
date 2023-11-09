@@ -21,7 +21,10 @@ namespace zs {
     Vulkan();
 
   public:
-    ZPC_BACKEND_API static Vulkan &instance();
+    ZPC_BACKEND_API static Vulkan &instance() {
+      static Vulkan s_instance{};
+      return s_instance;
+    }
     ~Vulkan();
 
     static auto &driver() noexcept { return instance(); }

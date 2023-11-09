@@ -5,6 +5,7 @@
 #include "../Logger.hpp"
 #include "../Platform.hpp"
 #include "Cuda.h"
+#include "zensim/execution/ConcurrencyPrimitive.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
@@ -12,13 +13,22 @@
 #define MEM_POOL_CTRL 3
 
 namespace {
+  static zs::Mutex g_cudaMutex;
+  static std::atomic<bool> g_isCudaInitialized = false;
   static zs::Cuda *g_cudaInstance = nullptr;
-}
+}  // namespace
 
 namespace zs {
 
   Cuda &Cuda::instance() {
+    if (g_isCudaInitialized.load(std::memory_order_acquire)) return *g_cudaInstance;
+    g_cudaMutex.lock();
+    if (g_isCudaInitialized.load(std::memory_order_acquire)) return *g_cudaInstance;
+
     if (!g_cudaInstance) g_cudaInstance = new Cuda;
+
+    g_isCudaInitialized.store(true, std::memory_order_release);
+    g_cudaMutex.unlock();
     return *g_cudaInstance;
   }
 

@@ -29,6 +29,7 @@ namespace zs {
       return s_instance;
     }
     ~Vulkan();
+    void reset();
 
     static auto &driver() noexcept { return instance(); }
     static size_t num_devices() noexcept { return instance()._contexts.size(); }

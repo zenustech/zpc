@@ -111,17 +111,22 @@ namespace zs {
       if (_defaultContext == -1 && _contexts.back().supportGraphics()) _defaultContext = i;
     }
   }  // namespace zs
-  Vulkan::~Vulkan() {
+  void Vulkan::reset() {
     /// @note clear contexts
     for (auto& ctx : _contexts) ctx.reset();
     _contexts.clear();
 
     /// @note clear instance-created objects
-    if (_messenger) _instance.destroy(_messenger, nullptr, _dispatcher);
+    if (_instance) {
+      _instance.destroy(_messenger, nullptr, _dispatcher);
 
-    /// @note destroy instance itself
-    _instance.destroy(nullptr, _dispatcher);
-    _instance = vk::Instance{};
+      /// @note destroy instance itself
+      _instance.destroy(nullptr, _dispatcher);
+      _instance = vk::Instance{};
+    }
+  }
+  Vulkan::~Vulkan() {
+    reset();
     fmt::print("zpc vulkan instance has been destroyed.\n");
   }
 

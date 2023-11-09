@@ -18,7 +18,6 @@
 
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"
-#include "zensim/Singleton.h"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"

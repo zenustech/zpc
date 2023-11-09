@@ -11,7 +11,6 @@
 #include "zensim/vulkan/VkShader.hpp"
 #include "zensim/vulkan/VkSwapchain.hpp"
 //
-#include "zensim/Singleton.h"
 #include "zensim/types/SourceLocation.hpp"
 
 namespace zs {

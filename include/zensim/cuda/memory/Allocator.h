@@ -4,7 +4,6 @@
 #include <unordered_map>
 
 #include "MemOps.hpp"
-#include "zensim/Singleton.h"
 #include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/types/Property.h"

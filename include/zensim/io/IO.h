@@ -1,5 +1,4 @@
 #pragma once
-#include "zensim/Singleton.h"
 #include "zensim/execution/Concurrency.h"
 
 namespace zs {

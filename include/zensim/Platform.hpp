@@ -189,3 +189,13 @@ static_assert(false, "32-bit Windows systems are not supported")
 #else
 #  define ZS_NO_INLINE __attribute__((noinline))
 #endif
+
+
+#if defined(ZS_COMPILER_GCC) || defined(ZS_COMPILER_CLANG) || defined(ZS_COMPILER_INTEL_CLASSIC)
+#define ZS_LIKELY(x) (__builtin_expect(static_cast<bool>(x), true))
+#define ZS_UNLIKELY(x) (__builtin_expect(static_cast<bool>(x), false))
+
+#else
+#define ZS_LIKELY(x) (x)
+#define ZS_UNLIKELY(x) (x)
+#endif

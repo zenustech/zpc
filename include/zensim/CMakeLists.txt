@@ -162,7 +162,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   Logger.hpp
   Platform.hpp
   Reflection.h
-  Singleton.h
+  # Singleton.h
   TypeAlias.hpp
 
   # simulation

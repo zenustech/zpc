@@ -7,7 +7,6 @@
 
 #include "MemOps.hpp"
 #include "MemoryResource.h"
-#include "zensim/Singleton.h"
 #include "zensim/math/bit/Bits.h"
 #include "zensim/memory/MemOps.hpp"
 

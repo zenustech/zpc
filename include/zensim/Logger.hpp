@@ -3,7 +3,6 @@
 
 #include "Platform.hpp"
 #include "plog/Initializers/RollingFileInitializer.h"
-#include "zensim/Singleton.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/zpc_tpls/plog/Log.h"
 

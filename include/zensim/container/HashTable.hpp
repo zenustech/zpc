@@ -205,15 +205,15 @@ namespace zs {
     Vector<key_t, allocator_type> _activeKeys;
   };
 
-#define EXTERN_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                      \
-  extern template struct HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<true>>; \
-  extern template struct HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<true>>; \
-  extern template struct HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<true>>; \
-  extern template struct HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<true>>;
+#define EXTERN_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                            \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<true>>;
 
   EXTERN_HASHTABLE_INSTANTIATIONS(i32, i32)
   EXTERN_HASHTABLE_INSTANTIATIONS(i32, i64)

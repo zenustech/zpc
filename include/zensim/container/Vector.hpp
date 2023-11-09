@@ -1,6 +1,7 @@
 #pragma once
 #include <type_traits>
 
+#include "zensim/Platform.hpp"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 
@@ -10,9 +11,9 @@ namespace zs {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "Vector only works with zspmrallocator for now.");
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
-    static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
+    static_assert(zs::is_default_constructible_v<T>, "element is not default-constructible!");
     // static_assert(zs::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
-    static_assert(zs::is_trivially_copyable_v<T> || std::is_copy_assignable_v<T>,
+    static_assert(zs::is_trivially_copyable_v<T> || zs::is_copy_assignable_v<T>,
                   "element is not copyable!");
 
     using value_type = T;
@@ -154,7 +155,7 @@ namespace zs {
 
     /// element access
     constexpr reference operator[](size_type idx) noexcept { return _base[idx]; }
-    constexpr conditional_t<std::is_fundamental_v<value_type>, value_type, const_reference>
+    constexpr conditional_t<zs::is_fundamental_v<value_type>, value_type, const_reference>
     operator[](size_type idx) const noexcept {
       return _base[idx];
     }
@@ -198,15 +199,15 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
-      _allocator = std::exchange(o._allocator, defaultVector._allocator);
-      _base = std::exchange(o._base, defaultVector._base);
-      _size = std::exchange(o._size, defaultVector.size());
-      _capacity = std::exchange(o._capacity, defaultVector._capacity);
+      _allocator = zs::exchange(o._allocator, defaultVector._allocator);
+      _base = zs::exchange(o._base, defaultVector._base);
+      _size = zs::exchange(o._size, defaultVector.size());
+      _capacity = zs::exchange(o._capacity, defaultVector._capacity);
     }
     /// make move-assignment safe for self-assignment
     Vector &operator=(Vector &&o) noexcept {
       if (this == &o) return *this;
-      Vector tmp(std::move(o));
+      Vector tmp(zs::move(o));
       swap(tmp);
       return *this;
     }
@@ -354,27 +355,27 @@ namespace zs {
     size_type _size{0}, _capacity{0};
   };
 
-  extern template struct Vector<u8, ZSPmrAllocator<>>;
-  extern template struct Vector<u32, ZSPmrAllocator<>>;
-  extern template struct Vector<u64, ZSPmrAllocator<>>;
-  extern template struct Vector<i8, ZSPmrAllocator<>>;
-  extern template struct Vector<i32, ZSPmrAllocator<>>;
-  extern template struct Vector<i64, ZSPmrAllocator<>>;
-  extern template struct Vector<f32, ZSPmrAllocator<>>;
-  extern template struct Vector<f64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u8, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i8, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f64, ZSPmrAllocator<>>;
 
-  extern template struct Vector<u8, ZSPmrAllocator<true>>;
-  extern template struct Vector<u32, ZSPmrAllocator<true>>;
-  extern template struct Vector<u64, ZSPmrAllocator<true>>;
-  extern template struct Vector<i8, ZSPmrAllocator<true>>;
-  extern template struct Vector<i32, ZSPmrAllocator<true>>;
-  extern template struct Vector<i64, ZSPmrAllocator<true>>;
-  extern template struct Vector<f32, ZSPmrAllocator<true>>;
-  extern template struct Vector<f64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u8, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i8, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f64, ZSPmrAllocator<true>>;
 
   template <typename T,
-            enable_if_all<is_same_v<T, remove_cvref_t<T>>, std::is_default_constructible_v<T>,
-                          std::is_trivially_copyable_v<T>>
+            enable_if_all<is_same_v<T, remove_cvref_t<T>>, zs::is_default_constructible_v<T>,
+                          zs::is_trivially_copyable_v<T>>
             = 0>
   auto from_std_vector(const std::vector<T> &vs,
                        const MemoryLocation &mloc = {memsrc_e::host, -1}) {
@@ -465,9 +466,9 @@ namespace zs {
 
   template <execspace_e S, typename VectorT> struct VectorView<S, VectorT, true, void> {
     static constexpr auto space = S;
-    static constexpr bool is_const_structure = std::is_const_v<VectorT>;
+    static constexpr bool is_const_structure = zs::is_const_v<VectorT>;
     using vector_type = remove_const_t<VectorT>;
-    using const_vector_type = std::add_const_t<vector_type>;
+    using const_vector_type = zs::add_const_t<vector_type>;
     using pointer = conditional_t<is_const_structure, typename vector_type::const_pointer,
                                   typename vector_type::pointer>;
     using value_type = typename vector_type::value_type;

@@ -230,23 +230,23 @@ namespace zs {
     shape_type _shape;
   };
 
-  extern template struct DenseField<u8, ZSPmrAllocator<>>;
-  extern template struct DenseField<u32, ZSPmrAllocator<>>;
-  extern template struct DenseField<u64, ZSPmrAllocator<>>;
-  extern template struct DenseField<i8, ZSPmrAllocator<>>;
-  extern template struct DenseField<i32, ZSPmrAllocator<>>;
-  extern template struct DenseField<i64, ZSPmrAllocator<>>;
-  extern template struct DenseField<f32, ZSPmrAllocator<>>;
-  extern template struct DenseField<f64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<u8, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<u32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<u64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<i8, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<i32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<i64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<f32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<f64, ZSPmrAllocator<>>;
 
-  extern template struct DenseField<u8, ZSPmrAllocator<true>>;
-  extern template struct DenseField<u32, ZSPmrAllocator<true>>;
-  extern template struct DenseField<u64, ZSPmrAllocator<true>>;
-  extern template struct DenseField<i8, ZSPmrAllocator<true>>;
-  extern template struct DenseField<i32, ZSPmrAllocator<true>>;
-  extern template struct DenseField<i64, ZSPmrAllocator<true>>;
-  extern template struct DenseField<f32, ZSPmrAllocator<true>>;
-  extern template struct DenseField<f64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<u8, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<u32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<u64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<i8, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<i32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<i64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<f32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT DenseField<f64, ZSPmrAllocator<true>>;
 
   template <execspace_e S, typename DenseFieldT, bool Base, typename = void> struct DenseFieldView {
     static constexpr auto space = S;

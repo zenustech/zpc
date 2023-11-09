@@ -148,6 +148,42 @@ static_assert(false, "32-bit Windows systems are not supported")
 #  define ZPC_EXTENSION_API ZPC_IMPORT
 #endif
 
+/// template instantiation symbol resolution
+#ifdef ZPC_TEMPLATE_EXPORT
+#  undef ZPC_TEMPLATE_EXPORT
+#endif
+#ifdef ZPC_TEMPLATE_IMPORT
+#  undef ZPC_TEMPLATE_IMPORT
+#endif
+
+#if defined(ZS_COMPILER_MSVC) && defined(ZS_BUILD_DLL)
+    #ifdef ZPC_PRIVATE
+        #define ZPC_TEMPLATE_EXPORT ZPC_EXPORT
+        #define ZPC_TEMPLATE_IMPORT
+    #else
+        #define ZPC_TEMPLATE_EXPORT
+        #define ZPC_TEMPLATE_IMPORT ZPC_IMPORT
+    #endif
+#else
+    #define ZPC_TEMPLATE_EXPORT
+    #define ZPC_TEMPLATE_IMPORT
+#endif
+
+#undef ZPC_INSTANTIATE
+#undef ZPC_INSTANTIATE_CLASS
+#undef ZPC_INSTANTIATE_STRUCT
+#define ZPC_INSTANTIATE template ZPC_TEMPLATE_EXPORT
+#define ZPC_INSTANTIATE_CLASS template class ZPC_TEMPLATE_EXPORT
+#define ZPC_INSTANTIATE_STRUCT template struct ZPC_TEMPLATE_EXPORT
+
+#undef ZPC_FWD_DECL_FUNC
+#undef ZPC_FWD_DECL_TEMPLATE_CLASS
+#undef ZPC_FWD_DECL_TEMPLATE_STRUCT
+#define ZPC_FWD_DECL_FUNC extern template ZPC_TEMPLATE_IMPORT
+#define ZPC_FWD_DECL_TEMPLATE_CLASS extern template class ZPC_TEMPLATE_IMPORT
+#define ZPC_FWD_DECL_TEMPLATE_STRUCT extern template struct ZPC_TEMPLATE_IMPORT
+
+/// compiler attributes
 #if defined(ZS_COMPILER_MSVC)
 #  define ZS_NO_INLINE __declspec(noinline)
 #else

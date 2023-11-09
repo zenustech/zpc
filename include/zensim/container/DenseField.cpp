@@ -2,22 +2,22 @@
 
 namespace zs {
 
-  template struct DenseField<u8, ZSPmrAllocator<>>;
-  template struct DenseField<u32, ZSPmrAllocator<>>;
-  template struct DenseField<u64, ZSPmrAllocator<>>;
-  template struct DenseField<i8, ZSPmrAllocator<>>;
-  template struct DenseField<i32, ZSPmrAllocator<>>;
-  template struct DenseField<i64, ZSPmrAllocator<>>;
-  template struct DenseField<f32, ZSPmrAllocator<>>;
-  template struct DenseField<f64, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<u8, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<u32, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<u64, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<i8, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<i32, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<i64, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<f32, ZSPmrAllocator<>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<f64, ZSPmrAllocator<>>;
 
-  template struct DenseField<u8, ZSPmrAllocator<true>>;
-  template struct DenseField<u32, ZSPmrAllocator<true>>;
-  template struct DenseField<u64, ZSPmrAllocator<true>>;
-  template struct DenseField<i8, ZSPmrAllocator<true>>;
-  template struct DenseField<i32, ZSPmrAllocator<true>>;
-  template struct DenseField<i64, ZSPmrAllocator<true>>;
-  template struct DenseField<f32, ZSPmrAllocator<true>>;
-  template struct DenseField<f64, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<u8, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<u32, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<u64, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<i8, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<i32, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<i64, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<f32, ZSPmrAllocator<true>>;
+  ZPC_INSTANTIATE_STRUCT DenseField<f64, ZSPmrAllocator<true>>;
 
 }  // namespace zs

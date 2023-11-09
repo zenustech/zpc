@@ -4,7 +4,6 @@
 
 #include "../ZpcFunctional.hpp"
 #include "Meta.h"
-// #include "zensim/zpc_tpls/tl/function_ref.hpp"
 
 namespace zs {
 

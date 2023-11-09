@@ -540,18 +540,18 @@ namespace zs {
   };
 
 #define EXTERN_TILEVECTOR_INSTANTIATIONS(LENGTH)                        \
-  extern template struct TileVector<u32, LENGTH, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<u64, LENGTH, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<i32, LENGTH, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<i64, LENGTH, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<f32, LENGTH, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<f64, LENGTH, ZSPmrAllocator<>>;     \
-  extern template struct TileVector<u32, LENGTH, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<u64, LENGTH, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<i32, LENGTH, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<i64, LENGTH, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<f32, LENGTH, ZSPmrAllocator<true>>; \
-  extern template struct TileVector<f64, LENGTH, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u32, LENGTH, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u64, LENGTH, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<i32, LENGTH, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<i64, LENGTH, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<f32, LENGTH, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<f64, LENGTH, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u32, LENGTH, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u64, LENGTH, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<i32, LENGTH, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<i64, LENGTH, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<f32, LENGTH, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<f64, LENGTH, ZSPmrAllocator<true>>;
 
   /// 8, 32, 64, 512
   EXTERN_TILEVECTOR_INSTANTIATIONS(8)

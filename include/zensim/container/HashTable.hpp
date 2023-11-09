@@ -205,7 +205,7 @@ namespace zs {
     Vector<key_t, allocator_type> _activeKeys;
   };
 
-#define EXTERN_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                            \
+#define ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                            \
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<>>;     \
@@ -215,9 +215,8 @@ namespace zs {
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<true>>; \
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<true>>;
 
-  EXTERN_HASHTABLE_INSTANTIATIONS(i32, i32)
-  EXTERN_HASHTABLE_INSTANTIATIONS(i32, i64)
-  EXTERN_HASHTABLE_INSTANTIATIONS(i64, i64)
+  ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(i32, i32)
+  ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(i32, i64)
 
   template <typename HashTableView> struct ResetHashTable {
     using hash_table_type = typename HashTableView::hash_table_type;

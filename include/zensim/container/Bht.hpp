@@ -271,7 +271,7 @@ namespace zs {
     hasher_type _hf0, _hf1, _hf2;
   };
 
-#  define EXTERN_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
+#  define ZS_FWD_DECL_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
     ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
     ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
     ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
@@ -281,8 +281,8 @@ namespace zs {
     ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
     ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
 
-  EXTERN_BHT_INSTANTIATIONS(i32, i32, 16)
-  EXTERN_BHT_INSTANTIATIONS(i32, i64, 16)
+  ZS_FWD_DECL_BHT_INSTANTIATIONS(i32, i32, 16)
+  ZS_FWD_DECL_BHT_INSTANTIATIONS(i32, i64, 16)
 
 #if 0
   template <typename HashTableView> struct ResetBHT {

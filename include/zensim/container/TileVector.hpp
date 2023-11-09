@@ -539,7 +539,7 @@ namespace zs {
     channel_counter_type _numChannels{1};
   };
 
-#define EXTERN_TILEVECTOR_INSTANTIATIONS(LENGTH)                        \
+#define ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(LENGTH)                        \
   ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u32, LENGTH, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u64, LENGTH, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<i32, LENGTH, ZSPmrAllocator<>>;     \
@@ -554,10 +554,10 @@ namespace zs {
   ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<f64, LENGTH, ZSPmrAllocator<true>>;
 
   /// 8, 32, 64, 512
-  EXTERN_TILEVECTOR_INSTANTIATIONS(8)
-  EXTERN_TILEVECTOR_INSTANTIATIONS(32)
-  EXTERN_TILEVECTOR_INSTANTIATIONS(64)
-  EXTERN_TILEVECTOR_INSTANTIATIONS(512)
+  ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(8)
+  ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(32)
+  ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(64)
+  ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(512)
 
   template <typename TileVectorView> struct TileVectorCopy {
     using size_type = typename TileVectorView::size_type;

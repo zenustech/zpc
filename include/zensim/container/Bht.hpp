@@ -271,21 +271,18 @@ namespace zs {
     hasher_type _hf0, _hf1, _hf2;
   };
 
-#if 0
 #  define EXTERN_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
-    extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
-    extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
-    extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
-    extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
-    extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
-    extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
-    extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
-    extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
 
   EXTERN_BHT_INSTANTIATIONS(i32, i32, 16)
   EXTERN_BHT_INSTANTIATIONS(i32, i64, 16)
-  EXTERN_BHT_INSTANTIATIONS(i64, i64, 16)
-#endif
 
 #if 0
   template <typename HashTableView> struct ResetBHT {

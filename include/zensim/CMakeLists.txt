@@ -58,6 +58,7 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   # ref: https://stackoverflow.com/questions/2351148/explicit-template-instantiation-when-is-it-used
   container/HashTable.cpp
+  container/Bht.cpp
   container/Vector.cpp
   container/TileVector.cpp
   container/DenseField.cpp

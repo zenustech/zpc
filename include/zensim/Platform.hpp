@@ -40,10 +40,17 @@ static_assert(false, "32-bit Windows systems are not supported")
 
 #if defined(ZS_PLATFORM_WINDOWS)
 #  define ZS_UNREACHABLE __assume(0);
+
 #  ifndef NOMINMAX
 #    define NOMINMAX
 #  endif
+
+#  if defined(_DLL) && ZS_BUILD_SHARED_LIBS && !defined(ZS_BUILD_DLL)
+#    define ZS_BUILD_DLL
+#  endif
+
 #else
+
 #  define ZS_UNREACHABLE __builtin_unreachable();
 #endif
 
@@ -87,7 +94,7 @@ static_assert(false, "32-bit Windows systems are not supported")
 #endif
 
 #if defined(ZS_COMPILER_MSVC)  // && !defined(ZS_COMPILER_CLANG)
-#  if ZS_BUILD_SHARED_LIBS
+#  ifdef ZS_BUILD_DLL
 #    define ZPC_EXPORT __declspec(dllexport)
 #    define ZPC_IMPORT __declspec(dllimport)
 #  else

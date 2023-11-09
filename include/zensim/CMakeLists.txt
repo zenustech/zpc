@@ -67,6 +67,7 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp
   resource/Resource.cpp
+  ZpcInitialization.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 
@@ -263,6 +264,7 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
 
   # resource
   resource/Resource.h
+  Zpc.hpp
 
 )
 set(ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES

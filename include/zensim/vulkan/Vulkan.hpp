@@ -1,5 +1,9 @@
 #pragma once
 
+#if !defined(ZS_ENABLE_VULKAN) || (defined(ZS_ENABLE_VULKAN) && !ZS_ENABLE_VULKAN)
+#  error "ZS_ENABLE_VULKAN was not enabled, but Vulkan.hpp was included anyway."
+#endif
+
 #include <cstdint>
 //
 #include "zensim/vulkan/VkBuffer.hpp"

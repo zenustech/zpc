@@ -23,11 +23,9 @@
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 
-#if 0
 namespace {
-  static zs::Vulkan* g_vulkanInstance = nullptr;
+  // std::set<> g_vulkanConfigs;
 }
-#endif
 
 namespace zs {
 

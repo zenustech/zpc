@@ -128,9 +128,6 @@ namespace zs {
     }
   }
 
-  SwapchainBuilder::~SwapchainBuilder() {
-    zs::Vulkan::vk_inst().destroySurfaceKHR(surface, nullptr, zs::Vulkan::vk_inst_dispatcher());
-  }
   SwapchainBuilder::SwapchainBuilder(VulkanContext& ctx, vk::SurfaceKHR targetSurface)
       : ctx{ctx}, surface{targetSurface} {
     ZS_ERROR_IF(

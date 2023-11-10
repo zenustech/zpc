@@ -109,7 +109,7 @@ namespace zs {
     SwapchainBuilder(VulkanContext &ctx, vk::SurfaceKHR targetSurface);
     SwapchainBuilder(const SwapchainBuilder &) = delete;
     SwapchainBuilder(SwapchainBuilder &&) noexcept = default;
-    ~SwapchainBuilder();
+    ~SwapchainBuilder() = default;
 
     vk::SurfaceKHR getSurface() const { return surface; }
 

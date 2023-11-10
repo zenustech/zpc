@@ -195,7 +195,8 @@ namespace zs {
     }
     function &operator=(const function &o) {
       if (this != &o) {
-        o._manageFn(const_cast<void *>(o._storage.data()), _storage.data(), manage_op_e::clone);
+        if (o)
+          o._manageFn(const_cast<void *>(o._storage.data()), _storage.data(), manage_op_e::clone);
         _erasedFn = o._erasedFn;
         _manageFn = o._manageFn;
       }

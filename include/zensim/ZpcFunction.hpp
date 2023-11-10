@@ -206,8 +206,10 @@ namespace zs {
     function &operator=(function &&o) noexcept {
       if (this != &o) {
         memcpy(_storage.data(), o._storage.data(), function_storage::capacity);
-        exchange(_erasedFn, o._erasedFn, nullptr);
-        exchange(_manageFn, o._manageFn, nullptr);
+        _erasedFn = o._erasedFn;
+        _manageFn = o._manageFn;
+        o._erasedFn = nullptr;
+        o._manageFn = nullptr;
       }
       return *this;
     }

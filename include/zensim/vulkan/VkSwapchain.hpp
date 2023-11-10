@@ -132,7 +132,6 @@ namespace zs {
       return *this;
     }
 
-    void build(Swapchain &obj);
     Swapchain build() {
       Swapchain obj(ctx);
       build(obj);
@@ -141,6 +140,8 @@ namespace zs {
     void resize(Swapchain &obj, u32 width, u32 height);
 
   private:
+    void build(Swapchain &obj);
+
     VulkanContext &ctx;
     vk::SurfaceKHR surface;
     std::vector<vk::SurfaceFormatKHR> surfFormats;

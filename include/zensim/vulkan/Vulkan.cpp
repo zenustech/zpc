@@ -24,8 +24,9 @@
 #include "zensim/zpc_tpls/fmt/format.h"
 
 namespace {
-  // std::set<> g_vulkanConfigs;
-}
+  std::set<const char*> g_vulkanInstanceExtensions;
+  std::map<int, std::set<const char*>> g_vulkanDeviceExtensions;
+}  // namespace
 
 namespace zs {
 
@@ -118,6 +119,9 @@ namespace zs {
 
     /// @note clear instance-created objects
     if (_instance) {
+      /// @note may destroy window surface, etc.
+      if (_onDestroyCallback) _onDestroyCallback();
+
       _instance.destroy(_messenger, nullptr, _dispatcher);
 
       /// @note destroy instance itself

@@ -69,10 +69,10 @@ extern "C" {
   void del_small_vec__##T(zs::SmallVec* vec) {                             \
     delete vec;                                                            \
   }                                                                        \
-  uint64_t small_vec_data_ptr__##T(zs::SmallVec* vec) {                    \
-    uint64_t ptr;                                                          \
+  void* small_vec_data_ptr__##T(zs::SmallVec* vec) {                    \
+    void* ptr;                                                          \
     std::visit([&ptr](auto v) {                                            \
-      ptr = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(&v));        \
+      ptr = static_cast<void*>(&v);        \
     }, *vec);                                                              \
     return ptr;                                                            \
   }

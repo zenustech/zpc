@@ -71,8 +71,8 @@ namespace zs {
           colorBlendInfo{o.colorBlendInfo},
           depthStencilInfo{o.depthStencilInfo},
           dynamicStateEnables{std::move(o.dynamicStateEnables)},
-          pushConstantRange{std::move(pushConstantRange)},
-          descriptorSetLayouts{std::move(descriptorSetLayouts)},
+          pushConstantRange{std::move(o.pushConstantRange)},
+          descriptorSetLayouts{std::move(o.descriptorSetLayouts)},
           renderPass{o.renderPass},
           subpass{o.subpass} {
       o.reset();

@@ -845,7 +845,7 @@ namespace zs {
     // __is_nothrow_constructible(T, Args...)
     /// @ref gcc10
     static false_type is_nothrow_constructible_impl(...);
-    template <typename T, typename... Args>
+    template <typename T, typename... Args, enable_if_t<(sizeof...(Args) > 1)> = 0>
     static bool_constant<noexcept(T(declval<Args>()...))> is_nothrow_constructible_impl(
         type_seq<T, Args...>);
     template <typename T, typename Arg>
@@ -855,7 +855,7 @@ namespace zs {
     static bool_constant<noexcept(T())> is_nothrow_constructible_impl(type_seq<T>);
     template <typename T, size_t N> static auto is_nothrow_constructible_impl(type_seq<T[N]>)
         -> decltype(is_nothrow_constructible_impl(declval<type_seq<remove_all_extents_t<T>>>()));
-    template <typename T, size_t N, typename... Args>
+    template <typename T, size_t N, typename... Args, enable_if_t<(sizeof...(Args) > 1)> = 0>
     static auto is_nothrow_constructible_impl(type_seq<T[N], Args...>)
         -> decltype(is_nothrow_constructible_impl(declval<type_seq<T, Args...>>()));
     template <typename T, size_t N, typename Arg>

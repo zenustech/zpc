@@ -83,7 +83,8 @@ namespace zs {
     ctx.device.freeCommandBuffers(pool.cmdpool(zs::vk_cmd_usage_e::single_use), cmd,
                                   ctx.dispatcher);
 
-    ret.image = std::make_unique<Image>(std::move(img));
+    // ret.image = std::make_unique<Image>(std::move(img));
+    ret.image = std::move(img);
     return ret;
   }
 

@@ -30,13 +30,22 @@ namespace zs {
       o.image = VK_NULL_HANDLE;
 #if ZS_VULKAN_USE_VMA
       o.allocation = 0;
+#else
+      pmem.reset();
 #endif
+      o.pview.reset();
     }
     ~Image() {
-      if (pview.has_value()) ctx.device.destroyImageView(*pview, nullptr, ctx.dispatcher);
+      if (pview.has_value()) {
+        ctx.device.destroyImageView(*pview, nullptr, ctx.dispatcher);
+        pview.reset();
+      }
       ctx.device.destroyImage(image, nullptr, ctx.dispatcher);
+      image = VK_NULL_HANDLE;
 #if ZS_VULKAN_USE_VMA
       vmaFreeMemory(ctx.allocator(), allocation);
+#else
+      pmem.reset();
 #endif
     }
 

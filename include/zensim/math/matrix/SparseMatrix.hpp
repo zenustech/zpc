@@ -596,7 +596,7 @@ namespace zs {
         _ptrs = o._ptrs;
         _inds = o._inds;
       }
-      if (o.hasValues())
+      if (o.hasValues()) {
         if constexpr (std::is_fundamental_v<value_type>) {
           if (distinct) _vals = o._vals;
         } else if constexpr (is_vec<value_type>::value) {
@@ -607,6 +607,7 @@ namespace zs {
           if (value_type::template range_t<0>::value > 0)
             policy(zip(_vals, o._vals), zs::make_tuple(), _transpose_from_transpose_assign{});
         }
+      }
     } else {
       /// @note beware: spmat 'o' might be myself
       auto nnz = o.nnz();

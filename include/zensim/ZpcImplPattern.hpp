@@ -595,12 +595,19 @@ namespace zs {
     }
 
     template <bool V = is_move_constructible_v<Type>, enable_if_t<V> = 0>
-    Owner(Owner&& o) noexcept(is_nothrow_move_constructible_v<Type>) : Owner(zs::move(o.get())) {
-      o._active = false;
-      // o._active = false; // obj being moved does not become inactive
+    Owner(Owner&& o) noexcept(is_nothrow_move_constructible_v<Type>) {
+      if (o._active)
+        Owner(zs::move(o.get()));
+      else
+        _active = false;
     }
     template <bool V = is_copy_constructible_v<Type>, enable_if_t<V> = 0>
-    Owner(const Owner& o) noexcept(is_nothrow_copy_constructible_v<Type>) : Owner(o.get()) {}
+    Owner(const Owner& o) noexcept(is_nothrow_copy_constructible_v<Type>) {
+      if (o._active)
+        Owner(o.get());
+      else
+        _active = false;
+    }
 
     ~Owner() noexcept(is_nothrow_destructible_v<Type>) {
       if (_active) {
@@ -672,10 +679,10 @@ namespace zs {
       return *this;
     }
 
-    Type& get() { return *_storage.data(); }
-    const Type& get() const { return *_storage.data(); }
-    operator Type&() { return *_storage.data(); }
-    operator const Type&() const { return *_storage.data(); }
+    Type& get() { return *_storage.template data<Type>(); }
+    add_const_t<Type>& get() const { return *_storage.template data<add_const_t<Type>>(); }
+    operator Type&() { return *_storage.template data<Type>(); }
+    operator add_const_t<Type>&() const { return *_storage.template data<add_const_t<Type>>(); }
 
     explicit operator bool() const noexcept { return _active; }
 
@@ -730,10 +737,10 @@ namespace zs {
       return *this;
     }
 
-    Type& get() { return *_storage.data(); }
-    const Type& get() const { return *_storage.data(); }
-    operator Type&() { return *_storage.data(); }
-    operator const Type&() const { return *_storage.data(); }
+    Type& get() { return *_storage.template data<Type>(); }
+    add_const_t<Type>& get() const { return *_storage.template data<add_const_t<Type>>(); }
+    operator Type&() { return *_storage.template data<Type>(); }
+    operator add_const_t<Type>&() const { return *_storage.template data<add_const_t<Type>>(); }
 
     explicit operator bool() const noexcept { return true; }
 

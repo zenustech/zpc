@@ -474,10 +474,16 @@ namespace zs {
     template <typename T> constexpr void destroy() const noexcept { zs::destroy_at(data<T>()); }
 
     template <typename T = void> constexpr T* data() noexcept {
-      return const_cast<T*>(reinterpret_cast<T const*>(_buffer));
+      if constexpr (is_same_v<T, void> || is_function_v<T>)
+        return const_cast<T*>(reinterpret_cast<T const*>(_buffer));
+      else
+        return const_cast<T*>(__builtin_launder(reinterpret_cast<T const*>(_buffer)));
     }
     template <typename T = void> constexpr const T* data() const noexcept {
-      return reinterpret_cast<T const*>(_buffer);
+      if constexpr (is_same_v<T, void> || is_function_v<T>)
+        return reinterpret_cast<T const*>(_buffer);
+      else
+        return __builtin_launder(reinterpret_cast<T const*>(_buffer));
     }
 
   private:
@@ -609,54 +615,71 @@ namespace zs {
         _active = false;
     }
 
-    ~Owner() noexcept(is_nothrow_destructible_v<Type>) {
+    void reset() noexcept(is_nothrow_destructible_v<Type>) {
       if (_active) {
         _storage.template destroy<Type>();
         _active = false;
       }
-    };
+    }
+    ~Owner() noexcept(is_nothrow_destructible_v<Type>) { reset(); };
 
-    template <bool V = is_copy_assignable_v<Type>, enable_if_t<V> = 0>
-    Owner& operator=(const Type& obj) noexcept(
-        is_nothrow_copy_assignable_v<Type>&& is_nothrow_copy_constructible_v<Type>) {
-      if (_active)
-        get() = obj;
-      else {
+    template <bool V = (!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>)
+                       || is_copy_assignable_v<Type>>
+    enable_if_type<V, Owner&> operator=(const Type& obj) noexcept(
+        ((!is_copy_assignable_v<Type>
+          && is_copy_constructible_v<Type>)&&is_nothrow_copy_constructible_v<Type>
+         && is_nothrow_destructible_v<Type>)
+        || ((is_copy_assignable_v<Type>)&&is_nothrow_copy_assignable_v<Type>
+            && is_nothrow_copy_constructible_v<Type>)) {
+      if constexpr (!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>) {
+        if (_active) _storage.template destroy<Type>();
         _storage.template create<Type>(obj);
         _active = true;
+      } else if constexpr (is_copy_assignable_v<Type>) {
+        if (_active)
+          get() = obj;
+        else {
+          _storage.template create<Type>(obj);
+          _active = true;
+        }
+      } else {
+        static_assert(!V, "something is seriously wrong.");
       }
       return *this;
     }
-    template <bool V = is_move_assignable_v<Type>, enable_if_t<V> = 0>
-    Owner& operator=(Type&& obj) noexcept(
-        is_nothrow_move_assignable_v<Type>&& is_nothrow_move_constructible_v<Type>) {
-      if (_active)
-        get() = zs::move(obj);
-      else {
+    template <bool V = (!is_move_assignable_v<Type> && is_move_constructible_v<Type>)
+                       || is_move_assignable_v<Type>>
+    enable_if_type<V, Owner&> operator=(Type&& obj) noexcept(
+        ((!is_move_assignable_v<Type>
+          && is_move_constructible_v<Type>)&&is_nothrow_move_constructible_v<Type>
+         && is_nothrow_destructible_v<Type>)
+        || ((is_move_assignable_v<Type>)&&is_nothrow_move_assignable_v<Type>
+            && is_nothrow_move_constructible_v<Type>)) {
+      if constexpr (!is_move_assignable_v<Type> && is_move_constructible_v<Type>) {
+        if (_active) _storage.template destroy<Type>();
         _storage.template create<Type>(zs::move(obj));
         _active = true;
+      } else if constexpr (is_move_assignable_v<Type>) {
+        if (_active) {
+          get() = zs::move(obj);
+        } else {
+          _storage.template create<Type>(zs::move(obj));
+          _active = true;
+        }
+      } else {
+        static_assert(!V, "something is seriously wrong.");
       }
-      return *this;
-    }
-    template <bool V = !is_copy_assignable_v<Type> && is_copy_constructible_v<Type>>
-    enable_if_type<V, Owner&> operator=(const Type& obj) noexcept(
-        is_nothrow_copy_constructible_v<Type>&& is_nothrow_destructible_v<Type>) {
-      if (_active) _storage.template destroy<Type>();
-      _storage.template create<Type>(obj);
-      _active = true;
-      return *this;
-    }
-    template <bool V = !is_move_assignable_v<Type> && is_move_constructible_v<Type>>
-    enable_if_type<V, Owner&> operator=(Type&& obj) noexcept(
-        is_nothrow_move_constructible_v<Type>&& is_nothrow_destructible_v<Type>) {
-      if (_active) _storage.template destroy<Type>();
-      _storage.template create<Type>(zs::move(obj));
-      _active = true;
       return *this;
     }
 
-    template <bool V = is_copy_assignable_v<Type>, enable_if_t<V> = 0>
-    Owner& operator=(const Owner& obj) noexcept(is_nothrow_copy_assignable_v<Type>) {
+    template <bool V = (!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>)
+                       || is_copy_assignable_v<Type>>
+    enable_if_type<V, Owner&> operator=(const Owner& obj) noexcept(
+        ((!is_copy_assignable_v<Type>
+          && is_copy_constructible_v<Type>)&&is_nothrow_copy_constructible_v<Type>
+         && is_nothrow_destructible_v<Type>)
+        || ((is_copy_assignable_v<Type>)&&is_nothrow_copy_assignable_v<Type>
+            && is_nothrow_copy_constructible_v<Type>)) {
       if (this == zs::addressof(obj)) return *this;
       if (obj._active)
         operator=(obj.get());
@@ -666,9 +689,15 @@ namespace zs {
       }
       return *this;
     }
-    template <bool V = is_move_assignable_v<Type>, enable_if_t<V> = 0>
-    Owner& operator=(Owner&& obj) noexcept(is_nothrow_move_assignable_v<Type>) {
-      if (this == zs::addressof(obj)) return *this;
+    template <bool V = (!is_move_assignable_v<Type> && is_move_constructible_v<Type>)
+                       || is_move_assignable_v<Type>>
+    enable_if_type<V, Owner&> operator=(Owner&& obj) noexcept(
+        ((!is_move_assignable_v<Type>
+          && is_move_constructible_v<Type>)&&is_nothrow_move_constructible_v<Type>
+         && is_nothrow_destructible_v<Type>)
+        || ((is_move_assignable_v<Type>)&&is_nothrow_move_assignable_v<Type>
+            && is_nothrow_move_constructible_v<Type>)) {
+      if (this == &obj) return *this;
       if (obj._active) {
         operator=(zs::move(obj.get()));
       } else {

@@ -951,8 +951,17 @@ namespace zs {
     static constexpr bool value = decltype(test<TT, T>(0))::value;
   };
   template <typename TT, typename T> constexpr bool is_assignable_v = is_assignable<TT, T>::value;
+
+  namespace detail {
+    template <typename TT, typename T> constexpr bool is_nothrow_assignable_impl() {
+      if constexpr (is_assignable_v<TT, T>)
+        return noexcept(declval<TT>() = declval<T>());
+      else
+        return false;
+    }
+  }  // namespace detail
   template <typename TT, typename T> struct is_nothrow_assignable
-      : bool_constant<is_assignable_v<TT, T> && noexcept(declval<TT>() = declval<T>())> {};
+      : bool_constant<detail::is_nothrow_assignable_impl<TT, T>()> {};
   template <typename TT, typename T> constexpr bool is_nothrow_assignable_v
       = is_nothrow_assignable<TT, T>::value;
 

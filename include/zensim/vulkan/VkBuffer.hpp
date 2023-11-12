@@ -219,6 +219,8 @@ namespace zs {
     }
 #endif
 
+    vk::DeviceSize getSize() const noexcept { return size; }
+    vk::DeviceSize getAlignment() const noexcept { return alignment; }
     vk::DescriptorBufferInfo descriptorInfo() {
       return vk::DescriptorBufferInfo{buffer, (u32)0, size};
     }

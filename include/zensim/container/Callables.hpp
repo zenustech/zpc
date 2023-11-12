@@ -70,6 +70,7 @@ namespace zs {
       M::unlock();
     }
 
+    explicit operator bool() const noexcept { return _funcs.size() != 0; }
     void operator()(Args... args) const {
       M::lock();
       for (const auto& [id, f] : _funcs) f(forward<Args>(args)...);

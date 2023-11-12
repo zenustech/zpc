@@ -16,6 +16,7 @@
 #include "zensim/vulkan/VkSwapchain.hpp"
 //
 #include "zensim/ZpcFunction.hpp"
+#include "zensim/container/Callables.hpp"
 #include "zensim/types/SourceLocation.hpp"
 
 namespace zs {
@@ -44,14 +45,7 @@ namespace zs {
     template <typename F>
     static enable_if_type<is_invocable_r_v<void, F &&>, void> add_instance_destruction_callback(
         F &&f) {
-      if (instance()._onDestroyCallback)
-        instance()._onDestroyCallback
-            = [prevCb = instance()._onDestroyCallback, cb = FWD(f)]() mutable {
-                prevCb();
-                cb();
-              };
-      else
-        set_instance_destruction_callback(FWD(f));
+      instance()._onDestroyCallback.insert([cb = FWD(f)]() mutable { cb(); });
     }
     template <typename F>
     static enable_if_type<is_invocable_r_v<void, F &&>, void> set_instance_destruction_callback(
@@ -64,7 +58,7 @@ namespace zs {
     vk::DispatchLoaderDynamic _dispatcher;  // store vulkan-instance calls
     vk::DebugUtilsMessengerEXT _messenger;
     std::vector<VulkanContext> _contexts;  ///< generally one per device
-    zs::function<void()> _onDestroyCallback;
+    zs::callbacks<void()> _onDestroyCallback;
     int _defaultContext = 0;
   };
 

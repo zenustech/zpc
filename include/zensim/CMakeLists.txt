@@ -9,6 +9,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   execution/ConcurrencyPrimitive.cpp
   types/Iterator.cpp
   Logger.cpp
+  io/IO.cpp
 
   #
   visitors/ObjectVisitor.cpp
@@ -21,7 +22,6 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
   io/ParticleIO.cpp
-  io/IO.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
   geometry/SparseGrid_Conversion.cpp

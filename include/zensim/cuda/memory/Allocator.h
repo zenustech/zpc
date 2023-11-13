@@ -53,6 +53,7 @@ namespace zs {
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
 
+    /// @note [context] param implies that Cuda singleton has already been initialized
     temporary_memory_resource(void *c = nullptr, void *s = nullptr) : context{c}, stream{s} {}
 
     void *do_allocate(std::size_t bytes, std::size_t alignment) override;

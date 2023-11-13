@@ -13,7 +13,7 @@
 namespace zs {
 
   template <typename MemTag> struct raw_memory_resource : mr_t {
-    ZPC_BACKEND_API static raw_memory_resource &instance() {
+    static raw_memory_resource &instance() {
       static raw_memory_resource s_instance{};
       return s_instance;
     }
@@ -37,6 +37,34 @@ namespace zs {
       if (bytes) {
         zs::deallocate(MemTag{}, ptr, bytes, alignment);
         // erase_allocation(ptr);
+      }
+    }
+    bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
+  };
+
+  template <> struct raw_memory_resource<host_mem_tag> : mr_t {
+    ZPC_BACKEND_API static raw_memory_resource &instance() {
+      static raw_memory_resource s_instance{};
+      return s_instance;
+    }
+
+    using value_type = std::byte;
+    using size_type = size_t;
+    using difference_type = std::ptrdiff_t;
+    using propagate_on_container_move_assignment = true_type;
+    using propagate_on_container_copy_assignment = true_type;
+    using propagate_on_container_swap = true_type;
+
+    void *do_allocate(size_t bytes, size_t alignment) override {
+      if (bytes) {
+        auto ret = zs::allocate(mem_host, bytes, alignment);
+        return ret;
+      }
+      return nullptr;
+    }
+    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override {
+      if (bytes) {
+        zs::deallocate(mem_host, ptr, bytes, alignment);
       }
     }
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }

@@ -602,17 +602,13 @@ namespace zs {
 
     template <bool V = is_move_constructible_v<Type>, enable_if_t<V> = 0>
     Owner(Owner&& o) noexcept(is_nothrow_move_constructible_v<Type>) {
-      if (o._active)
-        Owner(zs::move(o.get()));
-      else
-        _active = false;
+      _active = false;
+      if (o._active) operator=(zs::move(o.get()));
     }
     template <bool V = is_copy_constructible_v<Type>, enable_if_t<V> = 0>
     Owner(const Owner& o) noexcept(is_nothrow_copy_constructible_v<Type>) {
-      if (o._active)
-        Owner(o.get());
-      else
-        _active = false;
+      _active = false;
+      if (o._active) operator=(o.get());
     }
 
     void reset() noexcept(is_nothrow_destructible_v<Type>) {
@@ -660,9 +656,9 @@ namespace zs {
         _storage.template create<Type>(zs::move(obj));
         _active = true;
       } else if constexpr (is_move_assignable_v<Type>) {
-        if (_active) {
+        if (_active)
           get() = zs::move(obj);
-        } else {
+        else {
           _storage.template create<Type>(zs::move(obj));
           _active = true;
         }

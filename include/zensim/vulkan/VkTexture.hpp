@@ -43,6 +43,8 @@ namespace zs {
         image.reset();
       }
     }
+    explicit operator bool() const noexcept { return static_cast<bool>(image); }
+
     Owner<Image> image;  // including view
     vk::Sampler sampler;
     vk::ImageLayout imageLayout;

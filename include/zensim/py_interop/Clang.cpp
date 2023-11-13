@@ -27,7 +27,29 @@
 #endif
 
 namespace {
-  static llvm::orc::LLJIT *g_jit = nullptr;
+  // static llvm::orc::LLJIT *g_jit = nullptr;
+  struct LLVM {
+    static llvm::orc::LLJIT *instance() {
+      static LLVM s_instance{};
+      return s_instance._jit;
+    };
+    ~LLVM() = default;
+  private:
+    LLVM() {
+      llvm::InitializeAllTargetInfos();
+      llvm::InitializeAllTargets();
+      llvm::InitializeAllTargetMCs();
+      llvm::InitializeAllAsmPrinters();
+      auto jit_expected = llvm::orc::LLJITBuilder().create();
+
+      if (!jit_expected) {
+        std::cerr << "Zpc-JIT error: failed to create JIT instance: "
+                  << llvm::toString(jit_expected.takeError()) << std::endl;
+      }
+      _jit = (*jit_expected).release();
+    }
+    llvm::orc::LLJIT *_jit = nullptr;
+  };
 }
 
 namespace zs {
@@ -103,17 +125,7 @@ ZENSIM_EXPORT int cpp_compile_program(const char *cpp_src, const char *include_d
   std::string input_file
       = std::string(output_file).substr(0, std::strlen(output_file) - std::strlen(obj_ext));
 
-  llvm::InitializeAllTargetInfos();
-  llvm::InitializeAllTargets();
-  llvm::InitializeAllTargetMCs();
-  llvm::InitializeAllAsmPrinters();
-  auto jit_expected = llvm::orc::LLJITBuilder().create();
-
-  if (!jit_expected) {
-    std::cerr << "Zpc-JIT error: failed to create JIT instance: "
-              << llvm::toString(jit_expected.takeError()) << std::endl;
-  }
-  g_jit = (*jit_expected).release();
+  (void)LLVM::instance();
 
   llvm::LLVMContext context;
   std::unique_ptr<llvm::Module> module
@@ -158,7 +170,7 @@ ZENSIM_EXPORT int cpp_compile_program(const char *cpp_src, const char *include_d
 
 // Load an object file into an in-memory DLL named `module_name`
 ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const char *module_name) {
-  auto jit = g_jit;
+  auto jit = LLVM::instance();
 
   auto dll = jit->createJITDylib(module_name);
 
@@ -240,9 +252,7 @@ ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const 
 }
 
 ZENSIM_EXPORT int unload_obj(const char *module_name) {
-  if (g_jit == nullptr) return 0;
-
-  auto jit = g_jit;
+  auto jit = LLVM::instance();
   auto *dll = jit->getJITDylibByName(module_name);
   llvm::Error error = jit->getExecutionSession().removeJITDylib(*dll);
 
@@ -256,8 +266,8 @@ ZENSIM_EXPORT int unload_obj(const char *module_name) {
 }
 
 ZENSIM_EXPORT uint64_t lookup(const char *dll_name, const char *function_name) {
-  if (g_jit == nullptr) throw std::runtime_error("llvm orc jit engine not yet initialied!");
-  auto jit = g_jit;
+  // if (g_jit == nullptr) throw std::runtime_error("llvm orc jit engine not yet initialied!");
+  auto jit = LLVM::instance();
   auto *dll = jit->getJITDylibByName(dll_name);
 
   auto func = jit->lookup(*dll, function_name);

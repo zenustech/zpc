@@ -140,7 +140,8 @@ namespace zs {
 
     Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                         vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
-    Buffer createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage);
+    Buffer createStagingBuffer(vk::DeviceSize size,
+                               vk::BufferUsageFlags usage = vk::BufferUsageFlagBits::eTransferSrc);
 
     Image createImage(vk::ImageCreateInfo imageCI,
                       vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,

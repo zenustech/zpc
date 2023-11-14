@@ -632,7 +632,7 @@ target_sources(zpc_jit_clang
 
   py_interop/Clang.cpp  # may include omp backend
 )
-target_link_libraries(zpc_jit_clang PRIVATE zpc_jit_deps)
+target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
 # target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
 endif(ZS_ENABLE_JIT)
 

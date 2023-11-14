@@ -12,6 +12,8 @@
 #include <llvm/Support/Host.h>
 #include <llvm/Support/TargetSelect.h>
 
+#include "zensim/io/Filesystem.hpp"
+
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -191,10 +193,19 @@ ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const 
   /// omp (/gomp)
 #if defined(ZS_ENABLE_OPENMP) && ZS_ENABLE_OPENMP
   {
+#if 0
+    std::cout << "current executable directory is: " << zs::abs_exe_directory() << std::endl;
+    std::cout << "current executable path is: " << zs::abs_exe_path() << std::endl;
+    std::cout << "current module directory is: " << zs::abs_module_directory() << std::endl;
+    std::cout << "current module path is: " << zs::abs_module_path() << std::endl;
+#endif
+    auto searchPath = zs::abs_module_directory();
 #  if defined(_WIN32)
-    auto search = llvm::orc::DynamicLibrarySearchGenerator::Load("libomp.dll", global_prefix);
+    searchPath += "/libomp.dll";
+    auto search = llvm::orc::DynamicLibrarySearchGenerator::Load(searchPath.data(), global_prefix);
 #  else
-    auto search = llvm::orc::DynamicLibrarySearchGenerator::Load("libomp.so", global_prefix);
+    searchPath += "/libomp.so";
+    auto search = llvm::orc::DynamicLibrarySearchGenerator::Load(searchPath.data(), global_prefix);
 #  endif
     if (!search) {
       std::cerr << "Zpc-JIT error: failed to create generator: " << toString(search.takeError())
@@ -216,13 +227,14 @@ ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const 
       return -1;
     }
     dll->addGenerator(std::move(*search));
-    std::cout << "done load windows c runtime";
+    std::cout << "done load windows c runtime" << std::endl;
   }
 #endif
 
   /// dll_file: py zpc dynamic library (.dll/.so/.dylib)
   {
-    auto search = llvm::orc::DynamicLibrarySearchGenerator::Load(dll_file, global_prefix);
+    auto searchPath = zs::abs_module_directory() + "/" + dll_file;
+    auto search = llvm::orc::DynamicLibrarySearchGenerator::Load(searchPath.data(), global_prefix);
 
     if (!search) {
       std::cerr << "Zpc-JIT error: failed to create generator: "

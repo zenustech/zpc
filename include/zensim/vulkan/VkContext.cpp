@@ -284,9 +284,14 @@ namespace zs {
   /// builders
   ///
   SwapchainBuilder& VulkanContext::swapchain(vk::SurfaceKHR surface, bool reset) {
-    if (!swapchainBuilder || reset || swapchainBuilder->getSurface() != surface)
+    if ((!swapchainBuilder || reset || swapchainBuilder->getSurface() != surface)
+        && surface != VK_NULL_HANDLE)
       swapchainBuilder.reset(new SwapchainBuilder(*this, surface));
-    return *swapchainBuilder;
+    if (swapchainBuilder)
+      return *swapchainBuilder;
+    else
+      throw std::runtime_error(
+          "swapchain builder of the vk context must be initialized by a surface first before use");
   }
   PipelineBuilder VulkanContext::pipeline() { return PipelineBuilder{*this}; }
   RenderPassBuilder VulkanContext::renderpass() { return RenderPassBuilder(*this); }

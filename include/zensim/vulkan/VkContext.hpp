@@ -132,7 +132,7 @@ namespace zs {
       // Might want to create a "DescriptorPoolManager" class that handles this case, and builds
       // a new pool whenever an old pool fills up. But this is beyond our current scope
     }
-    SwapchainBuilder &swapchain(vk::SurfaceKHR surface, bool reset = false);
+    SwapchainBuilder &swapchain(vk::SurfaceKHR surface = VK_NULL_HANDLE, bool reset = false);
     PipelineBuilder pipeline();
     RenderPassBuilder renderpass();
     DescriptorSetLayoutBuilder setlayout();

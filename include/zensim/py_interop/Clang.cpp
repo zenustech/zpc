@@ -201,7 +201,8 @@ ZENSIM_EXPORT int load_obj(const char *dll_file, const char *object_file, const 
 #endif
     auto searchPath = zs::abs_module_directory();
 #  if defined(_WIN32)
-    searchPath += "/libomp.dll";
+    // searchPath += "/libomp.dll";
+    searchPath = "libomp140.x86_64.dll";
     auto search = llvm::orc::DynamicLibrarySearchGenerator::Load(searchPath.data(), global_prefix);
 #  else
     searchPath += "/libomp.so";

@@ -73,7 +73,7 @@ namespace zs {
       SmallString ret{};
       size_type i = 0;
       for (; i + (size_type)1 != nbytes && a.buf[i]; ++i) ret.buf[i] = a.buf[i];
-      for (size_type j = 0; i + (size_type)1 != nbytes && b.buf[j]; ++i, ++j) ret.buf[i] = a.buf[j];
+      for (size_type j = 0; i + (size_type)1 != nbytes && b.buf[j]; ++i, ++j) ret.buf[i] = b.buf[j];
       ret.buf[i] = '\0';
 #if ZS_ENABLE_OFB_ACCESS_CHECK
       if (a.size() + b.size() >= nbytes) {

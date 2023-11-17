@@ -69,3 +69,21 @@ namespace zs {
   }
 
 }  // namespace zs
+using vec2i = zs::vec<int, 2>;
+using vec3i = zs::vec<int, 3>;
+using vec4i = zs::vec<int, 4>;
+using vec2f = zs::vec<float, 2>;
+using vec3f = zs::vec<float, 3>;
+using vec4f = zs::vec<float, 4>;
+using vec2d = zs::vec<double, 2>;
+using vec3d = zs::vec<double, 3>;
+using vec4d = zs::vec<double, 4>;
+using mat2i = zs::vec<int, 2, 2>;
+using mat3i = zs::vec<int, 3, 3>;
+using mat4i = zs::vec<int, 4, 4>;
+using mat2f = zs::vec<float, 2, 2>;
+using mat3f = zs::vec<float, 3, 3>;
+using mat4f = zs::vec<float, 4, 4>;
+using mat2d = zs::vec<double, 2, 2>;
+using mat3d = zs::vec<double, 3, 3>;
+using mat4d = zs::vec<double, 4, 4>;

@@ -56,39 +56,6 @@ extern "C" {
       const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                         \
     return v->capacity();                                                                         \
   }                                                                                               \
-  /* iterator */                                                                                  \
-  aosoa_iterator_##T##_1 get_iterator_1##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, \
-                                                     zs::u32 id) {                                \
-    return aosoa_iterator_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
-  }                                                                                               \
-  aosoa_iterator_const_##T##_1 get_iterator_1##__##v##_##const##_##T(                             \
-      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                            \
-    return aosoa_iterator_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
-  }                                                                                               \
-  aosoa_iterator_##T##_1 get_iterator_1##__##v##_##T##_##virtual(                                 \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                  \
-    return aosoa_iterator_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
-  }                                                                                               \
-  aosoa_iterator_const_##T##_1 get_iterator_1##__##v##_##const##_##T##_##virtual(                 \
-      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                             \
-    return aosoa_iterator_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
-  }                                                                                               \
-  aosoa_iterator_##T##_3 get_iterator_3##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, \
-                                                     zs::u32 id) {                                \
-    return aosoa_iterator_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
-  }                                                                                               \
-  aosoa_iterator_const_##T##_3 get_iterator_3##__##v##_##const##_##T(                             \
-      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                            \
-    return aosoa_iterator_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
-  }                                                                                               \
-  aosoa_iterator_##T##_3 get_iterator_3##__##v##_##T##_##virtual(                                 \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                  \
-    return aosoa_iterator_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
-  }                                                                                               \
-  aosoa_iterator_const_##T##_3 get_iterator_3##__##v##_##const##_##T##_##virtual(                 \
-      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                             \
-    return aosoa_iterator_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
-  }                                                                                               \
   /* custom */                                                                                    \
   T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                 \
     return v->getVal();                                                                           \
@@ -115,9 +82,81 @@ extern "C" {
   void del_pyview##__##v##_##T(zs::VectorViewLite<T> *v) { delete v; }                            \
   void del_pyview##__##v##_##const##_##T(zs::VectorViewLite<const T> *v) { delete v; }
 
+  // /* iterator */                                                                                  \
+  // aosoa_iterator_##T##_1 get_iterator_1##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, \
+  //                                                    zs::u32 id) {                                \
+  //   return aosoa_iterator_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
+  // }                                                                                               \
+  // aosoa_iterator_const_##T##_1 get_iterator_1##__##v##_##const##_##T(                             \
+  //     const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                            \
+  //   return aosoa_iterator_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
+  // }                                                                                               \
+  // aosoa_iterator_##T##_1 get_iterator_1##__##v##_##T##_##virtual(                                 \
+  //     zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                  \
+  //   return aosoa_iterator_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
+  // }                                                                                               \
+  // aosoa_iterator_const_##T##_1 get_iterator_1##__##v##_##const##_##T##_##virtual(                 \
+  //     const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                             \
+  //   return aosoa_iterator_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
+  // }                                                                                               \
+  // aosoa_iterator_##T##_3 get_iterator_3##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, \
+  //                                                    zs::u32 id) {                                \
+  //   return aosoa_iterator_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
+  // }                                                                                               \
+  // aosoa_iterator_const_##T##_3 get_iterator_3##__##v##_##const##_##T(                             \
+  //     const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                            \
+  //   return aosoa_iterator_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
+  // }                                                                                               \
+  // aosoa_iterator_##T##_3 get_iterator_3##__##v##_##T##_##virtual(                                 \
+  //     zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                  \
+  //   return aosoa_iterator_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                 \
+  // }                                                                                               \
+  // aosoa_iterator_const_##T##_3 get_iterator_3##__##v##_##const##_##T##_##virtual(                 \
+  //     const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                             \
+  //   return aosoa_iterator_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};           \
+  }                                                                                               \
+
 INSTANTIATE_VECTOR_CAPIS(int)
 INSTANTIATE_VECTOR_CAPIS(float)
 INSTANTIATE_VECTOR_CAPIS(double)
+
+using vec2i = zs::vec<int, 2>;
+using vec3i = zs::vec<int, 3>;
+using vec4i = zs::vec<int, 4>;
+using vec2f = zs::vec<float, 2>;
+using vec3f = zs::vec<float, 3>;
+using vec4f = zs::vec<float, 4>;
+using vec2d = zs::vec<double, 2>;
+using vec3d = zs::vec<double, 3>;
+using vec4d = zs::vec<double, 4>;
+INSTANTIATE_VECTOR_CAPIS(vec2i)
+INSTANTIATE_VECTOR_CAPIS(vec3i)
+INSTANTIATE_VECTOR_CAPIS(vec4i)
+INSTANTIATE_VECTOR_CAPIS(vec2f)
+INSTANTIATE_VECTOR_CAPIS(vec3f)
+INSTANTIATE_VECTOR_CAPIS(vec4f)
+INSTANTIATE_VECTOR_CAPIS(vec2d)
+INSTANTIATE_VECTOR_CAPIS(vec3d)
+INSTANTIATE_VECTOR_CAPIS(vec4d)
+
+using mat2i = zs::vec<int, 2, 2>;
+using mat3i = zs::vec<int, 3, 3>;
+using mat4i = zs::vec<int, 4, 4>;
+using mat2f = zs::vec<float, 2, 2>;
+using mat3f = zs::vec<float, 3, 3>;
+using mat4f = zs::vec<float, 4, 4>;
+using mat2d = zs::vec<double, 2, 2>;
+using mat3d = zs::vec<double, 3, 3>;
+using mat4d = zs::vec<double, 4, 4>;
+INSTANTIATE_VECTOR_CAPIS(mat2i)
+INSTANTIATE_VECTOR_CAPIS(mat3i)
+INSTANTIATE_VECTOR_CAPIS(mat4i)
+INSTANTIATE_VECTOR_CAPIS(mat2f)
+INSTANTIATE_VECTOR_CAPIS(mat3f)
+INSTANTIATE_VECTOR_CAPIS(mat4f)
+INSTANTIATE_VECTOR_CAPIS(mat2d)
+INSTANTIATE_VECTOR_CAPIS(mat3d)
+INSTANTIATE_VECTOR_CAPIS(mat4d)
 
 #if 0
 INSTANTIATE_VECTOR_CAPIS(zs::vec<int, 2>)

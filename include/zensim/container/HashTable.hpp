@@ -225,7 +225,7 @@ namespace zs {
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
       using namespace placeholders;
       table._table.keys[entry]
-          = hash_table_type::key_t::constant(hash_table_type::key_scalar_sentinel_v);
+          = hash_table_type::key_t::constant(limits<typename hash_table_type::index_type>::max());
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
@@ -253,7 +253,7 @@ namespace zs {
       if (entry == hash_table_type::sentinel_v)
         printf("%llu-th key does not exist in the table??\n", (unsigned long long)blockno);
       table._table.keys[entry]
-          = hash_table_type::key_t::constant(hash_table_type::key_scalar_sentinel_v);
+          = hash_table_type::key_t::constant(limits<typename hash_table_type::index_type>::max());
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;

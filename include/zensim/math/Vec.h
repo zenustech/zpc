@@ -181,8 +181,8 @@ namespace zs {
     constexpr vec_impl() noexcept = default;
     constexpr vec_impl(const vec_impl &) noexcept = default;
     constexpr vec_impl(vec_impl &&) noexcept = default;
-    constexpr vec_impl &operator=(const vec_impl &) &noexcept = default;
-    constexpr vec_impl &operator=(vec_impl &&) &noexcept = default;
+    constexpr vec_impl &operator=(const vec_impl &) & noexcept = default;
+    constexpr vec_impl &operator=(vec_impl &&) & noexcept = default;
     template <typename... Ts, bool IsPtrStruct = is_pointer_structure,
               enable_if_all<!IsPtrStruct, (sizeof...(Ts) <= extent),
                             (is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)>
@@ -219,10 +219,9 @@ namespace zs {
     static constexpr vec_impl from_tuple(const TupT<> &tup) {
       return vec_impl{};
     }
-    template <template <typename...> class TupT, typename... Args,
-              bool IsPtrStruct = is_pointer_structure,
+    template <typename... Args, bool IsPtrStruct = is_pointer_structure,
               enable_if_all<sizeof...(Args) == extent, !IsPtrStruct> = 0>
-    constexpr vec_impl &operator=(const TupT<Args...> &tup) {
+    constexpr vec_impl &operator=(const tuple<Args...> &tup) {
       *this = from_tuple(tup);
       return *this;
     }

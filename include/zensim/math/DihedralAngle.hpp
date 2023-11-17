@@ -14,7 +14,7 @@ namespace zs {
    */
   template <typename VecT, execspace_e space = deduce_execution_space(),
             enable_if_all<VecT::dim == 1, VecT::extent == 3,
-                          std::is_floating_point_v<typename VecT::value_type>> = 0>
+                          is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto dihedral_angle(const VecInterface<VecT>& v2, const VecInterface<VecT>& v0,
                                 const VecInterface<VecT>& v1, const VecInterface<VecT>& v3,
                                 wrapv<space> tag = {}) {
@@ -35,13 +35,13 @@ namespace zs {
    */
   template <typename VecT, execspace_e space = deduce_execution_space(),
             enable_if_all<VecT::dim == 1, VecT::extent == 3,
-                          std::is_floating_point_v<typename VecT::value_type>> = 0>
+                          is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto dihedral_angle_gradient(const VecInterface<VecT>& v2, const VecInterface<VecT>& v0,
                                          const VecInterface<VecT>& v1, const VecInterface<VecT>& v3,
                                          wrapv<space> tag = {}) {
     using T = typename VecT::value_type;
     using GradT =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, 12>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, 12>>;
     // here we map our v order to rusmas' in this function for implementation convenience
     auto e0 = v1 - v0;
     auto e1 = v2 - v0;
@@ -76,13 +76,13 @@ namespace zs {
    */
   template <typename VecT, execspace_e space = deduce_execution_space(),
             enable_if_all<VecT::dim == 1, VecT::extent == 3,
-                          std::is_floating_point_v<typename VecT::value_type>> = 0>
+                          is_floating_point_v<typename VecT::value_type>> = 0>
   constexpr auto dihedral_angle_hessian(const VecInterface<VecT>& v2, const VecInterface<VecT>& v0,
                                         const VecInterface<VecT>& v1, const VecInterface<VecT>& v3,
                                         wrapv<space> tag = {}) {
     using T = typename VecT::value_type;
     using HessT =
-        typename VecT::template variant_vec<T, integer_seq<typename VecT::index_type, 12, 12>>;
+        typename VecT::template variant_vec<T, integer_sequence<typename VecT::index_type, 12, 12>>;
     using TV = typename VecT::template variant_vec<T, typename VecT::extents>;
     /// @note
     /// https://studios.disneyresearch.com/wp-content/uploads/2019/03/Discrete-Bending-Forces-and-Their-Jacobians-Paper.pdf

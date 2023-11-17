@@ -11,8 +11,8 @@ namespace zs {
   template <typename ValueType = float, typename IndexType = int> struct MatrixBase {
     using value_type = ValueType;
     using index_type = IndexType;
-    using size_type = std::make_unsigned_t<index_type>;
-    using difference_type = std::make_signed_t<size_type>;
+    using size_type = zs::make_unsigned_t<index_type>;
+    using difference_type = zs::make_signed_t<size_type>;
 
     constexpr index_type rows() const noexcept { return nrows; }
     constexpr index_type cols() const noexcept { return ncols; }
@@ -89,7 +89,7 @@ namespace zs {
 
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -140,7 +140,7 @@ namespace zs {
 
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }

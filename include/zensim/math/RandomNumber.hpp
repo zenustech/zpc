@@ -115,7 +115,7 @@ namespace zs {
     */
     template <class MultiVec> MultiVec fill(T a = 0, T b = 1) noexcept {
       MultiVec r{};
-      for (std::size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randReal(a, b);
+      for (size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randReal(a, b);
       return r;
     }
 
@@ -123,7 +123,7 @@ namespace zs {
       Fill with uniform random numbers
     */
     template <class MultiVec> void fill(MultiVec &r, T a = 0, T b = 1) noexcept {
-      for (std::size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randReal(a, b);
+      for (size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randReal(a, b);
     }
 
     /**
@@ -131,7 +131,7 @@ namespace zs {
     */
     template <class MultiVec> MultiVec fillInt(int a = 0, int b = 1) noexcept {
       MultiVec r{};
-      for (std::size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randInt(a, b);
+      for (size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randInt(a, b);
       return r;
     }
 
@@ -139,7 +139,7 @@ namespace zs {
       Fill with random integers
     */
     template <class MultiVec> void fillInt(MultiVec &r, int a = 0, int b = 1) noexcept {
-      for (std::size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randInt(a, b);
+      for (size_t i = 0; i < MultiVec::extent; ++i) r.val(i) = randInt(a, b);
     }
   };
 

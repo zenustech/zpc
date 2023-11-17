@@ -24,13 +24,13 @@ namespace zs {
     explicit copyable_ptr(T *p) noexcept : _ptr{p} {}
 
     /// deleter ctor mimic behavior of std::unique_ptr
-    template <typename D = Deleter, std::enable_if_t<std::is_copy_constructible_v<D>, char> = 0>
+    template <typename D = Deleter, enable_if_type<std::is_copy_constructible_v<D>, char> = 0>
     copyable_ptr(T *p, const Deleter &d) noexcept : _ptr{p, d} {}
-    template <typename D = Deleter, std::enable_if_t<std::is_move_constructible_v<D>, char> = 0>
-    copyable_ptr(T *p, std::enable_if_t<!std::is_lvalue_reference_v<D>, D &&> d) noexcept
+    template <typename D = Deleter, enable_if_type<std::is_move_constructible_v<D>, char> = 0>
+    copyable_ptr(T *p, enable_if_type<!std::is_lvalue_reference_v<D>, D &&> d) noexcept
         : _ptr{p, std::move(d)} {}
-    template <typename D = Deleter, typename DUnref = std::remove_reference_t<D>>
-    copyable_ptr(T *p, std::enable_if_t<std::is_lvalue_reference_v<D>, DUnref &&> d) = delete;
+    template <typename D = Deleter, typename DUnref = remove_reference_t<D>>
+    copyable_ptr(T *p, enable_if_type<std::is_lvalue_reference_v<D>, DUnref &&> d) = delete;
 
     constexpr copyable_ptr(std::nullptr_t) noexcept : _ptr{nullptr} {}
 
@@ -52,14 +52,14 @@ namespace zs {
     }
     /// delegate move conversion (assignment) ctor
     template <typename U, typename E,
-              std::enable_if_t<
+              enable_if_type<
                   __safe_conversion_up<U, E, copyable_ptr>()
                       && std::conditional_t<std::is_reference_v<Deleter>, std::is_same<E, Deleter>,
                                             std::is_convertible<E, Deleter>>::value,
                   int> = 0>
     copyable_ptr(copyable_ptr<U, E> &&o) noexcept : _ptr{std::move(o._ptr)} {}
     template <typename U, typename E,
-              std::enable_if_t<
+              enable_if_type<
                   __safe_conversion_up<U, E, std::unique_ptr>()
                       && std::conditional_t<std::is_reference_v<Deleter>, std::is_same<E, Deleter>,
                                             std::is_convertible<E, Deleter>>::value,
@@ -67,7 +67,7 @@ namespace zs {
     copyable_ptr(std::unique_ptr<U, E> &&o) noexcept : _ptr{std::move(o)} {}
 
     template <typename U, typename E,
-              std::enable_if_t<
+              enable_if_type<
                   __safe_conversion_up<U, E, copyable_ptr>()
                       && std::conditional_t<std::is_reference_v<Deleter>, std::is_same<E, Deleter>,
                                             std::is_convertible<E, Deleter>>::value,
@@ -77,7 +77,7 @@ namespace zs {
       return *this;
     }
     template <typename U, typename E,
-              std::enable_if_t<
+              enable_if_type<
                   __safe_conversion_up<U, E, std::unique_ptr>()
                       && std::conditional_t<std::is_reference_v<Deleter>, std::is_same<E, Deleter>,
                                             std::is_convertible<E, Deleter>>::value,

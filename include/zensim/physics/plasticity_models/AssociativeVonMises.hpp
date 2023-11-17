@@ -13,7 +13,7 @@ namespace zs {
     using base_t = PlasticityModelInterface<AssociativeVonMises<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type initialStress;
 
@@ -23,7 +23,8 @@ namespace zs {
     // project_strain
     template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 1, (VecT::template range_t<0>::value <= 3),
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr void do_project_sigma(VecInterface<VecT>& S, const Model& model) const noexcept {
       using value_type = typename VecT::value_type;
       using Ti = typename VecT::index_type;
@@ -34,7 +35,8 @@ namespace zs {
     template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 2, (VecT::template range_t<0>::value <= 3),
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr void do_project_strain(VecInterface<VecT>& F, const Model& model) const noexcept {
       auto [U, S, V] = math::svd(F);
       do_project_sigma(S, model);
@@ -44,7 +46,8 @@ namespace zs {
     template <typename VecT, typename Model,
               enable_if_all<VecT::dim == 2, (VecT::template range_t<0>::value <= 3),
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr auto project_strain(VecInterface<VecT>& F, const Model& model,
                                   int pi) const noexcept {
       auto [U_, S, V_] = math::svd(F);  // S is the principal strain
@@ -53,7 +56,7 @@ namespace zs {
 
       if constexpr (VecT::extent == 9) {
         // using vec3 = RM_CVREF_T(S);
-        using vec3 = vec<typename RM_CVREF_T(S)::value_type, 3>;
+        using vec3 = vec<typename RM_REF_T(S)::value_type, 3>;
         using mat3 =
             typename VecT::template variant_vec<typename vec3::value_type, typename VecT::extents>;
         mat3 P{2, -1, -1, -1, 2, -1, -1, -1, 2};

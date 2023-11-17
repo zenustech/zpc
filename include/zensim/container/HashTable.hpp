@@ -21,17 +21,17 @@ namespace zs {
     static_assert(std::is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
 
     static constexpr int dim = dim_;
-    using Tn = std::make_signed_t<Tn_>;
+    using Tn = zs::make_signed_t<Tn_>;
     using key_t = vec<Tn, dim>;
-    using value_t = std::make_signed_t<Index>;
+    using value_t = zs::make_signed_t<Index>;
     using status_t = int;
 
     using index_type = Tn;
 
     using value_type = key_t;
     using allocator_type = AllocatorT;
-    using size_type = std::make_unsigned_t<value_t>;
-    using difference_type = std::make_signed_t<size_type>;
+    using size_type = zs::make_unsigned_t<value_t>;
+    using difference_type = zs::make_signed_t<size_type>;
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;
@@ -43,7 +43,7 @@ namespace zs {
       Table(Table &&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, std::size_t numEntries)
+      Table(const allocator_type &allocator, size_t numEntries)
           : keys{allocator, numEntries},
             indices{allocator, numEntries},
             status{allocator, numEntries} {}
@@ -67,7 +67,7 @@ namespace zs {
     static constexpr Tn key_scalar_sentinel_v = limits<Tn>::max();
     static constexpr value_t sentinel_v{-1};  // this requires value_t to be signed type
     static constexpr status_t status_sentinel_v{-1};
-    static constexpr std::size_t reserve_ratio_v = 16;
+    static constexpr size_t reserve_ratio_v = 16;
 
     constexpr decltype(auto) memoryLocation() const noexcept {
       return _cnt.get_allocator().location;
@@ -77,7 +77,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -85,21 +85,21 @@ namespace zs {
     constexpr auto &self() noexcept { return _table; }
     constexpr const auto &self() const noexcept { return _table; }
 
-    constexpr std::size_t evaluateTableSize(std::size_t entryCnt) const {
-      if (entryCnt == 0) return (std::size_t)0;
+    constexpr size_t evaluateTableSize(size_t entryCnt) const {
+      if (entryCnt == 0) return (size_t)0;
       return next_2pow(entryCnt) * reserve_ratio_v;
     }
-    HashTable(const allocator_type &allocator, std::size_t numExpectedEntries)
+    HashTable(const allocator_type &allocator, size_t numExpectedEntries)
         : _table{allocator, evaluateTableSize(numExpectedEntries)},
           _tableSize{static_cast<value_t>(evaluateTableSize(numExpectedEntries))},
           _cnt{allocator, 1},
           _activeKeys{allocator, evaluateTableSize(numExpectedEntries)} {
       _cnt.setVal((value_t)0);
     }
-    HashTable(std::size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    HashTable(size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : HashTable{get_default_allocator(mre, devid), numExpectedEntries} {}
     HashTable(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : HashTable{get_default_allocator(mre, devid), (std::size_t)0} {}
+        : HashTable{get_default_allocator(mre, devid), (size_t)0} {}
 
     ~HashTable() = default;
 
@@ -195,8 +195,8 @@ namespace zs {
       return make_iterator<const_iterator_impl>(_activeKeys.data(), size());
     }
 
-    template <typename Policy> void resize(Policy &&, std::size_t numExpectedEntries);
-    template <typename Policy> void preserve(Policy &&, std::size_t numExpectedEntries);
+    template <typename Policy> void resize(Policy &&, size_t numExpectedEntries);
+    template <typename Policy> void preserve(Policy &&, size_t numExpectedEntries);
     template <typename Policy> void reset(Policy &&, bool clearCnt);
 
     Table _table;
@@ -205,19 +205,18 @@ namespace zs {
     Vector<key_t, allocator_type> _activeKeys;
   };
 
-#define EXTERN_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                      \
-  extern template struct HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<>>;     \
-  extern template struct HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<true>>; \
-  extern template struct HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<true>>; \
-  extern template struct HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<true>>; \
-  extern template struct HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<true>>;
+#define ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                            \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 4, IndexType, ZSPmrAllocator<true>>;
 
-  EXTERN_HASHTABLE_INSTANTIATIONS(i32, i32)
-  EXTERN_HASHTABLE_INSTANTIATIONS(i32, i64)
-  EXTERN_HASHTABLE_INSTANTIATIONS(i64, i64)
+  ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(i32, i32)
+  ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(i32, i64)
 
   template <typename HashTableView> struct ResetHashTable {
     using hash_table_type = typename HashTableView::hash_table_type;
@@ -262,25 +261,13 @@ namespace zs {
     HashTableView table;
   };
 
-  template <typename HashTableView> struct ResetHashTableCounter {
-    explicit ResetHashTableCounter(HashTableView tv, typename HashTableView::value_t cnt)
-        : table{tv}, cnt{cnt} {}
-    constexpr void operator()(typename HashTableView::size_type entry) noexcept {
-      *table._cnt = cnt;
-    }
-    HashTableView table;
-    typename HashTableView::value_t cnt;
-  };
-
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
-  void HashTable<Tn, dim, Index, Allocator>::preserve(Policy &&policy,
-                                                      std::size_t numExpectedEntries) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+  void HashTable<Tn, dim, Index, Allocator>::preserve(Policy &&policy, size_t numExpectedEntries) {
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     const auto numEntries = size();
     if (numExpectedEntries == numEntries) return;
     using LsvT = decltype(proxy<space>(*this));
-    policy(range(1), ResetHashTableCounter<LsvT>{proxy<space>(*this),
-                                                 (typename LsvT::value_t)numExpectedEntries});
+    _cnt.setVal(numExpectedEntries);
     const auto newTableSize = evaluateTableSize(numExpectedEntries);
     _activeKeys.resize(newTableSize);  // newTableSize must be larger than numExpectedEntries
     /// clear table
@@ -291,14 +278,13 @@ namespace zs {
              ResetHashTable<LsvT>{proxy<space>(*this), false});  // don't clear cnt
     } else
       policy(range(numEntries), RemoveHashTableEntries<LsvT>{proxy<space>(*this)});
-    policy(range(std::min((std::size_t)numEntries, numExpectedEntries)),
+    policy(range(std::min((size_t)numEntries, numExpectedEntries)),
            ReinsertHashTable<LsvT>{proxy<space>(*this)});
   }
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
-  void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy,
-                                                    std::size_t numExpectedEntries) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+  void HashTable<Tn, dim, Index, Allocator>::resize(Policy &&policy, size_t numExpectedEntries) {
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     const auto newTableSize = evaluateTableSize(numExpectedEntries);
     if (newTableSize <= _tableSize) return;
     _table.resize(newTableSize);
@@ -311,7 +297,7 @@ namespace zs {
 
   template <typename Tn, int dim, typename Index, typename Allocator> template <typename Policy>
   void HashTable<Tn, dim, Index, Allocator>::reset(Policy &&policy, bool clearCnt) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using LsvT = decltype(proxy<space>(*this));
     policy(range(_tableSize), ResetHashTable<LsvT>{proxy<space>(*this), clearCnt});
   }
@@ -326,7 +312,7 @@ namespace zs {
   /// proxy to work within each backends
   template <execspace_e space, typename HashTableT, typename = void> struct HashTableView {
     static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
-    using hash_table_type = std::remove_const_t<HashTableT>;
+    using hash_table_type = remove_const_t<HashTableT>;
     static constexpr int dim = hash_table_type::dim;
     static constexpr auto exectag = wrapv<space>{};
     using pointer = typename hash_table_type::pointer;
@@ -360,10 +346,11 @@ namespace zs {
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()} {}
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     __forceinline__ __device__ value_t insert(const VecInterface<VecT> &key) noexcept {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -386,7 +373,8 @@ namespace zs {
 #endif
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     inline value_t insert(const VecInterface<VecT> &key) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -407,10 +395,11 @@ namespace zs {
       return HashTableT::sentinel_v;
     }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     __forceinline__ __device__ bool insert(const VecInterface<VecT> &key, value_t id) noexcept {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -429,7 +418,8 @@ namespace zs {
 #endif
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     inline bool insert(const VecInterface<VecT> &key, value_t id) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);
@@ -447,9 +437,9 @@ namespace zs {
     }
 
     /// make sure no one else is inserting in the same time!
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type, Tn>>
+                             = 0>
     constexpr value_t query(const VecInterface<VecT> &key) const noexcept {
       using namespace placeholders;
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
@@ -460,9 +450,9 @@ namespace zs {
         if (hashedentry > _tableSize) hashedentry = hashedentry % _tableSize;
       }
     }
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type, Tn>>
+                             = 0>
     constexpr value_t entry(const VecInterface<VecT> &key) const noexcept {
       using namespace placeholders;
       value_t hashedentry = (do_hash(key) % _tableSize + _tableSize) % _tableSize;
@@ -496,18 +486,19 @@ namespace zs {
     conditional_t<is_const_structure, const value_t *, value_t *> _cnt{nullptr};
 
   protected:
-    template <typename VecT,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+    template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                                           std::is_convertible_v<typename VecT::value_type, Tn>>
+                             = 0>
     constexpr value_t do_hash(const VecInterface<VecT> &key) const noexcept {
-      std::size_t ret = key[0];
+      size_t ret = key[0];
       for (int d = 1; d < HashTableT::dim; ++d) hash_combine(ret, key[d]);
       return static_cast<value_t>(ret);
     }
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     __forceinline__ __device__ key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                                                   const VecInterface<VecT> &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
@@ -544,7 +535,8 @@ namespace zs {
 #endif
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>> = 0>
+                            std::is_convertible_v<typename VecT::value_type, Tn>>
+              = 0>
     inline key_t atomicKeyCAS(status_t *lock, volatile key_t *const dest,
                               const VecInterface<VecT> &val) {
       constexpr auto execTag = wrapv<S>{};

@@ -196,11 +196,11 @@ namespace zs {
         if (auto obj = tryGet(attrib.first); obj) {
           match(
               [](auto &&dst,
-                 auto &&src) -> std::enable_if_t<is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
+                 auto &&src) -> enable_if_type<is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
                 dst.append(src);
               },
               [&attrib](auto &&dst, auto &&src)
-                  -> std::enable_if_t<!is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
+                  -> enable_if_type<!is_same_v<RM_CVREF_T(dst), RM_CVREF_T(src)>> {
                 throw std::runtime_error(
                     fmt::format("attributes of the same name \"{}\" are of type \"{}\"(dst) and "
                                 "\"{}\"(src)\n",
@@ -210,7 +210,7 @@ namespace zs {
           _attributes[attrib.first] = attrib.second;
     }
 
-    void resize(std::size_t newSize) {
+    void resize(size_t newSize) {
       for (auto &&attrib : attrs()) match([newSize](auto &&att) { att.resize(newSize); })(attrib);
     }
 

@@ -25,7 +25,7 @@ namespace zs {
       auto &table = indexBuckets._table;
       table = RM_CVREF_T(table){allocator, pars.size()};
 
-      constexpr execspace_e space = RM_CVREF_T(execPol)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(execPol)::exec_tag::value;
       constexpr auto execTag = wrapv<space>{};
       execPol(range(table._tableSize), CleanSparsity{execTag, table});
       execPol(range(pars.size()),
@@ -35,7 +35,7 @@ namespace zs {
       auto &counts = indexBuckets._counts;
       auto numCells = table.size() + 1;
 
-      counts = vector_t{allocator, (std::size_t)numCells};
+      counts = vector_t{allocator, (size_t)numCells};
       match([&counts](auto &&memTag) {
         memset(memTag, counts.data(), 0, sizeof(typename vector_t::value_type) * counts.size());
       })(counts.memoryLocation().getTag());
@@ -45,7 +45,7 @@ namespace zs {
               SpatiallyCount{execTag, dx, table, pars.attrVector("x"), counts, 1, 0, displacement});
       // offsets
       auto &offsets = indexBuckets._offsets;
-      offsets = vector_t{allocator, (std::size_t)numCells};
+      offsets = vector_t{allocator, (size_t)numCells};
       exclusive_scan(execPol, counts.begin(), counts.end(), offsets.begin());
       // fmt::print("scanned num particles: {}, num buckets: {} ({})\n", offsets[numCells - 1],
       //           numCells - 1, indexBuckets.numBuckets());

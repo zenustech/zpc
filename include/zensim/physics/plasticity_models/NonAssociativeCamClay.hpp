@@ -13,7 +13,7 @@ namespace zs {
     using base_t = PlasticityModelInterface<NonAssociativeCamClay<T_>>;
     using value_type = T_;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type M, beta, xi;
     bool hardeningOn;
@@ -30,7 +30,7 @@ namespace zs {
 
     template <typename VecT, typename Model, typename T,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr bool do_project_sigma(VecInterface<VecT>& S, const Model& model,
                                     T& logJp) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;

@@ -5,7 +5,7 @@
 
 #include "ExecutionPolicy.cuh"
 #include "zensim/Reflection.h"
-#include "zensim/types/Function.h"
+#include "zensim/ZpcFunction.hpp"
 
 namespace zs {
 
@@ -24,11 +24,21 @@ namespace zs {
                    static_cast<int>(result));
       }
     }
-    template <CudaLibraryComponentFlagBit flagbit> struct CudaLibStatusType { using type = void; };
-    template <> struct CudaLibStatusType<culib_cusparse> { using type = cusparseStatus_t; };
-    template <> struct CudaLibStatusType<culib_cublas> { using type = cublasStatus_t; };
-    template <> struct CudaLibStatusType<culib_cusolversp> { using type = cusolverStatus_t; };
-    template <> struct CudaLibStatusType<culib_cusolverdn> { using type = cusolverStatus_t; };
+    template <CudaLibraryComponentFlagBit flagbit> struct CudaLibStatusType {
+      using type = void;
+    };
+    template <> struct CudaLibStatusType<culib_cusparse> {
+      using type = cusparseStatus_t;
+    };
+    template <> struct CudaLibStatusType<culib_cublas> {
+      using type = cublasStatus_t;
+    };
+    template <> struct CudaLibStatusType<culib_cusolversp> {
+      using type = cusolverStatus_t;
+    };
+    template <> struct CudaLibStatusType<culib_cusolverdn> {
+      using type = cusolverStatus_t;
+    };
   }  // namespace detail
   template <CudaLibraryComponentFlagBit flagbit> using cudaLibStatus_t =
       typename detail::CudaLibStatusType<flagbit>::type;
@@ -67,7 +77,7 @@ namespace zs {
       : CudaLibHandle<flagbit>,
         virtual std::reference_wrapper<CudaExecutionPolicy> {
     template <typename Fn, typename... Args>
-    std::enable_if_t<is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
+    enable_if_type<is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
     call(Fn&& fn, Args&&... args) const {
       using fts = function_traits<Fn>;
       if constexpr (sizeof...(Args) == fts::arity)
@@ -85,7 +95,7 @@ namespace zs {
         ExecutionPolicyInterface<CudaLibExecutionPolicy<flagbits...>>,
         CudaLibComponentExecutionPolicy<flagbits>... {
     template <CudaLibraryComponentFlagBit flagbit, typename Fn, typename... Args>
-    constexpr std::enable_if_t<
+    constexpr enable_if_type<
         is_same_v<cudaLibStatus_t<flagbit>, typename function_traits<Fn>::return_t>>
     call(Fn&& fn, Args&&... args) const {
       CudaLibComponentExecutionPolicy<flagbit>::call(FWD(fn), FWD(args)...);

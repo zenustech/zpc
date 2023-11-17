@@ -6,10 +6,10 @@
 namespace zs {
 
   /// Bow/Math/LinearSolver/ConjugateGradient.h
-  template <typename T, int dim, typename Index = std::size_t> struct ConjugateResidual {
+  template <typename T, int dim, typename Index = zs::size_t> struct ConjugateResidual {
     using TV = Vector<T>;
     using allocator_type = ZSPmrAllocator<>;
-    using size_type = std::make_unsigned_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
 
     int maxIters;
     TV x_, or_, r_, p_, Ap_, Ar_, rAr_, MAp_;
@@ -52,24 +52,24 @@ namespace zs {
     }
 
     template <typename DV> void print(DV&& dv) {
-      for (std::size_t i = 0; i != dv.size(); ++i) fmt::print("{} ", dv.get(i));
+      for (size_t i = 0; i != dv.size(); ++i) fmt::print("{} ", dv.get(i));
       fmt::print("\n");
     }
 
     template <class ExecutionPolicy, typename DofViewA, typename DofViewB>
     T dotProduct(ExecutionPolicy&& policy, DofViewA a, DofViewB b) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       using ValueT = typename std::iterator_traits<RM_CVREF_T(std::begin(a))>::value_type;
       auto dofSqr = dof_view<space, dim>(dofSqr_);
-      DofCompwiseOp{std::multiplies<void>{}}(policy, a, b, dofSqr);
+      DofCompwiseOp{multiplies<void>{}}(policy, a, b, dofSqr);
       reduce(policy, std::begin(dofSqr), std::end(dofSqr),
-             std::begin(dof_view<space, dim>(normSqr_)), 0, std::plus<ValueT>{});
+             std::begin(dof_view<space, dim>(normSqr_)), 0, plus<ValueT>{});
       return normSqr_.clone({memsrc_e::host, -1})[0];
     }
 
     template <class ExecutionPolicy, typename M, typename XView, typename BView>
     int solve(ExecutionPolicy&& policy, M&& A, XView&& xinout, BView&& b) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       resize(xinout.numEntries());
 
       auto x = dof_view<space, dim>(x_);
@@ -85,7 +85,7 @@ namespace zs {
       T alpha, beta, cn0, cn, residualPreconditionedNorm;
 
       A.multiply(policy, x, Ap);
-      DofCompwiseOp{std::minus<void>{}}(policy, b, Ap, rr);
+      DofCompwiseOp{minus<void>{}}(policy, b, Ap, rr);
       if (shouldPrint()) {
         auto res = dotProduct(policy, rr, rr);
         fmt::print("(after minus Ax) normSqr rhs: {}\n", res);

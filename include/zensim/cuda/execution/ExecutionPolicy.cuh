@@ -21,7 +21,13 @@
 #include <nvfunctional>
 #include <type_traits>
 
-#include "zensim/types/Function.h"
+#include "zensim/ZpcFunction.hpp"
+
+#if ZS_ENABLE_CUDA && !defined(__CUDACC__)
+#  error "ZS_ENABLE_CUDA defined but the compiler is not defining the __CUDACC__ macro as expected"
+// Some tooling environments will still function better if we do this here.
+#  define __CUDACC__
+#endif
 
 /// extracted from compiler error message...
 template <class Tag, class... CapturedVarTypePack> struct __nv_dl_wrapper_t;
@@ -39,8 +45,8 @@ namespace zs {
       template <typename IterOrIndex, typename = void> struct iter_arg {
         using type = IterOrIndex;
       };
-      template <typename Iter> struct iter_arg<Iter, void_t<decltype(*std::declval<Iter>())>> {
-        using type = decltype(*std::declval<Iter>());
+      template <typename Iter> struct iter_arg<Iter, void_t<decltype(*declval<Iter>())>> {
+        using type = decltype(*declval<Iter>());
       };
       template <typename IterOrIndex> using iter_arg_t = typename iter_arg<IterOrIndex>::type;
 
@@ -50,9 +56,9 @@ namespace zs {
           if constexpr (fts_available)
             return typename function_traits<F>::arguments_t{};
           else {
-            if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>...>)
               return type_seq<int, iter_arg_t<Args>...>{};
-            else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>...>)
               return type_seq<void *, iter_arg_t<Args>...>{};
             else
               return type_seq<iter_arg_t<Args>...>{};
@@ -62,15 +68,15 @@ namespace zs {
           if constexpr (fts_available)
             return wrapt<typename function_traits<F>::return_t>{};
           else {
-            if constexpr (std::is_invocable_v<F, int, iter_arg_t<Args>...>)
-              return wrapt<std::invoke_result_t<F, int, iter_arg_t<Args>...>>{};
-            else if constexpr (std::is_invocable_v<F, void *, iter_arg_t<Args>...>)
-              return wrapt<std::invoke_result_t<F, void *, iter_arg_t<Args>...>>{};
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>...>)
+              return wrapt<invoke_result_t<F, int, iter_arg_t<Args>...>>{};
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>...>)
+              return wrapt<invoke_result_t<F, void *, iter_arg_t<Args>...>>{};
             else
-              return wrapt<std::invoke_result_t<F, iter_arg_t<Args>...>>{};
+              return wrapt<invoke_result_t<F, iter_arg_t<Args>...>>{};
           }
         }
-        static constexpr std::size_t deduce_arity() noexcept {
+        static constexpr size_t deduce_arity() noexcept {
           if constexpr (fts_available)
             return function_traits<F>::arity;
           else
@@ -83,15 +89,74 @@ namespace zs {
       using first_argument_t = typename decltype(impl<ArgSeq>::deduce_args_t())::template type<0>;
 
       using return_t = typename decltype(impl<ArgSeq>::deduce_return_t())::type;
-      static constexpr std::size_t arity = impl<ArgSeq>::deduce_arity();
+      static constexpr size_t arity = impl<ArgSeq>::deduce_arity();
+
+      static_assert(is_same_v<return_t, void>,
+                    "callable for execution policy should only return void");
+    };
+    template <typename F, typename ArgSeq, typename... Ts>
+    struct deduce_fts<F, ArgSeq, zs::tuple<Ts...>> {
+      using param_arg_t = zs::tuple<Ts...>;
+      static constexpr bool fts_available
+          = is_valid([](auto t) -> decltype(zs::function_traits<typename decltype(t)::type>{},
+                                            void()) {})(zs::wrapt<F>{});
+
+      template <typename IterOrIndex, typename = void> struct iter_arg {
+        using type = IterOrIndex;
+      };
+      template <typename Iter> struct iter_arg<Iter, void_t<decltype(*declval<Iter>())>> {
+        using type = decltype(*declval<Iter>());
+      };
+      template <typename IterOrIndex> using iter_arg_t = typename iter_arg<IterOrIndex>::type;
+
+      template <typename Seq> struct impl;
+      template <typename... Args> struct impl<type_seq<Args...>> {
+        static constexpr auto deduce_args_t() noexcept {
+          if constexpr (fts_available)
+            return typename function_traits<F>::arguments_t{};
+          else {
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>..., param_arg_t>)
+              return type_seq<int, iter_arg_t<Args>..., param_arg_t>{};
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>..., param_arg_t>)
+              return type_seq<void *, iter_arg_t<Args>..., param_arg_t>{};
+            else
+              return type_seq<iter_arg_t<Args>..., param_arg_t>{};
+          }
+        }
+        static constexpr auto deduce_return_t() noexcept {
+          if constexpr (fts_available)
+            return wrapt<typename function_traits<F>::return_t>{};
+          else {
+            if constexpr (is_invocable_v<F, int, iter_arg_t<Args>..., param_arg_t>)
+              return wrapt<invoke_result_t<F, int, iter_arg_t<Args>..., param_arg_t>>{};
+            else if constexpr (is_invocable_v<F, void *, iter_arg_t<Args>..., param_arg_t>)
+              return wrapt<invoke_result_t<F, void *, iter_arg_t<Args>..., param_arg_t>>{};
+            else
+              return wrapt<invoke_result_t<F, iter_arg_t<Args>..., param_arg_t>>{};
+          }
+        }
+        static constexpr size_t deduce_arity() noexcept {
+          if constexpr (fts_available)
+            return function_traits<F>::arity;
+          else
+            return decltype(deduce_args_t())::count;
+        }
+      };
+
+      using arguments_t =
+          typename decltype(impl<ArgSeq>::deduce_args_t())::template functor<zs::tuple>;
+      using first_argument_t = typename decltype(impl<ArgSeq>::deduce_args_t())::template type<0>;
+
+      using return_t = typename decltype(impl<ArgSeq>::deduce_return_t())::type;
+      static constexpr size_t arity = impl<ArgSeq>::deduce_arity();
 
       static_assert(is_same_v<return_t, void>,
                     "callable for execution policy should only return void");
     };
 
-    template <bool withIndex, typename Tn, typename F, typename ZipIter, std::size_t... Is>
-    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, Tn i, F &&f,
-                                                  ZipIter &&iter, index_seq<Is...>) {
+    template <bool withIndex, typename Tn, typename F, typename ZipIter, size_t... Is>
+    __forceinline__ __device__ void range_foreach(wrapv<withIndex>, Tn i, F &&f, ZipIter &&iter,
+                                                  index_sequence<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
       if constexpr (withIndex)
         f(i, *zs::get<Is>(iter.iters)...);
@@ -100,17 +165,45 @@ namespace zs {
       }
     }
     template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
-              std::size_t... Is>
-    __forceinline__ __device__ void range_foreach(std::bool_constant<withIndex>, ShmT *shmem, Tn i,
-                                                  F &&f, ZipIter &&iter, index_seq<Is...>) {
+              size_t... Is>
+    __forceinline__ __device__ void range_foreach(wrapv<withIndex>, ShmT *shmem, Tn i, F &&f,
+                                                  ZipIter &&iter, index_sequence<Is...>) {
       (zs::get<Is>(iter.iters).advance(i), ...);
       using func_traits
-          = detail::deduce_fts<remove_cvref_t<F>, typename RM_CVREF_T(iter.iters)::tuple_types>;
+          = detail::deduce_fts<remove_cvref_t<F>, typename RM_REF_T(iter.iters)::tuple_types>;
       using shmem_ptr_t = typename func_traits::first_argument_t;
       if constexpr (withIndex)
         f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)...);
       else
         f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)...);
+    }
+
+    template <bool withIndex, typename Tn, typename F, typename ZipIter, typename ParamTuple,
+              size_t... Is>
+    __forceinline__ __device__ void range_foreach_with_params(wrapv<withIndex>, Tn i, F &&f,
+                                                              ZipIter &&iter, ParamTuple &&params,
+                                                              index_sequence<Is...>) {
+      ((void)zs::get<Is>(iter.iters).advance(i), ...);
+      if constexpr (withIndex)
+        f(i, *zs::get<Is>(iter.iters)..., FWD(params));
+      else {
+        f(*zs::get<Is>(iter.iters)..., FWD(params));
+      }
+    }
+    template <bool withIndex, typename ShmT, typename Tn, typename F, typename ZipIter,
+              typename ParamTuple, size_t... Is>
+    __forceinline__ __device__ void range_foreach_with_params(wrapv<withIndex>, ShmT *shmem, Tn i,
+                                                              F &&f, ZipIter &&iter,
+                                                              ParamTuple &&params,
+                                                              index_sequence<Is...>) {
+      ((void)zs::get<Is>(iter.iters).advance(i), ...);
+      using func_traits
+          = detail::deduce_fts<remove_cvref_t<F>, typename RM_REF_T(iter.iters)::tuple_types>;
+      using shmem_ptr_t = typename func_traits::first_argument_t;
+      if constexpr (withIndex)
+        f(reinterpret_cast<shmem_ptr_t>(shmem), i, *zs::get<Is>(iter.iters)..., FWD(params));
+      else
+        f(reinterpret_cast<shmem_ptr_t>(shmem), *zs::get<Is>(iter.iters)..., FWD(params));
     }
   }  // namespace detail
 
@@ -149,40 +242,81 @@ namespace zs {
     }
   }
 
-  template <typename Tn, typename F, typename ZipIter> __global__ std::enable_if_t<
-      std::is_convertible_v<typename std::iterator_traits<ZipIter>::iterator_category,
-                            std::random_access_iterator_tag>
-      && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
-          || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
-  range_launch(Tn n, F f, ZipIter iter) {
+  template <typename Tn, typename F, typename ZipIter> __global__
+      enable_if_type<is_ra_iter_v<ZipIter>
+                     && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
+                         || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      range_launch(Tn n, F f, ZipIter iter) {
     extern __shared__ std::max_align_t shmem[];
     Tn id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < n) {
-      using func_traits = detail::deduce_fts<F, typename RM_CVREF_T(iter.iters)::tuple_types>;
+      using func_traits = detail::deduce_fts<F, typename RM_REF_T(iter.iters)::tuple_types>;
       constexpr auto numArgs = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference>;
-      constexpr auto indices = std::make_index_sequence<numArgs>{};
+      constexpr auto indices = make_index_sequence<numArgs>{};
       static_assert(func_traits::arity >= numArgs && func_traits::arity <= numArgs + 2,
                     "range_launch arity does not match with numArgs");
       if constexpr (func_traits::arity == numArgs) {
         detail::range_foreach(false_c, id, f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 1) {
         static_assert(
-            std::is_integral_v<typename func_traits::first_argument_t>
-                || std::is_pointer_v<typename func_traits::first_argument_t>,
+            is_integral_v<typename func_traits::first_argument_t>
+                || is_pointer_v<typename func_traits::first_argument_t>,
             "when arity equals numArgs+1, the first argument should be a shmem pointer or an "
             "integer");
-        if constexpr (std::is_integral_v<typename func_traits::first_argument_t>)
+        if constexpr (is_integral_v<typename func_traits::first_argument_t>)
           detail::range_foreach(true_c, id, f, iter, indices);
-        else if constexpr (std::is_pointer_v<typename func_traits::first_argument_t>)
+        else if constexpr (is_pointer_v<typename func_traits::first_argument_t>)
           detail::range_foreach(false_c,
                                 reinterpret_cast<typename func_traits::first_argument_t>(shmem), id,
                                 f, iter, indices);
       } else if constexpr (func_traits::arity == numArgs + 2) {
-        static_assert(std::is_pointer_v<typename func_traits::first_argument_t>,
+        static_assert(is_pointer_v<typename func_traits::first_argument_t>,
                       "when arity equals numArgs+2, the first argument should be a shmem pointer");
         detail::range_foreach(true_c,
                               reinterpret_cast<typename func_traits::first_argument_t>(shmem), id,
                               f, iter, indices);
+      }
+    }
+  }
+  template <typename Tn, typename F, typename ZipIter, typename... Args> __global__
+      enable_if_type<is_ra_iter_v<ZipIter>
+                     && (is_tuple<typename std::iterator_traits<ZipIter>::reference>::value
+                         || is_std_tuple<typename std::iterator_traits<ZipIter>::reference>::value)>
+      range_launch_with_params(Tn n, F f, ZipIter iter, zs::tuple<Args...> params) {
+    extern __shared__ std::max_align_t shmem[];
+    Tn id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (id < n) {
+      /// @note beware of the discrepency here
+      using func_traits
+          = detail::deduce_fts<F, typename RM_REF_T(iter.iters)::tuple_types, zs::tuple<Args...>>;
+      constexpr auto numArgs
+          = zs::tuple_size_v<typename std::iterator_traits<ZipIter>::reference> + 1;
+      constexpr auto indices = make_index_sequence<numArgs - 1>{};
+
+      static_assert(func_traits::arity >= numArgs && func_traits::arity <= numArgs + 2,
+                    "range_launch_with_params arity does not match with numArgs");
+      if constexpr (func_traits::arity == numArgs) {
+        detail::range_foreach_with_params(false_c, id, f, iter, params, indices);
+      } else if constexpr (func_traits::arity == numArgs + 1) {
+        static_assert(is_integral_v<typename func_traits::first_argument_t>
+                          || is_pointer_v<typename func_traits::first_argument_t>,
+                      "when arity equals numArgs+1 (tail for params), the first argument should be "
+                      "a shmem pointer or an integer");
+        if constexpr (is_integral_v<typename func_traits::first_argument_t>)
+          detail::range_foreach_with_params(true_c, id, f, iter, params, indices);
+        else if constexpr (is_pointer_v<typename func_traits::first_argument_t>)
+          detail::range_foreach_with_params(
+              false_c, reinterpret_cast<typename func_traits::first_argument_t>(shmem), id, f, iter,
+              params, indices);
+        else
+          static_assert(always_false<Tn>, "slot reserved...");
+      } else if constexpr (func_traits::arity == numArgs + 2) {
+        static_assert(is_pointer_v<typename func_traits::first_argument_t>,
+                      "when arity equals numArgs+2 (tail for params), the first argument should be "
+                      "a shmem pointer");
+        detail::range_foreach_with_params(
+            true_c, reinterpret_cast<typename func_traits::first_argument_t>(shmem), id, f, iter,
+            params, indices);
       }
     }
   }
@@ -213,7 +347,7 @@ namespace zs {
 
     template <auto F, unsigned int I, typename R, typename... Args>
     struct function_traits_impl<__nv_dl_tag<R (*)(Args...), F, I>> {
-      static constexpr std::size_t arity = sizeof...(Args);
+      static constexpr size_t arity = sizeof...(Args);
       using return_t = R;
       using arguments_t = zs::tuple<Args...>;
     };
@@ -221,6 +355,9 @@ namespace zs {
     struct function_traits_impl<__nv_dl_wrapper_t<Tag, CapturedVarTypePack...>>
         : function_traits_impl<Tag> {};
   }  // namespace detail
+
+  struct CudaExecutionPolicy;
+  ZPC_API extern ZSPmrAllocator<> get_temporary_memory_source(const CudaExecutionPolicy &pol);
 
   struct CudaExecutionPolicy : ExecutionPolicyInterface<CudaExecutionPolicy> {
     using exec_tag = cuda_exec_tag;
@@ -238,11 +375,11 @@ namespace zs {
       procid = pid;
       return *this;
     }
-    CudaExecutionPolicy &shmem(std::size_t bytes) {
+    CudaExecutionPolicy &shmem(size_t bytes) {
       shmemBytes = bytes;
       return *this;
     }
-    CudaExecutionPolicy &block(std::size_t tpb) {
+    CudaExecutionPolicy &block(size_t tpb) {
       blockSize = tpb;
       return *this;
     }
@@ -350,15 +487,56 @@ namespace zs {
       checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
       context.recordEventSpare(streamid, loc);
     }
+    template <typename Range, typename... Args, typename F>
+    auto operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
+                    const source_location &loc = source_location::current()) const {
+      auto &context = Cuda::context(procid);
+      context.setContext();
+      if (this->shouldWait())
+        context.spareStreamWaitForEvent(streamid,
+                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
+
+      // need to work on __device__ func as well
+      auto iter = std::begin(range);
+      using IterT = remove_cvref_t<decltype(iter)>;
+      using DiffT = typename std::iterator_traits<IterT>::difference_type;
+      const DiffT dist = std::end(range) - iter;
+      using RefT = typename std::iterator_traits<IterT>::reference;
+
+      LaunchConfig lc{};
+      if (blockSize == 0)
+        lc = LaunchConfig{true_c, dist, shmemBytes};
+      else
+        lc = LaunchConfig{(dist + blockSize - 1) / blockSize, blockSize, shmemBytes};
+
+      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
+
+      u32 ec = 0;
+      if constexpr (is_zip_iterator_v<IterT>) {
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
+                              f, std::begin(FWD(range)), params);
+      } else {  // wrap the non-zip range in a zip range
+        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
+                              f, std::begin(zip(FWD(range))), params);
+      }
+
+      if (this->shouldProfile()) context.tock(timer, loc);
+      if (this->shouldSync()) {
+        context.syncStreamSpare(streamid, loc);
+#if ZS_ENABLE_OFB_ACCESS_CHECK
+        if (ec == 0) ec = Cuda::get_last_cuda_rt_error();
+#endif
+      }
+      checkKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
+      context.recordEventSpare(streamid, loc);
+    }
 
     /// for_each
     template <class ForwardIt, class UnaryFunction>
     void for_each_impl(std::random_access_iterator_tag, ForwardIt &&first, ForwardIt &&last,
                        UnaryFunction &&f, const source_location &loc) const {
       using IterT = remove_cvref_t<ForwardIt>;
-      static_assert(is_same_v<typename std::iterator_traits<IterT>::iterator_category,
-                              std::random_access_iterator_tag>,
-                    "iterator passed to cuda_for_each must be a random_access_iterator.");
       const auto dist = last - first;
       (*this)(
           Collapse{dist},
@@ -371,9 +549,9 @@ namespace zs {
     template <class ForwardIt, class UnaryFunction>
     void for_each(ForwardIt &&first, ForwardIt &&last, UnaryFunction &&f,
                   const source_location &loc = source_location::current()) const {
-      for_each_impl(
-          typename std::iterator_traits<std::remove_reference_t<ForwardIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(f), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<ForwardIt>>,
+                    "Iterator should be a random access iterator");
+      for_each_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(f), loc);
     }
     /// inclusive scan
     template <class InputIt, class OutputIt, class BinaryOperation>
@@ -387,7 +565,7 @@ namespace zs {
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       using IterT = remove_cvref_t<InputIt>;
       const auto dist = last - first;
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -397,12 +575,10 @@ namespace zs {
                              thrust::device_pointer_cast(first.operator->() + dist),
                              thrust::device_pointer_cast(d_first.operator->()), FWD(binary_op));
 #else
-      cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
-                                     binary_op, dist, stream);
+      cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, dist, stream);
 
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
-                                     binary_op, dist, stream);
+      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, dist, stream);
       context.streamMemFree(d_tmp, stream, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
@@ -410,18 +586,14 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
-              class BinaryOperation = std::plus<remove_cvref_t<decltype(*std::declval<InputIt>())>>>
+              class BinaryOperation = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
     void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                         BinaryOperation &&binary_op = {},
                         const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      inclusive_scan_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      inclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
+                          FWD(binary_op), loc);
     }
     /// exclusive scan
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
@@ -444,7 +616,7 @@ namespace zs {
           thrust::device_pointer_cast(first.operator->() + dist),
           thrust::device_pointer_cast(d_first.operator->()), init, FWD(binary_op));
 #else
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
                                      stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
@@ -458,7 +630,7 @@ namespace zs {
     }
     template <class InputIt, class OutputIt,
               class BinaryOperation
-              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void exclusive_scan(
         InputIt &&first, InputIt &&last, OutputIt &&d_first,
         typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
@@ -466,14 +638,10 @@ namespace zs {
                           typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
         BinaryOperation &&binary_op = {},
         const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      exclusive_scan_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      exclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
+                          init, FWD(binary_op), loc);
     }
     /// reduce
     template <class InputIt, class OutputIt, class T, class BinaryOperation>
@@ -488,7 +656,7 @@ namespace zs {
       using IterT = remove_cvref_t<InputIt>;
       using ValueT = typename std::iterator_traits<IterT>::value_type;
       const auto dist = last - first;
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       Cuda::CudaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -510,35 +678,27 @@ namespace zs {
       context.recordEventSpare(streamid, loc);
     }
     template <class InputIt, class OutputIt,
-              // class T = remove_cvref_t<decltype(*std::declval<InputIt>())>,
+              // class T = remove_cvref_t<decltype(*declval<InputIt>())>,
               class BinaryOp
-              = std::plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
+              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
     void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                 typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
                 = deduce_identity<
                     BinaryOp, typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
                 BinaryOp &&binary_op = {},
                 const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      reduce_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), init, FWD(binary_op), loc);
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      reduce_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), init,
+                  FWD(binary_op), loc);
     }
     /// merge sort
-    template <class KeyIter, class ValueIter, typename CompareOpT> std::enable_if_t<
-        std::is_convertible_v<
-            typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
-            std::random_access_iterator_tag>
-        && std::is_convertible_v<
-            typename std::iterator_traits<std::remove_reference_t<ValueIter>>::iterator_category,
-            std::random_access_iterator_tag>>
+    template <class KeyIter, class ValueIter, typename CompareOpT>
+    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>
+                   && is_ra_iter_v<remove_reference_t<ValueIter>>>
     merge_sort_pair(
         KeyIter &&keys, ValueIter &&vals,
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type count,
+        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
         CompareOpT &&compOp, const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
@@ -546,7 +706,7 @@ namespace zs {
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       if (count) {
-        std::size_t temp_bytes = 0;
+        size_t temp_bytes = 0;
         auto stream = (cudaStream_t)context.streamSpare(streamid);
         Cuda::CudaContext::StreamExecutionTimer *timer{};
         if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -564,11 +724,10 @@ namespace zs {
       if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
       context.recordEventSpare(streamid, loc);
     }
-    template <class KeyIter, typename CompareOpT> std::enable_if_t<std::is_convertible_v<
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
-        std::random_access_iterator_tag>>
-    merge_sort(KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
-               const source_location &loc = source_location::current()) const {
+    template <class KeyIter, typename CompareOpT>
+    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>> merge_sort(
+        KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
+        const source_location &loc = source_location::current()) const {
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -579,7 +738,7 @@ namespace zs {
       auto stream = (cudaStream_t)context.streamSpare(streamid);
       if (this->shouldProfile()) timer = context.tick(stream, loc);
 
-      std::size_t temp_bytes = 0;
+      size_t temp_bytes = 0;
       cub::DeviceMergeSort::StableSortKeys(nullptr, temp_bytes, first, dist, compOp, stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
       cub::DeviceMergeSort::StableSortKeys(d_tmp, temp_bytes, first, dist, compOp, stream);
@@ -593,23 +752,27 @@ namespace zs {
     /// radix sort pair
     template <class KeyIter, class ValueIter,
               typename Tn
-              = typename std::iterator_traits<std::remove_reference_t<KeyIter>>::difference_type>
-    std::enable_if_t<std::is_convertible_v<
-        typename std::iterator_traits<std::remove_reference_t<KeyIter>>::iterator_category,
-        std::random_access_iterator_tag>>
-    radix_sort_pair(
-        KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut, Tn count = 0,
-        int sbit = 0,
-        int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<KeyIter>>::value_type) * 8,
-        const source_location &loc = source_location::current()) const {
+              = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
+    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>
+                   && is_ra_iter_v<remove_reference_t<ValueIter>>>
+    radix_sort_pair(KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut,
+                    Tn count = 0, int sbit = 0,
+                    int ebit
+                    = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type)
+                      * 8,
+                    const source_location &loc = source_location::current()) const {
+      using KeyIterT = remove_cvref_t<KeyIter>;
+      using ValueIterT = remove_cvref_t<ValueIter>;
+      using DiffT = typename std::iterator_traits<KeyIterT>::difference_type;
+      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
+      using ValueT = typename std::iterator_traits<ValueIterT>::value_type;
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
                                         Cuda::context(incomingProc).eventSpare(incomingStreamid));
       if (count) {
-        std::size_t temp_bytes = 0;
+        size_t temp_bytes = 0;
         auto stream = (cudaStream_t)context.streamSpare(streamid);
         Cuda::CudaContext::StreamExecutionTimer *timer{};
         if (this->shouldProfile()) timer = context.tick(stream, loc);
@@ -626,21 +789,33 @@ namespace zs {
                             thrust::device_pointer_cast(keysOut.operator->() + count),
                             thrust::device_pointer_cast(valsOut.operator->()));
 #else
-        cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keysIn.operator->(),
-                                        keysOut.operator->(), valsIn.operator->(),
-                                        valsOut.operator->(), count, sbit, ebit, stream);
+        auto allocator = get_temporary_memory_source(*this);
+        Vector<KeyT> ksIn{allocator, (size_t)count}, ksOut{allocator, (size_t)count};
+        Vector<ValueT> vsIn{allocator, (size_t)count}, vsOut{allocator, (size_t)count};
+
+        (*this)(zip(range(keysIn, keysIn + count), ksIn), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
+        (*this)(zip(range(valsIn, valsIn + count), vsIn), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
+
+        cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, ksIn.data(), ksOut.data(), vsIn.data(),
+                                        vsOut.data(), count, sbit, ebit, stream);
         // context.syncStreamSpare(streamid, loc);
         void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
 #  if 0
         void *d_tmp;
         cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
 #  endif
-        cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, keysIn.operator->(),
-                                        keysOut.operator->(), valsIn.operator->(),
-                                        valsOut.operator->(), count, sbit, ebit, stream);
+        cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, ksIn.data(), ksOut.data(), vsIn.data(),
+                                        vsOut.data(), count, sbit, ebit, stream);
         // context.syncStreamSpare(streamid, loc);
         // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
         context.streamMemFree(d_tmp, stream, loc);
+
+        (*this)(zip(ksOut, range(keysOut, keysOut + count)), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
+        (*this)(zip(vsOut, range(valsOut, valsOut + count)), zs::make_tuple(),
+                _zs_policy_assign_operator{}, loc);
 #endif
         if (this->shouldProfile()) context.tock(timer, loc);
       }
@@ -651,6 +826,8 @@ namespace zs {
     template <class InputIt, class OutputIt>
     void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
                          OutputIt &&d_first, int sbit, int ebit, const source_location &loc) const {
+      using KeyIterT = remove_cvref_t<InputIt>;
+      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
       auto &context = Cuda::context(procid);
       context.setContext();
       if (this->shouldWait())
@@ -667,35 +844,38 @@ namespace zs {
       thrust::sort(thrust::cuda::par.on(stream), thrust::device_pointer_cast(d_first.operator->()),
                    thrust::device_pointer_cast(d_first.operator->() + dist));
 #else
-      std::size_t temp_bytes = 0;
-      cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, first.operator->(), d_first.operator->(),
-                                     dist, sbit, ebit, stream);
+      auto allocator = get_temporary_memory_source(*this);
+      Vector<KeyT> ksIn{allocator, (size_t)dist}, ksOut{allocator, (size_t)dist};
+      (*this)(zip(range(first, last), ksIn), zs::make_tuple(), _zs_policy_assign_operator{}, loc);
+
+      size_t temp_bytes = 0;
+      cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, ksIn.data(), ksOut.data(), dist, sbit,
+                                     ebit, stream);
       void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, first.operator->(), d_first.operator->(),
-                                     dist, sbit, ebit, stream);
+      cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, ksIn.data(), ksOut.data(), dist, sbit, ebit,
+                                     stream);
       context.streamMemFree(d_tmp, stream, loc);
+
+      (*this)(zip(ksOut, range(d_first, d_first + dist)), zs::make_tuple(),
+              _zs_policy_assign_operator{}, loc);
 #endif
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
       context.recordEventSpare(streamid, loc);
     }
-    template <class InputIt, class OutputIt> void radix_sort(
-        InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-        int ebit
-        = sizeof(typename std::iterator_traits<std::remove_reference_t<InputIt>>::value_type) * 8,
-        const source_location &loc = source_location::current()) const {
-      static_assert(
-          is_same_v<
-              typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category,
-              typename std::iterator_traits<std::remove_reference_t<OutputIt>>::iterator_category>,
-          "Input Iterator and Output Iterator should be from the same category");
-      static_assert(
-          is_same_v<typename std::iterator_traits<std::remove_reference_t<InputIt>>::pointer,
-                    typename std::iterator_traits<std::remove_reference_t<OutputIt>>::pointer>,
-          "Input iterator pointer different from output iterator\'s");
-      radix_sort_impl(
-          typename std::iterator_traits<std::remove_reference_t<InputIt>>::iterator_category{},
-          FWD(first), FWD(last), FWD(d_first), sbit, ebit, loc);
+    template <class InputIt, class OutputIt>
+    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
+                    int ebit
+                    = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type)
+                      * 8,
+                    const source_location &loc = source_location::current()) const {
+      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
+                    "Input Iterator and Output Iterator should both be random access iterators");
+      static_assert(is_same_v<typename std::iterator_traits<remove_reference_t<InputIt>>::pointer,
+                              typename std::iterator_traits<remove_reference_t<OutputIt>>::pointer>,
+                    "Input iterator pointer different from output iterator\'s");
+      radix_sort_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), sbit,
+                      ebit, loc);
     }
 
     constexpr ProcID getProcid() const noexcept { return procid; }
@@ -705,22 +885,23 @@ namespace zs {
     }
     decltype(auto) context() { return Cuda::context(getProcid()); }
     decltype(auto) context() const { return Cuda::context(getProcid()); }
+    void *getContext() const { return context().getContext(); }
 
     constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
     constexpr StreamID getIncomingStreamid() const noexcept { return incomingStreamid; }
 
-    constexpr std::size_t getShmemSize() const noexcept { return shmemBytes; }
+    constexpr size_t getShmemSize() const noexcept { return shmemBytes; }
 
   protected:
     // bool do_launch(const ParallelTask &) const noexcept;
     friend struct ExecutionPolicyInterface<CudaExecutionPolicy>;
     // template <auto flagbit> friend struct CudaLibHandle<flagbit>;
 
-    // std::size_t blockGranularity{128};
+    // size_t blockGranularity{128};
     StreamID incomingStreamid{-1};
-    StreamID streamid{-1};      ///< @note use CUDA default stream by default
-    std::size_t shmemBytes{0};  ///< amount of shared memory passed
-    int blockSize{0};           ///< 0 to enable auto configure
+    StreamID streamid{-1};  ///< @note use CUDA default stream by default
+    size_t shmemBytes{0};   ///< amount of shared memory passed
+    int blockSize{0};       ///< 0 to enable auto configure
     ProcID incomingProc{0};
     ProcID procid{0};  ///< 0-th gpu
   };
@@ -730,18 +911,5 @@ namespace zs {
 
   constexpr CudaExecutionPolicy cuda_exec() noexcept { return CudaExecutionPolicy{}; }
   constexpr CudaExecutionPolicy par_exec(cuda_exec_tag) noexcept { return CudaExecutionPolicy{}; }
-
-  inline ZPC_API ZSPmrAllocator<> get_temporary_memory_source(CudaExecutionPolicy &pol) {
-    ZSPmrAllocator<> ret{};
-    ret.res = std::make_unique<temporary_memory_resource<device_mem_tag>>(&pol.context(),
-                                                                          pol.getStream());
-    ret.location = MemoryLocation{memsrc_e::device, pol.getProcid()};
-    ret.cloner = [stream = pol.getStream(), context = &pol.context()]() -> std::unique_ptr<mr_t> {
-      std::unique_ptr<mr_t> ret{};
-      ret = std::make_unique<temporary_memory_resource<device_mem_tag>>(context, stream);
-      return ret;
-    };
-    return ret;
-  }
 
 }  // namespace zs

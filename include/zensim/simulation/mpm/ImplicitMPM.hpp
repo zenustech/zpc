@@ -9,7 +9,7 @@
 namespace zs {
 
   struct ImplicitMPMSystem {
-    ImplicitMPMSystem(MPMSimulator& simulator, float dt, std::size_t partI)
+    ImplicitMPMSystem(MPMSimulator& simulator, float dt, size_t partI)
         : simulator{simulator}, partI{partI}, dt{dt} {}
 
     template <typename DofA, typename DofB, typename DofC, typename DofD>
@@ -31,7 +31,7 @@ namespace zs {
     };
     template <class ExecutionPolicy, typename In, typename Out>
     void multiply(ExecutionPolicy&& policy, In&& in, Out&& out) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       constexpr auto execTag = wrapv<space>{};
       auto mh = simulator.memDsts[partI];
       for (auto&& [modelId, objId] : simulator.groups[partI]) {
@@ -41,7 +41,7 @@ namespace zs {
         match(
             [&, this, did = mh.devid()](
                 auto& constitutiveModel, auto& partition, auto& obj,
-                auto& grids) -> std::enable_if_t<RM_CVREF_T(obj)::dim == RM_CVREF_T(partition)::dim
+                auto& grids) -> enable_if_type<RM_CVREF_T(obj)::dim == RM_CVREF_T(partition)::dim
                                                  && RM_CVREF_T(obj)::dim == RM_CVREF_T(grids)::dim
                                                  && RM_CVREF_T(obj)::dim == RM_CVREF_T(in)::dim> {
               policy(range(out.numEntries()), DofFill{out, 0});
@@ -96,24 +96,24 @@ namespace zs {
 
     template <class ExecutionPolicy, typename InOut>
     void project(ExecutionPolicy&& policy, InOut&& inout) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       auto mh = simulator.memDsts[partI];
       assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
       for (auto& boundary : simulator.boundaries) {
         match(
             [&, did = mh.devid()](auto& collider, auto& partition, auto& grids)
-                -> std::enable_if_t<RM_CVREF_T(collider)::dim == RM_CVREF_T(partition)::dim
+                -> enable_if_type<RM_CVREF_T(collider)::dim == RM_CVREF_T(partition)::dim
                                     && RM_CVREF_T(collider)::dim == RM_CVREF_T(grids)::dim
                                     && RM_CVREF_T(collider)::dim == RM_CVREF_T(inout)::dim> {
               // fmt::print("[gpu {}]\tprojecting {} grid blocks, dof dim: {}\n", (int)did,
               //            partition.size(), RM_CVREF_T(inout)::dim);
               if constexpr (is_levelset_boundary<RM_CVREF_T(collider)>::value)
-                policy(range((std::size_t)inout.numEntries()
+                policy(range((size_t)inout.numEntries()
                              / remove_cvref_t<decltype(collider)>::dim),
                        Projector{Collider{proxy<space>(collider.levelset), collider.type},
                                  proxy<space>(partition), proxy<space>(grids.grid()), inout});
               else {
-                policy(range((std::size_t)inout.numEntries()
+                policy(range((size_t)inout.numEntries()
                              / remove_cvref_t<decltype(collider)>::dim),
                        Projector{collider, proxy<space>(partition), proxy<space>(grids.grid()),
                                  inout});
@@ -138,12 +138,12 @@ namespace zs {
 
     template <class ExecutionPolicy, typename In, typename Out>
     void precondition(ExecutionPolicy&& policy, In&& in, Out&& out) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       auto mh = simulator.memDsts[partI];
       assert_with_msg(mh.devid() >= 0, "[MPMSimulator] should not put data on host");
       match(
           [&, did = mh.devid()](auto& partition, auto& grids)
-              -> std::enable_if_t<RM_CVREF_T(partition)::dim == RM_CVREF_T(grids)::dim> {
+              -> enable_if_type<RM_CVREF_T(partition)::dim == RM_CVREF_T(grids)::dim> {
             fmt::print("[gpu {}]\tpreconditioning {} grid blocks\n", (int)did, partition.size());
             auto gridm = dof_view<space, 1>(grids.grid(), "m", 0);
             policy(range(out.numEntries()), DivPernodeMass{in, gridm, out});
@@ -152,7 +152,7 @@ namespace zs {
     }
 
     MPMSimulator& simulator;
-    std::size_t partI;
+    size_t partI;
     float dt;
   };
 

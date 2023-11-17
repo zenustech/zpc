@@ -8,7 +8,7 @@ namespace zs {
     using base_t = IsotropicConstitutiveModelInterface<FixedCorotated<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type mu, lam;
 
@@ -19,14 +19,14 @@ namespace zs {
 
     // do_psi_sigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr typename VecT::value_type do_psi_sigma(const VecInterface<VecT>& S) const noexcept {
       auto S_sum_m1 = (S.prod() - (value_type)1);
       return mu * (S - 1).l2NormSqr() + (typename VecT::value_type)0.5 * lam * S_sum_m1 * S_sum_m1;
     }
     // do_dpsi_dsigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -46,7 +46,7 @@ namespace zs {
     }
     // do_d2psi_dsigma2
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -83,13 +83,13 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1,
                                            VecT::template range_t<0>::value == 2
                                                || VecT::template range_t<0>::value == 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
       using RetT = typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_seq<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
+          integer_sequence<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
       RetT coeffs{};
       if constexpr (dim == 2)
         coeffs[0] = mu - (value_type)0.5 * lam * (S.prod() - (value_type)1);

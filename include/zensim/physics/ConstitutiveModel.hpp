@@ -50,27 +50,27 @@ namespace zs {
     using model_type = Model;
     template <typename VecT> using vec_type = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, VecT::template range_t<0>::value>>;
+        integer_sequence<typename VecT::index_type, VecT::template range_t<0>::value>>;
     template <typename VecT> using mat_type = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, VecT::template range_t<0>::value,
+        integer_sequence<typename VecT::index_type, VecT::template range_t<0>::value,
                     VecT::template range_t<0>::value>>;
 
     // psi_sigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) psi_sigma(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_psi_sigma(S);
     }
     // dpsi_dsigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_dpsi_dsigma(S);
     }
     // d2psi_dsigma2
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_d2psi_dsigma2(S);
     }
@@ -78,7 +78,7 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1,
                                            VecT::template range_t<0>::value == 2
                                                || VecT::template range_t<0>::value == 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       return static_cast<const Model*>(this)->do_Bij_neg_coeff(S);
     }
@@ -100,7 +100,7 @@ namespace zs {
     constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>&) const noexcept {
       using RetT = typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_seq<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
+          integer_sequence<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
       return RetT::zeros();
     }
 
@@ -108,7 +108,7 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto psi(const VecInterface<VecT>& F) const noexcept {
       auto [U, S, V] = math::svd(F);
       return static_cast<const Model*>(this)->psi_sigma(S);
@@ -117,7 +117,7 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto first_piola(const VecInterface<VecT>& F) const noexcept {
       auto [U, S, V] = math::svd(F);
       auto dE_dsigma = static_cast<const Model*>(this)->dpsi_dsigma(S);
@@ -127,7 +127,7 @@ namespace zs {
     template <typename VecT, bool project_SPD = false,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto first_piola_derivative(const VecInterface<VecT>& F,
                                           wrapv<project_SPD> = {}) const noexcept {
       using T = typename VecT::value_type;
@@ -140,7 +140,7 @@ namespace zs {
       auto d2E_dsigma2 = static_cast<const Model*>(this)->d2psi_dsigma2(S);
       if constexpr (project_SPD) make_pd(d2E_dsigma2);
       // Bij
-      using MatB = typename VecT::template variant_vec<T, integer_seq<Ti, 2, 2>>;
+      using MatB = typename VecT::template variant_vec<T, integer_sequence<Ti, 2, 2>>;
       auto ComputeBij = [&dE_dsigma, &S = S,
                          Bij_left_coeffs = Bij_neg_coeff(S)](int i) -> MatB {  // i -> i, i + 1
         constexpr int dim = VecT::template range_t<0>::value;
@@ -151,10 +151,10 @@ namespace zs {
         return MatB{leftCoeff + rightCoeff, leftCoeff - rightCoeff, leftCoeff - rightCoeff,
                     leftCoeff + rightCoeff};
       };
-      using MatH = typename VecT::template variant_vec<T, integer_seq<Ti, dim * dim, dim * dim>>;
+      using MatH = typename VecT::template variant_vec<T, integer_sequence<Ti, dim * dim, dim * dim>>;
       MatH dPdF{};
 
-      if constexpr (is_same_v<typename VecT::dims, sindex_seq<3, 3>>) {
+      if constexpr (is_same_v<typename VecT::dims, index_sequence<3, 3>>) {
         auto B0 = ComputeBij(0) /*B12*/, B1 = ComputeBij(1) /*B23*/, B2 = ComputeBij(2) /*B13*/;
         if constexpr (project_SPD) {
           make_pd(B0);
@@ -203,7 +203,7 @@ namespace zs {
                   + B2(0, 0) * U(i, 2) * V(j, 0) * U(r, 2) * V(s, 0);
           }
         }
-      } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<2, 2>>) {
+      } else if constexpr (is_same_v<typename VecT::dims, index_sequence<2, 2>>) {
         auto B = ComputeBij(0);
         if constexpr (project_SPD) make_pd(B);
         for (int ji = 0; ji != dim * dim; ++ji) {
@@ -223,7 +223,7 @@ namespace zs {
                   + d2E_dsigma2(1, 1) * U(i, 1) * V(j, 1) * U(r, 1) * V(s, 1);
           }
         }
-      } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<1, 1>>) {
+      } else if constexpr (is_same_v<typename VecT::dims, index_sequence<1, 1>>) {
         dPdF(0, 0) = d2E_dsigma2(0, 0);  // U = V = [1]
       }
       return dPdF;
@@ -238,17 +238,17 @@ namespace zs {
 
     template <typename VecT> using dim_t = typename VecT::template range_t<0>;
     template <typename VecT> using vec_type = typename VecT::template variant_vec<
-        typename VecT::value_type, integer_seq<typename VecT::index_type, dim_t<VecT>::value>>;
+        typename VecT::value_type, integer_sequence<typename VecT::index_type, dim_t<VecT>::value>>;
     template <typename VecT> using mat_type = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, dim_t<VecT>::value, dim_t<VecT>::value>>;
+        integer_sequence<typename VecT::index_type, dim_t<VecT>::value, dim_t<VecT>::value>>;
 
     template <typename VecT> using gradient_t = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, dim_t<VecT>::value * dim_t<VecT>::value>>;
+        integer_sequence<typename VecT::index_type, dim_t<VecT>::value * dim_t<VecT>::value>>;
     template <typename VecT> using hessian_t = typename VecT::template variant_vec<
         typename VecT::value_type,
-        integer_seq<typename VecT::index_type, dim_t<VecT>::value * dim_t<VecT>::value,
+        integer_sequence<typename VecT::index_type, dim_t<VecT>::value * dim_t<VecT>::value,
                     dim_t<VecT>::value * dim_t<VecT>::value>>;
     template <typename VecT, int deriv_order = 0> using pack_t = conditional_t<
         deriv_order == 0, zs::tuple<typename VecT::value_type>,
@@ -264,7 +264,7 @@ namespace zs {
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
                             VecT::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto I_wrt_F(const VecInterface<VecT>& F, wrapv<project_SPD> = {}) const noexcept {
       constexpr auto dim = dim_t<VecT>::value;
       using ScalarT = typename VecT::value_type;
@@ -400,7 +400,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto I_wrt_F_a(const VecInterface<VecTM>& F,
                              const VecInterface<VecTV>& a) const noexcept {
       constexpr auto dim = dim_t<VecTM>::value;
@@ -456,21 +456,21 @@ namespace zs {
 
     // psi_I
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) psi_I(const VecInterface<VecT>& Is) const noexcept {
       return static_cast<const Model*>(this)->do_psi_I(Is);
     }
     // dpsi_dI
     template <int I, typename VecT,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) dpsi_dI(const VecInterface<VecT>& Is) const noexcept {
       return static_cast<const Model*>(this)->template do_dpsi_dI<I>(Is);
     }
     // d2psi_dI2 -> dim [dimxdim] matrices
     template <int I, int J = I, typename VecT,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value == 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) d2psi_dI2(const VecInterface<VecT>& Is) const noexcept {
       return static_cast<const Model*>(this)->template do_d2psi_dI2<I, J>(Is);
     }
@@ -499,10 +499,10 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto psi(const VecInterface<VecT>& F) const noexcept {
       typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3>>
+                                          integer_sequence<typename VecT::index_type, 3>>
           Is{};
       Is[0] = zs::get<0>(I_wrt_F<0, 0>(F));
       Is[1] = zs::get<0>(I_wrt_F<1, 0>(F));
@@ -513,11 +513,11 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto first_piola(const VecInterface<VecT>& F) const noexcept {
       // sum_i ((dPsi / dI_i) g_i)
       typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3>>
+                                          integer_sequence<typename VecT::index_type, 3>>
           Is{};
       gradient_t<VecT> gi[3]{};
       zs::tie(Is(0), gi[0]) = I_wrt_F<0, 1>(F);
@@ -530,7 +530,7 @@ namespace zs {
       constexpr auto dim = dim_t<VecT>::value;
       auto m
           = VecT::template variant_vec<typename VecT::value_type,
-                                       integer_seq<typename VecT::index_type, dim, dim>>::zeros();
+                                       integer_sequence<typename VecT::index_type, dim, dim>>::zeros();
       // auto m = vec<typename VecT::value_type, dim, dim>::zeros();
       // gradient convention order: column-major
       for (typename VecT::index_type j = 0, no = 0; j != dim; ++j)
@@ -541,12 +541,12 @@ namespace zs {
     template <typename VecT, bool project_SPD = false,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto first_piola_derivative(const VecInterface<VecT>& F,
                                           wrapv<project_SPD> flag = {}) const noexcept {
       // sum_i ((d2Psi / dI_i2) g_i g_i^T + ((dPsi / dI_i) H_i))
       typename VecT::template variant_vec<typename VecT::value_type,
-                                          integer_seq<typename VecT::index_type, 3>>
+                                          integer_sequence<typename VecT::index_type, 3>>
           Is{};
       if constexpr (project_SPD) {
         return static_cast<const Model*>(this)->template do_first_piola_derivative_spd<VecT>(F);
@@ -571,7 +571,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto psi(const VecInterface<VecTM>& F, const VecInterface<VecTV>& a) const noexcept {
       return static_cast<const Model*>(this)->do_psi(F, a);
     }
@@ -585,7 +585,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto first_piola(const VecInterface<VecTM>& F,
                                const VecInterface<VecTV>& a) const noexcept {
       return static_cast<const Model*>(this)->do_first_piola(F, a);
@@ -594,7 +594,7 @@ namespace zs {
     constexpr auto do_first_piola(const VecInterface<VecTM>&,
                                   const VecInterface<VecTV>&) const noexcept {
       return typename VecTM::template variant_vec<
-          typename VecTM::value_type, integer_seq<typename VecTM::index_type, dim_t<VecTM>::value,
+          typename VecTM::value_type, integer_sequence<typename VecTM::index_type, dim_t<VecTM>::value,
                                                   dim_t<VecTM>::value>>::zeros();
     }
     // first piola derivative
@@ -603,7 +603,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto first_piola_derivative(const VecInterface<VecTM>& F,
                                           const VecInterface<VecTV>& a) const noexcept {
       return static_cast<const Model*>(this)->do_first_piola_derivative(F, a);
@@ -621,7 +621,7 @@ namespace zs {
     // project_sigma
     template <typename VecT, typename... Args,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) project_sigma(VecInterface<VecT>& S, Args&&... args) const noexcept {
       return static_cast<const Model*>(this)->do_project_sigma(S, FWD(args)...);
     }
@@ -629,7 +629,7 @@ namespace zs {
     template <typename VecT, typename... Args,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr decltype(auto) project_strain(VecInterface<VecT>& F, Args&&... args) const noexcept {
       return static_cast<const Model*>(this)->do_project_strain(F, FWD(args)...);
     }
@@ -666,7 +666,7 @@ namespace zs {
     constexpr int bdimp1 = bdim + 1;
     using RetT =
         typename VecTM::template variant_vec<value_type,
-                                             integer_seq<index_type, dim * bdim, dim * bdimp1>>;
+                                             integer_sequence<index_type, dim * bdim, dim * bdimp1>>;
 
     vec<value_type, bdim> t{};  // negative col-sum
     for (int d = 0; d != bdim; ++d) {
@@ -689,7 +689,7 @@ namespace zs {
   constexpr auto dFAdF(const VecInterface<VecTM>& A) {
     using Mat9 =
         typename VecTM::template variant_vec<typename VecTM::value_type,
-                                             integer_seq<typename VecTM::index_type, 9, 9>>;
+                                             integer_sequence<typename VecTM::index_type, 9, 9>>;
     Mat9 M = Mat9::zeros();
     M(0, 0) = M(1, 1) = M(2, 2) = A(0, 0);
     M(3, 0) = M(4, 1) = M(5, 2) = A(0, 1);
@@ -711,7 +711,7 @@ namespace zs {
   constexpr auto dFAdF(const VecInterface<VecTM>& A) {
     using Mat6 =
         typename VecTM::template variant_vec<typename VecTM::value_type,
-                                             integer_seq<typename VecTM::index_type, 6, 6>>;
+                                             integer_sequence<typename VecTM::index_type, 6, 6>>;
     Mat6 M = Mat6::zeros();
     M(0, 0) = M(1, 1) = M(2, 2) = A(0, 0);
     M(3, 0) = M(4, 1) = M(5, 2) = A(0, 1);

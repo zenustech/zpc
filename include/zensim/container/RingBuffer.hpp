@@ -19,7 +19,7 @@ namespace zs {
     constexpr void push_back(T &&element) noexcept {
       incTail();
       if (_size > Size) incHead();
-      back() = std::move(element);
+      back() = zs::move(element);
     }
     constexpr void pop() { decTail(); }
 

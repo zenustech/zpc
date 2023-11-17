@@ -1,5 +1,5 @@
 #pragma once
-#include "BoundingVolumeInterface.hpp"
+#include "zensim/geometry/BoundingVolumeInterface.hpp"
 
 namespace zs {
 
@@ -25,7 +25,7 @@ namespace zs {
     template <typename VecT, typename LS = Derived,
               enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>
     constexpr auto do_getSignedDistance(const VecInterface<VecT> &x) const noexcept {
-      return limits<typename Derived::value_type>::max();
+      return detail::deduce_numeric_max<typename Derived::value_type>();
     }
     template <typename VecT, typename LS = Derived,
               enable_if_all<VecT::dim == 1, VecT::extent == LS::dim> = 0>

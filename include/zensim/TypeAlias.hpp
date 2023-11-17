@@ -1,30 +1,29 @@
 #pragma once
-#include <cstdint>
-#include <type_traits>
-
-#include "Platform.hpp"
+#include "zensim/Platform.hpp"
+#include "zensim/ZpcMeta.hpp"
 
 namespace zs {
 
-  using uint = unsigned int;
-  // signed
-  using i8 = std::conditional_t<sizeof(char) == 1, char, int8_t>;
-  using i16 = std::conditional_t<sizeof(short) == 2, short, int16_t>;
-  using i32 = std::conditional_t<sizeof(int) == 4, int, int32_t>;
-  using i64 = std::conditional_t<sizeof(long long int) == 8, long long int,
-                                 std::conditional_t<sizeof(long int) == 8, long int, int64_t>>;
-  // unsigned
-  using u8 = std::conditional_t<sizeof(unsigned char) == 1, unsigned char, uint8_t>;
-  using u16 = std::conditional_t<sizeof(unsigned short) == 2, unsigned short, uint16_t>;
-  using u32 = std::conditional_t<sizeof(unsigned int) == 4, unsigned int, uint32_t>;
-  using u64 = std::conditional_t<
-      sizeof(unsigned long long int) == 8, unsigned long long int,
-      std::conditional_t<sizeof(unsigned long int) == 8, unsigned long int, uint64_t>>;
-  // floating points
-  using f32 = float;
-  using f64 = double;
-
-  using sint_t = std::make_signed_t<std::size_t>;
+#define ZS_FLT_RADIX 2
+#define ZS_FLT_MANT_DIG 24
+#define ZS_DBL_MANT_DIG 53
+#define ZS_FLT_DIG 6
+#define ZS_DBL_DIG 15
+#define ZS_FLT_MIN_EXP -125
+#define ZS_DBL_MIN_EXP -1021
+#define ZS_FLT_MIN_10_EXP -37
+#define ZS_DBL_MIN_10_EXP -307
+#define ZS_FLT_MAX_EXP 128
+#define ZS_DBL_MAX_EXP 1024
+#define ZS_FLT_MAX_10_EXP 38
+#define ZS_DBL_MAX_10_EXP 308
+#define ZS_FLT_MAX 3.4028234e38f
+#define ZS_DBL_MAX 1.7976931348623157e308
+#define ZS_FLT_EPSILON 1.19209289e-7f
+#define ZS_DBL_EPSILON 2.220440492503130e-16
+#define ZS_FLT_MIN 1.1754943e-38f
+#define ZS_DBL_MIN 2.2250738585072013e-308
+#define ZS_FLT_ROUNDS 1
 
   union dat32 {
     f32 f;
@@ -68,9 +67,8 @@ namespace zs {
 
   // kokkos::ObservingRawPtr<T>, OptionalRef<T>
   // vsg::ref_ptr<T>
-  template <typename T> using RefPtr = ::std::decay_t<T> *;  ///< non-owning reference
-  template <typename T> using ConstRefPtr
-      = const ::std::decay_t<T> *;  ///< non-owning const reference
+  template <typename T> using RefPtr = decay_t<T> *;             ///< non-owning reference
+  template <typename T> using ConstRefPtr = const decay_t<T> *;  ///< non-owning const reference
   // template <typename T> using Holder = ::std::unique_ptr<T>;
   // template <typename T> using SharedHolder = ::std::shared_ptr<T>;
 
@@ -89,9 +87,6 @@ namespace zs {
 }  // namespace zs
 
 /// lambda capture
-/// https://vittorioromeo.info/index/blog/capturing_perfectly_forwarded_objects_in_lambdas.html
-#define FWD(...) ::std::forward<decltype(__VA_ARGS__)>(__VA_ARGS__)
-#define RM_CVREF_T(...) ::std::remove_cv_t<std::remove_reference_t<decltype(__VA_ARGS__)>>
 
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
 #  if defined(ZS_LAMBDA)

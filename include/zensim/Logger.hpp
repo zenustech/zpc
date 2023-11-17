@@ -3,7 +3,6 @@
 
 #include "Platform.hpp"
 #include "plog/Initializers/RollingFileInitializer.h"
-#include "zensim/Singleton.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/zpc_tpls/plog/Log.h"
 
@@ -12,13 +11,16 @@ namespace zs {
   // Reference:
   // https://blog.kowalczyk.info/article/j/guide-to-predefined-macros-in-c-compilers-gcc-clang-msvc-etc..html
 
-  struct Logger : Singleton<Logger> {
-    Logger() { plog::init(plog::info, "zensim_logs.log"); }
+  struct Logger {
     void log(const int level, const char* fileName, const char* funcName, int line,
              std::string_view msg) {
       PLOG(static_cast<plog::Severity>(level))
           << fmt::format("{}:{}{} {}\n", fileName, funcName, line, msg);
     }
+    ZPC_BACKEND_API static Logger& instance();
+
+  private:
+    Logger() { plog::init(plog::info, "zensim_logs.log"); }
   };
 
   ///

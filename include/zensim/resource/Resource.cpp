@@ -51,8 +51,8 @@ namespace zs {
     deinitialize_backend(exec_seq);
 #endif
   }
-  void Resource::record(mem_tags tag, void *ptr, std::string_view name, std::size_t size,
-                        std::size_t alignment) {
+  void Resource::record(mem_tags tag, void *ptr, std::string_view name, size_t size,
+                        size_t alignment) {
     g_resource_records.set(ptr, AllocationRecord{tag, size, alignment, std::string(name)});
   }
   void Resource::erase(void *ptr) { g_resource_records.erase(ptr); }

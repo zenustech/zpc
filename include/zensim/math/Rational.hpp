@@ -1,4 +1,7 @@
 #pragma once
+#include <iostream>
+#include <string>
+
 #include "Vec.h"
 
 namespace zs {
@@ -6,14 +9,16 @@ namespace zs {
   /// ref:
   /// https://stackoverflow.com/questions/21211291/the-most-accurate-way-to-calculate-numerator-and-denominator-of-a-double
   template <typename T, typename Ti,
-            zs::enable_if_all<std::is_floating_point_v<T>, std::is_integral_v<Ti>> = 0>
+            zs::enable_if_all<is_floating_point_v<T>, is_integral_v<Ti>> = 0>
   constexpr void to_rational(T val, Ti &num, Ti &den) {
     if (zs::isnan(val)) {
       return;
     }
+#if 0
     if (zs::isinf(val)) {
       return;
     }
+#endif
 
     T d{};
 
@@ -41,12 +46,13 @@ namespace zs {
     // assert(exponent <= 0);
 
     // significand is now a whole number
-    if (significand < limits<Ti>::max() && significand > limits<Ti>::lowest())
+    if (significand < detail::deduce_numeric_max<Ti>()
+        && significand > detail::deduce_numeric_lowest<Ti>())
       num = (Ti)significand;
     else
       printf("underlying integer not big enough!");
     if (auto v = (1.0 / zs::ldexp((T)1.0, exponent));
-        v < limits<Ti>::max() && v > limits<Ti>::lowest())
+        v < detail::deduce_numeric_max<Ti>() && v > detail::deduce_numeric_lowest<Ti>())
       den = (Ti)v;
     else
       printf("underlying integer not big enough!");
@@ -82,7 +88,7 @@ namespace zs {
     constexpr rational() noexcept : num{0}, den{1} {}
     constexpr rational(int_type n) noexcept : num{n}, den{1} {}
     constexpr rational(int_type n, int_type d) noexcept : num{n}, den{d} { canonicalize(); }
-    template <typename T, enable_if_t<std::is_floating_point_v<T>> = 0>
+    template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr rational(T v) noexcept {
       to_rational(v, num, den);
       if (den < 0) {
@@ -750,7 +756,7 @@ namespace zs {
 
     int refine = 0;
 
-    toi = limits<double>::infinity();
+    toi = detail::deduce_numeric_infinity<double>();
     NumCCD TOI(1, 0);
 
     bool collision = false;
@@ -853,7 +859,7 @@ namespace zs {
     int refine = 0;
     double impact_ratio = 1;
 
-    toi = zs::limits<double>::infinity();  // set toi as infinate
+    toi = detail::deduce_numeric_infinity<double>();  // set toi as infinate
     // temp_toi is to catch the toi of each level
     double temp_toi = toi;
     // set TOI to 4. this is to record the impact time of this level
@@ -1062,7 +1068,7 @@ namespace zs {
                              const double ms_in, double &toi, const double tolerance_in,
                              const double t_max_in, const int max_itr, double &output_tolerance,
                              bool &earlyTerminate, bool no_zero_toi = true) {
-    constexpr int MAX_NO_ZERO_TOI_ITER = limits<int>::max();
+    constexpr int MAX_NO_ZERO_TOI_ITER = detail::deduce_numeric_max<int>();
     // unsigned so can be larger than MAX_NO_ZERO_TOI_ITER
     unsigned int no_zero_toi_iter = 0;
 

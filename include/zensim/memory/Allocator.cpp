@@ -42,7 +42,7 @@ namespace zs {
     if (_reservedSpace) munmap(_addr, _reservedSpace);
   }
 
-  bool stack_virtual_memory_resource<host_mem_tag>::reserve(std::size_t desiredSpace) {
+  bool stack_virtual_memory_resource<host_mem_tag>::reserve(size_t desiredSpace) {
     if (desiredSpace <= _reservedSpace) return true;
 
     auto newSpace = (desiredSpace + _granularity - 1) / _granularity * _granularity;
@@ -60,8 +60,8 @@ namespace zs {
     return true;
   }
 
-  void *stack_virtual_memory_resource<host_mem_tag>::do_allocate(std::size_t bytes,
-                                                                 std::size_t alignment) {
+  void *stack_virtual_memory_resource<host_mem_tag>::do_allocate(size_t bytes,
+                                                                 size_t alignment) {
     _offset = (_offset + alignment - 1) / alignment * alignment;
 
     if (!reserve(_offset + bytes)) return nullptr;
@@ -82,8 +82,8 @@ namespace zs {
     return nullptr;
   }
 
-  void stack_virtual_memory_resource<host_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
-                                                                  std::size_t alignment) {
+  void stack_virtual_memory_resource<host_mem_tag>::do_deallocate(void *ptr, size_t bytes,
+                                                                  size_t alignment) {
     auto split = ((size_t)ptr + _granularity - 1) / _granularity * _granularity;
     if (split < (size_t)_addr) split = (size_t)_addr;
     bytes = (split - (size_t)_addr);
@@ -116,8 +116,8 @@ namespace zs {
     munmap(_addr, _reservedSpace);
   }
 
-  bool arena_virtual_memory_resource<host_mem_tag>::do_check_residency(std::size_t offset,
-                                                                       std::size_t bytes) const {
+  bool arena_virtual_memory_resource<host_mem_tag>::do_check_residency(size_t offset,
+                                                                       size_t bytes) const {
     size_t st = round_down(offset, s_chunk_granularity);
     if (st >= _reservedSpace) return false;
     offset += bytes;
@@ -126,8 +126,7 @@ namespace zs {
       if ((_activeChunkMasks[st >> 6] & ((u64)1 << (st & 63))) == 0) return false;
     return true;
   }
-  bool arena_virtual_memory_resource<host_mem_tag>::do_commit(std::size_t offset,
-                                                              std::size_t bytes) {
+  bool arena_virtual_memory_resource<host_mem_tag>::do_commit(size_t offset, size_t bytes) {
     size_t st = round_down(offset, s_chunk_granularity);
     if (st >= _reservedSpace) return false;
     offset += bytes;
@@ -141,8 +140,7 @@ namespace zs {
     return false;
   }
 
-  bool arena_virtual_memory_resource<host_mem_tag>::do_evict(std::size_t offset,
-                                                             std::size_t bytes) {
+  bool arena_virtual_memory_resource<host_mem_tag>::do_evict(size_t offset, size_t bytes) {
     size_t st = round_up(offset, s_chunk_granularity);
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_down(offset, s_chunk_granularity) : _reservedSpace;
@@ -157,7 +155,7 @@ namespace zs {
 #endif  // end UNIX
 
   stack_virtual_memory_resource<host_mem_tag>::stack_virtual_memory_resource(ProcID did,
-                                                                             std::size_t size)
+                                                                             size_t size)
       : _allocatedSpace{0}, _did{did} {
     if (did >= 0)
       throw std::runtime_error(
@@ -200,14 +198,13 @@ namespace zs {
     }
   }
 
-  bool stack_virtual_memory_resource<host_mem_tag>::do_check_residency(std::size_t offset,
-                                                                       std::size_t bytes) const {
+  bool stack_virtual_memory_resource<host_mem_tag>::do_check_residency(size_t offset,
+                                                                       size_t bytes) const {
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
     return ed <= _allocatedSpace;
   }
-  bool stack_virtual_memory_resource<host_mem_tag>::do_commit(std::size_t offset,
-                                                              std::size_t bytes) {
+  bool stack_virtual_memory_resource<host_mem_tag>::do_commit(size_t offset, size_t bytes) {
     offset += bytes;
     size_t ed = offset <= _reservedSpace ? round_up(offset, s_chunk_granularity) : _reservedSpace;
     if (ed < _allocatedSpace) return true;
@@ -222,8 +219,7 @@ namespace zs {
     return true;
   }
 
-  bool stack_virtual_memory_resource<host_mem_tag>::do_evict(std::size_t offset,
-                                                             std::size_t bytes) {
+  bool stack_virtual_memory_resource<host_mem_tag>::do_evict(size_t offset, size_t bytes) {
     ZS_WARN_IF(round_down(offset + bytes, s_chunk_granularity) < _allocatedSpace,
                "will evict more bytes (till the end) than asking");
     size_t st = round_up(offset, s_chunk_granularity);
@@ -242,18 +238,16 @@ namespace zs {
     return true;
   }
 
-  void *stack_virtual_memory_resource<host_mem_tag>::do_allocate(std::size_t bytes,
-                                                                 std::size_t alignment) {
+  void *stack_virtual_memory_resource<host_mem_tag>::do_allocate(size_t bytes, size_t alignment) {
     return nullptr;
   }
 
-  void stack_virtual_memory_resource<host_mem_tag>::do_deallocate(void *ptr, std::size_t bytes,
-                                                                  std::size_t alignment) {}
-
+  void stack_virtual_memory_resource<host_mem_tag>::do_deallocate(void *ptr, size_t bytes,
+                                                                  size_t alignment) {}
 
   /// handle_resource
   handle_resource::handle_resource(mr_t *upstream) noexcept : _upstream{upstream} {}
-  handle_resource::handle_resource(std::size_t initSize, mr_t *upstream) noexcept
+  handle_resource::handle_resource(size_t initSize, mr_t *upstream) noexcept
       : _bufSize{initSize}, _upstream{upstream} {}
   handle_resource::handle_resource() noexcept
       : handle_resource{&raw_memory_resource<host_mem_tag>::instance()} {}
@@ -263,21 +257,21 @@ namespace zs {
                "deallocate {} bytes in handle_resource\n", _bufSize);
   }
 
-  void *handle_resource::do_allocate(std::size_t bytes, std::size_t alignment) {
+  void *handle_resource::do_allocate(size_t bytes, size_t alignment) {
     if (_handle == nullptr) {
       _handle = _head = (char *)(_upstream->allocate(_bufSize, alignment));
       _align = alignment;
       fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::dark_sea_green),
                  "initially allocate {} bytes in handle_resource\n", _bufSize);
     }
-    char *ret = _head + alignment - 1 - ((std::size_t)_head + alignment - 1) % alignment;
+    char *ret = _head + alignment - 1 - ((size_t)_head + alignment - 1) % alignment;
     _head = ret + bytes;
     if (_head < _handle + _bufSize) return ret;
 
     _upstream->deallocate(_handle, _bufSize, alignment);
 
     auto offset = ret - _handle;  ///< ret is offset
-    _bufSize = (std::size_t)(_head - _handle) << 1;
+    _bufSize = (size_t)(_head - _handle) << 1;
     _align = alignment;
     _handle = (char *)(_upstream->allocate(_bufSize, alignment));
     fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::dark_sea_green),
@@ -286,7 +280,7 @@ namespace zs {
     _head = ret + bytes;
     return ret;
   }
-  void handle_resource::do_deallocate(void *p, std::size_t bytes, std::size_t alignment) {
+  void handle_resource::do_deallocate(void *p, size_t bytes, size_t alignment) {
     if (p >= _head)
       throw std::bad_alloc{};
     else if (p < _handle)
@@ -298,26 +292,26 @@ namespace zs {
   }
 
   /// stack allocator
-  stack_allocator::stack_allocator(mr_t *mr, std::size_t totalMemBytes, std::size_t alignBytes)
+  stack_allocator::stack_allocator(mr_t *mr, size_t totalMemBytes, size_t alignBytes)
       : _align{alignBytes}, _mr{mr} {
     _data = _head = (char *)(_mr->allocate(totalMemBytes, _align));
     _tail = _head + totalMemBytes;  ///< not so sure about this
   };
   stack_allocator::~stack_allocator() {
-    _mr->deallocate((void *)_data, (std::size_t)(_tail - _data), _align);
+    _mr->deallocate((void *)_data, (size_t)(_tail - _data), _align);
   }
 
   /// from taichi
-  void *stack_allocator::allocate(std::size_t bytes) {
+  void *stack_allocator::allocate(size_t bytes) {
     /// first align head
-    char *ret = _head + _align - 1 - ((std::size_t)_head + _align - 1) % _align;
+    char *ret = _head + _align - 1 - ((size_t)_head + _align - 1) % _align;
     _head = ret + bytes;
     if (_head > _tail)
       throw std::bad_alloc{};
     else
       return ret;
   }
-  void stack_allocator::deallocate(void *p, std::size_t) {
+  void stack_allocator::deallocate(void *p, size_t) {
     if (p >= _head)
       throw std::bad_alloc{};
     else if (p < _data)

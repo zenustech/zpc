@@ -1,6 +1,6 @@
 #pragma once
 #if ZS_ENABLE_OPENMP
-#  include <omp.h>
+#  include "zensim/omp/Omp.h"
 #endif
 #include <algorithm>
 #include <fstream>
@@ -11,7 +11,7 @@
 // #include <taskflow/taskflow.hpp>
 #include "zensim/execution/Concurrency.h"
 #include "zensim/geometry/LevelSetInterface.h"
-#include "zensim/resource/Filesystem.hpp"
+#include "zensim/io/Filesystem.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
 namespace zs {
@@ -161,7 +161,7 @@ namespace zs {
             scaled_ref_box_length[0], scaled_ref_box_length[1], scaled_ref_box_length[2]);
         if (estimate < 100000) samples.reserve((i64)estimate);
 
-        is.read((char *)&tmp, sizeof(std::size_t));  ///< neglect this
+        is.read((char *)&tmp, sizeof(size_t));  ///< neglect this
         // Read from file as float
         std::vector<vec<float, dim>> data(cnt);
         is.read((char *)data.data(), cnt * sizeof(vec<float, dim>));
@@ -202,7 +202,7 @@ namespace zs {
           samples.insert(samples.end(), localSamples[id].begin(), localSamples[id].end());
         puts("done parallel sampling!");
 #else
-        for (std::size_t i = 0; i < cnt; ++i) {
+        for (size_t i = 0; i < cnt; ++i) {
           const auto &new_point_read = data[i];
           TV new_point, offset_center, offset_new_point;
           for (int d = 0; d < dim; ++d)

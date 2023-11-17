@@ -16,7 +16,7 @@ PER_CUDA_FUNCTION(canAccessPeer, cuDeviceCanAccessPeer, int *, int, int)
 PER_CUDA_FUNCTION(getDeviceP2PAttribute, cuDeviceGetP2PAttribute, int *, unsigned int, int, int)
 PER_CUDA_FUNCTION(enablePeerAccess, cuCtxEnablePeerAccess, void *, unsigned int)
 PER_CUDA_FUNCTION(disablePeerAccess, cuCtxDisablePeerAccess, void *)
-PER_CUDA_FUNCTION(memcpyPeerAsync, cuMemcpyPeerAsync, void *, void *, void *, void *, std::size_t,
+PER_CUDA_FUNCTION(memcpyPeerAsync, cuMemcpyPeerAsync, void *, void *, void *, void *, size_t,
                   void *)
 
 // Context Management

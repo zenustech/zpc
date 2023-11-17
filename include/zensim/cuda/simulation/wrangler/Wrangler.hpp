@@ -9,7 +9,7 @@
 namespace zs {
 
   struct AccessorAoSoA {
-    using size_type = std::size_t;
+    using size_type = size_t;
     AccessorAoSoA() = default;
     /// aos
     constexpr AccessorAoSoA(wrapv<layout_e::aos>, void* ptr, unsigned short bytes,
@@ -58,14 +58,14 @@ namespace zs {
 
 /// access
 #if 0
-    constexpr std::intptr_t operator()(unsigned short chnNo, std::size_t i) const noexcept {
+    constexpr std::intptr_t operator()(unsigned short chnNo, size_t i) const noexcept {
       return (std::intptr_t)((char*)base
                              + (((((i >> numTileBits) * chnCnt + chnNo) << numTileBits)
                                  | (i & tileMask))
                                 << numUnitSizeBits));
     }
 #endif
-    constexpr std::intptr_t operator()(std::size_t i) const noexcept {
+    constexpr std::intptr_t operator()(size_t i) const noexcept {
       return (std::intptr_t)((char*)base
                              + (((((i >> numTileBits) * chnCnt) << numTileBits) | (i & tileMask))
                                 << numUnitSizeBits));

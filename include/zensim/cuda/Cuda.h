@@ -1,14 +1,8 @@
 #pragma once
 
 /// kokkos/core/src/setup/Kokkos_Setup_Cuda.hpp
-#if !ZS_ENABLE_CUDA
+#if !defined(ZS_ENABLE_CUDA) || (defined(ZS_ENABLE_CUDA) && !ZS_ENABLE_CUDA)
 #  error "ZS_ENABLE_CUDA was not enabled, but Cuda.h was included anyway."
-#endif
-
-#if ZS_ENABLE_CUDA && !defined(__CUDACC__)
-#  error "ZS_ENABLE_CUDA defined but the compiler is not defining the __CUDACC__ macro as expected"
-// Some tooling environments will still function better if we do this here.
-#  define __CUDACC__
 #endif
 
 // #include <driver_types.h>
@@ -24,7 +18,6 @@
 
 #include "CudaLaunchConfig.cuh"
 #include "zensim/Reflection.h"
-#include "zensim/Singleton.h"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/types/Tuple.h"
@@ -34,9 +27,15 @@ namespace zs {
 
   std::string get_cuda_error_message(uint32_t err);
 
-  struct Cuda : Singleton<Cuda> {
-  public:
+  struct Cuda {
+  private:
     Cuda();
+
+  public:
+    ZPC_BACKEND_API static Cuda &instance() {
+      static Cuda s_instance{};
+      return s_instance;
+    }
     ~Cuda();
 
     /// kernel launching
@@ -50,13 +49,26 @@ namespace zs {
       Default = 32,
       Total = Default + 1
     };
+    /// @ref nvidia warp
+    class ContextGuard {
+    public:
+      // default policy for restoring contexts
+      explicit ContextGuard(void *context, bool restore = false,
+                            const source_location &loc = source_location::current());
+      ~ContextGuard();
+
+    private:
+      source_location loc;
+      void *prevContext;
+      bool needRestore;
+    };
 
     static auto &driver() noexcept { return instance(); }
     static auto &context(int devid) { return driver().contexts[devid]; }
     static auto alignment() noexcept { return driver().textureAlignment; }
     static auto device_count() noexcept { return driver().numTotalDevice; }
-    // static void init_constant_cache(void *ptr, std::size_t size);
-    // static void init_constant_cache(void *ptr, std::size_t size, void *stream);
+    // static void init_constant_cache(void *ptr, size_t size);
+    // static void init_constant_cache(void *ptr, size_t size, void *stream);
 
     /// error handling
     static u32 get_last_cuda_rt_error();
@@ -66,11 +78,10 @@ namespace zs {
     /// kernel launch
     static u32 launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
                             unsigned int bx, unsigned int by, unsigned int bz, void **args,
-                            std::size_t shmem, void *stream);
+                            size_t shmem, void *stream);
     static u32 launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
                                        unsigned int gz, unsigned int bx, unsigned int by,
-                                       unsigned int bz, void **args, std::size_t shmem,
-                                       void *stream);
+                                       unsigned int bz, void **args, size_t shmem, void *stream);
     static u32 launchCallback(void *stream, void *f, void *data);
 
     struct CudaContext {
@@ -86,7 +97,8 @@ namespace zs {
       void setContext(const source_location &loc = source_location::current()) const;
       /// stream & event
       // stream
-      /// @note https://stackoverflow.com/questions/31458016/in-cuda-is-it-guaranteed-that-the-default-stream-equals-nullptr
+      /// @note
+      /// https://stackoverflow.com/questions/31458016/in-cuda-is-it-guaranteed-that-the-default-stream-equals-nullptr
       template <StreamIndex sid> auto stream() const { return streams[static_cast<StreamID>(sid)]; }
       void *stream(StreamID sid) const {
         if (sid >= 0)
@@ -127,7 +139,7 @@ namespace zs {
       void spareStreamWaitForEvent(StreamID sid, void *event,
                                    const source_location &loc = source_location::current());
       // stream ordered memory allocator
-      void *streamMemAlloc(std::size_t size, void *stream,
+      void *streamMemAlloc(size_t size, void *stream,
                            const source_location &loc = source_location::current());
       void streamMemFree(void *ptr, void *stream,
                          const source_location &loc = source_location::current());
@@ -224,7 +236,7 @@ namespace zs {
     /// other utilities
     /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
     static int deduce_block_size(const source_location &loc, const CudaContext &ctx, void *f,
-                                 std::function<std::size_t(int)>, std::string_view = "");
+                                 std::function<size_t(int)>, std::string_view = "");
 
     mutable bool errorStatus;
 
@@ -234,6 +246,37 @@ namespace zs {
     std::vector<CudaContext> contexts;  ///< generally one per device
     int textureAlignment;
   };
+  inline bool checkCuApiError(u32 error, const source_location &loc,
+                              std::string_view msg) noexcept {
+    if (error != 0) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+
+      std::cerr << fmt::format("\nCuda Driver Api Error {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n", msg,
+                               " error location ", fileInfo, locInfo, funcInfo, "=");
+      return false;
+    }
+    return true;
+  }
+  inline bool checkCuApiError(u32 error, std::string_view msg,
+                              const source_location &loc = source_location::current()) noexcept {
+    return checkCuApiError(error, loc, msg);
+  }
+  inline bool checkCuApiError(u32 error, const source_location &loc, std::string_view msg,
+                              std::string_view errorString) noexcept {
+    if (error != 0) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+
+      std::cerr << fmt::format("\nCuda Driver Api Error {}: {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n",
+                               msg, errorString, " error location ", fileInfo, locInfo, funcInfo,
+                               "=");
+      return false;
+    }
+    return true;
+  }
 
   inline void checkKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,
                                      std::string_view streamInfo,
@@ -259,14 +302,14 @@ namespace zs {
   }
   template <typename... Args> struct cuda_safe_launch {
     operator u32() const { return errorCode; }
-#define CHECK_LAUNCH_CONFIG                                                                      \
-  if (lc.enableAutoConfig()) {                                                                   \
-    auto nwork = lc.db.x;                                                                        \
-    lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                       \
-                                      [shmem = lc.shmem](int) -> std::size_t { return shmem; }); \
-    lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                                   \
-    lc.shmem = (lc.shmem + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t)              \
-               * sizeof(std::max_align_t);                                                       \
+#define CHECK_LAUNCH_CONFIG                                                                 \
+  if (lc.enableAutoConfig()) {                                                              \
+    auto nwork = lc.db.x;                                                                   \
+    lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                  \
+                                      [shmem = lc.shmem](int) -> size_t { return shmem; }); \
+    lc.dg.x = (nwork + lc.db.x - 1) / lc.db.x;                                              \
+    lc.shmem = (lc.shmem + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t)         \
+               * sizeof(std::max_align_t);                                                  \
   }
     explicit cuda_safe_launch(const source_location &loc, const Cuda::CudaContext &ctx,
                               LaunchConfig &&lc, void (*f)(remove_cvref_t<Args>...),

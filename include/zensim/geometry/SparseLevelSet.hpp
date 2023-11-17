@@ -2,7 +2,7 @@
 #include <utility>
 
 #include "Structure.hpp"
-#include "zensim/container/Bcht.hpp"
+#include "zensim/container/Bht.hpp"
 #include "zensim/container/HashTable.hpp"
 #include "zensim/geometry/LevelSetInterface.h"
 #include "zensim/math/Vec.h"
@@ -25,17 +25,16 @@ namespace zs {
     using grid_t = Grid<value_type, dim, side_length, category>;
     using size_type = typename grid_t::size_type;
     // using table_t = HashTable<index_type, dim, size_type>;
-    using table_t
-        = bcht<zs::vec<index_type, dim>, int, true, universal_hash<zs::vec<index_type, dim>>, 16>;
+    using table_t = bht<index_type, dim, int, 16>;
 
-    using IV = typename table_t::original_key_type;
+    using IV = typename table_t::key_type;
     using TV = vec<value_type, dim>;
     using TM = vec<value_type, dim, dim>;
     using Affine = vec<value_type, dim + 1, dim + 1>;
 
     using coord_index_type = typename grid_t::coord_index_type;
     using channel_counter_type = typename grid_t::channel_counter_type;
-    // using cell_index_type = std::make_unsigned_t<decltype(SideLength)>;
+    // using cell_index_type = zs::make_unsigned_t<decltype(SideLength)>;
     using cell_index_type = typename grid_t::cell_index_type;
     static constexpr auto block_size = grid_traits<grid_t>::block_size;
 
@@ -46,7 +45,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _grid.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -117,9 +116,7 @@ namespace zs {
     constexpr channel_counter_type getPropertyOffset(const SmallString &str) const {
       return _grid.getPropertyOffset(str);
     }
-    constexpr PropertyTag getPropertyTag(std::size_t i = 0) const {
-      return _grid.getPropertyTag(i);
-    }
+    constexpr PropertyTag getPropertyTag(size_t i = 0) const { return _grid.getPropertyTag(i); }
     constexpr const auto &getPropertyTags() const { return _grid.getPropertyTags(); }
 
     void printTransformation(std::string_view msg = {}) const {
@@ -137,7 +134,8 @@ namespace zs {
     template <typename VecTM,
               enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value == dim + 1,
                             VecTM::template range_t<1>::value == dim + 1,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>>
+              = 0>
     void resetTransformation(const VecInterface<VecTM> &i2w) {
       math::decompose_transform(i2w, _i2wSinv, _i2wRinv, _i2wT, 0);
       _i2wSinv = inverse(_i2wSinv);
@@ -171,13 +169,15 @@ namespace zs {
       _i2wT += t;
     }
     template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == dim,
-                                           VecT::template range_t<1>::value == dim> = 0>
+                                           VecT::template range_t<1>::value == dim>
+                             = 0>
     void rotate(const VecInterface<VecT> &r) noexcept {
       _i2wRhat = _i2wRhat * r;
       _i2wRinv = r.transpose() * _i2wRinv;
     }
     template <typename VecT, enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == dim,
-                                           VecT::template range_t<1>::value == dim> = 0>
+                                           VecT::template range_t<1>::value == dim>
+                             = 0>
     void scale(const VecInterface<VecT> &s) {
       _i2wShat = _i2wShat * s;
       _i2wSinv = inverse(s) * _i2wSinv;
@@ -198,9 +198,8 @@ namespace zs {
     TM _i2wShat{TM::identity()}, _i2wRhat{TM::identity()};
   };
 
-  template <typename T, typename = void> struct is_spls : std::false_type {};
-  template <int dim, grid_e category> struct is_spls<SparseLevelSet<dim, category>>
-      : std::true_type {};
+  template <typename T, typename = void> struct is_spls : false_type {};
+  template <int dim, grid_e category> struct is_spls<SparseLevelSet<dim, category>> : true_type {};
   template <typename T> constexpr bool is_spls_v = is_spls<T>::value;
 
   using GeneralSparseLevelSet
@@ -213,16 +212,16 @@ namespace zs {
       : LevelSetInterface<SparseLevelSetView<Space, SparseLevelSetT>> {
     static constexpr bool is_const_structure = std::is_const_v<SparseLevelSetT>;
     static constexpr auto space = Space;
-    using ls_t = std::remove_const_t<SparseLevelSetT>;
+    using ls_t = remove_const_t<SparseLevelSetT>;
     using value_type = typename ls_t::value_type;
     using size_type = typename ls_t::size_type;
     using index_type = typename ls_t::index_type;
     using table_t = typename ls_t::table_t;
-    using table_view_t = RM_CVREF_T(proxy<Space>(
-        std::declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
+    using table_view_t = RM_REF_T(
+        proxy<Space>(declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
     using grid_t = typename ls_t::grid_t;
-    using grid_view_t = RM_CVREF_T(proxy<Space>(
-        {}, std::declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
+    using grid_view_t = RM_REF_T(
+        proxy<Space>({}, declval<conditional_t<is_const_structure, const grid_t &, grid_t &>>()));
 
     using T = typename ls_t::value_type;
     using Ti = typename ls_t::index_type;
@@ -241,12 +240,12 @@ namespace zs {
     static constexpr auto block_size = ls_t::block_size;
     static_assert(grid_t::is_power_of_two, "block_size should be power of 2");
 
-    template <typename Val, std::size_t... Is>
-    static constexpr auto arena_type_impl(index_seq<Is...>) {
+    template <typename Val, size_t... Is>
+    static constexpr auto arena_type_impl(index_sequence<Is...>) {
       return vec<Val, (Is + 1 > 0 ? 2 : 2)...>{};
     }
     template <typename Val, int d> static constexpr auto arena_type() {
-      return arena_type_impl<Val>(std::make_index_sequence<d>{});
+      return arena_type_impl<Val>(make_index_sequence<d>{});
     }
 
     template <typename Val> using Arena = decltype(arena_type<Val, dim>());
@@ -377,7 +376,8 @@ namespace zs {
     /// index space to world space
     // cell-corresponding positions
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_integral_v<typename VecT::value_type>> = 0>
+                                           is_integral_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto cellToIndex(const VecInterface<VecT> &X) const noexcept {
       if constexpr (category == grid_e::cellcentered)
         return (X + (value_type)0.5);
@@ -386,7 +386,8 @@ namespace zs {
     }
     template <typename VecT, auto cate = category,
               enable_if_all<cate == grid_e::staggered, VecT::dim == 1, VecT::extent == dim,
-                            std::is_integral_v<typename VecT::value_type>> = 0>
+                            is_integral_v<typename VecT::value_type>>
+              = 0>
     constexpr auto cellToIndex(const VecInterface<VecT> &X, int f) const noexcept {
       using RetT = typename VecT::template variant_vec<value_type, typename VecT::extents>;
       return RetT::init([&X, f](int d) {
@@ -432,10 +433,10 @@ namespace zs {
       return indexToWorld(_table._activeKeys[bno] + cid);
     }
     // face center position (staggered grid only)
-    template <
-        typename VecT, auto cate = category,
-        enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                      std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
+    template <typename VecT, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            is_integral_v<typename VecT::value_type>, cate == grid_e::staggered>
+              = 0>
     constexpr auto indexToWorld(const VecInterface<VecT> &coord, int orientation) const noexcept {
       auto offset = TV::constant((value_type)0.5);
       offset(orientation) = (value_type)0;
@@ -446,10 +447,10 @@ namespace zs {
                                 int orientation) const noexcept {
       return indexToWorld(_table._activeKeys[bno] + grid_view_t::cellid_to_coord(cno), orientation);
     }
-    template <
-        typename VecT, auto cate = category,
-        enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                      std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
+    template <typename VecT, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            is_integral_v<typename VecT::value_type>, cate == grid_e::staggered>
+              = 0>
     constexpr auto indexToWorld(size_type bno, const VecInterface<VecT> &cid,
                                 int orientation) const noexcept {
       return indexToWorld(_table._activeKeys[bno] + cid, orientation);
@@ -457,7 +458,8 @@ namespace zs {
 
     /// helper functions
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::index_type>> = 0>
+                                            is_integral_v<typename VecTI::index_type>>
+                              = 0>
     constexpr auto decompose_coord(const VecInterface<VecTI> &indexCoord) const noexcept {
       auto cellid = indexCoord & (side_length - 1);
       auto blockid = indexCoord - cellid;
@@ -465,8 +467,8 @@ namespace zs {
     }
     template <typename VecTI, auto cate = category,
               enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                            std::is_integral_v<typename VecTI::index_type>,
-                            cate == grid_e::staggered> = 0>
+                            is_integral_v<typename VecTI::index_type>, cate == grid_e::staggered>
+              = 0>
     constexpr value_type value_or(channel_counter_type chn, const VecInterface<VecTI> &indexCoord,
                                   int orientation, value_type defaultVal) const noexcept {
       /// 0, ..., dim-1: within cell
@@ -481,7 +483,8 @@ namespace zs {
       return blockno == table_t::sentinel_v ? defaultVal : _grid(chn, (size_type)blockno, cellno);
     }
     template <typename VecTI, enable_if_all<VecTI::dim == 1, VecTI::extent == dim,
-                                            std::is_integral_v<typename VecTI::index_type>> = 0>
+                                            is_integral_v<typename VecTI::index_type>>
+                              = 0>
     constexpr auto value_or(channel_counter_type chn, const VecInterface<VecTI> &indexCoord,
                             value_type defaultVal) const noexcept {
       auto [bno, cno] = decompose_coord(indexCoord);
@@ -491,28 +494,26 @@ namespace zs {
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate != grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {}, integral_t<bool, WS> tag = {}) noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, tag};
     }
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate != grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {},
-                         integral_t<bool, WS> tag = {}) const noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) const noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, tag};
     }
 
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate == grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, int f, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {}, integral_t<bool, WS> tag = {}) noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, f, tag};
     }
     template <kernel_e kt = kernel_e::linear, int order = 0, typename VecT, auto cate = category,
               bool WS = true, enable_if_t<cate == grid_e::staggered> = 0>
     constexpr auto arena(const VecInterface<VecT> &x, int f, wrapv<kt> ktFlag = {},
-                         wrapv<order> orderFlag = {},
-                         integral_t<bool, WS> tag = {}) const noexcept {
+                         wrapv<order> orderFlag = {}, wrapv<WS> tag = {}) const noexcept {
       return LevelSetArena{ktFlag, orderFlag, *this, x, f, tag};
     }
 
@@ -520,10 +521,11 @@ namespace zs {
     /// tensor sampling
     ///
     // cell-wise staggered grid sampling
-    template <typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
-              enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                            std::is_floating_point_v<typename VecT::value_type>,
-                            cate == grid_e::staggered> = 0>
+    template <
+        typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
+        enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                      is_floating_point_v<typename VecT::value_type>, cate == grid_e::staggered>
+        = 0>
     constexpr TV ipack(const SmallString &propName, const VecInterface<VecT> &X,
                        const value_type defaultVal, wrapv<kt> = {}) const noexcept {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
@@ -552,10 +554,10 @@ namespace zs {
       return ret;
     }
     /// this serves as an optimized impl (access 4 instead of 8)
-    template <
-        typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
-        enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                      std::is_integral_v<typename VecT::value_type>, cate == grid_e::staggered> = 0>
+    template <typename VecT, kernel_e kt = kernel_e::linear, auto cate = category,
+              enable_if_all<VecT::dim == 1, VecT::extent == dim,
+                            is_integral_v<typename VecT::value_type>, cate == grid_e::staggered>
+              = 0>
     constexpr TV ipack(const SmallString &propName, const VecInterface<VecT> &coord, int f,
                        const value_type defaultVal, wrapv<kt> = {}) const noexcept {
       static_assert(kt == kernel_e::linear, "only linear interop implemented so far");
@@ -591,7 +593,7 @@ namespace zs {
     }
     template <auto... Ns, typename VecT, kernel_e kt = kernel_e::linear,
               typename RetT = typename VecT::template variant_vec<
-                  typename VecT::value_type, integer_seq<typename VecT::index_type, Ns...>>,
+                  typename VecT::value_type, integer_sequence<typename VecT::index_type, Ns...>>,
               enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr auto ipack(channel_counter_type chn, const VecInterface<VecT> &X,
                          const value_type defaultVal, wrapv<kt> = {}) const noexcept {
@@ -803,7 +805,7 @@ namespace zs {
     using value_type = typename lsv_t::value_type;
     using index_type = typename lsv_t::index_type;
 
-    static_assert(std::is_signed_v<index_type>, "index_type should be a signed integer.");
+    static_assert(is_signed_v<index_type>, "index_type should be a signed integer.");
     static constexpr grid_e category = lsv_t::category;
     static constexpr int dim = lsv_t::dim;
     static constexpr kernel_e kt = kt_;
@@ -825,12 +827,12 @@ namespace zs {
         = conditional_t<deriv_order == 0, tuple<TWM>,
                         conditional_t<deriv_order == 1, tuple<TWM, TWM>, tuple<TWM, TWM, TWM>>>;
 
-    template <typename Val, std::size_t... Is>
-    static constexpr auto arena_type_impl(index_seq<Is...>) {
+    template <typename Val, size_t... Is>
+    static constexpr auto arena_type_impl(index_sequence<Is...>) {
       return vec<Val, (Is + 1 > 0 ? width : width)...>{};
     }
     template <typename Val, int d> static constexpr auto arena_type() {
-      return arena_type_impl<Val>(std::make_index_sequence<d>{});
+      return arena_type_impl<Val>(make_index_sequence<d>{});
     }
     template <typename Val> using Arena = RM_CVREF_T(arena_type<Val, lsv_t::dim>());
 
@@ -838,7 +840,7 @@ namespace zs {
     // index-space
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::false_type, lsv_t &lsv, const VecInterface<VecT> &X) noexcept
+    constexpr LevelSetArena(false_type, lsv_t &lsv, const VecInterface<VecT> &X) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
@@ -853,8 +855,7 @@ namespace zs {
     }
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::false_type, lsv_t &lsv, const VecInterface<VecT> &X,
-                            int f) noexcept
+    constexpr LevelSetArena(false_type, lsv_t &lsv, const VecInterface<VecT> &X, int f) noexcept
         : lsPtr{&lsv}, weights{}, iLocalPos{}, iCorner{} {
       constexpr int lerp_degree
           = (kt == kernel_e::linear ? 0 : (kt == kernel_e::quadratic ? 1 : 2));
@@ -871,22 +872,22 @@ namespace zs {
     // world-space
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::true_type, lsv_t &lsv, const VecInterface<VecT> &x) noexcept
+    constexpr LevelSetArena(true_type, lsv_t &lsv, const VecInterface<VecT> &x) noexcept
         : LevelSetArena{false_c, lsv, lsv.worldToIndex(x)} {}
     template <typename VecT, auto cate = category,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
-    constexpr LevelSetArena(std::true_type, lsv_t &lsv, const VecInterface<VecT> &x, int f) noexcept
+    constexpr LevelSetArena(true_type, lsv_t &lsv, const VecInterface<VecT> &x, int f) noexcept
         : LevelSetArena{false_c, lsv, lsv.worldToIndex(x), f} {}
     /// for CTAD
     template <typename VecT, auto cate = category, bool WS = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate == grid_e::staggered> = 0>
     constexpr LevelSetArena(wrapv<kt>, wrapv<deriv_order>, lsv_t &lsv, const VecInterface<VecT> &x,
-                            int f, integral_t<bool, WS> tag = {}) noexcept
+                            int f, wrapv<WS> tag = {}) noexcept
         : LevelSetArena{tag, lsv, x, f} {}
     template <typename VecT, auto cate = category, bool WS = true,
               enable_if_all<VecT::dim == 1, VecT::extent == dim, cate != grid_e::staggered> = 0>
     constexpr LevelSetArena(wrapv<kt>, wrapv<deriv_order>, lsv_t &lsv, const VecInterface<VecT> &x,
-                            integral_t<bool, WS> tag = {}) noexcept
+                            wrapv<WS> tag = {}) noexcept
         : LevelSetArena{tag, lsv, x} {}
 
     /// scalar arena
@@ -953,18 +954,19 @@ namespace zs {
     /// weight
     template <typename... Tn>
     constexpr value_type weight(const std::tuple<Tn...> &loc) const noexcept {
-      return weight_impl(loc, std::index_sequence_for<Tn...>{});
+      return weight_impl(loc, index_sequence_for<Tn...>{});
     }
     template <typename... Tn, enable_if_all<((!is_tuple_v<Tn> && !is_std_tuple<Tn>()) && ...
-                                             && (sizeof...(Tn) == dim))> = 0>
+                                             && (sizeof...(Tn) == dim))>
+                              = 0>
     constexpr auto weight(Tn &&...is) const noexcept {
       return weight(std::forward_as_tuple(FWD(is)...));
     }
     /// weight gradient
-    template <std::size_t I, typename... Tn, auto ord = deriv_order>
-    constexpr std::enable_if_t<(ord > 0), value_type> weightGradient(
+    template <zs::size_t I, typename... Tn, auto ord = deriv_order>
+    constexpr enable_if_type<(ord > 0), value_type> weightGradient(
         const std::tuple<Tn...> &loc) const noexcept {
-      return weightGradient_impl<I>(loc, std::index_sequence_for<Tn...>{});
+      return weightGradient_impl<I>(loc, index_sequence_for<Tn...>{});
     }
     void printWeights() {
       value_type sum = 0;
@@ -986,36 +988,35 @@ namespace zs {
     IV iCorner{IV::zeros()};    // index-space global coord
 
   protected:
-    template <typename... Tn, std::size_t... Is,
+    template <typename... Tn, size_t... Is,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim)> = 0>
     constexpr value_type weight_impl(const std::tuple<Tn...> &loc,
-                                     index_seq<Is...>) const noexcept {
+                                     index_sequence<Is...>) const noexcept {
       value_type ret{1};
       ((void)(ret *= get<0>(weights)(Is, std::get<Is>(loc))), ...);
       return ret;
     }
-    template <std::size_t I, typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <zs::size_t I, typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr value_type weightGradient_impl(const std::tuple<Tn...> &loc,
-                                             index_seq<Is...>) const noexcept {
+                                             index_sequence<Is...>) const noexcept {
       value_type ret{1};
       ((void)(ret *= (I == Is ? get<1>(weights)(Is, std::get<Is>(loc))
                               : get<0>(weights)(Is, std::get<Is>(loc)))),
        ...);
       return ret;
     }
-    template <typename... Tn, std::size_t... Is, auto ord = deriv_order,
+    template <typename... Tn, size_t... Is, auto ord = deriv_order,
               enable_if_all<(sizeof...(Is) == dim), (sizeof...(Tn) == dim), (ord > 0)> = 0>
     constexpr TV weightGradients_impl(const std::tuple<Tn...> &loc,
-                                      index_seq<Is...>) const noexcept {
-      return TV{weightGradient_impl<Is>(loc, index_seq<Is...>{})...};
+                                      index_sequence<Is...>) const noexcept {
+      return TV{weightGradient_impl<Is>(loc, index_sequence<Is...>{})...};
     }
   };
 
   template <kernel_e kt = kernel_e::linear, int deriv_order = 0, bool WS = true, typename LsvT,
             typename VecT>
-  constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x,
-                                     integral_t<bool, WS> tag = {}) {
+  constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x, wrapv<WS> tag = {}) {
     static_assert(LsvT::category != grid_e::staggered,
                   "this method is not for staggered levelset.");
     return LevelSetArena<LsvT, kt, deriv_order>{tag, lsv, x};
@@ -1023,7 +1024,7 @@ namespace zs {
   template <kernel_e kt = kernel_e::linear, int deriv_order = 0, bool WS = true, typename LsvT,
             typename VecT>
   constexpr auto make_levelset_arena(LsvT &lsv, const VecInterface<VecT> &x, int f,
-                                     integral_t<bool, WS> tag = {}) {
+                                     wrapv<WS> tag = {}) {
     static_assert(LsvT::category == grid_e::staggered,
                   "this method is for staggered levelset only.");
     return LevelSetArena<LsvT, kt, deriv_order>{tag, lsv, x, f};
@@ -1031,6 +1032,6 @@ namespace zs {
 
   template <kernel_e kt, int drv_order, typename LsvT, typename... Args>
   LevelSetArena(wrapv<kt>, wrapv<drv_order>, LsvT &, Args...)
-      -> LevelSetArena<std::remove_reference_t<LsvT>, kt, drv_order>;
+      -> LevelSetArena<remove_reference_t<LsvT>, kt, drv_order>;
 
 }  // namespace zs

@@ -9,13 +9,13 @@ namespace zs {
     //
     //  this is from boost
     //
-    template <typename T> constexpr void hash_combine(std::size_t &seed, const T &val) {
+    template <typename T> constexpr void hash_combine(size_t &seed, const T &val) {
       seed ^= (val + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }
     */
   // ref: https://github.com/HowardHinnant/hash_append/issues/7
   template <typename Tn, typename T,
-            enable_if_all<std::is_unsigned_v<Tn>, std::is_integral_v<T>> = 0>
+            enable_if_all<is_unsigned_v<Tn>, is_integral_v<T>> = 0>
   constexpr void hash_combine(Tn &seed, const T &val) {
     static_assert(sizeof(Tn) >= 2 && sizeof(Tn) <= 8, "Tn should contain at least 16 bits");
     if constexpr (sizeof(Tn) == 2)

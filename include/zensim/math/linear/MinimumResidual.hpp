@@ -7,10 +7,10 @@
 namespace zs {
 
   /// Bow/Math/LinearSolver/ConjugateGradient.h
-  template <typename T, int dim, typename Index = std::size_t> struct MinRes {
+  template <typename T, int dim, typename Index = zs::size_t> struct MinRes {
     using TV = Vector<T>;
     using allocator_type = ZSPmrAllocator<>;
-    using size_type = std::make_unsigned_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
 
     math::GivensRotation<T> Gk, Gkm1, Gkm2;
     T gamma, delta, epsilon;
@@ -66,18 +66,18 @@ namespace zs {
     }
 
     template <typename DV> void print(DV&& dv) {
-      for (std::size_t i = 0; i != dv.size(); ++i) fmt::print("{} ", dv.get(i));
+      for (size_t i = 0; i != dv.size(); ++i) fmt::print("{} ", dv.get(i));
       fmt::print("\n");
     }
 
     template <class ExecutionPolicy, typename DofViewA, typename DofViewB>
     T dotProduct(ExecutionPolicy&& policy, DofViewA a, DofViewB b) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       using ValueT = typename std::iterator_traits<RM_CVREF_T(std::begin(a))>::value_type;
       auto dofSqr = dof_view<space, dim>(dofSqr_);
-      DofCompwiseOp{std::multiplies<void>{}}(policy, a, b, dofSqr);
+      DofCompwiseOp{multiplies<void>{}}(policy, a, b, dofSqr);
       reduce(policy, std::begin(dofSqr), std::end(dofSqr),
-             std::begin(dof_view<space, dim>(normSqr_)), 0, std::plus<ValueT>{});
+             std::begin(dof_view<space, dim>(normSqr_)), 0, plus<ValueT>{});
       return normSqr_.clone({memsrc_e::host, -1})[0];
     }
 
@@ -113,7 +113,7 @@ namespace zs {
 
     template <class ExecutionPolicy, typename M, typename XView, typename BView>
     int solve(ExecutionPolicy&& policy, M&& A, XView&& xinout, BView&& b) {
-      constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+      constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
       resize(xinout.numEntries());
 
       auto x = dof_view<space, dim>(x_);
@@ -127,7 +127,7 @@ namespace zs {
       int iter = 0;
 
       A.multiply(policy, x, qkp1);
-      DofCompwiseOp{std::minus<void>{}}(policy, b, qkp1, qkp1);
+      DofCompwiseOp{minus<void>{}}(policy, b, qkp1, qkp1);
 
       A.project(policy, qkp1);
       A.precondition(policy, qkp1, z);
@@ -142,9 +142,9 @@ namespace zs {
         return iter;
       }
       if (residualPreconditionedNorm > 0) {
-        DofCompwiseCustomUnaryOp{std::divides<void>{}, beta_kp1}(policy, qkp1,
+        DofCompwiseCustomUnaryOp{divides<void>{}, beta_kp1}(policy, qkp1,
                                                                  qkp1);  // qkp1 /= beta_kp1;
-        DofCompwiseCustomUnaryOp{std::divides<void>{}, beta_kp1}(policy, z, z);  // z /= beta_kp1;
+        DofCompwiseCustomUnaryOp{divides<void>{}, beta_kp1}(policy, z, z);  // z /= beta_kp1;
       }
       last_two_components_of_givens_transformed_least_squares_rhs
           = TV2{residualPreconditionedNorm, 0};
@@ -174,15 +174,15 @@ namespace zs {
         beta_kp1 = std::sqrt(std::max((T)0, dotProduct(policy, z, qkp1)));
 
         if (beta_kp1 > 0) {
-          DofCompwiseCustomUnaryOp{std::divides<void>{}, beta_kp1}(policy, qkp1,
+          DofCompwiseCustomUnaryOp{divides<void>{}, beta_kp1}(policy, qkp1,
                                                                    qkp1);  // qkp1 /= beta_kp1;
-          DofCompwiseCustomUnaryOp{std::divides<void>{}, beta_kp1}(policy, z, z);  // z /= beta_kp1;
+          DofCompwiseCustomUnaryOp{divides<void>{}, beta_kp1}(policy, z, z);  // z /= beta_kp1;
         }
         residualPreconditionedNorm = applyAllPreviousGivensRotationsAndDetermineNewGivens();
 
         DofCompwiseOp{LinearCombineOp((T)1, -delta)}(policy, mk, mkm1, mk);
         DofCompwiseOp{LinearCombineOp((T)1, -epsilon)}(policy, mk, mkm2, mk);
-        DofCompwiseCustomUnaryOp{std::divides<void>{}, gamma}(policy, mk, mk);  // mk /= gamma
+        DofCompwiseCustomUnaryOp{divides<void>{}, gamma}(policy, mk, mk);  // mk /= gamma
 
         DofCompwiseOp{LinearCombineOp(tk)}(policy, mk, x, x);
       }

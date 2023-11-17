@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Utility.h"
+#include "zensim/ZpcFunctional.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/zpc_tpls/fmt/core.h"
 
@@ -19,14 +20,15 @@ namespace zs {
   template <typename VecTM,
             enable_if_all<VecTM::dim == 2,
                           VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                          VecTM::template range_t<0>::value == 2> = 0>
+                          VecTM::template range_t<0>::value == 2>
+            = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &M) noexcept {
     using value_type = typename VecTM::value_type;
-    using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+    using T = conditional_t<is_floating_point_v<value_type>, value_type,
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
-        typename VecTM::template variant_vec<T, integer_seq<typename VecTM::index_type, 2>>;
+        typename VecTM::template variant_vec<T, integer_sequence<typename VecTM::index_type, 2>>;
     MatT eivecs{};
     VecT eivals{};
     T shift = trace(M) / (T)2;
@@ -47,7 +49,7 @@ namespace zs {
     }
     // compute eigenvectors
     {
-      if (eivals(1) - eivals(0) <= zs::abs(eivals(1)) * limits<T>::epsilon())
+      if (eivals(1) - eivals(0) <= zs::abs(eivals(1)) * detail::deduce_numeric_epsilon<T>())
         eivecs = MatT::identity();
       else {
         for (int d = 0; d != 2; ++d) scaledMat(d, d) -= eivals(1);
@@ -76,14 +78,15 @@ namespace zs {
   template <typename VecTM,
             enable_if_all<VecTM::dim == 2,
                           VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-                          VecTM::template range_t<0>::value == 3> = 0>
+                          VecTM::template range_t<0>::value == 3>
+            = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &mat) noexcept {
     using value_type = typename VecTM::value_type;
-    using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+    using T = conditional_t<is_floating_point_v<value_type>, value_type,
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
-        typename VecTM::template variant_vec<T, integer_seq<typename VecTM::index_type, 3>>;
+        typename VecTM::template variant_vec<T, integer_sequence<typename VecTM::index_type, 3>>;
     MatT eivecs{};
     VecT eivals{};
     // Shift the matrix to the mean eigenvalue and map the matrix coefficients to [-1:1] to avoid
@@ -136,7 +139,7 @@ namespace zs {
     }
     // compute eigenvectors
     {
-      if ((eivals(2) - eivals(0)) <= limits<T>::epsilon()) {
+      if ((eivals(2) - eivals(0)) <= detail::deduce_numeric_epsilon<T>()) {
         // All three eigenvalues are numerically the same
         eivecs = MatT::identity();
       } else {
@@ -158,7 +161,7 @@ namespace zs {
           VecT representative{};
           int i0{};
           // find non-zero column i0 (there must exist a non zero coeff on diagonal)
-          T entry{limits<T>::lowest()};
+          T entry{detail::deduce_numeric_lowest<T>()};
           for (int d = 0; d != 3; ++d)
             if (auto v = zs::abs(mat(d, d)); v > entry) {
               entry = v;
@@ -190,7 +193,7 @@ namespace zs {
         }
 
         // Compute eigenvector of index l
-        if (d0 <= 2 * limits<T>::epsilon() * d1) {
+        if (d0 <= 2 * detail::deduce_numeric_epsilon<T>() * d1) {
           // If d0 is too small, then the two other eigenvalues are numerically the same,
           // and thus we only have to ortho-normalize the near orthogonal vector we saved above.
           auto colL = col(eivecs, l);
@@ -218,20 +221,21 @@ namespace zs {
   /// ref: Yu Fang, wiki
   template <
       typename VecTM,
-      enable_if_all<
-          VecTM::dim == 2, VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
-          VecTM::template range_t<0>::value != 2, VecTM::template range_t<0>::value != 3> = 0>
+      enable_if_all<VecTM::dim == 2,
+                    VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
+                    VecTM::template range_t<0>::value != 2, VecTM::template range_t<0>::value != 3>
+      = 0>
   constexpr auto eigen_decomposition(const VecInterface<VecTM> &mat) noexcept {
     using value_type = typename VecTM::value_type;
-    using T = conditional_t<std::is_floating_point_v<value_type>, value_type,
+    using T = conditional_t<is_floating_point_v<value_type>, value_type,
                             conditional_t<(sizeof(value_type) >= 8), f64, f32>>;
     using Ti = typename VecTM::index_type;
     constexpr int dim = VecTM::template range_t<0>::value;
     using MatT = typename VecTM::template variant_vec<T, typename VecTM::extents>;
     using VecT =
-        typename VecTM::template variant_vec<T, integer_seq<typename VecTM::index_type, dim>>;
+        typename VecTM::template variant_vec<T, integer_sequence<typename VecTM::index_type, dim>>;
     using IVecT =
-        typename VecTM::template variant_vec<Ti, integer_seq<typename VecTM::index_type, dim>>;
+        typename VecTM::template variant_vec<Ti, integer_sequence<typename VecTM::index_type, dim>>;
 
     auto S = mat.clone();
     MatT E = MatT::identity();  // eigen vectors
@@ -307,10 +311,10 @@ namespace zs {
     return zs::make_tuple(e, E);
   }
 
-  template <
-      typename VecTM,
-      enable_if_all<std::is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
-                    VecTM::template range_t<0>::value == VecTM::template range_t<1>::value> = 0>
+  template <typename VecTM,
+            enable_if_all<is_floating_point_v<typename VecTM::value_type>, VecTM::dim == 2,
+                          VecTM::template range_t<0>::value == VecTM::template range_t<1>::value>
+            = 0>
   constexpr void make_pd(VecInterface<VecTM> &mat) noexcept {
     constexpr int dim = VecTM::template range_t<0>::value;
     using value_type = typename VecTM::value_type;
@@ -320,7 +324,7 @@ namespace zs {
     // https://github.com/penn-graphics-research/HOT/blob/d8d57be410ed343c3fb37af6020cf5e14a0d1bec/Lib/Ziran/Math/Linear/EigenDecomposition.h#L111
     auto [eivals, eivecs] = eigen_decomposition(mat);
     for (int i = 0; i != dim; ++i) {
-      if (eivals[i] < limits<value_type>::epsilon()) eivals[i] = 0;
+      if (eivals[i] < detail::deduce_numeric_epsilon<value_type>()) eivals[i] = 0;
       // else
       //  break;  // eivals in ascending order
       // the above assumption not necessarily true, especially for custom eig(...)

@@ -10,7 +10,7 @@ namespace zs {
     template <typename Event> void dispatch(Event&& event) {
       Derived& self = static_cast<Derived&>(*this);
       auto newState = match(_state)([&](auto& s) -> optional<StateVariant> {
-        return self.onEvent(s, std::forward<Event>(event));
+        return self.onEvent(s, forward<Event>(event));
       });
       //[&](auto & s) ->optional<StateVariant> { return self.onEvent(s, (event)); });
       if (newState) _state = *std::move(newState);

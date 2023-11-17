@@ -5,13 +5,13 @@
 
 namespace zs {
 
-  template <typename PrimIdT = std::size_t, typename NodeIdT = PrimIdT> struct BvttFront {
+  template <typename PrimIdT = size_t, typename NodeIdT = PrimIdT> struct BvttFront {
     using allocator_type = ZSPmrAllocator<>;
     using prim_id_t = PrimIdT;
     using node_id_t = NodeIdT;
     using prim_vector_t = Vector<prim_id_t>;
     using node_vector_t = Vector<node_id_t>;
-    using index_t = std::make_signed_t<math::op_result_t<prim_id_t, node_id_t>>;
+    using index_t = zs::make_signed_t<math::op_result_t<prim_id_t, node_id_t>>;
     using counter_t = Vector<index_t>;
 
     constexpr decltype(auto) memoryLocation() const noexcept { return _cnt.memoryLocation(); }
@@ -37,9 +37,9 @@ namespace zs {
     }
 
     BvttFront(const allocator_type &allocator, node_id_t numNodes, index_t estimatedCount)
-        : _primIds{allocator, (std::size_t)estimatedCount},
-          _nodeIds{allocator, (std::size_t)estimatedCount},
-          _offsets{allocator, (std::size_t)numNodes + 1},
+        : _primIds{allocator, (size_t)estimatedCount},
+          _nodeIds{allocator, (size_t)estimatedCount},
+          _offsets{allocator, (size_t)numNodes + 1},
           _cnt{allocator, 1} {
       _cnt.setVal(0);
     }
@@ -69,7 +69,7 @@ namespace zs {
 
   template <typename PrimIdT, typename NodeIdT> template <typename Policy>
   void BvttFront<PrimIdT, NodeIdT>::reorder(Policy &&policy) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
     using bvtt_t = BvttFront<PrimIdT, NodeIdT>;
     using index_t = typename bvtt_t::index_t;
@@ -122,7 +122,7 @@ namespace zs {
           _numFrontNodes{
               (index_t)std::min(bvfront._primIds.capacity(), bvfront._nodeIds.capacity())} {}
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __device__ void push_back(prim_id_t prim, node_id_t node) {

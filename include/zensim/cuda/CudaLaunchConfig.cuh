@@ -3,6 +3,8 @@
 
 #include <string>
 
+#include "zensim/ZpcMeta.hpp"
+
 namespace zs {
 
   struct LaunchConfig {
@@ -28,21 +30,21 @@ namespace zs {
           sid{stream},
           autoConfig{false} {}
 
-    template <typename IndexType0> LaunchConfig(std::true_type, IndexType0 nwork)
+    template <typename IndexType0> LaunchConfig(true_type, IndexType0 nwork)
         : dg{},
           db{static_cast<unsigned int>(nwork)},
           shmem{0},
           sid{cudaStreamDefault},
           autoConfig{true} {}
     template <typename IndexType0, typename IndexType1>
-    LaunchConfig(std::true_type, IndexType0 nwork, IndexType1 mem)
+    LaunchConfig(true_type, IndexType0 nwork, IndexType1 mem)
         : dg{},
           db{static_cast<unsigned int>(nwork)},
           shmem{static_cast<unsigned int>(mem)},
           sid{cudaStreamDefault},
           autoConfig{true} {}
     template <typename IndexType0, typename IndexType1>
-    LaunchConfig(std::true_type, IndexType0 nwork, IndexType1 mem, cudaStream_t stream)
+    LaunchConfig(true_type, IndexType0 nwork, IndexType1 mem, cudaStream_t stream)
         : dg{},
           db{static_cast<unsigned int>(nwork)},
           shmem{static_cast<unsigned int>(mem)},

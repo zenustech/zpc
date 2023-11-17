@@ -10,13 +10,14 @@
 #include "zensim/math/bit/Bits.h"
 #include "zensim/math/probability/Random.hpp"
 #include "zensim/memory/MemoryResource.h"
+#include "zensim/py_interop/HashUtils.hpp"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 #  include <cooperative_groups.h>
 #endif
 #if ZS_ENABLE_OPENMP
-#  include <omp.h>
+#  include "zensim/omp/Omp.h"
 #endif
 
 namespace zs {
@@ -24,51 +25,28 @@ namespace zs {
   /// ref: https://github.com/owensgroup/BGHT
   // ref: Better GPU Hash Tables
   // Muhammad A. Awad, Saman Ashkiani, Serban D. Porumbescu, Martín Farach-Colton, and John D. Owens
-  template <typename KeyT> struct universal_hash {
+  template <typename KeyT> struct universal_hash : universal_hash_base<KeyT> {
+    using base_t = universal_hash_base<KeyT>;
+    using base_t::_hashx;
+    using base_t::_hashy;
     using key_type = KeyT;
     using result_type = u32;
 
     // borrowed from cudpp
     static constexpr u32 prime_divisor = 4294967291u;
 
-    universal_hash() noexcept : _hashx{call_random(1)}, _hashy{call_random(2)} {}
-    universal_hash(std::mt19937 &rng) : _hashx{0}, _hashy{0} {
+    universal_hash() noexcept : base_t{call_random(1), call_random(2)} {}
+    universal_hash(std::mt19937 &rng) {
       _hashx = rng() % prime_divisor;
       if (_hashx < 1) _hashx = 1;
       _hashy = rng() % prime_divisor;
     }
-    constexpr universal_hash(u32 hash_x, u32 hash_y) : _hashx(hash_x), _hashy(hash_y) {}
+    constexpr universal_hash(u32 hash_x, u32 hash_y) : base_t{hash_x, hash_y} {}
     ~universal_hash() = default;
     universal_hash(const universal_hash &) = default;
     universal_hash(universal_hash &&) = default;
     universal_hash &operator=(const universal_hash &) = default;
     universal_hash &operator=(universal_hash &&) = default;
-
-    template <bool isVec = is_vec<key_type>::value, enable_if_t<!isVec> = 0>
-    constexpr result_type operator()(const key_type &key) const noexcept {
-      return (((_hashx ^ key) + _hashy) % prime_divisor);
-    }
-    template <typename VecT, enable_if_t<std::is_integral_v<typename VecT::value_type>> = 0>
-    constexpr result_type operator()(const VecInterface<VecT> &key) const noexcept {
-      static_assert(VecT::extent >= 1, "should at least have one element");
-      const universal_hash<typename VecT::value_type> subhasher{_hashx, _hashy};
-      u32 ret = subhasher(key.val(0));
-      for (typename VecT::index_type d = 1; d != VecT::extent; ++d)
-        hash_combine(ret, subhasher(key.val(d)));
-      return ret;
-    }
-    template <bool isVec = is_vec<key_type>::value, enable_if_t<isVec> = 0>
-    constexpr result_type operator()(const key_type &key) const noexcept {
-      static_assert(key_type::extent >= 1, "should at least have one element");
-      const universal_hash<typename key_type::value_type> subhasher{_hashx, _hashy};
-      u32 ret = subhasher(key[0]);
-      for (typename key_type::index_type d = 1; d != key_type::extent; ++d)
-        hash_combine(ret, subhasher(key.val(d)));
-      return ret;
-    }
-
-    u32 _hashx;
-    u32 _hashy;
   };
 
   template <typename KeyT> struct vec_pack_hash {
@@ -95,15 +73,15 @@ namespace zs {
     }
     template <bool isVec = is_vec<key_type>::value, enable_if_t<isVec> = 0>
     constexpr result_type operator()(const key_type &key) const noexcept {
-      if constexpr (std::is_integral_v<typename key_type::value_type>) {
+      if constexpr (is_integral_v<typename key_type::value_type>) {
         if constexpr (sizeof(typename key_type::value_type) == 4) {  // i32, u32
           // this is the most frequently used case
           // only preserve low 21-bit index of each dimension
           if constexpr (key_type::extent == 3) {
             auto extract = [](typename key_type::value_type val) -> u64 {
-              if constexpr (std::is_unsigned_v<typename key_type::value_type>)
+              if constexpr (is_unsigned_v<typename key_type::value_type>)
                 return (u64)val & (u64)0x1fffffu;
-              else if constexpr (std::is_signed_v<typename key_type::value_type>)
+              else if constexpr (is_signed_v<typename key_type::value_type>)
                 return ((u64)val & (u64)0xfffffu) | ((u64)(val < 0 ? 1 : 0) << (u64)20);
             };
             return (extract(key.val(0)) << (u64)42) | (extract(key.val(1)) << (u64)21)
@@ -161,18 +139,18 @@ namespace zs {
         return wrapt<KeyT>{};
     }
     using key_type = typename decltype(deduce_key_type<key_is_vec>())::type;
-    using hashed_key_type = RM_CVREF_T(std::declval<hasher_type>()(std::declval<key_type>()));
+    using hashed_key_type = RM_CVREF_T(declval<hasher_type>()(declval<key_type>()));
     using mapped_hashed_key_type
         = conditional_t<sizeof(hashed_key_type) == 8, u64,
                         conditional_t<sizeof(hashed_key_type) == 4, u32,
                                       conditional_t<sizeof(hashed_key_type) == 4, u16, void>>>;
-    static_assert(std::is_unsigned_v<mapped_hashed_key_type>,
+    static_assert(is_unsigned_v<mapped_hashed_key_type>,
                   "hashed key type should be an unsigned integer");
     using storage_key_type = conditional_t<compare_key, key_type, mapped_hashed_key_type>;
     //
-    using index_type = std::make_signed_t<Index>;
+    using index_type = zs::make_signed_t<Index>;
     using value_type = zs::tuple<key_type, index_type>;  // use original 'key_type' here
-    using size_type = std::make_unsigned_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
     using difference_type = index_type;
     using reference = zs::tuple<storage_key_type &, index_type &>;
     using const_reference = zs::tuple<const storage_key_type &, const index_type &>;
@@ -216,7 +194,7 @@ namespace zs {
     static constexpr index_type sentinel_v = -1;
     static constexpr index_type failure_token_v = limits<index_type>::max();
 
-    static std::size_t padded_capacity(std::size_t capacity) noexcept {
+    static size_t padded_capacity(size_t capacity) noexcept {
       if (auto remainder = capacity % bucket_size; remainder) capacity += (bucket_size - remainder);
       return capacity;
     }
@@ -227,12 +205,12 @@ namespace zs {
       Table(Table &&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, std::size_t capacity)
+      Table(const allocator_type &allocator, size_t capacity)
           : keys{allocator, capacity},
             indices{allocator, capacity},
             status{allocator, capacity / bucket_size} {}
 
-      void resize(std::size_t newCap) {
+      void resize(size_t newCap) {
         keys.resize(newCap);
         indices.resize(newCap);
         status.resize(newCap / bucket_size);
@@ -286,19 +264,19 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
 
-    inline static u32 deduce_num_chains(std::size_t cap) {
+    inline static u32 deduce_num_chains(size_t cap) {
       // maximum number of cuckoo chains
       double lg_input_size = (float)(std::log((double)cap) / std::log(2.0));
       constexpr unsigned max_iter_const = 7;
       return static_cast<u32>(max_iter_const * lg_input_size);
     }
 
-    bcht(const allocator_type &allocator, std::size_t capacity)
+    bcht(const allocator_type &allocator, size_t capacity)
         : _capacity{padded_capacity(capacity) * 2},
           _numBuckets{(size_type)_capacity / bucket_size},
           _table{allocator, _capacity},
@@ -325,10 +303,10 @@ namespace zs {
       // mark complete status
       _buildSuccess.setVal(1);
     }
-    bcht(std::size_t capacity, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    bcht(size_t capacity, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : bcht{get_default_allocator(mre, devid), capacity} {}
     bcht(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : bcht{get_default_allocator(mre, devid), (std::size_t)0} {}
+        : bcht{get_default_allocator(mre, devid), (size_t)0} {}
 
     ~bcht() = default;
 
@@ -415,9 +393,9 @@ namespace zs {
       _buildSuccess.setVal(1);
     }
 
-    template <typename Policy> void resize(Policy &&, std::size_t newCapacity);
+    template <typename Policy> void resize(Policy &&, size_t newCapacity);
 
-    std::size_t _capacity;  // make sure this comes ahead
+    size_t _capacity;  // make sure this comes ahead
     size_type _numBuckets;
     Table _table;
     zs::Vector<key_type> _activeKeys;
@@ -431,10 +409,10 @@ namespace zs {
             typename AllocatorT>
   template <typename Policy>
   void bcht<KeyT, IndexT, KeyCompare, HashT, B, AllocatorT>::resize(Policy &&pol,
-                                                                    std::size_t newCapacity) {
+                                                                    size_t newCapacity) {
     newCapacity = padded_capacity(newCapacity) * 2;
     if (newCapacity <= _capacity) return;
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     _capacity = newCapacity;
     _numBuckets = _capacity / bucket_size;
     _table.resize(_capacity);
@@ -459,7 +437,7 @@ namespace zs {
 
   template <execspace_e space, typename BCHT, bool Base = false, typename = void> struct BCHTView {
     static constexpr bool is_const_structure = std::is_const_v<BCHT>;
-    using hash_table_type = std::remove_const_t<BCHT>;
+    using hash_table_type = remove_const_t<BCHT>;
     static constexpr auto exectag = wrapv<space>{};
 
     static constexpr auto bucket_size = hash_table_type::bucket_size;
@@ -528,9 +506,7 @@ namespace zs {
           _hf1{table._hf1},
           _hf2{table._hf2} {}
 
-    constexpr std::size_t capacity() const noexcept {
-      return (std::size_t)_numBuckets * (std::size_t)bucket_size;
-    }
+    constexpr size_t capacity() const noexcept { return (size_t)_numBuckets * (size_t)bucket_size; }
     constexpr auto transKey(const key_type &key) const noexcept {
       if constexpr (compare_key)
         return key;
@@ -538,7 +514,7 @@ namespace zs {
         return reinterpret_bits<mapped_hashed_key_type>(_hf0(key));
     }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 
     /// helper construct
     struct CoalescedGroup : cooperative_groups::coalesced_group {
@@ -1228,9 +1204,10 @@ namespace zs {
 
     template <bool retrieve_index = true, execspace_e S = space,
               enable_if_all<S == execspace_e::cuda> = 0>
-    __forceinline__ __host__ __device__ index_type
-    group_query(CoalescedGroup &tile, const original_key_type &key,
-                wrapv<retrieve_index> = {}) const noexcept {
+    __forceinline__ __host__ __device__ index_type group_query(CoalescedGroup &tile,
+                                                               const original_key_type &key,
+                                                               wrapv<retrieve_index>
+                                                               = {}) const noexcept {
       if (_numBuckets == 0) {
         if constexpr (retrieve_index)
           return sentinel_v;
@@ -1293,8 +1270,9 @@ namespace zs {
 
     template <bool retrieve_index = true, execspace_e S = space,
               enable_if_all<S == execspace_e::cuda> = 0>
-    __forceinline__ __host__ __device__ index_type
-    single_query(const original_key_type &key, wrapv<retrieve_index> = {}) const noexcept {
+    __forceinline__ __host__ __device__ index_type single_query(const original_key_type &key,
+                                                                wrapv<retrieve_index>
+                                                                = {}) const noexcept {
       if (_numBuckets == 0) {
         if constexpr (retrieve_index)
           return sentinel_v;

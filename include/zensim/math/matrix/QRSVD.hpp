@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Givens.hpp"
+#include "zensim/ZpcFunctional.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/zpc_tpls/fmt/core.h"
 
@@ -14,7 +15,8 @@ namespace zs {
   namespace math {
 
     template <typename VecT, enable_if_all<vec_fits_shape<VecT, 2, 2, 2>(),
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto polar_decomposition(const VecInterface<VecT>& A,
                                        GivensRotation<typename VecT::value_type>& R) noexcept {
       using value_type = typename VecT::value_type;
@@ -33,17 +35,18 @@ namespace zs {
       return S;
     }
 
-    template <typename VecT,
-              enable_if_all<VecT::dim == 2,
-                            VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            VecT::template range_t<0>::value == 2,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+    template <
+        typename VecT,
+        enable_if_all<
+            VecT::dim == 2, VecT::template range_t<0>::value == VecT::template range_t<1>::value,
+            VecT::template range_t<0>::value == 2, is_floating_point_v<typename VecT::value_type>>
+        = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A, GivensRotation<typename VecT::value_type>& U,
                           GivensRotation<typename VecT::value_type>& V) noexcept {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
       constexpr auto N = VecT::template range_t<0>::value;
-      typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{};
+      typename VecT::template variant_vec<value_type, integer_sequence<index_type, N>> S{};
 
       auto S_sym = polar_decomposition(A, U);
       value_type cosine{}, sine{};
@@ -122,7 +125,8 @@ namespace zs {
       }
       template <int t, typename VecTU, typename VecTS, typename VecTV,
                 enable_if_all<vec_fits_shape<VecTU, 2, 3, 3>(), vec_fits_shape<VecTS, 1, 3>(),
-                              vec_fits_shape<VecTV, 2, 3, 3>()> = 0>
+                              vec_fits_shape<VecTV, 2, 3, 3>()>
+                = 0>
       constexpr void sort_sigma(VecInterface<VecTU>& U, VecInterface<VecTS>& sigma,
                                 VecInterface<VecTV>& V) noexcept {
         const auto swapScalar = [](auto& a, auto& b) {
@@ -222,7 +226,8 @@ namespace zs {
 
       template <int t, typename VecTB, typename VecTU, typename VecTS, typename VecTV,
                 enable_if_all<vec_fits_shape<VecTB, 2, 3, 3>(), vec_fits_shape<VecTU, 2, 3, 3>(),
-                              vec_fits_shape<VecTS, 1, 3>(), vec_fits_shape<VecTV, 2, 3, 3>()> = 0>
+                              vec_fits_shape<VecTS, 1, 3>(), vec_fits_shape<VecTV, 2, 3, 3>()>
+                = 0>
       constexpr void process(VecInterface<VecTB>& B, VecInterface<VecTU>& U, VecInterface<VecTS>& S,
                              VecInterface<VecTV>& V) noexcept {
         static_assert(t == 0 || t == 1, "offset t here is not a valid one (0 or 1).");
@@ -233,10 +238,11 @@ namespace zs {
         S(other) = B(other, other);
 // this is slow (redundant copy) for the moment due to the lack of block view
 #if 1
-        using mat2 =
-            typename VecTB::template variant_vec<T, integer_seq<typename VecTB::index_type, 2, 2>>;
+        using mat2 = typename VecTB::template variant_vec<
+            T, integer_sequence<typename VecTB::index_type, 2, 2>>;
         // using vec2 =
-        //     typename VecTB::template variant_vec<T, integer_seq<typename VecTB::index_type, 2>>;
+        //     typename VecTB::template variant_vec<T, integer_sequence<typename VecTB::index_type,
+        //     2>>;
         mat2 B_{};
         B_(0, 0) = B(t, t);
         B_(0, 1) = B(t, t + 1);
@@ -265,7 +271,8 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr auto qr(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
@@ -286,7 +293,8 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr auto gram_schmidt(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       // using index_type = typename VecT::index_type;
@@ -330,7 +338,8 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr auto qr_svd(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       using index_type = typename VecT::index_type;
@@ -338,7 +347,7 @@ namespace zs {
       typename VecT::template variant_vec<value_type, typename VecT::extents> U{}, V{};
       static_assert(N >= 1 && N <= 3, "dimension of A must be 1, 2 or 3.");
       if constexpr (N == 1) {
-        typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{A(0, 0)};
+        typename VecT::template variant_vec<value_type, integer_sequence<index_type, N>> S{A(0, 0)};
         U(0, 0) = V(0, 0) = 1;
         return zs::make_tuple(U, S, V);
       } else if constexpr (N == 2) {
@@ -348,7 +357,7 @@ namespace zs {
         gv.fill(V);
         return zs::make_tuple(U, S, V);
       } else if constexpr (N == 3) {
-        typename VecT::template variant_vec<value_type, integer_seq<index_type, N>> S{};
+        typename VecT::template variant_vec<value_type, integer_sequence<index_type, N>> S{};
         auto B = A.clone();
         U = U.identity();
         V = V.identity();
@@ -362,7 +371,7 @@ namespace zs {
         value_type gamma[2] = {alpha[0] * beta[0], alpha[1] * beta[1]};
 
         // terminate once any of(α1 β1 α2 β2 α3) becomes smaller than a tolerance τ
-        constexpr auto eta = limits<value_type>::epsilon() * (value_type)128;
+        constexpr auto eta = zs::detail::deduce_numeric_epsilon<value_type>() * (value_type)128;
         value_type tol
             = eta
               * math::max((value_type)0.5
@@ -390,7 +399,8 @@ namespace zs {
           gamma[1] = alpha[1] * beta[1];
         }
 
-        if constexpr (false) {
+#if 0
+        {
           auto printMat = [](auto&& mat, std::string msg = "") {
             using Mat = RM_CVREF_T(mat);
             if (!msg.empty()) fmt::print("## msg: {}\n", msg);
@@ -405,6 +415,7 @@ namespace zs {
           printMat(V.transpose(), "V^T");
           printMat(U * B * V.transpose(), "Achk (U B V^T)");
         }
+#endif
         /**
          *  Handle the cases of one of the alphas and betas being 0
          *  Sorted by ease of handling and then frequency
@@ -522,7 +533,8 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr auto polar_decomposition(const VecInterface<VecT>& A) noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto N = VecT::template range_t<0>::value;

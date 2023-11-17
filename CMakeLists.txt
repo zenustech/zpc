@@ -56,8 +56,10 @@ option(ZS_ENABLE_DOC "Enable Doxygen Documentation Generation" OFF)
 option(ZS_ENABLE_OFB_ACCESS_CHECK "Enable out-of-bound access check" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ZS_ENABLE_CUDA "Enable cuda backend" ON)
-option(ZS_ENABLE_ZENO_CU_WRANGLE "Enable cuda wrangles for zeno" ON)
+option(ZS_ENABLE_ZENO_CU_WRANGLE "Enable cuda wrangles for zeno" OFF)
+option(ZS_ENABLE_VULKAN "Enable vulkan backend" OFF)
 option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
+option(ZS_ENABLE_JIT "Enable JIT module" ON)
 option(ZS_ENABLE_OPENVDB "Enable openvdb-related build" ON)
 option(ZS_ENABLE_SYCL_COMPUTECPP "Enable SYCL[ComputeCpp] backend" ON)
 option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" OFF)
@@ -97,7 +99,7 @@ if(ENABLE_PCH)
 endif()
 
 # ---- build setup -----
-# ======================
+# ========cuda==========
 if(ZS_ENABLE_CUDA)
   include(CheckLanguage)
   check_language(CUDA)
@@ -113,6 +115,20 @@ if(ZS_ENABLE_CUDA)
   set(CUDA_FOUND ${CMAKE_CUDA_COMPILER})
 endif(ZS_ENABLE_CUDA)
 
+# =========vk===========
+if(ZS_ENABLE_VULKAN)
+  find_package(Vulkan QUIET)
+
+  if(Vulkan_FOUND)
+    message("-- vulkan libraries" ${Vulkan_LIBRARIES})
+    message("-- vulkan include directory" ${Vulkan_INCLUDE_DIRS})
+  else()
+    message(STATUS "No Vulkan found")
+    set(ZS_ENABLE_VULKAN OFF)
+  endif()
+endif(ZS_ENABLE_VULKAN)
+
+# ========proj==========
 if(MSVC)
   target_compile_definitions(zsproj_deps INTERFACE NOMINMAX)
 endif()
@@ -126,6 +142,7 @@ target_compile_definitions(zsproj_deps INTERFACE
   $<INSTALL_INTERFACE:ZS_INCLUDE_DIR="${CMAKE_INSTALL_INCLUDEDIR}">
 )
 
+# =========cxx==========
 add_library(zpc_cxx_deps INTERFACE)
 target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
@@ -189,7 +206,7 @@ target_link_libraries(zpc_deps INTERFACE zpc_cxx_deps)
 # ---- binaries ----
 # ==================
 
-# ---- Library ----
+# ---- library ----
 # =================
 add_subdirectory(include/zensim)
 
@@ -222,7 +239,7 @@ endif(ZS_ENABLE_CUDA)
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
+message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
 # =================

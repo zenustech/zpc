@@ -14,7 +14,7 @@ namespace zs {
     static_assert(std::is_arithmetic_v<ValT>, "weight type should be arithmetic");
 
     using ColorT = RM_CVREF_T(*std::begin(colors));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     static_assert(std::is_arithmetic_v<ColorT>, "color type should be arithmetic");
 
     auto n = range_size(weights);
@@ -30,13 +30,16 @@ namespace zs {
 
     policy(colors, [] ZS_LAMBDA(ColorT & color) { color = limits<ColorT>::max(); });
 
-    zs::Vector<int, AllocatorT> done{spmat.get_allocator(), 2};
-    zs::Vector<u8, AllocatorT> maskOut{spmat.get_allocator(), (std::size_t)n};
+    auto allocator = get_temporary_memory_source(policy);
+    zs::Vector<int> done{allocator, 2};
+    zs::Vector<u8> maskOut{allocator, (size_t)n};
     maskOut.reset(0);
+    // policy(maskOut, [] ZS_LAMBDA(u8 & mask) { mask = 0; });
     std::vector<int> hdone(2);
     ColorT color;
     for (color = 0;; color += 2) {
       done.reset(0);
+      // policy(done, [] ZS_LAMBDA(int &v) { v = 0; });
       policy(range(n), [spmat = proxy<space>(spmat), ws = std::begin(weights),
                         colors = std::begin(colors), done = view<space>(done),
                         maskOut = view<space>(maskOut), color] ZS_LAMBDA(Ti row) mutable {
@@ -65,6 +68,7 @@ namespace zs {
           done[1] = 1;
         }
       });
+      /// @note policy is executing in synchronous fashion, safe to retrieve value here
       done.retrieveVals(hdone.data());
       if (hdone[0] == 0) {
         break;
@@ -94,7 +98,7 @@ namespace zs {
     static_assert(std::is_arithmetic_v<ValT>, "weight type should be arithmetic");
 
     using ColorT = RM_CVREF_T(*std::begin(colors));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     static_assert(std::is_arithmetic_v<ColorT>, "color type should be arithmetic");
 
     auto n = range_size(weights);
@@ -111,12 +115,13 @@ namespace zs {
     policy(colors, [] ZS_LAMBDA(ColorT & color) { color = limits<ColorT>::max(); });
 
     // @note 0: free, 1: colored, 2: temporaral exclusion (reset upon the next color iteration)
-    zs::Vector<u8, AllocatorT> maskOut{spmat.get_allocator(), (std::size_t)n};
+    auto allocator = get_temporary_memory_source(policy);
+    zs::Vector<u8> maskOut{allocator, (size_t)n};
     maskOut.reset(0);
 
     // @note coloring occured (including maximum set expansion)
     // @note 0, 1, 2
-    zs::Vector<int, AllocatorT> expanded{spmat.get_allocator(), 1};
+    zs::Vector<int> expanded{allocator, 1};
 
     ColorT color;
     for (color = 0;; color++) {

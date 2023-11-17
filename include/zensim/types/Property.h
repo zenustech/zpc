@@ -1,8 +1,5 @@
 #pragma once
-#include <type_traits>
-
-#include "zensim/meta/Meta.h"
-#include "zensim/meta/Relationship.h"
+#include "zensim/ZpcMeta.hpp"
 
 namespace zs {
 
@@ -16,9 +13,8 @@ namespace zs {
   constexpr auto mem_um = um_mem_tag{};
 
   template <typename Tag> constexpr bool is_memory_tag(Tag = {}) noexcept {
-    return (
-        is_same_v<Tag,
-                  host_mem_tag> || is_same_v<Tag, device_mem_tag> || is_same_v<Tag, um_mem_tag>);
+    return (is_same_v<Tag, host_mem_tag> || is_same_v<Tag, device_mem_tag>
+            || is_same_v<Tag, um_mem_tag>);
   }
 
   enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
@@ -32,10 +28,8 @@ namespace zs {
   constexpr auto exec_hip = hip_exec_tag{};
 
   template <typename Tag> constexpr bool is_execution_tag(Tag = {}) noexcept {
-    return (
-        is_same_v<
-            Tag,
-            host_exec_tag> || is_same_v<Tag, omp_exec_tag> || is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, hip_exec_tag>);
+    return (is_same_v<Tag, host_exec_tag> || is_same_v<Tag, omp_exec_tag>
+            || is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, hip_exec_tag>);
   }
 
   ///
@@ -62,10 +56,8 @@ namespace zs {
   constexpr auto affine_matrix_c = attrib_affine_matrix_tag{};
 
   template <typename Tag> constexpr bool is_attribute_tag(Tag = {}) noexcept {
-    return (
-        is_same_v<
-            Tag,
-            attrib_scalar_tag> || is_same_v<Tag, attrib_vector_tag> || is_same_v<Tag, attrib_matrix_tag> || is_same_v<Tag, attrib_affine_matrix_tag>);
+    return (is_same_v<Tag, attrib_scalar_tag> || is_same_v<Tag, attrib_vector_tag>
+            || is_same_v<Tag, attrib_matrix_tag> || is_same_v<Tag, attrib_affine_matrix_tag>);
   }
 
   enum struct layout_e : int { aos = 0, soa, aosoa };
@@ -77,10 +69,8 @@ namespace zs {
   constexpr auto aosoa_c = layout_aosoa_tag{};
 
   template <typename Tag> constexpr bool is_layout_tag(Tag = {}) noexcept {
-    return (
-        is_same_v<
-            Tag,
-            layout_aos_tag> || is_same_v<Tag, layout_soa_tag> || is_same_v<Tag, layout_aosoa_tag>);
+    return (is_same_v<Tag, layout_aos_tag> || is_same_v<Tag, layout_soa_tag>
+            || is_same_v<Tag, layout_aosoa_tag>);
   }
 
   enum struct kernel_e { linear, quadratic, cubic, delta2, delta3, delta4 };
@@ -98,10 +88,9 @@ namespace zs {
   constexpr auto kernel_delta4_c = kernel_delta4_tag{};
 
   template <typename Tag> constexpr bool is_kernel_tag(Tag = {}) noexcept {
-    return (
-        is_same_v<
-            Tag,
-            kernel_linear_tag> || is_same_v<Tag, kernel_quadratic_tag> || is_same_v<Tag, kernel_cubic_tag> || is_same_v<Tag, kernel_delta2_tag> || is_same_v<Tag, kernel_delta3_tag> || is_same_v<Tag, kernel_delta4_tag>);
+    return (is_same_v<Tag, kernel_linear_tag> || is_same_v<Tag, kernel_quadratic_tag>
+            || is_same_v<Tag, kernel_cubic_tag> || is_same_v<Tag, kernel_delta2_tag>
+            || is_same_v<Tag, kernel_delta3_tag> || is_same_v<Tag, kernel_delta4_tag>);
   }
 
   enum struct grid_e : unsigned char { collocated = 0, cellcentered, staggered, total };
@@ -113,27 +102,21 @@ namespace zs {
   static constexpr auto staggered_c = grid_staggered_tag{};
 
   template <typename Tag> constexpr bool is_grid_tag(Tag = {}) noexcept {
-    return (
-        is_same_v<
-            Tag,
-            grid_collocated_tag> || is_same_v<Tag, grid_cellcentered_tag> || is_same_v<Tag, grid_staggered_tag>);
+    return (is_same_v<Tag, grid_collocated_tag> || is_same_v<Tag, grid_cellcentered_tag>
+            || is_same_v<Tag, grid_staggered_tag>);
   }
 
   /// comparable
   template <typename T> struct is_equality_comparable {
   private:
     static void *conv(bool);
-    template <typename U> static std::true_type test(
-        decltype(conv(std::declval<U const &>() == std::declval<U const &>())),
-        decltype(conv(!std::declval<U const &>() == std::declval<U const &>())));
-    template <typename U> static std::false_type test(...);
+    template <typename U>
+    static true_type test(decltype(conv(declval<U const &>() == declval<U const &>())),
+                          decltype(conv(!declval<U const &>() == declval<U const &>())));
+    template <typename U> static false_type test(...);
 
   public:
     static constexpr bool value = decltype(test<T>(nullptr, nullptr))::value;
   };
-
-  template <class T> struct is_unbounded_array : std::false_type {};
-
-  template <class T> struct is_unbounded_array<T[]> : std::true_type {};
 
 }  // namespace zs

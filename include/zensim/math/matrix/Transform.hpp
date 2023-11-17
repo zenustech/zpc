@@ -55,7 +55,7 @@ namespace zs::math {
     }
 
     /// rotation
-    template <typename T, enable_if_t<std::is_convertible_v<T, value_type>> = 0>
+    template <typename T, enable_if_t<is_convertible_v<T, value_type>> = 0>
     void setToRotation(const Rotation<T, dim> &r) noexcept {
       self() = mat_type::zeros();
       for (int i = 0; i != dim; ++i)
@@ -63,14 +63,14 @@ namespace zs::math {
       self()(dim, dim) = 1;
     }
 
-    template <typename T, enable_if_t<std::is_convertible_v<T, value_type>> = 0>
+    template <typename T, enable_if_t<is_convertible_v<T, value_type>> = 0>
     void preRotate(const Rotation<T, dim> &v) noexcept {
       Transform rot{};
       rot.setToRotation(v);
       self() = rot * self();
     }
 
-    template <typename T, enable_if_t<std::is_convertible_v<T, value_type>> = 0>
+    template <typename T, enable_if_t<is_convertible_v<T, value_type>> = 0>
     void postRotate(const Rotation<T, dim> &v) noexcept {
       Transform rot{};
       rot.setToRotation(v);
@@ -98,7 +98,7 @@ namespace zs::math {
       H(i, dim) = 0;
     }
     // RS
-    typename VecTM::template variant_vec<ValT, integer_seq<Tn, dim, dim>> L{};
+    typename VecTM::template variant_vec<ValT, integer_sequence<Tn, dim, dim>> L{};
     for (Tn i = 0; i != dim; ++i)
       for (Tn j = 0; j != dim; ++j) L(i, j) = H(i, j);
     auto [R_, S_] = polar_decomposition(L);
@@ -125,10 +125,10 @@ namespace zs::math {
                     VecTR::template range_t<1>::value + 1 == VecTM::template range_t<0>::value,
                     VecTT::dim == 1,
                     VecTT::template range_t<0>::value + 1 == VecTM::template range_t<0>::value,
-                    std::is_floating_point_v<typename VecTM::value_type>,
-                    std::is_floating_point_v<typename VecTS::value_type>,
-                    std::is_floating_point_v<typename VecTR::value_type>,
-                    std::is_floating_point_v<typename VecTT::value_type>> = 0>
+                    is_floating_point_v<typename VecTM::value_type>,
+                    is_floating_point_v<typename VecTS::value_type>,
+                    is_floating_point_v<typename VecTR::value_type>,
+                    is_floating_point_v<typename VecTT::value_type>> = 0>
   constexpr void decompose_transform(const VecInterface<VecTM> &m, VecInterface<VecTS> &s,
                                      VecInterface<VecTR> &r, VecInterface<VecTT> &t,
                                      bool applyOnColumn = true) noexcept {
@@ -142,7 +142,7 @@ namespace zs::math {
     // T
     for (Tn i = 0; i != dim; ++i) t(i) = H(i, dim);
     // RS
-    typename VecTM::template variant_vec<ValT, integer_seq<Tn, dim, dim>> L{};
+    typename VecTM::template variant_vec<ValT, integer_sequence<Tn, dim, dim>> L{};
     for (Tn i = 0; i != dim; ++i)
       for (Tn j = 0; j != dim; ++j) L(i, j) = H(i, j);
     auto [R_, S_] = polar_decomposition(L);

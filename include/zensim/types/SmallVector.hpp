@@ -1,23 +1,27 @@
 #pragma once
-#include <string>
-#include <string_view>
 
-#include "zensim/meta/Meta.h"
+#include "zensim/ZpcIntrinsics.hpp"
+#include "zensim/ZpcMeta.hpp"
+#if defined(__CUDACC__)
+#  ifdef ZPC_JIT_MODE
+#  else
+#    include <stdio.h>
+#  endif
+#endif
 
 namespace zs {
 
-  // null-terminated string
-  struct SmallString {
-    using char_type = char;
-    static_assert(std::is_trivial_v<char_type> && std::is_standard_layout_v<char_type>,
-                  "char type is not trivial and in standard-layout.");
-    using size_type = std::size_t;
-    static constexpr auto nbytes = 4 * sizeof(void *);  ///< 4 * 8 - 1 = 31 bytes (chars)
+  /// @brief null-terminated string
+  /// @note 4 * 8 - 1 = 31 bytes (chars)
+  template <typename CharT = char, zs::size_t NBytes = 4 * sizeof(void *)> struct BasicSmallString {
+    using char_type = CharT;
+    using size_type = size_t;
+    static constexpr auto nbytes = NBytes;
 
-    constexpr SmallString() noexcept : buf{} {
+    constexpr BasicSmallString() noexcept : buf{} {
       for (auto &c : buf) c = '\0';
     }
-    constexpr SmallString(const char tmp[]) : buf{} {
+    constexpr BasicSmallString(const char tmp[]) : buf{} {
       size_type i = 0;
       for (; i + (size_type)1 != nbytes && tmp[i]; ++i) buf[i] = tmp[i];
       buf[i] = '\0';
@@ -27,7 +31,13 @@ namespace zs {
       }
 #endif
     }
-    SmallString(const std::string &str) noexcept {
+    template <
+        typename StrT,
+        enable_if_t<is_assignable_v<
+                        char_type &,
+                        decltype(declval<StrT>()
+                                     [0])> && is_integral_v<decltype(declval<StrT>().size())>> = 0>
+    BasicSmallString(const StrT &str) noexcept {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;
       buf[n] = '\0';
       for (size_type i = 0; i != n; ++i) buf[i] = str[i];
@@ -38,11 +48,13 @@ namespace zs {
       }
 #endif
     }
-    constexpr SmallString(const SmallString &) noexcept = default;
-    constexpr SmallString &operator=(const SmallString &) noexcept = default;
-    constexpr SmallString(SmallString &&) noexcept = default;
-    constexpr SmallString &operator=(SmallString &&) noexcept = default;
+    constexpr BasicSmallString(const BasicSmallString &) noexcept = default;
+    constexpr BasicSmallString &operator=(const BasicSmallString &) noexcept = default;
+    constexpr BasicSmallString(BasicSmallString &&) noexcept = default;
+    constexpr BasicSmallString &operator=(BasicSmallString &&) noexcept = default;
 
+    constexpr decltype(auto) operator[](size_type i) const noexcept { return buf[i]; }
+    constexpr decltype(auto) operator[](size_type i) noexcept { return buf[i]; }
     constexpr bool operator==(const char str[]) const noexcept {
       size_type i = 0, sz = size();
       for (; i != sz && str[i]; ++i)
@@ -50,17 +62,7 @@ namespace zs {
       if (!(buf[i] || str[i])) return true;
       return false;
     }
-#if 0
-    constexpr bool operator==(const std::string_view str) const noexcept {
-      size_type i = 0;
-      for (; buf[i] && i != str.size(); ++i)
-        if (buf[i] != str[i]) return false;
-      if (!(buf[i] || str[i])) return true;
-      return false;
-    }
-#endif
 
-    std::string asString() const { return std::string{buf}; }
     constexpr const char *asChars() const noexcept { return buf; }
     constexpr operator const char *() const noexcept { return buf; }
     constexpr size_type size() const noexcept {
@@ -69,8 +71,9 @@ namespace zs {
         ;
       return i;
     }
-    friend constexpr SmallString operator+(const SmallString &a, const SmallString &b) noexcept {
-      SmallString ret{};
+    friend constexpr BasicSmallString operator+(const BasicSmallString &a,
+                                                const BasicSmallString &b) noexcept {
+      BasicSmallString ret{};
       size_type i = 0;
       for (; i + (size_type)1 != nbytes && a.buf[i]; ++i) ret.buf[i] = a.buf[i];
       for (size_type j = 0; i + (size_type)1 != nbytes && b.buf[j]; ++i, ++j) ret.buf[i] = b.buf[j];
@@ -86,6 +89,7 @@ namespace zs {
 
     char_type buf[nbytes];
   };
+  using SmallString = BasicSmallString<>;
 
   /// property tag
   struct PropertyTag {

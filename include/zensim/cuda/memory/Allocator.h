@@ -4,26 +4,31 @@
 #include <unordered_map>
 
 #include "MemOps.hpp"
-#include "zensim/Singleton.h"
 #include "zensim/memory/Allocator.h"
 #include "zensim/memory/MemoryResource.h"
 #include "zensim/types/Property.h"
 
 namespace zs {
 
-  template <> struct raw_memory_resource<device_mem_tag>
-      : mr_t, Singleton<raw_memory_resource<device_mem_tag>> {
-    using value_type = std::byte;
-    using size_type = std::size_t;
-    using difference_type = std::ptrdiff_t;
-    using propagate_on_container_move_assignment = std::true_type;
-    using propagate_on_container_copy_assignment = std::true_type;
-    using propagate_on_container_swap = std::true_type;
+  template <> struct raw_memory_resource<device_mem_tag> : mr_t {
+  private:
+    raw_memory_resource();
 
-    raw_memory_resource() noexcept;
+  public:
+    using value_type = std::byte;
+    using size_type = size_t;
+    using difference_type = std::ptrdiff_t;
+    using propagate_on_container_move_assignment = true_type;
+    using propagate_on_container_copy_assignment = true_type;
+    using propagate_on_container_swap = true_type;
+
+    ZPC_BACKEND_API static raw_memory_resource &instance() {
+      static raw_memory_resource s_instance{};
+      return s_instance;
+    }
     ~raw_memory_resource() = default;
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+    void *do_allocate(size_t bytes, size_t alignment) override {
       if (bytes) {
         auto ret = zs::allocate(mem_device, bytes, alignment);
         // record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
@@ -31,7 +36,7 @@ namespace zs {
       }
       return nullptr;
     }
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override {
       if (bytes) {
         zs::deallocate(mem_device, ptr, bytes, alignment);
         // erase_allocation(ptr);
@@ -48,6 +53,7 @@ namespace zs {
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
 
+    /// @note [context] param implies that Cuda singleton has already been initialized
     temporary_memory_resource(void *c = nullptr, void *s = nullptr) : context{c}, stream{s} {}
 
     void *do_allocate(std::size_t bytes, std::size_t alignment) override;
@@ -58,19 +64,25 @@ namespace zs {
     void *stream{nullptr};
   };
 
-  template <> struct raw_memory_resource<um_mem_tag> : mr_t,
-                                                       Singleton<raw_memory_resource<um_mem_tag>> {
-    using value_type = std::byte;
-    using size_type = std::size_t;
-    using difference_type = std::ptrdiff_t;
-    using propagate_on_container_move_assignment = std::true_type;
-    using propagate_on_container_copy_assignment = std::true_type;
-    using propagate_on_container_swap = std::true_type;
+  template <> struct raw_memory_resource<um_mem_tag> : mr_t {
+  private:
+    raw_memory_resource();
 
-    raw_memory_resource() noexcept;
+  public:
+    using value_type = std::byte;
+    using size_type = size_t;
+    using difference_type = std::ptrdiff_t;
+    using propagate_on_container_move_assignment = true_type;
+    using propagate_on_container_copy_assignment = true_type;
+    using propagate_on_container_swap = true_type;
+
+    ZPC_BACKEND_API static raw_memory_resource &instance() {
+      static raw_memory_resource s_instance{};
+      return s_instance;
+    }
     ~raw_memory_resource() = default;
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override {
+    void *do_allocate(size_t bytes, size_t alignment) override {
       if (bytes) {
         auto ret = zs::allocate(mem_um, bytes, alignment);
         // record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
@@ -78,7 +90,7 @@ namespace zs {
       }
       return nullptr;
     }
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override {
+    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override {
       if (bytes) {
         zs::deallocate(mem_um, ptr, bytes, alignment);
         // erase_allocation(ptr);
@@ -95,15 +107,15 @@ namespace zs {
   template <> struct stack_virtual_memory_resource<device_mem_tag> : mr_t {
     stack_virtual_memory_resource(ProcID did = 0, std::string_view type = "DEVICE_PINNED");
     ~stack_virtual_memory_resource();
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override;
+    void *do_allocate(size_t bytes, size_t alignment) override;
+    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override;
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
-    bool reserve(std::size_t desiredSpace);
+    bool reserve(size_t desiredSpace);
 
-    std::vector<std::pair<unsigned long long, size_t>> _vaRanges;
+    std::vector<std::pair<unsigned long long, zs::size_t>> _vaRanges;
     std::vector<unsigned long long> _allocHandles;
-    std::vector<std::pair<void *, size_t>> _allocationRanges;
+    std::vector<std::pair<void *, zs::size_t>> _allocationRanges;
     std::string _type;
     std::any _allocProp;
     std::any _accessDescr;
@@ -114,22 +126,22 @@ namespace zs {
   };
 #else
   template <> struct stack_virtual_memory_resource<device_mem_tag> : vmr_t {
-    stack_virtual_memory_resource(ProcID did = 0, std::size_t size = vmr_t::s_chunk_granularity);
+    stack_virtual_memory_resource(ProcID did = 0, size_t size = vmr_t::s_chunk_granularity);
     ~stack_virtual_memory_resource();
 
-    bool do_check_residency(std::size_t offset, std::size_t bytes) const override;
-    bool do_commit(std::size_t offset, std::size_t bytes) override;
-    bool do_evict(std::size_t offset, std::size_t bytes) override;
-    void *do_address(std::size_t offset) const override {
+    bool do_check_residency(size_t offset, size_t bytes) const override;
+    bool do_commit(size_t offset, size_t bytes) override;
+    bool do_evict(size_t offset, size_t bytes) override;
+    void *do_address(size_t offset) const override {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override;
+    void *do_allocate(size_t bytes, size_t alignment) override;
+    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override;
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     std::vector<unsigned long long> _allocHandles;
-    std::vector<std::pair<size_t, size_t>> _allocRanges;
+    std::vector<std::pair<zs::size_t, zs::size_t>> _allocRanges;
     std::any _allocProp;
     std::any _accessDescr;
     size_t _granularity;
@@ -147,14 +159,14 @@ namespace zs {
 
     arena_virtual_memory_resource(ProcID did = -1, size_t space = s_chunk_granularity);
     ~arena_virtual_memory_resource();
-    bool do_check_residency(std::size_t offset, std::size_t bytes) const override;
-    bool do_commit(std::size_t offset, std::size_t bytes) override;
-    bool do_evict(std::size_t offset, std::size_t bytes) override;
-    void *do_address(std::size_t offset) const override {
+    bool do_check_residency(size_t offset, size_t bytes) const override;
+    bool do_commit(size_t offset, size_t bytes) override;
+    bool do_evict(size_t offset, size_t bytes) override;
+    void *do_address(size_t offset) const override {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }
 
-    void *do_allocate(std::size_t /*bytes*/, std::size_t /*alignment*/) override { return _addr; }
+    void *do_allocate(size_t /*bytes*/, size_t /*alignment*/) override { return _addr; }
 
     std::any _allocProp;
     std::any _accessDescr;
@@ -162,7 +174,7 @@ namespace zs {
     const size_t _reservedSpace;
     void *_addr;
     std::vector<u64> _activeChunkMasks;
-    std::unordered_map<size_t, unsigned long long> _allocations;  // <offset, handle>
+    std::unordered_map<zs::size_t, unsigned long long> _allocations;  // <offset, handle>
     ProcID _did;
   };
 

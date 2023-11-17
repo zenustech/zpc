@@ -97,7 +97,7 @@ namespace zs {
         ret.resize(ompExec, newNbs);
         // init additional grid blocks
         ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret), nbs,
-                                      propTag](typename RM_CVREF_T(ret)::size_type bi) mutable {
+                                      propTag](typename RM_REF_T(ret)::size_type bi) mutable {
           auto block = ls.block(bi + nbs);
           using spg_t = RM_CVREF_T(ls);
           for (typename spg_t::integer_coord_component_type ci = 0; ci != ls.block_size; ++ci)
@@ -151,14 +151,13 @@ namespace zs {
       seqExec(gridPtr->cbeginValueOff(), [&valueOffCount](GridType::ValueOffCIter &iter) {
         if (iter.getValue() < 0) valueOffCount++;
       });
-      fmt::print("{} more off-value voxels to be appended to {} blocks.\n", valueOffCount,
-                 nbs);
+      fmt::print("{} more off-value voxels to be appended to {} blocks.\n", valueOffCount, nbs);
       auto newNbs = nbs + valueOffCount;  // worst-case scenario
       if (newNbs == nbs) return ret;
       ret.resize(seqExec, newNbs);
       // init additional grid blocks
       seqExec(range(newNbs - nbs), [ls = proxy<execspace_e::host>(ret), nbs,
-                                    propTag](typename RM_CVREF_T(ret)::size_type bi) mutable {
+                                    propTag](typename RM_REF_T(ret)::size_type bi) mutable {
         auto block = ls.block(bi + nbs);
         using spg_t = RM_CVREF_T(ls);
         for (typename spg_t::integer_coord_component_type ci = 0; ci != ls.block_size; ++ci)
@@ -166,7 +165,7 @@ namespace zs {
       });
       // register table
       seqExec(gridPtr->cbeginValueOff(),
-            [ls = proxy<execspace_e::host>(ret)](GridType::ValueOffCIter &iter) mutable {
+              [ls = proxy<execspace_e::host>(ret)](GridType::ValueOffCIter &iter) mutable {
                 if (iter.getValue() < 0.0) {
                   auto coord = iter.getCoord();
                   auto coord_ = IV{coord.x(), coord.y(), coord.z()};
@@ -175,14 +174,14 @@ namespace zs {
                 }
               });
       // write inactive voxels
-      seqExec(gridPtr->cbeginValueOff(), [ls = proxy<execspace_e::host>(ret),
-                                          propTag](GridType::ValueOffCIter &iter) mutable {
-        if (iter.getValue() < 0.0) {
-          auto coord = iter.getCoord();
-          auto coord_ = IV{coord.x(), coord.y(), coord.z()};
-          ls(propTag, coord_) = iter.getValue();
-        }
-      });
+      seqExec(gridPtr->cbeginValueOff(),
+              [ls = proxy<execspace_e::host>(ret), propTag](GridType::ValueOffCIter &iter) mutable {
+                if (iter.getValue() < 0.0) {
+                  auto coord = iter.getCoord();
+                  auto coord_ = IV{coord.x(), coord.y(), coord.z()};
+                  ls(propTag, coord_) = iter.getValue();
+                }
+              });
 #if 0
       // following impl contains bugs
       for (GridType::ValueOffCIter iter = gridPtr->cbeginValueOff(); iter; ++iter) {
@@ -203,7 +202,7 @@ namespace zs {
             for (auto cellno = 0; cellno != ret.block_size; ++cellno)
               block(propTag, cellno) = -ret._background;
           }
-          auto locOffset = RM_CVREF_T(spgv)::local_coord_to_offset(loc);
+          auto locOffset = RM_REF_T(spgv)::local_coord_to_offset(loc);
           auto block = spgv.block(blockno);
           block(propTag, locOffset) = iter.getValue();
         }
@@ -228,7 +227,7 @@ namespace zs {
         = openvdb::FloatGrid::create(/*background value=*/spls._background);
     // meta
     grid->insertMeta("zpc_version", openvdb::FloatMetadata(0.f));
-    grid->setName(gridName.asString());
+    grid->setName(std::string(gridName));
     // transform
     openvdb::Mat4R v2w{};
     auto lsv2w = spls.getIndexToWorldTransformation();
@@ -440,7 +439,7 @@ namespace zs {
         ret.resize(ompExec, newNbs);
         // init additional grid blocks
         ompExec(range(newNbs - nbs), [ls = proxy<execspace_e::openmp>(ret), nbs,
-                                      propTag](typename RM_CVREF_T(ret)::size_type bi) mutable {
+                                      propTag](typename RM_REF_T(ret)::size_type bi) mutable {
           auto block = ls.block(bi + nbs);
           using spg_t = RM_CVREF_T(ls);
           for (typename spg_t::integer_coord_component_type ci = 0; ci != ls.block_size; ++ci)
@@ -509,7 +508,7 @@ namespace zs {
         = openvdb::Vec3fGrid::create(/*background value=*/TV{spls._background});
     // meta
     grid->insertMeta("zpc_version", openvdb::FloatMetadata(0.f));
-    grid->setName(gridName.asString());
+    grid->setName(std::string(gridName));
     // transform
     openvdb::Mat4R v2w{};
     auto lsv2w = spls.getIndexToWorldTransformation();

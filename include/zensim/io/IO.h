@@ -1,10 +1,9 @@
 #pragma once
-#include "zensim/Singleton.h"
 #include "zensim/execution/Concurrency.h"
 
 namespace zs {
 
-  struct IO : Singleton<IO> {
+  struct IO {
   private:
     void wait() {
       std::unique_lock<std::mutex> lk{mut};
@@ -17,10 +16,14 @@ namespace zs {
         if (job) (*job)();
       }
     }
-
-  public:
     IO() : bRunning{true} {
       th = std::thread([this]() { this->worker(); });
+    }
+
+  public:
+    ZPC_BACKEND_API static IO &instance() {
+      static IO s_instance{};
+      return s_instance;
     }
     ~IO() {
       while (!jobs.empty()) cv.notify_all();

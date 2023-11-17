@@ -20,27 +20,32 @@ namespace zs {
                   "Hashtable only works with zspmrallocator for now.");
     static_assert(is_same_v<Tn_, remove_cvref_t<Tn_>>, "Key is not cvref-unqualified type!");
     static_assert(std::is_default_constructible_v<Tn_>, "Key is not default-constructible!");
-    static_assert(std::is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
-    static_assert(std::is_fundamental_v<Tn_>, "Key component should be fundamental!");
+    static_assert(is_trivially_copyable_v<Tn_>, "Key is not trivially-copyable!");
+    static_assert(is_fundamental_v<Tn_>, "Key component should be fundamental!");
 
-    using index_type = std::make_signed_t<Tn_>;
+    using index_type = zs::make_signed_t<Tn_>;
     using key_type = vec<index_type, dim_>;
-    using value_type = std::make_signed_t<Index>;
+    using value_type = zs::make_signed_t<Index>;
     using status_type = int;
-    using size_type = std::make_unsigned_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
 
     static constexpr int dim = dim_;
     static constexpr size_type bucket_size = B;
     static constexpr size_type threshold = bucket_size - 2;
     static_assert(threshold > 0, "bucket load threshold must be positive");
 
+#if 1
+    static_assert(sizeof(key_type) == sizeof(index_type) * dim,
+                  "storage_key_type assumption of key_type is invalid");
+    using storage_key_type = storage_key_type_impl<key_type>;
+#else
     struct alignas(next_2pow(sizeof(index_type) * dim)) storage_key_type {
-      static constexpr std::size_t num_total_bytes = next_2pow(sizeof(index_type) * dim);
-      static constexpr std::size_t num_padded_bytes
+      static constexpr size_t num_total_bytes = next_2pow(sizeof(index_type) * dim);
+      static constexpr size_t num_padded_bytes
           = next_2pow(sizeof(index_type) * dim) - sizeof(index_type) * dim;
       constexpr storage_key_type() noexcept = default;
       constexpr storage_key_type(const key_type &k) noexcept : val{k} {}
-      constexpr storage_key_type(key_type &&k) noexcept : val{std::move(k)} {}
+      constexpr storage_key_type(key_type &&k) noexcept : val{move(k)} {}
       ~storage_key_type() = default;
       constexpr operator key_type &() { return val; }
       constexpr operator const key_type &() const { return val; }
@@ -70,9 +75,10 @@ namespace zs {
 
       key_type val;
     };
+#endif
 
     using allocator_type = AllocatorT;
-    using difference_type = std::make_signed_t<size_type>;
+    using difference_type = zs::make_signed_t<size_type>;
     using reference = tuple<key_type &, value_type &>;
     using const_reference = tuple<const key_type &, const value_type &>;
     using pointer = tuple<key_type *, value_type *>;
@@ -82,12 +88,15 @@ namespace zs {
     using pair_type = tuple<key_type, value_type>;
 
     struct Table {
+      using storage_key_vector = Vector<storage_key_type, allocator_type>;
+      using value_vector = Vector<value_type, allocator_type>;
+      using status_vector = Vector<status_type, allocator_type>;
       Table() = default;
       Table(const Table &) = default;
       Table(Table &&) noexcept = default;
       Table &operator=(const Table &) = default;
       Table &operator=(Table &&) noexcept = default;
-      Table(const allocator_type &allocator, std::size_t numEntries)
+      Table(const allocator_type &allocator, size_t numEntries)
           : keys{allocator, numEntries},
             indices{allocator, numEntries},
             status{allocator, numEntries} {}
@@ -96,10 +105,15 @@ namespace zs {
         indices.resize(size);
         status.resize(size);
       }
+      void reset(bool resetIndex = false) {
+        keys.reset(0x3f);  // big enough positive integer
+        status.reset(-1);  // byte-wise init
+        if (resetIndex) indices.reset(-1);
+      }
 
-      Vector<storage_key_type, allocator_type> keys;
-      Vector<value_type, allocator_type> indices;
-      Vector<status_type, allocator_type> status;
+      storage_key_vector keys;
+      value_vector indices;
+      status_vector status;
     };
 
     static_assert(
@@ -108,9 +122,18 @@ namespace zs {
             && std::allocator_traits<allocator_type>::propagate_on_container_swap::value,
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
-    static constexpr index_type key_scalar_sentinel_v = limits<index_type>::max();
+    /// @note byte-wise filled with 0x3f
+    static constexpr key_type deduce_key_sentinel() noexcept {
+      typename key_type::value_type v{0};
+      for (int i = 0; i != sizeof(typename key_type::value_type); ++i) v = (v << 8) | 0x3f;
+      return key_type::constant(v);
+    }
+    static constexpr key_type key_sentinel_v = deduce_key_sentinel();
+    // static constexpr index_type key_scalar_sentinel_v = limits<index_type>::max(); //
+    // detail::deduce_numeric_max<index_type>();
     static constexpr value_type sentinel_v{-1};  // this requires key_type to be signed type
     static constexpr status_type status_sentinel_v{-1};
+    static constexpr value_type failure_token_v = detail::deduce_numeric_lowest<value_type>();
 
     constexpr decltype(auto) memoryLocation() const noexcept {
       return _cnt.get_allocator().location;
@@ -120,7 +143,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _cnt.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -128,12 +151,12 @@ namespace zs {
     constexpr auto &self() noexcept { return _table; }
     constexpr const auto &self() const noexcept { return _table; }
 
-    constexpr std::size_t evaluateTableSize(std::size_t entryCnt) const {
-      if (entryCnt == 0) return (std::size_t)0;
-      std::size_t n = next_2pow(entryCnt) * 2;
+    constexpr size_t evaluateTableSize(size_t entryCnt) const {
+      if (entryCnt == 0) return (size_t)0;
+      size_t n = next_2pow(entryCnt) * 2;
       return n + (bucket_size - n % bucket_size);
     }
-    bht(const allocator_type &allocator, std::size_t numExpectedEntries)
+    bht(const allocator_type &allocator, size_t numExpectedEntries)
         : _table{allocator, evaluateTableSize(numExpectedEntries)},
           _tableSize{static_cast<size_type>(evaluateTableSize(numExpectedEntries))},
           _cnt{allocator, 1},
@@ -145,14 +168,16 @@ namespace zs {
       _hf1 = hasher_type(rng);
       _hf2 = hasher_type(rng);
 
-      _buildSuccess.setVal(1);
+      // _cnt.setVal((value_type)0);
+      _cnt.reset(0);
+      _table.reset(false);
 
-      _cnt.setVal((value_type)0);
+      _buildSuccess.setVal(1);
     }
-    bht(std::size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
+    bht(size_t numExpectedEntries, memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : bht{get_default_allocator(mre, devid), numExpectedEntries} {}
     bht(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
-        : bht{get_default_allocator(mre, devid), (std::size_t)0} {}
+        : bht{get_default_allocator(mre, devid), (size_t)0} {}
 
     ~bht() = default;
 
@@ -224,11 +249,19 @@ namespace zs {
 
 #if 0
     template <typename Policy>
-    void resize(Policy &&, std::size_t numExpectedEntries);
-    template <typename Policy>
-    void preserve(Policy &&, std::size_t numExpectedEntries);
+    void preserve(Policy &&, size_t numExpectedEntries);
 #endif
     template <typename Policy> void reset(Policy &&, bool clearCnt);
+    void reset(bool clearCnt) {
+      _table.reset(false);
+      if (clearCnt) _cnt.reset(0);
+      _buildSuccess.setVal(1);
+    }
+
+    template <typename Policy> void resize(Policy &&, size_t newCapacity);
+    /// @note either scatter or gather
+    template <typename Policy, typename MapRange, bool Scatter = false>
+    void reorder(Policy &&, MapRange &&mapR, wrapv<Scatter> = {});
 
     Table _table;
     size_type _tableSize;
@@ -238,28 +271,27 @@ namespace zs {
     hasher_type _hf0, _hf1, _hf2;
   };
 
-#define EXTERN_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
-  extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
-  extern template struct bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
-  extern template struct bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
-  extern template struct bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
-  extern template struct bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
+#  define ZS_FWD_DECL_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
+    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
 
-  EXTERN_BHT_INSTANTIATIONS(i32, i32, 16)
-  EXTERN_BHT_INSTANTIATIONS(i32, i64, 16)
-  EXTERN_BHT_INSTANTIATIONS(i64, i64, 16)
+  ZS_FWD_DECL_BHT_INSTANTIATIONS(i32, i32, 16)
+  ZS_FWD_DECL_BHT_INSTANTIATIONS(i32, i64, 16)
 
+#if 0
   template <typename HashTableView> struct ResetBHT {
     using hash_table_type = typename HashTableView::hash_table_type;
     explicit ResetBHT(HashTableView tv, bool clearCnt) : table{tv}, clearCnt{clearCnt} {}
 
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
       using namespace placeholders;
-      table._table.keys[entry]
-          = hash_table_type::key_type::constant(hash_table_type::key_scalar_sentinel_v);
+      table._table.keys[entry] = hash_table_type::key_sentinel_v;
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
@@ -269,20 +301,111 @@ namespace zs {
     HashTableView table;
     bool clearCnt;
   };
+#endif
 
   template <typename Tn, int dim, typename Index, int B, typename Allocator>
   template <typename Policy>
   void bht<Tn, dim, Index, B, Allocator>::reset(Policy &&policy, bool clearCnt) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+#if 0
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using LsvT = decltype(proxy<space>(*this));
     policy(range(_tableSize), ResetBHT<LsvT>{proxy<space>(*this), clearCnt});
+#else
+    _table.reset();
+    if (clearCnt) _cnt.reset(0);
+    _buildSuccess.setVal(1);
+#endif
+  }
+
+  template <typename TabViewT> struct BhtInsertionOp {
+    TabViewT tb;
+    constexpr void operator()(typename TabViewT::index_type i) noexcept {
+      tb.insert(tb._activeKeys[i], i, false);
+    }
+  };
+  template <typename Tn, int dim, typename Index, int B, typename Allocator>
+  template <typename Policy>
+  void bht<Tn, dim, Index, B, Allocator>::resize(Policy &&pol, size_t newCapacity) {
+    newCapacity = evaluateTableSize(newCapacity);
+    if (newCapacity <= _tableSize) return;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
+    _tableSize = newCapacity;
+    // _numBuckets = newCapacity / bucket_size;
+    _table.resize(_tableSize);
+    reset(false);
+    _activeKeys.resize(_tableSize);  // previous records are guaranteed to be preserved
+    const auto numEntries = size();
+    using TabViewT = decltype(view<space>(*this));
+    pol(range(numEntries), BhtInsertionOp<TabViewT>{view<space>(*this)});
+  }
+
+  template <typename BhtView, typename KeyView, typename MapIter, bool Scatter> struct ReorderBht {
+    using size_type = typename BhtView::size_type;
+    using value_type = typename BhtView::value_type;
+    using key_type = typename BhtView::key_type;
+    explicit ReorderBht(BhtView tb, KeyView orderedKeys, MapIter map)
+        : tb{tb}, orderedKeys{orderedKeys}, map{map} {}
+
+    constexpr void operator()(size_type i) {
+      size_type j = map[i];
+      key_type key{};
+      // reorder keys
+      if constexpr (Scatter) {  // scatter
+        key = tb._activeKeys[i];
+        orderedKeys[j] = key;
+      } else {  // gather
+        key = tb._activeKeys[j];
+        orderedKeys[i] = key;
+      }
+      // remap index table
+      auto entry = tb.query(key, false_c);
+      if (entry != detail::deduce_numeric_max<value_type>()) {
+        if constexpr (Scatter) {
+          tb._table.indices[entry] = j;
+        } else
+          tb._table.indices[entry] = i;
+      } else {
+        *tb._success = 0;
+        // printf("fatal error! should not missing querying an existing key!\n");
+      }
+    }
+
+    BhtView tb;
+    KeyView orderedKeys;
+    MapIter map;
+  };
+  template <typename Tn, int dim, typename Index, int B, typename Allocator>
+  template <typename Policy, typename MapRange, bool Scatter>
+  void bht<Tn, dim, Index, B, Allocator>::reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter>) {
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
+    using Ti = RM_CVREF_T(*zs::begin(mapR));
+    static_assert(is_integral_v<Ti>,
+                  "index mapping range\'s dereferenced type is not an integral.");
+
+    const size_type sz = size();
+    if (range_size(mapR) != sz) throw std::runtime_error("index mapping range size mismatch");
+    if (!valid_memspace_for_execution(pol, _activeKeys.get_allocator()))
+      throw std::runtime_error("current memory location not compatible with the execution policy");
+
+    Vector<key_type, allocator_type> orderedKeys(_activeKeys.get_allocator(),
+                                                 _activeKeys.capacity());
+    {
+      auto tb = view<space>(*this);
+      auto oks = view<space>(orderedKeys);
+      auto mapIter = zs::begin(mapR);
+      pol(range(sz), ReorderBht<RM_CVREF_T(tb), RM_CVREF_T(oks), RM_CVREF_T(mapIter), Scatter>{
+                         tb, oks, mapIter});
+    }
+    _activeKeys = zs::move(orderedKeys);
   }
 
   /// proxy to work within each backends
-  template <execspace_e space, typename HashTableT, typename = void> struct BHTView {
+  template <execspace_e space_, typename HashTableT, bool Base = false, typename = void>
+  struct BHTView {
+    static constexpr auto space = space_;
     static constexpr auto exectag = wrapv<space>{};
     static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
-    using hash_table_type = std::remove_const_t<HashTableT>;
+    using hash_table_type = remove_const_t<HashTableT>;
     using hasher_type = typename hash_table_type::hasher_type;
 
     using storage_key_type = typename hash_table_type::storage_key_type;
@@ -301,8 +424,9 @@ namespace zs {
 
     using status_type = typename hash_table_type::status_type;
 
-    using unsigned_value_t = conditional_t<sizeof(value_type) == 2, u16,
-                                           conditional_t<sizeof(value_type) == 4, u32, u64>>;
+    using unsigned_value_t = make_unsigned_t<value_type>;
+    // using unsigned_value_t = conditional_t<sizeof(value_type) == 2, u16,
+    //                                       conditional_t<sizeof(value_type) == 4, u32, u64>>;
 
     static_assert(sizeof(unsigned_value_t) == sizeof(value_type),
                   "unsigned version of value_type not as expected");
@@ -311,19 +435,44 @@ namespace zs {
     static constexpr size_type bucket_size = hash_table_type::bucket_size;
     static constexpr size_type threshold = hash_table_type::threshold;
 
+    static constexpr auto is_base_c = wrapv<Base>{};
+    using storage_key_vector_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure,
+                              const typename hash_table_type::Table::storage_key_vector &,
+                              typename hash_table_type::Table::storage_key_vector &>>(),
+        is_base_c));
+    using value_vector_view_type = decltype(view<space>(
+        declval<
+            conditional_t<is_const_structure, const typename hash_table_type::Table::value_vector &,
+                          typename hash_table_type::Table::value_vector &>>(),
+        is_base_c));
+    using status_vector_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure,
+                              const typename hash_table_type::Table::status_vector &,
+                              typename hash_table_type::Table::status_vector &>>(),
+        is_base_c));
+
     struct table_t {
+#if 0
       conditional_t<is_const_structure, const storage_key_type *, storage_key_type *> keys{nullptr};
       conditional_t<is_const_structure, const value_type *, value_type *> indices{nullptr};
       conditional_t<is_const_structure, const status_type *, status_type *> status{nullptr};
+#else
+      storage_key_vector_view_type keys{};
+      value_vector_view_type indices{};
+      status_vector_view_type status{};
+#endif
     };
 
-    static constexpr auto key_scalar_sentinel_v = hash_table_type::key_scalar_sentinel_v;
     static constexpr auto sentinel_v = hash_table_type::sentinel_v;
     static constexpr auto status_sentinel_v = hash_table_type::status_sentinel_v;
+    static constexpr auto failure_token_v = hash_table_type::failure_token_v;
 
-    BHTView() noexcept = default;
+    constexpr BHTView() noexcept = default;
     explicit constexpr BHTView(HashTableT &table)
-        : _table{table.self().keys.data(), table.self().indices.data(), table.self().status.data()},
+        : _table{view<space>(table.self().keys, is_base_c, "bht_storage_key"),
+                 view<space>(table.self().indices, is_base_c, "bht_indices"),
+                 view<space>(table.self().status, is_base_c, "bht_status")},
           _activeKeys{table._activeKeys.data()},
           _tableSize{table._tableSize},
           _cnt{table._cnt.data()},
@@ -333,12 +482,14 @@ namespace zs {
           _hf1{table._hf1},
           _hf2{table._hf2} {}
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
-    __forceinline__ __host__ __device__ value_type insert(const key_type &key) noexcept {
-      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
-
+    __forceinline__ __host__ __device__ value_type insert(const key_type &key,
+                                                          value_type insertion_index = sentinel_v,
+                                                          bool enqueueKey = true) noexcept {
+      if (_numBuckets == 0) return failure_token_v;
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       int iter = 0;
       int load = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -356,17 +507,21 @@ namespace zs {
         if (load < 0)
           return HashTableT::sentinel_v;
         else if (load <= threshold) {
-          key_type storedKey = key_sentinel_v;
           if (atomicSwitchIfEqual(
                   &_table.status[bucketOffset + load],
                   const_cast<volatile storage_key_type *>(&_table.keys[bucketOffset + load]),
                   key)) {
-            auto localno
-                = (value_type)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+            auto localno = insertion_index;
+            if (insertion_index == sentinel_v)
+              localno
+                  = (value_type)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
             _table.indices[bucketOffset + load] = localno;
-            _activeKeys[localno] = key;
-            if (localno >= _tableSize - 20)
+            if (enqueueKey) _activeKeys[localno] = key;
+            if (localno >= _tableSize - 20) {
               printf("proximity!!! %d -> %d\n", (int)localno, (int)_tableSize);
+              *_success = false;
+              localno = failure_token_v;
+            }
             return localno;  ///< only the one that inserts returns the actual index
           }
         } else {
@@ -381,14 +536,79 @@ namespace zs {
         }
       }
       *_success = false;
-      return HashTableT::sentinel_v;
+      return failure_token_v;
+    }
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_all<S == execspace_e::cuda, !V> = 0>
+    __forceinline__ __host__ __device__ value_type tile_insert(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        const key_type &key, index_type insertion_index = sentinel_v,
+        bool enqueueKey = true) noexcept {
+#  if 0
+      value_type ret;
+      if (tile.thread_rank() == 0)
+        ret = insert(key, insertion_index, enqueueKey);
+      ret = tile.shfl(ret, 0);
+      return ret;
+#  endif
+      if (_numBuckets == 0) return failure_token_v;
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
+      int iter = 0;
+      size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
+      while (iter < 3) {
+        key_type laneKey = atomicTileLoad(tile, &_table.status[bucketOffset],
+                                          const_cast<const volatile storage_key_type *>(
+                                              &_table.keys[bucketOffset + tile.thread_rank()]));
+        if (tile.any(laneKey == key)) return HashTableT::sentinel_v;
+        auto loadMap = tile.ballot(laneKey != key_sentinel_v);
+        auto load = __popc(loadMap);
+        if (load <= threshold) {
+          int switched = 0;
+          value_type localno = insertion_index;
+          if (tile.thread_rank() == 0) {
+            // by the time, position [load] may already be filled
+            switched = atomicSwitchIfEqual(
+                &_table.status[bucketOffset],
+                const_cast<volatile storage_key_type *>(&_table.keys[bucketOffset + load]), key);
+            if (switched) {
+              if (insertion_index == sentinel_v)
+                localno = (value_type)atomic_add(exectag, (unsigned_value_t *)_cnt,
+                                                 (unsigned_value_t)1);
+              _table.indices[bucketOffset + load] = localno;
+              if (enqueueKey) _activeKeys[localno] = key;
+              if (localno >= _tableSize - 20) {
+                printf("proximity!!! %d -> %d\n", (int)localno, (int)_tableSize);
+                *_success = false;
+                localno = failure_token_v;
+              }
+            }
+          }
+          switched = tile.shfl(switched, 0);
+          if (switched) {
+            localno = tile.shfl(localno, 0);
+            return localno;  ///< only the one that inserts returns the actual index
+          }
+        } else {
+          ++iter;
+          load = 0;
+          if (iter == 1)
+            bucketOffset = _hf1(key) % _numBuckets * bucket_size;
+          else if (iter == 2)
+            bucketOffset = _hf2(key) % _numBuckets * bucket_size;
+          else
+            break;
+        }
+      }
+      *_success = false;
+      return failure_token_v;
     }
 #endif
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V> = 0>
-    inline value_type insert(const key_type &key) noexcept {
-      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
-
+    inline value_type insert(const key_type &key, value_type insertion_index = sentinel_v,
+                             bool enqueueKey = true) noexcept {
+      if (_numBuckets == 0) return failure_token_v;
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       int iter = 0;
       int load = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -411,12 +631,17 @@ namespace zs {
                   &_table.status[bucketOffset + load],
                   const_cast<volatile storage_key_type *>(&_table.keys[bucketOffset + load]),
                   key)) {
-            auto localno
-                = (value_type)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+            auto localno = insertion_index;
+            if (insertion_index == sentinel_v)
+              localno
+                  = (value_type)atomic_add(exectag, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
             _table.indices[bucketOffset + load] = localno;
-            _activeKeys[localno] = key;
-            if (localno >= _tableSize - 20)
+            if (enqueueKey) _activeKeys[localno] = key;
+            if (localno >= _tableSize - 20) {
               printf("proximity!!! %d -> %d\n", (int)localno, (int)_tableSize);
+              *_success = false;
+              localno = failure_token_v;
+            }
             return localno;  ///< only the one that inserts returns the actual index
           }
         } else {
@@ -431,14 +656,19 @@ namespace zs {
         }
       }
       *_success = false;
-      return HashTableT::sentinel_v;
+      return failure_token_v;
     }
 
     /// make sure no one else is inserting in the same time!
-    template <bool retrieve_index = false>
+    template <bool retrieve_index = true>
     constexpr value_type query(const key_type &key, wrapv<retrieve_index> = {}) const noexcept {
       using namespace placeholders;
-      int iter = 0;
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return HashTableT::sentinel_v;
+        else
+          return limits<value_type>::max();
+      }
       int loc = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
       for (int iter = 0; iter < 3;) {
@@ -446,9 +676,9 @@ namespace zs {
           if (_table.keys[bucketOffset + loc].val == key) break;
         if (loc != bucket_size) {
           if constexpr (retrieve_index)
-            return bucketOffset + loc;
-          else
             return _table.indices[bucketOffset + loc];
+          else
+            return bucketOffset + loc;
         } else {
           ++iter;
           if (iter == 1)
@@ -457,8 +687,49 @@ namespace zs {
             bucketOffset = _hf2(key) % _numBuckets * bucket_size;
         }
       }
-      return HashTableT::sentinel_v;
+      if constexpr (retrieve_index)
+        return HashTableT::sentinel_v;
+      else
+        return limits<value_type>::max();
     }
+#if defined(__CUDACC__)
+    template <bool retrieve_index = true, execspace_e S = space,
+              enable_if_t<S == execspace_e::cuda> = 0>
+    __forceinline__ __host__ __device__ value_type tile_query(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        const key_type &key, wrapv<retrieve_index> = {}) const noexcept {
+      using namespace placeholders;
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return HashTableT::sentinel_v;
+        else
+          return limits<value_type>::max();
+      }
+      int loc = 0;
+      size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
+      for (int iter = 0; iter < 3;) {
+        key_type laneKey = _table.keys[bucketOffset + tile.thread_rank()];
+        auto keyExistMap = tile.ballot(laneKey == key);
+        loc = __ffs(keyExistMap) - 1;
+        if (loc != -1) {
+          if constexpr (retrieve_index)
+            return _table.indices[bucketOffset + loc];
+          else
+            return bucketOffset + loc;
+        } else {
+          ++iter;
+          if (iter == 1)
+            bucketOffset = _hf1(key) % _numBuckets * bucket_size;
+          else if (iter == 2)
+            bucketOffset = _hf2(key) % _numBuckets * bucket_size;
+        }
+      }
+      if constexpr (retrieve_index)
+        return HashTableT::sentinel_v;
+      else
+        return limits<value_type>::max();
+    }
+#endif
     constexpr size_type entry(const key_type &key) const noexcept {
       using namespace placeholders;
       return static_cast<size_type>(query(key, true_c));
@@ -471,9 +742,8 @@ namespace zs {
       // reset counter
       *_cnt = 0;
       // reset table
-      constexpr key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
       for (key_type entry = 0; entry < _tableSize; ++entry) {
-        _table.keys[entry] = key_sentinel_v;
+        _table.keys[entry] = hash_table_type::key_sentinel_v;
         _table.indices[entry] = HashTableT::sentinel_v;
         _table.status[entry] = HashTableT::status_sentinel_v;
       }
@@ -490,18 +760,18 @@ namespace zs {
 
   protected:
     /// @brief helper methods: atomicSwitchIfEqual, atomicLoad
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __host__ __device__ bool atomicSwitchIfEqual(
         status_type *lock, volatile storage_key_type *const dest,
         const storage_key_type &val) noexcept {
-      constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       if constexpr (sizeof(storage_key_type) == 8) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
+        const storage_key_type storage_key_sentinel_v = key_sentinel_v;
         union {
           volatile storage_key_type *const ptr;
           volatile u64 *const ptr64;
@@ -509,7 +779,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
@@ -519,8 +789,9 @@ namespace zs {
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
+        const storage_key_type storage_key_sentinel_v = key_sentinel_v;
         union {
           volatile storage_key_type *const ptr;
           volatile u32 *const ptr32;
@@ -528,7 +799,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
@@ -545,7 +816,7 @@ namespace zs {
       /// cas
       storage_key_type temp;
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
-      bool eqn = temp.val == key_sentinel_v.val;
+      bool eqn = temp.val == key_sentinel_v;
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
@@ -559,11 +830,10 @@ namespace zs {
               enable_if_all<S == execspace_e::cuda, !V> = 0>
     __forceinline__ __host__ __device__ key_type
     atomicLoad(status_type *lock, const volatile storage_key_type *const dest) noexcept {
-      constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
         thread_fence(exec_cuda);
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
           storage_key_type const volatile *const ptr;
@@ -583,7 +853,7 @@ namespace zs {
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
         thread_fence(exec_cuda);
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
           storage_key_type const volatile *const ptr;
@@ -614,6 +884,69 @@ namespace zs {
       atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
       return return_val;
     }
+    template <execspace_e S = space, bool V = is_const_structure,
+              enable_if_all<S == execspace_e::cuda, !V> = 0>
+    __forceinline__ __host__ __device__ key_type atomicTileLoad(
+        cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
+        status_type *lock, const volatile storage_key_type *const dest) noexcept {
+      constexpr auto execTag = wrapv<S>{};
+      using namespace placeholders;
+      if constexpr (sizeof(storage_key_type) == 8) {
+        thread_fence(exec_cuda);
+        static_assert(alignof(storage_key_type) == alignof(u64),
+                      "storage key type alignment is not the same as u64");
+        union {
+          storage_key_type const volatile *const ptr;
+          u64 const volatile *const ptr64;
+        } src = {dest};
+
+        storage_key_type result;
+        union {
+          storage_key_type *const ptr;
+          u64 *const ptr64;
+        } dst = {&result};
+
+        /// @note beware of the potential torn read issue
+        // *dst.ptr64 = atomic_or(exec_cuda, const_cast<u64 *>(src.ptr64), (u64)0);
+        *dst.ptr64 = *src.ptr64;
+        thread_fence(exec_cuda);
+        return *dst.ptr;
+      } else if constexpr (sizeof(storage_key_type) == 4) {
+        thread_fence(exec_cuda);
+        static_assert(alignof(storage_key_type) == alignof(u32),
+                      "storage key type alignment is not the same as u32");
+        union {
+          storage_key_type const volatile *const ptr;
+          u32 const volatile *const ptr32;
+        } src = {dest};
+
+        storage_key_type result;
+        union {
+          storage_key_type *const ptr;
+          u32 *const ptr32;
+        } dst = {&result};
+
+        /// @note beware of the potential torn read issue
+        // *dst.ptr32 = atomic_or(exec_cuda, const_cast<u32 *>(src.ptr32), (u32)0);
+        *dst.ptr32 = *src.ptr32;
+        thread_fence(exec_cuda);
+        return *dst.ptr;
+      }
+      /// lock
+      if (tile.thread_rank() == 0)
+        while (atomic_exch(exec_cuda, lock, 0) == 0)
+          ;
+      tile.sync();
+      thread_fence(exec_cuda);
+      ///
+      key_type return_val;
+      for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
+      thread_fence(exec_cuda);
+      /// unlock
+      if (tile.thread_rank() == 0) atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
+      tile.sync();
+      return return_val;
+    }
 #endif
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S != execspace_e::cuda, !V> = 0>
@@ -621,9 +954,10 @@ namespace zs {
                                     const storage_key_type &val) noexcept {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
-      const storage_key_type key_sentinel_v = key_type::constant(HashTableT::key_scalar_sentinel_v);
+      constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
+      const storage_key_type storage_key_sentinel_v = key_sentinel_v;
       if constexpr (sizeof(storage_key_type) == 8) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
           volatile storage_key_type *const ptr;
@@ -632,7 +966,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u64 *const ptr64;
@@ -642,7 +976,7 @@ namespace zs {
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
           volatile storage_key_type *const ptr;
@@ -651,7 +985,7 @@ namespace zs {
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
-        } expected = {&key_sentinel_v};
+        } expected = {&storage_key_sentinel_v};
         union {
           const storage_key_type *const ptr;
           const u32 *const ptr32;
@@ -668,7 +1002,7 @@ namespace zs {
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
-      bool eqn = temp.val == key_sentinel_v.val;
+      bool eqn = temp.val == key_sentinel_v;
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
@@ -684,7 +1018,7 @@ namespace zs {
       constexpr auto execTag = wrapv<S>{};
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u64>,
+        static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
           storage_key_type const volatile *const ptr;
@@ -700,7 +1034,7 @@ namespace zs {
         *dst.ptr64 = *src.ptr64;
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        static_assert(std::alignment_of_v<storage_key_type> == std::alignment_of_v<u32>,
+        static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
           storage_key_type const volatile *const ptr;
@@ -730,13 +1064,23 @@ namespace zs {
     }
   };
 
-  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator>
-  constexpr decltype(auto) proxy(bht<Tn, dim, Index, B, Allocator> &table) {
-    return BHTView<ExecSpace, bht<Tn, dim, Index, B, Allocator>>{table};
+  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
+    return BHTView<ExecSpace, bht<Tn, dim, Index, B, Allocator>, Base>{table};
   }
-  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator>
+  template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator,
+            bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
+  constexpr decltype(auto) view(const bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
+    return BHTView<ExecSpace, const bht<Tn, dim, Index, B, Allocator>, Base>{table};
+  }
+  template <execspace_e space, typename Tn, int dim, typename Index, int B, typename Allocator>
+  constexpr decltype(auto) proxy(bht<Tn, dim, Index, B, Allocator> &table) {
+    return view<space>(table, false_c);
+  }
+  template <execspace_e space, typename Tn, int dim, typename Index, int B, typename Allocator>
   constexpr decltype(auto) proxy(const bht<Tn, dim, Index, B, Allocator> &table) {
-    return BHTView<ExecSpace, const bht<Tn, dim, Index, B, Allocator>>{table};
+    return view<space>(table, false_c);
   }
 
 }  // namespace zs

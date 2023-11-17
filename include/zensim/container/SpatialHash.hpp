@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Bcht.hpp"
+#include "Bht.hpp"
 #include "zensim/container/TileVector.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
@@ -14,16 +14,15 @@ namespace zs {
     using allocator_type = AllocatorT;
     using value_type = ValueT;
     // must be signed integer, since we are using -1 as sentinel value
-    using index_type = std::make_signed_t<Index>;
-    using size_type = std::make_unsigned_t<Index>;
-    static_assert(std::is_floating_point_v<value_type>, "value_type should be floating point");
-    static_assert(std::is_integral_v<index_type>, "index_type should be an integral");
+    using index_type = zs::make_signed_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
+    static_assert(is_floating_point_v<value_type>, "value_type should be floating point");
+    static_assert(is_integral_v<index_type>, "index_type should be an integral");
 
     using bv_t = zs::AABBBox<dim, value_type>;
     using coord_type = zs::vec<value_type, dim>;
     using integer_coord_type = zs::vec<int, dim>;
-    using table_type
-        = bcht<integer_coord_type, index_type, true, universal_hash<integer_coord_type>, 16>;
+    using table_type = bht<int, dim, index_type, 16, allocator_type>;
     using indices_type = zs::Vector<index_type, allocator_type>;
 
     constexpr decltype(auto) memoryLocation() const noexcept { return _table.memoryLocation(); }
@@ -69,7 +68,7 @@ namespace zs {
   template <zs::execspace_e Space, typename ShT> struct SpatialHashView<Space, ShT> {
     static constexpr bool is_const_structure = std::is_const_v<ShT>;
     static constexpr auto space = Space;
-    using container_type = std::remove_const_t<ShT>;
+    using container_type = remove_const_t<ShT>;
     static constexpr int dim = ShT::dim;
     using index_type = typename ShT::index_type;
     using size_type = typename ShT::size_type;
@@ -79,11 +78,11 @@ namespace zs {
     using coord_type = typename ShT::coord_type;
     using integer_coord_type = typename ShT::integer_coord_type;
     using table_type = typename ShT::table_type;
-    using table_view_type = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
+    using table_view_type = RM_REF_T(proxy<space>(
+        declval<conditional_t<is_const_structure, const table_type &, table_type &>>()));
     using indices_type = typename ShT::indices_type;
-    using indices_view_type = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const indices_type &, indices_type &>>()));
+    using indices_view_type = RM_REF_T(proxy<space>(
+        declval<conditional_t<is_const_structure, const indices_type &, indices_type &>>()));
 
     constexpr SpatialHashView() = default;
     ~SpatialHashView() = default;
@@ -141,7 +140,7 @@ namespace zs {
     using namespace zs;
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     _dx = dx;
@@ -204,7 +203,7 @@ namespace zs {
     _offsets = indices_type{primBvs.get_allocator(), numCells + 1};
     exclusive_scan(policy, std::begin(counts), std::end(counts), std::begin(_offsets));
 
-    const std::size_t numEntries = _offsets.getVal(numCells);
+    const size_t numEntries = _offsets.getVal(numCells);
     _indices = indices_type{primBvs.get_allocator(), numEntries};
 
     policy(range(primBvs.size()), [primBvs = proxy<space>(primBvs), table = proxy<space>(_table),

@@ -9,7 +9,7 @@ namespace zs {
             typename InVRangeT, typename OutVRangeT>
   inline void spmv_classic(Policy &&policy, const SparseMatrix<T, true, Ti, Tn, AllocatorT> &spmat,
                            InVRangeT &&inV, OutVRangeT &&outV) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -42,7 +42,7 @@ namespace zs {
             typename InVRangeT, typename OutVRangeT>
   inline void spmv_classic(Policy &&policy, const SparseMatrix<T, false, Ti, Tn, AllocatorT> &spmat,
                            InVRangeT &&inV, OutVRangeT &&outV) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -79,7 +79,7 @@ namespace zs {
   inline auto spgemm_classic(Policy &&policy,
                              const SparseMatrix<TA, true, TiA, TnA, AllocatorTA> &A,
                              const SparseMatrix<TB, RowMajorB, TiB, TnB, AllocatorTB> &B) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
 
     auto nrows = spmat.rows();
     auto ncols = spmat.cols();
@@ -112,7 +112,7 @@ namespace zs {
   inline void spmv(Policy &&policy, const SparseMatrix<T, true, Ti, Tn, AllocatorT> &spmat,
                    InVRangeT &&inV, OutVRangeT &&outV, wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();
@@ -155,7 +155,7 @@ namespace zs {
   inline void spmv(Policy &&policy, const SparseMatrix<T, false, Ti, Tn, AllocatorT> &spmat,
                    InVRangeT &&inV, OutVRangeT &&outV, wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();
@@ -204,7 +204,7 @@ namespace zs {
                         InVRangeT &&inV, MaskRangeT &&mask, OutVRangeT &&outV,
                         wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();
@@ -251,7 +251,7 @@ namespace zs {
                         InVRangeT &&inV, MaskRangeT &&mask, OutVRangeT &&outV,
                         wrapv<category> = {}) {
     using TOut = RM_CVREF_T(*std::begin(outV));
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto sr = make_semiring(wrapv<category>{}, wrapt<TOut>{});
 
     auto nrows = spmat.rows();

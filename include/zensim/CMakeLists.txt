@@ -7,17 +7,25 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   execution/Stacktrace.cpp
   # execution/ExecutionPolicy.cpp
   execution/ConcurrencyPrimitive.cpp
+  types/Iterator.cpp
   Logger.cpp
+  io/IO.cpp
 
-  resource/Filesystem.cpp
+  #
+  visitors/ObjectVisitor.cpp
+
+  #
+  ZpcImplPattern.cpp
+
+  io/Filesystem.cpp
   # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
   io/ParticleIO.cpp
-  io/IO.cpp
 )
 set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
   geometry/SparseGrid_Conversion.cpp
+  geometry/AdaptiveGrid_Conversion.cpp
   geometry/VdbLevelSet_Point.cpp
   geometry/VdbLevelSet_LoadPhi.cpp
   geometry/VdbLevelSet_LoadPhiVel.cpp
@@ -26,6 +34,15 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
 
   # simulation
   simulation/init/Scene.cpp
+)
+set(ZENSIM_LIBRARY_VULKAN_SOURCE_FILES
+  vulkan/VkUtils.cpp
+  vulkan/VkTexture.cpp
+  vulkan/VkShader.cpp
+  vulkan/VkSwapchain.cpp
+  vulkan/VkPipeline.cpp
+  vulkan/VkContext.cpp
+  vulkan/Vulkan.cpp
 )
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES
   cuda/Cuda.cu
@@ -39,22 +56,32 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
   # omp/execution/ExecutionPolicy.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
-
   # ref: https://stackoverflow.com/questions/2351148/explicit-template-instantiation-when-is-it-used
   container/HashTable.cpp
+  container/Bht.cpp
   container/Vector.cpp
   container/TileVector.cpp
+  container/DenseField.cpp
+  geometry/Mesh.cpp
   math/matrix/Matrix.cpp
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp
   resource/Resource.cpp
-
-  py_interop/VectorInstantiations.cpp
+  ZpcInitialization.cpp
 )
 set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 
   # cuda/math/matrix/Matrix.cpp
   cuda/simulation/sparsity/SparsityCompute.cpp
+)
+set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
+  py_interop/Allocator.cpp
+  py_interop/DenseFieldInstantiations.cpp
+  py_interop/BhtInstantiations.cpp
+  py_interop/VectorInstantiations.cpp
+  py_interop/SpmatInstantiations.cpp
+  py_interop/TileVectorInstantiations.cpp
+  py_interop/SmallVecInstantiations.cpp
 )
 
 # # headers
@@ -74,7 +101,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   geometry/GenericLevelSet.h
   geometry/LevelSet.h
   geometry/LevelSetInterface.h
-  geometry/LevelSetSequence.hpp
   geometry/Mesh.hpp
   geometry/PoissonDisk.hpp
   geometry/SparseLevelSet.hpp
@@ -112,17 +138,19 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
   # meta
   ZpcMeta.hpp
+  ZpcFunctional.hpp
   meta/Functional.h
   meta/Meta.h
-  meta/Relationship.h
   meta/Sequence.h
+
+  # visitors
+  visitors/ObjectVisitor.hpp
 
   # profile
   profile/CppTimers.hpp
 
   # types
   types/Pointers.hpp
-  types/Function.h
   types/Iterator.h
   types/Optional.h
   types/Polymorphism.h
@@ -135,7 +163,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   Logger.hpp
   Platform.hpp
   Reflection.h
-  Singleton.h
+  # Singleton.h
   TypeAlias.hpp
 
   # simulation
@@ -164,6 +192,8 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
 
   # tpp
   simulation/sparsity/SparsityCompute.tpp
+
+  io/Filesystem.hpp
 )
 set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
   io/IO.h
@@ -176,6 +206,9 @@ set(ZENSIM_LIBRARY_IO_INCLUDE_FILES
 set(ZENSIM_LIBRARY_TOOL_INCLUDE_FILES
   geometry/VdbLevelSet.h
   geometry/VdbSampler.h
+)
+set(ZENSIM_LIBRARY_VULKAN_INCLUDE_FILES
+  vulkan/Vulkan.hpp
 )
 set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
   cuda/Cuda.h
@@ -231,7 +264,16 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
 
   # resource
   resource/Resource.h
+  Zpc.hpp
 
+)
+set(ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES
+  py_interop/DenseFieldView.hpp
+  py_interop/VectorView.hpp
+  py_interop/TileVectorView.hpp
+  py_interop/BhtView.hpp
+  py_interop/HashUtils.hpp
+  py_interop/SmallVec.hpp
 )
 
 if(ZS_ENABLE_CUDA)
@@ -265,6 +307,7 @@ add_library(zensim INTERFACE)
 # ############
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpccore SHARED)
+  target_compile_definitions(zpccore PRIVATE ZPC_BACKEND_PRIVATE)
 else()
   add_library(zpccore STATIC)
 endif()
@@ -273,6 +316,12 @@ target_sources(zpccore
   PRIVATE
   ${ZENSIM_LIBRARY_CORE_SOURCE_FILES} ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
 )
+if(ZS_ENABLE_VULKAN)
+  target_sources(zpccore
+    PRIVATE
+    ${ZENSIM_LIBRARY_VULKAN_SOURCE_FILES} ${ZENSIM_LIBRARY_VULKAN_INCLUDE_FILES}
+  )
+endif(ZS_ENABLE_VULKAN)
 
 if(ENABLE_PCH)
   target_precompile_headers(zpccore INTERFACE
@@ -282,6 +331,9 @@ endif()
 
 target_link_libraries(zpccore PUBLIC zpc_cxx_deps)
 target_link_libraries(zpccore PUBLIC zswhereami)
+# if (WIN32)
+#   target_link_libraries(zpccore PUBLIC synchronization)
+# endif(WIN32)
 target_compile_options(zpccore
   PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /bigobj /O2 /EHsc, $<IF:$<CXX_COMPILER_ID:Clang>, -Xclang -O3, -O3> >> # -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi
 )
@@ -299,11 +351,6 @@ set_target_properties(zpccore
 )
 
 # target_link_libraries(zpc_cxx_deps INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>, synchronization.lib, >)
-if(ZS_BUILD_SHARED_LIBS)
-  target_compile_definitions(zpc_cxx_deps INTERFACE ZPC_PRIVATE=1)
-else()
-  target_compile_definitions(zpc_cxx_deps INTERFACE ZPC_PRIVATE=0)
-endif()
 
 if(ZS_ENABLE_OPENMP)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_OPENMP=1)
@@ -316,6 +363,12 @@ if(ZS_ENABLE_CUDA)
 else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_CUDA=0)
 endif(ZS_ENABLE_CUDA)
+
+if(ZS_ENABLE_VULKAN)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_VULKAN=1)
+else()
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_VULKAN=0)
+endif(ZS_ENABLE_VULKAN)
 
 if(ZS_ENABLE_SYCL_COMPUTECPP)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_COMPUTECPP=1)
@@ -341,6 +394,7 @@ endif(ZS_ENABLE_SYCL)
 if(ZS_ENABLE_OPENMP)
   if(ZS_BUILD_SHARED_LIBS)
     add_library(zpcomp SHARED)
+    target_compile_definitions(zpcomp PRIVATE ZPC_BACKEND_PRIVATE)
   else()
     add_library(zpcomp STATIC)
   endif()
@@ -352,6 +406,10 @@ if(ZS_ENABLE_OPENMP)
   if(ENABLE_PCH)
     target_precompile_headers(zpcomp INTERFACE ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
   endif()
+
+  set_target_properties(zpcomp
+    PROPERTIES POSITION_INDEPENDENT_CODE ON
+  )
 
   target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
 
@@ -373,6 +431,7 @@ if(ZS_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   if(ZS_BUILD_SHARED_LIBS)
     add_library(zpccuda SHARED)
+    target_compile_definitions(zpccuda PRIVATE ZPC_BACKEND_PRIVATE)
   else()
     add_library(zpccuda STATIC)
   endif()
@@ -386,6 +445,11 @@ if(ZS_ENABLE_CUDA)
   endif()
 
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES LANGUAGE CUDA)
+
+  set_target_properties(zpccuda
+    PROPERTIES POSITION_INDEPENDENT_CODE ON
+  )
+
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore CUDA::nvrtc) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
 
   target_compile_options(zpccuda
@@ -393,7 +457,7 @@ if(ZS_ENABLE_CUDA)
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
     # https://docs.nvidia.com/cuda/cuda-driver-api/stream-sync-behavior.html#stream-sync-behavior
-    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=loop_not_reachable --diag_suppress=2642"> # -dlto -Xptxas -dlcm=cg
+    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=loop_not_reachable --diag_suppress=2642" > # -dlto -Xptxas -dlcm=cg
     # lto issue: https://forums.developer.nvidia.com/t/using-dlink-time-opt-together-with-gencode-in-cmake/165224
   )
 
@@ -409,7 +473,7 @@ if(ZS_ENABLE_CUDA)
 
   set_target_properties(zpccuda
     PROPERTIES # LINKER_LANGUAGE CUDA
-    CUDA_SEPARABLE_COMPILATION OFF
+    CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
 
     # CUDA_VISIBILITY_PRESET default
@@ -446,6 +510,7 @@ endif(ZS_ENABLE_OPENCL)
 # ######
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpc SHARED)
+  target_compile_definitions(zpc PRIVATE ZPC_PRIVATE)
 else()
   add_library(zpc STATIC)
 endif()
@@ -454,11 +519,19 @@ target_sources(zpc
   PRIVATE
   ${ZENSIM_LIBRARY_ZPC_SOURCE_FILES}
   ${ZENSIM_LIBRARY_ZPC_INCLUDE_FILES}
+  resource/ExecutionPolicy.cpp
+)
+set_target_properties(zpc
+  PROPERTIES POSITION_INDEPENDENT_CODE ON
 )
 target_link_libraries(zpc PUBLIC zpccore)
 
 if(ZS_ENABLE_OPENMP)
   target_link_libraries(zpc PUBLIC zpcomp)
+
+  target_sources(zpc
+    PRIVATE resource/omp/ExecutionPolicy.cpp
+  )
 
   # target_sources(zpc PUBLIC $<TARGET_OBJECTS:zpcomp>)
   # target_link_libraries(zpc PUBLIC zpc_omp_deps)
@@ -468,6 +541,9 @@ if(ZS_ENABLE_CUDA)
   # set_source_files_properties(${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
   target_link_libraries(zpc PUBLIC zpccuda)
 
+  target_sources(zpc
+    PRIVATE resource/cuda/ExecutionPolicy.cu
+  )
   # target_sources(zpc PRIVATE $<TARGET_OBJECTS:zpccuda>)
   # target_link_libraries(zpc PUBLIC zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
@@ -486,12 +562,222 @@ endif(ZS_ENABLE_OPENCL)
 
 target_link_libraries(zensim INTERFACE zpc) # zpc -> zensim
 
+# ################
+# zpc_py_interop #
+# ################
+add_library(zpc_jit_py INTERFACE)  # cmake helper target for zpc JIT
+find_package(Python3 COMPONENTS Interpreter Development)
+if (Python3_FOUND)
+  message(STATUS "python3 libraries for zpc_jit_py: ${Python3_LIBRARIES}")
+  message(STATUS "python3 include directories for zpc_jit_py: ${Python3_INCLUDE_DIRS}")
+  target_link_libraries(zpc_jit_py INTERFACE ${Python3_LIBRARIES})
+  target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
+endif(Python3_FOUND)
+
+add_library(zpc_py_interop SHARED)  # 
+set_target_properties(zpc_py_interop 
+  PROPERTIES 
+  POSITION_INDEPENDENT_CODE ON
+  #
+  # ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  #
+  # ref: https://stackoverflow.com/questions/58360502/how-to-set-rpath-origin-in-cmake
+  # ref: https://stackoverflow.com/questions/57915564/cmake-how-to-set-rpath-to-origin-with-cmake
+  SKIP_BUILD_RPATH OFF
+  BUILD_WITH_INSTALL_RPATH TRUE
+  INSTALL_RPATH "\$ORIGIN"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+target_sources(zpc_py_interop 
+  PRIVATE
+  ${ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES}
+  ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES}
+  py_interop/serial/ExecutionPolicy.cpp
+  py_interop/serial/TileVectorUtility.cpp
+  py_interop/serial/SpmatUtility.cpp
+  py_interop/serial/BhtUtility.cpp
+)
+if(ZS_ENABLE_OPENMP)
+  target_sources(zpc_py_interop
+    PRIVATE
+    py_interop/omp/ExecutionPolicy.cpp
+    py_interop/omp/TileVectorUtility.cpp
+    py_interop/omp/SpmatUtility.cpp
+    py_interop/omp/BhtUtility.cpp
+  )
+endif(ZS_ENABLE_OPENMP)
+target_link_libraries(zpc_py_interop PUBLIC zpc)
+# target_link_libraries(zpc_jit_py INTERFACE zpc_py_interop)
+
+if(ZS_ENABLE_JIT)
+add_library(zpc_jit_clang SHARED)
+set_target_properties(zpc_jit_clang 
+  PROPERTIES 
+  POSITION_INDEPENDENT_CODE ON
+  #
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  #
+  SKIP_BUILD_RPATH OFF
+  BUILD_WITH_INSTALL_RPATH TRUE
+  INSTALL_RPATH "\$ORIGIN"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
+)
+target_sources(zpc_jit_clang  
+  PRIVATE
+  # llvm/LLVM.cpp
+
+  py_interop/Clang.cpp  # may include omp backend
+)
+target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
+# target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
+endif(ZS_ENABLE_JIT)
+
+if(ZS_ENABLE_CUDA)
+  find_package(CUDAToolkit REQUIRED)
+  add_library(zpc_jit_nvrtc SHARED)
+  set_target_properties(zpc_jit_nvrtc 
+    PROPERTIES 
+    POSITION_INDEPENDENT_CODE ON
+    CUDA_SEPARABLE_COMPILATION OFF  # single file
+    CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    #
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    #
+    SKIP_BUILD_RPATH OFF
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "\$ORIGIN"
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+  )
+  target_sources(zpc_jit_nvrtc
+    PRIVATE
+    py_interop/cuda/Nvrtc.cpp
+  )
+  target_link_libraries(zpc_jit_nvrtc PRIVATE zpc CUDA::nvrtc)
+  # target_link_libraries(zpc_jit_py INTERFACE zpc_jit_nvrtc)
+
+  target_sources(zpc_py_interop
+    PRIVATE
+    py_interop/cuda/ExecutionPolicy.cpp
+    py_interop/cuda/TileVectorUtility.cpp
+    py_interop/cuda/SpmatUtility.cpp
+    py_interop/cuda/BhtUtility.cpp
+  )
+  set_source_files_properties(
+    py_interop/cuda/ExecutionPolicy.cpp 
+    py_interop/cuda/TileVectorUtility.cpp
+    py_interop/cuda/SpmatUtility.cpp
+    py_interop/cuda/BhtUtility.cpp
+    py_interop/cuda/Nvrtc.cpp
+    PROPERTIES LANGUAGE CUDA)
+endif(ZS_ENABLE_CUDA)
+
+if(ENABLE_PCH)
+  target_precompile_headers(zpc_py_interop INTERFACE ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES})
+endif(ENABLE_PCH)
+
+add_dependencies(zensim zpc_py_interop)
+# do not link the target (zpc_py_interop) to zensim!
+
+### general JIT-dependent shared library installation
+if(ZS_ENABLE_JIT)
+  add_dependencies(
+      zpc_jit_py zpc_jit_clang
+  )
+  if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_clang>
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zswhereami> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+      VERBATIM
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent 3rd party runtime shared libraries"
+    )
+  endif(ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
+
+  if (ZS_BUILD_SHARED_LIBS)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccore> $<TARGET_FILE_DIR:zpc_jit_clang>
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpc> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent zpc core runtime shared libraries"
+  )
+  if (ZS_ENABLE_OPENMP)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpcomp> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent zpc (omp) runtime shared libraries"
+    )
+  endif(ZS_ENABLE_OPENMP)
+  if (ZS_ENABLE_CUDA)
+    add_custom_command(
+      TARGET zpc_jit_clang
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccuda> $<TARGET_FILE_DIR:zpc_jit_clang>
+
+      DEPENDS zpc_jit_clang 
+        COMMENT "copying JIT-dependent zpc (cuda) runtime shared libraries"
+    )
+  endif(ZS_ENABLE_CUDA)
+  endif(ZS_BUILD_SHARED_LIBS)
+endif(ZS_ENABLE_JIT)
+
+### nvrtc-specific shared library installation
+if (ZS_ENABLE_CUDA)
+  add_dependencies(
+      zpc_jit_py zpc_jit_nvrtc 
+  )
+  get_target_property(nvrtc_target_type CUDA::nvrtc TYPE)
+  if (nvrtc_target_type STREQUAL "SHARED_LIBRARY")
+  add_custom_command(
+    TARGET zpc_jit_nvrtc
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvrtc> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cuda_driver> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cudart> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+
+    VERBATIM
+    DEPENDS zpc_jit_nvrtc 
+      COMMENT "copying nvrtc related runtime shared libraries"
+  )
+#[=[
+if (TARGET CUDA::nvJitLink)
+  add_custom_command(
+    TARGET zpc_jit_nvrtc
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvJitLink> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+
+    VERBATIM
+    DEPENDS zpc_jit_nvrtc 
+    COMMENT "copying nvJitLink shared library"
+  )
+  endif()
+#]=]
+  endif (nvrtc_target_type STREQUAL "SHARED_LIBRARY")
+endif(ZS_ENABLE_CUDA)
+
 # openvdb, partio
 # ##########
-# zpctool #
+# zpctool  #
 # ##########
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpctool SHARED)
+  target_compile_definitions(zpctool PRIVATE ZPC_EXTENSION_PRIVATE)
 else()
   add_library(zpctool STATIC)
 endif()
@@ -540,7 +826,6 @@ target_link_libraries(zensim INTERFACE zpctool) # zpctool -> zensim
 # zs_cu_wrangler #
 # #################
 if(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
-  find_package(CUDAToolkit REQUIRED)
   add_library(zs_cu_wrangler OBJECT)
 
   target_sources(zs_cu_wrangler
@@ -567,7 +852,7 @@ if(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
     # CUDA_VISIBILITY_PRESET default
   )
 
-  #[=[
+#[=[
 # ref: developer.nvidia.com/blog/building-cuda-applications-cmake/
 find_program(bin_to_c
   NAMES bin2c
@@ -616,6 +901,7 @@ add_custom_command(
   target_link_libraries(zensim INTERFACE zs_cu_wrangler) # zs_cu_wrangler -> zensim
 endif(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
 
+# poisson disk resource file
 add_custom_command(
   TARGET zpctool
   POST_BUILD
@@ -628,6 +914,21 @@ add_custom_command(
   VERBATIM
   DEPENDS zpc
     COMMENT "copying resource file [particles-1000k.dat] for poisson disk sampling"
+)
+
+# python helloworld script
+add_custom_command(
+  TARGET zpctool
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${RESOURCE_BASE_DIR}/resource
+  COMMAND ${CMAKE_COMMAND}
+  -DOBJECTS=${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Scripts/HelloWorld.py
+  -DOUTPUT=${RESOURCE_BASE_DIR}/resource
+  -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+
+  VERBATIM
+  DEPENDS zpc
+    COMMENT "copying script file [HelloWorld.py] for py module"
 )
 
 # for header installation

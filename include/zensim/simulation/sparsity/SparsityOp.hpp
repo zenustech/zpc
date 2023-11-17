@@ -117,7 +117,7 @@ namespace zs {
     using table_t = HashTableView<space, Table>;
     using positions_t = VectorView<space, const X>;
     using counters_t = VectorView<space, CountT>;
-    using counter_interger_type = std::make_unsigned_t<typename CountT::value_type>;
+    using counter_interger_type = zs::make_unsigned_t<typename CountT::value_type>;
 
     explicit SpatiallyCount(wrapv<space>, T dx, Table& table, const X& pos, CountT& cnts,
                             int blockLen = 1, int offset = 0, T displacement = (T)0.5f)
@@ -156,7 +156,7 @@ namespace zs {
     using table_t = HashTableView<space, Table>;
     using positions_t = VectorView<space, const X>;
     using indices_t = VectorView<space, Indices>;
-    using counter_interger_type = std::make_unsigned_t<typename Indices::value_type>;
+    using counter_interger_type = zs::make_unsigned_t<typename Indices::value_type>;
 
     explicit SpatiallyDistribute(wrapv<space>, T dx, Table& table, const X& pos, Indices& cnts,
                                  Indices& offsets, Indices& indices, int blockLen = 1,

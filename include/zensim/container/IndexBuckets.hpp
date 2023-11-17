@@ -10,15 +10,15 @@ namespace zs {
   template <int dim_ = 3, typename Index = i64, typename Tn = i32,
             grid_e category_ = grid_e::collocated, typename AllocatorT = ZSPmrAllocator<>>
   struct IndexBuckets {
-    static_assert(std::is_integral_v<Index> && std::is_integral_v<Tn>,
+    static_assert(is_integral_v<Index> && is_integral_v<Tn>,
                   "index and coord_index should be integrals");
     static constexpr int dim = dim_;
     static constexpr auto category = category_;
     using allocator_type = AllocatorT;
     using value_type = f32;
-    using size_type = std::make_unsigned_t<Index>;
-    using index_type = std::make_signed_t<Index>;
-    using coord_index_type = std::make_signed_t<Tn>;
+    using size_type = zs::make_unsigned_t<Index>;
+    using index_type = zs::make_signed_t<Index>;
+    using coord_index_type = zs::make_signed_t<Tn>;
     using table_t = HashTable<Tn, dim, index_type, allocator_type>;
     using vector_t = Vector<index_type, allocator_type>;
 
@@ -29,7 +29,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _table.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -64,9 +64,9 @@ namespace zs {
                 IndexBuckets<2, i32, i64>, IndexBuckets<2, i64, i64>>;
 
   template <execspace_e Space, typename IndexBucketsT, typename = void> struct IndexBucketsView {
-    static constexpr bool is_const_structure = std::is_const_v<IndexBucketsT>;
+    static constexpr bool is_const_structure = is_const_v<IndexBucketsT>;
     static constexpr auto space = Space;
-    using ib_t = std::remove_const_t<IndexBucketsT>;
+    using ib_t = remove_const_t<IndexBucketsT>;
     static constexpr int dim = ib_t::dim;
     static constexpr auto category = ib_t::category;
     using value_type = typename ib_t::value_type;
@@ -74,11 +74,11 @@ namespace zs {
     using index_type = typename ib_t::index_type;
     using coord_index_type = typename ib_t::coord_index_type;
     using table_t = typename ib_t::table_t;
-    using table_view_t = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
+    using table_view_t = RM_REF_T(
+        proxy<space>(declval<conditional_t<is_const_structure, const table_t &, table_t &>>()));
     using vector_t = typename ib_t::vector_t;
-    using vector_view_t = RM_CVREF_T(proxy<space>(
-        std::declval<conditional_t<is_const_structure, const vector_t &, vector_t &>>()));
+    using vector_view_t = RM_REF_T(
+        proxy<space>(declval<conditional_t<is_const_structure, const vector_t &, vector_t &>>()));
 
     static constexpr auto coord_offset
         = category == grid_e::collocated ? (value_type)0.5 : (value_type)0;
@@ -96,7 +96,8 @@ namespace zs {
       return table._activeKeys[bucketno];
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto bucketCoord(const VecInterface<VecT> &pos) const noexcept {
       const auto dxinv = (value_type)1.0 / dx;
       typename VecT::template variant_vec<coord_index_type, typename VecT::extents> coord{};
@@ -105,7 +106,8 @@ namespace zs {
       return coord;
     }
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim,
-                                           std::is_integral_v<typename VecT::value_type>> = 0>
+                                           is_integral_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto bucketNo(const VecInterface<VecT> &coord) const noexcept {
       return table.query(coord);
     }

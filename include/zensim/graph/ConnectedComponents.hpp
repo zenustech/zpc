@@ -9,7 +9,7 @@ namespace zs {
     using SpmvT = RM_CVREF_T(spm);
     using Ti = typename SpmvT::index_type;
 
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     auto n = spm.outerSize();
     /// @note init
     pol(range(n), [spmv = view<space>(spm), fas = std::begin(faRange)] ZS_LAMBDA(Ti v) mutable {
@@ -66,7 +66,7 @@ namespace zs {
     using SpmvT = RM_CVREF_T(spm);
     using Ti = typename SpmvT::index_type;
 
-    constexpr execspace_e space = RM_CVREF_T(pol)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
     auto n = spm.outerSize();
     /// @note init
     pol(range(n),

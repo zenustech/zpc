@@ -1028,16 +1028,16 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value <= 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto svd(const VecInterface<VecT>& F) noexcept {
       // F = U S V^T
       typename VecT::template variant_vec<typename VecT::value_type, typename VecT::extents> U{},
           V{};
       typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_seq<typename VecT::index_type, VecT::template range_t<0>::value>>
+          integer_sequence<typename VecT::index_type, VecT::template range_t<0>::value>>
           S{};
-      if constexpr (is_same_v<typename VecT::dims, sindex_seq<3, 3>>) {
+      if constexpr (is_same_v<typename VecT::dims, index_sequence<3, 3>>) {
         if constexpr (is_same_v<typename VecT::value_type, float>) {
           svd_3d(F(0, 0), F(0, 1), F(0, 2), F(1, 0), F(1, 1), F(1, 2), F(2, 0), F(2, 1), F(2, 2),
                  U(0, 0), U(0, 1), U(0, 2), U(1, 0), U(1, 1), U(1, 2), U(2, 0), U(2, 1), U(2, 2),
@@ -1046,9 +1046,9 @@ namespace zs {
           return zs::make_tuple(U, S, V);
         } else
           return qr_svd(F);
-      } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<2, 2>>) {
+      } else if constexpr (is_same_v<typename VecT::dims, index_sequence<2, 2>>) {
         return qr_svd(F);
-      } else if constexpr (is_same_v<typename VecT::dims, sindex_seq<1, 1>>) {
+      } else if constexpr (is_same_v<typename VecT::dims, index_sequence<1, 1>>) {
         U(0, 0) = (typename VecT::value_type)1;
         V(0, 0) = (typename VecT::value_type)1;
         S(0) = F(0, 0);

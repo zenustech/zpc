@@ -2,7 +2,7 @@
 #include "zensim/container/Bht.hpp"
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 #  include <cooperative_groups/scan.h>
 
 #  include <cub/device/device_segmented_radix_sort.cuh>
@@ -17,7 +17,7 @@ namespace zs {
   struct SparseMatrix {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "SparseMatrix only works with zspmrallocator for now.");
-    static_assert(std::is_fundamental_v<T> || is_vec<T>::value,
+    static_assert(is_fundamental_v<T> || is_vec<T>::value,
                   "only fundamental types and vec are allowed to be used as value_type.");
     static_assert(std::is_default_constructible_v<T> && std::is_trivially_copyable_v<T>,
                   "element is not default-constructible or trivially-copyable!");
@@ -25,8 +25,8 @@ namespace zs {
     static constexpr bool is_row_major = RowMajor;
     using value_type = T;
     using allocator_type = AllocatorT;
-    using size_type = std::make_unsigned_t<Tn>;
-    using difference_type = std::make_signed_t<size_type>;
+    using size_type = zs::make_unsigned_t<Tn>;
+    using difference_type = zs::make_signed_t<size_type>;
     using reference = value_type &;
     using const_reference = const value_type &;
     using pointer = value_type *;
@@ -47,7 +47,7 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _ptrs.get_allocator(); }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
@@ -161,16 +161,199 @@ namespace zs {
       }
     }
 
+    ///
+    /// @brief build (include value entries)
+    ///
+    struct _build_hash_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[tab, cnts, localOffsets, is, js] = params;
+        using tab_t = RM_REF_T(tab);
+        constexpr auto space = tab_t::space;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if (auto id = tab.insert(zs::vec<Ti, 2>{i, j}); id != tab_t::sentinel_v) {
+          if constexpr (RowMajor)
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+          else
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+        }
+      }
+    };
+    struct _build_update_entry_with_value {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[tab, localOffsets, is, js, vs, ptrs, inds, vals] = params;
+        using tab_t = RM_REF_T(tab);
+        constexpr auto space = tab_t::space;
+        Ti i = is[k], j = js[k];
+        auto id = tab.query(zs::vec<Ti, 2>{i, j});
+        auto loc = localOffsets[id];
+        size_type offset = 0;
+        if constexpr (RowMajor) {
+          offset = ptrs[i] + loc;
+          inds[offset] = j;
+        } else {
+          offset = ptrs[j] + loc;
+          inds[offset] = i;
+        }
+        if constexpr (std::is_fundamental_v<value_type>)
+          atomic_add(wrapv<space>{}, &vals[offset], (value_type)vs[k]);
+        else if constexpr (is_vec<value_type>::value) {
+          auto &val = vals[offset];
+          const auto &e = vs[k];
+          for (typename value_type::index_type i = 0; i != value_type::extent; ++i)
+            atomic_add(wrapv<space>{}, &val.val(i), (typename value_type::value_type)e.val(i));
+        }
+      }
+    };
     template <typename Policy, typename IRange, typename JRange, typename VRange>
     void build(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
                const JRange &js, VRange &&vs);
+
+    ///
+    /// @brief build (topo only)
+    ///
+    template <bool Mirror> struct _build_hash_entry_mirror {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[tab, cnts, localOffsets, is, js] = params;
+        using tab_t = RM_REF_T(tab);
+        constexpr auto space = tab_t::space;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if (auto id = tab.insert(zs::vec<Ti, 2>{i, j}); id != tab_t::sentinel_v) {
+          if constexpr (RowMajor)
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+          else
+            localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+
+          /// @note spawn symmetric entries
+          if constexpr (Mirror) {
+            if (i != j) {
+              if (id = tab.insert(zs::vec<Ti, 2>{j, i}); id != tab_t::sentinel_v) {
+                if constexpr (RowMajor)
+                  localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+                else
+                  localOffsets[id] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+              }
+            }
+          }
+        }
+      }
+    };
+    struct _build_update_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[keys, localOffsets, ptrs, inds] = params;
+        auto ij = keys[k];
+        auto loc = localOffsets[k];
+        if constexpr (RowMajor)
+          inds[ptrs[ij[0]] + loc] = ij[1];
+        else
+          inds[ptrs[ij[1]] + loc] = ij[0];
+      }
+    };
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
     void build(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
                const JRange &js, wrapv<Mirror> = {});
+
+    ///
+    /// @brief fast build (topo only)
+    ///
+    template <bool Mirror> struct _fast_build_record_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[cnts, localOffsets, is, js] = params;
+        constexpr auto space = RM_REF_T(cnts)::space;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if constexpr (RowMajor)
+          localOffsets[k * 2] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+        else
+          localOffsets[k * 2] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+
+        /// @note spawn symmetric entries
+        if constexpr (Mirror) {
+          if (i != j) {
+            if constexpr (RowMajor)
+              localOffsets[k * 2 + 1] = atomic_add(wrapv<space>{}, &cnts[j], (size_type)1);
+            else
+              localOffsets[k * 2 + 1] = atomic_add(wrapv<space>{}, &cnts[i], (size_type)1);
+          }
+        }
+      }
+    };
+    template <bool Mirror> struct _fast_build_update_entry {
+      template <typename ParamT> constexpr void operator()(size_type k, ParamT &&params) {
+        auto &[localOffsets, is, js, ptrs, inds] = params;
+        Ti i = is[k], j = js[k];
+        // insertion success
+        if constexpr (RowMajor)
+          inds[ptrs[i] + localOffsets[k * 2]] = j;
+        else
+          inds[ptrs[j] + localOffsets[k * 2]] = i;
+
+        /// @note spawn symmetric entries
+        if constexpr (Mirror) {
+          if (i != j) {
+            if constexpr (RowMajor)
+              inds[ptrs[j] + localOffsets[k * 2 + 1]] = i;
+            else
+              inds[ptrs[i] + localOffsets[k * 2 + 1]] = j;
+          }
+        }
+      }
+    };
     /// @note assume no duplicated entries
     template <typename Policy, typename IRange, typename JRange, bool Mirror = false>
     void fastBuild(Policy &&policy, index_type nrows, index_type ncols, const IRange &is,
                    const JRange &js, wrapv<Mirror> = {});
+
+    ///
+    /// @brief transpose
+    ///
+    struct _transpose_from_transpose_assign {
+      template <typename DstT, typename SrcT, typename ParamT>
+      constexpr void operator()(DstT &dstVal, const SrcT &srcVal, ParamT &&) {
+        dstVal = srcVal.transpose();
+      }
+    };
+    struct _transpose_from_count_offset {
+      template <typename ParamT> constexpr void operator()(index_type outerId, ParamT &&params) {
+        auto &[cnts, localOffsets, ptrs, inds] = params;
+        auto bg = ptrs[outerId];
+        auto ed = ptrs[outerId + 1];
+        for (size_type k = bg; k != ed; ++k) {
+          auto innerId = inds[k];
+          localOffsets[k]
+              = atomic_add(wrapv<RM_REF_T(cnts)::space>{}, &cnts[innerId], (size_type)1);
+        }
+      }
+    };
+    struct _transpose_from_reorder_vals {
+      template <typename ParamT> constexpr void operator()(index_type outerId, ParamT &&params) {
+        auto &[localOffsets, oinds, optrs, ovals, ptrs, inds, vals, valActivated] = params;
+        auto bg = optrs[outerId];
+        auto ed = optrs[outerId + 1];
+        for (size_type k = bg; k != ed; ++k) {
+          auto innerId = oinds[k];
+          auto dst = ptrs[innerId] + localOffsets[k];
+          //
+          inds[dst] = outerId;
+          if (valActivated) {
+            //
+            if constexpr (is_fundamental_v<value_type>) {
+              vals[dst] = ovals[k];
+            } else if constexpr (is_vec<value_type>::value) {
+              static_assert(value_type::dim == 2
+                                && value_type::template range_t<0>::value
+                                       == value_type::template range_t<1>::value,
+                            "the transpose of the matrix is not the same as the original type.");
+              if constexpr (value_type::template range_t<0>::value > 0)
+                vals[dst] = ovals[k].transpose();
+              else
+                vals[dst] = ovals[k];
+            }
+          }
+        }
+      }
+    };
     /// @brief in-place
     template <typename Policy, bool ORowMajor, bool PostOrder = true> void transposeFrom(
         Policy &&policy,
@@ -184,14 +367,19 @@ namespace zs {
         SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o) const {
       o.transposeFrom(FWD(policy), *this);
     }
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+
+#if defined(__CUDACC__)
     void localOrdering(CudaExecutionPolicy &policy);
     /// @note do NOT sort _vals
-    void localOrdering(CudaExecutionPolicy &policy, std::false_type);
+    void localOrdering(CudaExecutionPolicy &policy, false_type);
     /// @note DO sort _vals
-    void localOrdering(CudaExecutionPolicy &policy, std::true_type);
+    void localOrdering(CudaExecutionPolicy &policy, true_type);
 #endif
-    // template <typename Policy> void localOrdering(Policy &&policy);
+    template <typename Policy> void localOrdering(Policy &&policy);
+    /// @note do NOT sort _vals
+    template <typename Policy> void localOrdering(Policy &&policy, false_type);
+    /// @note DO sort _vals
+    template <typename Policy> void localOrdering(Policy &&policy, true_type);
 
     index_type _nrows = 0, _ncols = 0;  // for square matrix, nrows = ncols
     zs::Vector<size_type, allocator_type> _ptrs{};
@@ -208,10 +396,9 @@ namespace zs {
     using Tr = RM_CVREF_T(*std::begin(is));
     using Tc = RM_CVREF_T(*std::begin(js));
     using Tv = RM_CVREF_T(*std::begin(vs));
-    static_assert(
-        std::is_convertible_v<Tr,
-                              Ti> && std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tv, T>,
-        "input triplet types are not convertible to types of this sparse matrix.");
+    static_assert(std::is_convertible_v<Tr, Ti> && std::is_convertible_v<Tr, Ti>
+                      && std::is_convertible_v<Tv, T>,
+                  "input triplet types are not convertible to types of this sparse matrix.");
 
     auto size = range_size(is);
     if (size != range_size(js) || size != range_size(vs))
@@ -222,37 +409,26 @@ namespace zs {
     _nrows = nrows;
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
-    constexpr auto execTag = wrapv<space>{};
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
+    // constexpr auto execTag = wrapv<space>{};
     using ICoord = zs::vec<Ti, 2>;
 
-    std::size_t tabSize = size;
-    bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
-    tab.reset(policy, true);
-    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
-    Vector<index_type> localOffsets{get_allocator(), (std::size_t)size};
+    size_t tabSize = size;
+    auto allocator = get_temporary_memory_source(policy);
+    bht<Ti, 2, index_type> tab{allocator, tabSize};
+    Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
+    Vector<index_type> localOffsets{allocator, (size_t)size};
     bool success = false;
 
     do {
       cnts.reset(0);
-      policy(range(size), [tab = proxy<space>(tab), cnts = view<space>(cnts),
-                           localOffsets = view<space>(localOffsets), is = std::begin(is),
-                           js = std::begin(js), execTag] ZS_LAMBDA(size_type k) mutable {
-        using tab_t = RM_CVREF_T(tab);
-        Ti i = is[k], j = js[k];
-        // insertion success
-        if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
-          if constexpr (RowMajor)
-            localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-          else
-            localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
-        }
-      });
+      auto params = zs::make_tuple(proxy<space>(tab), view<space>(cnts), view<space>(localOffsets),
+                                   std::begin(is), std::begin(js));
+      policy(range(size), params, _build_hash_entry{});
       success = tab._buildSuccess.getVal();
       if (!success) {
         tabSize *= 2;
-        tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
-        tab.reset(policy, true);
+        tab = bht<Ti, 2, index_type>{allocator, tabSize};
         fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
             "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }
@@ -280,37 +456,11 @@ namespace zs {
       _vals.reset(0);
     else if constexpr (is_vec<value_type>::value) {
       _vals.reset(0);
-#if 0
-      policy(range(numEntries), [vals = view<space>(_vals)] ZS_LAMBDA(size_type k) mutable {
-        vals[k] = value_type::zeros();
-      });
-#endif
     }
-    policy(range(size), [tab = proxy<space>(tab), localOffsets = view<space>(localOffsets),
-                         is = std::begin(is), js = std::begin(js), vs = std::begin(vs),
-                         ptrs = view<space>(_ptrs), inds = view<space>(_inds),
-                         vals = view<space>(_vals), execTag] ZS_LAMBDA(size_type k) mutable {
-      using tab_t = RM_CVREF_T(tab);
-      Ti i = is[k], j = js[k];
-      auto id = tab.query(ICoord{i, j});
-      auto loc = localOffsets[id];
-      size_type offset = 0;
-      if constexpr (RowMajor) {
-        offset = ptrs[i] + loc;
-        inds[offset] = j;
-      } else {
-        offset = ptrs[j] + loc;
-        inds[offset] = i;
-      }
-      if constexpr (std::is_fundamental_v<value_type>)
-        atomic_add(execTag, &vals[offset], (value_type)vs[k]);
-      else if constexpr (is_vec<value_type>::value) {
-        auto &val = vals[offset];
-        const auto &e = vs[k];
-        for (typename value_type::index_type i = 0; i != value_type::extent; ++i)
-          atomic_add(execTag, &val.val(i), (typename value_type::value_type)e.val(i));
-      }
-    });
+    auto params = zs::make_tuple(proxy<space>(tab), view<space>(localOffsets), std::begin(is),
+                                 std::begin(js), std::begin(vs), view<space>(_ptrs),
+                                 view<space>(_inds), view<space>(_vals));
+    policy(range(size), params, _build_update_entry_with_value{});
   }
 
   /// @brief topology only csr sparse matrix build
@@ -333,48 +483,24 @@ namespace zs {
     _nrows = nrows;
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using ICoord = zs::vec<Ti, 2>;
 
-    std::size_t tabSize = Mirror ? (std::size_t)size * 2 : (std::size_t)size;
-    bht<Ti, 2, index_type> tab{get_allocator(), tabSize};
-    tab.reset(policy, true);
-    Vector<index_type> localOffsets{get_allocator(), tabSize};
-    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
+    size_t tabSize = Mirror ? (size_t)size * 2 : (size_t)size;
+    auto allocator = get_temporary_memory_source(policy);
+    bht<Ti, 2, index_type> tab{allocator, tabSize};
+    Vector<index_type> localOffsets{allocator, tabSize};
+    Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
     bool success = false;
     do {
       cnts.reset(0);
-      policy(range(size),
-             [tab = proxy<space>(tab), cnts = view<space>(cnts),
-              localOffsets = view<space>(localOffsets), is = std::begin(is), js = std::begin(js),
-              execTag = wrapv<space>{}] ZS_LAMBDA(size_type k) mutable {
-               using tab_t = RM_CVREF_T(tab);
-               Ti i = is[k], j = js[k];
-               // insertion success
-               if (auto id = tab.insert(ICoord{i, j}); id != tab_t::sentinel_v) {
-                 if constexpr (RowMajor)
-                   localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-                 else
-                   localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
-
-                 /// @note spawn symmetric entries
-                 if constexpr (Mirror) {
-                   if (i != j) {
-                     if (id = tab.insert(ICoord{j, i}); id != tab_t::sentinel_v) {
-                       if constexpr (RowMajor)
-                         localOffsets[id] = atomic_add(execTag, &cnts[j], (size_type)1);
-                       else
-                         localOffsets[id] = atomic_add(execTag, &cnts[i], (size_type)1);
-                     }
-                   }
-                 }
-               }
-             });
+      auto params = zs::make_tuple(proxy<space>(tab), view<space>(cnts), view<space>(localOffsets),
+                                   std::begin(is), std::begin(js));
+      policy(range(size), params, _build_hash_entry_mirror<Mirror>{});
       success = tab._buildSuccess.getVal();
       if (!success) {
         tabSize *= 2;
-        tab = bht<Ti, 2, index_type>{get_allocator(), tabSize};
-        tab.reset(policy, true);
+        tab = bht<Ti, 2, index_type>{allocator, tabSize};
         fmt::print(  // fg(fmt::color::light_golden_rod_yellow),
             "doubling hash size required (from {} to {}) for csr build\n", tabSize / 2, tabSize);
       }
@@ -395,16 +521,11 @@ namespace zs {
 
     /// @brief _inds
     _inds.resize(numEntries);
-    policy(range(numEntries),
-           [tab = proxy<space>(tab), localOffsets = view<space>(localOffsets),
-            ptrs = view<space>(_ptrs), inds = view<space>(_inds)] ZS_LAMBDA(size_type k) mutable {
-             auto ij = tab._activeKeys[k];
-             auto loc = localOffsets[k];
-             if constexpr (RowMajor)
-               inds[ptrs[ij[0]] + loc] = ij[1];
-             else
-               inds[ptrs[ij[1]] + loc] = ij[0];
-           });
+    {
+      auto params = zs::make_tuple(proxy<space>(tab._activeKeys), view<space>(localOffsets),
+                                   view<space>(_ptrs), view<space>(_inds));
+      policy(range(numEntries), params, _build_update_entry{});
+    }
   }
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   template <typename Policy, typename IRange, typename JRange, bool Mirror>
@@ -425,33 +546,19 @@ namespace zs {
     _nrows = nrows;
     _ncols = ncols;
     Ti nsegs = is_row_major ? nrows : ncols;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     using ICoord = zs::vec<Ti, 2>;
 
-    Vector<index_type> localOffsets{get_allocator(), size * 2};
-    Vector<size_type> cnts{get_allocator(), (std::size_t)(nsegs + 1)};
-    bool success = false;
+    auto allocator = get_temporary_memory_source(policy);
+    Vector<index_type> localOffsets{allocator, (size_t)size * 2};
+    Vector<size_type> cnts{allocator, (size_t)(nsegs + 1)};
+    // bool success = false;
     cnts.reset(0);
-    policy(range(size),
-           [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets), is = std::begin(is),
-            js = std::begin(js), execTag = wrapv<space>{}] ZS_LAMBDA(size_type k) mutable {
-             Ti i = is[k], j = js[k];
-             // insertion success
-             if constexpr (RowMajor)
-               localOffsets[k * 2] = atomic_add(execTag, &cnts[i], (size_type)1);
-             else
-               localOffsets[k * 2] = atomic_add(execTag, &cnts[j], (size_type)1);
-
-             /// @note spawn symmetric entries
-             if constexpr (Mirror) {
-               if (i != j) {
-                 if constexpr (RowMajor)
-                   localOffsets[k * 2 + 1] = atomic_add(execTag, &cnts[j], (size_type)1);
-                 else
-                   localOffsets[k * 2 + 1] = atomic_add(execTag, &cnts[i], (size_type)1);
-               }
-             }
-           });
+    {
+      auto params = zs::make_tuple(view<space>(cnts), view<space>(localOffsets), std::begin(is),
+                                   std::begin(js));
+      policy(range(size), params, _fast_build_record_entry<Mirror>{});
+    }
 
     /// @brief _ptrs
     _ptrs.resize(nsegs + 1);
@@ -461,26 +568,11 @@ namespace zs {
 
     /// @brief _inds
     _inds.resize(numEntries);
-    policy(range(size),
-           [localOffsets = view<space>(localOffsets), is = std::begin(is), js = std::begin(js),
-            ptrs = view<space>(_ptrs), inds = view<space>(_inds)] ZS_LAMBDA(size_type k) mutable {
-             Ti i = is[k], j = js[k];
-             // insertion success
-             if constexpr (RowMajor)
-               inds[ptrs[i] + localOffsets[k * 2]] = j;
-             else
-               inds[ptrs[j] + localOffsets[k * 2]] = i;
-
-             /// @note spawn symmetric entries
-             if constexpr (Mirror) {
-               if (i != j) {
-                 if constexpr (RowMajor)
-                   inds[ptrs[j] + localOffsets[k * 2 + 1]] = i;
-                 else
-                   inds[ptrs[i] + localOffsets[k * 2 + 1]] = j;
-               }
-             }
-           });
+    {
+      auto params = zs::make_tuple(view<space>(localOffsets), std::begin(is), std::begin(js),
+                                   view<space>(_ptrs), view<space>(_inds));
+      policy(range(size), params, _fast_build_update_entry<Mirror>{});
+    }
   }
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   template <typename Policy, bool ORowMajor, bool PostOrder>
@@ -488,7 +580,7 @@ namespace zs {
       Policy &&policy,
       const SparseMatrix<value_type, ORowMajor, index_type, size_type, allocator_type> &o,
       wrapv<PostOrder>) {
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     if (!valid_memspace_for_execution(policy, o.get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
     /// @note compilation checks
@@ -504,7 +596,7 @@ namespace zs {
         _ptrs = o._ptrs;
         _inds = o._inds;
       }
-      if (o.hasValues())
+      if (o.hasValues()) {
         if constexpr (std::is_fundamental_v<value_type>) {
           if (distinct) _vals = o._vals;
         } else if constexpr (is_vec<value_type>::value) {
@@ -513,71 +605,42 @@ namespace zs {
                                    == value_type::template range_t<1>::value,
                         "the transpose of the matrix is not the same as the original type.");
           if (value_type::template range_t<0>::value > 0)
-            policy(zip(_vals, o._vals),
-                   [] ZS_LAMBDA(auto &val, const auto &oval) { val = oval.transpose(); });
+            policy(zip(_vals, o._vals), zs::make_tuple(), _transpose_from_transpose_assign{});
         }
+      }
     } else {
       /// @note beware: spmat 'o' might be myself
       auto nnz = o.nnz();
       auto nOuter = o.outerSize();
       auto nInner = o.innerSize();
-      Vector<index_type> localOffsets{get_allocator(), (std::size_t)nnz};
-      Vector<size_type> cnts{get_allocator(), (std::size_t)(nInner + 1)};
+      auto allocator = get_temporary_memory_source(policy);
+      Vector<size_type> localOffsets{allocator, (size_t)nnz};
+      Vector<size_type> cnts{allocator, (size_t)(nInner + 1)};
       cnts.reset(0);
-      policy(range(nOuter), [cnts = view<space>(cnts), localOffsets = view<space>(localOffsets),
-                             ptrs = view<space>(o._ptrs), inds = view<space>(o._inds),
-                             execTag = wrapv<space>{}] ZS_LAMBDA(size_type outerId) mutable {
-        auto bg = ptrs[outerId];
-        auto ed = ptrs[outerId + 1];
-        for (int k = bg; k != ed; ++k) {
-          auto innerId = inds[k];
-          localOffsets[k] = atomic_add(execTag, &cnts[innerId], 1);
-        }
-      });
-      _ptrs = zs::Vector<size_type, allocator_type>{o.get_allocator(), (std::size_t)(nInner + 1)};
+      policy(range(nOuter),
+             zs::make_tuple(view<space>(cnts), view<space>(localOffsets), view<space>(o._ptrs),
+                            view<space>(o._inds)),
+             _transpose_from_count_offset{});
+      _ptrs = zs::Vector<size_type, allocator_type>{o.get_allocator(), (size_t)(nInner + 1)};
       /// _ptrs
       exclusive_scan(policy, std::begin(cnts), std::end(cnts), std::begin(_ptrs));
 
       /// _inds, _vals (optional)
-      _inds = zs::Vector<index_type, allocator_type>{o.get_allocator(), (std::size_t)nnz};
+      _inds = zs::Vector<index_type, allocator_type>{o.get_allocator(), (size_t)nnz};
       bool valActivated = o.hasValues();
       if (valActivated)
-        _vals = zs::Vector<value_type, allocator_type>{o.get_allocator(), (std::size_t)nnz};
+        _vals = zs::Vector<value_type, allocator_type>{o.get_allocator(), (size_t)nnz};
 
-      policy(range(nOuter), [localOffsets = view<space>(localOffsets), oinds = view<space>(o._inds),
-                             optrs = view<space>(o._ptrs), ovals = view<space>(o._vals),
-                             ptrs = view<space>(_ptrs), inds = view<space>(_inds),
-                             vals = view<space>(_vals),
-                             valActivated] ZS_LAMBDA(size_type outerId) mutable {
-        auto bg = optrs[outerId];
-        auto ed = optrs[outerId + 1];
-        for (int k = bg; k != ed; ++k) {
-          auto innerId = oinds[k];
-          auto dst = ptrs[innerId] + localOffsets[k];
-          //
-          inds[dst] = outerId;
-          if (valActivated) {
-            //
-            if constexpr (std::is_fundamental_v<value_type>) {
-              vals[dst] = ovals[k];
-            } else if constexpr (is_vec<value_type>::value) {
-              static_assert(value_type::dim == 2
-                                && value_type::template range_t<0>::value
-                                       == value_type::template range_t<1>::value,
-                            "the transpose of the matrix is not the same as the original type.");
-              if constexpr (value_type::template range_t<0>::value > 0)
-                vals[dst] = ovals[k].transpose();
-              else
-                vals[dst] = ovals[k];
-            }
-          }
-        }
-      });
+      policy(range(nOuter),
+             zs::make_tuple(view<space>(localOffsets), view<space>(o._inds), view<space>(o._ptrs),
+                            view<space>(o._vals), view<space>(_ptrs), view<space>(_inds),
+                            view<space>(_vals), valActivated),
+             _transpose_from_reorder_vals{});
     }
     if constexpr (PostOrder) localOrdering(policy);
   }
 
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol) {
     if (_vals.size())
@@ -588,7 +651,7 @@ namespace zs {
 
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol,
-                                                                    std::false_type) {
+                                                                    false_type) {
     Ti nsegs = is_row_major ? _nrows : _ncols;
     Ti innerSize = is_row_major ? _ncols : _nrows;
     auto nnz = _inds.size();
@@ -605,7 +668,7 @@ namespace zs {
     auto &context = pol.context();
     context.setContext();
     auto stream = (cudaStream_t)context.streamSpare(pol.getStreamid());
-    std::size_t temp_storage_bytes = 0;
+    size_t temp_storage_bytes = 0;
     cub::DeviceSegmentedRadixSort::SortKeys(
         nullptr, temp_storage_bytes, _inds.data(), orderedIndices.data(), (int)nnz, (int)nsegs,
         _ptrs.data(), _ptrs.data() + 1, 0, std::max((int)bit_count(innerSize), 1), stream);
@@ -622,7 +685,7 @@ namespace zs {
 
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(CudaExecutionPolicy &pol,
-                                                                    std::true_type) {
+                                                                    true_type) {
     constexpr execspace_e space = execspace_e::cuda;
 
     Ti nsegs = is_row_major ? _nrows : _ncols;
@@ -638,16 +701,17 @@ namespace zs {
     if (_inds.size() != _vals.size())
       throw std::runtime_error("This csr matrix (with active vals) is not in a valid state!");
 
+    auto allocator = get_temporary_memory_source(pol);
     auto orderedIndices = Vector<index_type, allocator_type>{_inds.get_allocator(), nnz};
     auto orderedVals = Vector<value_type, allocator_type>{_vals.get_allocator(), nnz};
-    auto indices = Vector<size_type, allocator_type>{_ptrs.get_allocator(), nnz};
-    auto srcIndices = Vector<size_type, allocator_type>{_ptrs.get_allocator(), nnz};
-    pol(enumerate(indices), [] __device__(int i, size_type &id) { id = i; });
+    auto indices = Vector<size_type, allocator_type>{allocator, nnz};
+    auto srcIndices = Vector<size_type, allocator_type>{allocator, nnz};
+    pol(enumerate(indices), [] __device__(size_type i, size_type & id) { id = i; });
 
     auto &context = pol.context();
     context.setContext();
     auto stream = (cudaStream_t)context.streamSpare(pol.getStreamid());
-    std::size_t temp_storage_bytes = 0;
+    size_t temp_storage_bytes = 0;
     cub::DeviceSegmentedRadixSort::SortPairs(
         nullptr, temp_storage_bytes, _inds.data(), orderedIndices.data(), indices.data(),
         srcIndices.data(), (int)nnz, (int)nsegs, _ptrs.data(), _ptrs.data() + 1, 0,
@@ -660,7 +724,7 @@ namespace zs {
     context.streamMemFree(d_tmp, stream);
 
     pol(range(nnz), [vals = view<space>(_vals), orderedVals = view<space>(orderedVals),
-                     srcIndices = view<space>(srcIndices)] __device__(int no) mutable {
+                     srcIndices = view<space>(srcIndices)] __device__(size_type no) mutable {
       auto srcNo = srcIndices[no];
       orderedVals[no] = vals[srcNo];
     });
@@ -672,13 +736,66 @@ namespace zs {
   }
 #endif
 
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(Policy &&pol) {
+    if (_vals.size())
+      localOrdering(pol, true_c);
+    else
+      localOrdering(pol, false_c);
+  }
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(Policy &&pol, false_type) {
+    Ti nsegs = is_row_major ? _nrows : _ncols;
+    Ti innerSize = is_row_major ? _ncols : _nrows;
+    auto nnz = _inds.size();
+
+    auto orderedIndices = Vector<index_type, allocator_type>{_inds.get_allocator(), nnz};
+
+    pol(range(nsegs), [&](Ti outerId) {
+      auto st = _ptrs[outerId];
+      auto ed = _ptrs[outerId + 1];
+      radix_sort(seq_exec(), zs::begin(_inds) + st, zs::begin(_inds) + ed,
+                 zs::begin(orderedIndices) + st, 0, std::max((int)bit_count(innerSize), 1));
+    });
+
+    _inds = std::move(orderedIndices);
+  }
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  template <typename Policy>
+  void SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>::localOrdering(Policy &&pol, true_type) {
+    Ti nsegs = is_row_major ? _nrows : _ncols;
+    Ti innerSize = is_row_major ? _ncols : _nrows;
+    auto nnz = _inds.size();
+
+    auto allocator = get_temporary_memory_source(pol);
+    auto orderedIndices = Vector<index_type, allocator_type>{_inds.get_allocator(), nnz};
+    auto orderedVals = Vector<value_type, allocator_type>{_vals.get_allocator(), nnz};
+    auto indices = Vector<size_type, allocator_type>{allocator, nnz};
+    auto srcIndices = Vector<size_type, allocator_type>{allocator, nnz};
+
+    pol(enumerate(indices), [](size_type i, size_type &id) { id = i; });
+    pol(range(nsegs), [&](Ti outerId) {
+      auto st = _ptrs[outerId];
+      auto ed = _ptrs[outerId + 1];
+      radix_sort_pair(seq_exec(), zs::begin(_inds) + st, zs::begin(indices) + st,
+                      zs::begin(orderedIndices) + st, zs::begin(srcIndices) + st, ed - st, 0,
+                      std::max((int)bit_count(innerSize), 1));
+    });
+    pol(range(nnz), [&](size_type no) { orderedVals[no] = _vals[srcIndices[no]]; });
+
+    _inds = std::move(orderedIndices);
+    _vals = std::move(orderedVals);
+  }
+
   template <execspace_e Space, typename SpMatT, bool Base = false, typename = void>
   struct SparseMatrixView {
     static constexpr bool is_const_structure = std::is_const_v<SpMatT>;
     static constexpr auto space = Space;
     template <typename T> using decorate_t
         = conditional_t<is_const_structure, std::add_const_t<T>, T>;
-    using sparse_matrix_type = std::remove_const_t<SpMatT>;
+    using sparse_matrix_type = remove_const_t<SpMatT>;
     using const_sparse_matrix_type = std::add_const_t<sparse_matrix_type>;
 
     static constexpr auto is_row_major = sparse_matrix_type::is_row_major;
@@ -783,7 +900,7 @@ namespace zs {
       }
     }
     /// @note binary search
-    constexpr size_type locate(index_type i, index_type j, std::true_type) const noexcept {
+    constexpr size_type locate(index_type i, index_type j, true_type) const noexcept {
       size_type st{}, ed{}, mid{};
       if constexpr (is_row_major) {
         st = _ptrs[i];
@@ -816,7 +933,7 @@ namespace zs {
 #endif
       return limits<size_type>::max();
     }
-    constexpr bool exist(index_type i, index_type j, std::true_type) const noexcept {
+    constexpr bool exist(index_type i, index_type j, true_type) const noexcept {
       size_type st{}, ed{}, mid{};
       if constexpr (is_row_major) {
         st = _ptrs[i];

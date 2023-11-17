@@ -9,9 +9,9 @@ namespace zs {
   /// ref: https://gist.github.com/Jacob-Tate/7b326a086cf3f9d46e32315841101109
   /// ref: https://github.com/gpakosz/whereami
 
-  ZPC_API std::string abs_exe_path();
-  ZPC_API std::string abs_exe_directory();
-  ZPC_API std::string abs_module_path();
-  ZPC_API std::string abs_module_directory();
+  ZPC_BACKEND_API std::string abs_exe_path();
+  ZPC_BACKEND_API std::string abs_exe_directory();
+  ZPC_BACKEND_API std::string abs_module_path();
+  ZPC_BACKEND_API std::string abs_module_directory();
 
 }  // namespace zs

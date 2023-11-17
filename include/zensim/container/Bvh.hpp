@@ -5,11 +5,80 @@
 #include "zensim/execution/Atomics.hpp"
 #include "zensim/execution/Intrinsics.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
-#if defined(__CUDACC__) && ZS_ENABLE_CUDA
+#if defined(__CUDACC__)
 #  include <cooperative_groups.h>
 #endif
 
 namespace zs {
+
+  struct _compute_bounding_box_naive {
+    template <typename BoxT, typename ParamT>
+    constexpr void operator()(BoxT &bv, const ParamT &params) noexcept {
+      constexpr int dim = BoxT::dim;
+      using value_type = typename BoxT::value_type;
+      auto &[box, execTag] = params;
+      for (int d = 0; d != dim; ++d) {
+        atomic_min(execTag, &box[0]._min[d], bv._min[d] - 10 * limits<value_type>::epsilon());
+        atomic_max(execTag, &box[0]._max[d], bv._max[d] + 10 * limits<value_type>::epsilon());
+      }
+    }
+  };
+  struct _compute_bounding_box_extraction {
+    template <typename Ti, typename Box, typename ParamT>
+    constexpr void operator()(Ti i, const Box &bv, ParamT &&params) noexcept {
+      constexpr int dim = Box::dim;
+      using value_type = typename Box::value_type;
+      auto &[gmins, gmaxs, sz] = params;
+      Ti offset{};
+      for (int d = 0; d < dim; ++d) {
+        offset = d * sz;
+        gmins[offset + i] = bv._min[d] - 10 * limits<value_type>::epsilon();
+        gmaxs[offset + i] = bv._max[d] + 10 * limits<value_type>::epsilon();
+      }
+    }
+  };
+
+  template <typename Policy, typename BoxRange,
+            typename Box = RM_CVREF_T(*declval<BoxRange &&>().begin())>
+  inline Box compute_bounding_box(Policy &&policy, BoxRange &&bvs) {
+    constexpr int dim = Box::dim;
+    constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
+    using value_type = typename Box::value_type;
+    using TV = typename Box::TV;
+    static_assert(sizeof(Box) == sizeof(value_type) * dim * 2, "???");
+
+    Box gbv{};
+    auto allocator = get_temporary_memory_source(policy);
+    const size_t sz = range_size(bvs);
+
+    bool shouldSync = policy.shouldSync();
+    policy.sync(true);
+#if 1
+    Vector<Box> wholeBox{allocator, 1};
+    constexpr auto defaultBox = Box{TV::constant(detail::deduce_numeric_max<value_type>()),
+                                    TV::constant(detail::deduce_numeric_lowest<value_type>())};
+    wholeBox.setVal(defaultBox);
+    const auto &params = zs::make_tuple(proxy<space>(wholeBox), wrapv<space>{});
+    policy(bvs, params, _compute_bounding_box_naive{});
+    gbv = wholeBox.getVal();
+#else
+    Vector<value_type> ret{allocator, dim * 2};
+    Vector<value_type> gmins{allocator, sz * dim}, gmaxs{allocator, sz * dim};
+
+    const auto &params = zs::make_tuple(view<space>(gmins), view<space>(gmaxs), sz);
+    policy(enumerate(bvs), params, _compute_bounding_box_extraction{});
+    for (int d = 0; d != dim; ++d) {
+      reduce(policy, zs::begin(gmins) + d * sz, zs::begin(gmins) + (d + 1) * sz, zs::begin(ret) + d,
+             detail::deduce_numeric_max<value_type>(), getmin<value_type>{});
+      reduce(policy, zs::begin(gmaxs) + d * sz, zs::begin(gmaxs) + (d + 1) * sz,
+             zs::begin(ret) + dim + d, detail::deduce_numeric_lowest<value_type>(),
+             getmax<value_type>{});
+    }
+    ret.retrieveVals((value_type *)(&gbv));
+#endif
+    policy.sync(shouldSync);
+    return gbv;
+  }
 
   template <int dim_ = 3, typename Index = int, typename ValueT = zs::f32,
             typename AllocatorT = zs::ZSPmrAllocator<>>
@@ -18,10 +87,10 @@ namespace zs {
     using allocator_type = AllocatorT;
     using value_type = ValueT;
     // must be signed integer, since we are using -1 as sentinel value
-    using index_type = std::make_signed_t<Index>;
-    using size_type = std::make_unsigned_t<Index>;
-    static_assert(std::is_floating_point_v<value_type>, "value_type should be floating point");
-    static_assert(std::is_integral_v<index_type>, "index_type should be an integral");
+    using index_type = zs::make_signed_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
+    static_assert(is_floating_point_v<value_type>, "value_type should be floating point");
+    static_assert(is_integral_v<index_type>, "index_type should be an integral");
 
     using mc_t = zs::u32;
     using Box = zs::AABBBox<dim, value_type>;
@@ -70,9 +139,22 @@ namespace zs {
     template <typename Policy>
     void refit(Policy &&, const zs::Vector<zs::AABBBox<dim, value_type>> &primBvs);
 
+    template <typename BvhView, typename BoxView> struct _GetBoxHelper {
+      BvhView bvh;
+      BoxView box;
+      constexpr void operator()(int vi) noexcept {
+        constexpr auto space = BvhView::space;
+        auto bv = bvh.getNodeBV(vi);
+        for (int d = 0; d != dim; ++d) {
+          atomic_min(wrapv<space>{}, &box[0]._min[d], bv._min[d]);
+          atomic_max(wrapv<space>{}, &box[0]._max[d], bv._max[d]);
+        }
+      }
+    };
+
     template <typename Policy> Box getTotalBox(Policy &&pol) const {
       using namespace zs;
-      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+      constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
 
       auto numLeaves = getNumLeaves();
       Vector<Box> box{orderedBvs.get_allocator(), 1};
@@ -80,14 +162,9 @@ namespace zs {
         using TV = typename Box::TV;
         box.setVal(Box{TV::constant(limits<value_type>::max()),
                        TV::constant(limits<value_type>::lowest())});
-        pol(Collapse{numLeaves},
-            [bvh = proxy<space>(*this), box = proxy<space>(box)] ZS_LAMBDA(int vi) mutable {
-              auto bv = bvh.getNodeBV(vi);
-              for (int d = 0; d != dim; ++d) {
-                atomic_min(wrapv<space>{}, &box[0]._min[d], bv._min[d]);
-                atomic_max(wrapv<space>{}, &box[0]._max[d], bv._max[d]);
-              }
-            });
+        auto bvhv = proxy<space>(*this);
+        auto boxv = proxy<space>(box);
+        pol(Collapse{numLeaves}, _GetBoxHelper<RM_CVREF_T(bvhv), RM_CVREF_T(boxv)>{bvhv, boxv});
         return box.getVal();
       } else {
         return orderedBvs.getVal();
@@ -96,14 +173,333 @@ namespace zs {
 
     bvs_t orderedBvs;
     indices_t parents{}, levels{}, leafInds{}, auxIndices{};  // escape ids/ prim ids
+
+    /// build
+    struct _build_init_mc_id {
+      template <typename ParamT>
+      constexpr void operator()(size_type id, const ParamT &params) noexcept {
+        auto &[wholeBox, primBvs, mcs, indices] = params;
+        const auto bv = primBvs[id];
+        auto c = bv.getBoxCenter();
+        auto coord = wholeBox.getUniformCoord(c).template cast<f32>();  // vec<f32, dim>
+        mcs[id] = morton_code<RM_REF_T(wholeBox)::dim>(coord);
+        indices[id] = id;
+      }
+    };
+    struct _build_init_depths {
+      template <typename ParamT>
+      constexpr void operator()(size_type idx, const ParamT &params) noexcept {
+        auto &[indices, pInds, lDepths, numTrunk] = params;
+        auto ind = indices[idx];
+        pInds[idx] = ind;
+        lDepths[idx] = 1;
+        if (idx == 0) lDepths[numTrunk + 1] = 0;
+      }
+    };
+    struct _build_build_topo {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[mcs, tPars, tLcs, tRcs, tLs, tRs, lPars, lDepths, execTag, numTrunk] = params;
+        index_type i = 0, j = 0;
+        auto num_leaves = numTrunk + 1;
+        // determine range
+        if (idx == 0) {
+          i = 0;
+          j = (num_leaves - 1);
+        } else {
+          index_type left = idx, right = idx;
+          index_type dir{};
+          u32 minLZ{};
+          u32 preCode = mcs(idx - 1);
+          u32 curCode = mcs(idx);
+          u32 nxtCode = mcs(idx + 1);
+
+          if (preCode == curCode && curCode == nxtCode) {
+            for (++right; right < num_leaves - 1; ++right)
+              if (mcs(right) != mcs(right + 1)) break;
+            j = right;
+            i = left;
+          } else {
+            u32 lLZ = count_lz(execTag, preCode ^ curCode),
+                rLZ = count_lz(execTag, nxtCode ^ curCode);
+            if (lLZ > rLZ)  ///< expand to the left
+              dir = -1, minLZ = rLZ;
+            else  ///< expand to the right
+              dir = 1, minLZ = lLZ;
+
+            index_type step{};
+            for (step = 2; right = left + step * dir,
+                (right < num_leaves && right >= 0 ? count_lz(execTag, mcs(right) ^ curCode) > minLZ
+                                                  : false);
+                 step <<= 1)
+              ;
+            index_type len{};
+            for (len = 0, step >>= 1; step >= 1; step >>= 1) {
+              right = left + (len + step) * dir;
+              if (right < num_leaves && right >= 0)
+                if (count_lz(execTag, mcs(right) ^ curCode) > minLZ) len += step;
+            }
+            // printf("dealing node %d: %u %u %u dir:%d mlz:%d len:%d\n", idx, preCode, curCode,
+            // nxtCode, dir, minLZ, len);
+            if (dir == 1) {
+              i = left;
+              j = left + len;
+            } else {
+              i = left - len;
+              j = left;
+            }
+          }
+        }
+        atomic_add(execTag, &lDepths[i], (index_type)1);
+        tLs(idx) = i;
+        tRs(idx) = j;
+        // find split
+        index_type gamma{};
+        auto lCode = mcs(i);
+        auto rCode = mcs(j);
+        if (lCode == rCode)
+          gamma = i;
+        else {
+          auto LZ = count_lz(execTag, lCode ^ rCode);
+          index_type step{}, len{};
+          for (step = (j - i + 1) >> 1, len = 0; true; step = (step + 1) >> 1) {
+            if (i + len + step > numTrunk) continue;
+            if (count_lz(execTag, mcs(i + len + step) ^ lCode) > LZ) len += step;
+            if (step <= 1) break;
+          }
+          gamma = i + len;
+        }
+        tLcs(idx) = gamma;
+        tRcs(idx) = gamma + 1;
+        auto mi = i < j ? i : j;
+        auto ma = i > j ? i : j;
+        if (mi == gamma) {
+          lPars(gamma) = idx;
+          tLcs(idx) += numTrunk;
+        } else
+          tPars(gamma) = idx;
+        if (ma == gamma + 1) {
+          lPars(gamma + 1) = idx;
+          tRcs(idx) += numTrunk;
+        } else
+          tPars(gamma + 1) = idx;
+
+        if (idx == 0) tPars(0) = -1;
+      }
+    };
+    struct _build_supp_topo {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[levels, lOffsets, lPars, lLcas, tPars, tDst, numTrunk] = params;
+        auto depth = lOffsets[idx + 1] - lOffsets[idx];
+        auto dst = lOffsets[idx + 1] - 2;
+        index_type node = lPars[idx], ch = idx + numTrunk;
+        index_type level = 0;
+        for (; --depth; node = tPars[node], --dst) {
+          tDst[node] = dst;
+          levels[dst] = ++level;
+          ch = node;
+        }
+        lLcas[idx] = ch;
+      }
+    };
+    struct _build_reorder_leaf {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[lOffsets, lPars, auxIndices, parents, levels, pInds, lInds, tDst] = params;
+        auto dst = lOffsets[idx + 1] - 1;
+        // aux (primids)
+        auxIndices[dst] = pInds[idx];
+        // parent
+        parents[dst] = tDst[lPars[idx]];
+        // levels
+        levels[dst] = 0;
+        // leafinds
+        lInds[idx] = dst;
+      }
+    };
+    struct _build_reorder_trunk {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[lLcas, lOffsets, auxIndices, parents, tRs, tPars, tDst, numTrunk] = params;
+        auto dst = tDst[idx];
+        auto r = tRs[idx];
+        // aux (esc)
+        if (r != numTrunk) {
+          auto lca = lLcas[r + 1];
+          auxIndices[dst] = lca < numTrunk ? tDst[lca] : lOffsets[r + 1];
+        } else
+          auxIndices[dst] = -1;
+        // parent
+        if (idx != 0)
+          parents[dst] = tDst[tPars[idx]];
+        else
+          parents[dst] = -1;
+        // levels for trunk are already set
+      }
+    };
+    /// build refit
+    struct _build_init_split_location {
+      template <typename ParamT>
+      constexpr void operator()(size_type id, mc_t &split, const ParamT &params) noexcept {
+        auto &[mcs, numLeaves, execTag] = params;
+        constexpr mc_t totalBits = sizeof(mc_t) * 8;
+        if (id + 1 != numLeaves)
+          split = totalBits - count_lz(execTag, mcs(id) ^ mcs(id + 1));
+        else
+          split = totalBits + 1;
+      }
+    };
+    struct _build_build_topo_and_refit {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[tPars, tLcs, tRcs, tLs, tRs, tBvs, lLcas, lDepths, lPars, numTrunk, primBvs, indices,
+               splits, flags, execTag]
+            = params;
+
+        lLcas[idx] = idx + numTrunk;  // set to itself
+        lDepths[idx] = 1;
+        Index l = idx - 1, r = idx;  ///< (l, r]
+        bool mark{false};
+
+        if (l >= 0) mark = splits[l] < splits[r];  ///< true when right child, false otherwise
+
+        int cur = mark ? l : r;
+        lPars[idx] = cur;
+        if (mark) {
+          tRcs[cur] = idx + numTrunk;
+          tRs[cur] = idx;
+          // atomic_or(execTag, &marks(cur), 0x00000002u);
+        } else {
+          tLcs[cur] = idx + numTrunk;
+          tLs[cur] = idx;
+          // atomic_or(execTag, &marks(cur), 0x00000001u);
+        }
+
+        while (atomic_add(execTag, &flags[cur], 1) == 1) {
+          {  // refit
+            int lc = tLcs[cur], rc = tRcs[cur];
+            // const auto childMask = marks(cur) & 3;
+            const auto &leftBox = (lc >= numTrunk) ? primBvs[indices[lc - numTrunk]] : tBvs[lc];
+            const auto &rightBox = (rc >= numTrunk) ? primBvs[indices[rc - numTrunk]] : tBvs[rc];
+
+            for (int d = 0; d != dim; ++d) {
+              tBvs[cur]._min[d] = zs::min(leftBox._min[d], rightBox._min[d]);
+              tBvs[cur]._max[d] = zs::max(leftBox._max[d], rightBox._max[d]);
+            }
+          }
+          // marks(cur) &= 0x00000007;
+
+          l = tLs[cur] - 1;
+          r = tRs[cur];
+          lLcas[l + 1] = cur;
+          lDepths[l + 1]++;
+
+          thread_fence(execTag);  // this is needed
+
+          if (l >= 0)
+            mark = splits[l] < splits[r];  ///< true when right child, false otherwise
+          else
+            mark = false;
+
+          if (l + 1 == 0 && r == numTrunk) {
+            tPars[cur] = -1;
+            // rt[0] = cur;  // assign root
+            // marks(cur) &= 0xFFFFFFFB;
+            break;
+          }
+
+          int par = mark ? l : r;
+          tPars[cur] = par;
+          if (mark) {
+            tRcs[par] = cur;
+            tRs[par] = r;
+            // atomic_and(execTag, &marks(par), 0xFFFFFFFD), marks(cur) |= 0x00000004;
+          } else {
+            tLcs[par] = cur;
+            tLs[par] = l + 1;
+            // atomic_and(execTag, &marks(par), 0xFFFFFFFE), marks(cur) &= 0xFFFFFFFB;
+          }
+          cur = par;
+        }
+      }
+    };
+    struct _build_reorder_leaf_with_bv {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[lOffsets, lPars, auxIndices, parents, levels, pInds, lInds, tDst, primBvs, bvs]
+            = params;
+        auto dst = lOffsets[idx + 1] - 1;
+        auto pId = pInds[idx];
+        // aux (primids)
+        auxIndices[dst] = pId;
+        // parent
+        parents[dst] = tDst[lPars[idx]];
+        // levels
+        levels[dst] = 0;
+        // leafinds
+        lInds[idx] = dst;
+        // bv
+        bvs[dst] = primBvs[pId];
+      }
+    };
+    struct _build_reorder_trunk_with_bv {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[lLcas, lOffsets, auxIndices, parents, tRs, tPars, tDst, tBvs, bvs, numTrunk]
+            = params;
+        auto dst = tDst[idx];
+        auto r = tRs[idx];
+        // bv
+        bvs[dst] = tBvs[idx];
+        // aux (esc)
+        if (r != numTrunk) {
+          auto lca = lLcas[r + 1];
+          auxIndices[dst] = lca < numTrunk ? tDst[lca] : lOffsets[r + 1];
+        } else
+          auxIndices[dst] = -1;
+        // parent
+        if (idx != 0)
+          parents[dst] = tDst[tPars[idx]];
+        else
+          parents[dst] = -1;
+        // levels for trunk are already set
+      }
+    };
+    struct _refit_bottom_up {
+      template <typename ParamT>
+      constexpr void operator()(index_type idx, const ParamT &params) noexcept {
+        auto &[primBvs, orderedBvs, auxIndices, leafInds, parents, levels, flags, execTag] = params;
+        auto node = leafInds[idx];
+        auto primid = auxIndices[node];
+        auto bv = primBvs[primid];
+        orderedBvs[node] = bv;
+        node = parents[node];
+        while (node != -1) {
+          if (atomic_cas(execTag, &flags[node], 0, 1) == 0) break;
+          auto lc = node + 1;
+          auto rc = levels[lc] ? auxIndices[lc] : lc + 1;
+          auto bv = orderedBvs[lc];
+          auto rbv = orderedBvs[rc];
+          merge(bv, rbv._min);
+          merge(bv, rbv._max);
+          thread_fence(execTag);  //__threadfence();
+          orderedBvs[node] = bv;
+          // if (node == 0)
+          //     printf("diag size: %f\n", (float)(bv._max - bv._min).length());
+          node = parents[node];
+        }
+      }
+    };
   };
 
   template <zs::execspace_e, typename LBvhT, bool Base = false, typename = void> struct LBvhView;
 
   /// proxy to work within each backends
-  template <zs::execspace_e space, typename LBvhT, bool Base>
-  struct LBvhView<space, const LBvhT, Base> {
+  template <zs::execspace_e space_, typename LBvhT, bool Base>
+  struct LBvhView<space_, const LBvhT, Base> {
     static constexpr int dim = LBvhT::dim;
+    static constexpr auto space = space_;
     using index_t = typename LBvhT::index_type;
     using bv_t = typename LBvhT::Box;
     using bvs_t = typename LBvhT::bvs_t;
@@ -233,7 +629,7 @@ namespace zs {
       if (auto nl = numNodes(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
           if (overlaps(getNodeBV(i), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(i);
             else {
               if (f(i)) return;
@@ -251,7 +647,7 @@ namespace zs {
         // leaf node check
         if (level == 0) {
           if (overlaps(getNodeBV(node), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(_auxIndices[node]);
             else {
               if (f(_auxIndices[node])) return;
@@ -268,7 +664,7 @@ namespace zs {
         const auto bv = getNodeBV(leafId);
         for (index_t i = leafId + 1; i != nl; ++i) {
           if (overlaps(getNodeBV(i), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(i);
             else {
               if (f(i)) return;
@@ -287,7 +683,7 @@ namespace zs {
         // leaf node check
         if (level == 0) {
           if (overlaps(getNodeBV(node), bv)) {
-            if constexpr (is_same_v<decltype(std::declval<F>()(std::declval<index_t>())), void>)
+            if constexpr (is_same_v<decltype(declval<F>()(declval<index_t>())), void>)
               f(_auxIndices[node]);
             else {
               if (f(_auxIndices[node])) return;
@@ -324,7 +720,7 @@ namespace zs {
     ZS_FUNCTION void iter_neighbors(const BV &bv, index_t i, Front &front, F &&f) const {
       auto node = front.node(i);
       if (auto nl = numNodes(); nl <= 2) {
-        if (overlaps(getNodeBV(node), bv)) f(_auxIndices[node]);
+        if (overlaps(getNodeBV(node), bv)) f(node);
         return;
       }
       const auto primid = front.prim(i);
@@ -383,7 +779,7 @@ namespace zs {
                                                  zs::wrapv<Refit>) {
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     if (primBvs.size() == 0) return;
@@ -400,17 +796,19 @@ namespace zs {
     const size_type numTrunk = numLeaves - 1;
     const size_type numNodes = numLeaves * 2 - 1;
 
-    indices_t trunkPars{primBvs.get_allocator(), numTrunk};
-    indices_t trunkLcs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkRcs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkLs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkRs{primBvs.get_allocator(), numTrunk};
-    indices_t trunkDst{primBvs.get_allocator(), numTrunk};
-    indices_t leafPars{primBvs.get_allocator(), numLeaves};
-    indices_t leafLcas{primBvs.get_allocator(), numLeaves};
-    indices_t primInds{primBvs.get_allocator(), numLeaves};
-    indices_t leafDepths{primBvs.get_allocator(), numLeaves + 1};
-    indices_t leafOffsets{primBvs.get_allocator(), numLeaves + 1};
+    auto allocator = get_temporary_memory_source(policy);
+
+    Vector<index_type> trunkPars{allocator, numTrunk};
+    Vector<index_type> trunkLcs{allocator, numTrunk};
+    Vector<index_type> trunkRcs{allocator, numTrunk};
+    Vector<index_type> trunkLs{allocator, numTrunk};
+    Vector<index_type> trunkRs{allocator, numTrunk};
+    Vector<index_type> trunkDst{allocator, numTrunk};
+    Vector<index_type> leafPars{allocator, numLeaves};
+    Vector<index_type> leafLcas{allocator, numLeaves};
+    Vector<index_type> primInds{allocator, numLeaves};
+    Vector<index_type> leafDepths{allocator, numLeaves + 1};
+    Vector<index_type> leafOffsets{allocator, numLeaves + 1};
 
     orderedBvs = bvs_t{primBvs.get_allocator(), numNodes};
     auxIndices = indices_t{primBvs.get_allocator(), numNodes};
@@ -436,169 +834,67 @@ namespace zs {
     const auto defaultBox
         = Box{TV::constant(limits<value_type>::max()), TV::constant(limits<value_type>::lowest())};
     Vector<Box> wholeBox{primBvs.get_allocator(), 1};
+#if 0
     wholeBox.setVal(defaultBox);
-    policy(primBvs, [box = proxy<space>(wholeBox), execTag] ZS_LAMBDA(const Box &bv) mutable {
-      for (int d = 0; d != dim; ++d) {
-        atomic_min(execTag, &box(0)._min[d], bv._min[d] - 10 * limits<T>::epsilon());
-        atomic_max(execTag, &box(0)._max[d], bv._max[d] + 10 * limits<T>::epsilon());
-      }
-    });
+    {
+      const auto &params = zs::make_tuple(proxy<space>(wholeBox), execTag);
+      policy(primBvs, params, _build_compute_bounding_box{});
+    }
+#else
+    wholeBox.setVal(compute_bounding_box(policy, range(primBvs)));
+#endif
 
     // morton codes
-    Vector<mc_t> mcs{primBvs.get_allocator(), numLeaves};
-    indices_t indices{primBvs.get_allocator(), numLeaves};
-    policy(range(numLeaves),
-           [wholeBox = wholeBox.getVal(), primBvs = proxy<space>(primBvs), mcs = proxy<space>(mcs),
-            indices = proxy<space>(indices)] ZS_LAMBDA(auto id) mutable {
-             const auto bv = primBvs[id];
-             auto c = bv.getBoxCenter();
-             auto coord = wholeBox.getUniformCoord(c).template cast<f32>();  // vec<f32, dim>
-             mcs[id] = (mc_t)morton_code<dim>(coord);
-             indices[id] = id;
-           });
+    Vector<mc_t> mcs{allocator, numLeaves};
+    Vector<index_type> indices{allocator, numLeaves};
+
+    {
+      const auto &params = zs::make_tuple(wholeBox.getVal(), proxy<space>(primBvs),
+                                          proxy<space>(mcs), proxy<space>(indices));
+      policy(range(numLeaves), params, _build_init_mc_id{});
+    }
 
     // sort by morton codes
-    Vector<mc_t> sortedMcs{primBvs.get_allocator(), numLeaves};
-    indices_t sortedIndices{primBvs.get_allocator(), numLeaves};
+    Vector<mc_t> sortedMcs{allocator, numLeaves};
+    Vector<index_type> sortedIndices{allocator, numLeaves};
     radix_sort_pair(policy, mcs.begin(), indices.begin(), sortedMcs.begin(), sortedIndices.begin(),
                     numLeaves);
 
     // build
     {
-      Vector<int> trunkBuildFlags{primBvs.get_allocator(), numTrunk};
+      Vector<int> trunkBuildFlags{allocator, numTrunk};
       trunkBuildFlags.reset(0);
-      policy(range(numLeaves), [indices = proxy<space>(sortedIndices), pInds, lDepths,
-                                numTrunk] ZS_LAMBDA(Ti idx) mutable {
-        auto ind = indices[idx];
-        pInds[idx] = ind;
-        lDepths[idx] = 1;
-        if (idx == 0) lDepths[numTrunk + 1] = 0;
-      });
-      /// ref: 2012 Tero Karras
-      /// also: efficient BVH-based collision detection scheme with ordering and restructuring
-      policy(range(numTrunk), [mcs = proxy<space>(sortedMcs), tPars, tLcs, tRcs, tLs, tRs, lPars,
-                               lDepths, execTag, numTrunk] ZS_LAMBDA(const Ti idx) mutable {
-        Ti i = 0, j = 0;
-        auto num_leaves = numTrunk + 1;
-        // determine range
-        if (idx == 0) {
-          i = 0;
-          j = (num_leaves - 1);
-        } else {
-          Ti left = idx, right = idx;
-          Ti dir;
-          u32 minLZ;
-          u32 preCode = mcs(idx - 1);
-          u32 curCode = mcs(idx);
-          u32 nxtCode = mcs(idx + 1);
-
-          if (preCode == curCode && curCode == nxtCode) {
-            for (++right; right < num_leaves - 1; ++right)
-              if (mcs(right) != mcs(right + 1)) break;
-            j = right;
-            i = left;
-          } else {
-            u32 lLZ = count_lz(execTag, preCode ^ curCode),
-                rLZ = count_lz(execTag, nxtCode ^ curCode);
-            if (lLZ > rLZ)  ///< expand to the left
-              dir = -1, minLZ = rLZ;
-            else  ///< expand to the right
-              dir = 1, minLZ = lLZ;
-
-            Ti step;
-            for (step = 2; right = left + step * dir,
-                (right < num_leaves && right >= 0 ? count_lz(execTag, mcs(right) ^ curCode) > minLZ
-                                                  : false);
-                 step <<= 1)
-              ;
-            Ti len;
-            for (len = 0, step >>= 1; step >= 1; step >>= 1) {
-              right = left + (len + step) * dir;
-              if (right < num_leaves && right >= 0)
-                if (count_lz(execTag, mcs(right) ^ curCode) > minLZ) len += step;
-            }
-            // printf("dealing node %d: %u %u %u dir:%d mlz:%d len:%d\n", idx, preCode, curCode,
-            // nxtCode, dir, minLZ, len);
-            if (dir == 1) {
-              i = left;
-              j = left + len;
-            } else {
-              i = left - len;
-              j = left;
-            }
-          }
-        }
-        atomic_add(execTag, &lDepths[i], (Ti)1);
-        tLs(idx) = i;
-        tRs(idx) = j;
-        // find split
-        Ti gamma;
-        auto lCode = mcs(i);
-        auto rCode = mcs(j);
-        if (lCode == rCode)
-          gamma = i;
-        else {
-          auto LZ = count_lz(execTag, lCode ^ rCode);
-          Ti step, len;
-          for (step = (j - i + 1) >> 1, len = 0; true; step = (step + 1) >> 1) {
-            if (i + len + step > numTrunk) continue;
-            if (count_lz(execTag, mcs(i + len + step) ^ lCode) > LZ) len += step;
-            if (step <= 1) break;
-          }
-          gamma = i + len;
-        }
-        tLcs(idx) = gamma;
-        tRcs(idx) = gamma + 1;
-        auto mi = i < j ? i : j;
-        auto ma = i > j ? i : j;
-        if (mi == gamma) {
-          lPars(gamma) = idx;
-          tLcs(idx) += numTrunk;
-        } else
-          tPars(gamma) = idx;
-        if (ma == gamma + 1) {
-          lPars(gamma + 1) = idx;
-          tRcs(idx) += numTrunk;
-        } else
-          tPars(gamma + 1) = idx;
-
-        if (idx == 0) tPars(0) = -1;
-      });
+      {
+        const auto &params = zs::make_tuple(proxy<space>(sortedIndices), pInds, lDepths, numTrunk);
+        policy(range(numLeaves), params, _build_init_depths{});
+      }
+      {
+        const auto &params = zs::make_tuple(proxy<space>(sortedMcs), tPars, tLcs, tRcs, tLs, tRs,
+                                            lPars, lDepths, execTag, numTrunk);
+        /// ref: 2012 Tero Karras
+        /// also: efficient BVH-based collision detection scheme with ordering and restructuring
+        policy(range(numTrunk), params, _build_build_topo{});
+      }
     }
 
-    exclusive_scan(policy, std::begin(leafDepths), std::end(leafDepths), std::begin(leafOffsets));
+    exclusive_scan(policy, zs::begin(leafDepths), zs::end(leafDepths), zs::begin(leafOffsets));
 
     lOffsets = proxy<space>(leafOffsets);
 
     // calc trunk order, leaf lca, levels
-    policy(range(numLeaves), [levels = proxy<space>(levels), lDepths, lOffsets, lPars, lLcas, tLs,
-                              tRs, tLcs, tPars, tDst, numTrunk] ZS_LAMBDA(Ti idx) mutable {
-      auto depth = lOffsets[idx + 1] - lOffsets[idx];
-      auto dst = lOffsets[idx + 1] - 2;
-      Ti node = lPars[idx], ch = idx + numTrunk;
-      Ti level = 0;
-      for (; --depth; node = tPars[node], --dst) {
-        tDst[node] = dst;
-        levels[dst] = ++level;
-        ch = node;
-      }
-      lLcas[idx] = ch;
-    });
+    {
+      const auto &params
+          = zs::make_tuple(proxy<space>(levels), lOffsets, lPars, lLcas, tPars, tDst, numTrunk);
+      policy(range(numLeaves), params, _build_supp_topo{});
+    }
 
     // reorder leaf
-    policy(range(numLeaves), [lOffsets, lPars, lLcas, auxIndices = proxy<space>(auxIndices),
-                              parents = proxy<space>(parents), levels = proxy<space>(levels), pInds,
-                              lInds, tDst, numTrunk] ZS_LAMBDA(Ti idx) mutable {
-      auto dst = lOffsets[idx + 1] - 1;
-      // aux (primids)
-      auxIndices[dst] = pInds[idx];
-      // parent
-      parents[dst] = tDst[lPars[idx]];
-      // levels
-      levels[dst] = 0;
-      // leafinds
-      lInds[idx] = dst;
-    });
+    {
+      const auto &params
+          = zs::make_tuple(lOffsets, lPars, proxy<space>(auxIndices), proxy<space>(parents),
+                           proxy<space>(levels), pInds, lInds, tDst);
+      policy(range(numLeaves), params, _build_reorder_leaf{});
+    }
 
 #if 0
     {
@@ -606,7 +902,7 @@ namespace zs {
       // check trunk order & lInds
       Vector<u64> tab{primBvs.get_allocator(), numNodes}, tmp{primBvs.get_allocator(), 1};
       policy(enumerate(tab), [] ZS_LAMBDA(auto id, auto &i) { i = id + 1; });
-      reduce(policy, std::begin(tab), std::end(tab), std::begin(tmp), (u64)0);
+      reduce(policy, zs::begin(tab), zs::end(tab), zs::begin(tmp), (u64)0);
       auto chkSum = tmp.getVal();
       fmt::print("{} total nodes, sum {} (ref: {})\n", numNodes, chkSum,
                  ((u64)1 + (u64)numNodes) * (u64)numNodes / 2);
@@ -619,31 +915,18 @@ namespace zs {
         if (atomic_cas(execTag, &tab[dst], (u64)(dst + 1), (u64)0) != dst + 1)
           printf("\t%d-th leaf node (dst %d) invalid\n", (int)id, (int)dst);
       });
-      reduce(policy, std::begin(tab), std::end(tab), std::begin(tmp), (u64)0);
+      reduce(policy, zs::begin(tab), zs::end(tab), zs::begin(tmp), (u64)0);
       chkSum = tmp.getVal();
       fmt::print("end sum {}\n", chkSum);
     }
 #endif
 
     // reorder trunk
-    policy(range(numTrunk),
-           [lLcas, lOffsets, auxIndices = proxy<space>(auxIndices), parents = proxy<space>(parents),
-            tRs, tPars, tDst, numTrunk] ZS_LAMBDA(Ti idx) mutable {
-             auto dst = tDst[idx];
-             auto r = tRs[idx];
-             // aux (esc)
-             if (r != numTrunk) {
-               auto lca = lLcas[r + 1];
-               auxIndices[dst] = lca < numTrunk ? tDst[lca] : lOffsets[r + 1];
-             } else
-               auxIndices[dst] = -1;
-             // parent
-             if (idx != 0)
-               parents[dst] = tDst[tPars[idx]];
-             else
-               parents[dst] = -1;
-             // levels for trunk are already set
-           });
+    {
+      const auto &params = zs::make_tuple(lLcas, lOffsets, proxy<space>(auxIndices),
+                                          proxy<space>(parents), tRs, tPars, tDst, numTrunk);
+      policy(range(numTrunk), params, _build_reorder_trunk{});
+    }
 
 #if 0
     {
@@ -779,7 +1062,7 @@ namespace zs {
       Policy &&policy, const zs::Vector<zs::AABBBox<dim, Value>> &primBvs) {
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     if (primBvs.size() == 0) return;
@@ -797,18 +1080,18 @@ namespace zs {
     const size_type numNodes = numLeaves * 2 - 1;
     auto allocator = get_temporary_memory_source(policy);
 
-    indices_t trunkPars{allocator, numTrunk};
-    indices_t trunkLcs{allocator, numTrunk};
-    indices_t trunkRcs{allocator, numTrunk};
-    indices_t trunkLs{allocator, numTrunk};
-    indices_t trunkRs{allocator, numTrunk};
-    indices_t trunkDst{allocator, numTrunk};
-    bvs_t trunkBvs{allocator, numTrunk};
-    indices_t leafPars{allocator, numLeaves};
-    indices_t leafLcas{allocator, numLeaves};
-    indices_t primInds{allocator, numLeaves};
-    indices_t leafDepths{allocator, numLeaves + 1};
-    indices_t leafOffsets{allocator, numLeaves + 1};
+    Vector<index_type> trunkPars{allocator, numTrunk};
+    Vector<index_type> trunkLcs{allocator, numTrunk};
+    Vector<index_type> trunkRcs{allocator, numTrunk};
+    Vector<index_type> trunkLs{allocator, numTrunk};
+    Vector<index_type> trunkRs{allocator, numTrunk};
+    Vector<index_type> trunkDst{allocator, numTrunk};
+    Vector<Box> trunkBvs{allocator, numTrunk};
+    Vector<index_type> leafPars{allocator, numLeaves};
+    Vector<index_type> leafLcas{allocator, numLeaves};
+    Vector<index_type> primInds{allocator, numLeaves};
+    Vector<index_type> leafDepths{allocator, numLeaves + 1};
+    Vector<index_type> leafOffsets{allocator, numLeaves + 1};
 
     orderedBvs = bvs_t{primBvs.get_allocator(), numNodes};
     auxIndices = indices_t{primBvs.get_allocator(), numNodes};
@@ -837,128 +1120,45 @@ namespace zs {
     const auto defaultBox
         = Box{TV::constant(limits<value_type>::max()), TV::constant(limits<value_type>::lowest())};
     Vector<Box> wholeBox{primBvs.get_allocator(), 1};
-    wholeBox.setVal(defaultBox);
-    policy(primBvs, [box = proxy<space>(wholeBox), execTag] ZS_LAMBDA(const Box &bv) mutable {
-      for (int d = 0; d != dim; ++d) {
-        atomic_min(execTag, &box(0)._min[d], bv._min[d] - 10 * limits<T>::epsilon());
-        atomic_max(execTag, &box(0)._max[d], bv._max[d] + 10 * limits<T>::epsilon());
-      }
-    });
+    wholeBox.setVal(compute_bounding_box(policy, range(primBvs)));
 
     // morton codes
     Vector<mc_t> mcs{allocator, numLeaves};
-    indices_t indices{allocator, numLeaves};
-    policy(range(numLeaves),
-           [wholeBox = wholeBox.getVal(), primBvs = view<space>(primBvs), mcs = proxy<space>(mcs),
-            indices = proxy<space>(indices)] ZS_LAMBDA(auto id) mutable {
-             const auto bv = primBvs[id];
-             auto c = bv.getBoxCenter();
-             auto coord = wholeBox.getUniformCoord(c).template cast<f32>();  // vec<f32, dim>
-             mcs[id] = (mc_t)morton_code<dim>(coord);
-             indices[id] = id;
-           });
+    Vector<index_type> indices{allocator, numLeaves};
+    {
+      const auto &params = zs::make_tuple(wholeBox.getVal(), proxy<space>(primBvs),
+                                          proxy<space>(mcs), proxy<space>(indices));
+      policy(range(numLeaves), params, _build_init_mc_id{});
+    }
 
     // sort by morton codes
     Vector<mc_t> sortedMcs{allocator, numLeaves};
-    indices_t sortedIndices{allocator, numLeaves};
+    Vector<index_type> sortedIndices{allocator, numLeaves};
     radix_sort_pair(policy, mcs.begin(), indices.begin(), sortedMcs.begin(), sortedIndices.begin(),
                     numLeaves);
 
     // split metrics
     Vector<mc_t> splits{allocator, numLeaves};
-    policy(enumerate(splits), [mcs = view<space>(sortedMcs), numLeaves, execTag] ZS_LAMBDA(
-                                  index_type id, mc_t & split) {
-      constexpr auto totalBits = sizeof(mc_t) * 8;
-      if (id != numLeaves - 1)
-        split = totalBits - count_lz(execTag, mcs(id) ^ mcs(id + 1));
-      else
-        split = totalBits + 1;
-    });
+    {
+      const auto &params = zs::make_tuple(view<space>(sortedMcs), numLeaves, execTag);
+      policy(enumerate(splits), params, _build_init_split_location{});
+    }
 
     // build
     {
       Vector<int> trunkBuildFlags{allocator, numTrunk};
       trunkBuildFlags.reset(0);
-      policy(range(numLeaves), [indices = proxy<space>(sortedIndices), pInds, lDepths,
-                                numTrunk] ZS_LAMBDA(Ti idx) mutable {
-        auto ind = indices[idx];
-        pInds[idx] = ind;
-        lDepths[idx] = 1;
-        if (idx == 0) lDepths[numTrunk + 1] = 0;
-      });
-      policy(range(numLeaves), [tPars, tLcs, tRcs, tLs, tRs, tBvs, lLcas, lDepths, lPars, numTrunk,
-                                primBvs = view<space>(primBvs),
-                                indices = view<space>(sortedIndices), splits = view<space>(splits),
-                                flags = view<space>(trunkBuildFlags),
-                                execTag] ZS_LAMBDA(index_type idx) mutable {
-        using TV = vec<value_type, dim>;
-
-        lLcas[idx] = idx + numTrunk;  // set to itself
-        lDepths[idx] = 1;
-        Index l = idx - 1, r = idx;  ///< (l, r]
-        bool mark{false};
-
-        if (l >= 0) mark = splits[l] < splits[r];  ///< true when right child, false otherwise
-
-        int cur = mark ? l : r;
-        lPars[idx] = cur;
-        if (mark) {
-          tRcs[cur] = idx + numTrunk;
-          tRs[cur] = idx;
-          // atomic_or(execTag, &marks(cur), 0x00000002u);
-        } else {
-          tLcs[cur] = idx + numTrunk;
-          tLs[cur] = idx;
-          // atomic_or(execTag, &marks(cur), 0x00000001u);
-        }
-
-        while (atomic_add(execTag, &flags[cur], 1) == 1) {
-          {  // refit
-            int lc = tLcs[cur], rc = tRcs[cur];
-            // const auto childMask = marks(cur) & 3;
-            const auto &leftBox = (lc >= numTrunk) ? primBvs[indices[lc - numTrunk]] : tBvs[lc];
-            const auto &rightBox = (rc >= numTrunk) ? primBvs[indices[rc - numTrunk]] : tBvs[rc];
-
-            for (int d = 0; d != dim; ++d) {
-              tBvs[cur]._min[d] = zs::min(leftBox._min[d], rightBox._min[d]);
-              tBvs[cur]._max[d] = zs::max(leftBox._max[d], rightBox._max[d]);
-            }
-          }
-          // marks(cur) &= 0x00000007;
-
-          l = tLs[cur] - 1;
-          r = tRs[cur];
-          lLcas[l + 1] = cur;
-          lDepths[l + 1]++;
-
-          thread_fence(execTag);  // this is needed
-
-          if (l >= 0)
-            mark = splits[l] < splits[r];  ///< true when right child, false otherwise
-          else
-            mark = false;
-
-          if (l + 1 == 0 && r == numTrunk) {
-            tPars[cur] = -1;
-            // rt[0] = cur;  // assign root
-            // marks(cur) &= 0xFFFFFFFB;
-            break;
-          }
-
-          int par = mark ? l : r;
-          tPars[cur] = par;
-          if (mark) {
-            tRcs[par] = cur;
-            tRs[par] = r;
-            // atomic_and(execTag, &marks(par), 0xFFFFFFFD), marks(cur) |= 0x00000004;
-          } else {
-            tLcs[par] = cur;
-            tLs[par] = l + 1;
-            // atomic_and(execTag, &marks(par), 0xFFFFFFFE), marks(cur) &= 0xFFFFFFFB;
-          }
-          cur = par;
-        }
-      });
+      {
+        const auto &params = zs::make_tuple(proxy<space>(sortedIndices), pInds, lDepths, numTrunk);
+        policy(range(numLeaves), params, _build_init_depths{});
+      }
+      {
+        const auto &params
+            = zs::make_tuple(tPars, tLcs, tRcs, tLs, tRs, tBvs, lLcas, lDepths, lPars, numTrunk,
+                             view<space>(primBvs), view<space>(sortedIndices), view<space>(splits),
+                             view<space>(trunkBuildFlags), execTag);
+        policy(range(numLeaves), params, _build_build_topo_and_refit{});
+      }
     }
 
     exclusive_scan(policy, std::begin(leafDepths), std::end(leafDepths), std::begin(leafOffsets));
@@ -966,60 +1166,27 @@ namespace zs {
     lOffsets = proxy<space>(leafOffsets);
 
     // calc trunk order, leaf lca, levels
-    policy(range(numLeaves), [levels = proxy<space>(levels), lOffsets, lPars, lLcas, tLs, tRs, tLcs,
-                              tPars, tDst, numTrunk] ZS_LAMBDA(Ti idx) mutable {
-      auto depth = lOffsets[idx + 1] - lOffsets[idx];
-      auto dst = lOffsets[idx + 1] - 2;
-      Ti node = lPars[idx], ch = idx + numTrunk;
-      Ti level = 0;
-      for (; --depth; node = tPars[node], --dst) {
-        tDst[node] = dst;
-        levels[dst] = ++level;
-        ch = node;
-      }
-      lLcas[idx] = ch;
-    });
+    {
+      const auto &params
+          = zs::make_tuple(proxy<space>(levels), lOffsets, lPars, lLcas, tPars, tDst, numTrunk);
+      policy(range(numLeaves), params, _build_supp_topo{});
+    }
 
     // reorder leaf
-    policy(range(numLeaves),
-           [lOffsets, lPars, auxIndices = proxy<space>(auxIndices), parents = proxy<space>(parents),
-            levels = proxy<space>(levels), pInds, lInds, tDst, primBvs = view<space>(primBvs),
-            bvs] ZS_LAMBDA(Ti idx) mutable {
-             auto dst = lOffsets[idx + 1] - 1;
-             auto pId = pInds[idx];
-             // aux (primids)
-             auxIndices[dst] = pId;
-             // parent
-             parents[dst] = tDst[lPars[idx]];
-             // levels
-             levels[dst] = 0;
-             // leafinds
-             lInds[idx] = dst;
-             // bv
-             bvs[dst] = primBvs[pId];
-           });
+    {
+      const auto &params
+          = zs::make_tuple(lOffsets, lPars, proxy<space>(auxIndices), proxy<space>(parents),
+                           proxy<space>(levels), pInds, lInds, tDst, view<space>(primBvs), bvs);
+      policy(range(numLeaves), params, _build_reorder_leaf_with_bv{});
+    }
 
     // reorder trunk
-    policy(range(numTrunk),
-           [lLcas, lOffsets, auxIndices = view<space>(auxIndices), parents = view<space>(parents),
-            tRs, tPars, tDst, tBvs, bvs, numTrunk] ZS_LAMBDA(Ti idx) mutable {
-             auto dst = tDst[idx];
-             auto r = tRs[idx];
-             // bv
-             bvs[dst] = tBvs[idx];
-             // aux (esc)
-             if (r != numTrunk) {
-               auto lca = lLcas[r + 1];
-               auxIndices[dst] = lca < numTrunk ? tDst[lca] : lOffsets[r + 1];
-             } else
-               auxIndices[dst] = -1;
-             // parent
-             if (idx != 0)
-               parents[dst] = tDst[tPars[idx]];
-             else
-               parents[dst] = -1;
-             // levels for trunk are already set
-           });
+    {
+      const auto &params
+          = zs::make_tuple(lLcas, lOffsets, view<space>(auxIndices), view<space>(parents), tRs,
+                           tPars, tDst, tBvs, bvs, numTrunk);
+      policy(range(numTrunk), params, _build_reorder_trunk_with_bv{});
+    }
 
     return;
   }
@@ -1030,7 +1197,7 @@ namespace zs {
     using namespace zs;
     using T = value_type;
     using Ti = index_type;
-    constexpr execspace_e space = RM_CVREF_T(policy)::exec_tag::value;
+    constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     constexpr auto execTag = wrapv<space>{};
 
     const size_type numLeaves = getNumLeaves();
@@ -1043,35 +1210,17 @@ namespace zs {
     }
     const size_type numNodes = getNumNodes();
     // init bvs, refit flags
-    Vector<int> refitFlags{primBvs.get_allocator(), numNodes};
+    auto allocator = get_temporary_memory_source(policy);
+    Vector<int> refitFlags{allocator, numNodes};
     refitFlags.reset(0);
     // refit
-    policy(Collapse{numLeaves},
-           [primBvs = proxy<space>(primBvs), orderedBvs = proxy<space>(orderedBvs),
-            auxIndices = proxy<space>(auxIndices), leafInds = proxy<space>(leafInds),
-            parents = proxy<space>(parents), levels = proxy<space>(levels),
-            flags = proxy<space>(refitFlags), numTrunk = numLeaves - 1,
-            execTag] ZS_LAMBDA(Ti idx) mutable {
-             auto node = leafInds[idx];
-             auto primid = auxIndices[node];
-             auto bv = primBvs[primid];
-             orderedBvs[node] = bv;
-             node = parents[node];
-             while (node != -1) {
-               if (atomic_cas(execTag, &flags[node], 0, 1) == 0) break;
-               auto lc = node + 1;
-               auto rc = levels[lc] ? auxIndices[lc] : lc + 1;
-               auto bv = orderedBvs[lc];
-               auto rbv = orderedBvs[rc];
-               merge(bv, rbv._min);
-               merge(bv, rbv._max);
-               thread_fence(execTag);  //__threadfence();
-               orderedBvs[node] = bv;
-               // if (node == 0)
-               //     printf("diag size: %f\n", (float)(bv._max - bv._min).length());
-               node = parents[node];
-             }
-           });
+    {
+      const auto &params
+          = zs::make_tuple(proxy<space>(primBvs), proxy<space>(orderedBvs),
+                           proxy<space>(auxIndices), proxy<space>(leafInds), proxy<space>(parents),
+                           proxy<space>(levels), proxy<space>(refitFlags), execTag);
+      policy(range(numLeaves), params, _refit_bottom_up{});
+    }
     return;
   }
 

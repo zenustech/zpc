@@ -1,6 +1,7 @@
 #pragma once
 #include <type_traits>
 
+#include "zensim/Platform.hpp"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 
@@ -10,12 +11,14 @@ namespace zs {
     static_assert(is_zs_allocator<AllocatorT>::value,
                   "Vector only works with zspmrallocator for now.");
     static_assert(is_same_v<T, remove_cvref_t<T>>, "T is not cvref-unqualified type!");
-    static_assert(std::is_default_constructible_v<T>, "element is not default-constructible!");
-    static_assert(std::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
+    static_assert(zs::is_default_constructible_v<T>, "element is not default-constructible!");
+    // static_assert(zs::is_trivially_copyable_v<T>, "element is not trivially-copyable!");
+    static_assert(zs::is_trivially_copyable_v<T> || zs::is_copy_assignable_v<T>,
+                  "element is not copyable!");
 
     using value_type = T;
     using allocator_type = AllocatorT;
-    using size_type = std::size_t;
+    using size_type = size_t;
     using difference_type = sint_t;
     using reference = value_type &;
     using const_reference = const value_type &;
@@ -34,11 +37,11 @@ namespace zs {
     decltype(auto) get_allocator() const noexcept { return _allocator; }
     decltype(auto) get_default_allocator(memsrc_e mre, ProcID devid) const {
       if constexpr (is_virtual_zs_allocator<allocator_type>::value)
-        return get_virtual_memory_source(mre, devid, (std::size_t)1 << (std::size_t)36, "STACK");
+        return get_virtual_memory_source(mre, devid, (size_t)1 << (size_t)36, "STACK");
       else
         return get_memory_source(mre, devid);
     }
-    pointer allocate(std::size_t bytes) {
+    pointer allocate(size_t bytes) {
       /// virtual memory way
       if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
         _allocator.commit(0, bytes);
@@ -46,7 +49,7 @@ namespace zs {
       }
       /// conventional way
       else
-        return (pointer)_allocator.allocate(bytes, std::alignment_of_v<value_type>);
+        return (pointer)_allocator.allocate(bytes, alignof(value_type));
     }
 
     /// allocator-aware
@@ -62,8 +65,7 @@ namespace zs {
 
     ~Vector() {
       if (_base && capacity() > 0)
-        _allocator.deallocate(_base, capacity() * sizeof(value_type),
-                              std::alignment_of_v<value_type>);
+        _allocator.deallocate(_base, capacity() * sizeof(value_type), alignof(value_type));
     }
 
     inline value_type getVal(size_type i = 0) const {
@@ -80,6 +82,11 @@ namespace zs {
       Resource::copy(MemoryEntity{memoryLocation(), (void *)(data() + i)},
                      MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v},
                      sizeof(value_type));
+    }
+    inline void assignVals(const value_type *src) const {
+      Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
+                     MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)src},
+                     sizeof(value_type) * size());
     }
 
     struct iterator_impl : IteratorInterface<iterator_impl> {
@@ -148,7 +155,7 @@ namespace zs {
 
     /// element access
     constexpr reference operator[](size_type idx) noexcept { return _base[idx]; }
-    constexpr conditional_t<std::is_fundamental_v<value_type>, value_type, const_reference>
+    constexpr conditional_t<zs::is_fundamental_v<value_type>, value_type, const_reference>
     operator[](size_type idx) const noexcept {
       return _base[idx];
     }
@@ -158,9 +165,18 @@ namespace zs {
           _base{allocate(sizeof(value_type) * o._capacity)},
           _size{o.size()},
           _capacity{o._capacity} {
-      if (o.data() && o.size() > 0)
-        Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
-                       MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
+      if (o.data() && o.size() > 0) {
+        if constexpr (zs::is_trivially_copyable_v<T>)
+          Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
+                         MemoryEntity{o.memoryLocation(), (void *)o.data()}, o.usedBytes());
+        else {
+          if (o.memspace() == memsrc_e::host) {
+            for (auto &[dst, src] : zip(*this, o)) dst = src;
+          } else
+            throw std::runtime_error(fmt::format(
+                "unable to perform Vector::copy-ctor when the memory space is not the host."));
+        }
+      }
     }
     Vector &operator=(const Vector &o) {
       if (this == &o) return *this;
@@ -183,15 +199,15 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     Vector(Vector &&o) noexcept {
       const Vector defaultVector{};
-      _allocator = std::exchange(o._allocator, defaultVector._allocator);
-      _base = std::exchange(o._base, defaultVector._base);
-      _size = std::exchange(o._size, defaultVector.size());
-      _capacity = std::exchange(o._capacity, defaultVector._capacity);
+      _allocator = zs::exchange(o._allocator, defaultVector._allocator);
+      _base = zs::exchange(o._base, defaultVector._base);
+      _size = zs::exchange(o._size, defaultVector.size());
+      _capacity = zs::exchange(o._capacity, defaultVector._capacity);
     }
     /// make move-assignment safe for self-assignment
     Vector &operator=(Vector &&o) noexcept {
       if (this == &o) return *this;
-      Vector tmp(std::move(o));
+      Vector tmp(zs::move(o));
       swap(tmp);
       return *this;
     }
@@ -283,7 +299,7 @@ namespace zs {
     void push_back(value_type &&val) {
       const auto sz = size();
       resize(sz + 1);
-      (*this)[sz] = std::move(val);
+      (*this)[sz] = zs::move(val);
     }
 
     void append(const Vector &other) {
@@ -295,7 +311,7 @@ namespace zs {
         resize(oldSize + count);
       else
         _size += count;
-      if constexpr (std::is_trivially_copyable_v<T>)
+      if constexpr (zs::is_trivially_copyable_v<T>)
         Resource::copy(MemoryEntity{memoryLocation(), (void *)(_base + oldSize)},
                        MemoryEntity{other.memoryLocation(), (void *)other.data()},
                        sizeof(T) * count);
@@ -307,7 +323,7 @@ namespace zs {
                            MemoryEntity{other.memoryLocation(), (void *)other.data()},
                            sizeof(T) * count);
           } else {
-            static_assert(std::is_copy_assignable_v<T>,
+            static_assert(zs::is_copy_assignable_v<T>,
                           "T should be at least copy assignable for append operation.");
             for (size_type i = 0; i != count; ++i) (*this)[oldSize + i] = other[i];
           }
@@ -317,8 +333,11 @@ namespace zs {
       }
     }
 
+    template <typename Policy, typename MapRange, bool Scatter = false>
+    void reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter> = {});
+
   protected:
-    constexpr std::size_t usedBytes() const noexcept { return sizeof(T) * size(); }
+    constexpr size_t usedBytes() const noexcept { return sizeof(T) * size(); }
 
     constexpr size_type geometric_size_growth(size_type newSize,
                                               size_type capacity) const noexcept {
@@ -336,27 +355,27 @@ namespace zs {
     size_type _size{0}, _capacity{0};
   };
 
-  extern template struct Vector<u8, ZSPmrAllocator<>>;
-  extern template struct Vector<u32, ZSPmrAllocator<>>;
-  extern template struct Vector<u64, ZSPmrAllocator<>>;
-  extern template struct Vector<i8, ZSPmrAllocator<>>;
-  extern template struct Vector<i32, ZSPmrAllocator<>>;
-  extern template struct Vector<i64, ZSPmrAllocator<>>;
-  extern template struct Vector<f32, ZSPmrAllocator<>>;
-  extern template struct Vector<f64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u8, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i8, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i64, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f32, ZSPmrAllocator<>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f64, ZSPmrAllocator<>>;
 
-  extern template struct Vector<u8, ZSPmrAllocator<true>>;
-  extern template struct Vector<u32, ZSPmrAllocator<true>>;
-  extern template struct Vector<u64, ZSPmrAllocator<true>>;
-  extern template struct Vector<i8, ZSPmrAllocator<true>>;
-  extern template struct Vector<i32, ZSPmrAllocator<true>>;
-  extern template struct Vector<i64, ZSPmrAllocator<true>>;
-  extern template struct Vector<f32, ZSPmrAllocator<true>>;
-  extern template struct Vector<f64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u8, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<u64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i8, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<i64, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f32, ZSPmrAllocator<true>>;
+  ZPC_FWD_DECL_TEMPLATE_STRUCT Vector<f64, ZSPmrAllocator<true>>;
 
   template <typename T,
-            enable_if_all<is_same_v<T, remove_cvref_t<T>>, std::is_default_constructible_v<T>,
-                          std::is_trivially_copyable_v<T>>
+            enable_if_all<is_same_v<T, remove_cvref_t<T>>, zs::is_default_constructible_v<T>,
+                          zs::is_trivially_copyable_v<T>>
             = 0>
   auto from_std_vector(const std::vector<T> &vs,
                        const MemoryLocation &mloc = {memsrc_e::host, -1}) {
@@ -368,9 +387,10 @@ namespace zs {
     return ret;
   }
 
-  template <execspace_e, typename VectorT, bool Base = false, typename = void> struct VectorView {
+  template <execspace_e S, typename VectorT, bool Base = false, typename = void> struct VectorView {
+    static constexpr auto space = S;
     static constexpr bool is_const_structure = std::is_const_v<VectorT>;
-    using vector_type = std::remove_const_t<VectorT>;
+    using vector_type = remove_const_t<VectorT>;
     using const_vector_type = std::add_const_t<vector_type>;
     using pointer = conditional_t<is_const_structure, typename vector_type::const_pointer,
                                   typename vector_type::pointer>;
@@ -445,9 +465,10 @@ namespace zs {
   };
 
   template <execspace_e S, typename VectorT> struct VectorView<S, VectorT, true, void> {
-    static constexpr bool is_const_structure = std::is_const_v<VectorT>;
-    using vector_type = std::remove_const_t<VectorT>;
-    using const_vector_type = std::add_const_t<vector_type>;
+    static constexpr auto space = S;
+    static constexpr bool is_const_structure = zs::is_const_v<VectorT>;
+    using vector_type = remove_const_t<VectorT>;
+    using const_vector_type = zs::add_const_t<vector_type>;
     using pointer = conditional_t<is_const_structure, typename vector_type::const_pointer,
                                   typename vector_type::pointer>;
     using value_type = typename vector_type::value_type;
@@ -526,6 +547,40 @@ namespace zs {
   template <execspace_e space, typename T, typename Allocator>
   constexpr decltype(auto) proxy(const Vector<T, Allocator> &vec, const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
+  }
+
+  template <typename VectorView, bool Scatter> struct VectorReorder {
+    using size_type = typename VectorView::size_type;
+    using value_type = typename VectorView::value_type;
+    VectorReorder(VectorView vs, VectorView orderedVs) : vs{vs}, orderedVs{orderedVs} {}
+    constexpr void operator()(size_type i, size_type j) {
+      if constexpr (Scatter)  // scatter
+        orderedVs[j] = vs[i];
+      else  // gather
+        orderedVs[i] = vs[j];
+    }
+    VectorView vs, orderedVs;
+  };
+  template <typename T, typename Allocator>
+  template <typename Policy, typename MapRange, bool Scatter>
+  void Vector<T, Allocator>::reorder(Policy &&pol, MapRange &&mapR, wrapv<Scatter>) {
+    constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
+    using Ti = RM_CVREF_T(*zs::begin(mapR));
+    static_assert(is_integral_v<Ti>,
+                  "index mapping range\'s dereferenced type is not an integral.");
+
+    const size_type sz = size();
+    if (range_size(mapR) != sz) throw std::runtime_error("index mapping range size mismatch");
+    if (!valid_memspace_for_execution(pol, get_allocator()))
+      throw std::runtime_error("current memory location not compatible with the execution policy");
+
+    Vector orderedVector(get_allocator(), capacity());
+    {
+      auto vs = view<space>(*this);
+      auto orderedVs = view<space>(orderedVector);
+      pol(enumerate(mapR), VectorReorder<RM_CVREF_T(vs), Scatter>{vs, orderedVs});
+    }
+    *this = zs::move(orderedVector);
   }
 
 }  // namespace zs

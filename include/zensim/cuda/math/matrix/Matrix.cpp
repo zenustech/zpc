@@ -19,7 +19,7 @@ namespace zs {
       const CudaLibComponentExecutionPolicy<culib_cusolversp> &pol) {
     assert_with_msg(!this->isRowMajor(), "cusparse matrix cannot handle csc format for now!");
     CudaTimer timer{Cuda::context(pol.get().getProcid()).streamSpare(pol.get().getStreamid())};
-    std::size_t sizeInternal, sizeChol;
+    size_t sizeInternal, sizeChol;
     timer.tick();
     if (this->isRowMajor())
       pol.call(cusolverSpXcsrcholAnalysis, this->rows(), this->nnz(), this->descr,

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Predicates.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
+#include "zensim/geometry/Predicates.hpp"
 #include "zensim/math/Rational.hpp"
 #include "zensim/math/Vec.h"
 #include "zensim/math/probability/Random.hpp"
@@ -27,8 +27,9 @@ namespace zs {
     BI_DEGE_XOR_13 = 3,
   };
 
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 2> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 2>
+                           = 0>
   constexpr orientation_e orient2d(const VecInterface<VecT>& pa, const VecInterface<VecT>& pb,
                                    const VecInterface<VecT>& pc) noexcept {
     double a[] = {pa[0], pa[1], pa[2]};
@@ -43,8 +44,9 @@ namespace zs {
       return orientation_e::COLLINEAR;
   }
 
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr orientation_e orient3d(const VecInterface<VecT>& pa, const VecInterface<VecT>& pb,
                                    const VecInterface<VecT>& pc,
                                    const VecInterface<VecT>& pd) noexcept {
@@ -69,8 +71,9 @@ namespace zs {
     using vec3 = zs::vec<double, 3>;
 
     // v0, v1 are vertices of one triangle, v2, v3 are the vertices of another one.
-    template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                           VecT::dim == 1, VecT::extent == 3> = 0>
+    template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                           VecT::dim == 1, VecT::extent == 3>
+                             = 0>
     constexpr bilinear(const VecInterface<VecT>& v0, const VecInterface<VecT>& v1,
                        const VecInterface<VecT>& v2, const VecInterface<VecT>& v3) noexcept
         : v{v0.clone(), v1.clone(), v2.clone(), v3.clone()}, phi_f{2, 2} {
@@ -102,8 +105,9 @@ namespace zs {
     using vec3 = zs::vec<double, 3>;
     using bv_t = AABBBox<3, double>;
 
-    template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                           VecT::dim == 1, VecT::extent == 3> = 0>
+    template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                           VecT::dim == 1, VecT::extent == 3>
+                             = 0>
     constexpr prism(const VecInterface<VecT>& vs, const VecInterface<VecT>& fs0,
                     const VecInterface<VecT>& fs1, const VecInterface<VecT>& fs2,
                     const VecInterface<VecT>& ve, const VecInterface<VecT>& fe0,
@@ -158,8 +162,9 @@ namespace zs {
     using vec3 = zs::vec<double, 3>;
     using bv_t = AABBBox<3, double>;
 
-    template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                           VecT::dim == 1, VecT::extent == 3> = 0>
+    template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                           VecT::dim == 1, VecT::extent == 3>
+                             = 0>
     constexpr hex(const VecInterface<VecT>& a0, const VecInterface<VecT>& a1,
                   const VecInterface<VecT>& b0, const VecInterface<VecT>& b1,
                   const VecInterface<VecT>& a0b, const VecInterface<VecT>& a1b,
@@ -196,12 +201,13 @@ namespace zs {
   };
 
   ///
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr bool is_triangle_degenerated(const VecInterface<VecT>& t1, const VecInterface<VecT>& t2,
                                          const VecInterface<VecT>& t3) noexcept {
     using T = typename VecT::value_type;
-    using vec2 = typename VecT::template variant_vec<T, integer_seq<int, 2>>;
+    using vec2 = typename VecT::template variant_vec<T, integer_sequence<int, 2>>;
     const auto to_2d = [](const VecInterface<VecT>& p, int t) {
       vec2 ret{};
       ret.val(0) = p[(t + 1) % 3];
@@ -223,16 +229,18 @@ namespace zs {
     return true;
   }
 
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr bool same_point(const VecInterface<VecT>& p1, const VecInterface<VecT>& p2) noexcept {
     if (p1[0] == p2[0] && p1[1] == p2[1] && p1[2] == p2[2]) return true;
     return false;
   }
 
   // 0 not intersected; 1 intersected; 2 pt on s0
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int point_on_ray(const VecInterface<VecT>& s0, const VecInterface<VecT>& e0,
                              const VecInterface<VecT>& dir0,
                              const VecInterface<VecT>& pt) noexcept {
@@ -274,8 +282,9 @@ namespace zs {
 
   // point and seg are colinear, now check if point is on the segment(can deal
   // with segment degeneration)
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr bool colinear_point_on_segment(const VecInterface<VecT>& pt,
                                            const VecInterface<VecT>& s0,
                                            const VecInterface<VecT>& s1) {
@@ -284,8 +293,9 @@ namespace zs {
         if (zs::min(s0[2], s1[2]) <= pt[2] <= zs::max(s0[2], s1[2])) return true;
     return false;
   }
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr bool point_on_segment(const VecInterface<VecT>& pt, const VecInterface<VecT>& s0,
                                   const VecInterface<VecT>& s1) {
     if (!is_triangle_degenerated(pt, s0, s1)) return false;
@@ -294,14 +304,16 @@ namespace zs {
 
   // 0 not intersected, 1 intersected, 2 s0 on segment
   // can deal with degenerated cases
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int ray_segment_intersection(const VecInterface<VecT>& s0, const VecInterface<VecT>& e0,
                                          const VecInterface<VecT>& dir0,
                                          const VecInterface<VecT>& s1,
                                          const VecInterface<VecT>& e1) {
-    using vec3 = typename VecT::template variant_vec<typename VecT::value_type,
-                                                     integer_seq<typename VecT::index_type, 3>>;
+    using vec3 =
+        typename VecT::template variant_vec<typename VecT::value_type,
+                                            integer_sequence<typename VecT::index_type, 3>>;
     if (same_point(e1, s1))  // degenerated case
       return point_on_ray(s0, e0, dir0, s1);
 
@@ -340,13 +352,15 @@ namespace zs {
 
   // 2 on edge, 1 interior, 0 not intersect, 3 intersect OPEN edge t2-t3
   template <typename VecT,
-            enable_if_all<std::is_floating_point_v<typename VecT::value_type>, VecT::dim == 1,
-                          VecT::extent == 3> = 0>  // norm follows right hand law
+            enable_if_all<is_floating_point_v<typename VecT::value_type>, VecT::dim == 1,
+                          VecT::extent == 3>
+            = 0>  // norm follows right hand law
   constexpr int point_inter_triangle(const VecInterface<VecT>& pt, const VecInterface<VecT>& t1,
                                      const VecInterface<VecT>& t2, const VecInterface<VecT>& t3,
                                      bool dege, const bool halfopen) {
-    using vec3 = typename VecT::template variant_vec<typename VecT::value_type,
-                                                     integer_seq<typename VecT::index_type, 3>>;
+    using vec3 =
+        typename VecT::template variant_vec<typename VecT::value_type,
+                                            integer_sequence<typename VecT::index_type, 3>>;
     if (dege) {  // check 2 edges are enough
       if (point_on_segment(pt, t1, t2)) return 2;
       if (point_on_segment(pt, t1, t3)) return 2;
@@ -384,8 +398,9 @@ namespace zs {
 
   // 0 no intersection, 1 intersect, 2 point on triangle(including two edges), 3
   // point or ray shoot t2-t3 edge, -1 shoot on border
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int ray_triangle_intersection(const VecInterface<VecT>& pt,
                                           const VecInterface<VecT>& pt1,
                                           const VecInterface<VecT>& dir,
@@ -496,8 +511,9 @@ namespace zs {
     ret[2] = v1[2] - v2[2];
     return ret;
   }
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr rational func_g(const zs::vec<rational, 3>& xr, const VecT corners[4],
                             const zs::vec<int, 3> indices) {
     const int p = indices[0];
@@ -526,8 +542,9 @@ namespace zs {
     return -1;
   }
   template <typename VecTA, typename VecT,
-            enable_if_all<std::is_floating_point_v<typename VecT::value_type>, VecT::dim == 1,
-                          VecT::extent == 3> = 0>
+            enable_if_all<is_floating_point_v<typename VecT::value_type>, VecT::dim == 1,
+                          VecT::extent == 3>
+            = 0>
   constexpr rational phi(const VecInterface<VecTA>& xd, const VecT corners[4]) {
     zs::vec<rational, 3> x{xd[0], xd[1], xd[2]};
     const rational g012 = func_g(x, corners, {0, 1, 2});
@@ -542,8 +559,9 @@ namespace zs {
 
     return phi;
   }
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr rational phi(const zs::vec<rational, 3>& x, const VecT corners[4]) {
     const rational g012 = func_g(x, corners, {0, 1, 2});
     const rational g132 = func_g(x, corners, {1, 3, 2});
@@ -580,8 +598,9 @@ namespace zs {
     }
     // std::cout << "!!can not happen, get tet phi" << std::endl;
   }
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int ray_correct_bilinear_face_pair_inter(const VecInterface<VecT>& p,
                                                      const VecInterface<VecT>& p1,
                                                      const rational& phi_p,
@@ -615,8 +634,9 @@ namespace zs {
   }
 
   // if end point pt is inside of tet or on the border
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int ray_shoot_correct_pair(bilinear& bl, const VecInterface<VecT>& pt,
                                        const VecInterface<VecT>& pt1,
                                        const VecInterface<VecT>& dir) {
@@ -668,8 +688,9 @@ namespace zs {
     }
     return BI_DEGE_PLANE;
   }
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int ray_degenerated_bilinear_parity(const bilinear& bl, const VecInterface<VecT>& pt,
                                                 const VecInterface<VecT>& pt1,
                                                 const VecInterface<VecT>& dir, const int dege) {
@@ -720,8 +741,9 @@ namespace zs {
     printf("!! THIS CANNOT HAPPEN\n");
     return false;
   }
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int ray_bilinear_parity(bilinear& bl, const VecInterface<VecT>& pt,
                                     const VecInterface<VecT>& pt1, const VecInterface<VecT>& dir,
                                     const bool is_degenerated,
@@ -790,8 +812,9 @@ namespace zs {
 
   // the facets of the tet are all oriented to outside. check if p is inside of
   // OPEN tet
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr bool is_point_inside_tet(const bilinear& bl, const VecInterface<VecT>& p) noexcept {
     for (int i = 0; i != 4; ++i) {  // facets.size()==4
       const auto &pt1 = bl.v[bl.facets[i][0]], &pt2 = bl.v[bl.facets[i][1]],
@@ -801,8 +824,9 @@ namespace zs {
     return true;  // all the orientations are -1, then point inside
   }
 
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int ray_triangle_parity(const VecInterface<VecT>& pt, const VecInterface<VecT>& pt1,
                                     const VecInterface<VecT>& dir, const VecInterface<VecT>& t0,
                                     const VecInterface<VecT>& t1, const VecInterface<VecT>& t2,
@@ -827,8 +851,9 @@ namespace zs {
   }
 
   // dir = pt1 - pt
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int point_inside_prism(prism& psm, bilinear bls[3], const VecInterface<VecT>& pt,
                                    const VecInterface<VecT>& pt1, const VecInterface<VecT>& dir,
                                    bool is_pt_in_tet[3]) {
@@ -908,8 +933,9 @@ namespace zs {
     return res >= 1;  // >=1 means point inside of prism
   }
 
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr bool vertexFaceCCD(
       const VecInterface<VecT>& vertex_start, const VecInterface<VecT>& face_vertex0_start,
       const VecInterface<VecT>& face_vertex1_start, const VecInterface<VecT>& face_vertex2_start,
@@ -937,8 +963,9 @@ namespace zs {
     return oin;
   }
 
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr int point_inside_hex(bilinear bls[6], const VecInterface<VecT>& pt,
                                  const VecInterface<VecT>& pt1, const VecInterface<VecT>& dir,
                                  const bool is_pt_in_tet[6]) {
@@ -1002,8 +1029,9 @@ namespace zs {
     return res >= 1;  // >=1 means point inside of prism
   }
 
-  template <typename VecT, enable_if_all<std::is_floating_point_v<typename VecT::value_type>,
-                                         VecT::dim == 1, VecT::extent == 3> = 0>
+  template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,
+                                         VecT::dim == 1, VecT::extent == 3>
+                           = 0>
   constexpr bool edgeEdgeCCD(
       const VecInterface<VecT>& edge0_vertex0_start, const VecInterface<VecT>& edge0_vertex1_start,
       const VecInterface<VecT>& edge1_vertex0_start, const VecInterface<VecT>& edge1_vertex1_start,

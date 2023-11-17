@@ -6,7 +6,7 @@
 #include <filesystem>
 
 #include "zensim/cuda/Cuda.h"
-#include "zensim/resource/Filesystem.hpp"
+#include "zensim/io/Filesystem.hpp"
 #include "zensim/types/Tuple.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 #include "zensim/zpc_tpls/jitify/jitify2.hpp"
@@ -61,14 +61,19 @@ namespace zs::cudri {
         fmt::format("--include-path={}", ZS_INCLUDE_DIR), "--device-as-default-execution-space",
         fmt::format("--gpu-architecture=sm_{}{}", major, minor), "-dc", "-std=c++17"};
     std::vector<const char *> opts(fixedOpts.size() + additionalOptions.size());
-    std::size_t loc = 0;
+    size_t loc = 0;
     for (auto &&opt : fixedOpts) opts[loc++] = opt.data();
     for (auto &&opt : additionalOptions) opts[loc++] = opt.data();
 
     const char *userScript = code.data();
 
     nvrtcProgram prog;
-    nvrtcCreateProgram(&prog, userScript, name.data(), 0, NULL, NULL);
+    #if 0
+    const char *headers[] = {"type_traits", "initializer_list"};
+    nvrtcCreateProgram(&prog, userScript, name.data(), 2, headers, NULL);
+    #else
+    nvrtcCreateProgram(&prog, userScript, name.data(), 0, nullptr, NULL);
+    #endif
     nvrtcResult res = nvrtcCompileProgram(prog, opts.size(), opts.data());
 
     size_t strSize{0};

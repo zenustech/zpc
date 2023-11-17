@@ -9,7 +9,7 @@ namespace zs {
     using base_t = PlasticityModelInterface<SnowPlasticity<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type thetaC, thetaS, xi;  // compression, stretch, hardening coefficient
 
@@ -20,7 +20,7 @@ namespace zs {
     // project_strain
     template <typename VecT, typename Tp,
               enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>> = 0>
     constexpr auto do_project_sigma(VecInterface<VecT>& S, Tp mu0, Tp lam0) const noexcept {
       constexpr auto dim = VecT::template range_t<0>::value;
       using Ti = typename VecT::index_type;

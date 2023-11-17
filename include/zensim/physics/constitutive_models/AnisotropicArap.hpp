@@ -8,7 +8,7 @@ namespace zs {
     using base_t = InvariantConstitutiveModelInterface<AnisotropicArap<T>>;
     using value_type = T;
 
-    static_assert(std::is_floating_point_v<value_type>, "value type should be floating point");
+    static_assert(is_floating_point_v<value_type>, "value type should be floating point");
 
     value_type mu;
 
@@ -24,7 +24,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto I4_sign(const VecInterface<VecTM>& F,
                            const VecInterface<VecTV>& a) const noexcept {
       const auto I4 = zs::get<0>(base_t::I_wrt_F_a<4, 0>(F, a));
@@ -35,7 +35,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_psi(const VecInterface<VecTM>& F,
                           const VecInterface<VecTV>& a) const noexcept {
       const auto v = zs::sqrt(zs::get<0>(base_t::I_wrt_F_a<5, 0>(F, a))) - I4_sign(F, a);
@@ -46,7 +46,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_first_piola(const VecInterface<VecTM>& F,
                                   const VecInterface<VecTV>& a) const noexcept {
       const auto A = dyadic_prod(a, a);
@@ -60,7 +60,7 @@ namespace zs {
                             VecTM::template range_t<0>::value == VecTM::template range_t<1>::value,
                             VecTM::template range_t<0>::value == VecTV::template range_t<0>::value,
                             VecTM::template range_t<0>::value <= 3,
-                            std::is_floating_point_v<typename VecTM::value_type>> = 0>
+                            is_floating_point_v<typename VecTM::value_type>> = 0>
     constexpr auto do_first_piola_derivative(const VecInterface<VecTM>& F,
                                              const VecInterface<VecTV>& a) const noexcept {
       typename VecTM::value_type I5{};

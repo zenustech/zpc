@@ -22,7 +22,7 @@ namespace zs {
     // std::vector<GeneralMesh> meshes;
     std::vector<GeneralBoundary> boundaries;
     /// (constitutive model [elasticity, plasticity], geometry type, local model index)
-    std::vector<std::tuple<ConstitutiveModelConfig, model_e, std::size_t>> models;
+    std::vector<std::tuple<ConstitutiveModelConfig, model_e, zs::size_t>> models;
     static SceneBuilder create();
   };
 
@@ -61,7 +61,7 @@ namespace zs {
   BuilderForSceneParticle &NAME(float v) {                                                 \
     /*match([v](auto &model) { model.ATTRIB = v; }, [v](auto &model) {})(config); */       \
     match([](...) {},                                                                      \
-          [v](auto &model) -> std::enable_if_t<is_same_v<decltype(model.ATTRIB), float>> { \
+          [v](auto &model) -> enable_if_type<is_same_v<decltype(model.ATTRIB), float>> { \
             model.ATTRIB = v;                                                              \
           })(config);                                                                      \
     return *this;                                                                          \
@@ -123,7 +123,7 @@ namespace zs {
     std::vector<AnalyticLevelSet<analytic_geometry_e::Cuboid, float, 3>> cuboids;
     std::vector<AnalyticLevelSet<analytic_geometry_e::Sphere, float, 3>> spheres;
     // std::vector<LevelSet<float, 3>> vdbLevelsets;
-    std::vector<SparseLevelSet<3>> sparseLevelSets;
+    std::vector<SparseGrid<3>> sparseLevelSets;
     collider_e boundaryType{collider_e::Sticky};
   };
 

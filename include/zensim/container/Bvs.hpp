@@ -12,10 +12,10 @@ namespace zs {
     using allocator_type = AllocatorT;
     using value_type = ValueT;
     // must be signed integer, since we are using -1 as sentinel value
-    using index_type = std::make_signed_t<Index>;
-    using size_type = std::make_unsigned_t<Index>;
-    static_assert(std::is_floating_point_v<value_type>, "value_type should be floating point");
-    static_assert(std::is_integral_v<index_type>, "index_type should be an integral");
+    using index_type = zs::make_signed_t<Index>;
+    using size_type = zs::make_unsigned_t<Index>;
+    static_assert(is_floating_point_v<value_type>, "value_type should be floating point");
+    static_assert(is_integral_v<index_type>, "index_type should be an integral");
 
     using mc_t = conditional_t<(sizeof(value_type) > sizeof(f64)), u64, u32>;
     using Box = AABBBox<dim, value_type>;
@@ -53,7 +53,7 @@ namespace zs {
 
     template <typename Policy> Box getBox(Policy &&pol) const {
       Box gbv;
-      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+      constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
       Vector<value_type> ret{bvs.get_allocator(), 1};
       Vector<value_type> gmins{bvs.get_allocator(), bvs.size()},
           gmaxs{bvs.get_allocator(), bvs.size()};
@@ -76,7 +76,7 @@ namespace zs {
     template <typename Policy> void build(Policy &&pol,
                                           const zs::Vector<zs::AABBBox<dim, value_type>> &primBvs,
                                           int axis = -1) {
-      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+      constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
       // ZS_LAMBDA -> __device__
       static_assert(space == execspace_e::cuda, "specialized policy and compiler not match");
@@ -86,7 +86,7 @@ namespace zs {
 
       // must call this in the beginning
       bvs = bvs_t{
-          primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, (std::size_t)range_size(primBvs)};
+          primBvs.get_allocator(), {{"min", dim}, {"max", dim}}, (size_t)range_size(primBvs)};
 
       if (!(axis >= 0 && axis < dim)) {
         // compute bvs and global bv
@@ -154,7 +154,7 @@ namespace zs {
     template <typename Policy>
     void refit(Policy &&pol, const Vector<AABBBox<dim, value_type>> &primBvs) {
       // build(pol, primBvs);
-      constexpr auto space = std::remove_reference_t<Policy>::exec_tag::value;
+      constexpr auto space = remove_reference_t<Policy>::exec_tag::value;
       if (range_size(primBvs) != bvs.size())
         throw std::runtime_error("the count of bounding volumes mismatch");
       if (!valid_memspace_for_execution(pol, primBvs.get_allocator()))
@@ -196,8 +196,8 @@ namespace zs {
     using index_t = typename LBvsT::index_type;
     using bv_t = typename LBvsT::Box;
     using bvs_t = typename LBvsT::bvs_t;
-    using bvs_view_type = RM_CVREF_T(
-        view<space>(std::declval<conditional_t<is_const_structure, const bvs_t &, bvs_t &>>()));
+    using bvs_view_type = decltype(view<space>(
+        declval<conditional_t<is_const_structure, const bvs_t &, bvs_t &>>()));
     using vector_t = typename LBvsT::vector_t;
     using indices_t = typename LBvsT::indices_t;
 

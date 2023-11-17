@@ -5,22 +5,69 @@
 #include "../Logger.hpp"
 #include "../Platform.hpp"
 #include "Cuda.h"
+#include "zensim/execution/ConcurrencyPrimitive.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 
 #define MEM_POOL_CTRL 3
 
+#if 0
+namespace {
+  static zs::Mutex g_cudaMutex;
+  static std::atomic<bool> g_isCudaInitialized = false;
+  static zs::Cuda *g_cudaInstance = nullptr;
+}  // namespace
+#endif
+
 namespace zs {
 
+#if 0
+  Cuda &Cuda::instance() {
+    if (g_isCudaInitialized.load(std::memory_order_acquire)) return *g_cudaInstance;
+    g_cudaMutex.lock();
+    if (g_isCudaInitialized.load(std::memory_order_acquire)) return *g_cudaInstance;
+
+    if (!g_cudaInstance) g_cudaInstance = new Cuda;
+
+    g_isCudaInitialized.store(true, std::memory_order_release);
+    g_cudaMutex.unlock();
+    return *g_cudaInstance;
+  }
+#endif
+
+  Cuda::ContextGuard::ContextGuard(void *context, bool restore, const source_location &loc)
+      : needRestore(false), loc(loc) {
+    if (context) {
+      if (restore)
+        if (checkCuApiError(cuCtxGetCurrent((CUcontext *)(&prevContext)), loc,
+                            "[cuCtxGetCurrent]")) {
+          if (context != prevContext)
+            needRestore
+                = checkCuApiError(cuCtxSetCurrent((CUcontext)context), loc, "[cuCtxGetCurrent]");
+        }
+    }
+  }
+  Cuda::ContextGuard::~ContextGuard() {
+    if (needRestore)
+      if (CUresult ec = cuCtxSetCurrent((CUcontext)prevContext); ec != CUDA_SUCCESS) {
+        const char *errString = nullptr;
+        if (cuGetErrorString) {
+          cuGetErrorString(ec, &errString);
+          checkCuApiError((u32)ec, loc, fmt::format("on restoring context {}", prevContext),
+                          errString);
+        } else
+          checkCuApiError((u32)ec, loc, fmt::format("on restoring context {}", prevContext));
+      }
+  }
   /*
     __device__ __constant__ char g_cuda_constant_cache[8192];  // 1024 words
 
-    void Cuda::init_constant_cache(void *ptr, std::size_t size) {
+    void Cuda::init_constant_cache(void *ptr, size_t size) {
       cudaMemcpyToSymbol(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice);
       // cudri::memcpyHtoD((void *)g_cuda_constant_cache, ptr, size);
     }
-    void Cuda::init_constant_cache(void *ptr, std::size_t size, void *stream) {
+    void Cuda::init_constant_cache(void *ptr, size_t size, void *stream) {
       cudaMemcpyToSymbolAsync(g_cuda_constant_cache, ptr, size, 0, cudaMemcpyHostToDevice,
                               (cudaStream_t)stream);
     }
@@ -60,7 +107,7 @@ namespace zs {
   /// kernel launch
   u32 Cuda::launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
                          unsigned int bx, unsigned int by, unsigned int bz, void **args,
-                         std::size_t shmem, void *stream) {
+                         size_t shmem, void *stream) {
     return cudaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
                             (cudaStream_t)stream);
     // return cudri::launchCuKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, (unsigned
@@ -69,7 +116,7 @@ namespace zs {
   }
   u32 Cuda::launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
                                     unsigned int gz, unsigned int bx, unsigned int by,
-                                    unsigned int bz, void **args, std::size_t shmem, void *stream) {
+                                    unsigned int bz, void **args, size_t shmem, void *stream) {
     // return cudri::launchCuCooperativeKernel(const_cast<void *>(f), gx, gy, gz, bx, by, bz, shmem,
     // stream, args);
     return cudaLaunchCooperativeKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
@@ -117,8 +164,7 @@ namespace zs {
     checkError(cudaStreamWaitEvent((cudaStream_t)streamSpare(sid), (cudaEvent_t)event, 0), loc);
     // cuStreamWaitEvent((CUstream)streamSpare(sid), (CUevent)event, 0);
   }
-  void *Cuda::CudaContext::streamMemAlloc(std::size_t size, void *stream,
-                                          const source_location &loc) {
+  void *Cuda::CudaContext::streamMemAlloc(size_t size, void *stream, const source_location &loc) {
     void *ptr;
     cuMemAllocAsync((CUdeviceptr *)&ptr, size, (CUstream)stream);
     return ptr;
@@ -203,7 +249,7 @@ namespace zs {
           // add this new context
           context = CudaContext{i, dev, ctx};
         } else if (res == CUDA_ERROR_OUT_OF_MEMORY) {
-          std::size_t nbs;
+          size_t nbs;
           cuDeviceTotalMem(&nbs, (CUdevice)dev);
           ZS_WARN(fmt::format("{} bytes in total for device {}.", nbs, dev));
         }
@@ -293,7 +339,7 @@ namespace zs {
   /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
   int Cuda::deduce_block_size(const source_location &loc, const Cuda::CudaContext &ctx,
                               void *kernelFunc,
-                              std::function<std::size_t(int)> block_size_to_dynamic_shmem,
+                              std::function<size_t(int)> block_size_to_dynamic_shmem,
                               std::string_view kernelName) {
     if (auto it = ctx.funcLaunchConfigs.find(kernelFunc); it != ctx.funcLaunchConfigs.end())
       return it->second.optBlockSize;

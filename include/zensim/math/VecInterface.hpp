@@ -90,7 +90,7 @@ namespace zs {
             enable_if_all<IsPtrStruct, OtherVecT::extent == extent,                        \
                           is_convertible_v<typename OtherVecT::value_type, value_type>>    \
             = 0>                                                                           \
-  constexpr decltype(auto) operator=(const VecInterface<OtherVecT>& rhs)&& noexcept {              \
+  constexpr base_t operator=(const VecInterface<OtherVecT>& rhs)&& noexcept {              \
     for (index_type i = 0; i != extent; ++i) base_t::val(i) = rhs.val(i);                  \
     return *this;                                                                          \
   }

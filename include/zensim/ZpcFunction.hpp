@@ -113,7 +113,9 @@ namespace zs {
     using manager_fn = void(void *self, void *o, manage_op_e);
 
     template <typename Callable> struct Owner {
-      Owner(Callable callable) noexcept : _callable{zs::move(callable)} {}
+      Owner(const Callable &callable) noexcept(is_nothrow_copy_constructible_v<Callable>)
+          : _callable{callable} {}
+      Owner(Callable &&callable) noexcept : _callable{zs::move(callable)} {}
       ~Owner() = default;
       Owner(const Owner &) = default;
       Owner &operator=(const Owner &) = default;
@@ -132,11 +134,11 @@ namespace zs {
     template <typename F,
               enable_if_t<!is_same_v<decay_t<F>, function> && is_invocable_r_v<R, F &&, Args...>>
               = 0>
-    function(F &&f) noexcept : _storage{}, _erasedFn{nullptr}, _manageFn{nullptr} {
+    function(F &&f) : _storage{}, _erasedFn{nullptr}, _manageFn{nullptr} {
       operator=(FWD(f));
     }
     template <typename F, enable_if_t<is_invocable_r_v<R, F &&, Args...>> = 0>
-    function &operator=(F &&f) noexcept {
+    function &operator=(F &&f) {
       if (_manageFn) (*_manageFn)(_storage.data(), nullptr, manage_op_e::destruct);
 
       constexpr bool fit = sizeof(f) <= function_storage::capacity
@@ -147,8 +149,9 @@ namespace zs {
         _storage.template create<FuncOwner>(FWD(f));
 
         _erasedFn = [](const void *obj, Args... args) -> R {
-          zs::invoke(*static_cast<const function_storage *>(obj)->template data<FuncOwner>(),
-                     zs::forward<Args>(args)...);
+          return zs::invoke(
+              *(static_cast<const function_storage *>(obj)->template data<FuncOwner>()),
+              zs::forward<Args>(args)...);
         };
         _manageFn = [](void *self, void *o, manage_op_e op) {
           if (op == manage_op_e::destruct) {
@@ -168,8 +171,9 @@ namespace zs {
         _storage.template create<FuncOwner>(FuncOwner::make(FWD(f)));
 
         _erasedFn = [](const void *obj, Args... args) -> R {
-          zs::invoke(**static_cast<const function_storage *>(obj)->template data<FuncOwner>(),
-                     zs::forward<Args>(args)...);
+          return zs::invoke(
+              **static_cast<const function_storage *>(obj)->template data<FuncOwner>(),
+              zs::forward<Args>(args)...);
         };
         _manageFn = [](void *self, void *o, manage_op_e op) {
           if (op == manage_op_e::destruct) {

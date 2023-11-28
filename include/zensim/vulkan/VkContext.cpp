@@ -89,26 +89,32 @@ namespace zs {
 
     /// queue family
     auto queueFamilyProps = physicalDevice.getQueueFamilyProperties();
-    // graphicsQueueFamilyIndex = computeQueueFamilyIndex = transferQueueFamilyIndex = -1;
     for (auto& queueFamilyIndex : queueFamilyIndices) queueFamilyIndex = -1;
     for (auto& queueFamilyMap : queueFamilyMaps) queueFamilyMap = -1;
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
       auto& q = queueFamilyProps[i];
-      if (graphicsQueueFamilyIndex == -1 && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
-        graphicsQueueFamilyIndex = i;
+      if (queueFamilyIndices[vk_queue_e::graphics] == -1
+          && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
+        queueFamilyIndices[vk_queue_e::graphics] = i;
         ZS_WARN_IF(!(q.queueFlags & vk::QueueFlagBits::eTransfer),
                    "the selected graphics queue family cannot transfer!");
       }
-      if (computeQueueFamilyIndex == -1 && (q.queueFlags & vk::QueueFlagBits::eCompute))
-        computeQueueFamilyIndex = i;
-      if (transferQueueFamilyIndex == -1 && (q.queueFlags & vk::QueueFlagBits::eTransfer))
-        transferQueueFamilyIndex = i;
+      if (queueFamilyIndices[vk_queue_e::compute] == -1
+          && (q.queueFlags & vk::QueueFlagBits::eCompute))
+        queueFamilyIndices[vk_queue_e::compute] = i;
+      if (queueFamilyIndices[vk_queue_e::transfer] == -1
+          && (q.queueFlags & vk::QueueFlagBits::eTransfer))
+        queueFamilyIndices[vk_queue_e::transfer] = i;
     }
-    ZS_ERROR_IF(graphicsQueueFamilyIndex == -1, "graphics queue family does not exist!");
-    fmt::print("selected queue family [{}] for graphics!\n", graphicsQueueFamilyIndex);
+    ZS_ERROR_IF(queueFamilyIndices[vk_queue_e::graphics] == -1,
+                "graphics queue family does not exist!");
+    fmt::print("selected queue family [{}] for graphics! (compute: {}, transfer: {})\n",
+               queueFamilyIndices[vk_queue_e::graphics], queueFamilyIndices[vk_queue_e::compute],
+               queueFamilyIndices[vk_queue_e::transfer]);
 
-    std::set<u32> uniqueQueueFamilyIndices{
-        (u32)graphicsQueueFamilyIndex, (u32)computeQueueFamilyIndex, (u32)transferQueueFamilyIndex};
+    std::set<u32> uniqueQueueFamilyIndices{(u32)queueFamilyIndices[vk_queue_e::graphics],
+                                           (u32)queueFamilyIndices[vk_queue_e::compute],
+                                           (u32)queueFamilyIndices[vk_queue_e::transfer]};
     this->uniqueQueueFamilyIndices.reserve(uniqueQueueFamilyIndices.size());
     std::vector<vk::DeviceQueueCreateInfo> dqCIs(uniqueQueueFamilyIndices.size());
     float priority = 1.f;
@@ -119,11 +125,13 @@ namespace zs {
         this->uniqueQueueFamilyIndices.push_back(index);
         dqCI.setQueueFamilyIndex(index).setQueueCount(1).setPQueuePriorities(&priority);
 
-        if (graphicsQueueFamilyIndex == index) graphicsQueueFamilyMap = i;
-        if (computeQueueFamilyIndex == index) computeQueueFamilyMap = i;
-        if (transferQueueFamilyIndex == index) transferQueueFamilyMap = i;
+        if (queueFamilyIndices[vk_queue_e::graphics] == index) queueFamilyMaps[0] = i;
+        if (queueFamilyIndices[vk_queue_e::compute] == index) queueFamilyMaps[1] = i;
+        if (queueFamilyIndices[vk_queue_e::transfer] == index) queueFamilyMaps[2] = i;
         i++;
       }
+      fmt::print("queue family maps (graphics: {}, compute: {}, transfer: {})\n",
+                 queueFamilyMaps[0], queueFamilyMaps[1], queueFamilyMaps[2]);
     }
 
     /// extensions
@@ -215,8 +223,9 @@ namespace zs {
         "\n\t\t(Graphics/Compute/Transfer) queue family index: {}, {}, {}. Ray-tracing support: "
         "{}. "
         "\n\tEnabled the following device tensions ({} in total):",
-        devid, devProps.deviceName, graphicsQueueFamilyIndex, computeQueueFamilyIndex,
-        transferQueueFamilyIndex, rtPreds == rtRequiredPreds, enabledExtensions.size());
+        devid, devProps.deviceName, queueFamilyIndices[vk_queue_e::graphics],
+        queueFamilyIndices[vk_queue_e::compute], queueFamilyIndices[vk_queue_e::transfer],
+        rtPreds == rtRequiredPreds, enabledExtensions.size());
     u32 accum = 0;
     for (auto ext : enabledExtensions) {
       if ((accum++) % 2 == 0) fmt::print("\n\t\t");

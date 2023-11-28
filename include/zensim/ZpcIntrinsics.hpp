@@ -17,7 +17,7 @@ int printf(const char *, ...);
 
 #  elif defined(_WIN64)
 ZPC_ACRTIMP void *malloc(zs::size_t __size);
-ZPC_ACRTIMP void *memcpy(void *__dest, const void *__src, zs::size_t __n);
+void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 struct _iobuf;
 struct __crt_locale_pointers;
 using FILE = _iobuf;

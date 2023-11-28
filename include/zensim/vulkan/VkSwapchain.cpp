@@ -130,9 +130,9 @@ namespace zs {
 
   SwapchainBuilder::SwapchainBuilder(VulkanContext& ctx, vk::SurfaceKHR targetSurface)
       : ctx{ctx}, surface{targetSurface} {
-    ZS_ERROR_IF(
-        !ctx.supportSurface(surface),
-        fmt::format("queue [{}] does not support this surface!\n", ctx.graphicsQueueFamilyIndex));
+    ZS_ERROR_IF(!ctx.supportSurface(surface),
+                fmt::format("queue [{}] does not support this surface!\n",
+                            ctx.queueFamilyIndices[vk_queue_e::graphics]));
     surfFormats = ctx.physicalDevice.getSurfaceFormatsKHR(surface, ctx.dispatcher);
     surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(surface, ctx.dispatcher);
     surfPresentModes = ctx.physicalDevice.getSurfacePresentModesKHR(surface, ctx.dispatcher);

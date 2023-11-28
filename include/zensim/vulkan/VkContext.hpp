@@ -75,11 +75,12 @@ namespace zs {
     VmaAllocator &allocator() noexcept { return defaultAllocator; }
     const VmaAllocator &allocator() const noexcept { return defaultAllocator; }
 
-    bool supportGraphics() const { return graphicsQueueFamilyIndex != -1; }
+    bool supportGraphics() const { return queueFamilyIndices[vk_queue_e::graphics] != -1; }
     /// @note usually called right before swapchain creation for assurance
     bool supportSurface(vk::SurfaceKHR surface) const {
-      if (graphicsQueueFamilyIndex == -1) return false;
-      return physicalDevice.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface, dispatcher);
+      if (queueFamilyIndices[vk_queue_e::graphics] == -1) return false;
+      return physicalDevice.getSurfaceSupportKHR(queueFamilyIndices[vk_queue_e::graphics], surface,
+                                                 dispatcher);
     }
     u32 numMemoryTypes() const { return memoryProperties.memoryTypeCount; }
     u32 findMemoryType(u32 memoryTypeBits, vk::MemoryPropertyFlags properties) {
@@ -170,14 +171,22 @@ namespace zs {
     vk::Device device;                     // currently dedicated for rendering
     vk::DispatchLoaderDynamic dispatcher;  // store device-specific calls
     // graphics queue family should also be used for presentation if swapchain required
+#if 1
+    int queueFamilyIndices[3];
+#else
     union {
       int queueFamilyIndices[3];
       int graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex;
     };
+#endif
+#if 1
+    int queueFamilyMaps[3];
+#else
     union {
       int queueFamilyMaps[3];
       int graphicsQueueFamilyMap, computeQueueFamilyMap, transferQueueFamilyMap;
     };
+#endif
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
     vk::PhysicalDeviceFeatures deviceFeatures;
@@ -258,6 +267,9 @@ namespace zs {
     };
 
     PoolFamily &pools(vk_queue_e e = vk_queue_e::graphics) {
+      if (ctx.queueFamilyMaps[e] >= poolFamilies.size())
+        throw std::runtime_error(fmt::format("accessing {}-th pool while there are {} in total.",
+                                             ctx.queueFamilyMaps[e], poolFamilies.size()));
       return poolFamilies[ctx.queueFamilyMaps[e]];
     }
     void resetCmds(vk_cmd_usage_e usage, vk_queue_e e = vk_queue_e::graphics) {

@@ -13,11 +13,16 @@ namespace zs {
     Swapchain(Swapchain &&o) noexcept
         : ctx{o.ctx},
           swapchain{o.swapchain},
+#if 0
           extent{o.extent},
           colorFormat{o.colorFormat},
           depthFormat{o.depthFormat},
           imageColorSpace{o.imageColorSpace},
           presentMode{o.presentMode},
+#else
+          depthFormat{o.depthFormat},
+          ci{o.ci},
+#endif
           //
           images{std::move(o.images)},
           imageViews{std::move(o.imageViews)},
@@ -39,11 +44,12 @@ namespace zs {
 
     std::vector<vk::Image> getImages() const { return images; }
     u32 imageCount() const { return images.size(); }
-    vk::Extent2D getExtent() const noexcept { return extent; }
-    vk::Format getColorFormat() const noexcept { return colorFormat; }
+
+    vk::Extent2D getExtent() const noexcept { return ci.imageExtent; }
+    vk::Format getColorFormat() const noexcept { return ci.imageFormat; }
     vk::Format getDepthFormat() const noexcept { return depthFormat; }
-    vk::PresentModeKHR getPresentMode() const noexcept { return presentMode; }
-    vk::ColorSpaceKHR getImageColorSpace() const noexcept { return imageColorSpace; }
+    vk::PresentModeKHR getPresentMode() const noexcept { return ci.presentMode; }
+    vk::ColorSpaceKHR getImageColorSpace() const noexcept { return ci.imageColorSpace; }
 
     vk::Result acquireNextImage(u32 &imageId);
     u32 getCurrentFrame() const noexcept { return frameIndex; }
@@ -86,10 +92,15 @@ namespace zs {
 
     VulkanContext &ctx;
     vk::SwapchainKHR swapchain;
+#if 0
     vk::Extent2D extent;
     vk::Format colorFormat, depthFormat;
     vk::ColorSpaceKHR imageColorSpace;
     vk::PresentModeKHR presentMode;
+#else
+    vk::Format depthFormat;
+    vk::SwapchainCreateInfoKHR ci;
+#endif
     ///
     std::vector<vk::Image> images;
     std::vector<vk::ImageView> imageViews;

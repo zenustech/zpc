@@ -45,7 +45,7 @@ namespace zs {
     // color
     auto& colorAttachment = attachments[0];
     colorAttachment = vk::AttachmentDescription{}
-                          .setFormat(colorFormat)
+                          .setFormat(ci.imageFormat)
                           .setSamples(vk::SampleCountFlagBits::e1)
                           .setLoadOp(vk::AttachmentLoadOp::eClear)
                           .setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -117,13 +117,13 @@ namespace zs {
       // color + depth
       for (int i = 0; i != cnt; ++i) {
         frameBuffers.emplace_back(ctx.createFramebuffer(
-            {(vk::ImageView)imageViews[i], (vk::ImageView)depthBuffers[i]}, extent, renderPass));
+            {(vk::ImageView)imageViews[i], (vk::ImageView)depthBuffers[i]}, ci.imageExtent, renderPass));
       }
     } else {
       // color only
       for (int i = 0; i != imageCount(); ++i) {
         frameBuffers.emplace_back(
-            ctx.createFramebuffer({(vk::ImageView)imageViews[i]}, extent, renderPass));
+            ctx.createFramebuffer({(vk::ImageView)imageViews[i]}, ci.imageExtent, renderPass));
       }
     }
   }
@@ -184,12 +184,12 @@ namespace zs {
   void SwapchainBuilder::resize(Swapchain& obj, u32 width, u32 height) {
     /// @note credits
     /// https://www.reddit.com/r/vulkan/comments/cc3edr/swapchain_recreation_repeatedly_returns_vk_error/
-    surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(surface, ctx.dispatcher);
+    surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(obj.ci.surface, ctx.dispatcher);
     width = std::clamp(width, surfCapabilities.minImageExtent.width,
                        surfCapabilities.maxImageExtent.width);
     height = std::clamp(height, surfCapabilities.minImageExtent.height,
                         surfCapabilities.maxImageExtent.height);
-    ci.imageExtent = vk::Extent2D{width, height};
+    obj.ci.imageExtent = vk::Extent2D{width, height};
 
     build(obj);
   }
@@ -206,16 +206,27 @@ namespace zs {
   void SwapchainBuilder::build(Swapchain& obj) {
     constexpr auto num_buffered_frames = Swapchain::num_buffered_frames;
     // kept the previously built swapchain for this
+    if (obj.swapchain != VK_NULL_HANDLE)
+      ci = obj.ci;
     ci.oldSwapchain = obj.swapchain;
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
 
     obj.frameIndex = 0;
 
+#if 0
     obj.extent = ci.imageExtent;
     obj.colorFormat = ci.imageFormat;
     obj.imageColorSpace = ci.imageColorSpace;
     obj.depthFormat = swapchainDepthFormat;
     obj.presentMode = ci.presentMode;
+#else
+    obj.depthFormat = swapchainDepthFormat;
+    obj.ci = ci;
+    // if (obj.swapchain == VK_NULL_HANDLE)
+    //   obj.ci = ci;
+    // else
+    //   obj.ci.oldSwapchain = ci.oldSwapchain;
+#endif
 
     obj.resetAux();
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);

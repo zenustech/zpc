@@ -916,6 +916,21 @@ add_custom_command(
     COMMENT "copying resource file [particles-1000k.dat] for poisson disk sampling"
 )
 
+# font resource file
+add_custom_command(
+  TARGET zpctool
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${RESOURCE_BASE_DIR}/resource
+  COMMAND ${CMAKE_COMMAND}
+  -DOBJECTS=${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Fonts/MiSans-Regular.ttf
+  -DOUTPUT=${RESOURCE_BASE_DIR}/resource
+  -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+
+  VERBATIM
+  DEPENDS zpc
+    COMMENT "copying font file [MiSans-Regular.ttf] for gui"
+)
+
 # python helloworld script
 add_custom_command(
   TARGET zpctool

@@ -565,6 +565,10 @@ namespace zs {
     T* _ptr{nullptr};
   };
 
+  template <typename T, typename... Args> constexpr Unique<T> make_unique(Args&&... args) {
+    return Unique<T>(zs::forward<Args>(args)...);
+  }
+
   // DefaultStorage<Type>
   // InplaceStorage<sizeof(Type), alignof(Type)>
   template <typename Type, typename StoragePolicy = InplaceStorage<sizeof(Type), alignof(Type)>,

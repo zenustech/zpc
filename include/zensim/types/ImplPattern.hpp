@@ -6,6 +6,11 @@
 
 namespace zs {
 
+  template <typename T> using Shared = std::shared_ptr<T>;
+  template <typename T, typename... Args> constexpr Shared<T> make_shared(Args &&...args) {
+    return std::make_shared<T>(zs::forward<Args>(args)...);
+  }
+
   struct HierarchyConcept : virtual ObjectConcept {
     virtual ~HierarchyConcept() = default;
 

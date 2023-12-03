@@ -6,7 +6,7 @@ namespace zs {
   struct VkCommand {
     using PoolFamily = ExecutionContext::PoolFamily;
     VkCommand(PoolFamily& poolFamily, vk::CommandBuffer cmd, vk_cmd_usage_e usage)
-        : _poolFamily{_poolFamily},
+        : _poolFamily{poolFamily},
           _cmd{cmd},
           _usage{usage},
           _stage{nullptr},
@@ -27,6 +27,7 @@ namespace zs {
 
     void begin(const vk::CommandBufferBeginInfo& bi) { _cmd.begin(bi); }
     void begin() { _cmd.begin(vk::CommandBufferBeginInfo{usageFlag(), nullptr}); }
+    void waitStage(const vk::PipelineStageFlags* stage) { _stage = stage; }
     void wait(vk::Semaphore s) { _waitSemaphores.push_back(s); }
     void signal(vk::Semaphore s) { _signalSemaphores.push_back(s); }
     void submit(vk::Fence fence, bool resetFence = true, bool resetConfig = false);
@@ -56,7 +57,7 @@ namespace zs {
     vk::CommandBuffer _cmd;
     vk_cmd_usage_e _usage;
 
-    vk::PipelineStageFlags* _stage;
+    const vk::PipelineStageFlags* _stage;
     std::vector<vk::Semaphore> _waitSemaphores, _signalSemaphores;
   };
 

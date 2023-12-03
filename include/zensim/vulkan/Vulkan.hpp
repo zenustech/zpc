@@ -7,6 +7,7 @@
 #include <cstdint>
 //
 #include "zensim/vulkan/VkBuffer.hpp"
+#include "zensim/vulkan/VkCommand.hpp"
 #include "zensim/vulkan/VkContext.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
 #include "zensim/vulkan/VkImage.hpp"

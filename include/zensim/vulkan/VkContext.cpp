@@ -12,6 +12,7 @@
 #include <thread>
 
 #include "zensim/vulkan/VkBuffer.hpp"
+#include "zensim/vulkan/VkCommand.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
 #include "zensim/vulkan/VkImage.hpp"
 #include "zensim/vulkan/VkPipeline.hpp"
@@ -282,8 +283,8 @@ namespace zs {
     g_mtx.lock();
     bool tag;
     std::tie(workerIter, tag)
-        = g_workingContexts.emplace(std::this_thread::get_id(), ContextEnvs{});
-    std::tie(iter, tag) = workerIter->second.emplace(devid, *this);
+        = g_workingContexts.try_emplace(std::this_thread::get_id(), ContextEnvs{});
+    std::tie(iter, tag) = workerIter->second.try_emplace(devid, *this);
     g_mtx.unlock();
     return iter->second;
   }
@@ -470,6 +471,14 @@ namespace zs {
             .setSubresourceRange(vk::ImageSubresourceRange{aspect, 0, levels, 0, 1}),
         nullptr, dispatcher);
     return imgv;
+  }
+
+  VkCommand VulkanContext::createCommandBuffer(vk_cmd_usage_e usage, vk_queue_e queueFamily,
+                                               bool begin) {
+    auto& pool = env().pools(queueFamily);
+    auto cmd = pool.createCommandBuffer(vk::CommandBufferLevel::ePrimary, begin,
+                                        /*inheritance info*/ nullptr, usage);
+    return VkCommand{pool, cmd, usage};
   }
   Framebuffer VulkanContext::createFramebuffer(const std::vector<vk::ImageView>& imageViews,
                                                vk::Extent2D extent, vk::RenderPass renderPass) {

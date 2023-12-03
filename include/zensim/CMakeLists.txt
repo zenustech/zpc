@@ -37,6 +37,7 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
 )
 set(ZENSIM_LIBRARY_VULKAN_SOURCE_FILES
   vulkan/VkUtils.cpp
+  vulkan/VkCommand.cpp
   vulkan/VkTexture.cpp
   vulkan/VkShader.cpp
   vulkan/VkSwapchain.cpp

@@ -19,6 +19,7 @@ namespace zs {
   struct Image;
   struct ImageView;
   struct Buffer;
+  struct VkCommand;
   struct Framebuffer;
   struct RenderPass;
   struct RenderPassBuilder;
@@ -157,6 +158,9 @@ namespace zs {
                                 u32 levels = VK_REMAINING_MIP_LEVELS,
                                 const void *pNextImageView = nullptr);
 
+    VkCommand createCommandBuffer(vk_cmd_usage_e usage,
+                                  vk_queue_e queueFamily = vk_queue_e::graphics,
+                                  bool begin = false);
     Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
                                   vk::RenderPass renderPass);
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
@@ -212,7 +216,7 @@ namespace zs {
       vk::Queue queue;
       VulkanContext *pctx{nullptr};
 
-      vk::CommandPool cmdpool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) {
+      vk::CommandPool cmdpool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) const {
         switch (usage) {
           case vk_cmd_usage_e::reuse:
             return reusePool;
@@ -220,30 +224,30 @@ namespace zs {
             return singleUsePool;
           case vk_cmd_usage_e::reset:
             return resetPool;
-          default:
-            return resetPool;
+          default:;
         }
+        return resetPool;
       }
 
-      vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level
-                                            = vk::CommandBufferLevel::ePrimary,
-                                            bool begin = true,
-                                            const vk::CommandBufferInheritanceInfo *pInheritanceInfo
-                                            = nullptr,
-                                            vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {
-        auto cmdPool = cmdpool(usage);
-        vk::CommandBufferUsageFlags usageFlags{};
-        if (usage == vk_cmd_usage_e::single_use || usage == vk_cmd_usage_e::reset)
-          usageFlags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-        else
-          usageFlags = vk::CommandBufferUsageFlagBits::eSimultaneousUse;
+      vk::CommandBuffer createCommandBuffer(
+          vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary, bool begin = true,
+          const vk::CommandBufferInheritanceInfo *pInheritanceInfo = nullptr,
+          vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) const {
+        const auto &cmdPool = cmdpool(usage);
 
         std::vector<vk::CommandBuffer> cmd = pctx->device.allocateCommandBuffers(
             vk::CommandBufferAllocateInfo{cmdPool, level, (u32)1}, pctx->dispatcher);
 
         // if (usage == vk_cmd_usage_e::reset) cmds.push_back(cmd[0]);
 
-        if (begin) cmd[0].begin(vk::CommandBufferBeginInfo{usageFlags, pInheritanceInfo});
+        if (begin) {
+          vk::CommandBufferUsageFlags usageFlags{};
+          if (usage == vk_cmd_usage_e::single_use || usage == vk_cmd_usage_e::reset)
+            usageFlags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+          else
+            usageFlags = vk::CommandBufferUsageFlagBits::eSimultaneousUse;
+          cmd[0].begin(vk::CommandBufferBeginInfo{usageFlags, pInheritanceInfo});
+        }
 
         return cmd[0];
       }

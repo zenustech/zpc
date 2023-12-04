@@ -156,21 +156,21 @@ namespace zs {
 
     template <int level_> struct Level {
       static constexpr int level = level_;
-      static constexpr integer_coord_component_type tile_bits = get_tile_bits<level>();
-      static constexpr integer_coord_component_type tile_dim = get_tile_dim<level>();
-      static constexpr integer_coord_component_type accum_tile_dim = get_accum_tile_dim<level>();
-      static constexpr size_type block_size = get_tile_size<level>();
+      static constexpr integer_coord_component_type tile_bits = get_tile_bits<level_>();
+      static constexpr integer_coord_component_type tile_dim = get_tile_dim<level_>();
+      static constexpr integer_coord_component_type accum_tile_dim = get_accum_tile_dim<level_>();
+      static constexpr size_type block_size = get_tile_size<level_>();
 
       /// @note used for global coords
       /// @note [sbit, ebit) is the bit region covered within this level
-      static constexpr integer_coord_component_type sbit = get_cell_bit_offset<level>();
-      static constexpr integer_coord_component_type ebit = get_accum_hierarchy_bits<level>();
-      static constexpr coord_mask_type cell_mask = get_accum_hierarchy_dim<level>() - 1;
+      static constexpr integer_coord_component_type sbit = get_cell_bit_offset<level_>();
+      static constexpr integer_coord_component_type ebit = get_accum_hierarchy_bits<level_>();
+      static constexpr coord_mask_type cell_mask = get_accum_hierarchy_dim<level_>() - 1;
       static constexpr coord_mask_type origin_mask = ~cell_mask;
 
-      using grid_type = grid_storage_type<level>;
-      using tile_mask_type = tile_mask_storage_type<level>;
-      using hierarchy_mask_type = hierarchy_mask_storage_type<level>;
+      using grid_type = grid_storage_type<level_>;
+      using tile_mask_type = tile_mask_storage_type<level_>;
+      using hierarchy_mask_type = hierarchy_mask_storage_type<level_>;
       static_assert(block_size == grid_type::lane_width, "???");
       Level(const allocator_type &allocator, const std::vector<PropertyTag> &propTags, size_t count)
           : table{allocator, count},

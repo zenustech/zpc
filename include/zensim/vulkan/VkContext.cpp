@@ -568,5 +568,14 @@ namespace zs {
       ctx.device.destroyCommandPool(family.resetPool, nullptr, ctx.dispatcher);
     }
   }
+  VkCommand ExecutionContext::PoolFamily::createVkCommand(vk_cmd_usage_e usage, bool begin) {
+    const auto& cmdPool = cmdpool(usage);
+    std::vector<vk::CommandBuffer> cmd = pctx->device.allocateCommandBuffers(
+        vk::CommandBufferAllocateInfo{cmdPool, vk::CommandBufferLevel::ePrimary, (u32)1},
+        pctx->dispatcher);
+    VkCommand ret{*this, cmd[0], usage};
+    if (begin) ret.begin();
+    return ret;
+  }
 
 }  // namespace zs

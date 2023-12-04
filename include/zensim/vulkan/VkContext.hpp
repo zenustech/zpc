@@ -251,6 +251,7 @@ namespace zs {
 
         return cmd[0];
       }
+      VkCommand createVkCommand(vk_cmd_usage_e usage, bool begin = false);
       void submit(u32 count, const vk::CommandBuffer *cmds, vk::Fence fence,
                   vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {
         for (u32 i = 0; i < count; i++) cmds[i].end();

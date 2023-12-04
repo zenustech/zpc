@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "zensim/ZpcMeta.hpp"
+#include "zensim/zpc_tpls/simple_vulkan_synchronization/thsvs_simpler_vulkan_synchronization.h"
 
 namespace zs {
 
@@ -72,74 +73,6 @@ namespace zs {
         .setSharingMode(vk::SharingMode::eExclusive);
   }
 
-#if 0
-  /// @ref nvpro core
-  inline vk::PipelineStageFlags make_access_mask_pipeline_stage_flags(
-      vk::AccessFlags accessMask, vk::PipelineStageFlags supportedShaderBits) {
-    static constexpr vk::AccessFlagBits accessBits[]
-        = { vk::AccessFlagBits::eIndirectCommandRead,
-            vk::AccessFlagBits::eIndexRead,
-            vk::AccessFlagBits::eVertexAttributeRead,
-            vk::AccessFlagBits::eUniformRead,
-            vk::AccessFlagBits::eInputAttachmentRead,
-
-            vk::AccessFlagBits::eShaderRead,
-            vk::AccessFlagBits::eShaderWrite vk::AccessFlagBits:: :
-                eColorAttachmentRead;  // VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
-  };
-  vk::AccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT,
-      vk::AccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-
-      vk::AccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-      vk::AccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-      vk::AccessFlagBits::VK_ACCESS_TRANSFER_READ_BIT,
-      vk::AccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT, vk::AccessFlagBits::VK_ACCESS_HOST_READ_BIT,
-
-      vk::AccessFlagBits::VK_ACCESS_HOST_WRITE_BIT, vk::AccessFlagBits::VK_ACCESS_MEMORY_READ_BIT,
-      vk::AccessFlagBits::VK_ACCESS_MEMORY_WRITE_BIT,
-};
-static constexpr vk::PipelineStageFlags pipeStages[]
-    = {vk::PipelineStageFlagBits::eDrawIndirect,
-       vk::PipelineStageFlagBits::eVertexInput,
-       vk::PipelineStageFlagBits::eVertexInput,
-       supportedShaderBits,
-       vk::PipelineStageFlagBits::eFragmentShader,
-
-       supportedShaderBits,
-       supportedShaderBits,
-       vk::PipelineStageFlagBits::eColorAttachmentOutput,
-       vk::PipelineStageFlagBits::eColorAttachmentOutput,
-       vk::PipelineStageFlagBits::eColorAttachmentOutput,
-
-       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-           | vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-           | vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
-       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
-
-       vk::PipelineStageFlagBits::VK_PIPELINE_STAGE_HOST_BIT,
-       {},
-       {}};
-if (!accessMask) return vk::PipelineStageFlagBits::eTopOfPipe;
-
-vk::PipelineStageFlags pipes = 0;
-
-for (u32 i = 0; i < sizeof(accessBits); i++) {
-  if (accessBits[i] & accessMask) {
-    pipes |= pipeStages[i];
-  }
-}
-if (!pipes)
-  throw std::runtime_error(
-      fmt::format("none of the pipeline stages compatible with the access mask [{}]",
-                  static_cast<typename vk::AccessFlags::MaskType>(accessMask)));
-
-return pipes;
-}
-
-#endif
   struct AttributeDescriptor {
     u32 alignmentBits;
     u32 size;

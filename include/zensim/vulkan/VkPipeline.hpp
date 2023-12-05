@@ -79,6 +79,26 @@ namespace zs {
     }
     ~PipelineBuilder() { reset(); }
 
+    void reset() {
+      shaders.clear();
+      inputAttributes.clear();
+      bindingDescriptions.clear();
+      attributeDescriptions.clear();
+      viewportInfo = vk::PipelineViewportStateCreateInfo{};
+      inputAssemblyInfo = vk::PipelineInputAssemblyStateCreateInfo{};
+      rasterizationInfo = vk::PipelineRasterizationStateCreateInfo{};
+      multisampleInfo = vk::PipelineMultisampleStateCreateInfo{};
+      colorBlendAttachment = vk::PipelineColorBlendAttachmentState{};
+      colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{};
+      depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{};
+      dynamicStateEnables.clear();
+      pushConstantRange.reset();
+      descriptorSetLayouts.clear();
+      //
+      renderPass = VK_NULL_HANDLE;
+      subpass = 0;
+    }
+
     /// default minimum setup
     void default_pipeline_configs();
 
@@ -120,6 +140,10 @@ namespace zs {
     }
     PipelineBuilder& setDescriptorSetLayouts(const std::map<u32, DescriptorSetLayout>& layouts,
                                              bool reset = false);
+    PipelineBuilder& setSubpass(u32 subpass) {
+      this->subpass = subpass;
+      return *this;
+    }
     PipelineBuilder& setRenderPass(vk::RenderPass rp) {
       this->renderPass = rp;
       return *this;
@@ -155,27 +179,6 @@ namespace zs {
       return *this;
     }
 
-    //
-    void reset() {
-      shaders.clear();
-      inputAttributes.clear();
-      bindingDescriptions.clear();
-      attributeDescriptions.clear();
-      viewportInfo = vk::PipelineViewportStateCreateInfo{};
-      inputAssemblyInfo = vk::PipelineInputAssemblyStateCreateInfo{};
-      rasterizationInfo = vk::PipelineRasterizationStateCreateInfo{};
-      multisampleInfo = vk::PipelineMultisampleStateCreateInfo{};
-      colorBlendAttachment = vk::PipelineColorBlendAttachmentState{};
-      colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{};
-      depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{};
-      dynamicStateEnables.clear();
-      pushConstantRange.reset();
-      descriptorSetLayouts.clear();
-      //
-      renderPass = VK_NULL_HANDLE;
-      subpass = 0;
-    }
-
     Pipeline build();
 
   protected:
@@ -191,14 +194,14 @@ namespace zs {
     std::map<u32, AttributeDescriptor> inputAttributes;
     std::vector<vk::VertexInputBindingDescription> bindingDescriptions{};
     std::vector<vk::VertexInputAttributeDescription> attributeDescriptions{};
-    vk::PipelineViewportStateCreateInfo viewportInfo;
     vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
+    vk::PipelineViewportStateCreateInfo viewportInfo;
     vk::PipelineRasterizationStateCreateInfo rasterizationInfo;
     vk::PipelineMultisampleStateCreateInfo multisampleInfo;
     //
+    vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
     vk::PipelineColorBlendAttachmentState colorBlendAttachment;
     vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
-    vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
     std::set<vk::DynamicState> dynamicStateEnables;
 
     // resources (descriptors/ push constants)

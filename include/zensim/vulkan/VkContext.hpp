@@ -76,6 +76,10 @@ namespace zs {
     VmaAllocator &allocator() noexcept { return defaultAllocator; }
     const VmaAllocator &allocator() const noexcept { return defaultAllocator; }
 
+    bool supportBindless() const {
+      return indexingFeatures.descriptorBindingPartiallyBound
+             && indexingFeatures.runtimeDescriptorArray;
+    }
     bool supportGraphics() const { return queueFamilyIndices[vk_queue_e::graphics] != -1; }
     /// @note usually called right before swapchain creation for assurance
     bool supportSurface(vk::SurfaceKHR surface) const {

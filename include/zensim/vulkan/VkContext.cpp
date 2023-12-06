@@ -283,13 +283,14 @@ namespace zs {
         vk::DescriptorType::eStorageImage);
     poolSizes.push_back(storageImagePoolSize);
 
-    defaultDescriptorPool = device.createDescriptorPool(
-        vk::DescriptorPoolCreateInfo{}
-            .setPoolSizeCount(poolSizes.size())
-            .setPPoolSizes(poolSizes.data())
-            .setMaxSets(1000)
-            .setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet),
-        nullptr, dispatcher);
+    vk::DescriptorPoolCreateFlags flag = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+    if (supportBindless()) flag |= vk::DescriptorPoolCreateFlagBits::eUpdateAfterBindEXT;
+    defaultDescriptorPool = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
+                                                            .setPoolSizeCount(poolSizes.size())
+                                                            .setPPoolSizes(poolSizes.data())
+                                                            .setMaxSets(1000)
+                                                            .setFlags(flag),
+                                                        nullptr, dispatcher);
   }
 
   ExecutionContext& VulkanContext::env() {

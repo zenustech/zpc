@@ -494,81 +494,6 @@ namespace zs {
   struct DefaultStorage
       : conditional_t<sizeof(T) <= Cap, InplaceStorage<sizeof(T), alignof(T)>, DynamicStorage> {};
 
-  /// @note unique_ptr
-  namespace detail {
-    template <typename T> struct DefaultDeleter {
-      constexpr DefaultDeleter() noexcept = default;
-      template <typename U> constexpr DefaultDeleter(const DefaultDeleter<U>&) noexcept {}
-
-      constexpr void operator()(T* ptr) const { ::delete ptr; }
-    };
-  }  // namespace detail
-
-  template <typename T, typename Deleter = detail::DefaultDeleter<T>> struct
-#if defined(ZS_COMPILER_MSVC)
-      __declspec(empty_bases)
-#endif
-          Unique : protected Deleter {
-    static_assert(is_copy_constructible_v<Deleter>, "deleter of Unique must be copyable");
-
-    template <typename... Args, enable_if_t<is_constructible_v<T, Args...>> = 0>
-    static Unique make(Args&&... args) noexcept(is_nothrow_constructible_v<T, Args...>) {
-      return Unique{::new T(FWD(args)...)};
-    }
-
-    constexpr Unique() noexcept = default;
-    Unique(T* ptr) : Deleter{Deleter{}}, _ptr(ptr) {}
-    Unique(T* ptr, const Deleter& deleter) : Deleter(deleter), _ptr(ptr) {}
-
-    ~Unique() {
-      if (_ptr) static_cast<Deleter&>(*this)(_ptr);
-    }
-
-    Unique(const Unique& o) = delete;
-    Unique& operator=(const Unique& o) = delete;
-
-    Unique(Unique&& o) noexcept : Deleter(o.getDeleter()), _ptr(o.release()) {}
-
-    // generalized move ctor
-    template <typename U, typename D> Unique(Unique<U, D>&& o) noexcept
-        : Deleter(zs::forward<D>(o.getDeleter())), _ptr(o.release()) {}
-
-    Unique& operator=(Unique&& o) noexcept {
-      Unique(zs::move(o)).swap(*this);
-      return *this;
-    }
-
-    void reset(T* ptr) noexcept {
-      static_cast<Deleter&>(*this)(_ptr);
-      _ptr = ptr;
-    }
-
-    T* release() noexcept {
-      auto tmp = _ptr;
-      _ptr = nullptr;
-      return tmp;
-    }
-
-    void swap(Unique& o) noexcept {
-      auto tmp = o._ptr;
-      _ptr = o._ptr;
-      o._ptr = tmp;
-    }
-
-    T& operator*() const { return *_ptr; }
-    T* operator->() const noexcept { return _ptr; }
-    T* get() const noexcept { return _ptr; }
-    Deleter getDeleter() const noexcept { return static_cast<const Deleter&>(*this); }
-    explicit operator bool() { return _ptr != nullptr; }
-
-  private:
-    T* _ptr{nullptr};
-  };
-
-  template <typename T, typename... Args> constexpr Unique<T> make_unique(Args&&... args) {
-    return Unique<T>(zs::forward<Args>(args)...);
-  }
-
   // DefaultStorage<Type>
   // InplaceStorage<sizeof(Type), alignof(Type)>
   template <typename Type, typename StoragePolicy = InplaceStorage<sizeof(Type), alignof(Type)>,
@@ -713,6 +638,7 @@ namespace zs {
     operator Type&() { return *_storage.template data<Type>(); }
     operator add_const_t<Type>&() const { return *_storage.template data<add_const_t<Type>>(); }
 
+    bool isActive() const noexcept { return _active; }
     explicit operator bool() const noexcept { return _active; }
 
   private:

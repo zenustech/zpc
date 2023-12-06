@@ -112,6 +112,17 @@ namespace zs {
     using callable_type = R(const void *, Args...);
     using manager_fn = void(void *self, void *o, manage_op_e);
 
+    template <typename T> struct Unique {
+      template <typename... Ts, enable_if_t<is_constructible_v<T, Ts...>> = 0>
+      Unique(Ts &&...args) {
+        _ptr = ::new T(zs::forward<Ts>(args)...);
+      }
+      ~Unique() { ::delete _ptr; }
+
+      decltype(auto) operator*() const { return *_ptr; }
+      decltype(auto) operator*() { return *_ptr; }
+      T *_ptr;
+    };
     template <typename Callable> struct Owner {
       Owner(const Callable &callable) noexcept(is_nothrow_copy_constructible_v<Callable>)
           : _callable{callable} {}
@@ -168,7 +179,7 @@ namespace zs {
         };
       } else {
         using FuncOwner = Unique<decay_t<F>>;
-        _storage.template create<FuncOwner>(FuncOwner::make(FWD(f)));
+        _storage.template create<FuncOwner>(FWD(f));
 
         _erasedFn = [](const void *obj, Args... args) -> R {
           return zs::invoke(
@@ -182,8 +193,7 @@ namespace zs {
             if constexpr (is_copy_constructible_v<decay_t<F>>) {
               const auto &me
                   = **static_cast<const function_storage *>(self)->template data<FuncOwner>();
-              static_cast<const function_storage *>(o)->template create<FuncOwner>(
-                  FuncOwner::make(me));
+              static_cast<const function_storage *>(o)->template create<FuncOwner>(me);
             } else {
               // currently hold functor is not copyable!
               throw StaticException();

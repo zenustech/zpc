@@ -1,4 +1,5 @@
 // vulkan memory allocator impl
+#include <vulkan/vulkan_core.h>
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #define VMA_IMPLEMENTATION
@@ -64,8 +65,13 @@ namespace zs {
       // g_mtx.unlock();
     }
     /// clear resources
-    {
+    if (defaultDescriptorPool != VK_NULL_HANDLE) {
       // descriptor pool resources
+      defaultDescriptorSet = VK_NULL_HANDLE;
+
+      device.destroyDescriptorSetLayout(defaultDescriptorSetLayout, nullptr, dispatcher);
+      defaultDescriptorSetLayout = VK_NULL_HANDLE;
+
       device.resetDescriptorPool(defaultDescriptorPool, vk::DescriptorPoolResetFlags{}, dispatcher);
       device.destroyDescriptorPool(defaultDescriptorPool, nullptr, dispatcher);
       defaultDescriptorPool = VK_NULL_HANDLE;
@@ -266,31 +272,80 @@ namespace zs {
   }
 
   void VulkanContext::setupDefaultDescriptorPool() {
-    std::vector<vk::DescriptorPoolSize> poolSizes;
-    auto uniformPoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
-        vk::DescriptorType::eUniformBufferDynamic);
-    poolSizes.push_back(uniformPoolSize);
+    /// pool
+    std::array<vk::DescriptorPoolSize, vk_descriptor_e::num_descriptor_types> poolSizes;
+    // uniformPoolSize
+    poolSizes[vk_descriptor_e::uniform] = vk::DescriptorPoolSize()
+                                              .setDescriptorCount(num_max_bindless_resources)
+                                              .setType(vk::DescriptorType::eUniformBufferDynamic);
 
-    auto imageSamplerPoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
-        vk::DescriptorType::eCombinedImageSampler);
-    poolSizes.push_back(imageSamplerPoolSize);
+    poolSizes[vk_descriptor_e::image_sampler]
+        = vk::DescriptorPoolSize()
+              .setDescriptorCount(num_max_bindless_resources)
+              .setType(vk::DescriptorType::eCombinedImageSampler);
 
-    auto storagePoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
-        vk::DescriptorType::eStorageBuffer);
-    poolSizes.push_back(storagePoolSize);
+    poolSizes[vk_descriptor_e::storage] = vk::DescriptorPoolSize()
+                                              .setDescriptorCount(num_max_bindless_resources)
+                                              .setType(vk::DescriptorType::eStorageBuffer);
 
-    auto storageImagePoolSize = vk::DescriptorPoolSize().setDescriptorCount(1000).setType(
-        vk::DescriptorType::eStorageImage);
-    poolSizes.push_back(storageImagePoolSize);
+    poolSizes[vk_descriptor_e::storage_image] = vk::DescriptorPoolSize()
+                                                    .setDescriptorCount(num_max_bindless_resources)
+                                                    .setType(vk::DescriptorType::eStorageImage);
 
     vk::DescriptorPoolCreateFlags flag = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
     if (supportBindless()) flag |= vk::DescriptorPoolCreateFlagBits::eUpdateAfterBindEXT;
-    defaultDescriptorPool = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
-                                                            .setPoolSizeCount(poolSizes.size())
-                                                            .setPPoolSizes(poolSizes.data())
-                                                            .setMaxSets(1000)
-                                                            .setFlags(flag),
-                                                        nullptr, dispatcher);
+    defaultDescriptorPool
+        = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
+                                          .setPoolSizeCount(poolSizes.size())
+                                          .setPPoolSizes(poolSizes.data())
+                                          .setMaxSets(num_max_bindless_resources * poolSizes.size())
+                                          .setFlags(flag),
+                                      nullptr, dispatcher);
+
+    /// set layout
+    std::array<vk::DescriptorSetLayoutBinding, vk_descriptor_e::num_descriptor_types> bindings;
+    auto& uniformBinding = bindings[vk_descriptor_e::uniform];
+    uniformBinding = vk::DescriptorSetLayoutBinding{}
+                         .setBinding(bindless_texture_binding)
+                         .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
+                         .setDescriptorCount(num_max_bindless_resources);
+    auto& imageSamplerBinding = bindings[vk_descriptor_e::image_sampler];
+    imageSamplerBinding = vk::DescriptorSetLayoutBinding{}
+                              .setBinding(bindless_texture_binding + 1)
+                              .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+                              .setDescriptorCount(num_max_bindless_resources);
+    auto& storageBinding = bindings[vk_descriptor_e::storage];
+    storageBinding = vk::DescriptorSetLayoutBinding{}
+                         .setBinding(bindless_texture_binding + 2)
+                         .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+                         .setDescriptorCount(num_max_bindless_resources);
+    auto& storageImageBinding = bindings[vk_descriptor_e::storage_image];
+    storageImageBinding = vk::DescriptorSetLayoutBinding{}
+                              .setBinding(bindless_texture_binding + 3)
+                              .setDescriptorType(vk::DescriptorType::eStorageImage)
+                              .setDescriptorCount(num_max_bindless_resources);
+
+    vk::DescriptorBindingFlags bindlessFlag = vk::DescriptorBindingFlagBits::ePartiallyBound
+                                              | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+    std::array<vk::DescriptorBindingFlags, vk_descriptor_e::num_descriptor_types> bindingFlags;
+    for (auto& flag : bindingFlags) flag = bindlessFlag;
+    auto extendedInfo
+        = vk::DescriptorSetLayoutBindingFlagsCreateInfo{}.setBindingFlags(bindingFlags);
+
+    defaultDescriptorSetLayout = device.createDescriptorSetLayout(
+        vk::DescriptorSetLayoutCreateInfo{}
+            .setFlags(vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPoolEXT)
+            .setBindingCount(bindings.size())
+            .setPBindings(bindings.data())
+            .setPNext(&extendedInfo),
+        nullptr, dispatcher);
+
+    /// set
+    defaultDescriptorSet
+        = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{}
+                                            .setDescriptorPool(defaultDescriptorPool)
+                                            .setPSetLayouts(&defaultDescriptorSetLayout)
+                                            .setDescriptorSetCount(1))[0];
   }
 
   ExecutionContext& VulkanContext::env() {

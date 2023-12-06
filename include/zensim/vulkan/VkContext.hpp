@@ -37,8 +37,12 @@ namespace zs {
   /// @note CAUTION: must match the member order defined in VulkanContext
   enum vk_queue_e { graphics = 0, compute, transfer };
   enum vk_cmd_usage_e { reuse = 0, single_use, reset };
+  enum vk_descriptor_e { uniform = 0, image_sampler, storage, storage_image, num_descriptor_types };
 
   struct VulkanContext {
+    static constexpr u32 num_max_bindless_resources = 1000;
+    static constexpr u32 bindless_texture_binding = 4;
+
     Vulkan &driver() const noexcept;
     VulkanContext(int devid, vk::Instance instance, vk::PhysicalDevice device,
                   const vk::DispatchLoaderDynamic &instDispatcher);
@@ -200,6 +204,8 @@ namespace zs {
     VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
     VkPhysicalDeviceFeatures2 deviceFeatures;
     vk::DescriptorPool defaultDescriptorPool;
+    vk::DescriptorSetLayout defaultDescriptorSetLayout;
+    vk::DescriptorSet defaultDescriptorSet;
     VmaAllocator defaultAllocator;
 
   protected:

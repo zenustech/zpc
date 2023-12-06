@@ -1,6 +1,4 @@
 #pragma once
-#include <vulkan/vulkan_core.h>
-
 #include "zensim/ZpcImplPattern.hpp"
 #include "zensim/vulkan/VkContext.hpp"
 #include "zensim/vulkan/VkImage.hpp"
@@ -8,7 +6,7 @@
 namespace zs {
 
   struct VkTexture {
-    VkTexture() = default;
+    VkTexture() noexcept = default;
     VkTexture(VkTexture &&o) noexcept
         : image{std::move(o.image)},
           sampler{o.sampler},
@@ -45,8 +43,8 @@ namespace zs {
     }
     explicit operator bool() const noexcept { return static_cast<bool>(image); }
 
-    Owner<Image> image;  // including view
-    vk::Sampler sampler;
+    Owner<Image> image{};  // including view
+    vk::Sampler sampler{VK_NULL_HANDLE};
     vk::ImageLayout imageLayout;
     u32 width, height;
     u32 mipLevels;

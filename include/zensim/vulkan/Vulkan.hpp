@@ -4,17 +4,18 @@
 #  error "ZS_ENABLE_VULKAN was not enabled, but Vulkan.hpp was included anyway."
 #endif
 
-#include <cstdint>
 //
 #include "zensim/vulkan/VkBuffer.hpp"
 #include "zensim/vulkan/VkCommand.hpp"
 #include "zensim/vulkan/VkContext.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
 #include "zensim/vulkan/VkImage.hpp"
+// #include "zensim/vulkan/VkModel.hpp"
 #include "zensim/vulkan/VkPipeline.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
 #include "zensim/vulkan/VkShader.hpp"
 #include "zensim/vulkan/VkSwapchain.hpp"
+#include "zensim/vulkan/VkTexture.hpp"
 //
 #include "zensim/ZpcFunction.hpp"
 #include "zensim/container/Callables.hpp"

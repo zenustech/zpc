@@ -1,5 +1,8 @@
 #include "zensim/vulkan/VkTexture.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "zensim/zpc_tpls/stb/stb_image.h"
+
 namespace zs {
 
   VkTexture load_texture(VulkanContext &ctx, u8 *data, size_t numBytes, vk::Extent2D extent,

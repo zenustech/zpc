@@ -157,13 +157,27 @@ namespace zs {
       }
     }
 
-    VkPhysicalDeviceFeatures devFeatures;
-    dispatcher.vkGetPhysicalDeviceFeatures(physicalDevice, &devFeatures);
-    deviceFeatures = devFeatures;
+    // query features 2
+    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES, nullptr};
+    VkPhysicalDeviceFeatures2 devFeatures2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+                                           &indexingFeatures};
+    dispatcher.vkGetPhysicalDeviceFeatures2(physicalDevice, &devFeatures2);
 
-    vk::PhysicalDeviceFeatures features;
-    if (deviceFeatures.fillModeNonSolid) features.fillModeNonSolid = VK_TRUE;
-    if (deviceFeatures.wideLines) features.wideLines = VK_TRUE;
+    this->indexingFeatures = indexingFeatures;
+    deviceFeatures = devFeatures2;
+
+    vk::PhysicalDeviceFeatures2 features;
+    vk::PhysicalDeviceDescriptorIndexingFeatures requiredIndexingFeatures;
+
+    features.features.fillModeNonSolid = deviceFeatures.features.fillModeNonSolid;
+    features.features.wideLines = deviceFeatures.features.wideLines;
+
+    requiredIndexingFeatures.descriptorBindingPartiallyBound
+        = indexingFeatures.descriptorBindingPartiallyBound;
+    requiredIndexingFeatures.runtimeDescriptorArray = indexingFeatures.runtimeDescriptorArray;
+
+    features.pNext = &requiredIndexingFeatures;
 
     vk::DeviceCreateInfo devCI{{},
                                (u32)dqCIs.size(),
@@ -172,8 +186,7 @@ namespace zs {
                                nullptr,
                                (u32)enabledExtensions.size(),
                                enabledExtensions.data()};
-
-    devCI.setPEnabledFeatures(&features);
+    // devCI.setPEnabledFeatures(&features);
 
     /// features
     // ref: TU Wien Vulkan Tutorial Ep1
@@ -187,8 +200,10 @@ namespace zs {
     rtPipeFeatures.rayTracingPipeline = VK_TRUE;
     rtPipeFeatures.pNext = &asFeatures;
     if (rtPreds == rtRequiredPreds) {
-      devCI.pNext = &rtPipeFeatures;
+      requiredIndexingFeatures.pNext = &rtPipeFeatures;
     }
+
+    devCI.pNext = &features;
 
     device = physicalDevice.createDevice(devCI, nullptr, dispatcher);
     dispatcher.init(device);

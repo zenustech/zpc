@@ -193,7 +193,8 @@ namespace zs {
 #endif
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
-    vk::PhysicalDeviceFeatures deviceFeatures;
+    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
+    VkPhysicalDeviceFeatures2 deviceFeatures;
     vk::DescriptorPool defaultDescriptorPool;
     VmaAllocator defaultAllocator;
 

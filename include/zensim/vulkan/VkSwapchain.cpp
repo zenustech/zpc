@@ -22,7 +22,7 @@ namespace zs {
           frameIndex, res));
     auto res = ctx.device.acquireNextImageKHR(
         swapchain, detail::deduce_numeric_max<u64>(),
-        currentRenderCompleteSemaphore(),  // must be a not signaled semaphore
+        currentImageAcquiredSemaphore(),  // must be a not signaled semaphore
         VK_NULL_HANDLE, ctx.dispatcher);
     imageId = res.value;
     return res.result;
@@ -36,8 +36,10 @@ namespace zs {
   }
   RenderPass Swapchain::getRenderPass() {
     RenderPass ret{ctx};
+
     const bool includeDepthBuffer = depthBuffers.size() == imageCount() && depthBuffers.size() != 0;
 
+#if 1
     // fmt::print("\n\ncheck depthbuffers: {} (image count {})\n\n", depthBuffers.size(),
     //           imageCount());
     std::vector<vk::AttachmentDescription> attachments(1 + (includeDepthBuffer ? 1 : 0));
@@ -107,6 +109,7 @@ namespace zs {
                                                      .setDependencyCount(1)
                                                      .setPDependencies(&dependency),
                                                  nullptr, ctx.dispatcher);
+#endif
 
     return ret;
   }

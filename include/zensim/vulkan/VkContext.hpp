@@ -40,6 +40,7 @@ namespace zs {
   enum vk_descriptor_e { uniform = 0, image_sampler, storage, storage_image, num_descriptor_types };
 
   struct VulkanContext {
+    static constexpr u32 num_max_default_resources = 1000;
     static constexpr u32 num_max_bindless_resources = 1000;
     static constexpr u32 bindless_texture_binding = 4;
 
@@ -81,8 +82,8 @@ namespace zs {
     const VmaAllocator &allocator() const noexcept { return defaultAllocator; }
 
     bool supportBindless() const {
-      return indexingFeatures.descriptorBindingPartiallyBound
-             && indexingFeatures.runtimeDescriptorArray;
+      return supportedVk12Features.descriptorBindingPartiallyBound
+             && supportedVk12Features.runtimeDescriptorArray;
     }
     bool supportGraphics() const { return queueFamilyIndices[vk_queue_e::graphics] != -1; }
     /// @note usually called right before swapchain creation for assurance
@@ -131,7 +132,8 @@ namespace zs {
     void sync() const { device.waitIdle(dispatcher); }
 
     /// resource builders
-    void setupDefaultDescriptorPool();
+    void setupDescriptorPool();
+    void destructDescriptorPool();
     // should not delete this then acquire again for same usage
     void acquireSet(vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet &set) const {
       set = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{}
@@ -201,7 +203,7 @@ namespace zs {
 #endif
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
-    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
+    VkPhysicalDeviceVulkan12Features supportedVk12Features;
     VkPhysicalDeviceFeatures2 deviceFeatures;
     vk::DescriptorPool defaultDescriptorPool, bindlessDescriptorPool;
     vk::DescriptorSetLayout bindlessDescriptorSetLayout;

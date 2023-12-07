@@ -64,24 +64,7 @@ namespace zs {
             "destroyed!");
       // g_mtx.unlock();
     }
-    /// clear resources
-    if (supportBindless() && bindlessDescriptorPool != VK_NULL_HANDLE) {
-      // descriptor pool resources
-      bindlessDescriptorSet = VK_NULL_HANDLE;
-
-      device.destroyDescriptorSetLayout(bindlessDescriptorSetLayout, nullptr, dispatcher);
-      bindlessDescriptorSetLayout = VK_NULL_HANDLE;
-
-      device.resetDescriptorPool(bindlessDescriptorPool, vk::DescriptorPoolResetFlags{},
-                                 dispatcher);
-      device.destroyDescriptorPool(bindlessDescriptorPool, nullptr, dispatcher);
-      bindlessDescriptorPool = VK_NULL_HANDLE;
-    }
-    if (defaultDescriptorPool != VK_NULL_HANDLE) {
-      device.resetDescriptorPool(defaultDescriptorPool, vk::DescriptorPoolResetFlags{}, dispatcher);
-      device.destroyDescriptorPool(defaultDescriptorPool, nullptr, dispatcher);
-      defaultDescriptorPool = VK_NULL_HANDLE;
-    }
+    destructDescriptorPool();
 
     vmaDestroyAllocator(defaultAllocator);
     defaultAllocator = 0;  // ref: nvpro-core
@@ -170,26 +153,19 @@ namespace zs {
     }
 
     // query features 2
-    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES, nullptr};
+    VkPhysicalDeviceVulkan12Features supportedVk12Features{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr};
     VkPhysicalDeviceFeatures2 devFeatures2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-                                           &indexingFeatures};
+                                           &supportedVk12Features};
     dispatcher.vkGetPhysicalDeviceFeatures2(physicalDevice, &devFeatures2);
 
-    this->indexingFeatures = indexingFeatures;
+    this->supportedVk12Features = supportedVk12Features;
     deviceFeatures = devFeatures2;
 
     vk::PhysicalDeviceFeatures2 features;
-    vk::PhysicalDeviceDescriptorIndexingFeatures requiredIndexingFeatures;
 
     features.features.fillModeNonSolid = deviceFeatures.features.fillModeNonSolid;
     features.features.wideLines = deviceFeatures.features.wideLines;
-
-    requiredIndexingFeatures.descriptorBindingPartiallyBound
-        = indexingFeatures.descriptorBindingPartiallyBound;
-    requiredIndexingFeatures.runtimeDescriptorArray = indexingFeatures.runtimeDescriptorArray;
-
-    features.pNext = &requiredIndexingFeatures;
 
     vk::DeviceCreateInfo devCI{{},
                                (u32)dqCIs.size(),
@@ -198,24 +174,34 @@ namespace zs {
                                nullptr,
                                (u32)enabledExtensions.size(),
                                enabledExtensions.data()};
-    // devCI.setPEnabledFeatures(&features);
+    devCI.setPEnabledFeatures(&features.features);
 
     /// features
     // ref: TU Wien Vulkan Tutorial Ep1
     vk::PhysicalDeviceVulkan12Features vk12Features{};
-    vk12Features.descriptorIndexing = VK_TRUE;
-    vk12Features.bufferDeviceAddress = VK_TRUE;
+    vk12Features.descriptorIndexing = supportedVk12Features.descriptorIndexing;
+    vk12Features.bufferDeviceAddress = supportedVk12Features.bufferDeviceAddress;
+    // bindless
+    vk12Features.descriptorBindingPartiallyBound
+        = supportedVk12Features.descriptorBindingPartiallyBound;
+    vk12Features.runtimeDescriptorArray = supportedVk12Features.runtimeDescriptorArray;
+    vk12Features.descriptorBindingUniformBufferUpdateAfterBind
+        = supportedVk12Features.descriptorBindingUniformBufferUpdateAfterBind;
+    vk12Features.descriptorBindingSampledImageUpdateAfterBind
+        = supportedVk12Features.descriptorBindingSampledImageUpdateAfterBind;
+    vk12Features.descriptorBindingStorageBufferUpdateAfterBind
+        = supportedVk12Features.descriptorBindingStorageBufferUpdateAfterBind;
+    vk12Features.descriptorBindingStorageImageUpdateAfterBind
+        = supportedVk12Features.descriptorBindingStorageImageUpdateAfterBind;
+    devCI.pNext = &vk12Features;
+
+    // ray-tracing feature chaining
     vk::PhysicalDeviceAccelerationStructureFeaturesKHR asFeatures{};
     asFeatures.accelerationStructure = VK_TRUE;
-    asFeatures.pNext = &vk12Features;
     vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipeFeatures{};
     rtPipeFeatures.rayTracingPipeline = VK_TRUE;
     rtPipeFeatures.pNext = &asFeatures;
-    if (rtPreds == rtRequiredPreds) {
-      requiredIndexingFeatures.pNext = &rtPipeFeatures;
-    }
-
-    devCI.pNext = &features;
+    if (rtPreds == rtRequiredPreds) vk12Features.pNext = &rtPipeFeatures;
 
     device = physicalDevice.createDevice(devCI, nullptr, dispatcher);
     dispatcher.init(device);
@@ -227,9 +213,9 @@ namespace zs {
 
     /// setup additional resources
     // descriptor pool
-    setupDefaultDescriptorPool();
+    setupDescriptorPool();
 
-    // allocator
+    // vma allocator
     {
       VmaVulkanFunctions vulkanFunctions = {};
       vulkanFunctions.vkGetInstanceProcAddr = dispatcher.vkGetInstanceProcAddr;
@@ -249,11 +235,11 @@ namespace zs {
     fmt::print(
         "\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}."
         "\n\t\t(Graphics/Compute/Transfer) queue family index: {}, {}, {}. Ray-tracing support: "
-        "{}. "
+        "{}. Bindless support: {}."
         "\n\tEnabled the following device tensions ({} in total):",
         devid, devProps.deviceName, queueFamilyIndices[vk_queue_e::graphics],
         queueFamilyIndices[vk_queue_e::compute], queueFamilyIndices[vk_queue_e::transfer],
-        rtPreds == rtRequiredPreds, enabledExtensions.size());
+        rtPreds == rtRequiredPreds, supportBindless(), enabledExtensions.size());
     u32 accum = 0;
     for (auto ext : enabledExtensions) {
       if ((accum++) % 2 == 0) fmt::print("\n\t\t");
@@ -277,36 +263,54 @@ namespace zs {
     }
   }
 
-  void VulkanContext::setupDefaultDescriptorPool() {
+  void VulkanContext::destructDescriptorPool() {
+    /// clear resources
+    if (supportBindless() && bindlessDescriptorPool != VK_NULL_HANDLE) {
+      // descriptor pool resources
+      bindlessDescriptorSet = VK_NULL_HANDLE;
+
+      device.destroyDescriptorSetLayout(bindlessDescriptorSetLayout, nullptr, dispatcher);
+      bindlessDescriptorSetLayout = VK_NULL_HANDLE;
+
+      device.resetDescriptorPool(bindlessDescriptorPool, vk::DescriptorPoolResetFlags{},
+                                 dispatcher);
+      device.destroyDescriptorPool(bindlessDescriptorPool, nullptr, dispatcher);
+      bindlessDescriptorPool = VK_NULL_HANDLE;
+    }
+    if (defaultDescriptorPool != VK_NULL_HANDLE) {
+      device.resetDescriptorPool(defaultDescriptorPool, vk::DescriptorPoolResetFlags{}, dispatcher);
+      device.destroyDescriptorPool(defaultDescriptorPool, nullptr, dispatcher);
+      defaultDescriptorPool = VK_NULL_HANDLE;
+    }
+  }
+
+  void VulkanContext::setupDescriptorPool() {
     /// pool
     std::array<vk::DescriptorPoolSize, vk_descriptor_e::num_descriptor_types> poolSizes;
-    // uniformPoolSize
     poolSizes[vk_descriptor_e::uniform] = vk::DescriptorPoolSize()
-                                              .setDescriptorCount(num_max_bindless_resources)
+                                              .setDescriptorCount(num_max_default_resources)
                                               .setType(vk::DescriptorType::eUniformBufferDynamic);
 
     poolSizes[vk_descriptor_e::image_sampler]
         = vk::DescriptorPoolSize()
-              .setDescriptorCount(num_max_bindless_resources)
+              .setDescriptorCount(num_max_default_resources)
               .setType(vk::DescriptorType::eCombinedImageSampler);
 
     poolSizes[vk_descriptor_e::storage] = vk::DescriptorPoolSize()
-                                              .setDescriptorCount(num_max_bindless_resources)
+                                              .setDescriptorCount(num_max_default_resources)
                                               .setType(vk::DescriptorType::eStorageBuffer);
 
     poolSizes[vk_descriptor_e::storage_image] = vk::DescriptorPoolSize()
-                                                    .setDescriptorCount(num_max_bindless_resources)
+                                                    .setDescriptorCount(num_max_default_resources)
                                                     .setType(vk::DescriptorType::eStorageImage);
     vk::DescriptorPoolCreateFlags flag = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-#if 0
-    defaultDescriptorPool = device.createDescriptorPool(
-        vk::DescriptorPoolCreateInfo{}
-            .setPoolSizeCount(poolSizes.size())
-            .setPPoolSizes(poolSizes.data())
-            .setMaxSets(1000 * poolSizes.size())
-            .setFlags(flag),
-        nullptr, dispatcher);
-#endif
+    defaultDescriptorPool
+        = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
+                                          .setPoolSizeCount(poolSizes.size())
+                                          .setPPoolSizes(poolSizes.data())
+                                          .setMaxSets(num_max_default_resources * poolSizes.size())
+                                          .setFlags(flag),
+                                      nullptr, dispatcher);
 
     bindlessDescriptorPool = VK_NULL_HANDLE;
     bindlessDescriptorSetLayout = VK_NULL_HANDLE;
@@ -314,20 +318,42 @@ namespace zs {
 
     if (!supportBindless()) return;
     flag |= vk::DescriptorPoolCreateFlagBits::eUpdateAfterBindEXT;
-    bindlessDescriptorPool
-        = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
-                                          .setPoolSizeCount(poolSizes.size())
-                                          .setPPoolSizes(poolSizes.data())
-                                          .setMaxSets(num_max_bindless_resources * poolSizes.size())
-                                          .setFlags(flag),
-                                      nullptr, dispatcher);
+
+    {
+      std::array<vk::DescriptorPoolSize, vk_descriptor_e::num_descriptor_types> bindlessPoolSizes;
+      bindlessPoolSizes[vk_descriptor_e::uniform]
+          = vk::DescriptorPoolSize()
+                .setDescriptorCount(num_max_bindless_resources)
+                .setType(vk::DescriptorType::eUniformBuffer);
+      bindlessPoolSizes[vk_descriptor_e::image_sampler]
+          = vk::DescriptorPoolSize()
+                .setDescriptorCount(num_max_bindless_resources)
+                .setType(vk::DescriptorType::eCombinedImageSampler);
+
+      bindlessPoolSizes[vk_descriptor_e::storage]
+          = vk::DescriptorPoolSize()
+                .setDescriptorCount(num_max_bindless_resources)
+                .setType(vk::DescriptorType::eStorageBuffer);
+
+      bindlessPoolSizes[vk_descriptor_e::storage_image]
+          = vk::DescriptorPoolSize()
+                .setDescriptorCount(num_max_bindless_resources)
+                .setType(vk::DescriptorType::eStorageImage);
+      bindlessDescriptorPool = device.createDescriptorPool(
+          vk::DescriptorPoolCreateInfo{}
+              .setPoolSizeCount(bindlessPoolSizes.size())
+              .setPPoolSizes(bindlessPoolSizes.data())
+              .setMaxSets(num_max_bindless_resources * bindlessPoolSizes.size())
+              .setFlags(flag),
+          nullptr, dispatcher);
+    }
 
     /// set layout
     std::array<vk::DescriptorSetLayoutBinding, vk_descriptor_e::num_descriptor_types> bindings;
     auto& uniformBinding = bindings[vk_descriptor_e::uniform];
     uniformBinding = vk::DescriptorSetLayoutBinding{}
                          .setBinding(bindless_texture_binding)
-                         .setDescriptorType(vk::DescriptorType::eUniformBufferDynamic)
+                         .setDescriptorType(vk::DescriptorType::eUniformBuffer)
                          .setDescriptorCount(num_max_bindless_resources);
     auto& imageSamplerBinding = bindings[vk_descriptor_e::image_sampler];
     imageSamplerBinding = vk::DescriptorSetLayoutBinding{}

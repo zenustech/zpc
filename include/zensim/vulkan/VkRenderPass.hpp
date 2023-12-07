@@ -30,7 +30,7 @@ namespace zs {
       vk::ImageLayout layout;
     };
     RenderPassBuilder(VulkanContext& ctx) noexcept
-        : ctx{ctx}, _colorAttachments{}, _depthAttachment{} {}
+        : ctx{ctx}, _colorAttachments{}, _depthAttachment{}, _subpassCount{1} {}
     ~RenderPassBuilder() = default;
 
     RenderPassBuilder& addAttachment(vk::Format format = vk::Format::eR8G8B8A8Unorm,
@@ -44,6 +44,7 @@ namespace zs {
       }
       return *this;
     }
+    void setNumPasses(u32 cnt) { _subpassCount = cnt; }
     RenderPass build() const {
       RenderPass ret{ctx};
       const auto num = _colorAttachments.size() + (_depthAttachment ? 1 : 0);
@@ -67,12 +68,6 @@ namespace zs {
                                   .setInitialLayout(colorAttachmentDesc.layout)
                                   .setFinalLayout(colorAttachmentDesc.layout));
       }
-
-      auto subpass = vk::SubpassDescription{}
-                         .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-                         .setColorAttachmentCount((u32)attachments.size())
-                         .setPColorAttachments(refs.data());
-
       if (_depthAttachment) {
         const auto& depthAttachmentDesc = *_depthAttachment;
         //
@@ -89,41 +84,50 @@ namespace zs {
                                   .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
                                   .setInitialLayout(depthAttachmentDesc.layout)
                                   .setFinalLayout(depthAttachmentDesc.layout));
-        //
-        subpass.setPDepthStencilAttachment(&refs.back());
       }
-#if 0
+
+      std::vector<vk::SubpassDescription> subpasses;
+      std::vector<vk::SubpassDependency> subpassDependencies;
+
       vk::AccessFlags accessFlag;
       if (_depthAttachment)
         accessFlag = vk::AccessFlagBits::eColorAttachmentWrite
                      | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
       else
         accessFlag = vk::AccessFlagBits::eColorAttachmentWrite;
-      auto dependency = vk::SubpassDependency{}
-                            .setDstSubpass(0)
-                            .setDstAccessMask(accessFlag)
-                            .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
-                                             | vk::PipelineStageFlagBits::eEarlyFragmentTests)
-                            .setSrcSubpass(VK_SUBPASS_EXTERNAL)
-                            .setSrcAccessMask({})
-                            .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
-                                             | vk::PipelineStageFlagBits::eEarlyFragmentTests);
-#endif
 
-      ret.renderpass = ctx.device.createRenderPass(vk::RenderPassCreateInfo{}
-                                                       .setAttachmentCount(attachments.size())
-                                                       .setPAttachments(attachments.data())
-                                                       .setSubpassCount(1)
-                                                       .setPSubpasses(&subpass)
-#if 1
-                                                       .setDependencyCount(0)
-                                                       .setPDependencies(nullptr)
-#else
-                                                       .setDependencyCount(1)
-                                                       .setPDependencies(&dependency)
-#endif
-                                                       ,
-                                                   nullptr, ctx.dispatcher);
+      for (u32 i = 0; i < _subpassCount; i++) {
+        auto subpass
+            = vk::SubpassDescription{}
+                  .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                  .setColorAttachmentCount((u32)attachments.size() - (_depthAttachment ? 1 : 0))
+                  .setPColorAttachments(refs.data());
+        if (_depthAttachment) subpass.setPDepthStencilAttachment(&refs.back());
+
+        auto dependency
+            = vk::SubpassDependency{}
+                  .setSrcSubpass(i == 0 ? (VK_SUBPASS_EXTERNAL) : (i - 1))
+                  .setDstSubpass(i)
+                  .setSrcAccessMask({})
+                  .setDstAccessMask(accessFlag)
+                  .setSrcStageMask(
+                      vk::PipelineStageFlagBits::
+                          eColorAttachmentOutput /*vk::PipelineStageFlagBits::eEarlyFragmentTests*/)
+                  .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+
+        subpasses.push_back(subpass);
+        subpassDependencies.push_back(dependency);
+      }
+
+      ret.renderpass
+          = ctx.device.createRenderPass(vk::RenderPassCreateInfo{}
+                                            .setAttachmentCount(attachments.size())
+                                            .setPAttachments(attachments.data())
+                                            .setSubpassCount(subpasses.size())
+                                            .setPSubpasses(subpasses.data())
+                                            .setDependencyCount(subpassDependencies.size())
+                                            .setPDependencies(subpassDependencies.data()),
+                                        nullptr, ctx.dispatcher);
       return ret;
     }
 
@@ -132,6 +136,7 @@ namespace zs {
 
     std::vector<AttachmentDesc> _colorAttachments;
     std::optional<AttachmentDesc> _depthAttachment;
+    u32 _subpassCount;
   };
 
 }  // namespace zs

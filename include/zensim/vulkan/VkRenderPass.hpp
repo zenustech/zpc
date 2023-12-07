@@ -25,26 +25,55 @@ namespace zs {
 
   struct RenderPassBuilder {
     struct AttachmentDesc {
-      vk::Format format;
-      vk::AttachmentLoadOp loadOp;
-      vk::ImageLayout layout;
+      vk::Format format{};
+      vk::ImageLayout initialLayout{}, finalLayout{};
+      vk::AttachmentLoadOp loadOp{vk::AttachmentLoadOp::eDontCare};
+      vk::AttachmentStoreOp storeOp{vk::AttachmentStoreOp::eStore};
+      vk::SampleCountFlagBits sampleBits{vk::SampleCountFlagBits::e1};
     };
     RenderPassBuilder(VulkanContext& ctx) noexcept
         : ctx{ctx}, _colorAttachments{}, _depthAttachment{}, _subpassCount{1} {}
     ~RenderPassBuilder() = default;
 
-    RenderPassBuilder& addAttachment(vk::Format format = vk::Format::eR8G8B8A8Unorm,
-                                     vk::AttachmentLoadOp op = vk::AttachmentLoadOp::eClear,
-                                     vk::ImageLayout layout
-                                     = vk::ImageLayout::eColorAttachmentOptimal) {
-      if (is_depth_format(format)) {
-        _depthAttachment = AttachmentDesc{format, op, layout};
+    RenderPassBuilder& addAttachment(const AttachmentDesc& desc) {
+      // could check [desc] validity here
+      if (is_depth_format(desc.format)) {
+        _depthAttachment = desc;
       } else {
-        _colorAttachments.push_back(AttachmentDesc{format, op, layout});
+        _colorAttachments.push_back(desc);
       }
       return *this;
     }
-    void setNumPasses(u32 cnt) { _subpassCount = cnt; }
+    RenderPassBuilder& addAttachment(vk::Format format = vk::Format::eR8G8B8A8Unorm,
+                                     vk::ImageLayout initialLayout = vk::ImageLayout::eUndefined,
+                                     vk::ImageLayout finalLayout
+                                     = vk::ImageLayout::eColorAttachmentOptimal,
+                                     bool clear = true) {
+      AttachmentDesc desc{format, initialLayout, finalLayout};
+      if (clear)
+        desc.loadOp = vk::AttachmentLoadOp::eClear;
+      else {
+        if (is_depth_format(format))
+          desc.loadOp = vk::AttachmentLoadOp::eLoad;
+        else
+          desc.loadOp = initialLayout == vk::ImageLayout::eUndefined
+                            ? vk::AttachmentLoadOp::eDontCare
+                            : vk::AttachmentLoadOp::eLoad;
+      }
+      return addAttachment(desc);
+    }
+    RenderPassBuilder& addDepthAttachment(vk::Format format, bool clear) {
+      AttachmentDesc desc{format, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                          vk::ImageLayout::eDepthStencilAttachmentOptimal};
+      desc.loadOp = clear ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eLoad;
+      return addAttachment(desc);
+    }
+
+    RenderPassBuilder& setNumPasses(u32 cnt) {
+      _subpassCount = cnt;
+      return *this;
+    }
+
     RenderPass build() const {
       RenderPass ret{ctx};
       const auto num = _colorAttachments.size() + (_depthAttachment ? 1 : 0);
@@ -55,35 +84,36 @@ namespace zs {
       for (int i = 0; i != _colorAttachments.size(); ++i) {
         const auto& colorAttachmentDesc = _colorAttachments[i];
         //
-        refs.push_back(
-            vk::AttachmentReference{(u32)attachments.size(), colorAttachmentDesc.layout});
+        refs.push_back(vk::AttachmentReference{(u32)attachments.size(),
+                                               vk::ImageLayout::eColorAttachmentOptimal});
         //
         attachments.push_back(vk::AttachmentDescription{}
                                   .setFormat(colorAttachmentDesc.format)
-                                  .setSamples(vk::SampleCountFlagBits::e1)
+                                  .setSamples(colorAttachmentDesc.sampleBits)
                                   .setLoadOp(colorAttachmentDesc.loadOp)
-                                  .setStoreOp(vk::AttachmentStoreOp::eStore)
+                                  .setStoreOp(colorAttachmentDesc.storeOp)
                                   .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                                   .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                                  .setInitialLayout(colorAttachmentDesc.layout)
-                                  .setFinalLayout(colorAttachmentDesc.layout));
+                                  .setInitialLayout(colorAttachmentDesc.initialLayout)
+                                  .setFinalLayout(colorAttachmentDesc.finalLayout));
       }
       if (_depthAttachment) {
         const auto& depthAttachmentDesc = *_depthAttachment;
         //
         refs.push_back(vk::AttachmentReference{
             (u32)attachments.size(),
-            depthAttachmentDesc.layout});  // vk::ImageLayout::eDepthStencilAttachmentOptimal
+            vk::ImageLayout::
+                eDepthStencilAttachmentOptimal});  // vk::ImageLayout::eDepthStencilAttachmentOptimal
         //
         attachments.push_back(vk::AttachmentDescription{}
                                   .setFormat(depthAttachmentDesc.format)
-                                  .setSamples(vk::SampleCountFlagBits::e1)
+                                  .setSamples(depthAttachmentDesc.sampleBits)
                                   .setLoadOp(depthAttachmentDesc.loadOp)
-                                  .setStoreOp(vk::AttachmentStoreOp::eStore)
+                                  .setStoreOp(depthAttachmentDesc.storeOp)
                                   .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                                   .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                                  .setInitialLayout(depthAttachmentDesc.layout)
-                                  .setFinalLayout(depthAttachmentDesc.layout));
+                                  .setInitialLayout(depthAttachmentDesc.initialLayout)
+                                  .setFinalLayout(depthAttachmentDesc.finalLayout));
       }
 
       std::vector<vk::SubpassDescription> subpasses;

@@ -65,13 +65,19 @@ namespace zs {
       // g_mtx.unlock();
     }
     /// clear resources
-    if (defaultDescriptorPool != VK_NULL_HANDLE) {
+    if (supportBindless() && bindlessDescriptorPool != VK_NULL_HANDLE) {
       // descriptor pool resources
-      defaultDescriptorSet = VK_NULL_HANDLE;
+      bindlessDescriptorSet = VK_NULL_HANDLE;
 
-      device.destroyDescriptorSetLayout(defaultDescriptorSetLayout, nullptr, dispatcher);
-      defaultDescriptorSetLayout = VK_NULL_HANDLE;
+      device.destroyDescriptorSetLayout(bindlessDescriptorSetLayout, nullptr, dispatcher);
+      bindlessDescriptorSetLayout = VK_NULL_HANDLE;
 
+      device.resetDescriptorPool(bindlessDescriptorPool, vk::DescriptorPoolResetFlags{},
+                                 dispatcher);
+      device.destroyDescriptorPool(bindlessDescriptorPool, nullptr, dispatcher);
+      bindlessDescriptorPool = VK_NULL_HANDLE;
+    }
+    if (defaultDescriptorPool != VK_NULL_HANDLE) {
       device.resetDescriptorPool(defaultDescriptorPool, vk::DescriptorPoolResetFlags{}, dispatcher);
       device.destroyDescriptorPool(defaultDescriptorPool, nullptr, dispatcher);
       defaultDescriptorPool = VK_NULL_HANDLE;
@@ -291,10 +297,24 @@ namespace zs {
     poolSizes[vk_descriptor_e::storage_image] = vk::DescriptorPoolSize()
                                                     .setDescriptorCount(num_max_bindless_resources)
                                                     .setType(vk::DescriptorType::eStorageImage);
-
     vk::DescriptorPoolCreateFlags flag = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-    if (supportBindless()) flag |= vk::DescriptorPoolCreateFlagBits::eUpdateAfterBindEXT;
-    defaultDescriptorPool
+#if 0
+    defaultDescriptorPool = device.createDescriptorPool(
+        vk::DescriptorPoolCreateInfo{}
+            .setPoolSizeCount(poolSizes.size())
+            .setPPoolSizes(poolSizes.data())
+            .setMaxSets(1000 * poolSizes.size())
+            .setFlags(flag),
+        nullptr, dispatcher);
+#endif
+
+    bindlessDescriptorPool = VK_NULL_HANDLE;
+    bindlessDescriptorSetLayout = VK_NULL_HANDLE;
+    bindlessDescriptorSet = VK_NULL_HANDLE;
+
+    if (!supportBindless()) return;
+    flag |= vk::DescriptorPoolCreateFlagBits::eUpdateAfterBindEXT;
+    bindlessDescriptorPool
         = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
                                           .setPoolSizeCount(poolSizes.size())
                                           .setPPoolSizes(poolSizes.data())
@@ -332,7 +352,7 @@ namespace zs {
     auto extendedInfo
         = vk::DescriptorSetLayoutBindingFlagsCreateInfo{}.setBindingFlags(bindingFlags);
 
-    defaultDescriptorSetLayout = device.createDescriptorSetLayout(
+    bindlessDescriptorSetLayout = device.createDescriptorSetLayout(
         vk::DescriptorSetLayoutCreateInfo{}
             .setFlags(vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPoolEXT)
             .setBindingCount(bindings.size())
@@ -341,10 +361,10 @@ namespace zs {
         nullptr, dispatcher);
 
     /// set
-    defaultDescriptorSet
+    bindlessDescriptorSet
         = device.allocateDescriptorSets(vk::DescriptorSetAllocateInfo{}
-                                            .setDescriptorPool(defaultDescriptorPool)
-                                            .setPSetLayouts(&defaultDescriptorSetLayout)
+                                            .setDescriptorPool(bindlessDescriptorPool)
+                                            .setPSetLayouts(&bindlessDescriptorSetLayout)
                                             .setDescriptorSetCount(1))[0];
   }
 

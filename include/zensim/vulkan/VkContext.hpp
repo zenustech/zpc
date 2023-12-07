@@ -203,9 +203,9 @@ namespace zs {
     vk::PhysicalDeviceMemoryProperties memoryProperties;
     VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures;
     VkPhysicalDeviceFeatures2 deviceFeatures;
-    vk::DescriptorPool defaultDescriptorPool;
-    vk::DescriptorSetLayout defaultDescriptorSetLayout;
-    vk::DescriptorSet defaultDescriptorSet;
+    vk::DescriptorPool defaultDescriptorPool, bindlessDescriptorPool;
+    vk::DescriptorSetLayout bindlessDescriptorSetLayout;
+    vk::DescriptorSet bindlessDescriptorSet;
     VmaAllocator defaultAllocator;
 
   protected:

@@ -5,7 +5,6 @@ namespace zs {
 
   struct Swapchain {
     /// triple buffering
-    static constexpr u32 num_buffered_frames = 3;
 
     Swapchain() = delete;
     Swapchain(VulkanContext &ctx) : ctx{ctx}, swapchain{VK_NULL_HANDLE} {}
@@ -29,8 +28,8 @@ namespace zs {
           depthBuffers{std::move(o.depthBuffers)},
           frameBuffers{std::move(o.frameBuffers)},
           // sync prims
-          readSemaphores{std::move(o.readSemaphores)},
-          writeSemaphores{std::move(o.writeSemaphores)},
+          imageAcquiredSemaphores{std::move(o.imageAcquiredSemaphores)},
+          renderCompleteSemaphores{std::move(o.renderCompleteSemaphores)},
           fences{std::move(o.fences)},
           imageFences{std::move(o.imageFences)},
           frameIndex(o.frameIndex) {
@@ -61,8 +60,8 @@ namespace zs {
 
     vk::Fence &imageFence(u32 id) noexcept { return imageFences[id]; }
     vk::Fence &currentFence() noexcept { return fences[frameIndex]; }
-    vk::Semaphore &currentReadSemaphore() noexcept { return readSemaphores[frameIndex]; }
-    vk::Semaphore &currentWriteSemaphore() noexcept { return writeSemaphores[frameIndex]; }
+    vk::Semaphore &currentImageAcquiredSemaphore() noexcept { return imageAcquiredSemaphores[frameIndex]; }
+    vk::Semaphore &currentRenderCompleteSemaphore() noexcept { return renderCompleteSemaphores[frameIndex]; }
 
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }
@@ -81,10 +80,10 @@ namespace zs {
     void resetSyncPrimitives() {
       imageFences.clear();
 
-      for (auto &s : readSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
-      readSemaphores.clear();
-      for (auto &s : writeSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
-      writeSemaphores.clear();
+      for (auto &s : imageAcquiredSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      imageAcquiredSemaphores.clear();
+      for (auto &s : renderCompleteSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      renderCompleteSemaphores.clear();
       for (auto &f : fences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
       fences.clear();
     }
@@ -108,8 +107,8 @@ namespace zs {
     std::vector<Framebuffer> frameBuffers;  // initialized later
     ///
     // littleVulkanEngine-alike setup
-    std::vector<vk::Semaphore> readSemaphores;   // ready to read
-    std::vector<vk::Semaphore> writeSemaphores;  // ready to write
+    std::vector<vk::Semaphore> imageAcquiredSemaphores;   // ready to read
+    std::vector<vk::Semaphore> renderCompleteSemaphores;  // ready to write
     std::vector<vk::Fence> fences;               // ready to submit
     std::vector<vk::Fence> imageFences;          // directed to the above 'fences' objects
     int frameIndex;

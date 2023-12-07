@@ -39,11 +39,12 @@ namespace zs {
   enum vk_cmd_usage_e { reuse = 0, single_use, reset };
   enum vk_descriptor_e { uniform = 0, image_sampler, storage, storage_image, num_descriptor_types };
 
-  struct VulkanContext {
-    static constexpr u32 num_max_default_resources = 1000;
-    static constexpr u32 num_max_bindless_resources = 1000;
-    static constexpr u32 bindless_texture_binding = 4;
+  static constexpr u32 num_buffered_frames = 3;   // generally 2 or 3
+  static constexpr u32 num_max_default_resources = 1000;
+  static constexpr u32 num_max_bindless_resources = 1000;
+  static constexpr u32 bindless_texture_binding = 4;
 
+  struct VulkanContext {
     Vulkan &driver() const noexcept;
     VulkanContext(int devid, vk::Instance instance, vk::PhysicalDevice device,
                   const vk::DispatchLoaderDynamic &instDispatcher);
@@ -185,22 +186,10 @@ namespace zs {
     vk::Device device;                     // currently dedicated for rendering
     vk::DispatchLoaderDynamic dispatcher;  // store device-specific calls
     // graphics queue family should also be used for presentation if swapchain required
-#if 1
-    int queueFamilyIndices[3];
-#else
-    union {
-      int queueFamilyIndices[3];
-      int graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex;
-    };
-#endif
-#if 1
-    int queueFamilyMaps[3];
-#else
-    union {
-      int queueFamilyMaps[3];
-      int graphicsQueueFamilyMap, computeQueueFamilyMap, transferQueueFamilyMap;
-    };
-#endif
+
+    int queueFamilyIndices[3];  // graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex;
+    int queueFamilyMaps[3]; // graphicsQueueFamilyMap, computeQueueFamilyMap, transferQueueFamilyMap;
+
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
     VkPhysicalDeviceVulkan12Features supportedVk12Features;

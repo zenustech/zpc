@@ -22,7 +22,7 @@ namespace zs {
           frameIndex, res));
     auto res = ctx.device.acquireNextImageKHR(
         swapchain, detail::deduce_numeric_max<u64>(),
-        currentWriteSemaphore(),  // must be a not signaled semaphore
+        currentRenderCompleteSemaphore(),  // must be a not signaled semaphore
         VK_NULL_HANDLE, ctx.dispatcher);
     imageId = res.value;
     return res.result;
@@ -204,7 +204,6 @@ namespace zs {
     return *this;
   }
   void SwapchainBuilder::build(Swapchain& obj) {
-    constexpr auto num_buffered_frames = Swapchain::num_buffered_frames;
     // kept the previously built swapchain for this
     if (obj.swapchain != VK_NULL_HANDLE)
       ci = obj.ci;
@@ -263,15 +262,15 @@ namespace zs {
 
     /// sync primitives
     obj.imageFences.resize(obj.images.size(), VK_NULL_HANDLE);
-    if (obj.readSemaphores.size() != num_buffered_frames) {
-      obj.readSemaphores.resize(num_buffered_frames);
-      obj.writeSemaphores.resize(num_buffered_frames);
+    if (obj.imageAcquiredSemaphores.size() != num_buffered_frames) {
+      obj.imageAcquiredSemaphores.resize(num_buffered_frames);
+      obj.renderCompleteSemaphores.resize(num_buffered_frames);
       obj.fences.resize(num_buffered_frames);
       for (int i = 0; i != num_buffered_frames; ++i) {
         // semaphores
-        obj.readSemaphores[i]
+        obj.imageAcquiredSemaphores[i]
             = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
-        obj.writeSemaphores[i]
+        obj.renderCompleteSemaphores[i]
             = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
         obj.fences[i] = ctx.device.createFence(
             vk::FenceCreateInfo{}.setFlags(vk::FenceCreateFlagBits::eSignaled), nullptr,

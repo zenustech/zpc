@@ -57,7 +57,7 @@ namespace zs {
         // color
         if (colorRefs.size()) {
           colorAttachRefs.resize(colorRefs.size());
-          for (int i = 0; i != refs.size(); ++i) colorAttachRefs[i] = refs[colorRefs[i]];
+          for (int i = 0; i != colorRefs.size(); ++i) colorAttachRefs[i] = refs[colorRefs[i]];
 
           subpass.setColorAttachmentCount((u32)colorAttachRefs.size())
               .setPColorAttachments(colorAttachRefs.data());
@@ -72,7 +72,7 @@ namespace zs {
         // input
         if (inputRefs.size()) {
           inputAttachRefs.resize(inputRefs.size());
-          for (int i = 0; i != refs.size(); ++i) inputAttachRefs[i] = refs[inputRefs[i]];
+          for (int i = 0; i != inputRefs.size(); ++i) inputAttachRefs[i] = refs[inputRefs[i]];
 
           subpass.setInputAttachmentCount((u32)inputAttachRefs.size())
               .setPInputAttachments(inputAttachRefs.data());

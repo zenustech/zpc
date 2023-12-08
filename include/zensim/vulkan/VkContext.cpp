@@ -561,16 +561,18 @@ namespace zs {
   }
   Image VulkanContext::create2DImage(const vk::Extent2D& dim, vk::Format format,
                                      vk::ImageUsageFlags usage, vk::MemoryPropertyFlags props,
-                                     bool mipmaps, bool createView) {
+                                     bool mipmaps, bool createView, bool enableTransfer,
+                                     vk::SampleCountFlagBits sampleBits) {
     return createImage(vk::ImageCreateInfo{}
                            .setImageType(vk::ImageType::e2D)
                            .setFormat(format)
                            .setExtent({dim.width, dim.height, (u32)1})
                            .setMipLevels((mipmaps ? get_num_mip_levels(dim) : 1))
                            .setArrayLayers(1)
-                           .setUsage(usage | vk::ImageUsageFlagBits::eTransferSrc
-                                     | vk::ImageUsageFlagBits::eTransferDst)
-                           .setSamples(vk::SampleCountFlagBits::e1)
+                           .setUsage(enableTransfer ? (usage | vk::ImageUsageFlagBits::eTransferSrc
+                                                       | vk::ImageUsageFlagBits::eTransferDst)
+                                                    : usage)
+                           .setSamples(sampleBits)
                            //.setTiling(vk::ImageTiling::eOptimal)
                            .setSharingMode(vk::SharingMode::eExclusive),
                        props, createView);

@@ -39,7 +39,7 @@ namespace zs {
   enum vk_cmd_usage_e { reuse = 0, single_use, reset };
   enum vk_descriptor_e { uniform = 0, image_sampler, storage, storage_image, num_descriptor_types };
 
-  static constexpr u32 num_buffered_frames = 3;   // generally 2 or 3
+  static constexpr u32 num_buffered_frames = 3;  // generally 2 or 3
   static constexpr u32 num_max_default_resources = 1000;
   static constexpr u32 num_max_bindless_resources = 1000;
   static constexpr u32 bindless_texture_binding = 4;
@@ -162,7 +162,8 @@ namespace zs {
     Image create2DImage(const vk::Extent2D &dim, vk::Format format = vk::Format::eR8G8B8A8Unorm,
                         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled,
                         vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
-                        bool mipmaps = false, bool createView = true);
+                        bool mipmaps = false, bool createView = true, bool enableTransfer = true,
+                        vk::SampleCountFlagBits sampleBits = vk::SampleCountFlagBits::e1);
 
     ImageView create2DImageView(vk::Image image, vk::Format format = vk::Format::eR8G8B8A8Unorm,
                                 vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor,
@@ -187,8 +188,10 @@ namespace zs {
     vk::DispatchLoaderDynamic dispatcher;  // store device-specific calls
     // graphics queue family should also be used for presentation if swapchain required
 
-    int queueFamilyIndices[3];  // graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex;
-    int queueFamilyMaps[3]; // graphicsQueueFamilyMap, computeQueueFamilyMap, transferQueueFamilyMap;
+    int queueFamilyIndices[3];  // graphicsQueueFamilyIndex, computeQueueFamilyIndex,
+                                // transferQueueFamilyIndex;
+    int queueFamilyMaps[3];     // graphicsQueueFamilyMap, computeQueueFamilyMap,
+                                // transferQueueFamilyMap;
 
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;

@@ -43,6 +43,8 @@ namespace zs {
 
     std::vector<vk::Image> getImages() const { return images; }
     u32 imageCount() const { return images.size(); }
+    vk::ImageView getColorView(u32 i) const { return imageViews[i]; }
+    const Image &getDepthView(u32 i) const { return depthBuffers[i]; }
 
     vk::Extent2D getExtent() const noexcept { return ci.imageExtent; }
     vk::Format getColorFormat() const noexcept { return ci.imageFormat; }

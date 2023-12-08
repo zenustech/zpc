@@ -54,14 +54,19 @@ namespace zs {
     u32 getCurrentFrame() const noexcept { return frameIndex; }
     u32 nextFrame() noexcept { return frameIndex = (frameIndex + 1) % num_buffered_frames; }
     void initFramebuffersFor(vk::RenderPass renderPass);
+    void resetFramebuffers(const std::vector<vk::Framebuffer> &fbs);
 
     RenderPass getRenderPass();
     Framebuffer &frameBuffer(u32 imageIndex) { return frameBuffers[imageIndex]; }
 
     vk::Fence &imageFence(u32 id) noexcept { return imageFences[id]; }
     vk::Fence &currentFence() noexcept { return fences[frameIndex]; }
-    vk::Semaphore &currentImageAcquiredSemaphore() noexcept { return imageAcquiredSemaphores[frameIndex]; }
-    vk::Semaphore &currentRenderCompleteSemaphore() noexcept { return renderCompleteSemaphores[frameIndex]; }
+    vk::Semaphore &currentImageAcquiredSemaphore() noexcept {
+      return imageAcquiredSemaphores[frameIndex];
+    }
+    vk::Semaphore &currentRenderCompleteSemaphore() noexcept {
+      return renderCompleteSemaphores[frameIndex];
+    }
 
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }
@@ -80,9 +85,11 @@ namespace zs {
     void resetSyncPrimitives() {
       imageFences.clear();
 
-      for (auto &s : imageAcquiredSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      for (auto &s : imageAcquiredSemaphores)
+        ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
       imageAcquiredSemaphores.clear();
-      for (auto &s : renderCompleteSemaphores) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      for (auto &s : renderCompleteSemaphores)
+        ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
       renderCompleteSemaphores.clear();
       for (auto &f : fences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
       fences.clear();
@@ -102,15 +109,15 @@ namespace zs {
 #endif
     ///
     std::vector<vk::Image> images;
-    std::vector<vk::ImageView> imageViews;
+    std::vector<vk::ImageView> imageViews;  // corresponds to [images] from swapchain
     std::vector<Image> depthBuffers;        // optional
     std::vector<Framebuffer> frameBuffers;  // initialized later
     ///
     // littleVulkanEngine-alike setup
     std::vector<vk::Semaphore> imageAcquiredSemaphores;   // ready to read
     std::vector<vk::Semaphore> renderCompleteSemaphores;  // ready to write
-    std::vector<vk::Fence> fences;               // ready to submit
-    std::vector<vk::Fence> imageFences;          // directed to the above 'fences' objects
+    std::vector<vk::Fence> fences;                        // ready to submit
+    std::vector<vk::Fence> imageFences;                   // directed to the above 'fences' objects
     int frameIndex;
   };
 

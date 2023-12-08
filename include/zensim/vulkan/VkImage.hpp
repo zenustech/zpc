@@ -100,7 +100,8 @@ namespace zs {
   };
 
   struct Framebuffer {
-    Framebuffer(VulkanContext &ctx) : ctx{ctx}, framebuffer{VK_NULL_HANDLE} {}
+    Framebuffer(VulkanContext &ctx, vk::Framebuffer fb = VK_NULL_HANDLE)
+        : ctx{ctx}, framebuffer{fb} {}
     ~Framebuffer() { ctx.device.destroyFramebuffer(framebuffer, nullptr, ctx.dispatcher); }
     Framebuffer(Framebuffer &&o) noexcept : ctx{o.ctx}, framebuffer{o.framebuffer} {
       o.framebuffer = VK_NULL_HANDLE;

@@ -34,6 +34,7 @@ namespace zs {
     return res.value;
 #endif
   }
+
   RenderPass Swapchain::getRenderPass() {
     const bool includeDepthBuffer = depthBuffers.size() == imageCount() && depthBuffers.size() != 0;
 
@@ -46,6 +47,7 @@ namespace zs {
                               vk::ImageLayout::eDepthStencilAttachmentOptimal, true);
     return rpBuilder.build();
   }
+  /// @note default framebuffer setup
   void Swapchain::initFramebuffersFor(vk::RenderPass renderPass) {
     frameBuffers.clear();
     auto cnt = imageCount();
@@ -63,6 +65,13 @@ namespace zs {
             ctx.createFramebuffer({(vk::ImageView)imageViews[i]}, ci.imageExtent, renderPass));
       }
     }
+  }
+  /// @note advanced framebuffer setup
+  void Swapchain::resetFramebuffers(const std::vector<vk::Framebuffer>& fbs) {
+    frameBuffers.clear();
+    auto cnt = imageCount();
+    if (fbs.size() != cnt) throw std::runtime_error("size of framebuffers for reset mismatch");
+    for (int i = 0; i != cnt; ++i) frameBuffers.emplace_back(Framebuffer{ctx, fbs[i]});
   }
 
   SwapchainBuilder::SwapchainBuilder(VulkanContext& ctx, vk::SurfaceKHR targetSurface)

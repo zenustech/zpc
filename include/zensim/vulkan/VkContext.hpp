@@ -86,6 +86,10 @@ namespace zs {
       return supportedVk12Features.descriptorBindingPartiallyBound
              && supportedVk12Features.runtimeDescriptorArray;
     }
+    bool supportTrueBindless() const {
+      return supportBindless() && supportedVk12Features.descriptorBindingVariableDescriptorCount
+             && supportedVk12Features.shaderSampledImageArrayNonUniformIndexing;
+    }
     bool supportGraphics() const { return queueFamilyIndices[vk_queue_e::graphics] != -1; }
     /// @note usually called right before swapchain creation for assurance
     bool supportSurface(vk::SurfaceKHR surface) const {
@@ -195,8 +199,8 @@ namespace zs {
 
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
-    VkPhysicalDeviceVulkan12Features supportedVk12Features;
-    VkPhysicalDeviceFeatures2 deviceFeatures;
+    VkPhysicalDeviceVulkan12Features supportedVk12Features, enabledVk12Features;
+    VkPhysicalDeviceFeatures2 supportedDeviceFeatures, enabledDeviceFeatures;
     vk::DescriptorPool defaultDescriptorPool, bindlessDescriptorPool;
     vk::DescriptorSetLayout bindlessDescriptorSetLayout;
     vk::DescriptorSet bindlessDescriptorSet;

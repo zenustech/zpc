@@ -61,9 +61,9 @@ namespace zs {
 
           subpass.setColorAttachmentCount((u32)colorAttachRefs.size())
               .setPColorAttachments(colorAttachRefs.data());
-        } else {
+        } else if (colorRefOffset != -1) {
           if (colorCount < 0)
-            subpass.setColorAttachmentCount((u32)refs.size() - (withDepth ? 1 : 0))
+            subpass.setColorAttachmentCount((u32)refs.size() - (withDepth ? 1 : 0) - colorRefOffset)
                 .setPColorAttachments(refs.data() + colorRefOffset);
           else
             subpass.setColorAttachmentCount((u32)colorCount)
@@ -76,9 +76,9 @@ namespace zs {
 
           subpass.setInputAttachmentCount((u32)inputAttachRefs.size())
               .setPInputAttachments(inputAttachRefs.data());
-        } else {
+        } else if (inputRefOffset != -1) {
           if (inputCount < 0)
-            subpass.setInputAttachmentCount((u32)refs.size())
+            subpass.setInputAttachmentCount((u32)refs.size() - inputRefOffset)
                 .setPInputAttachments(refs.data() + inputRefOffset);
           else
             subpass.setInputAttachmentCount((u32)inputCount)
@@ -200,8 +200,7 @@ namespace zs {
         //
         refs.push_back(vk::AttachmentReference{
             (u32)attachments.size(),
-            vk::ImageLayout::
-                eDepthStencilAttachmentOptimal});  // vk::ImageLayout::eDepthStencilAttachmentOptimal
+            vk::ImageLayout::eDepthStencilAttachmentOptimal});
         //
         attachments.push_back(vk::AttachmentDescription{}
                                   .setFormat(depthAttachmentDesc.format)

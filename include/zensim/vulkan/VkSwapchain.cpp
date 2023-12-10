@@ -20,12 +20,19 @@ namespace zs {
       throw std::runtime_error(fmt::format(
           "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
           frameIndex, res));
+#if 1
     auto res = ctx.device.acquireNextImageKHR(
         swapchain, detail::deduce_numeric_max<u64>(),
         currentImageAcquiredSemaphore(),  // must be a not signaled semaphore
         VK_NULL_HANDLE, ctx.dispatcher);
     imageId = res.value;
     return res.result;
+#else
+    auto result = ctx.dispatcher.vkAcquireNextImageKHR(
+        (vk::Device)ctx.device, (vk::SwapchainKHR)swapchain, detail::deduce_numeric_max<u64>(),
+        currentImageAcquiredSemaphore(), VK_NULL_HANDLE, &imageId);
+    return vk::Result{result};
+#endif
 #if 0
     if (res.result != vk::Result::eSuccess)
       throw std::runtime_error(fmt::format(
@@ -36,42 +43,58 @@ namespace zs {
   }
 
   RenderPass Swapchain::getRenderPass() {
-    const bool includeDepthBuffer = depthBuffers.size() == imageCount() && depthBuffers.size() != 0;
+    const bool enableMS = multiSampleEnabled();
+    const bool enableDepth = depthEnabled();
 
-    auto rpBuilder = ctx.renderpass()
-                         .addAttachment(ci.imageFormat, vk::ImageLayout::eUndefined,
-                                        vk::ImageLayout::ePresentSrcKHR, true)
-                         .setNumPasses(1);
-    if (includeDepthBuffer)
+    auto rpBuilder = ctx.renderpass().setNumPasses(1);
+    if (enableMS)
+      rpBuilder.addAttachment(ci.imageFormat, vk::ImageLayout::eUndefined,
+                                        vk::ImageLayout::eColorAttachmentOptimal, true, sampleBits);
+    rpBuilder.addAttachment(ci.imageFormat, vk::ImageLayout::eUndefined,
+                                      vk::ImageLayout::ePresentSrcKHR, !enableMS);
+    if (enableDepth)
       rpBuilder.addAttachment(depthFormat, vk::ImageLayout::eUndefined,
-                              vk::ImageLayout::eDepthStencilAttachmentOptimal, true);
+                              vk::ImageLayout::eDepthStencilAttachmentOptimal, true, sampleBits);
+    if (enableMS) {
+      vk::AccessFlags accessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+      if (enableDepth)
+        accessMask |= vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+      rpBuilder.addSubpass(/*color*/ {0}, /*depth stencil*/ enableDepth ? 0 : -1,
+                        /*resolve*/ 1) /*input*/
+            .setSubpassDependencies(
+                {vk::SubpassDependency{}
+                     .setSrcSubpass(VK_SUBPASS_EXTERNAL)
+                     .setDstSubpass(0)
+                     .setSrcAccessMask(accessMask)
+                     .setDstAccessMask(accessMask)
+                     .setSrcStageMask(
+                         vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                         vk::PipelineStageFlagBits::eLateFragmentTests)
+                     .setDstStageMask(
+                         vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                         vk::PipelineStageFlagBits::eEarlyFragmentTests)});
+    }
     return rpBuilder.build();
   }
   /// @note default framebuffer setup
   void Swapchain::initFramebuffersFor(vk::RenderPass renderPass) {
     frameBuffers.clear();
     auto cnt = imageCount();
-    if (depthBuffers.size() == cnt) {
-      // color + depth
-      for (int i = 0; i != cnt; ++i) {
-        frameBuffers.emplace_back(
-            ctx.createFramebuffer({(vk::ImageView)imageViews[i], (vk::ImageView)depthBuffers[i]},
-                                  ci.imageExtent, renderPass));
-      }
-    } else {
-      // color only
-      for (int i = 0; i != imageCount(); ++i) {
-        frameBuffers.emplace_back(
-            ctx.createFramebuffer({(vk::ImageView)imageViews[i]}, ci.imageExtent, renderPass));
-      }
+    const bool enableMS = multiSampleEnabled();
+    const bool enableDepth = depthEnabled();
+    std::vector<vk::ImageView> imgvs;
+    imgvs.reserve(3);
+    for (int i = 0; i != cnt; ++i) {
+      imgvs.clear();
+      if (enableMS)
+        imgvs.push_back((vk::ImageView)msColorBuffers[i]);
+      imgvs.push_back((vk::ImageView)imageViews[i]);
+      if (enableDepth)
+        imgvs.push_back((vk::ImageView)depthBuffers[i]);
+
+      frameBuffers.emplace_back(
+        ctx.createFramebuffer(imgvs, ci.imageExtent, renderPass));
     }
-  }
-  /// @note advanced framebuffer setup
-  void Swapchain::resetFramebuffers(const std::vector<vk::Framebuffer>& fbs) {
-    frameBuffers.clear();
-    auto cnt = imageCount();
-    if (fbs.size() != cnt) throw std::runtime_error("size of framebuffers for reset mismatch");
-    for (int i = 0; i != cnt; ++i) frameBuffers.emplace_back(Framebuffer{ctx, fbs[i]});
   }
 
   SwapchainBuilder::SwapchainBuilder(VulkanContext& ctx, vk::SurfaceKHR targetSurface)
@@ -85,6 +108,7 @@ namespace zs {
     swapchainDepthFormat = ctx.findSupportedFormat(
         {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
         vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+    sampleBits = vk::SampleCountFlagBits::e1;
 
     ci.surface = surface;
 
@@ -151,7 +175,8 @@ namespace zs {
   }
   void SwapchainBuilder::build(Swapchain& obj) {
     // kept the previously built swapchain for this
-    if (obj.swapchain != VK_NULL_HANDLE) ci = obj.ci;
+    const bool rebuild = obj.swapchain != VK_NULL_HANDLE;
+    if (rebuild) ci = obj.ci;
     ci.oldSwapchain = obj.swapchain;
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
 
@@ -164,7 +189,10 @@ namespace zs {
     obj.depthFormat = swapchainDepthFormat;
     obj.presentMode = ci.presentMode;
 #else
-    obj.depthFormat = swapchainDepthFormat;
+    if (!rebuild) {
+      obj.depthFormat = swapchainDepthFormat;
+      obj.sampleBits = sampleBits;
+    }
     obj.ci = ci;
     // if (obj.swapchain == VK_NULL_HANDLE)
     //   obj.ci = ci;
@@ -174,13 +202,14 @@ namespace zs {
 
     obj.resetAux();
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
+    const auto numSwapchainImages = obj.images.size();
 
     /// reset previous resources (if any)
     ctx.device.destroySwapchainKHR(ci.oldSwapchain, nullptr, ctx.dispatcher);
 
     /// construct current swapchain
-    obj.imageViews.resize(obj.images.size());
-    for (int i = 0; i != obj.images.size(); ++i) {
+    obj.imageViews.resize(numSwapchainImages);
+    for (int i = 0; i != numSwapchainImages; ++i) {
       auto& img = obj.images[i];
       // image views
       auto subresourceRange = vk::ImageSubresourceRange()
@@ -197,16 +226,23 @@ namespace zs {
                                           subresourceRange};
       obj.imageViews[i] = ctx.device.createImageView(ivCI, nullptr, ctx.dispatcher);
     }
+    if (obj.sampleBits != vk::SampleCountFlagBits::e1) {
+      for (int i = 0; i != numSwapchainImages; ++i) {
+        obj.msColorBuffers.emplace_back(ctx.create2DImage(
+            ci.imageExtent, ci.imageFormat, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
+            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true, /*enable transfer*/ false, obj.sampleBits));
+      }
+    }
     if (buildDepthBuffer) {
-      for (int i = 0; i != obj.images.size(); ++i) {
+      for (int i = 0; i != numSwapchainImages; ++i) {
         obj.depthBuffers.emplace_back(ctx.create2DImage(
-            ci.imageExtent, swapchainDepthFormat, vk::ImageUsageFlagBits::eDepthStencilAttachment,
-            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true));
+            ci.imageExtent, obj.depthFormat, vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true, /*enable transfer*/ false, obj.sampleBits));
       }
     }
 
     /// sync primitives
-    obj.imageFences.resize(obj.images.size(), VK_NULL_HANDLE);
+    obj.imageFences.resize(numSwapchainImages, VK_NULL_HANDLE);
     if (obj.imageAcquiredSemaphores.size() != num_buffered_frames) {
       obj.imageAcquiredSemaphores.resize(num_buffered_frames);
       obj.renderCompleteSemaphores.resize(num_buffered_frames);

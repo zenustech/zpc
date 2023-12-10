@@ -106,7 +106,7 @@ namespace zs {
       shaders[stage] = shaderModule;
       return *this;
     }
-    PipelineBuilder& setShader(const zs::ShaderModule& shaderModule);
+    PipelineBuilder& setShader(const ShaderModule& shaderModule);
 
     /// @note assume no padding and alignment involved
     /// @note if shaders are set through zs::ShaderModule and aos layout assumed, no need to
@@ -171,6 +171,10 @@ namespace zs {
     }
     PipelineBuilder& setCullMode(vk::CullModeFlagBits cm) {
       this->rasterizationInfo.setCullMode(cm);
+      return *this;
+    }
+    PipelineBuilder& setRasterizationSamples(vk::SampleCountFlagBits sampleBits) {
+      this->multisampleInfo.setRasterizationSamples(sampleBits);
       return *this;
     }
 

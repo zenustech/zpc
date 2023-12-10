@@ -20,11 +20,13 @@ namespace zs {
           presentMode{o.presentMode},
 #else
           depthFormat{o.depthFormat},
+          sampleBits{o.sampleBits},
           ci{o.ci},
 #endif
           //
           images{std::move(o.images)},
           imageViews{std::move(o.imageViews)},
+          msColorBuffers{std::move(o.msColorBuffers)},
           depthBuffers{std::move(o.depthBuffers)},
           frameBuffers{std::move(o.frameBuffers)},
           // sync prims
@@ -44,19 +46,40 @@ namespace zs {
     std::vector<vk::Image> getImages() const { return images; }
     u32 imageCount() const { return images.size(); }
     vk::ImageView getColorView(u32 i) const { return imageViews[i]; }
+    const Image &getMsColorView(u32 i) const { return msColorBuffers[i]; }
     const Image &getDepthView(u32 i) const { return depthBuffers[i]; }
 
+    bool depthEnabled() const noexcept { return depthBuffers.size() > 0; }
+    bool multiSampleEnabled() const noexcept { return sampleBits != vk::SampleCountFlagBits::e1; }
     vk::Extent2D getExtent() const noexcept { return ci.imageExtent; }
     vk::Format getColorFormat() const noexcept { return ci.imageFormat; }
     vk::Format getDepthFormat() const noexcept { return depthFormat; }
+    vk::SampleCountFlagBits getSampleBits() const noexcept {
+      return sampleBits;
+    }
     vk::PresentModeKHR getPresentMode() const noexcept { return ci.presentMode; }
     vk::ColorSpaceKHR getImageColorSpace() const noexcept { return ci.imageColorSpace; }
+    std::vector<vk::ClearValue> getClearValues() const noexcept {
+      vk::ClearValue val;
+      std::vector<vk::ClearValue> vals;
+      if (multiSampleEnabled()) {
+        val.color = vk::ClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
+        vals.push_back(val);
+      }
+      val.color = vk::ClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
+      vals.push_back(val);
+      if (depthEnabled()) {
+        vk::ClearValue val;
+        val.depthStencil = vk::ClearDepthStencilValue{1.f, 0};
+        vals.push_back(val);
+      }
+      return vals;
+    }
 
     vk::Result acquireNextImage(u32 &imageId);
     u32 getCurrentFrame() const noexcept { return frameIndex; }
     u32 nextFrame() noexcept { return frameIndex = (frameIndex + 1) % num_buffered_frames; }
     void initFramebuffersFor(vk::RenderPass renderPass);
-    void resetFramebuffers(const std::vector<vk::Framebuffer> &fbs);
 
     RenderPass getRenderPass();
     Framebuffer &frameBuffer(u32 imageIndex) { return frameBuffers[imageIndex]; }
@@ -81,6 +104,7 @@ namespace zs {
       frameBuffers.clear();
       for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
       imageViews.clear();
+      msColorBuffers.clear();
       depthBuffers.clear();
       resetSyncPrimitives();
     }
@@ -107,11 +131,13 @@ namespace zs {
     vk::PresentModeKHR presentMode;
 #else
     vk::Format depthFormat;
+    vk::SampleCountFlagBits sampleBits;
     vk::SwapchainCreateInfoKHR ci;
 #endif
     ///
     std::vector<vk::Image> images;
     std::vector<vk::ImageView> imageViews;  // corresponds to [images] from swapchain
+    std::vector<Image> msColorBuffers;        // optional
     std::vector<Image> depthBuffers;        // optional
     std::vector<Framebuffer> frameBuffers;  // initialized later
     ///
@@ -150,6 +176,10 @@ namespace zs {
       buildDepthBuffer = true;
       return *this;
     }
+    SwapchainBuilder &setSamples(vk::SampleCountFlagBits numSamples) {
+      sampleBits = numSamples;
+      return *this;
+    }
 
     Swapchain build() {
       Swapchain obj(ctx);
@@ -167,6 +197,7 @@ namespace zs {
     std::vector<vk::PresentModeKHR> surfPresentModes;
     vk::SurfaceCapabilitiesKHR surfCapabilities;
     vk::Format swapchainDepthFormat;
+    vk::SampleCountFlagBits sampleBits;
 
     vk::SwapchainCreateInfoKHR ci;
     bool buildDepthBuffer{false};

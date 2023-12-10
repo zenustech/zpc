@@ -160,12 +160,13 @@ namespace zs {
     dispatcher.vkGetPhysicalDeviceFeatures2(physicalDevice, &devFeatures2);
 
     this->supportedVk12Features = supportedVk12Features;
-    deviceFeatures = devFeatures2;
+    this->supportedDeviceFeatures = devFeatures2;
 
     vk::PhysicalDeviceFeatures2 features;
 
-    features.features.fillModeNonSolid = deviceFeatures.features.fillModeNonSolid;
-    features.features.wideLines = deviceFeatures.features.wideLines;
+    features.features.fillModeNonSolid = supportedDeviceFeatures.features.fillModeNonSolid;
+    features.features.wideLines = supportedDeviceFeatures.features.wideLines;
+    this->enabledDeviceFeatures = features;
 
     vk::DeviceCreateInfo devCI{{},
                                (u32)dqCIs.size(),
@@ -185,6 +186,12 @@ namespace zs {
     vk12Features.descriptorBindingPartiallyBound
         = supportedVk12Features.descriptorBindingPartiallyBound;
     vk12Features.runtimeDescriptorArray = supportedVk12Features.runtimeDescriptorArray;
+    // ref: https://zhuanlan.zhihu.com/p/136449475
+    vk12Features.descriptorBindingVariableDescriptorCount
+        = supportedVk12Features.descriptorBindingVariableDescriptorCount;
+    vk12Features.shaderSampledImageArrayNonUniformIndexing
+        = supportedVk12Features.shaderSampledImageArrayNonUniformIndexing;
+
     vk12Features.descriptorBindingUniformBufferUpdateAfterBind
         = supportedVk12Features.descriptorBindingUniformBufferUpdateAfterBind;
     vk12Features.descriptorBindingSampledImageUpdateAfterBind
@@ -193,6 +200,8 @@ namespace zs {
         = supportedVk12Features.descriptorBindingStorageBufferUpdateAfterBind;
     vk12Features.descriptorBindingStorageImageUpdateAfterBind
         = supportedVk12Features.descriptorBindingStorageImageUpdateAfterBind;
+    this->enabledVk12Features = vk12Features;
+
     devCI.pNext = &vk12Features;
 
     // ray-tracing feature chaining

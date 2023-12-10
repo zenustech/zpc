@@ -11,7 +11,7 @@
 
 namespace zs {
 
-  PipelineBuilder& PipelineBuilder::setShader(const zs::ShaderModule& shaderModule) {
+  PipelineBuilder& PipelineBuilder::setShader(const ShaderModule& shaderModule) {
     auto stage = shaderModule.getStage();
     setShader(stage, shaderModule);
     setDescriptorSetLayouts(shaderModule.layouts());
@@ -68,7 +68,7 @@ namespace zs {
         = vk::PipelineColorBlendAttachmentState{}
               .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
                                  | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-              .setBlendEnable(true)
+              .setBlendEnable(true) // required by imgui
               // optional
               .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)          // eOne
               .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero

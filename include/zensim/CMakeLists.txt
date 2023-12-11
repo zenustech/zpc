@@ -575,6 +575,22 @@ if (Python3_FOUND)
   target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
 endif(Python3_FOUND)
 
+#[=[
+# other overridden setup
+## a
+# find_package(Python3 3.7 REQUIRED)
+# find_package(Python3 3.7 EXACT REQUIRED)
+
+## b
+set(Python3_LIBRARIES C:/Develop/miniconda3/envs/py38/libs/python38.lib)
+set(Python3_INCLUDE_DIRS C:/Develop/miniconda3/envs/py38/include)
+
+message(STATUS "python3 libraries for zpc_jit_py: ${Python3_LIBRARIES}")
+message(STATUS "python3 include directories for zpc_jit_py: ${Python3_INCLUDE_DIRS}")
+target_link_libraries(zpc_jit_py INTERFACE ${Python3_LIBRARIES})
+target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
+#]=]
+
 add_library(zpc_py_interop SHARED)  # 
 set_target_properties(zpc_py_interop 
   PROPERTIES 

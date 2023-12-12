@@ -439,6 +439,72 @@ namespace zs {
     return DescriptorSetLayoutBuilder{*this};
   }
 
+  image_handle_t VulkanContext::registerImage(const VkTexture& img) {
+    image_handle_t ret = registeredImages.size();
+    registeredImages.push_back(&img);
+
+    vk::DescriptorImageInfo imageInfo{};
+    imageInfo.sampler = img.sampler;
+    imageInfo.imageView = (vk::ImageView)img.image.get();
+    imageInfo.imageLayout = img.imageLayout;
+
+    vk::WriteDescriptorSet write{};
+    write.dstSet = bindlessDescriptorSet;
+    write.descriptorCount = 1;
+    write.dstArrayElement = ret;
+    write.pImageInfo = &imageInfo;
+
+    std::vector<vk::WriteDescriptorSet> writes{};
+    if ((img.image.get().usage & vk::ImageUsageFlagBits::eSampled)
+        == vk::ImageUsageFlagBits::eSampled) {
+      write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+      write.dstBinding = (u32)vk_descriptor_e::image_sampler;
+      writes.push_back(write);
+    }
+    if ((img.image.get().usage & vk::ImageUsageFlagBits::eStorage)
+        == vk::ImageUsageFlagBits::eStorage) {
+      write.descriptorType = vk::DescriptorType::eStorageImage;
+      write.dstBinding = (u32)vk_descriptor_e::storage_image;
+      writes.push_back(write);
+    }
+
+    device.updateDescriptorSets(writes.size(), writes.data(), 0, nullptr, dispatcher);
+    return ret;
+  }
+
+  buffer_handle_t VulkanContext::registerBuffer(const Buffer& buffer) {
+    buffer_handle_t ret = registeredBuffers.size();
+    registeredBuffers.push_back(&buffer);
+
+    vk::DescriptorBufferInfo bufferInfo{};
+    bufferInfo.buffer = buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = buffer.getSize();
+
+    vk::WriteDescriptorSet write{};
+    write.dstSet = bindlessDescriptorSet;
+    write.descriptorCount = 1;
+    write.dstArrayElement = ret;
+    write.pBufferInfo = &bufferInfo;
+
+    std::vector<vk::WriteDescriptorSet> writes{};
+    if ((buffer.usageFlags & vk::BufferUsageFlagBits::eUniformBuffer)
+        == vk::BufferUsageFlagBits::eUniformBuffer) {
+      write.descriptorType = vk::DescriptorType::eUniformBuffer;
+      write.dstBinding = (u32)vk_descriptor_e::uniform;
+      writes.push_back(write);
+    }
+    if ((buffer.usageFlags & vk::BufferUsageFlagBits::eStorageBuffer)
+        == vk::BufferUsageFlagBits::eStorageBuffer) {
+      write.descriptorType = vk::DescriptorType::eStorageBuffer;
+      write.dstBinding = (u32)vk_descriptor_e::storage;
+      writes.push_back(write);
+    }
+
+    device.updateDescriptorSets(writes.size(), writes.data(), 0, nullptr, dispatcher);
+    return ret;
+  }
+
   Buffer VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                                      vk::MemoryPropertyFlags props) {
     Buffer buffer(*this);
@@ -509,6 +575,8 @@ namespace zs {
   Image VulkanContext::createImage(vk::ImageCreateInfo imageCI, vk::MemoryPropertyFlags props,
                                    bool createView) {
     Image image{*this};
+    image.usage = imageCI.usage;
+
     auto img = device.createImage(imageCI, nullptr, dispatcher);
 
 #if ZS_VULKAN_USE_VMA
@@ -622,13 +690,6 @@ namespace zs {
     return imgv;
   }
 
-  VkCommand VulkanContext::createCommandBuffer(vk_cmd_usage_e usage, vk_queue_e queueFamily,
-                                               bool begin) {
-    auto& pool = env().pools(queueFamily);
-    auto cmd = pool.createCommandBuffer(vk::CommandBufferLevel::ePrimary, begin,
-                                        /*inheritance info*/ nullptr, usage);
-    return VkCommand{pool, cmd, usage};
-  }
   Framebuffer VulkanContext::createFramebuffer(const std::vector<vk::ImageView>& imageViews,
                                                vk::Extent2D extent, vk::RenderPass renderPass) {
     Framebuffer obj{*this};
@@ -637,6 +698,14 @@ namespace zs {
         (u32)1};
     obj.framebuffer = device.createFramebuffer(ci, nullptr, dispatcher);
     return obj;
+  }
+
+  VkCommand VulkanContext::createCommandBuffer(vk_cmd_usage_e usage, vk_queue_e queueFamily,
+                                               bool begin) {
+    auto& pool = env().pools(queueFamily);
+    auto cmd = pool.createCommandBuffer(vk::CommandBufferLevel::ePrimary, begin,
+                                        /*inheritance info*/ nullptr, usage);
+    return VkCommand{pool, cmd, usage};
   }
 
   DescriptorPool VulkanContext::createDescriptorPool(

@@ -15,7 +15,8 @@ namespace zs {
 #else
           pmem{},
 #endif
-          pview{} {
+          pview{},
+          usage{} {
     }
     Image(Image &&o) noexcept
         : ctx{o.ctx},
@@ -25,7 +26,8 @@ namespace zs {
 #else
           pmem{std::move(o.pmem)},
 #endif
-          pview{std::move(o.pview)} {
+          pview{std::move(o.pview)},
+          usage{o.usage} {
       o.pview = {};
       o.image = VK_NULL_HANDLE;
 #if ZS_VULKAN_USE_VMA
@@ -82,6 +84,7 @@ namespace zs {
 #endif
 
     std::optional<vk::ImageView> pview;
+    vk::ImageUsageFlags usage;
   };
 
   struct ImageView {

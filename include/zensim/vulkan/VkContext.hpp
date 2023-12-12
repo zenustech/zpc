@@ -31,6 +31,7 @@ namespace zs {
   struct DescriptorSetLayoutBuilder;
   struct DescriptorPool;
   struct ExecutionContext;
+  struct VkTexture;
 
   struct Vulkan;
 
@@ -118,6 +119,10 @@ namespace zs {
     DescriptorSetLayoutBuilder setlayout();
     ExecutionContext &env();  // thread-safe
 
+    /// @note combined image sampler/ storage image (render target)
+    image_handle_t registerImage(const VkTexture &img);
+    buffer_handle_t registerBuffer(const Buffer &buffer);
+
     Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                         vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
     Buffer createStagingBuffer(vk::DeviceSize size,
@@ -168,10 +173,14 @@ namespace zs {
     vk::PhysicalDeviceMemoryProperties memoryProperties;
     VkPhysicalDeviceVulkan12Features supportedVk12Features, enabledVk12Features;
     VkPhysicalDeviceFeatures2 supportedDeviceFeatures, enabledDeviceFeatures;
-    vk::DescriptorPool defaultDescriptorPool, bindlessDescriptorPool;
+    vk::DescriptorPool defaultDescriptorPool;
+    VmaAllocator defaultAllocator;
+    // bindless resources
+    vk::DescriptorPool bindlessDescriptorPool;
     vk::DescriptorSetLayout bindlessDescriptorSetLayout;
     vk::DescriptorSet bindlessDescriptorSet;
-    VmaAllocator defaultAllocator;
+    std::vector<const VkTexture *> registeredImages;
+    std::vector<const Buffer *> registeredBuffers;
 
   protected:
     friend struct VkPipeline;

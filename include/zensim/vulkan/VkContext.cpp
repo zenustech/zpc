@@ -363,22 +363,26 @@ namespace zs {
     uniformBinding = vk::DescriptorSetLayoutBinding{}
                          .setBinding(bindless_texture_binding)
                          .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-                         .setDescriptorCount(num_max_bindless_resources);
+                         .setDescriptorCount(num_max_bindless_resources)
+                         .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& imageSamplerBinding = bindings[vk_descriptor_e::image_sampler];
     imageSamplerBinding = vk::DescriptorSetLayoutBinding{}
                               .setBinding(bindless_texture_binding + 1)
                               .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                              .setDescriptorCount(num_max_bindless_resources);
+                              .setDescriptorCount(num_max_bindless_resources)
+                              .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& storageBinding = bindings[vk_descriptor_e::storage];
     storageBinding = vk::DescriptorSetLayoutBinding{}
                          .setBinding(bindless_texture_binding + 2)
                          .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                         .setDescriptorCount(num_max_bindless_resources);
+                         .setDescriptorCount(num_max_bindless_resources)
+                         .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& storageImageBinding = bindings[vk_descriptor_e::storage_image];
     storageImageBinding = vk::DescriptorSetLayoutBinding{}
                               .setBinding(bindless_texture_binding + 3)
                               .setDescriptorType(vk::DescriptorType::eStorageImage)
-                              .setDescriptorCount(num_max_bindless_resources);
+                              .setDescriptorCount(num_max_bindless_resources)
+                              .setStageFlags(vk::ShaderStageFlagBits::eAll);
 
     vk::DescriptorBindingFlags bindlessFlag = vk::DescriptorBindingFlagBits::ePartiallyBound
                                               | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
@@ -585,6 +589,23 @@ namespace zs {
                            //.setTiling(vk::ImageTiling::eOptimal)
                            .setSharingMode(vk::SharingMode::eExclusive),
                        props, createView);
+  }
+  Image VulkanContext::createInputAttachment(const vk::Extent2D& dim, vk::Format format,
+                                             vk::ImageUsageFlags usage, bool enableTransfer) {
+    usage |= vk::ImageUsageFlagBits::eInputAttachment;
+    return createImage(vk::ImageCreateInfo{}
+                           .setImageType(vk::ImageType::e2D)
+                           .setFormat(format)
+                           .setExtent({dim.width, dim.height, (u32)1})
+                           .setMipLevels(1)
+                           .setArrayLayers(1)
+                           .setUsage(enableTransfer ? (usage | vk::ImageUsageFlagBits::eTransferSrc
+                                                       | vk::ImageUsageFlagBits::eTransferDst)
+                                                    : usage)
+                           .setSamples(vk::SampleCountFlagBits::e1)
+                           .setTiling(vk::ImageTiling::eOptimal)
+                           .setSharingMode(vk::SharingMode::eExclusive),
+                       vk::MemoryPropertyFlagBits::eDeviceLocal, true);
   }
   ImageView VulkanContext::create2DImageView(vk::Image image, vk::Format format,
                                              vk::ImageAspectFlags aspect, u32 levels,

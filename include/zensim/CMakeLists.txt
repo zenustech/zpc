@@ -43,6 +43,7 @@ set(ZENSIM_LIBRARY_VULKAN_SOURCE_FILES
   vulkan/VkSwapchain.cpp
   vulkan/VkPipeline.cpp
   vulkan/VkContext.cpp
+  vulkan/VkContextQuery.cpp
   vulkan/Vulkan.cpp
 )
 set(ZENSIM_LIBRARY_CUDA_SOURCE_FILES

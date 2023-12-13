@@ -1,6 +1,8 @@
 #define THSVS_SIMPLER_VULKAN_SYNCHRONIZATION_IMPLEMENTATION
 #include "zensim/vulkan/VkUtils.hpp"
 
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
+
 namespace zs {
 
   std::vector<char> read_binary_file(std::string_view filePath) {
@@ -141,5 +143,12 @@ namespace zs {
     return image_layout_transition_barrier(image, oldImageLayout, newImageLayout, subresourceRange,
                                            srcStageMask, dstStageMask);
   }
+
+  template <typename VkEnumT> std::string reflect_vk_enum(VkEnumT e) {
+    return std::string(magic_enum::enum_name(e));
+  }
+
+  ZPC_INSTANTIATE std::string reflect_vk_enum<vk::Format>(vk::Format);
+  ZPC_INSTANTIATE std::string reflect_vk_enum<vk::SampleCountFlagBits>(vk::SampleCountFlagBits);
 
 }  // namespace zs

@@ -5,6 +5,7 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
+#include "zensim/Platform.hpp"
 #include "zensim/ZpcMeta.hpp"
 #include "zensim/zpc_tpls/simple_vulkan_synchronization/thsvs_simpler_vulkan_synchronization.h"
 
@@ -446,5 +447,11 @@ namespace zs {
                                                          vk::ImageLayout newImageLayout,
                                                          vk::PipelineStageFlags srcStageMask,
                                                          vk::PipelineStageFlags dstStageMask);
+
+  template <typename VkEnumT> std::string reflect_vk_enum(VkEnumT e);
+
+  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::Format>(vk::Format e);
+  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::SampleCountFlagBits>(
+      vk::SampleCountFlagBits e);
 
 }  // namespace zs

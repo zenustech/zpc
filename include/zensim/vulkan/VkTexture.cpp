@@ -10,9 +10,6 @@ namespace zs {
     VkTexture ret;
     /// attribs
     ret.imageLayout = layout;
-    ret.width = extent.width;
-    ret.height = extent.height;
-    ret.mipLevels = 1;
     /// sampler
     auto samplerCI = vk::SamplerCreateInfo{}
                          .setMaxAnisotropy(1.f)

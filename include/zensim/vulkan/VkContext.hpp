@@ -17,6 +17,7 @@
 namespace zs {
 
   struct Image;
+  struct ImageSampler;
   struct ImageView;
   struct Buffer;
   struct VkCommand;
@@ -119,6 +120,11 @@ namespace zs {
     DescriptorSetLayoutBuilder setlayout();
     ExecutionContext &env();  // thread-safe
 
+    /// @note command buffer
+    VkCommand createCommandBuffer(vk_cmd_usage_e usage,
+                                  vk_queue_e queueFamily = vk_queue_e::graphics,
+                                  bool begin = false);
+
     /// @note combined image sampler/ storage image (render target)
     image_handle_t registerImage(const VkTexture &img);
     buffer_handle_t registerBuffer(const Buffer &buffer);
@@ -129,7 +135,10 @@ namespace zs {
     Buffer createStagingBuffer(vk::DeviceSize size,
                                vk::BufferUsageFlags usage = vk::BufferUsageFlagBits::eTransferSrc);
 
-    /// @note image
+    /// @note image/ sampler/ texture
+    ImageSampler createSampler(const vk::SamplerCreateInfo &);
+    ImageSampler createDefaultSampler();
+
     Image createImage(vk::ImageCreateInfo imageCI,
                       vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
                       bool createView = true);
@@ -148,9 +157,6 @@ namespace zs {
                                 u32 levels = VK_REMAINING_MIP_LEVELS,
                                 const void *pNextImageView = nullptr);
 
-    VkCommand createCommandBuffer(vk_cmd_usage_e usage,
-                                  vk_queue_e queueFamily = vk_queue_e::graphics,
-                                  bool begin = false);
     Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
                                   vk::RenderPass renderPass);
 

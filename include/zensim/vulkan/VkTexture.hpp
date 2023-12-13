@@ -10,10 +10,7 @@ namespace zs {
     VkTexture(VkTexture &&o) noexcept
         : image{std::move(o.image)},
           sampler{o.sampler},
-          imageLayout(o.imageLayout),
-          width{o.width},
-          height{o.height},
-          mipLevels(o.mipLevels) {
+          imageLayout(o.imageLayout) {
       o.sampler = VK_NULL_HANDLE;
     }
     VkTexture &operator=(VkTexture &&o) {
@@ -25,9 +22,6 @@ namespace zs {
       sampler = o.sampler;
       o.sampler = VK_NULL_HANDLE;
       imageLayout = o.imageLayout;
-      width = o.width;
-      height = o.height;
-      mipLevels = o.mipLevels;
       return *this;
     }
     VkTexture &operator=(const VkTexture &o) = delete;
@@ -50,8 +44,6 @@ namespace zs {
     Owner<Image> image{};  // including view
     vk::Sampler sampler{VK_NULL_HANDLE};
     vk::ImageLayout imageLayout;
-    u32 width, height;
-    u32 mipLevels;
   };
 
   VkTexture load_texture(VulkanContext &ctx, u8 *data, size_t numBytes, vk::Extent2D extent,

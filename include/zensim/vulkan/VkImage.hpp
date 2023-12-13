@@ -16,8 +16,9 @@ namespace zs {
           pmem{},
 #endif
           pview{},
-          usage{} {
-    }
+          usage{},
+          extent{},
+          mipLevels{1} {}
     Image(Image &&o) noexcept
         : ctx{o.ctx},
           image{o.image},
@@ -27,7 +28,9 @@ namespace zs {
           pmem{std::move(o.pmem)},
 #endif
           pview{std::move(o.pview)},
-          usage{o.usage} {
+          usage{o.usage},
+          extent{o.extent},
+          mipLevels{o.mipLevels} {
       o.pview = {};
       o.image = VK_NULL_HANDLE;
 #if ZS_VULKAN_USE_VMA
@@ -85,6 +88,8 @@ namespace zs {
 
     std::optional<vk::ImageView> pview;
     vk::ImageUsageFlags usage;
+    vk::Extent3D extent;
+    u32 mipLevels;
   };
 
   struct ImageView {
@@ -100,6 +105,21 @@ namespace zs {
 
     VulkanContext &ctx;
     vk::ImageView imgv;
+  };
+
+  struct ImageSampler {
+    ImageSampler(VulkanContext &ctx) : ctx{ctx}, sampler{VK_NULL_HANDLE} {}
+    ~ImageSampler() { ctx.device.destroySampler(sampler, nullptr, ctx.dispatcher); }
+    ImageSampler(ImageSampler &&o) noexcept : ctx{o.ctx}, sampler{o.sampler} { o.sampler = VK_NULL_HANDLE; }
+
+    vk::Sampler operator*() const { return sampler; }
+    operator vk::Sampler() const { return sampler; }
+
+  protected:
+    friend struct VulkanContext;
+
+    VulkanContext &ctx;
+    vk::Sampler sampler;
   };
 
   struct Framebuffer {

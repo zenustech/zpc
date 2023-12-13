@@ -572,10 +572,29 @@ namespace zs {
         vk::MemoryPropertyFlagBits::eHostVisible /* | vk::MemoryPropertyFlagBits::eHostCoherent*/);
   }
 
+  ImageSampler VulkanContext::createSampler(const vk::SamplerCreateInfo &samplerCI) {
+    ImageSampler ret{*this};
+    ret.sampler = device.createSampler(samplerCI, nullptr, dispatcher);
+    return ret;
+  }
+  ImageSampler VulkanContext::createDefaultSampler() {
+    return createSampler(vk::SamplerCreateInfo{}
+                         .setMaxAnisotropy(1.f)
+                         .setMagFilter(vk::Filter::eLinear)
+                         .setMinFilter(vk::Filter::eLinear)
+                         .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                         .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                         .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                         .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                         .setBorderColor(vk::BorderColor::eFloatOpaqueWhite));
+  }
+
   Image VulkanContext::createImage(vk::ImageCreateInfo imageCI, vk::MemoryPropertyFlags props,
                                    bool createView) {
     Image image{*this};
     image.usage = imageCI.usage;
+    image.extent = imageCI.extent;
+    image.mipLevels = imageCI.mipLevels;
 
     auto img = device.createImage(imageCI, nullptr, dispatcher);
 

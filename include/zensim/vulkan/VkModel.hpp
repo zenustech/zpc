@@ -1,4 +1,5 @@
 #pragma once
+#include "zensim/geometry/Mesh.hpp"
 #include "zensim/vulkan/VkBuffer.hpp"
 #include "zensim/vulkan/VkTexture.hpp"
 

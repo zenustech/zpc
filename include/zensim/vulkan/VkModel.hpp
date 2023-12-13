@@ -96,6 +96,7 @@ namespace zs {
       ctx.device.freeCommandBuffers(pool.cmdpool(zs::vk_cmd_usage_e::single_use), cmd,
                                     ctx.dispatcher);
     }
+    VkModel(VkModel &&o) = default;
     void reset() {
       verts.pos.reset();
       verts.nrm.reset();

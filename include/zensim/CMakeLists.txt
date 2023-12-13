@@ -948,6 +948,10 @@ add_custom_command(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Icons
   ${RESOURCE_BASE_DIR}/resource/icons
 
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/TriMesh
+  ${RESOURCE_BASE_DIR}/resource/models
+
   VERBATIM
   DEPENDS zpc
     COMMENT "copying resource files (fonts, icons, textures...) for gui"

@@ -450,8 +450,8 @@ namespace zs {
 
   template <typename VkEnumT> std::string reflect_vk_enum(VkEnumT e);
 
-  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::Format>(vk::Format e);
-  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::SampleCountFlagBits>(
-      vk::SampleCountFlagBits e);
+  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::Format>(vk::Format);
+  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::SampleCountFlagBits>(vk::SampleCountFlagBits e);
+  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::ShaderStageFlagBits>(vk::ShaderStageFlagBits);
 
 }  // namespace zs

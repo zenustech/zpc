@@ -211,4 +211,76 @@ namespace zs {
                      *static_cast<spirv_cross::ShaderResources *>(resources.get()));
   }
 
+  ShaderModule VulkanContext::createShaderModuleFromGlsl(const char *glslCode,
+                                                         vk::ShaderStageFlagBits stage,
+                                                         std::string_view moduleName) {
+    using namespace spirv_cross;
+    shaderc_shader_kind shaderKind;
+    switch (stage) {
+      case vk::ShaderStageFlagBits::eVertex:
+        shaderKind = shaderc_vertex_shader;
+        break;
+      case vk::ShaderStageFlagBits::eFragment:
+        shaderKind = shaderc_fragment_shader;
+        break;
+
+        /// geomtry
+      case vk::ShaderStageFlagBits::eGeometry:
+        shaderKind = shaderc_geometry_shader;
+        break;
+
+        /// compute
+      case vk::ShaderStageFlagBits::eCompute:
+        shaderKind = shaderc_compute_shader;
+        break;
+
+        /// tessellation
+      case vk::ShaderStageFlagBits::eTessellationControl:
+        shaderKind = shaderc_tess_control_shader;
+        break;
+      case vk::ShaderStageFlagBits::eTessellationEvaluation:
+        shaderKind = shaderc_tess_evaluation_shader;
+        break;
+
+        /// ray tracing
+      case vk::ShaderStageFlagBits::eRaygenKHR:
+        shaderKind = shaderc_raygen_shader;
+        break;
+      case vk::ShaderStageFlagBits::eAnyHitKHR:
+        shaderKind = shaderc_anyhit_shader;
+        break;
+      case vk::ShaderStageFlagBits::eClosestHitKHR:
+        shaderKind = shaderc_closesthit_shader;
+        break;
+      case vk::ShaderStageFlagBits::eMissKHR:
+        shaderKind = shaderc_miss_shader;
+        break;
+      case vk::ShaderStageFlagBits::eIntersectionKHR:
+        shaderKind = shaderc_intersection_shader;
+        break;
+      case vk::ShaderStageFlagBits::eCallableKHR:
+        shaderKind = shaderc_callable_shader;
+        break;
+
+        /// extensions
+      case vk::ShaderStageFlagBits::eTaskEXT:
+        shaderKind = shaderc_task_shader;
+        break;
+      case vk::ShaderStageFlagBits::eMeshEXT:
+        shaderKind = shaderc_mesh_shader;
+        break;
+
+      default:
+        throw std::runtime_error(
+            fmt::format("unsupported shader stage [{}]!", reflect_vk_enum(stage)));
+        break;
+    }
+    std::string tmp{glslCode};
+    auto compiled = shaderc::Compiler().CompileGlslToSpv(tmp.data(), tmp.size(), shaderKind,
+                                                         moduleName.data());
+    const std::vector<uint32_t> spirv(compiled.cbegin(), compiled.cend());
+    // displayLayoutInfo();
+    return createShaderModule(spirv.data(), spirv.size(), stage);
+  }
+
 }  // namespace zs

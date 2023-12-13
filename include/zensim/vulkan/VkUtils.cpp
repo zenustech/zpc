@@ -150,5 +150,6 @@ namespace zs {
 
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::Format>(vk::Format);
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::SampleCountFlagBits>(vk::SampleCountFlagBits);
+  ZPC_INSTANTIATE std::string reflect_vk_enum<vk::ShaderStageFlagBits>(vk::ShaderStageFlagBits);
 
 }  // namespace zs

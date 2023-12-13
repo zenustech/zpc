@@ -155,8 +155,10 @@ namespace zs {
                                         u32 maxSets = 1000);
     ShaderModule createShaderModule(const std::vector<char> &code,
                                     vk::ShaderStageFlagBits stageFlag);
-    ShaderModule createShaderModule(const u32 *code, size_t size,
+    ShaderModule createShaderModule(const u32 *spirvCode, size_t size,
                                     vk::ShaderStageFlagBits stageFlag);
+    ShaderModule createShaderModuleFromGlsl(const char *glslCode, vk::ShaderStageFlagBits stageFlag,
+                                            std::string_view moduleName);
 
     int devid;
     vk::PhysicalDevice physicalDevice;

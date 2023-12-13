@@ -728,14 +728,14 @@ namespace zs {
     return createShaderModule(reinterpret_cast<const u32*>(code.data()), code.size() / sizeof(u32),
                               stageFlag);
   }
-  ShaderModule VulkanContext::createShaderModule(const u32* code, size_t size,
+  ShaderModule VulkanContext::createShaderModule(const u32* spirvCode, size_t size,
                                                  vk::ShaderStageFlagBits stageFlag) {
     ShaderModule ret{*this};
-    vk::ShaderModuleCreateInfo smCI{{}, size * sizeof(u32), code};
+    vk::ShaderModuleCreateInfo smCI{{}, size * sizeof(u32), spirvCode};
     ret.shaderModule = device.createShaderModule(smCI, nullptr, dispatcher);
     ret.stageFlag = stageFlag;
     /// @note strictly call in this order
-    ret.analyzeLayout(code, size);
+    ret.analyzeLayout(spirvCode, size);
     ret.initializeDescriptorSetLayouts();
     ret.initializeInputAttributes();
     return ret;

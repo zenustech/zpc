@@ -720,9 +720,9 @@ namespace zs {
     ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
     return ret;
   }
-  void VulkanContext::writeDescriptor(const vk::DescriptorBufferInfo& bufferInfo,
-                                      vk::DescriptorSet dstSet, vk::DescriptorType type,
-                                      u32 binding, u32 dstArrayNo) {
+  void VulkanContext::writeDescriptorSet(const vk::DescriptorBufferInfo& bufferInfo,
+                                         vk::DescriptorSet dstSet, vk::DescriptorType type,
+                                         u32 binding, u32 dstArrayNo) {
     auto write = vk::WriteDescriptorSet{}
                      .setDescriptorType(type)
                      .setDstSet(dstSet)
@@ -732,9 +732,9 @@ namespace zs {
                      .setPBufferInfo(&bufferInfo);
     device.updateDescriptorSets(1, &write, 0, nullptr, dispatcher);
   }
-  void VulkanContext::writeDescriptor(const vk::DescriptorImageInfo& imageInfo,
-                                      vk::DescriptorSet dstSet, vk::DescriptorType type,
-                                      u32 binding, u32 dstArrayNo) {
+  void VulkanContext::writeDescriptorSet(const vk::DescriptorImageInfo& imageInfo,
+                                         vk::DescriptorSet dstSet, vk::DescriptorType type,
+                                         u32 binding, u32 dstArrayNo) {
     auto write = vk::WriteDescriptorSet{}
                      .setDescriptorType(type)
                      .setDstSet(dstSet)

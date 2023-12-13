@@ -157,10 +157,10 @@ namespace zs {
     /// @note descriptor
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
                                         u32 maxSets = 1000);
-    void writeDescriptor(const vk::DescriptorBufferInfo &bufferInfo, vk::DescriptorSet dstSet,
-                         vk::DescriptorType type, u32 binding, u32 dstArrayNo = 0);
-    void writeDescriptor(const vk::DescriptorImageInfo &imageInfo, vk::DescriptorSet dstSet,
-                         vk::DescriptorType type, u32 binding, u32 dstArrayNo = 0);
+    void writeDescriptorSet(const vk::DescriptorBufferInfo &bufferInfo, vk::DescriptorSet dstSet,
+                            vk::DescriptorType type, u32 binding, u32 dstArrayNo = 0);
+    void writeDescriptorSet(const vk::DescriptorImageInfo &imageInfo, vk::DescriptorSet dstSet,
+                            vk::DescriptorType type, u32 binding, u32 dstArrayNo = 0);
 
     /// @note shader
     ShaderModule createShaderModule(const std::vector<char> &code,

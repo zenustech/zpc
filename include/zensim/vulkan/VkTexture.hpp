@@ -43,6 +43,10 @@ namespace zs {
     }
     explicit operator bool() const noexcept { return static_cast<bool>(image); }
 
+    vk::DescriptorImageInfo descriptorInfo() {
+      return vk::DescriptorImageInfo{sampler, (vk::ImageView)image.get(), imageLayout};
+    }
+
     Owner<Image> image{};  // including view
     vk::Sampler sampler{VK_NULL_HANDLE};
     vk::ImageLayout imageLayout;

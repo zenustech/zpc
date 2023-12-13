@@ -30,6 +30,8 @@ namespace zs {
     vk::DescriptorSetLayout operator*() const { return descriptorSetLayout; }
     operator vk::DescriptorSetLayout() const { return descriptorSetLayout; }
 
+    vk::DescriptorSetLayoutBinding getBinding(u32 binding) const { return bindings.at(binding); }
+
   protected:
     friend struct VulkanContext;
     friend struct DescriptorWriter;
@@ -110,14 +112,14 @@ namespace zs {
 
   /// @ref little vulkan engine
   struct DescriptorWriter {
-    DescriptorWriter(VulkanContext& ctx, DescriptorSetLayout& setLayout) noexcept
+    DescriptorWriter(VulkanContext& ctx, const DescriptorSetLayout& setLayout) noexcept
         : ctx{ctx}, setLayout{setLayout} {}
 
     DescriptorWriter& writeBuffer(u32 binding, vk::DescriptorBufferInfo* bufferInfo) {
       if (setLayout.bindings.count(binding) != 1)
         throw std::runtime_error("Layout does not contain specified binding");
 
-      const auto& bindingDescription = setLayout.bindings[binding];
+      const auto& bindingDescription = setLayout.getBinding(binding);
       if (bindingDescription.descriptorCount != 1)
         throw std::runtime_error("Binding single descriptor info, but binding expects multiple.");
 
@@ -134,7 +136,7 @@ namespace zs {
       if (setLayout.bindings.count(binding) != 1)
         throw std::runtime_error("Layout does not contain specified binding");
 
-      const auto& bindingDescription = setLayout.bindings[binding];
+      const auto& bindingDescription = setLayout.getBinding(binding);
       if (bindingDescription.descriptorCount != 1)
         throw std::runtime_error("Binding single descriptor info, but binding expects multiple.");
 
@@ -158,7 +160,7 @@ namespace zs {
     friend struct VulkanContext;
 
     VulkanContext& ctx;
-    DescriptorSetLayout& setLayout;
+    const DescriptorSetLayout& setLayout;
     std::vector<vk::WriteDescriptorSet> writes;
   };
 

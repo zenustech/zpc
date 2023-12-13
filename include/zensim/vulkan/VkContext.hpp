@@ -123,11 +123,13 @@ namespace zs {
     image_handle_t registerImage(const VkTexture &img);
     buffer_handle_t registerBuffer(const Buffer &buffer);
 
+    /// @note buffer
     Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
                         vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
     Buffer createStagingBuffer(vk::DeviceSize size,
                                vk::BufferUsageFlags usage = vk::BufferUsageFlagBits::eTransferSrc);
 
+    /// @note image
     Image createImage(vk::ImageCreateInfo imageCI,
                       vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
                       bool createView = true);
@@ -151,8 +153,16 @@ namespace zs {
                                   bool begin = false);
     Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
                                   vk::RenderPass renderPass);
+
+    /// @note descriptor
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
                                         u32 maxSets = 1000);
+    void writeDescriptor(const vk::DescriptorBufferInfo &bufferInfo, vk::DescriptorSet dstSet,
+                         vk::DescriptorType type, u32 binding, u32 dstArrayNo = 0);
+    void writeDescriptor(const vk::DescriptorImageInfo &imageInfo, vk::DescriptorSet dstSet,
+                         vk::DescriptorType type, u32 binding, u32 dstArrayNo = 0);
+
+    /// @note shader
     ShaderModule createShaderModule(const std::vector<char> &code,
                                     vk::ShaderStageFlagBits stageFlag);
     ShaderModule createShaderModule(const u32 *spirvCode, size_t size,

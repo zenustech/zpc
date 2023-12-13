@@ -720,25 +720,29 @@ namespace zs {
     ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
     return ret;
   }
-  ShaderModule VulkanContext::createShaderModule(const std::vector<char>& code,
-                                                 vk::ShaderStageFlagBits stageFlag) {
-    if (code.size() & (sizeof(u32) - 1))
-      throw std::runtime_error(
-          "the number of bytes of the spirv code should be a multiple of u32 type size.");
-    return createShaderModule(reinterpret_cast<const u32*>(code.data()), code.size() / sizeof(u32),
-                              stageFlag);
+  void VulkanContext::writeDescriptor(const vk::DescriptorBufferInfo& bufferInfo,
+                                      vk::DescriptorSet dstSet, vk::DescriptorType type,
+                                      u32 binding, u32 dstArrayNo) {
+    auto write = vk::WriteDescriptorSet{}
+                     .setDescriptorType(type)
+                     .setDstSet(dstSet)
+                     .setDstBinding(binding)
+                     .setDstArrayElement(dstArrayNo)
+                     .setDescriptorCount((u32)1)
+                     .setPBufferInfo(&bufferInfo);
+    device.updateDescriptorSets(1, &write, 0, nullptr, dispatcher);
   }
-  ShaderModule VulkanContext::createShaderModule(const u32* spirvCode, size_t size,
-                                                 vk::ShaderStageFlagBits stageFlag) {
-    ShaderModule ret{*this};
-    vk::ShaderModuleCreateInfo smCI{{}, size * sizeof(u32), spirvCode};
-    ret.shaderModule = device.createShaderModule(smCI, nullptr, dispatcher);
-    ret.stageFlag = stageFlag;
-    /// @note strictly call in this order
-    ret.analyzeLayout(spirvCode, size);
-    ret.initializeDescriptorSetLayouts();
-    ret.initializeInputAttributes();
-    return ret;
+  void VulkanContext::writeDescriptor(const vk::DescriptorImageInfo& imageInfo,
+                                      vk::DescriptorSet dstSet, vk::DescriptorType type,
+                                      u32 binding, u32 dstArrayNo) {
+    auto write = vk::WriteDescriptorSet{}
+                     .setDescriptorType(type)
+                     .setDstSet(dstSet)
+                     .setDstBinding(binding)
+                     .setDstArrayElement(dstArrayNo)
+                     .setDescriptorCount((u32)1)
+                     .setPImageInfo(&imageInfo);
+    device.updateDescriptorSets(1, &write, 0, nullptr, dispatcher);
   }
 
   ///

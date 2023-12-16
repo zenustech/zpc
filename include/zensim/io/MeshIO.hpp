@@ -1,6 +1,6 @@
 #pragma once
-#include <cassert>
 #include <array>
+#include <cassert>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -58,7 +58,8 @@ namespace zs {
 
     counter[2] = X.size();
     counter[3] = triangles.size();
-    printf("pos, tri [%d, %d] -> [%d, %d]\n", counter[0], counter[1], counter[2], counter[3]);
+    printf("mesh append: pos, tri [%d, %d] -> [%d, %d]\n", counter[0], counter[1], counter[2],
+           counter[3]);
     return true;
   }
 

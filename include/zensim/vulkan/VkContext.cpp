@@ -134,11 +134,17 @@ namespace zs {
     int rtPreds = 0;
     constexpr int rtRequiredPreds = 5;
     /// @note the first 5 extensions are required for rt support
-    std::vector<const char*> expectedExtensions{
-        "VK_KHR_ray_tracing_pipeline",     "VK_KHR_acceleration_structure",
-        "VK_EXT_descriptor_indexing",      "VK_KHR_buffer_device_address",
-        "VK_KHR_deferred_host_operations", "VK_KHR_swapchain",
-        "VK_KHR_driver_properties"};
+    std::vector<const char*> expectedExtensions{"VK_KHR_ray_tracing_pipeline",
+                                                "VK_KHR_acceleration_structure",
+                                                "VK_EXT_descriptor_indexing",
+                                                "VK_KHR_buffer_device_address",
+                                                "VK_KHR_deferred_host_operations",
+                                                "VK_KHR_swapchain",
+                                                "VK_KHR_driver_properties",
+                                                VK_KHR_MULTIVIEW_EXTENSION_NAME,
+                                                VK_KHR_MAINTENANCE2_EXTENSION_NAME,
+                                                VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+                                                VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME};
     std::vector<const char*> enabledExtensions(0);
     // pick up supported extensions
     for (int i = 0; i != expectedExtensions.size(); ++i) {
@@ -572,21 +578,21 @@ namespace zs {
         vk::MemoryPropertyFlagBits::eHostVisible /* | vk::MemoryPropertyFlagBits::eHostCoherent*/);
   }
 
-  ImageSampler VulkanContext::createSampler(const vk::SamplerCreateInfo &samplerCI) {
+  ImageSampler VulkanContext::createSampler(const vk::SamplerCreateInfo& samplerCI) {
     ImageSampler ret{*this};
     ret.sampler = device.createSampler(samplerCI, nullptr, dispatcher);
     return ret;
   }
   ImageSampler VulkanContext::createDefaultSampler() {
     return createSampler(vk::SamplerCreateInfo{}
-                         .setMaxAnisotropy(1.f)
-                         .setMagFilter(vk::Filter::eLinear)
-                         .setMinFilter(vk::Filter::eLinear)
-                         .setMipmapMode(vk::SamplerMipmapMode::eLinear)
-                         .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
-                         .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
-                         .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
-                         .setBorderColor(vk::BorderColor::eFloatOpaqueWhite));
+                             .setMaxAnisotropy(1.f)
+                             .setMagFilter(vk::Filter::eLinear)
+                             .setMinFilter(vk::Filter::eLinear)
+                             .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                             .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                             .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                             .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                             .setBorderColor(vk::BorderColor::eFloatOpaqueWhite));
   }
 
   Image VulkanContext::createImage(vk::ImageCreateInfo imageCI, vk::MemoryPropertyFlags props,
@@ -651,8 +657,8 @@ namespace zs {
               .setViewType(vk::ImageViewType::e2D)
               .setFormat(imageCI.format)
               .setSubresourceRange(vk::ImageSubresourceRange{
-                  is_depth_format(imageCI.format) ? vk::ImageAspectFlagBits::eDepth
-                                                  : vk::ImageAspectFlagBits::eColor,
+                  is_depth_stencil_format(imageCI.format) ? vk::ImageAspectFlagBits::eDepth
+                                                          : vk::ImageAspectFlagBits::eColor,
                   0, 1 /*VK_REMAINING_MIP_LEVELS*/, 0, 1
                   /*VK_REMAINING_ARRAY_LAYERS*/}),
           nullptr, dispatcher);
@@ -690,7 +696,7 @@ namespace zs {
                                                        | vk::ImageUsageFlagBits::eTransferDst)
                                                     : usage)
                            .setSamples(vk::SampleCountFlagBits::e1)
-                           .setTiling(vk::ImageTiling::eOptimal)
+                           // .setTiling(vk::ImageTiling::eOptimal)
                            .setSharingMode(vk::SharingMode::eExclusive),
                        vk::MemoryPropertyFlagBits::eDeviceLocal, true);
   }

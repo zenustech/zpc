@@ -61,6 +61,7 @@ namespace zs {
     std::vector<const char*> extensions
         = { "VK_KHR_surface",
             "VK_EXT_debug_utils",
+            VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 #if defined(ZS_PLATFORM_WINDOWS)
             "VK_KHR_win32_surface"
 #elif defined(ZS_PLATFORM_OSX)

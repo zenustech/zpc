@@ -1,3 +1,4 @@
+//
 #define THSVS_SIMPLER_VULKAN_SYNCHRONIZATION_IMPLEMENTATION
 #include "zensim/vulkan/VkUtils.hpp"
 
@@ -151,5 +152,22 @@ namespace zs {
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::Format>(vk::Format);
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::SampleCountFlagBits>(vk::SampleCountFlagBits);
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::ShaderStageFlagBits>(vk::ShaderStageFlagBits);
+
+  bool is_color_format(vk::Format format) noexcept {
+    auto name = magic_enum::enum_name(format);
+    return name[1] == 'R' || name[1] == 'G' || name[1] == 'B' || name[1] == 'A' || name[1] == 'E';
+  }
+  vk::ImageAspectFlags deduce_image_format_aspect_flag(vk::Format format) noexcept {
+    vk::ImageAspectFlags flag{};
+    if (is_depth_stencil_format(format)) {
+      flag |= vk::ImageAspectFlagBits::eDepth;
+      if (format == vk::Format::eS8Uint || format == vk::Format::eD16UnormS8Uint
+          || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint)
+        flag |= vk::ImageAspectFlagBits::eStencil;
+    } else {
+      flag |= vk::ImageAspectFlagBits::eColor;
+    }
+    return flag;
+  }
 
 }  // namespace zs

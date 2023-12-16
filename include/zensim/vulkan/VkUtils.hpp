@@ -29,12 +29,15 @@ namespace zs {
   }
 
   /// @ref legit engine
-  constexpr bool is_depth_format(vk::Format format) noexcept {
+  ZPC_BACKEND_API bool is_color_format(vk::Format format) noexcept;
+  ZPC_BACKEND_API vk::ImageAspectFlags deduce_image_format_aspect_flag(vk::Format format) noexcept;
+
+  constexpr bool is_depth_stencil_format(vk::Format format) noexcept {
     return format >= vk::Format::eD16Unorm && format < vk::Format::eD32SfloatS8Uint;
   }
   constexpr vk::ImageUsageFlags get_general_usage_flags(vk::Format format) {
     vk::ImageUsageFlags usageFlags = vk::ImageUsageFlagBits::eSampled;
-    if (is_depth_format(format)) {
+    if (is_depth_stencil_format(format)) {
       usageFlags
           |= vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
     } else {
@@ -434,19 +437,15 @@ namespace zs {
   }
 
   /// @ref sascha willems, VulkanTools
-  vk::ImageMemoryBarrier image_layout_transition_barrier(vk::Image image,
-                                                         vk::ImageLayout oldImageLayout,
-                                                         vk::ImageLayout newImageLayout,
-                                                         vk::ImageSubresourceRange subresourceRange,
-                                                         vk::PipelineStageFlags srcStageMask,
-                                                         vk::PipelineStageFlags dstStageMask);
+  ZPC_BACKEND_API vk::ImageMemoryBarrier image_layout_transition_barrier(
+      vk::Image image, vk::ImageLayout oldImageLayout, vk::ImageLayout newImageLayout,
+      vk::ImageSubresourceRange subresourceRange, vk::PipelineStageFlags srcStageMask,
+      vk::PipelineStageFlags dstStageMask);
 
-  vk::ImageMemoryBarrier image_layout_transition_barrier(vk::Image image,
-                                                         vk::ImageAspectFlags aspectMask,
-                                                         vk::ImageLayout oldImageLayout,
-                                                         vk::ImageLayout newImageLayout,
-                                                         vk::PipelineStageFlags srcStageMask,
-                                                         vk::PipelineStageFlags dstStageMask);
+  ZPC_BACKEND_API vk::ImageMemoryBarrier image_layout_transition_barrier(
+      vk::Image image, vk::ImageAspectFlags aspectMask, vk::ImageLayout oldImageLayout,
+      vk::ImageLayout newImageLayout, vk::PipelineStageFlags srcStageMask,
+      vk::PipelineStageFlags dstStageMask);
 
   template <typename VkEnumT> std::string reflect_vk_enum(VkEnumT e);
 

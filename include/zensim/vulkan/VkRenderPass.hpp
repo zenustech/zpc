@@ -102,7 +102,7 @@ namespace zs {
 
     RenderPassBuilder& addAttachment(const AttachmentDesc& desc) {
       // could check [desc] validity here
-      if (is_depth_format(desc.format)) {
+      if (is_depth_stencil_format(desc.format)) {
         _depthAttachment = desc;
       } else {
         _colorAttachments.push_back(desc);
@@ -121,7 +121,7 @@ namespace zs {
       if (clear)
         desc.loadOp = vk::AttachmentLoadOp::eClear;
       else {
-        if (is_depth_format(format))
+        if (is_depth_stencil_format(format))
           desc.loadOp = vk::AttachmentLoadOp::eLoad;
         else
           desc.loadOp = initialLayout == vk::ImageLayout::eUndefined
@@ -198,9 +198,8 @@ namespace zs {
       if (_depthAttachment) {
         const auto& depthAttachmentDesc = *_depthAttachment;
         //
-        refs.push_back(vk::AttachmentReference{
-            (u32)attachments.size(),
-            vk::ImageLayout::eDepthStencilAttachmentOptimal});
+        refs.push_back(vk::AttachmentReference{(u32)attachments.size(),
+                                               vk::ImageLayout::eDepthStencilAttachmentOptimal});
         //
         attachments.push_back(vk::AttachmentDescription{}
                                   .setFormat(depthAttachmentDesc.format)

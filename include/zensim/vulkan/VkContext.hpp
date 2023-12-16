@@ -80,6 +80,9 @@ namespace zs {
     VmaAllocator &allocator() noexcept { return defaultAllocator; }
     const VmaAllocator &allocator() const noexcept { return defaultAllocator; }
 
+    bool supportDepthResolveModes(vk::ResolveModeFlags expected) const noexcept {
+      return (expected & depthStencilResolveProperties.supportedDepthResolveModes) == expected;
+    }
     bool supportBindless() const {
       return supportedVk12Features.descriptorBindingPartiallyBound
              && supportedVk12Features.runtimeDescriptorArray;
@@ -189,6 +192,9 @@ namespace zs {
 
     std::vector<u32> uniqueQueueFamilyIndices;
     vk::PhysicalDeviceMemoryProperties memoryProperties;
+    vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
+    vk::PhysicalDeviceProperties2 deviceProperties;
+
     VkPhysicalDeviceVulkan12Features supportedVk12Features, enabledVk12Features;
     VkPhysicalDeviceFeatures2 supportedDeviceFeatures, enabledDeviceFeatures;
     vk::DescriptorPool defaultDescriptorPool;

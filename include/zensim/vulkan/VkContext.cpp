@@ -158,6 +158,15 @@ namespace zs {
       }
     }
 
+    // query properties 2
+    vk::PhysicalDeviceDepthStencilResolveProperties dsResolveProperties;
+    vk::PhysicalDeviceProperties2 devProperties;
+    devProperties.pNext = &dsResolveProperties;
+    physicalDevice.getProperties2(&devProperties);
+
+    this->depthStencilResolveProperties = dsResolveProperties;
+    this->deviceProperties = devProperties;
+
     // query features 2
     VkPhysicalDeviceVulkan12Features supportedVk12Features{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr};

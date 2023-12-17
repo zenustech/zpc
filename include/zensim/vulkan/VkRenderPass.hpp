@@ -1,4 +1,5 @@
 #pragma once
+#include "VkUtils.hpp"
 #include "zensim/ZpcTuple.hpp"
 #include "zensim/vulkan/VkContext.hpp"
 
@@ -25,7 +26,13 @@ namespace zs {
   };
 
   struct RenderPassBuilder {
+    enum attachment_category_e { color = 0, depth_stencil, input, preserve };
     struct AttachmentDesc {
+      AttachmentDesc(vk::Format format, vk::ImageLayout initialLayout, vk::ImageLayout finalLayout)
+          : format{format}, initialLayout{initialLayout}, finalLayout{finalLayout} {}
+      ~AttachmentDesc() = default;
+
+      attachment_category_e category = color;
       vk::Format format{};
       vk::ImageLayout initialLayout{}, finalLayout{};
       vk::AttachmentLoadOp loadOp{vk::AttachmentLoadOp::eDontCare};
@@ -37,76 +44,95 @@ namespace zs {
 
       // a. check this setup first
       std::vector<u32> colorRefs{}, inputRefs{};
-      // b. if prev config not set, use this setup
-      int colorCount{0}, inputCount{0};  // -1 means all, 0 means none
-      int colorRefOffset{-1};
-      int inputRefOffset{-1};
+      int depthStencilRef{-1};  // -1: inactive, i: target depth/stencil ref
 
-      int depthStencilRef{-1};  // -1: inactive, i: active (last)
-      int resolveRef{-1};       // -1: inactive, i: target color ref
+      int depthStencilResolveRef{-1};  // -1: inactive, i: target depth/stencil ref
+      int resolveRef{-1};              // -1: inactive, i: target color ref
 
-      //
-      mutable std::vector<vk::AttachmentReference> colorAttachRefs;
-      mutable std::vector<vk::AttachmentReference> inputAttachRefs;
+      // directly used later for renderpass creation
+      mutable std::vector<vk::AttachmentReference2> colorAttachRefs;
+      mutable std::vector<vk::AttachmentReference2> inputAttachRefs;
+      mutable std::vector<vk::AttachmentReference2> depthAttachRefs;
+      mutable vk::AttachmentReference2 colorResolveAttachRef;
+      mutable vk::SubpassDescriptionDepthStencilResolve dsResolveProp;
 
-      vk::SubpassDescription resolve(std::vector<vk::AttachmentReference>& refs,
-                                     bool withDepth) const {
+      vk::SubpassDescription2 resolve(std::vector<vk::AttachmentDescription2>& attachments) const {
         auto subpass
-            = vk::SubpassDescription{}.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics);
+            = vk::SubpassDescription2{}.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics);
 
         // color
         if (colorRefs.size()) {
           colorAttachRefs.resize(colorRefs.size());
-          for (int i = 0; i != colorRefs.size(); ++i) colorAttachRefs[i] = refs[colorRefs[i]];
-
+          for (int i = 0; i != colorRefs.size(); ++i) {
+            const u32 attachmentNo = colorRefs[i];
+            if (attachmentNo == resolveRef) continue;
+            // const auto& attachment = attachments[attachmentNo];
+            auto ref
+                = vk::AttachmentReference2{attachmentNo, vk::ImageLayout::eColorAttachmentOptimal,
+                                           vk::ImageAspectFlagBits::eColor};
+            colorAttachRefs[i] = ref;
+          }
           subpass.setColorAttachmentCount((u32)colorAttachRefs.size())
               .setPColorAttachments(colorAttachRefs.data());
-        } else if (colorRefOffset != -1) {
-          if (colorCount < 0)
-            subpass.setColorAttachmentCount((u32)refs.size() - (withDepth ? 1 : 0) - colorRefOffset)
-                .setPColorAttachments(refs.data() + colorRefOffset);
-          else
-            subpass.setColorAttachmentCount((u32)colorCount)
-                .setPColorAttachments(refs.data() + colorRefOffset);
+
+          // resolve
+          if (resolveRef != -1) {
+            colorResolveAttachRef = vk::AttachmentReference2{
+                (u32)resolveRef, vk::ImageLayout::eColorAttachmentOptimal,
+                vk::ImageAspectFlagBits::eColor};
+            subpass.setPResolveAttachments(&colorResolveAttachRef);
+          }
         }
         // input
         if (inputRefs.size()) {
           inputAttachRefs.resize(inputRefs.size());
-          for (int i = 0; i != inputRefs.size(); ++i) inputAttachRefs[i] = refs[inputRefs[i]];
-
+          for (int i = 0; i != inputRefs.size(); ++i) {
+            const u32 attachmentNo = inputRefs[i];
+            const auto& attachment = attachments[attachmentNo];
+            auto ref
+                = vk::AttachmentReference2{attachmentNo,
+                                           is_depth_stencil_format(attachment.format)
+                                               ? vk::ImageLayout::eDepthStencilAttachmentOptimal
+                                               : vk::ImageLayout::eColorAttachmentOptimal,
+                                           vk::ImageAspectFlagBits::eColor};
+            inputAttachRefs[i] = ref;
+          }
           subpass.setInputAttachmentCount((u32)inputAttachRefs.size())
               .setPInputAttachments(inputAttachRefs.data());
-        } else if (inputRefOffset != -1) {
-          if (inputCount < 0)
-            subpass.setInputAttachmentCount((u32)refs.size() - inputRefOffset)
-                .setPInputAttachments(refs.data() + inputRefOffset);
-          else
-            subpass.setInputAttachmentCount((u32)inputCount)
-                .setPInputAttachments(refs.data() + inputRefOffset);
         }
         // depth stencil
-        if (depthStencilRef != -1 && withDepth) subpass.setPDepthStencilAttachment(&refs.back());
-        // resolve
-        if (resolveRef != -1) subpass.setPResolveAttachments(&refs[resolveRef]);
+        depthAttachRefs.reserve((depthStencilRef != -1 ? 1 : 0)
+                                + (depthStencilResolveRef != -1 ? 1 : 0));
+        if (depthStencilRef != -1) {
+          const auto& attachment = attachments[depthStencilRef];
+          depthAttachRefs.push_back(vk::AttachmentReference2{
+              (u32)depthStencilRef, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+              deduce_image_format_aspect_flag(attachment.format)});
+          subpass.setPDepthStencilAttachment(&depthAttachRefs.back());
+        }
+
+        if (depthStencilResolveRef != -1) {
+          const auto& attachment = attachments[depthStencilResolveRef];
+          depthAttachRefs.push_back(vk::AttachmentReference2{
+              (u32)depthStencilResolveRef, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+              deduce_image_format_aspect_flag(attachment.format)});
+
+          dsResolveProp.pDepthStencilResolveAttachment = &depthAttachRefs.back();
+          dsResolveProp.depthResolveMode = vk::ResolveModeFlagBits::eSampleZero;
+          dsResolveProp.stencilResolveMode = vk::ResolveModeFlagBits::eSampleZero;
+          subpass.setPNext(&dsResolveProp);
+        }
+
         return subpass;
       }
     };
     RenderPassBuilder(VulkanContext& ctx) noexcept
-        : ctx{ctx},
-          _colorAttachments{},
-          _depthAttachment{},
-          _subpassCount{1},
-          _subpasses{},
-          _subpassDependencies{} {}
+        : ctx{ctx}, _attachments{}, _subpassCount{1}, _subpasses{}, _subpassDependencies{} {}
     ~RenderPassBuilder() = default;
 
     RenderPassBuilder& addAttachment(const AttachmentDesc& desc) {
       // could check [desc] validity here
-      if (is_depth_stencil_format(desc.format)) {
-        _depthAttachment = desc;
-      } else {
-        _colorAttachments.push_back(desc);
-      }
+      _attachments.push_back(desc);
       return *this;
     }
     RenderPassBuilder& addAttachment(vk::Format format = vk::Format::eR8G8B8A8Unorm,
@@ -117,6 +143,7 @@ namespace zs {
                                      vk::SampleCountFlagBits numSamples
                                      = vk::SampleCountFlagBits::e1) {
       AttachmentDesc desc{format, initialLayout, finalLayout};
+      desc.category = is_depth_stencil_format(format) ? depth_stencil : color;
       desc.sampleBits = numSamples;
       if (clear)
         desc.loadOp = vk::AttachmentLoadOp::eClear;
@@ -133,37 +160,26 @@ namespace zs {
     RenderPassBuilder& addDepthAttachment(vk::Format format, bool clear) {
       AttachmentDesc desc{format, vk::ImageLayout::eDepthStencilAttachmentOptimal,
                           vk::ImageLayout::eDepthStencilAttachmentOptimal};
+      desc.category = depth_stencil;
       desc.loadOp = clear ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eLoad;
       return addAttachment(desc);
     }
 
-    RenderPassBuilder& addSubpass(/*color*/ zs::tuple<int, int> colorRange,
-                                  int depthStencilRef = -1, int resolveRef = -1,
-                                  /*input*/ zs::tuple<int, int> inputRange
-                                  = zs::make_tuple(-1, 0)) {
-      SubpassDesc sd;
-      sd.colorRefOffset = zs::get<0>(colorRange);
-      sd.colorCount = zs::get<1>(colorRange);
-      sd.inputRefOffset = zs::get<0>(inputRange);
-      sd.inputCount = zs::get<1>(inputRange);
-      sd.depthStencilRef = depthStencilRef;
-      sd.resolveRef = resolveRef;
-      _subpasses.push_back(sd);
-      return *this;
-    }
     RenderPassBuilder& addSubpass(/*color*/ const std::vector<u32>& colorRange,
                                   int depthStencilRef = -1, int resolveRef = -1,
+                                  int depthStencilResolveRef = -1,
                                   /*input*/ const std::vector<u32>& inputRange = {}) {
       SubpassDesc sd;
       sd.colorRefs = colorRange;
       sd.inputRefs = inputRange;
       sd.depthStencilRef = depthStencilRef;
       sd.resolveRef = resolveRef;
+      sd.depthStencilResolveRef = depthStencilResolveRef;
       _subpasses.push_back(sd);
       return *this;
     }
     RenderPassBuilder& setSubpassDependencies(
-        const std::vector<vk::SubpassDependency>& subpassDependencies) {
+        const std::vector<vk::SubpassDependency2>& subpassDependencies) {
       _subpassDependencies = subpassDependencies;
       return *this;
     }
@@ -174,64 +190,76 @@ namespace zs {
 
     RenderPass build() const {
       RenderPass ret{ctx};
-      const auto num = _colorAttachments.size() + (_depthAttachment ? 1 : 0);
-      std::vector<vk::AttachmentDescription> attachments;
+      const u32 num = _attachments.size();
+      std::vector<vk::AttachmentDescription2> attachments;
       attachments.reserve(num);
-      std::vector<vk::AttachmentReference> refs;
-      refs.reserve(num);
-      for (int i = 0; i != _colorAttachments.size(); ++i) {
-        const auto& colorAttachmentDesc = _colorAttachments[i];
+
+      std::vector<vk::AttachmentReference2> colorRefs;
+      std::vector<vk::AttachmentReference2> depthRefs;
+      vk::SubpassDescriptionDepthStencilResolve dsResolveProp;
+      int dsRefIndex = -1, dsResolveRefIndex = -1;
+      colorRefs.reserve(num);
+      depthRefs.reserve(2);  // at most 2
+
+      bool autoBuildRefs = _subpassDependencies.size() == 0 && _subpasses.size() == 0;
+      for (int i = 0; i != _attachments.size(); ++i) {
+        const auto& attachmentDesc = _attachments[i];
         //
-        refs.push_back(vk::AttachmentReference{(u32)attachments.size(),
-                                               vk::ImageLayout::eColorAttachmentOptimal});
-        //
-        attachments.push_back(vk::AttachmentDescription{}
-                                  .setFormat(colorAttachmentDesc.format)
-                                  .setSamples(colorAttachmentDesc.sampleBits)
-                                  .setLoadOp(colorAttachmentDesc.loadOp)
-                                  .setStoreOp(colorAttachmentDesc.storeOp)
+        attachments.push_back(vk::AttachmentDescription2{}
+                                  .setFormat(attachmentDesc.format)
+                                  .setSamples(attachmentDesc.sampleBits)
+                                  .setLoadOp(attachmentDesc.loadOp)
+                                  .setStoreOp(attachmentDesc.storeOp)
                                   .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
                                   .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                                  .setInitialLayout(colorAttachmentDesc.initialLayout)
-                                  .setFinalLayout(colorAttachmentDesc.finalLayout));
-      }
-      if (_depthAttachment) {
-        const auto& depthAttachmentDesc = *_depthAttachment;
+                                  .setInitialLayout(attachmentDesc.initialLayout)
+                                  .setFinalLayout(attachmentDesc.finalLayout));
         //
-        refs.push_back(vk::AttachmentReference{(u32)attachments.size(),
-                                               vk::ImageLayout::eDepthStencilAttachmentOptimal});
-        //
-        attachments.push_back(vk::AttachmentDescription{}
-                                  .setFormat(depthAttachmentDesc.format)
-                                  .setSamples(depthAttachmentDesc.sampleBits)
-                                  .setLoadOp(depthAttachmentDesc.loadOp)
-                                  .setStoreOp(depthAttachmentDesc.storeOp)
-                                  .setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-                                  .setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-                                  .setInitialLayout(depthAttachmentDesc.initialLayout)
-                                  .setFinalLayout(depthAttachmentDesc.finalLayout));
+        if (autoBuildRefs) {
+          if (attachmentDesc.category == color) {
+            colorRefs.push_back(vk::AttachmentReference2{
+                (u32)attachments.size() - 1, vk::ImageLayout::eColorAttachmentOptimal,
+                deduce_image_format_aspect_flag(attachmentDesc.format)});
+          } else if (attachmentDesc.category == depth_stencil) {
+            depthRefs.push_back(vk::AttachmentReference2{
+                (u32)attachments.size() - 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                deduce_image_format_aspect_flag(attachmentDesc.format)});
+            if (attachmentDesc.sampleBits == vk::SampleCountFlagBits::e1) {
+              if (dsRefIndex == -1)
+                dsRefIndex = depthRefs.size() - 1;
+              else
+                throw std::runtime_error(
+                    "there exists multiple depth stencil attachments with 1 sample bit!");
+            } else {
+              if (dsResolveRefIndex == -1)
+                dsResolveRefIndex = depthRefs.size() - 1;
+              else
+                throw std::runtime_error("there exists multiple msaa depth stencil attachments!");
+              dsResolveProp.pDepthStencilResolveAttachment = &depthRefs[dsResolveRefIndex];
+              dsResolveProp.depthResolveMode = vk::ResolveModeFlagBits::eSampleZero;
+              dsResolveProp.stencilResolveMode = vk::ResolveModeFlagBits::eSampleZero;
+            }
+          } else
+            throw std::runtime_error("currently do not support rp input attachments");
+        }
       }
 
-      if (_subpassDependencies.size() == 0 && _subpasses.size() == 0) {
-        std::vector<vk::SubpassDescription> subpasses;
-        std::vector<vk::SubpassDependency> subpassDependencies;
+      if (autoBuildRefs) {
+        std::vector<vk::SubpassDescription2> subpasses;
+        std::vector<vk::SubpassDependency2> subpassDependencies;
 
-        vk::AccessFlags accessFlag;
-        if (_depthAttachment)
-          accessFlag = vk::AccessFlagBits::eColorAttachmentWrite
-                       | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-        else
-          accessFlag = vk::AccessFlagBits::eColorAttachmentWrite;
+        vk::AccessFlags accessFlag = vk::AccessFlagBits::eColorAttachmentWrite;
+        if (dsRefIndex != -1) accessFlag |= vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 
         for (u32 i = 0; i < _subpassCount; i++) {
-          auto subpass
-              = vk::SubpassDescription{}
-                    .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-                    .setColorAttachmentCount((u32)attachments.size() - (_depthAttachment ? 1 : 0))
-                    .setPColorAttachments(refs.data());
-          if (_depthAttachment) subpass.setPDepthStencilAttachment(&refs.back());
+          auto subpass = vk::SubpassDescription2{}
+                             .setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+                             .setColorAttachmentCount((u32)colorRefs.size())
+                             .setPColorAttachments(colorRefs.data());
+          if (dsRefIndex != -1) subpass.setPDepthStencilAttachment(&depthRefs[dsRefIndex]);
+          if (dsResolveRefIndex != -1) subpass.setPNext(&dsResolveProp);
 
-          auto dependency = vk::SubpassDependency{}
+          auto dependency = vk::SubpassDependency2{}
                                 .setSrcSubpass(i == 0 ? (VK_SUBPASS_EXTERNAL) : (i - 1))
                                 .setDstSubpass(i)
                                 .setSrcAccessMask({})
@@ -245,29 +273,28 @@ namespace zs {
           subpassDependencies.push_back(dependency);
         }
         ret.renderpass
-            = ctx.device.createRenderPass(vk::RenderPassCreateInfo{}
-                                              .setAttachmentCount(attachments.size())
-                                              .setPAttachments(attachments.data())
-                                              .setSubpassCount(subpasses.size())
-                                              .setPSubpasses(subpasses.data())
-                                              .setDependencyCount(subpassDependencies.size())
-                                              .setPDependencies(subpassDependencies.data()),
-                                          nullptr, ctx.dispatcher);
+            = ctx.device.createRenderPass2(vk::RenderPassCreateInfo2{}
+                                               .setAttachmentCount(attachments.size())
+                                               .setPAttachments(attachments.data())
+                                               .setSubpassCount(subpasses.size())
+                                               .setPSubpasses(subpasses.data())
+                                               .setDependencyCount(subpassDependencies.size())
+                                               .setPDependencies(subpassDependencies.data()),
+                                           nullptr, ctx.dispatcher);
       } else {
-        std::vector<vk::SubpassDescription> subpasses(_subpasses.size());
-        for (u32 i = 0; i < subpasses.size(); i++) {
-          subpasses[i] = _subpasses[i].resolve(refs, static_cast<bool>(_depthAttachment));
-        }
+        std::vector<vk::SubpassDescription2> subpasses(_subpasses.size());
+        for (u32 i = 0; i < subpasses.size(); i++)
+          subpasses[i] = _subpasses[i].resolve(attachments);
 
         ret.renderpass
-            = ctx.device.createRenderPass(vk::RenderPassCreateInfo{}
-                                              .setAttachmentCount(attachments.size())
-                                              .setPAttachments(attachments.data())
-                                              .setSubpassCount(subpasses.size())
-                                              .setPSubpasses(subpasses.data())
-                                              .setDependencyCount(_subpassDependencies.size())
-                                              .setPDependencies(_subpassDependencies.data()),
-                                          nullptr, ctx.dispatcher);
+            = ctx.device.createRenderPass2(vk::RenderPassCreateInfo2{}
+                                               .setAttachmentCount(attachments.size())
+                                               .setPAttachments(attachments.data())
+                                               .setSubpassCount(subpasses.size())
+                                               .setPSubpasses(subpasses.data())
+                                               .setDependencyCount(_subpassDependencies.size())
+                                               .setPDependencies(_subpassDependencies.data()),
+                                           nullptr, ctx.dispatcher);
       }
 
       return ret;
@@ -276,11 +303,12 @@ namespace zs {
   private:
     VulkanContext& ctx;
 
-    std::vector<AttachmentDesc> _colorAttachments;
-    std::optional<AttachmentDesc> _depthAttachment;
+    std::vector<AttachmentDesc> _attachments;
 
+    // a
     std::vector<SubpassDesc> _subpasses;
-    std::vector<vk::SubpassDependency> _subpassDependencies;
+    std::vector<vk::SubpassDependency2> _subpassDependencies;
+    // b
     u32 _subpassCount;
   };
 

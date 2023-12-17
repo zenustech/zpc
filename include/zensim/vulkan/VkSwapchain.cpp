@@ -49,30 +49,28 @@ namespace zs {
     auto rpBuilder = ctx.renderpass().setNumPasses(1);
     if (enableMS)
       rpBuilder.addAttachment(ci.imageFormat, vk::ImageLayout::eUndefined,
-                                        vk::ImageLayout::eColorAttachmentOptimal, true, sampleBits);
+                              vk::ImageLayout::eColorAttachmentOptimal, true, sampleBits);
     rpBuilder.addAttachment(ci.imageFormat, vk::ImageLayout::eUndefined,
-                                      vk::ImageLayout::ePresentSrcKHR, !enableMS);
+                            vk::ImageLayout::ePresentSrcKHR, !enableMS);
     if (enableDepth)
       rpBuilder.addAttachment(depthFormat, vk::ImageLayout::eUndefined,
                               vk::ImageLayout::eDepthStencilAttachmentOptimal, true, sampleBits);
     if (enableMS) {
       vk::AccessFlags accessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-      if (enableDepth)
-        accessMask |= vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-      rpBuilder.addSubpass(/*color*/ {0}, /*depth stencil*/ enableDepth ? 0 : -1,
-                        /*resolve*/ 1) /*input*/
-            .setSubpassDependencies(
-                {vk::SubpassDependency{}
-                     .setSrcSubpass(VK_SUBPASS_EXTERNAL)
-                     .setDstSubpass(0)
-                     .setSrcAccessMask(accessMask)
-                     .setDstAccessMask(accessMask)
-                     .setSrcStageMask(
-                         vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                         vk::PipelineStageFlagBits::eLateFragmentTests)
-                     .setDstStageMask(
-                         vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                         vk::PipelineStageFlagBits::eEarlyFragmentTests)});
+      if (enableDepth) accessMask = accessMask | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+      rpBuilder
+          .addSubpass(/*color*/ {0}, /*ds ref*/ enableDepth ? 2 : -1,
+                      /*resolve ref*/ 1) /*input*/
+          .setSubpassDependencies(
+              {vk::SubpassDependency2{}
+                   .setSrcSubpass(VK_SUBPASS_EXTERNAL)
+                   .setDstSubpass(0)
+                   .setSrcAccessMask(accessMask)
+                   .setDstAccessMask(accessMask)
+                   .setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
+                                    | vk::PipelineStageFlagBits::eLateFragmentTests)
+                   .setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput
+                                    | vk::PipelineStageFlagBits::eEarlyFragmentTests)});
     }
     return rpBuilder.build();
   }
@@ -86,14 +84,11 @@ namespace zs {
     imgvs.reserve(3);
     for (int i = 0; i != cnt; ++i) {
       imgvs.clear();
-      if (enableMS)
-        imgvs.push_back((vk::ImageView)msColorBuffers[i]);
+      if (enableMS) imgvs.push_back((vk::ImageView)msColorBuffers[i]);
       imgvs.push_back((vk::ImageView)imageViews[i]);
-      if (enableDepth)
-        imgvs.push_back((vk::ImageView)depthBuffers[i]);
+      if (enableDepth) imgvs.push_back((vk::ImageView)depthBuffers[i]);
 
-      frameBuffers.emplace_back(
-        ctx.createFramebuffer(imgvs, ci.imageExtent, renderPass));
+      frameBuffers.emplace_back(ctx.createFramebuffer(imgvs, ci.imageExtent, renderPass));
     }
   }
 
@@ -229,15 +224,18 @@ namespace zs {
     if (obj.sampleBits != vk::SampleCountFlagBits::e1) {
       for (int i = 0; i != numSwapchainImages; ++i) {
         obj.msColorBuffers.emplace_back(ctx.create2DImage(
-            ci.imageExtent, ci.imageFormat, vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
-            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true, /*enable transfer*/ false, obj.sampleBits));
+            ci.imageExtent, ci.imageFormat,
+            vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
+            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true,
+            /*enable transfer*/ false, obj.sampleBits));
       }
     }
     if (buildDepthBuffer) {
       for (int i = 0; i != numSwapchainImages; ++i) {
         obj.depthBuffers.emplace_back(ctx.create2DImage(
             ci.imageExtent, obj.depthFormat, vk::ImageUsageFlagBits::eDepthStencilAttachment,
-            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true, /*enable transfer*/ false, obj.sampleBits));
+            vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true,
+            /*enable transfer*/ false, obj.sampleBits));
       }
     }
 

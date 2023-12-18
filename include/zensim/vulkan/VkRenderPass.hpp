@@ -90,11 +90,8 @@ namespace zs {
             const u32 attachmentNo = inputRefs[i];
             const auto& attachment = attachments[attachmentNo];
             auto ref
-                = vk::AttachmentReference2{attachmentNo,
-                                           is_depth_stencil_format(attachment.format)
-                                               ? vk::ImageLayout::eDepthStencilAttachmentOptimal
-                                               : vk::ImageLayout::eColorAttachmentOptimal,
-                                           vk::ImageAspectFlagBits::eColor};
+                = vk::AttachmentReference2{attachmentNo, vk::ImageLayout::eShaderReadOnlyOptimal,
+                                           deduce_image_format_aspect_flag(attachment.format)};
             inputAttachRefs[i] = ref;
           }
           subpass.setInputAttachmentCount((u32)inputAttachRefs.size())

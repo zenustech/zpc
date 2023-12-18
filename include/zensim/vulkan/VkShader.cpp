@@ -143,24 +143,27 @@ namespace zs {
     setLayouts.clear();
     auto &glsl = *static_cast<spirv_cross::CompilerGLSL *>(compiled.get());
     auto &resources_ = *static_cast<spirv_cross::ShaderResources *>(resources.get());
-    auto generateDescriptors = [&glsl, this](const auto &resources,
-                                             vk::DescriptorType descriptorType) {
-      for (auto &resource : resources) {
-        u32 set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-        u32 binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
-        u32 location = glsl.get_decoration(resource.id, spv::DecorationLocation);
+    auto generateDescriptors
+        = [&glsl, this](const auto &resources, vk::DescriptorType descriptorType) {
+            for (auto &resource : resources) {
+              u32 set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+              u32 binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+              u32 location = glsl.get_decoration(resource.id, spv::DecorationLocation);
 
-        fmt::print(
-            "---->\tadding descriptor set layout [{}] at set [{}], binding [{}], location [{}]\n",
-            resource.name.c_str(), set, binding, location);
-        setLayouts.emplace(
-            set, ctx.setlayout().addBinding(binding, descriptorType, stageFlag, 1).build());
-      }
-    };
+              fmt::print(
+                  "---->\tbuilding descriptor set layout [{}] at set [{}], binding [{}], location "
+                  "[{}], type[{}]\n",
+                  resource.name.c_str(), set, binding, location, reflect_vk_enum(descriptorType));
+              setLayouts.emplace(
+                  set, ctx.setlayout().addBinding(binding, descriptorType, stageFlag, 1).build());
+            }
+          };
     generateDescriptors(resources_.uniform_buffers, vk::DescriptorType::eUniformBufferDynamic);
     generateDescriptors(resources_.storage_buffers, vk::DescriptorType::eStorageBuffer);
     generateDescriptors(resources_.storage_images, vk::DescriptorType::eStorageImage);
     generateDescriptors(resources_.sampled_images, vk::DescriptorType::eCombinedImageSampler);
+
+    generateDescriptors(resources_.subpass_inputs, vk::DescriptorType::eInputAttachment);
   }
 
   void ShaderModule::initializeInputAttributes() {

@@ -452,5 +452,6 @@ namespace zs {
   ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::Format>(vk::Format);
   ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::SampleCountFlagBits>(vk::SampleCountFlagBits e);
   ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::ShaderStageFlagBits>(vk::ShaderStageFlagBits);
+  ZPC_FWD_DECL_FUNC std::string reflect_vk_enum<vk::DescriptorType>(vk::DescriptorType);
 
 }  // namespace zs

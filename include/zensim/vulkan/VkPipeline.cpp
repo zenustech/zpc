@@ -68,7 +68,7 @@ namespace zs {
         = vk::PipelineColorBlendAttachmentState{}
               .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
                                  | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-              .setBlendEnable(true) // required by imgui
+              .setBlendEnable(true)  // required by imgui
               // optional
               .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)          // eOne
               .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
@@ -179,11 +179,18 @@ namespace zs {
       bindingDescription
           = vk::VertexInputBindingDescription{0, offset, vk::VertexInputRate::eVertex};
     }
-    auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo{}
-                               .setVertexAttributeDescriptionCount(attributeDescriptions.size())
-                               .setPVertexAttributeDescriptions(attributeDescriptions.data())
-                               .setVertexBindingDescriptionCount(bindingDescriptions.size())
-                               .setPVertexBindingDescriptions(bindingDescriptions.data());
+    auto vertexInputInfo = vk::PipelineVertexInputStateCreateInfo{};
+    auto tempDepthStencilInfo = depthStencilInfo;
+    auto tempRasterizationInfo = rasterizationInfo;
+    if (attributeDescriptions.size() > 0 && bindingDescriptions.size() > 0)
+      vertexInputInfo.setVertexAttributeDescriptionCount(attributeDescriptions.size())
+          .setPVertexAttributeDescriptions(attributeDescriptions.data())
+          .setVertexBindingDescriptionCount(bindingDescriptions.size())
+          .setPVertexBindingDescriptions(bindingDescriptions.data());
+    else {
+      tempDepthStencilInfo.setDepthWriteEnable(false);
+      tempRasterizationInfo.setCullMode(vk::CullModeFlagBits::eNone);
+    }
 
     // dynamic state
     std::vector<vk::DynamicState> enabledDynamicStates{dynamicStateEnables.begin(),
@@ -199,9 +206,9 @@ namespace zs {
                                                        &inputAssemblyInfo,
                                                        /*tessellation*/ nullptr,
                                                        &viewportInfo,
-                                                       &rasterizationInfo,
+                                                       &tempRasterizationInfo,
                                                        &multisampleInfo,
-                                                       &depthStencilInfo,
+                                                       &tempDepthStencilInfo,
                                                        &colorBlendInfo,
                                                        &dynamicStateInfo,
                                                        pipelineLayout,

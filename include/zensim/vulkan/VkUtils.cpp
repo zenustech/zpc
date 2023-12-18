@@ -152,6 +152,7 @@ namespace zs {
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::Format>(vk::Format);
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::SampleCountFlagBits>(vk::SampleCountFlagBits);
   ZPC_INSTANTIATE std::string reflect_vk_enum<vk::ShaderStageFlagBits>(vk::ShaderStageFlagBits);
+  ZPC_INSTANTIATE std::string reflect_vk_enum<vk::DescriptorType>(vk::DescriptorType);
 
   bool is_color_format(vk::Format format) noexcept {
     auto name = magic_enum::enum_name(format);

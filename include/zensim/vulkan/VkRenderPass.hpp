@@ -145,19 +145,18 @@ namespace zs {
       if (clear)
         desc.loadOp = vk::AttachmentLoadOp::eClear;
       else {
-        if (is_depth_stencil_format(format))
-          desc.loadOp = vk::AttachmentLoadOp::eLoad;
-        else
-          desc.loadOp = initialLayout == vk::ImageLayout::eUndefined
-                            ? vk::AttachmentLoadOp::eDontCare
-                            : vk::AttachmentLoadOp::eLoad;
+        desc.loadOp = initialLayout == vk::ImageLayout::eUndefined ? vk::AttachmentLoadOp::eDontCare
+                                                                   : vk::AttachmentLoadOp::eLoad;
       }
       return addAttachment(desc);
     }
-    RenderPassBuilder& addDepthAttachment(vk::Format format, bool clear) {
+    RenderPassBuilder& addDepthAttachment(vk::Format format, bool clear,
+                                          vk::SampleCountFlagBits numSamples
+                                          = vk::SampleCountFlagBits::e1) {
       AttachmentDesc desc{format, vk::ImageLayout::eDepthStencilAttachmentOptimal,
                           vk::ImageLayout::eDepthStencilAttachmentOptimal};
       desc.category = depth_stencil;
+      desc.sampleBits = numSamples;
       desc.loadOp = clear ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eLoad;
       return addAttachment(desc);
     }

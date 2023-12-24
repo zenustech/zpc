@@ -99,7 +99,7 @@ namespace zs {
 
     dynamicStateEnables = {vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 
-    pushConstantRange.reset();
+    pushConstantRanges.clear();
     descriptorSetLayouts.clear();
 
     renderPass = VK_NULL_HANDLE;
@@ -121,8 +121,8 @@ namespace zs {
     auto pipelineLayoutCI = vk::PipelineLayoutCreateInfo{}
                                 .setSetLayoutCount(descrSetLayouts.size())
                                 .setPSetLayouts(descrSetLayouts.data());
-    if (pushConstantRange.has_value())
-      pipelineLayoutCI.setPushConstantRangeCount(1).setPPushConstantRanges(&(*pushConstantRange));
+    if (pushConstantRanges.size())
+      pipelineLayoutCI.setPushConstantRangeCount(pushConstantRanges.size()).setPPushConstantRanges(pushConstantRanges.data());
     auto pipelineLayout
         = ctx.device.createPipelineLayout(pipelineLayoutCI, nullptr, ctx.dispatcher);
     ret.layout = pipelineLayout;

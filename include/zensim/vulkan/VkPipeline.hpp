@@ -71,7 +71,7 @@ namespace zs {
           colorBlendInfo{o.colorBlendInfo},
           depthStencilInfo{o.depthStencilInfo},
           dynamicStateEnables{std::move(o.dynamicStateEnables)},
-          pushConstantRange{std::move(o.pushConstantRange)},
+          pushConstantRanges{std::move(o.pushConstantRanges)},
           descriptorSetLayouts{std::move(o.descriptorSetLayouts)},
           renderPass{o.renderPass},
           subpass{o.subpass} {
@@ -92,7 +92,7 @@ namespace zs {
       colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{};
       depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{};
       dynamicStateEnables.clear();
-      pushConstantRange.reset();
+      pushConstantRanges.clear();
       descriptorSetLayouts.clear();
       //
       renderPass = VK_NULL_HANDLE;
@@ -151,7 +151,11 @@ namespace zs {
 
     /// @note provide alternatives for overwrite
     PipelineBuilder& setPushConstantRange(const vk::PushConstantRange& range) {
-      this->pushConstantRange = range;
+      this->pushConstantRanges = { range };
+      return *this;
+    }
+    PipelineBuilder& setPushConstantRanges(const std::vector<vk::PushConstantRange>& ranges) {
+      this->pushConstantRanges = ranges;
       return *this;
     }
     PipelineBuilder& setBindingDescriptions(
@@ -213,7 +217,7 @@ namespace zs {
     std::set<vk::DynamicState> dynamicStateEnables;
 
     // resources (descriptors/ push constants)
-    std::optional<vk::PushConstantRange> pushConstantRange;
+    std::vector<vk::PushConstantRange> pushConstantRanges;
     std::map<u32, vk::DescriptorSetLayout> descriptorSetLayouts;  // managed outside
 
     /// render pass

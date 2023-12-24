@@ -165,6 +165,10 @@ namespace zs {
       return *this;
     }
 
+    PipelineBuilder& setTopology(vk::PrimitiveTopology topology) {
+      this->inputAssemblyInfo.setTopology(topology);
+      return *this;
+    }
     PipelineBuilder& setPolygonMode(vk::PolygonMode mode) {
       this->rasterizationInfo.setPolygonMode(mode);
       return *this;

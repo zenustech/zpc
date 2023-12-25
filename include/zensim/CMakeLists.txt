@@ -39,7 +39,6 @@ set(ZENSIM_LIBRARY_VULKAN_SOURCE_FILES
   vulkan/VkUtils.cpp
   vulkan/VkCommand.cpp
   vulkan/VkTexture.cpp
-  vulkan/VkModel.cpp
   vulkan/VkShader.cpp
   vulkan/VkSwapchain.cpp
   vulkan/VkPipeline.cpp
@@ -72,11 +71,14 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   resource/Resource.cpp
   ZpcInitialization.cpp
 )
-set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
+set(ZENSIM_LIBRARY_ZPC_VULKAN_SOURCE_FILES
+  vulkan/VkModel.cpp
+)
+#set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 
   # cuda/math/matrix/Matrix.cpp
-  cuda/simulation/sparsity/SparsityCompute.cpp
-)
+#  cuda/simulation/sparsity/SparsityCompute.cpp
+#)
 set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
   py_interop/Allocator.cpp
   py_interop/DenseFieldInstantiations.cpp
@@ -528,6 +530,13 @@ set_target_properties(zpc
   PROPERTIES POSITION_INDEPENDENT_CODE ON
 )
 target_link_libraries(zpc PUBLIC zpccore)
+
+if(ZS_ENABLE_VULKAN)
+
+  target_sources(zpc
+    PRIVATE ${ZENSIM_LIBRARY_ZPC_VULKAN_SOURCE_FILES}
+  )
+endif(ZS_ENABLE_VULKAN)
 
 if(ZS_ENABLE_OPENMP)
   target_link_libraries(zpc PUBLIC zpcomp)

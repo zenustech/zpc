@@ -1,6 +1,9 @@
 #include "zensim/vulkan/VkModel.hpp"
 
 #include "zensim/execution/ExecutionPolicy.hpp"
+#if ZS_ENABLE_OPENMP
+#  include "zensim/omp/execution/ExecutionPolicy.hpp"
+#endif
 
 namespace zs {
 
@@ -65,7 +68,11 @@ namespace zs {
         = ctx.createStagingBuffer(numIndexBytes, vk::BufferUsageFlagBits::eTransferSrc);
     stagingVidBuffer.map();
     std::vector<u32> hVids(vs.size());
+#if ZS_ENABLE_OPENMP
+    auto pol = omp_exec();
+#else
     auto pol = seq_exec();
+#endif
     pol(enumerate(hVids), [](u32 i, u32 &dst) { dst = i; });
     memcpy(stagingVidBuffer.mappedAddress(), hVids.data(), numIndexBytes);
     stagingVidBuffer.unmap();

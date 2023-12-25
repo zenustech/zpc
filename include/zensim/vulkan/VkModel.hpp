@@ -19,7 +19,7 @@ namespace zs {
     VkModel() = default;
     template <typename Ti> VkModel(VulkanContext &ctx,
                                    const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs,
-                                   const transform_t &trans = transform_t::constant(1.f));
+                                   const transform_t &trans = transform_t::identity());
     VkModel(VkModel &&o) = default;
     VkModel &operator=(VkModel &&o) = default;
     void reset() {

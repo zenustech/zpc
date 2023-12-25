@@ -38,7 +38,6 @@ set(ZENSIM_LIBRARY_TOOL_SOURCE_FILES
 set(ZENSIM_LIBRARY_VULKAN_SOURCE_FILES
   vulkan/VkUtils.cpp
   vulkan/VkCommand.cpp
-  vulkan/VkModel.cpp
   vulkan/VkTexture.cpp
   vulkan/VkShader.cpp
   vulkan/VkSwapchain.cpp
@@ -66,6 +65,7 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   container/TileVector.cpp
   container/DenseField.cpp
   geometry/Mesh.cpp
+  vulkan/VkModel.cpp
   math/matrix/Matrix.cpp
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp

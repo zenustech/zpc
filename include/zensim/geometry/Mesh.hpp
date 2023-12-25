@@ -1,8 +1,8 @@
 #pragma once
-#include <vector>
 #include <array>
+#include <vector>
 
-// 
+//
 #include "zensim/container/Vector.hpp"
 #include "zensim/math/Vec.h"
 
@@ -15,10 +15,12 @@ namespace zs {
     std::vector<Elem> elems;
   };
 
-  void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float, std::vector<std::array<float,3>> &);
-  void compute_mesh_normal(const Mesh<float, 3, u32, 3> &, float, std::vector<std::array<float,3>> &);
-  void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float, Vector<vec<float,3>> &);
-  void compute_mesh_normal(const Mesh<float, 3, u32, 3> &, float, Vector<vec<float,3>> &);
+  ZPC_API void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float,
+                                   std::vector<std::array<float, 3>> &);
+  ZPC_API void compute_mesh_normal(const Mesh<float, 3, u32, 3> &, float,
+                                   std::vector<std::array<float, 3>> &);
+  ZPC_API void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float, Vector<vec<float, 3>> &);
+  ZPC_API void compute_mesh_normal(const Mesh<float, 3, u32, 3> &, float, Vector<vec<float, 3>> &);
 
 #if 0
   template <typename T, typename Ti, template <typename> class VectorT, typename ValueT>

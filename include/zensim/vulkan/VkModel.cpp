@@ -8,7 +8,9 @@
 namespace zs {
 
   template <typename Ti>
-  VkModel::VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs) {
+  VkModel::VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs,
+                   const transform_t &trans)
+      : transform{trans} {
     static_assert(sizeof(Ti) == sizeof(u32) && alignof(Ti) == alignof(u32),
                   "index type should be u32-alike");
 
@@ -107,8 +109,10 @@ namespace zs {
   }
 
   ZPC_INSTANTIATE VkModel::VkModel(VulkanContext &ctx,
-                                   const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs);
+                                   const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,
+                                   const transform_t &trans);
   ZPC_INSTANTIATE VkModel::VkModel(VulkanContext &ctx,
-                                   const Mesh<float, /*dim*/ 3, i32, /*codim*/ 3> &surfs);
+                                   const Mesh<float, /*dim*/ 3, i32, /*codim*/ 3> &surfs,
+                                   const transform_t &trans);
 
 }  // namespace zs

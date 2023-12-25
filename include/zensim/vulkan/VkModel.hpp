@@ -1,11 +1,13 @@
 #pragma once
 #include "zensim/geometry/Mesh.hpp"
+#include "zensim/math/Vec.h"
 #include "zensim/vulkan/VkBuffer.hpp"
 #include "zensim/vulkan/VkTexture.hpp"
 
 namespace zs {
 
   struct VkModel {
+    using transform_t = vec<float, 4, 4>;
     struct Vertices {
       // vec3: pos, color, normal
       // vec2: uv
@@ -14,9 +16,12 @@ namespace zs {
       Owner<Buffer> vids;  // optional
     };
 
-    template <typename Ti>
-    VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs);
+    VkModel() = default;
+    template <typename Ti> VkModel(VulkanContext &ctx,
+                                   const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs,
+                                   const transform_t &trans = transform_t::constant(1.f));
     VkModel(VkModel &&o) = default;
+    VkModel &operator=(VkModel &&o) = default;
     void reset() {
       verts.pos.reset();
       verts.nrm.reset();
@@ -38,7 +43,7 @@ namespace zs {
           {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
           {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
           {/*location*/ 3, /*binding*/ 3, vk::Format::eR32Uint, /*offset*/ (u32)0},
-          };
+      };
     }
 
     void draw(const vk::CommandBuffer &cmd) const {
@@ -59,9 +64,12 @@ namespace zs {
     Vertices verts;
     vk::DeviceSize indexCount;
     Owner<Buffer> indices;
+    transform_t transform;
   };
 
-  ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, u32, 3> &surfs);
-  ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, i32, 3> &surfs);
+  ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, u32, 3> &surfs,
+                                     const transform_t &trans);
+  ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, i32, 3> &surfs,
+                                     const transform_t &trans);
 
 }  // namespace zs

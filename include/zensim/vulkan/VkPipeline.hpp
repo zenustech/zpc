@@ -151,7 +151,7 @@ namespace zs {
 
     /// @note provide alternatives for overwrite
     PipelineBuilder& setPushConstantRange(const vk::PushConstantRange& range) {
-      this->pushConstantRanges = { range };
+      this->pushConstantRanges = {range};
       return *this;
     }
     PipelineBuilder& setPushConstantRanges(const std::vector<vk::PushConstantRange>& ranges) {
@@ -169,6 +169,10 @@ namespace zs {
       return *this;
     }
 
+    PipelineBuilder& setBlendEnable(bool enable) {
+      this->colorBlendAttachment.setBlendEnable(enable);
+      return *this;
+    }
     PipelineBuilder& setTopology(vk::PrimitiveTopology topology) {
       this->inputAssemblyInfo.setTopology(topology);
       return *this;

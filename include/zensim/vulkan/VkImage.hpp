@@ -18,7 +18,8 @@ namespace zs {
           pview{},
           usage{},
           extent{},
-          mipLevels{1} {}
+          mipLevels{1} {
+    }
     Image(Image &&o) noexcept
         : ctx{o.ctx},
           image{o.image},
@@ -74,6 +75,17 @@ namespace zs {
     bool hasView() const { return static_cast<bool>(pview); }
     const vk::ImageView &view() const { return *pview; }
 
+    vk::DeviceSize getSize() const noexcept {
+#if ZS_VULKAN_USE_VMA
+      VmaAllocationInfo allocInfo;
+      vmaGetAllocationInfo(ctx.allocator(), allocation, &allocInfo);
+      return allocInfo.size;
+#else
+      return memory().memSize;
+#endif
+    }
+    vk::Extent3D getExtent() const noexcept { return extent; }
+
   protected:
     friend struct VulkanContext;
     friend struct VkTexture;
@@ -110,7 +122,9 @@ namespace zs {
   struct ImageSampler {
     ImageSampler(VulkanContext &ctx) : ctx{ctx}, sampler{VK_NULL_HANDLE} {}
     ~ImageSampler() { ctx.device.destroySampler(sampler, nullptr, ctx.dispatcher); }
-    ImageSampler(ImageSampler &&o) noexcept : ctx{o.ctx}, sampler{o.sampler} { o.sampler = VK_NULL_HANDLE; }
+    ImageSampler(ImageSampler &&o) noexcept : ctx{o.ctx}, sampler{o.sampler} {
+      o.sampler = VK_NULL_HANDLE;
+    }
 
     vk::Sampler operator*() const { return sampler; }
     operator vk::Sampler() const { return sampler; }

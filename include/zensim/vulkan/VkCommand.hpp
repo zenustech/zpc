@@ -61,4 +61,30 @@ namespace zs {
     std::vector<vk::Semaphore> _waitSemaphores, _signalSemaphores;
   };
 
+  struct Fence {
+    Fence(VulkanContext& ctx, bool signaled = false) : _ctx{ctx} {
+      vk::FenceCreateInfo ci{};
+      if (signaled) ci.setFlags(vk::FenceCreateFlagBits::eSignaled);
+      _fence = ctx.device.createFence(ci, nullptr, ctx.dispatcher);
+    }
+
+    Fence(Fence&& o) noexcept : _ctx{o._ctx}, _fence{o._fence} { o._fence = VK_NULL_HANDLE; }
+
+    ~Fence() {
+      _ctx.device.destroyFence(_fence, nullptr, _ctx.dispatcher);
+      _fence = VK_NULL_HANDLE;
+    }
+
+    void reset() { _ctx.device.resetFences({_fence}); }
+
+    vk::Fence operator*() const noexcept { return _fence; }
+    operator vk::Fence() const noexcept { return _fence; }
+
+  protected:
+    friend struct VulkanContext;
+
+    VulkanContext& _ctx;
+    vk::Fence _fence;
+  };
+
 }  // namespace zs

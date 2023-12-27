@@ -301,6 +301,14 @@ namespace zs {
     std::string tmp{glslCode};
     auto compiled = shaderc::Compiler().CompileGlslToSpv(tmp.data(), tmp.size(), shaderKind,
                                                          moduleName.data());
+    if (compiled.GetNumErrors()) {
+      fmt::print("\n\tGLSL module [{}] compilation error log: \n{}\n", moduleName,
+                 compiled.GetErrorMessage());
+
+      throw std::runtime_error(
+          fmt::format("compilation of the glsl module [{}] failed with {} errors!\n", moduleName,
+                      compiled.GetNumErrors()));
+    }
     const std::vector<uint32_t> spirv(compiled.cbegin(), compiled.cend());
     // displayLayoutInfo();
     return createShaderModule(spirv.data(), spirv.size(), stage);

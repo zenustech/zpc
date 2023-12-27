@@ -38,8 +38,7 @@ namespace zs {
           return std::vector<vk::VertexInputBindingDescription>{
               {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
               {1, /*normal*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
-              {2, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
-              {3, /*vid*/ sizeof(u32), vk::VertexInputRate::eVertex}};
+              {2, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex}};
         case draw_category_e::point:
           // radius is specified through push constant
           return std::vector<vk::VertexInputBindingDescription>{
@@ -60,8 +59,7 @@ namespace zs {
           return std::vector<vk::VertexInputAttributeDescription>{
               {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
               {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
-              {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
-              {/*location*/ 3, /*binding*/ 3, vk::Format::eR32Uint, /*offset*/ (u32)0}};
+              {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0}};
         case draw_category_e::point:
           return std::vector<vk::VertexInputAttributeDescription>{
               {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
@@ -94,9 +92,8 @@ namespace zs {
     void bind(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const {
       switch (e) {
         case draw_category_e::tri: {
-          vk::Buffer buffers[]
-              = {verts.pos.get(), verts.nrm.get(), verts.clr.get(), verts.vids.get()};
-          vk::DeviceSize offsets[] = {0, 0, 0, 0};
+          vk::Buffer buffers[] = {verts.pos.get(), verts.nrm.get(), verts.clr.get()};
+          vk::DeviceSize offsets[] = {0, 0, 0};
           cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets,
                                 verts.pos.get().ctx.dispatcher);
           cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0,
@@ -117,6 +114,8 @@ namespace zs {
         default:;
       }
     }
+
+    bool isParticle() const noexcept { return indexCount == 0; }
 
     Vertices verts;
     vk::DeviceSize indexCount;

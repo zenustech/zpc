@@ -88,7 +88,7 @@ namespace zs {
     depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{}
                            .setDepthTestEnable(true)
                            .setDepthWriteEnable(true)
-                           .setDepthCompareOp(vk::CompareOp::eLess)
+                           .setDepthCompareOp(vk::CompareOp::eLessOrEqual)
                            .setDepthBoundsTestEnable(false)
                            .setStencilTestEnable(false)
                            // optional
@@ -122,7 +122,8 @@ namespace zs {
                                 .setSetLayoutCount(descrSetLayouts.size())
                                 .setPSetLayouts(descrSetLayouts.data());
     if (pushConstantRanges.size())
-      pipelineLayoutCI.setPushConstantRangeCount(pushConstantRanges.size()).setPPushConstantRanges(pushConstantRanges.data());
+      pipelineLayoutCI.setPushConstantRangeCount(pushConstantRanges.size())
+          .setPPushConstantRanges(pushConstantRanges.data());
     auto pipelineLayout
         = ctx.device.createPipelineLayout(pipelineLayoutCI, nullptr, ctx.dispatcher);
     ret.layout = pipelineLayout;

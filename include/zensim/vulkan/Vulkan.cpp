@@ -84,7 +84,7 @@ namespace zs {
     vk::ValidationFeaturesEXT validationFeatures;
     validationFeatures.enabledValidationFeatureCount = (u32)enabledValidationFeatures.size();
     validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
-    instCI.setPNext(&valFeatures);
+    instCI.setPNext(&validationFeatures);
 
     _instance = vk::createInstance(instCI);
 

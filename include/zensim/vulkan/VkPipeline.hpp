@@ -185,6 +185,10 @@ namespace zs {
       this->rasterizationInfo.setCullMode(cm);
       return *this;
     }
+    PipelineBuilder& setFrontFace(vk::FrontFace ff) {
+      this->rasterizationInfo.setFrontFace(ff);
+      return *this;
+    }
     PipelineBuilder& setRasterizationSamples(vk::SampleCountFlagBits sampleBits) {
       this->multisampleInfo.setRasterizationSamples(sampleBits);
       return *this;
@@ -193,6 +197,10 @@ namespace zs {
     PipelineBuilder& enableDynamicState(vk::DynamicState state) {
       dynamicStateEnables.insert(state);
       return *this;
+    }
+
+    vk::PipelineColorBlendAttachmentState& refColorBlendAttachment() {
+      return colorBlendAttachment;
     }
 
     Pipeline build();

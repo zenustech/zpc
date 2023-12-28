@@ -28,8 +28,7 @@ namespace zs {
     stagingBuffer.unmap();
 
     auto img = ctx.createOptimal2DImage(
-        extent, vk::Format::eR8G8B8A8Unorm,
-        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+        extent, format, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
         /*MemoryPropertyFlags*/ vk::MemoryPropertyFlagBits::eDeviceLocal,
         /*mipmaps*/ false,
         /*createView*/ true);

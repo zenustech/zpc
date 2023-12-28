@@ -692,6 +692,25 @@ namespace zs {
                            .setSharingMode(vk::SharingMode::eExclusive),
                        props, createView);
   }
+  Image VulkanContext::createOptimal2DImage(const vk::Extent2D& dim, vk::Format format,
+                                            vk::ImageUsageFlags usage,
+                                            vk::MemoryPropertyFlags props, bool mipmaps,
+                                            bool createView, bool enableTransfer,
+                                            vk::SampleCountFlagBits sampleBits) {
+    return createImage(vk::ImageCreateInfo{}
+                           .setImageType(vk::ImageType::e2D)
+                           .setFormat(format)
+                           .setExtent({dim.width, dim.height, (u32)1})
+                           .setMipLevels((mipmaps ? get_num_mip_levels(dim) : 1))
+                           .setArrayLayers(1)
+                           .setUsage(enableTransfer ? (usage | vk::ImageUsageFlagBits::eTransferSrc
+                                                       | vk::ImageUsageFlagBits::eTransferDst)
+                                                    : usage)
+                           .setSamples(sampleBits)
+                           .setTiling(vk::ImageTiling::eOptimal)
+                           .setSharingMode(vk::SharingMode::eExclusive),
+                       props, createView);
+  }
   Image VulkanContext::createInputAttachment(const vk::Extent2D& dim, vk::Format format,
                                              vk::ImageUsageFlags usage, bool enableTransfer) {
     usage |= vk::ImageUsageFlagBits::eInputAttachment;

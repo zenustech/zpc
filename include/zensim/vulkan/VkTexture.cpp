@@ -27,12 +27,12 @@ namespace zs {
     memcpy(stagingBuffer.mappedAddress(), data, numBytes);
     stagingBuffer.unmap();
 
-    auto img
-        = ctx.create2DImage(extent, vk::Format::eR8G8B8A8Unorm,
-                            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
-                            /*MemoryPropertyFlags*/ vk::MemoryPropertyFlagBits::eDeviceLocal,
-                            /*mipmaps*/ false,
-                            /*createView*/ true);
+    auto img = ctx.createOptimal2DImage(
+        extent, vk::Format::eR8G8B8A8Unorm,
+        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+        /*MemoryPropertyFlags*/ vk::MemoryPropertyFlagBits::eDeviceLocal,
+        /*mipmaps*/ false,
+        /*createView*/ true);
 
     // transition
     auto &env = ctx.env();

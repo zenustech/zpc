@@ -150,6 +150,14 @@ namespace zs {
                         vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
                         bool mipmaps = false, bool createView = true, bool enableTransfer = true,
                         vk::SampleCountFlagBits sampleBits = vk::SampleCountFlagBits::e1);
+    Image createOptimal2DImage(const vk::Extent2D &dim,
+                               vk::Format format = vk::Format::eR8G8B8A8Unorm,
+                               vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled,
+                               vk::MemoryPropertyFlags props
+                               = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                               bool mipmaps = false, bool createView = true,
+                               bool enableTransfer = true,
+                               vk::SampleCountFlagBits sampleBits = vk::SampleCountFlagBits::e1);
     Image createInputAttachment(const vk::Extent2D &dim,
                                 vk::Format format = vk::Format::eR8G8B8A8Unorm,
                                 vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled,

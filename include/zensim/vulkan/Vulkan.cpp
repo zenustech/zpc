@@ -80,6 +80,12 @@ namespace zs {
                                   (u32)extensions.size(),
                                   extensions.data()};
 
+    std::vector enabledValidationFeatures{vk::ValidationFeatureEnableEXT::eDebugPrintf};
+    vk::ValidationFeaturesEXT validationFeatures;
+    validationFeatures.enabledValidationFeatureCount = (u32)enabledValidationFeatures.size();
+    validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures.data();
+    instCI.setPNext(&valFeatures);
+
     _instance = vk::createInstance(instCI);
 
 #if 0

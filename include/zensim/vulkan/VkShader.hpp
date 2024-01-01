@@ -39,6 +39,7 @@ namespace zs {
 
   protected:
     friend struct VulkanContext;
+    friend struct Pipeline;
     void analyzeLayout(const u32* code, size_t size);
     void initializeDescriptorSetLayouts();
     void initializeInputAttributes();

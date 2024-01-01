@@ -44,6 +44,8 @@ namespace zs {
   class DescriptorSetLayoutBuilder {
   public:
     DescriptorSetLayoutBuilder(VulkanContext& ctx) noexcept : ctx{ctx} {}
+    DescriptorSetLayoutBuilder(DescriptorSetLayoutBuilder&& o) noexcept
+        : ctx{o.ctx}, bindings{zs::move(o.bindings)} {}
 
     DescriptorSetLayoutBuilder& addBinding(u32 binding, vk::DescriptorType descriptorType,
                                            vk::ShaderStageFlags stageFlags, u32 count = 1) {

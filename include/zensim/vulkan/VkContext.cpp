@@ -87,21 +87,33 @@ namespace zs {
     auto queueFamilyProps = physicalDevice.getQueueFamilyProperties();
     for (auto& queueFamilyIndex : queueFamilyIndices) queueFamilyIndex = -1;
     for (auto& queueFamilyMap : queueFamilyMaps) queueFamilyMap = -1;
+    int graphicsAndCompute = -1;
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
+      int both = 0;
       auto& q = queueFamilyProps[i];
       if (queueFamilyIndices[vk_queue_e::graphics] == -1
           && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
         queueFamilyIndices[vk_queue_e::graphics] = i;
         ZS_WARN_IF(!(q.queueFlags & vk::QueueFlagBits::eTransfer),
                    "the selected graphics queue family cannot transfer!");
+        both++;
       }
       if (queueFamilyIndices[vk_queue_e::compute] == -1
-          && (q.queueFlags & vk::QueueFlagBits::eCompute))
+          && (q.queueFlags & vk::QueueFlagBits::eCompute)) {
         queueFamilyIndices[vk_queue_e::compute] = i;
+        both++;
+      }
       if (queueFamilyIndices[vk_queue_e::transfer] == -1
           && (q.queueFlags & vk::QueueFlagBits::eTransfer))
         queueFamilyIndices[vk_queue_e::transfer] = i;
+      if (both == 2) graphicsAndCompute = i;
     }
+    if (graphicsAndCompute == -1)
+      throw std::runtime_error(
+          "there should be at least a queue that supports both graphics and compute!");
+    queueFamilyIndices[vk_queue_e::graphics] = queueFamilyIndices[vk_queue_e::compute]
+        = graphicsAndCompute;
+
     ZS_ERROR_IF(queueFamilyIndices[vk_queue_e::graphics] == -1,
                 "graphics queue family does not exist!");
     fmt::print("selected queue family [{}] for graphics! (compute: {}, transfer: {})\n",
@@ -121,9 +133,13 @@ namespace zs {
         this->uniqueQueueFamilyIndices.push_back(index);
         dqCI.setQueueFamilyIndex(index).setQueueCount(1).setPQueuePriorities(&priority);
 
-        if (queueFamilyIndices[vk_queue_e::graphics] == index) queueFamilyMaps[0] = i;
-        if (queueFamilyIndices[vk_queue_e::compute] == index) queueFamilyMaps[1] = i;
-        if (queueFamilyIndices[vk_queue_e::transfer] == index) queueFamilyMaps[2] = i;
+        if (queueFamilyIndices[vk_queue_e::graphics] == index)
+          queueFamilyMaps[vk_queue_e::graphics] = i;
+        if (queueFamilyIndices[vk_queue_e::compute] == index)
+          queueFamilyMaps[vk_queue_e::compute] = i;
+        if (queueFamilyIndices[vk_queue_e::transfer] == index)
+          queueFamilyMaps[vk_queue_e::transfer] = i;
+
         i++;
       }
       fmt::print("queue family maps (graphics: {}, compute: {}, transfer: {})\n",

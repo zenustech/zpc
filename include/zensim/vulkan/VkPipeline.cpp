@@ -11,6 +11,33 @@
 
 namespace zs {
 
+  Pipeline::Pipeline(const ShaderModule& shader, u32 pushConstantSize) : ctx{shader.ctx} {
+    /// layout
+    const auto& setLayouts = shader.layouts();
+    u32 nSets = setLayouts.size();
+    std::vector<vk::DescriptorSetLayout> descrSetLayouts(nSets);
+    for (const auto& layout : setLayouts)
+      if (layout.first < nSets) descrSetLayouts[layout.first] = layout.second;
+    auto pipelineLayoutCI = vk::PipelineLayoutCreateInfo{}
+                                .setSetLayoutCount(descrSetLayouts.size())
+                                .setPSetLayouts(descrSetLayouts.data());
+    vk::PushConstantRange range{vk::ShaderStageFlagBits::eCompute, 0, pushConstantSize};
+    if (pushConstantSize)
+      pipelineLayoutCI.setPushConstantRangeCount(1).setPPushConstantRanges(&range);
+    layout = ctx.device.createPipelineLayout(pipelineLayoutCI, nullptr, ctx.dispatcher);
+    /// pipeline
+    auto shaderStage = vk::PipelineShaderStageCreateInfo{}
+                           .setStage(vk::ShaderStageFlagBits::eCompute)
+                           .setModule(shader)
+                           .setPName("main");
+    auto pipelineInfo = vk::ComputePipelineCreateInfo{}.setStage(shaderStage).setLayout(layout);
+
+    if (ctx.device.createComputePipelines(VK_NULL_HANDLE, (u32)1, &pipelineInfo, nullptr, &pipeline,
+                                          ctx.dispatcher)
+        != vk::Result::eSuccess)
+      throw std::runtime_error("failed to create compute pipeline");
+  }
+
   PipelineBuilder& PipelineBuilder::setShader(const ShaderModule& shaderModule) {
     auto stage = shaderModule.getStage();
     setShader(stage, shaderModule);

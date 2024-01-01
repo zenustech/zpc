@@ -18,23 +18,12 @@ namespace zs {
   // (-1, 1)
 
   struct Pipeline {
-    Pipeline(VulkanContext& ctx)
-        : ctx{ctx},
-          vertexShader{VK_NULL_HANDLE},
-          fragShader{VK_NULL_HANDLE},
-          pipeline{VK_NULL_HANDLE},
-          layout{VK_NULL_HANDLE} {}
-    Pipeline(Pipeline&& o) noexcept
-        : ctx{o.ctx},
-          vertexShader{o.vertexShader},
-          fragShader{o.fragShader},
-          pipeline{o.pipeline},
-          layout{o.layout} {
-      o.vertexShader = VK_NULL_HANDLE;
-      o.fragShader = VK_NULL_HANDLE;
+    Pipeline(VulkanContext& ctx) : ctx{ctx}, pipeline{VK_NULL_HANDLE}, layout{VK_NULL_HANDLE} {}
+    Pipeline(Pipeline&& o) noexcept : ctx{o.ctx}, pipeline{o.pipeline}, layout{o.layout} {
       o.pipeline = VK_NULL_HANDLE;
       o.layout = VK_NULL_HANDLE;
     }
+    Pipeline(const ShaderModule& shader, u32 pushConstantSize = 0);
     ~Pipeline() {
       ctx.device.destroyPipeline(pipeline, nullptr, ctx.dispatcher);
       ctx.device.destroyPipelineLayout(layout, nullptr, ctx.dispatcher);
@@ -49,7 +38,6 @@ namespace zs {
     friend struct PipelineBuilder;
 
     VulkanContext& ctx;
-    vk::ShaderModule vertexShader, fragShader;
     /// @note manage the following constructs
     vk::Pipeline pipeline;
     vk::PipelineLayout layout;

@@ -27,6 +27,7 @@ namespace zs {
 
     void begin(const vk::CommandBufferBeginInfo& bi) { _cmd.begin(bi); }
     void begin() { _cmd.begin(vk::CommandBufferBeginInfo{usageFlag(), nullptr}); }
+    void end() { _cmd.end(); }
     void waitStage(const vk::PipelineStageFlags* stage) { _stage = stage; }
     void wait(vk::Semaphore s) { _waitSemaphores.push_back(s); }
     void signal(vk::Semaphore s) { _signalSemaphores.push_back(s); }

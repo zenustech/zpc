@@ -36,7 +36,19 @@ namespace zs {
 
   PipelineBuilder& PipelineBuilder::setRenderPass(const RenderPass& rp, u32 subpass) {
     this->renderPass = rp;
-    /// TODO
+    colorBlendAttachments.resize(
+        rp.subpasses[subpass].colorRefs.size(),
+        vk::PipelineColorBlendAttachmentState{}
+            .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+                               | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
+            .setBlendEnable(true)  // required by imgui
+            // optional
+            .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)          // eOne
+            .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
+            .setColorBlendOp(vk::BlendOp::eAdd)
+            .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)               // eOne
+            .setDstAlphaBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
+            .setAlphaBlendOp(vk::BlendOp::eAdd));
     return *this;
   }
   PipelineBuilder& PipelineBuilder::setShader(const ShaderModule& shaderModule) {

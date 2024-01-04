@@ -127,6 +127,7 @@ namespace zs {
     friend struct VulkanContext;
     friend struct Swapchain;
     friend struct RenderPassBuilder;
+    friend struct PipelineBuilder;
 
     VulkanContext& ctx;
     vk::RenderPass renderpass;

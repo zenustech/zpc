@@ -49,6 +49,17 @@ namespace zs {
             .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)               // eOne
             .setDstAlphaBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
             .setAlphaBlendOp(vk::BlendOp::eAdd));
+
+    for (int i = 0; i < rp.subpasses[subpass].colorRefs.size(); ++i) {
+      auto colorRef = rp.subpasses[subpass].colorRefs[i];
+      auto str = reflect_vk_enum(rp.attachments[colorRef].format);
+      // if (rp.attachments[colorRef].format == vk::Format::eR32G32B32A32Sint)
+      if (str.find("int") != std::string::npos) colorBlendAttachments[i].setBlendEnable(false);
+    }
+
+    // update colorBlendInfo as well
+    colorBlendInfo.setAttachmentCount((u32)colorBlendAttachments.size())
+        .setPAttachments(colorBlendAttachments.data());
     return *this;
   }
   PipelineBuilder& PipelineBuilder::setShader(const ShaderModule& shaderModule) {

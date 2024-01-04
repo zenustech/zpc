@@ -197,6 +197,7 @@ namespace zs {
 
     features.features.fillModeNonSolid = supportedDeviceFeatures.features.fillModeNonSolid;
     features.features.wideLines = supportedDeviceFeatures.features.wideLines;
+    features.features.independentBlend = supportedDeviceFeatures.features.independentBlend;
     this->enabledDeviceFeatures = features;
 
     vk::DeviceCreateInfo devCI{{},

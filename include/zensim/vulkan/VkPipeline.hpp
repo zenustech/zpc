@@ -55,7 +55,7 @@ namespace zs {
           inputAssemblyInfo{o.inputAssemblyInfo},
           rasterizationInfo{o.rasterizationInfo},
           multisampleInfo{o.multisampleInfo},
-          colorBlendAttachment{o.colorBlendAttachment},
+          colorBlendAttachments{std::move(o.colorBlendAttachments)},
           colorBlendInfo{o.colorBlendInfo},
           depthStencilInfo{o.depthStencilInfo},
           dynamicStateEnables{std::move(o.dynamicStateEnables)},
@@ -76,7 +76,7 @@ namespace zs {
       inputAssemblyInfo = vk::PipelineInputAssemblyStateCreateInfo{};
       rasterizationInfo = vk::PipelineRasterizationStateCreateInfo{};
       multisampleInfo = vk::PipelineMultisampleStateCreateInfo{};
-      colorBlendAttachment = vk::PipelineColorBlendAttachmentState{};
+      colorBlendAttachments.clear();
       colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{};
       depthStencilInfo = vk::PipelineDepthStencilStateCreateInfo{};
       dynamicStateEnables.clear();
@@ -132,6 +132,7 @@ namespace zs {
       this->subpass = subpass;
       return *this;
     }
+    PipelineBuilder& setRenderPass(const RenderPass& rp, u32 subpass);
     PipelineBuilder& setRenderPass(vk::RenderPass rp) {
       this->renderPass = rp;
       return *this;
@@ -157,8 +158,8 @@ namespace zs {
       return *this;
     }
 
-    PipelineBuilder& setBlendEnable(bool enable) {
-      this->colorBlendAttachment.setBlendEnable(enable);
+    PipelineBuilder& setBlendEnable(bool enable, u32 i = 0) {
+      this->colorBlendAttachments[i].setBlendEnable(enable);
       return *this;
     }
     PipelineBuilder& setTopology(vk::PrimitiveTopology topology) {
@@ -187,8 +188,8 @@ namespace zs {
       return *this;
     }
 
-    vk::PipelineColorBlendAttachmentState& refColorBlendAttachment() {
-      return colorBlendAttachment;
+    vk::PipelineColorBlendAttachmentState& refColorBlendAttachment(u32 i = 0) {
+      return colorBlendAttachments[i];
     }
 
     Pipeline build();
@@ -212,7 +213,7 @@ namespace zs {
     vk::PipelineMultisampleStateCreateInfo multisampleInfo;
     //
     vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
-    vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+    std::vector<vk::PipelineColorBlendAttachmentState> colorBlendAttachments;
     vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
     std::set<vk::DynamicState> dynamicStateEnables;
 

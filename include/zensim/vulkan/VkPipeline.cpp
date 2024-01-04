@@ -1,9 +1,5 @@
 #include "zensim/vulkan/VkPipeline.hpp"
 
-#include <vulkan/vulkan_core.h>
-
-#include <type_traits>
-
 #include "zensim/vulkan/VkBuffer.hpp"
 #include "zensim/vulkan/VkImage.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
@@ -38,6 +34,11 @@ namespace zs {
       throw std::runtime_error("failed to create compute pipeline");
   }
 
+  PipelineBuilder& PipelineBuilder::setRenderPass(const RenderPass& rp, u32 subpass) {
+    this->renderPass = rp;
+    /// TODO
+    return *this;
+  }
   PipelineBuilder& PipelineBuilder::setShader(const ShaderModule& shaderModule) {
     auto stage = shaderModule.getStage();
     setShader(stage, shaderModule);
@@ -91,23 +92,23 @@ namespace zs {
                           .setAlphaToCoverageEnable(false)
                           .setAlphaToOneEnable(false);
 
-    colorBlendAttachment
-        = vk::PipelineColorBlendAttachmentState{}
-              .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
-                                 | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-              .setBlendEnable(true)  // required by imgui
-              // optional
-              .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)          // eOne
-              .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
-              .setColorBlendOp(vk::BlendOp::eAdd)
-              .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)               // eOne
-              .setDstAlphaBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
-              .setAlphaBlendOp(vk::BlendOp::eAdd);
+    colorBlendAttachments.push_back(
+        vk::PipelineColorBlendAttachmentState{}
+            .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+                               | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
+            .setBlendEnable(true)  // required by imgui
+            // optional
+            .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)          // eOne
+            .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
+            .setColorBlendOp(vk::BlendOp::eAdd)
+            .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)               // eOne
+            .setDstAlphaBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)  // eZero
+            .setAlphaBlendOp(vk::BlendOp::eAdd));
 
     colorBlendInfo = vk::PipelineColorBlendStateCreateInfo{}
                          .setLogicOpEnable(false)
-                         .setAttachmentCount(1)
-                         .setPAttachments(&colorBlendAttachment)
+                         .setAttachmentCount((u32)colorBlendAttachments.size())
+                         .setPAttachments(colorBlendAttachments.data())
                          // optional
                          .setLogicOp(vk::LogicOp::eCopy)
                          .setBlendConstants({0.f, 0.f, 0.f, 0.f});

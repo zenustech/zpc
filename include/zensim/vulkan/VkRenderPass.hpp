@@ -27,14 +27,14 @@ namespace zs {
     int depthStencilRef{-1};  // -1: inactive, i: target depth/stencil ref
 
     int depthStencilResolveRef{-1};  // -1: inactive, i: target depth/stencil ref
-    int resolveRef{-1};              // -1: inactive, i: target color ref
+    std::vector<u32> colorResolveRefs{};
 
     // directly used later for renderpass creation
     mutable std::vector<vk::AttachmentReference2> colorAttachRefs;
-    mutable std::vector<vk::AttachmentReference2> inputAttachRefs;
+    mutable std::vector<vk::AttachmentReference2> colorResolveAttachRefs;
     mutable std::vector<vk::AttachmentReference2> depthAttachRefs;
-    mutable vk::AttachmentReference2 colorResolveAttachRef;
     mutable vk::SubpassDescriptionDepthStencilResolve dsResolveProp;
+    mutable std::vector<vk::AttachmentReference2> inputAttachRefs;
 
     vk::SubpassDescription2 resolve(std::vector<vk::AttachmentDescription2>& attachments) const {
       auto subpass
@@ -45,7 +45,6 @@ namespace zs {
         colorAttachRefs.resize(colorRefs.size());
         for (int i = 0; i != colorRefs.size(); ++i) {
           const u32 attachmentNo = colorRefs[i];
-          if (attachmentNo == resolveRef) continue;
           // const auto& attachment = attachments[attachmentNo];
           auto ref
               = vk::AttachmentReference2{attachmentNo, vk::ImageLayout::eColorAttachmentOptimal,
@@ -54,14 +53,19 @@ namespace zs {
         }
         subpass.setColorAttachmentCount((u32)colorAttachRefs.size())
             .setPColorAttachments(colorAttachRefs.data());
-
-        // resolve
-        if (resolveRef != -1) {
-          colorResolveAttachRef
-              = vk::AttachmentReference2{(u32)resolveRef, vk::ImageLayout::eColorAttachmentOptimal,
+      }
+      // color resolves
+      if (colorResolveRefs.size()) {
+        colorResolveAttachRefs.resize(colorResolveRefs.size());
+        for (int i = 0; i != colorResolveRefs.size(); ++i) {
+          const u32 attachmentNo = colorResolveRefs[i];
+          // const auto& attachment = attachments[attachmentNo];
+          auto ref
+              = vk::AttachmentReference2{attachmentNo, vk::ImageLayout::eColorAttachmentOptimal,
                                          vk::ImageAspectFlagBits::eColor};
-          subpass.setPResolveAttachments(&colorResolveAttachRef);
+          colorResolveAttachRefs[i] = ref;
         }
+        subpass.setResolveAttachments(colorResolveAttachRefs);
       }
       // input
       if (inputRefs.size()) {
@@ -171,14 +175,15 @@ namespace zs {
     }
 
     RenderPassBuilder& addSubpass(/*color*/ const std::vector<u32>& colorRange,
-                                  int depthStencilRef = -1, int resolveRef = -1,
+                                  int depthStencilRef = -1,
+                                  const std::vector<u32>& colorResolveRange = {},
                                   int depthStencilResolveRef = -1,
                                   /*input*/ const std::vector<u32>& inputRange = {}) {
       SubpassDesc sd;
       sd.colorRefs = colorRange;
       sd.inputRefs = inputRange;
       sd.depthStencilRef = depthStencilRef;
-      sd.resolveRef = resolveRef;
+      sd.colorResolveRefs = colorResolveRange;
       sd.depthStencilResolveRef = depthStencilResolveRef;
       _subpasses.push_back(sd);
       return *this;
@@ -193,7 +198,7 @@ namespace zs {
       return *this;
     }
 
-    RenderPass build() {
+    RenderPass build() const {
       RenderPass ret{ctx};
       const u32 num = _attachments.size();
       std::vector<vk::AttachmentDescription2> attachments;
@@ -272,7 +277,6 @@ namespace zs {
         if (dsRefIndex != -1) subpass.setPDepthStencilAttachment(&depthRefs[dsRefIndex]);
         if (dsResolveRefIndex != -1) subpass.setPNext(&dsResolveProp);
         subpasses.resize(_subpassCount, subpass);
-        _subpasses.resize(_subpassCount, autoSubpassDesc);
 
         for (u32 i = 0; i < _subpassCount; i++) {
           auto dependency = vk::SubpassDependency2{}
@@ -296,6 +300,8 @@ namespace zs {
                                                .setDependencyCount(subpassDependencies.size())
                                                .setPDependencies(subpassDependencies.data()),
                                            nullptr, ctx.dispatcher);
+
+        ret.subpasses = std::vector<SubpassDesc>(_subpassCount, autoSubpassDesc);
       } else {
         std::vector<vk::SubpassDescription2> subpasses(_subpasses.size());
         for (u32 i = 0; i < subpasses.size(); i++)
@@ -310,10 +316,11 @@ namespace zs {
                                                .setDependencyCount(_subpassDependencies.size())
                                                .setPDependencies(_subpassDependencies.data()),
                                            nullptr, ctx.dispatcher);
+
+        ret.subpasses = _subpasses;
       }
 
       ret.attachments = _attachments;
-      ret.subpasses = _subpasses;
 
       return ret;
     }

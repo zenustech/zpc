@@ -60,7 +60,7 @@ namespace zs {
       if (enableDepth) accessMask = accessMask | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
       rpBuilder
           .addSubpass(/*color*/ {0}, /*ds ref*/ enableDepth ? 2 : -1,
-                      /*resolve ref*/ 1) /*input*/
+                      /*color resolve ref*/ {1}) /*input*/
           .setSubpassDependencies(
               {vk::SubpassDependency2{}
                    .setSrcSubpass(VK_SUBPASS_EXTERNAL)

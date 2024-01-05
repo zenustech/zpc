@@ -48,6 +48,10 @@ namespace zs {
     }
 
     if (_usage == vk_cmd_usage_e::single_use) {
+      if (ctx.device.waitForFences({(vk::Fence)fence}, VK_TRUE, detail::deduce_numeric_max<u64>(),
+                                   ctx.dispatcher)
+          != vk::Result::eSuccess)
+        throw std::runtime_error("error waiting for fences");
       ctx.device.freeCommandBuffers(_poolFamily.singleUsePool, 1, &_cmd, ctx.dispatcher);
       _cmd = VK_NULL_HANDLE;
     }

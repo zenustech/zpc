@@ -182,6 +182,18 @@ namespace zs {
       this->multisampleInfo.setRasterizationSamples(sampleBits);
       return *this;
     }
+    PipelineBuilder& enableDepthBias(float constant = 1.25f, float slope = 1.75f) {
+      rasterizationInfo.setDepthBiasEnable(true)
+          .setDepthBiasConstantFactor(constant)
+          .setDepthBiasSlopeFactor(slope);
+      return *this;
+    }
+    PipelineBuilder& disableDepthBias() {
+      rasterizationInfo.setDepthBiasEnable(false)
+          .setDepthBiasConstantFactor(0.f)
+          .setDepthBiasSlopeFactor(0.f);
+      return *this;
+    }
 
     PipelineBuilder& enableDynamicState(vk::DynamicState state) {
       dynamicStateEnables.insert(state);

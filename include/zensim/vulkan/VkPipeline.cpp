@@ -36,6 +36,7 @@ namespace zs {
 
   PipelineBuilder& PipelineBuilder::setRenderPass(const RenderPass& rp, u32 subpass) {
     this->renderPass = rp;
+    this->subpass = subpass;
     colorBlendAttachments.resize(
         rp.subpasses[subpass].colorRefs.size(),
         vk::PipelineColorBlendAttachmentState{}

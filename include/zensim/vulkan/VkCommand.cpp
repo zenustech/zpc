@@ -1,7 +1,15 @@
 #include "VkCommand.hpp"
 
+#include "zensim/ZpcFunctional.hpp"
+
 namespace zs {
 
+  void Fence::wait() const {
+    if (_ctx.device.waitForFences({(vk::Fence)_fence}, VK_TRUE, detail::deduce_numeric_max<u64>(),
+                                  _ctx.dispatcher)
+        != vk::Result::eSuccess)
+      throw std::runtime_error("error waiting for fences");
+  }
   VkCommand::~VkCommand() {
     if (_cmd != VK_NULL_HANDLE) {
       auto& c = this->ctx();

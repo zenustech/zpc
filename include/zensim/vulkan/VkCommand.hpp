@@ -76,6 +76,7 @@ namespace zs {
       _fence = VK_NULL_HANDLE;
     }
 
+    void wait() const;
     void reset() { _ctx.device.resetFences({_fence}); }
 
     vk::Fence operator*() const noexcept { return _fence; }

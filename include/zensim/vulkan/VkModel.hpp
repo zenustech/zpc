@@ -8,6 +8,7 @@ namespace zs {
 
   struct VkModel {
     enum draw_category_e { tri = 0, point, pick };
+    using vec3_t = vec<float, 3>;
     using transform_t = vec<float, 4, 4>;
     struct Vertices {
       // vec3: pos, color, normal
@@ -20,7 +21,9 @@ namespace zs {
     VkModel() = default;
     template <typename Ti> VkModel(VulkanContext &ctx,
                                    const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs,
-                                   const transform_t &trans = transform_t::identity());
+                                   const vec3_t &translation = vec3_t::constant(0.f),
+                                   const vec3_t &eulerXYZradians = vec3_t::constant(0.f),
+                                   const vec3_t &scale = vec3_t::constant(1.f));
     VkModel(VkModel &&o) = default;
     VkModel &operator=(VkModel &&o) = default;
     void reset() {
@@ -120,12 +123,14 @@ namespace zs {
     Vertices verts;
     vk::DeviceSize indexCount;
     Owner<Buffer> indices;
-    transform_t transform;
+    vec3_t scale, rotate, translate;
   };
 
   ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, u32, 3> &surfs,
-                                     const transform_t &trans);
+                                     const vec3_t &translation, const vec3_t &rotation,
+                                     const vec3_t &scale);
   ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, i32, 3> &surfs,
-                                     const transform_t &trans);
+                                     const vec3_t &translation, const vec3_t &rotation,
+                                     const vec3_t &scale);
 
 }  // namespace zs

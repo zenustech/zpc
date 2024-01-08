@@ -19,20 +19,21 @@ namespace zs {
     virtual ~HierarchyConcept() = default;
 
     template <typename T, enable_if_t<std::is_base_of_v<ObjectConcept, T>> = 0>
-    T *addChild(std::unique_ptr<T> ch) {
-      if constexpr (std::is_base_of_v<HierarchyConcept, T>) ch->_parent = this;
+    T *addChild(Unique<T> ch) {
       auto ret = ch.get();
+      if constexpr (is_base_of_v<HierarchyConcept, T>)
+        static_cast<HierarchyConcept *>(ret)->_parent = this;
       _children.push_back(std::move(ch));
       return ret;
     }
     HierarchyConcept *parent() const {  // get parent widget, may return null for the root widget
       return _parent;
     }
-    std::vector<std::unique_ptr<ObjectConcept>> &children() { return _children; }
-    const std::vector<std::unique_ptr<ObjectConcept>> &children() const { return _children; }
+    std::vector<Unique<ObjectConcept>> &children() { return _children; }
+    const std::vector<Unique<ObjectConcept>> &children() const { return _children; }
 
   protected:
-    std::vector<std::unique_ptr<ObjectConcept>> _children{};
+    std::vector<Unique<ObjectConcept>> _children{};
     HierarchyConcept *_parent{nullptr};
   };
 

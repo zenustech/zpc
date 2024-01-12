@@ -116,7 +116,7 @@ namespace zs {
   struct DescriptorWriter {
     DescriptorWriter(VulkanContext& ctx, const DescriptorSetLayout& setLayout) noexcept
         : ctx{ctx}, setLayout{setLayout} {}
-    DescriptorWriter(VulkanContext& ctx) noexcept : ctx{ctx}, setLayout{DescriptorSetLayout{ctx}} {}
+    // DescriptorWriter(VulkanContext& ctx) noexcept : ctx{ctx}, setLayout{DescriptorSetLayout{ctx}} {}
 
     DescriptorWriter& writeBuffer(u32 binding, vk::DescriptorBufferInfo* bufferInfo) {
       if (setLayout.bindings.count(binding) != 1)

@@ -59,6 +59,41 @@ namespace zs {
     }
     /// @note dist must be updated within 'f'
     template <typename VecT, class F, bool IndexRequired = false>
+    constexpr auto find_nearest(const VecInterface<VecT> &p, F &&f, typename VecT::value_type cap,
+                                wrapv<IndexRequired> = {}) const {
+      using T = typename VecT::value_type;
+      index_type idx = -1;
+      T dist = cap;
+      if (auto nl = numNodes(); nl <= 2) {
+        for (index_type i = 0; i != nl; ++i) {
+          if (auto d = distance(p, getNodeBV(i)); d < dist) {
+            f(i, dist, idx);
+          }
+        }
+        if constexpr (IndexRequired)
+          return zs::make_tuple(idx, dist);
+        else
+          return dist;
+      }
+      index_type node = 0;
+      while (node != -1 && node != _numNodes) {
+        index_type level = _levels[node];
+        // level and node are always in sync
+        for (; level; --level, ++node)
+          if (auto d = distance(p, getNodeBV(node)); d > dist) break;
+        // leaf node check
+        if (level == 0) {
+          if (auto d = distance(p, getNodeBV(node)); d < dist) f(_auxIndices[node], dist, idx);
+          node++;
+        } else  // separate at internal nodes
+          node = _auxIndices[node];
+      }
+      if constexpr (IndexRequired)
+        return zs::make_tuple(idx, dist);
+      else
+        return dist;
+    }
+    template <typename VecT, class F, bool IndexRequired = false>
     constexpr auto find_nearest(const VecInterface<VecT> &p, F &&f,
                                 wrapv<IndexRequired> = {}) const {
       using T = typename VecT::value_type;

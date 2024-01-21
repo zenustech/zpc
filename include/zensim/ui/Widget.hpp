@@ -1,5 +1,5 @@
 #pragma once
-#include "zensim/types/ImplPattern.hpp"
+#include "zensim/ZpcImplPattern.hpp"
 #include "zensim/ui/Widget.hpp"
 
 namespace zs {

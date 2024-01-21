@@ -25,6 +25,20 @@ namespace zs {
   // NodeConcept* _parent{nullptr};
   // };
 
+  struct HierarchyConcept : virtual ObjectConcept {
+    virtual ~HierarchyConcept() = default;
+
+    HierarchyConcept* parent() const {  // get parent widget, may return null for the root widget
+      return _parent;
+    }
+    HierarchyConcept*& parent() {  // get parent widget, may return null for the root widget
+      return _parent;
+    }
+
+  protected:
+    HierarchyConcept* _parent{nullptr};
+  };
+
 #define ZS_SUPPLEMENT_IMPL_PATTERN_DERIVED_ACCESS                                                \
   constexpr auto derivedPtr() noexcept { return static_cast<Derived*>(this); }                   \
   constexpr auto derivedPtr() const noexcept { return static_cast<const Derived*>(this); }       \

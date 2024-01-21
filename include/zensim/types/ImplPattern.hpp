@@ -15,18 +15,4 @@ namespace zs {
     return std::make_unique<T>(zs::forward<Args>(args)...);
   }
 
-  struct HierarchyConcept : virtual ObjectConcept {
-    virtual ~HierarchyConcept() = default;
-
-    HierarchyConcept *parent() const {  // get parent widget, may return null for the root widget
-      return _parent;
-    }
-    HierarchyConcept *&parent() {  // get parent widget, may return null for the root widget
-      return _parent;
-    }
-
-  protected:
-    HierarchyConcept *_parent{nullptr};
-  };
-
 }  // namespace zs

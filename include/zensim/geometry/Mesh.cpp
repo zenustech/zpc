@@ -44,7 +44,7 @@ namespace zs {
       }
     });
 
-    pol(nrms, [scale](auto &nrm) {
+    pol(nrms, [scale](ValueT &nrm) {
       auto res = zs::vec<T, 3>{nrm[0], nrm[1], nrm[2]}.normalized() * scale;
       nrm[0] = res[0];
       nrm[1] = res[1];

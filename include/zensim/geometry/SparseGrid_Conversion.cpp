@@ -10,7 +10,10 @@
 #include "VdbLevelSet.h"
 #include "zensim/Logger.hpp"
 #include "zensim/execution/Concurrency.h"
-#include "zensim/omp/execution/ExecutionPolicy.hpp"
+#include "zensim/execution/ExecutionPolicy.hpp"
+#if ZS_ENABLE_OPENMP
+#  include "zensim/omp/execution/ExecutionPolicy.hpp"
+#endif
 
 namespace zs {
 
@@ -57,7 +60,9 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(true);
       // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
@@ -123,7 +128,10 @@ namespace zs {
           }
         });
       }
-    } else {  // fall back to serial execution
+      return ret;
+    }
+#endif
+    {  // fall back to serial execution
       auto table = proxy<execspace_e::host>(ret._table);
       auto spgv = proxy<execspace_e::host>(ret);
       ret._table.reset(true);
@@ -240,7 +248,8 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       auto lsv = proxy<execspace_e::openmp>(spls);
       using LsT = RM_CVREF_T(lsv);
@@ -267,7 +276,17 @@ namespace zs {
           accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
         }
       });
-    } else {
+      // GRID_UNKNOWN: 0
+      // GRID_LEVEL_SET: 1
+      // GRID_FOG_VOLUME: 2
+      // GRID_STAGGERED: 3
+      if (gridClass >= 3)
+        throw std::runtime_error(fmt::format("Unknown gridclass [{}]!", gridClass));
+      grid->setGridClass(static_cast<openvdb::GridClass>(gridClass));
+      return OpenVDBStruct{grid};
+    }
+#endif
+    {
       auto lsv = proxy<execspace_e::host>(spls);
       using LsT = RM_CVREF_T(lsv);
       auto accessor = grid->getAccessor();
@@ -303,11 +322,15 @@ namespace zs {
     auto ret = spg.clone({memsrc_e::host, -1});
 
     static_assert(8 * 8 * 8 == LeafType::SIZE, "leaf node size not 8x8x8!");
+#if ZS_ENABLE_OPENMP
     constexpr auto space = execspace_e::openmp;
-
-    auto ompExec = omp_exec();
+    auto pol = omp_exec();
+#else
+    constexpr auto space = execspace_e::host;
+    auto pol = seq_exec();
+#endif
     auto nbs = ret.numBlocks();
-    ompExec(range(nbs), [&, spgv = proxy<space>(ret)](int blockno) mutable {
+    pol(range(nbs), [&, spgv = proxy<space>(ret)](int blockno) mutable {
       // auto accessor = gridPtr->getUnsafeAccessor();
       for (int cid = 0; cid != ret.block_size; ++cid) {
         const auto wcoord = spgv.wCoord(blockno, cid);
@@ -336,11 +359,15 @@ namespace zs {
 
     // check if GRID_STAGGERED
     static_assert(8 * 8 * 8 == LeafType::SIZE, "leaf node size not 8x8x8!");
+#if ZS_ENABLE_OPENMP
     constexpr auto space = execspace_e::openmp;
-
-    auto ompExec = omp_exec();
+    auto pol = omp_exec();
+#else
+    constexpr auto space = execspace_e::host;
+    auto pol = seq_exec();
+#endif
     auto nbs = ret.numBlocks();
-    ompExec(range(nbs), [&, spgv = proxy<space>(ret)](int blockno) mutable {
+    pol(range(nbs), [&, spgv = proxy<space>(ret)](int blockno) mutable {
       for (int cid = 0; cid != ret.block_size; ++cid) {
         for (int d = 0; d != 3; ++d) {
           const auto wcoord = spgv.wStaggeredCoord(blockno, cid, d);
@@ -398,7 +425,8 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(true);
       // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
@@ -466,7 +494,10 @@ namespace zs {
           }
         });
       }
-    } else {  // fall back to serial execution
+      return ret;
+    }
+#endif
+    {  // fall back to serial execution
       auto table = proxy<execspace_e::host>(ret._table);
       auto spgv = proxy<execspace_e::host>(ret);
       ret._table.reset(true);
@@ -521,7 +552,8 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       auto lsv = proxy<execspace_e::openmp>(spls);
       using LsT = RM_CVREF_T(lsv);
@@ -548,7 +580,11 @@ namespace zs {
           accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, val);
         }
       });
-    } else {
+      grid->setGridClass(openvdb::GridClass::GRID_STAGGERED);
+      return OpenVDBStruct{grid};
+    }
+#endif
+    {
       auto lsv = proxy<execspace_e::host>(spls);
       using LsT = RM_CVREF_T(lsv);
       auto accessor = grid->getAccessor();

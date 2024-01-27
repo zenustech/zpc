@@ -9,7 +9,10 @@
 #include "VdbLevelSet.h"
 #include "zensim/Logger.hpp"
 #include "zensim/execution/Concurrency.h"
-#include "zensim/omp/execution/ExecutionPolicy.hpp"
+#include "zensim/execution/ExecutionPolicy.hpp"
+#if ZS_ENABLE_OPENMP
+#  include "zensim/omp/execution/ExecutionPolicy.hpp"
+#endif
 
 namespace zs {
 
@@ -70,7 +73,8 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(true);
       // tbb::parallel_for(LeafCIterRange{gridPtr->tree().cbeginLeaf()}, lam);
@@ -139,7 +143,10 @@ namespace zs {
                   }
                 });
       }
-    } else {  // fall back to serial execution
+      return ret;
+    }
+#endif
+    {  // fall back to serial execution
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);
       ret._table.reset(true);
@@ -204,68 +211,6 @@ namespace zs {
 #endif
         }
       }
-    }
-
-    if constexpr (false) {
-      auto lsv = proxy<execspace_e::host>(ret);
-#if 1
-      int actualBlockCnt = 0;
-      for (TreeType::LeafCIter iter = gridPtr->tree().cbeginLeaf(); iter; ++iter) {
-        const TreeType::LeafNodeType &node = *iter;
-        // if (node.onVoxelCount() <= 0) continue;
-        actualBlockCnt++;
-        int cellid = 0;
-        for (auto cell = node.beginValueAll(); cell; ++cell, ++cellid) {
-          auto p = gridPtr->transform().indexToWorld(cell.getCoord());
-          TV pp{p[0], p[1], p[2]};
-          auto srcSdf = lsv.getSignedDistance(pp);
-          auto refSdf = cell.getValue();
-          auto refSdf_ = refSdf;
-#  if 0
-          openvdb::tools::BoxSampler::sample(gridPtr->tree(),
-                                                            gridPtr->transform().worldToIndex(p));
-#  endif
-          if (srcSdf < 0 || refSdf < 0)
-            fmt::print("at ({}, {}, {}). stored sdf: {}, ref sdf: {} ({})\n", p[0], p[1], p[2],
-                       srcSdf, refSdf, refSdf_);
-          if ((pp + TV::constant(0.005)).l2NormSqr() < 1e-6) {
-            fmt::print("chk ({}, {}, {}) -> sdf [{}]; ref [{}]\n", pp[0], pp[1], pp[2], srcSdf,
-                       refSdf);
-            getchar();
-          }
-        }
-      }
-      fmt::print("stored block cnt: {}; actual cnt: {}\n", ret._grid.numBlocks(), actualBlockCnt);
-#else
-      TV test0{1, 2, 3};
-      auto w0 = lsv.indexToWorld(test0);
-      auto w1 = gridPtr->indexToWorld(openvdb::Vec3R{test0[0], test0[1], test0[2]});
-      auto test1 = lsv.worldToIndex(w0);
-      fmt::print("ipos: {}, {}, {} vs. recovered {}, {}, {}\n", test0[0], test0[1], test0[2],
-                 test1[0], test1[1], test1[2]);
-      fmt::print("wpos: lsv {}, {}, {} vs. vdb {}, {}, {}\n", w0[0], w0[1], w0[2], w1[0], w1[1],
-                 w1[2]);
-      getchar();
-      for (int blockno = 0; blockno != ret._grid.numBlocks(); ++blockno) {
-        for (int cellno = 0; cellno != ret._grid.block_size; ++cellno) {
-          auto icoord
-              = ret._table._activeKeys[blockno] + RM_CVREF_T(lsv._grid)::cellid_to_coord(cellno);
-          auto ipos = icoord;
-          auto wpos = lsv.indexToWorld(ipos);
-          auto ipos_ = gridPtr->worldToIndex(openvdb::Vec3R{wpos[0], wpos[1], wpos[2]});
-
-          auto srcSdf = lsv._grid("sdf", blockno, cellno);
-          auto srcSdf_ = lsv.getSignedDistance(wpos);
-          auto refSdf = openvdb::tools::BoxSampler::sample(gridPtr->tree(), ipos_);
-          if (refSdf < 0 || srcSdf < 0)
-            fmt::print("at ({}, {}, {}). stored sdf: {} ({}), ref sdf: {}\n", wpos[0], wpos[1],
-                       wpos[2], srcSdf, srcSdf_, refSdf);
-        }
-      }
-      fmt::print("box: {}, {}, {} - {}, {}, {}\n", ret._min[0], ret._min[1], ret._min[2],
-                 ret._max[0], ret._max[1], ret._max[2]);
-#endif
-      getchar();
     }
     return ret;
   }
@@ -352,7 +297,8 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(true);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
@@ -426,7 +372,10 @@ namespace zs {
           }
         });
       }
-    } else {
+      return ret;
+    }
+#endif
+    {
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);
       ret._table.reset(true);
@@ -516,7 +465,8 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       ret._table.reset(true);
       ompExec(LeafCIterRange{gridPtr->tree().cbeginLeaf()},
@@ -590,7 +540,10 @@ namespace zs {
           }
         });
       }
-    } else {
+      return ret;
+    }
+#endif
+    {
       auto table = proxy<execspace_e::host>(ret._table);
       auto gridview = proxy<execspace_e::host>(ret._grid);
       ret._table.reset(true);
@@ -643,7 +596,8 @@ namespace zs {
 #else
     constexpr bool onwin = false;
 #endif
-    if constexpr (is_backend_available(exec_omp) && !onwin) {
+#if ZS_ENABLE_OPENMP
+    if constexpr (!onwin) {
       auto ompExec = omp_exec();
       auto lsv = proxy<execspace_e::openmp>(spls);
       using LsT = RM_CVREF_T(lsv);
@@ -661,7 +615,7 @@ namespace zs {
         auto nodePtr = grid->tree().probeLeaf(openvdb::Coord{blockid[0], blockid[1], blockid[2]});
         if (nodePtr == nullptr)
           throw std::runtime_error("strangely this leaf has not yet been allocated.");
-#if 0
+#  if 0
         typename LsT::cell_index_type ci = 0;
         auto &node = *nodePtr;
         auto block = lsv._grid.block(blockno);
@@ -673,7 +627,7 @@ namespace zs {
           // accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
           cell.setValue(block("sdf", ci));
         }
-#else
+#  else
         auto accessor = grid->getUnsafeAccessor();
         for (typename LsT::cell_index_type cid = 0; cid != lsv.block_size; ++cid) {
           const auto sdfVal
@@ -682,9 +636,16 @@ namespace zs {
           const auto coord = blockid + LsT::grid_view_t::cellid_to_coord(cid);
           accessor.setValue(openvdb::Coord{coord[0], coord[1], coord[2]}, sdfVal);
         }
-#endif
+#  endif
       });
-    } else {
+      if constexpr (SplsT::category == grid_e::staggered)
+        grid->setGridClass(openvdb::GridClass::GRID_STAGGERED);
+      else
+        grid->setGridClass(openvdb::GridClass::GRID_LEVEL_SET);
+      return OpenVDBStruct{grid};
+    }
+#endif
+    {
       auto lsv = proxy<execspace_e::host>(spls);
       using LsT = RM_CVREF_T(lsv);
       auto accessor = grid->getAccessor();

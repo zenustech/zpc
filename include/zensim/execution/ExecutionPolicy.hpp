@@ -149,8 +149,7 @@ namespace zs {
           }
         }
       } else {
-        using fts = function_traits<F>;
-        if constexpr (fts::arity == 0)
+        if constexpr (is_invocable_v<F>)
           for (auto &&it : range) f();
         else {
           for (auto &&it : range) {

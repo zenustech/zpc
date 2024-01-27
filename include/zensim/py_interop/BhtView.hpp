@@ -110,7 +110,7 @@ namespace zs {
     ///
     /// @note cuda
     ///
-#ifdef ZS_ENABLE_CUDA
+#if ZS_ENABLE_CUDA
 #  if defined(__CUDACC__)
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     __forceinline__ __device__ value_type insert(const key_type &key,
@@ -436,12 +436,13 @@ namespace zs {
       return return_val;
     }
 #  endif
-#endif
-
+    ///
+    /// @note host
+    ///
+#elif ZS_ENABLE_OPENMP
     ///
     /// @note openmp
     ///
-#ifdef ZS_ENABLE_OPENMP
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     inline value_type insert(const key_type &key, value_type insertion_index = sentinel_v,
                              bool enqueueKey = true) noexcept {
@@ -640,6 +641,210 @@ namespace zs {
       thread_fence(exec_omp);
       /// unlock
       atomic_exch(exec_omp, lock, status_sentinel_v);
+      return return_val;
+    }
+#else
+    ///
+    /// @note sequential
+    ///
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    inline value_type insert(const key_type &key, value_type insertion_index = sentinel_v,
+                             bool enqueueKey = true) noexcept {
+      if (_numBuckets == 0) return failure_token_v;
+      constexpr auto key_sentinel_v = deduce_key_sentinel();
+      int iter = 0;
+      int load = 0;
+      size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
+      while (iter < 3) {
+        for (; load != bucket_size; ++load) {
+          key_type curKey = atomicLoad(
+              &_table.status[bucketOffset + load],
+              const_cast<const volatile storage_key_type *>(&_table.keys[bucketOffset + load]));
+          if (curKey == key) {
+            load = -1;
+            break;
+          } else if (curKey == key_sentinel_v)
+            break;
+        }
+        if (load < 0)
+          return sentinel_v;
+        else if (load <= threshold) {
+          key_type storedKey = key_sentinel_v;
+          if (atomicSwitchIfEqual(
+                  &_table.status[bucketOffset + load],
+                  const_cast<volatile storage_key_type *>(&_table.keys[bucketOffset + load]),
+                  key)) {
+            auto localno = insertion_index;
+            if (insertion_index == sentinel_v)
+              localno
+                  = (value_type)atomic_add(exec_seq, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+            _table.indices[bucketOffset + load] = localno;
+            if (enqueueKey) _activeKeys[localno] = key;
+            if (localno >= _tableSize - 20)
+              printf("proximity!!! %d -> %d\n", (int)localno, (int)_tableSize);
+            return localno;  ///< only the one that inserts returns the actual index
+          }
+        } else {
+          ++iter;
+          load = 0;
+          if (iter == 1)
+            bucketOffset = _hf1(key) % _numBuckets * bucket_size;
+          else if (iter == 2)
+            bucketOffset = _hf2(key) % _numBuckets * bucket_size;
+          else
+            break;
+        }
+      }
+      *_success = false;
+      return failure_token_v;
+    }
+
+    /// make sure no one else is inserting in the same time!
+    template <bool retrieve_index = true>
+    constexpr value_type query(const key_type &key, wrapv<retrieve_index> = {}) const noexcept {
+      using namespace placeholders;
+      if (_numBuckets == 0) {
+        if constexpr (retrieve_index)
+          return sentinel_v;
+        else
+          return detail::deduce_numeric_max<value_type>();
+      }
+      int loc = 0;
+      size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
+      for (int iter = 0; iter < 3;) {
+        for (loc = 0; loc != bucket_size; ++loc)
+          if (_table.keys[bucketOffset + loc].val == key) break;
+        if (loc != bucket_size) {
+          if constexpr (retrieve_index)
+            return _table.indices[bucketOffset + loc];
+          else
+            return bucketOffset + loc;
+        } else {
+          ++iter;
+          if (iter == 1)
+            bucketOffset = _hf1(key) % _numBuckets * bucket_size;
+          else if (iter == 2)
+            bucketOffset = _hf2(key) % _numBuckets * bucket_size;
+        }
+      }
+      if constexpr (retrieve_index)
+        return sentinel_v;
+      else
+        return detail::deduce_numeric_max<value_type>();
+    }
+    constexpr size_type entry(const key_type &key) const noexcept {
+      using namespace placeholders;
+      return static_cast<size_type>(query(key, true_c));
+    }
+
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    inline bool atomicSwitchIfEqual(status_type *lock, volatile storage_key_type *const dest,
+                                    const storage_key_type &val) noexcept {
+      using namespace placeholders;
+      constexpr auto key_sentinel_v = deduce_key_sentinel();
+      const storage_key_type storage_key_sentinel_v = key_sentinel_v;
+      if constexpr (sizeof(storage_key_type) == 8) {
+        static_assert(alignof(storage_key_type) == alignof(u64),
+                      "storage key type alignment is not the same as u64");
+        union {
+          volatile storage_key_type *const ptr;
+          volatile u64 *const ptr64;
+        } dst = {dest};
+        union {
+          const storage_key_type *const ptr;
+          const u64 *const ptr64;
+        } expected = {&storage_key_sentinel_v};
+        union {
+          const storage_key_type *const ptr;
+          const u64 *const ptr64;
+        } desired = {&val};
+
+        return (atomic_cas(exec_seq, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
+                << (storage_key_type::num_padded_bytes * 8))
+               == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
+      } else if constexpr (sizeof(storage_key_type) == 4) {
+        static_assert(alignof(storage_key_type) == alignof(u32),
+                      "storage key type alignment is not the same as u32");
+        union {
+          volatile storage_key_type *const ptr;
+          volatile u32 *const ptr32;
+        } dst = {dest};
+        union {
+          const storage_key_type *const ptr;
+          const u32 *const ptr32;
+        } expected = {&storage_key_sentinel_v};
+        union {
+          const storage_key_type *const ptr;
+          const u32 *const ptr32;
+        } desired = {&val};
+
+        return (atomic_cas(exec_seq, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
+                << (storage_key_type::num_padded_bytes * 8))
+               == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
+      }
+      /// lock
+      while (atomic_exch(exec_seq, lock, 0) == 0)
+        ;
+      thread_fence(exec_seq);
+      /// cas
+      storage_key_type temp;  //= volatile_load(dest);
+      for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
+      bool eqn = temp.val == key_sentinel_v;
+      if (eqn) {
+        for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
+      }
+      thread_fence(exec_seq);
+      /// unlock
+      atomic_exch(exec_seq, lock, status_sentinel_v);
+      return eqn;
+    }
+    template <bool V = is_const_structure, enable_if_t<!V> = 0>
+    inline key_type atomicLoad(status_type *lock,
+                               const volatile storage_key_type *const dest) noexcept {
+      using namespace placeholders;
+      if constexpr (sizeof(storage_key_type) == 8) {
+        static_assert(alignof(storage_key_type) == alignof(u64),
+                      "storage key type alignment is not the same as u64");
+        union {
+          storage_key_type const volatile *const ptr;
+          u64 const volatile *const ptr64;
+        } src = {dest};
+
+        storage_key_type result;
+        union {
+          storage_key_type *const ptr;
+          u64 *const ptr64;
+        } dst = {&result};
+
+        *dst.ptr64 = *src.ptr64;
+        return *dst.ptr;
+      } else if constexpr (sizeof(storage_key_type) == 4) {
+        static_assert(alignof(storage_key_type) == alignof(u32),
+                      "storage key type alignment is not the same as u32");
+        union {
+          storage_key_type const volatile *const ptr;
+          u32 const volatile *const ptr32;
+        } src = {dest};
+
+        storage_key_type result;
+        union {
+          storage_key_type *const ptr;
+          u32 *const ptr32;
+        } dst = {&result};
+
+        *dst.ptr32 = *src.ptr32;
+        return *dst.ptr;
+      }
+      /// lock
+      while (atomic_exch(exec_seq, lock, 0) == 0)
+        ;
+      thread_fence(exec_seq);
+      ///
+      key_type return_val;
+      for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
+      thread_fence(exec_seq);
+      /// unlock
+      atomic_exch(exec_seq, lock, status_sentinel_v);
       return return_val;
     }
 #endif

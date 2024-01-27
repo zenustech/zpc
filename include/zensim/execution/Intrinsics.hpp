@@ -46,15 +46,15 @@ namespace zs {
   }
 #endif
 
+  template <typename ExecTag>
+  inline enable_if_type<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>>
+  thread_fence(ExecTag) noexcept {
 #if ZS_ENABLE_OPENMP
-  inline void thread_fence(omp_exec_tag) noexcept {
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
     /// list ”
 #  pragma omp flush
-  }
 #endif
-
-  inline void thread_fence(host_exec_tag) noexcept {}
+  }
 
   // __syncthreads
 #if defined(__CUDACC__)

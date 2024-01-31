@@ -51,7 +51,7 @@ namespace zs {
     constexpr aosoa_iterator(wrapv<layout_e::aosoa>, T* ptr, size_type id, size_type tileSize,
                              size_type chnOffset, size_type numChns) noexcept
         : base{ptr + chnOffset * tileSize},
-          idx{0},
+          idx{id},
           numTileBits{bit_count(tileSize)},
           tileMask{tileSize - (size_type)1},
           numChns{numChns} {}

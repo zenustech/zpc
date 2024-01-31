@@ -38,6 +38,7 @@ namespace zs {
       numTileBits = o.numTileBits;
       tileMask = o.tileMask;
       numChns = o.numChns;
+      return *this;
     }
 
     ~aosoa_iterator() = default;

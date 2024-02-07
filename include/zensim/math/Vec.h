@@ -12,7 +12,15 @@
 #include "zensim/ZpcTuple.hpp"
 
 namespace std {
+#if defined(ZS_PLATFORM_OSX)
+inline namespace __1 {
+#endif
+
   template <typename, zs::size_t> struct array;
+
+#if defined(ZS_PLATFORM_OSX)
+}
+#endif
 }
 
 namespace zs {

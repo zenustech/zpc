@@ -8,14 +8,19 @@
 #else
 extern "C" {
 
-#  if defined(__linux__)
+#  if defined(ZS_PLATFORM_LINUX)
 /// @note refer to <stdlib.h>
 void *malloc(zs::size_t __size) noexcept;
 /// @note refer to <string.h>
 void *memcpy(void *__dest, const void *__src, zs::size_t __n) noexcept;
 int printf(const char *, ...);
 
-#  elif defined(_WIN64)
+#  elif defined(ZS_PLATFORM_OSX)
+void *malloc(zs::size_t __size);
+void *memcpy(void *__dest, const void *__src, zs::size_t __n);
+int printf(const char *, ...);
+
+#  elif defined(ZS_PLATFORM_WINDOWS)
 ZPC_ACRTIMP void *malloc(zs::size_t __size);
 void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 struct _iobuf;

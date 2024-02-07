@@ -1333,9 +1333,9 @@ namespace zs {
   template <class F, class... Args> constexpr invoke_result_t<F, Args...> invoke(
       F &&f, Args &&...args) noexcept(is_nothrow_invocable_v<F, Args...>) {
     if constexpr (is_member_pointer_v<decay_t<F>>)
-      return detail::invoke_memptr(forward<F>(f), forward<Args>(args)...);
+      return detail::invoke_memptr(zs::forward<F>(f), zs::forward<Args>(args)...);
     else
-      return forward<F>(f)(forward<Args>(args)...);
+      return zs::forward<F>(f)(zs::forward<Args>(args)...);
   }
 
   // reference_wrapper

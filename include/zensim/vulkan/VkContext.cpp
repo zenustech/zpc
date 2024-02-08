@@ -1,5 +1,8 @@
 // vulkan memory allocator impl
-#include <vulkan/vulkan_core.h>
+#include "vulkan/vulkan_core.h"
+#if defined(ZS_PLATFORM_MACOS)
+#include "vulkan/vulkan_beta.h"
+#endif
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #define VMA_IMPLEMENTATION
@@ -157,6 +160,7 @@ namespace zs {
                                                 "VK_KHR_deferred_host_operations",
                                                 "VK_KHR_swapchain",
                                                 "VK_KHR_driver_properties",
+                                                "VK_KHR_portability_subset",
                                                 VK_KHR_MULTIVIEW_EXTENSION_NAME,
                                                 VK_KHR_MAINTENANCE2_EXTENSION_NAME,
                                                 VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
@@ -215,6 +219,9 @@ namespace zs {
     // ref: TU Wien Vulkan Tutorial Ep1
     vk::PhysicalDeviceVulkan12Features vk12Features{};
     vk12Features.descriptorIndexing = supportedVk12Features.descriptorIndexing;
+    if (!vk12Features.descriptorIndexing && std::find(enabledExtensions.begin(), enabledExtensions.end(), "VK_EXT_descriptor_indexing") != enabledExtensions.end())
+      vk12Features.descriptorIndexing = VK_TRUE;
+    // fmt::print("\n\n\ndescriptor index support: {}\n\n\n", supportedVk12Features.descriptorIndexing);
     vk12Features.bufferDeviceAddress = supportedVk12Features.bufferDeviceAddress;
     // bindless
     vk12Features.descriptorBindingPartiallyBound
@@ -346,6 +353,9 @@ namespace zs {
     poolSizes[vk_descriptor_e::storage_image] = vk::DescriptorPoolSize()
                                                     .setDescriptorCount(num_max_default_resources)
                                                     .setType(vk::DescriptorType::eStorageImage);
+    poolSizes[vk_descriptor_e::input_attachment] = vk::DescriptorPoolSize()
+                                                    .setDescriptorCount(num_max_default_resources)
+                                                    .setType(vk::DescriptorType::eInputAttachment);
     vk::DescriptorPoolCreateFlags flag = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
     defaultDescriptorPool
         = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
@@ -382,6 +392,11 @@ namespace zs {
           = vk::DescriptorPoolSize()
                 .setDescriptorCount(num_max_bindless_resources)
                 .setType(vk::DescriptorType::eStorageImage);
+
+      bindlessPoolSizes[vk_descriptor_e::input_attachment]
+          = vk::DescriptorPoolSize()
+                .setDescriptorCount(num_max_bindless_resources)
+                .setType(vk::DescriptorType::eInputAttachment);
       bindlessDescriptorPool = device.createDescriptorPool(
           vk::DescriptorPoolCreateInfo{}
               .setPoolSizeCount(bindlessPoolSizes.size())
@@ -415,6 +430,12 @@ namespace zs {
     storageImageBinding = vk::DescriptorSetLayoutBinding{}
                               .setBinding(bindless_texture_binding + 3)
                               .setDescriptorType(vk::DescriptorType::eStorageImage)
+                              .setDescriptorCount(num_max_bindless_resources)
+                              .setStageFlags(vk::ShaderStageFlagBits::eAll);
+    auto& inputAttachmentBinding = bindings[vk_descriptor_e::input_attachment];
+    inputAttachmentBinding = vk::DescriptorSetLayoutBinding{}
+                              .setBinding(bindless_texture_binding + 4)
+                              .setDescriptorType(vk::DescriptorType::eInputAttachment)
                               .setDescriptorCount(num_max_bindless_resources)
                               .setStageFlags(vk::ShaderStageFlagBits::eAll);
 
@@ -474,6 +495,7 @@ namespace zs {
   }
 
   image_handle_t VulkanContext::registerImage(const VkTexture& img) {
+    if (!supportBindless()) return (image_handle_t)-1;
     image_handle_t ret = registeredImages.size();
     registeredImages.push_back(&img);
 
@@ -481,6 +503,9 @@ namespace zs {
     imageInfo.sampler = img.sampler;
     imageInfo.imageView = (vk::ImageView)img.image.get();
     imageInfo.imageLayout = img.imageLayout;
+
+    // if ((vk::ImageView)img.image.get() == VK_NULL_HANDLE)
+    //   throw std::runtime_error("the registered texture image view handle is null\n");
 
     vk::WriteDescriptorSet write{};
     write.dstSet = bindlessDescriptorSet;

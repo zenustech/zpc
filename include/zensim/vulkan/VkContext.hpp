@@ -39,9 +39,9 @@ namespace zs {
   /// @note CAUTION: must match the member order defined in VulkanContext
   enum vk_queue_e { graphics = 0, compute, transfer };
   enum vk_cmd_usage_e { reuse = 0, single_use, reset };
-  enum vk_descriptor_e { uniform = 0, image_sampler, storage, storage_image, num_descriptor_types };
+  enum vk_descriptor_e { uniform = 0, image_sampler, storage, storage_image, input_attachment, num_descriptor_types };
 
-  using vk_handle_t = u32;
+  using vk_handle_t = i32;
   using image_handle_t = vk_handle_t;
   using buffer_handle_t = vk_handle_t;
 

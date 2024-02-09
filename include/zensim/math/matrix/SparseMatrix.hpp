@@ -1,6 +1,7 @@
 #pragma once
 #include "zensim/container/Bht.hpp"
 #include "zensim/container/Vector.hpp"
+#include "zensim/ZpcTuple.hpp"
 #include "zensim/math/Vec.h"
 #if defined(__CUDACC__)
 #  include <cooperative_groups/scan.h>
@@ -112,13 +113,13 @@ namespace zs {
     /// @brief iterators
     template <bool is_const = false> struct iterator_impl
         : IteratorInterface<iterator_impl<is_const>> {
-      template <typename TT> using decorated_t = conditional_t<is_const, std::add_const_t<TT>, TT>;
-      constexpr iterator_impl(index_type line, decorated_t<index_type> *ptrs,
+      template <typename TT> using decorated_t = conditional_t<is_const, add_const_t<TT>, TT>;
+      constexpr iterator_impl(index_type line, decorated_t<size_type> *ptrs,
                               decorated_t<index_type> *inds, decorated_t<value_type> *vals)
           : _idx{ptrs[line]}, _inds{inds}, _vals{vals} {}
 
-      constexpr tuple<index_type &, value_type &> dereference() {
-        return tie(_inds[_idx], _vals[_idx]);
+      constexpr tuple<decorated_t<index_type> &, decorated_t<value_type> &> dereference() {
+        return zs::tie(_inds[_idx], _vals[_idx]);
       }
       constexpr bool equal_to(iterator_impl it) const noexcept { return it._idx == _idx; }
       constexpr void advance(difference_type offset) noexcept { _idx += offset; }
@@ -139,10 +140,10 @@ namespace zs {
     using const_iterator = LegacyIterator<iterator_impl<true>>;
 
     constexpr auto begin(index_type no) noexcept {
-      return make_iterator<iterator_impl<true>>(no, _ptrs.data(), _inds.data(), _vals.data());
+      return make_iterator<iterator_impl<false>>(no, _ptrs.data(), _inds.data(), _vals.data());
     }
     constexpr auto end(index_type no) noexcept {
-      return make_iterator<iterator_impl<true>>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
+      return make_iterator<iterator_impl<false>>(no + 1, _ptrs.data(), _inds.data(), _vals.data());
     }
 
     constexpr auto begin(index_type no) const noexcept {
@@ -386,6 +387,17 @@ namespace zs {
     zs::Vector<index_type, allocator_type> _inds{};
     zs::Vector<value_type, allocator_type> _vals{};  // maybe empty, e.g. bidirectional graph
   };
+
+#define ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(T, Ti, Tn)                            \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, false, Ti, Tn, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, true, Ti, Tn, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, false, Ti, Tn, ZSPmrAllocator<true>>;  \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, true, Ti, Tn, ZSPmrAllocator<true>>;
+
+  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f32, i32, i32)
+  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f32, i32, i64)
+  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f64, i32, i32)
+  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f64, i32, i64)
 
   /// @brief conventional csr sparse matrix build
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>

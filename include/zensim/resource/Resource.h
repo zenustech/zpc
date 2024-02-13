@@ -42,7 +42,7 @@ namespace zs {
         std::unique_ptr<Interface> clone() const override {
           return std::make_unique<Cloner<F>>(_f);
         }
-        std::unique_ptr<resource_type> invoke() const override { return std::invoke(_f); }
+        std::unique_ptr<resource_type> invoke() const override { return zs::invoke(_f); }
 
         F _f;
       };

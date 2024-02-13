@@ -142,24 +142,25 @@ namespace zs {
         /// for openvdb parallel iteration...
         auto iter = FWD(range);  // otherwise fails on win
         for (; iter; ++iter) {
-          if constexpr (is_invocable_v<F>) {
-            f();
-          } else {
-            std::invoke(f, iter);
-          }
+          if constexpr (is_invocable_v<F, decltype(iter)>) {
+            zs::invoke(f, iter);
+          } else if constexpr (is_invocable_v<F>) {
+            zs::invoke(f);
+          } else 
+            static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       } else {
-        if constexpr (is_invocable_v<F>)
-          for (auto &&it : range) f();
-        else {
-          for (auto &&it : range) {
-            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
-              std::apply(f, it);
-            else if constexpr (is_tuple<remove_cvref_t<decltype(it)>>::value)
-              zs::apply(f, it);
-            else
-              std::invoke(f, it);
-          }
+        for (auto &&it : range) {
+          if constexpr (is_invocable_v<F, decltype(it)>)
+            zs::invoke(f, it);
+          else if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+            std::apply(f, it);
+          else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+            zs::apply(f, it);
+          else if constexpr (is_invocable_v<F>)
+            zs::invoke(f);
+          else
+            static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       }
       if (shouldProfile())
@@ -182,9 +183,9 @@ namespace zs {
         auto iter = FWD(range);  // otherwise fails on win
         for (; iter; ++iter) {
           if constexpr (is_invocable_v<F, ParamTuple>) {
-            f(params);
+            zs::invoke(f, params);
           } else {
-            std::invoke(f, iter, params);
+            zs::invoke(f, iter, params);
           }
         }
       } else {
@@ -197,7 +198,7 @@ namespace zs {
             else if constexpr (is_tuple<remove_cvref_t<decltype(it)>>::value)
               zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
             else
-              std::invoke(f, it, params);
+             zs::invoke(f, it, params);
           }
         }
       }

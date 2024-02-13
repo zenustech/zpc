@@ -36,17 +36,17 @@ namespace zs {
       if (shouldProfile()) timer.tick();
       if constexpr (dim == 1) {
 #pragma omp parallel for if (_dop < dims.get(0_th)) num_threads(_dop)
-        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i) std::invoke(f, i);
+        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i) zs::invoke(f, i);
       } else if constexpr (dim == 2) {
 #pragma omp parallel for collapse(2) if (_dop < dims.get(0_th) * dims.get(1_th)) num_threads(_dop)
         for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i)
-          for (RM_CVREF_T(dims.get(1_th)) j = 0; j < dims.get(1_th); ++j) std::invoke(f, i, j);
+          for (RM_CVREF_T(dims.get(1_th)) j = 0; j < dims.get(1_th); ++j) zs::invoke(f, i, j);
       } else if constexpr (dim == 3) {
 #pragma omp parallel for collapse(3) if (_dop < dims.get(0_th) * dims.get(1_th) * dims.get(2_th)) \
     num_threads(_dop)
         for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i)
           for (RM_CVREF_T(dims.get(1_th)) j = 0; j < dims.get(1_th); ++j)
-            for (RM_CVREF_T(dims.get(2_th)) k = 0; k < dims.get(2_th); ++k) std::invoke(f, i, j, k);
+            for (RM_CVREF_T(dims.get(2_th)) k = 0; k < dims.get(2_th); ++k) zs::invoke(f, i, j, k);
       } else {
         throw std::runtime_error(
             fmt::format("execution of {}-layers of loops not supported!", dim));
@@ -73,11 +73,12 @@ namespace zs {
         for (; iter; ++iter)
 #pragma omp task firstprivate(iter)
         {
-          if constexpr (is_invocable_v<F>) {
-            f();
-          } else {
-            std::invoke(f, iter);
-          }
+          if constexpr (is_invocable_v<F, decltype(iter)>)
+            zs::invoke(f, iter);
+          else if constexpr (is_invocable_v<F>) 
+            zs::invoke(f);
+          else 
+            static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       } else {
         /// not stl conforming iterator
@@ -90,17 +91,17 @@ namespace zs {
 
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
           for (DiffT i = 0; i < dist; ++i) {
-            if constexpr (is_invocable_v<F>)
-              f();
-            else {
-              auto &&it = *(iter + i);
-              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
-                std::apply(f, it);
-              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
-                zs::apply(f, it);
-              else
-                std::invoke(f, it);
-            }
+            auto &&it = *(iter + i);
+            if constexpr (is_invocable_v<F, decltype(it)>)
+              zs::invoke(f, it);
+            else if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+              std::apply(f, it);
+            else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+              zs::apply(f, it);
+            else if constexpr (is_invocable_v<F>)
+              zs::invoke(f);
+            else
+              static_assert(always_false<F>, "unable to handle this callable and the range.");
           }
         } else {
           // forward iterator category
@@ -109,16 +110,16 @@ namespace zs {
           for (auto &&it : range)
 #pragma omp task firstprivate(it)
           {
-            if constexpr (is_invocable_v<F>) {
-              f();
-            } else {
-              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
-                std::apply(f, it);
-              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
-                zs::apply(f, it);
-              else
-                std::invoke(f, it);
-            }
+            if constexpr (is_invocable_v<F, decltype(it)>)
+              zs::invoke(f, it);
+            else if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+              std::apply(f, it);
+            else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+              zs::apply(f, it);
+            else if constexpr (is_invocable_v<F>)
+              zs::invoke(f);
+            else
+              static_assert(always_false<F>, "unable to handle this callable and the range.");
           }
         }
       }
@@ -145,11 +146,12 @@ namespace zs {
         for (; iter; ++iter)
 #pragma omp task firstprivate(iter)
         {
-          if constexpr (is_invocable_v<F, ParamTuple>) {
-            f(params);
-          } else {
-            std::invoke(f, iter, params);
-          }
+          if constexpr (is_invocable_v<F, decltype(iter), ParamTuple>)
+            zs::invoke(f, iter, params);
+          else if constexpr (is_invocable_v<F, ParamTuple>) 
+            zs::invoke(f, params);
+          else 
+            static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       } else {
         /// not stl conforming iterator
@@ -162,17 +164,17 @@ namespace zs {
 
 #pragma omp parallel for if (_dop < dist) num_threads(_dop)
           for (DiffT i = 0; i < dist; ++i) {
-            if constexpr (is_invocable_v<F, ParamTuple>)
-              f(params);
-            else {
-              auto &&it = *(iter + i);
-              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
-                std::apply(f, std::tuple_cat(it, std::tie(params)));
-              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
-                zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
-              else
-                std::invoke(f, it, params);
-            }
+            auto &&it = *(iter + i);
+            if constexpr (is_invocable_v<F, decltype(it), ParamTuple>)
+              zs::invoke(f, it, params);
+            else if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+              std::apply(f, std::tuple_cat(it, std::tie(params)));
+            else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+              zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
+            else if constexpr (is_invocable_v<F, ParamTuple>)
+              zs::invoke(f, params);
+            else
+              static_assert(always_false<F>, "unable to handle this callable and the range.");
           }
         } else {
           // forward iterator category
@@ -181,16 +183,16 @@ namespace zs {
           for (auto &&it : range)
 #pragma omp task firstprivate(it)
           {
-            if constexpr (is_invocable_v<F, ParamTuple>) {
-              f(params);
-            } else {
-              if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
-                std::apply(f, std::tuple_cat(it, std::tie(params)));
-              else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
-                zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
-              else
-                std::invoke(f, it, params);
-            }
+            if constexpr (is_invocable_v<F, decltype(it), ParamTuple>)
+              zs::invoke(f, it, params);
+            else if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+              std::apply(f, std::tuple_cat(it, std::tie(params)));
+            else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+              zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
+            else if constexpr (is_invocable_v<F, ParamTuple>)
+              zs::invoke(f, params);
+            else
+              static_assert(always_false<F>, "unable to handle this callable and the range.");
           }
         }
       }

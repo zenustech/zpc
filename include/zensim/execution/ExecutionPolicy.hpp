@@ -189,17 +189,17 @@ namespace zs {
           }
         }
       } else {
-        if constexpr (is_invocable_v<F, ParamTuple>)
-          for (auto &&it : range) f(params);
-        else {
-          for (auto &&it : range) {
-            if constexpr (is_std_tuple<remove_cvref_t<decltype(it)>>::value)
-              std::apply(f, std::tuple_cat(it, std::tie(params)));
-            else if constexpr (is_tuple<remove_cvref_t<decltype(it)>>::value)
-              zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
-            else
-             zs::invoke(f, it, params);
-          }
+        for (auto &&it : range) {
+          if constexpr (is_invocable_v<F, decltype(it), ParamTuple>)
+            zs::invoke(f, it, params);
+          else if constexpr (is_std_tuple_v<remove_cvref_t<decltype(it)>>)
+            std::apply(f, std::tuple_cat(it, std::tie(params)));
+          else if constexpr (is_tuple_v<remove_cvref_t<decltype(it)>>)
+            zs::apply(f, zs::tuple_cat(it, zs::tie(params)));
+          else if constexpr (is_invocable_v<F, ParamTuple>)
+            zs::invoke(f, params);
+          else
+            static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       }
       if (shouldProfile())

@@ -442,12 +442,14 @@ namespace zs {
                                  .setBinding(bindless_texture_binding + 4)
                                  .setDescriptorType(vk::DescriptorType::eInputAttachment)
                                  .setDescriptorCount(num_max_bindless_resources)
-                                 .setStageFlags(vk::ShaderStageFlagBits::eAll);
+                                 .setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
     vk::DescriptorBindingFlags bindlessFlag = vk::DescriptorBindingFlagBits::ePartiallyBound
                                               | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
     std::array<vk::DescriptorBindingFlags, vk_descriptor_e::num_descriptor_types> bindingFlags;
     for (auto& flag : bindingFlags) flag = bindlessFlag;
+    bindingFlags[vk_descriptor_e::input_attachment]
+        = vk::DescriptorBindingFlagBits::ePartiallyBound;
     auto extendedInfo
         = vk::DescriptorSetLayoutBindingFlagsCreateInfo{}.setBindingFlags(bindingFlags);
 

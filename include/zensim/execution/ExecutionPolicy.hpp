@@ -146,7 +146,7 @@ namespace zs {
             zs::invoke(f, iter);
           } else if constexpr (is_invocable_v<F>) {
             zs::invoke(f);
-          } else 
+          } else
             static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       } else {

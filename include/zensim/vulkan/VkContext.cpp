@@ -1,7 +1,7 @@
 // vulkan memory allocator impl
 #include "vulkan/vulkan_core.h"
 #if defined(ZS_PLATFORM_MACOS)
-#include "vulkan/vulkan_beta.h"
+#  include "vulkan/vulkan_beta.h"
 #endif
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
@@ -219,9 +219,13 @@ namespace zs {
     // ref: TU Wien Vulkan Tutorial Ep1
     vk::PhysicalDeviceVulkan12Features vk12Features{};
     vk12Features.descriptorIndexing = supportedVk12Features.descriptorIndexing;
-    if (!vk12Features.descriptorIndexing && std::find(enabledExtensions.begin(), enabledExtensions.end(), "VK_EXT_descriptor_indexing") != enabledExtensions.end())
+    if (!vk12Features.descriptorIndexing
+        && std::find(enabledExtensions.begin(), enabledExtensions.end(),
+                     "VK_EXT_descriptor_indexing")
+               != enabledExtensions.end())
       vk12Features.descriptorIndexing = VK_TRUE;
-    // fmt::print("\n\n\ndescriptor index support: {}\n\n\n", supportedVk12Features.descriptorIndexing);
+    // fmt::print("\n\n\ndescriptor index support: {}\n\n\n",
+    // supportedVk12Features.descriptorIndexing);
     vk12Features.bufferDeviceAddress = supportedVk12Features.bufferDeviceAddress;
     // bindless
     vk12Features.descriptorBindingPartiallyBound
@@ -353,9 +357,10 @@ namespace zs {
     poolSizes[vk_descriptor_e::storage_image] = vk::DescriptorPoolSize()
                                                     .setDescriptorCount(num_max_default_resources)
                                                     .setType(vk::DescriptorType::eStorageImage);
-    poolSizes[vk_descriptor_e::input_attachment] = vk::DescriptorPoolSize()
-                                                    .setDescriptorCount(num_max_default_resources)
-                                                    .setType(vk::DescriptorType::eInputAttachment);
+    poolSizes[vk_descriptor_e::input_attachment]
+        = vk::DescriptorPoolSize()
+              .setDescriptorCount(num_max_default_resources)
+              .setType(vk::DescriptorType::eInputAttachment);
     vk::DescriptorPoolCreateFlags flag = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
     defaultDescriptorPool
         = device.createDescriptorPool(vk::DescriptorPoolCreateInfo{}
@@ -434,10 +439,10 @@ namespace zs {
                               .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& inputAttachmentBinding = bindings[vk_descriptor_e::input_attachment];
     inputAttachmentBinding = vk::DescriptorSetLayoutBinding{}
-                              .setBinding(bindless_texture_binding + 4)
-                              .setDescriptorType(vk::DescriptorType::eInputAttachment)
-                              .setDescriptorCount(num_max_bindless_resources)
-                              .setStageFlags(vk::ShaderStageFlagBits::eAll);
+                                 .setBinding(bindless_texture_binding + 4)
+                                 .setDescriptorType(vk::DescriptorType::eInputAttachment)
+                                 .setDescriptorCount(num_max_bindless_resources)
+                                 .setStageFlags(vk::ShaderStageFlagBits::eAll);
 
     vk::DescriptorBindingFlags bindlessFlag = vk::DescriptorBindingFlagBits::ePartiallyBound
                                               | vk::DescriptorBindingFlagBits::eUpdateAfterBind;

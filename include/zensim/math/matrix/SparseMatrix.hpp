@@ -1,7 +1,7 @@
 #pragma once
+#include "zensim/ZpcTuple.hpp"
 #include "zensim/container/Bht.hpp"
 #include "zensim/container/Vector.hpp"
-#include "zensim/ZpcTuple.hpp"
 #include "zensim/math/Vec.h"
 #if defined(__CUDACC__)
 #  include <cooperative_groups/scan.h>
@@ -388,10 +388,10 @@ namespace zs {
     zs::Vector<value_type, allocator_type> _vals{};  // maybe empty, e.g. bidirectional graph
   };
 
-#define ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(T, Ti, Tn)                            \
+#define ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(T, Ti, Tn)                          \
   ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, false, Ti, Tn, ZSPmrAllocator<>>;     \
-  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, true, Ti, Tn, ZSPmrAllocator<>>;     \
-  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, false, Ti, Tn, ZSPmrAllocator<true>>;  \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, true, Ti, Tn, ZSPmrAllocator<>>;      \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, false, Ti, Tn, ZSPmrAllocator<true>>; \
   ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, true, Ti, Tn, ZSPmrAllocator<true>>;
 
   ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f32, i32, i32)

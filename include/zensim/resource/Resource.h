@@ -5,8 +5,8 @@
 #include <stdexcept>
 #include <vector>
 
-#include "zensim/ZpcFunction.hpp"
 #include "zensim/Reflection.h"
+#include "zensim/ZpcFunction.hpp"
 #include "zensim/memory/MemOps.hpp"
 #include "zensim/memory/MemoryResource.h"
 // #include "zensim/types/Pointers.hpp"
@@ -47,8 +47,7 @@ namespace zs {
     }
 
     constexpr resource_type *resource() noexcept { return res.get(); }
-    [[nodiscard]] void *allocate(size_t bytes,
-                                 size_t alignment = alignof(std::max_align_t)) {
+    [[nodiscard]] void *allocate(size_t bytes, size_t alignment = alignof(std::max_align_t)) {
       return res->allocate(bytes, alignment);
     }
     void deallocate(void *p, size_t bytes, size_t alignment = alignof(std::max_align_t)) {
@@ -59,12 +58,12 @@ namespace zs {
     }
     template <bool V = is_virtual::value>
     enable_if_type<V, bool> commit(size_t offset,
-                                     size_t bytes = resource_type::s_chunk_granularity) {
+                                   size_t bytes = resource_type::s_chunk_granularity) {
       return res->commit(offset, bytes);
     }
     template <bool V = is_virtual::value>
     enable_if_type<V, bool> evict(size_t offset,
-                                    size_t bytes = resource_type::s_chunk_granularity) {
+                                  size_t bytes = resource_type::s_chunk_granularity) {
       return res->evict(offset, bytes);
     }
     template <bool V = is_virtual::value> enable_if_type<V, bool> check_residency(
@@ -86,7 +85,8 @@ namespace zs {
 
     /// owning upstream should specify deleter
     template <template <typename Tag> class ResourceT, typename... Args, size_t... Is>
-    void setOwningUpstream(mem_tags tag, ProcID devid, zs::tuple<Args...> args, index_sequence<Is...>) {
+    void setOwningUpstream(mem_tags tag, ProcID devid, zs::tuple<Args...> args,
+                           index_sequence<Is...>) {
       match([&](auto t) {
         if constexpr (is_memory_source_available(t)) {
           using MemT = RM_CVREF_T(t);
@@ -290,8 +290,7 @@ namespace zs {
     Resource();
     ~Resource();
 
-    void record(mem_tags tag, void *ptr, std::string_view name, size_t size,
-                size_t alignment);
+    void record(mem_tags tag, void *ptr, std::string_view name, size_t size, size_t alignment);
     void erase(void *ptr);
 
     void deallocate(void *ptr);

@@ -16,7 +16,6 @@
 #include "zensim/omp/Omp.h"
 #include "zensim/types/Iterator.h"
 
-
 namespace zs {
 
   struct OmpExecutionPolicy;
@@ -75,9 +74,9 @@ namespace zs {
         {
           if constexpr (is_invocable_v<F, decltype(iter)>)
             zs::invoke(f, iter);
-          else if constexpr (is_invocable_v<F>) 
+          else if constexpr (is_invocable_v<F>)
             zs::invoke(f);
-          else 
+          else
             static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       } else {
@@ -148,9 +147,9 @@ namespace zs {
         {
           if constexpr (is_invocable_v<F, decltype(iter), ParamTuple>)
             zs::invoke(f, iter, params);
-          else if constexpr (is_invocable_v<F, ParamTuple>) 
+          else if constexpr (is_invocable_v<F, ParamTuple>)
             zs::invoke(f, params);
-          else 
+          else
             static_assert(always_false<F>, "unable to handle this callable and the range.");
         }
       } else {

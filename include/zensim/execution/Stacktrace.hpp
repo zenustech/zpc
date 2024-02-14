@@ -1,8 +1,9 @@
 /// reference: https://github.com/kokkos/kokkos.git
 #pragma once
-#include <functional>
 #include <ostream>
 #include <string>
+
+#include "zensim/ZpcFunction.hpp"
 
 namespace Kokkos {
   namespace Impl {
@@ -36,7 +37,7 @@ namespace Kokkos {
     /// without including their header file, and Kokkos does not depend on
     /// MPI, so there's no way for Kokkos to depend on MPI_Abort in a
     /// portable way.
-    void set_kokkos_terminate_handler(std::function<void()> user_post = nullptr);
+    void set_kokkos_terminate_handler(zs::function<void()> user_post = {});
 
   }  // namespace Impl
 }  // namespace Kokkos

@@ -388,17 +388,6 @@ namespace zs {
     zs::Vector<value_type, allocator_type> _vals{};  // maybe empty, e.g. bidirectional graph
   };
 
-#define ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(T, Ti, Tn)                          \
-  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, false, Ti, Tn, ZSPmrAllocator<>>;     \
-  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, true, Ti, Tn, ZSPmrAllocator<>>;      \
-  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, false, Ti, Tn, ZSPmrAllocator<true>>; \
-  ZPC_FWD_DECL_TEMPLATE_STRUCT SparseMatrix<T, true, Ti, Tn, ZSPmrAllocator<true>>;
-
-  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f32, i32, i32)
-  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f32, i32, i64)
-  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f64, i32, i32)
-  ZS_FWD_DECL_SPARSE_MATRIX_INSTANTIATIONS(f64, i32, i64)
-
   /// @brief conventional csr sparse matrix build
   template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
   template <typename Policy, typename IRange, typename JRange, typename VRange>

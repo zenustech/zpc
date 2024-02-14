@@ -236,7 +236,7 @@ namespace zs {
     /// other utilities
     /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
     static int deduce_block_size(const source_location &loc, const CudaContext &ctx, void *f,
-                                 std::function<size_t(int)>, std::string_view = "");
+                                 function<size_t(int)>, std::string_view = "");
 
     mutable bool errorStatus;
 

@@ -2,11 +2,11 @@
 #include "Stacktrace.hpp"
 
 // backtrace() function for retrieving the stacktrace
-#ifdef _MSC_VER       // MSVC compiler
+#ifdef _MSC_VER  // MSVC compiler
 // #include <dbghelp.h>  // For UnDecorateSymbolName
 #else
-#include <cxxabi.h>  // For abi::__cxa_demangle
-#include <execinfo.h>
+#  include <cxxabi.h>  // For abi::__cxa_demangle
+#  include <execinfo.h>
 #endif
 
 #include <exception>
@@ -20,7 +20,7 @@ namespace Kokkos {
     char **backtrace_symbols(void *const *, int) { return nullptr; }
 
     std::string demangle(const std::string &name) {
-#ifdef _MSC_VER       // MSVC compiler
+#ifdef _MSC_VER  // MSVC compiler
       return name;
 #else
       size_t found_end = name.find_first_of("+)", 0, 2);
@@ -214,7 +214,7 @@ namespace Kokkos {
       demangle_and_print_traceback(out, Stacktrace::lines());
     }
 
-    std::function<void()> user_terminate_handler_post_ = nullptr;
+    zs::function<void()> user_terminate_handler_post_;
 
     void kokkos_terminate_handler() {
       using std::cerr;
@@ -227,14 +227,14 @@ namespace Kokkos {
            << endl;
       print_demangled_saved_stacktrace(std::cerr);
 
-      if (user_terminate_handler_post_ != nullptr) {
+      if (user_terminate_handler_post_) {
         user_terminate_handler_post_();
       } else {
         std::abort();
       }
     }
 
-    void set_kokkos_terminate_handler(std::function<void()> user_post) {
+    void set_kokkos_terminate_handler(zs::function<void()> user_post) {
       user_terminate_handler_post_ = user_post;
       std::set_terminate(kokkos_terminate_handler);
     }

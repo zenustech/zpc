@@ -66,7 +66,6 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   container/DenseField.cpp
   geometry/Mesh.cpp
   math/matrix/Matrix.cpp
-  math/matrix/SparseMatrix.cpp
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp
   resource/Resource.cpp

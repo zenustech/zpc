@@ -54,7 +54,7 @@ namespace zs {
     // cuda module file
     // string literals
     std::string source{};
-    std::function<void()> func;
+    function<void()> func;
   };
 
   // granularity between thread and block (cuda:thread_block/ rocm:work_group)
@@ -142,12 +142,10 @@ namespace zs {
         /// for openvdb parallel iteration...
         auto iter = FWD(range);  // otherwise fails on win
         for (; iter; ++iter) {
-          if constexpr (is_invocable_v<F, decltype(iter)>) {
-            zs::invoke(f, iter);
-          } else if constexpr (is_invocable_v<F>) {
+          if constexpr (is_invocable_v<F>)
             zs::invoke(f);
-          } else
-            static_assert(always_false<F>, "unable to handle this callable and the range.");
+          else
+            zs::invoke(f, iter);
         }
       } else {
         for (auto &&it : range) {

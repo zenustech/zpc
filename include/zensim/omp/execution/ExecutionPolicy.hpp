@@ -72,12 +72,10 @@ namespace zs {
         for (; iter; ++iter)
 #pragma omp task firstprivate(iter)
         {
-          if constexpr (is_invocable_v<F, decltype(iter)>)
-            zs::invoke(f, iter);
-          else if constexpr (is_invocable_v<F>)
+          if constexpr (is_invocable_v<F>)
             zs::invoke(f);
           else
-            static_assert(always_false<F>, "unable to handle this callable and the range.");
+            zs::invoke(f, iter);
         }
       } else {
         /// not stl conforming iterator

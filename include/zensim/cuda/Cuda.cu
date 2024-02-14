@@ -338,8 +338,7 @@ namespace zs {
 
   /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
   int Cuda::deduce_block_size(const source_location &loc, const Cuda::CudaContext &ctx,
-                              void *kernelFunc,
-                              std::function<size_t(int)> block_size_to_dynamic_shmem,
+                              void *kernelFunc, function<size_t(int)> block_size_to_dynamic_shmem,
                               std::string_view kernelName) {
     if (auto it = ctx.funcLaunchConfigs.find(kernelFunc); it != ctx.funcLaunchConfigs.end())
       return it->second.optBlockSize;

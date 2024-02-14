@@ -1,4 +1,5 @@
 #pragma once
+#include "zensim/ZpcFunction.hpp"
 #include "zensim/execution/Concurrency.h"
 
 namespace zs {
@@ -34,7 +35,7 @@ namespace zs {
     static void flush() {
       while (!instance().jobs.empty()) instance().cv.notify_all();
     }
-    static void insert_job(std::function<void()> job) {
+    static void insert_job(zs::function<void()> job) {
       std::unique_lock<std::mutex> lk{instance().mut};
       instance().jobs.push(job);
       lk.unlock();
@@ -45,7 +46,7 @@ namespace zs {
     bool bRunning;
     std::mutex mut;
     std::condition_variable cv;
-    threadsafe_queue<std::function<void()>> jobs;
+    threadsafe_queue<zs::function<void()>> jobs;
     std::thread th;
   };
 

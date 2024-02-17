@@ -770,7 +770,7 @@ if (ZS_ENABLE_CUDA)
       zpc_jit_py zpc_jit_nvrtc 
   )
   get_target_property(nvrtc_target_type CUDA::nvrtc TYPE)
-  if (nvrtc_target_type STREQUAL "SHARED_LIBRARY")
+  if (nvrtc_target_type STREQUAL "UNKNOWN_LIBRARY" OR nvrtc_target_type STREQUAL "SHARED_LIBRARY")
   add_custom_command(
     TARGET zpc_jit_nvrtc
     POST_BUILD
@@ -796,7 +796,7 @@ if (TARGET CUDA::nvJitLink)
   )
   endif()
 #]=]
-  endif (nvrtc_target_type STREQUAL "SHARED_LIBRARY")
+  endif (nvrtc_target_type STREQUAL "UNKNOWN_LIBRARY" OR nvrtc_target_type STREQUAL "SHARED_LIBRARY")
 endif(ZS_ENABLE_CUDA)
 
 # openvdb, partio

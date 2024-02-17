@@ -294,13 +294,13 @@ endif(ZS_ENABLE_TEST)
 # ---- Install ----
 # =================
 if(ZS_ENABLE_INSTALL)
-  set(ZS_INSTALL_DEP_TARGETS zspartio)
+  set(ZS_INSTALL_DEP_TARGETS zspartio zswhereami)
 
   if(ZS_ENABLE_OPENVDB)
     set(ZS_INSTALL_DEP_TARGETS ${ZS_INSTALL_DEP_TARGETS} zsopenvdb)
   endif(ZS_ENABLE_OPENVDB)
 
-  set(INSTALL_TARGETS zensim zpc zpctool zpc_cxx_deps zsproj_deps ${ZS_INSTALL_DEP_TARGETS})
+  set(INSTALL_TARGETS zensim zpc zpccore zpctool zpc_cxx_deps zsproj_deps ${ZS_INSTALL_DEP_TARGETS})
 
   if(ZS_ENABLE_OPENMP)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpcomp zpc_omp_deps)
@@ -317,6 +317,13 @@ if(ZS_ENABLE_INSTALL)
   if(ZS_ENABLE_OPENCL)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpccl zpc_cl_deps)
   endif(ZS_ENABLE_OPENCL)
+
+  if(ZS_ENABLE_JIT)
+    set(INSTALL_TARGETS ${INSTALL_TARGETS} zpc_py_interop zpc_jit_clang)
+    if(ZS_ENABLE_CUDA)
+      set(INSTALL_TARGETS ${INSTALL_TARGETS} zpc_jit_nvrtc)
+    endif(ZS_ENABLE_CUDA)
+  endif(ZS_ENABLE_JIT)
 
   message("project name: ${project_name}")
   message("package version: ${project_version}")

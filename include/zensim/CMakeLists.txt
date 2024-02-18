@@ -729,6 +729,26 @@ if(ZS_ENABLE_JIT)
       DEPENDS zpc_jit_clang 
         COMMENT "copying JIT-dependent 3rd party runtime shared libraries"
     )
+    find_package(LLVM CONFIG)
+    find_package(Clang CONFIG HINTS "${LLVM_DIR}/../clang" "${LLVM_DIR}/../lib/cmake/clang")
+    get_target_property(jit_dep_libs zpc_jit_deps INTERFACE_LINK_LIBRARIES)
+    foreach(lib ${jit_dep_libs})
+      if (TARGET ${lib})
+        get_target_property(lib_type ${lib} TYPE)
+        if (lib_type STREQUAL "SHARED_LIBRARY")
+          # message(STATUS "########\t${lib}: ${lib_type}")
+          add_custom_command(
+            TARGET zpc_jit_clang
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:zpc_jit_clang>
+            VERBATIM
+            DEPENDS zpc_jit_clang 
+              COMMENT "copying JIT-dependent llvm/clang runtime shared libraries"
+          )
+        endif(lib_type STREQUAL "SHARED_LIBRARY")
+      endif(TARGET ${lib})
+    endforeach(lib)
+
   endif(ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
 
   if (ZS_BUILD_SHARED_LIBS)

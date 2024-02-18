@@ -740,7 +740,7 @@ if(ZS_ENABLE_JIT)
           add_custom_command(
             TARGET zpc_jit_clang
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:zpc_jit_clang>
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:zpc_jit_clang>/$<TARGET_FILE_BASE_NAME:${lib}>$<TARGET_FILE_SUFFIX:${lib}>
             VERBATIM
             DEPENDS zpc_jit_clang 
               COMMENT "copying JIT-dependent llvm/clang runtime shared libraries"

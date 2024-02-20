@@ -427,6 +427,19 @@ if(ZS_ENABLE_OPENMP)
       PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:AppleClang>, -Xpreprocessor -fopenmp, -fopenmp> >
     )
   endif()
+
+  add_custom_command(
+    TARGET zpcomp 
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+    -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpcomp>
+    -DOUTPUT=$<TARGET_FILE_DIR:zpcomp>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+
+    VERBATIM
+    DEPENDS zpcomp 
+      COMMENT "copying zpc omp deps"
+  )
 endif(ZS_ENABLE_OPENMP)
 
 # ############
@@ -741,7 +754,10 @@ if(ZS_ENABLE_JIT)
     add_custom_command(
       TARGET zpc_py_interop
       POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy ${ZS_OVERWRITE_PYTHON_LIBRARIES} $<TARGET_FILE_DIR:zpc_py_interop>
+      COMMAND ${CMAKE_COMMAND}
+      -DOBJECTS=${ZS_OVERWRITE_PYTHON_LIBRARIES}
+      -DOUTPUT=$<TARGET_FILE_DIR:zpc_py_interop>
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
       VERBATIM
       DEPENDS zpc_py_interop 
         COMMENT "copying zpc_jit_py related python runtime shared libraries ${ZS_OVERWRITE_PYTHON_LIBRARIES}"
@@ -897,6 +913,19 @@ if(ZS_ENABLE_OPENVDB)
     ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES}
   )
 endif(ZS_ENABLE_OPENVDB)
+
+add_custom_command(
+  TARGET zpctool 
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND}
+  -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpctool>
+  -DOUTPUT=$<TARGET_FILE_DIR:zpctool>
+  -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+
+  VERBATIM
+  DEPENDS zpctool  
+    COMMENT "copying zpc tool deps"
+)
 
 target_link_libraries(zensim INTERFACE zpctool) # zpctool -> zensim
 

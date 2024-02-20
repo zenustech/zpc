@@ -68,6 +68,9 @@ option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
 option(ZS_PROPAGATE_DEPS "Pass on dependencies" ON)
 option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda architecture" ON)
 
+set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR "" CACHE STRING "User overwriting of python include directory")
+set(ZS_OVERWRITE_PYTHON_LIBRARIES "" CACHE STRING "User overwriting of python libraries")
+
 option(ZS_ENABLE_INSTALL "Install targets" Off)
 option(ZS_ENABLE_PACKAGE "Build package" Off)
 

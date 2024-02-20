@@ -578,13 +578,32 @@ target_link_libraries(zensim INTERFACE zpc) # zpc -> zensim
 # zpc_py_interop #
 # ################
 add_library(zpc_jit_py INTERFACE)  # cmake helper target for zpc JIT
-find_package(Python3 COMPONENTS Interpreter Development)
-if (Python3_FOUND)
-  message(STATUS "python3 libraries for zpc_jit_py: ${Python3_LIBRARIES}")
-  message(STATUS "python3 include directories for zpc_jit_py: ${Python3_INCLUDE_DIRS}")
-  target_link_libraries(zpc_jit_py INTERFACE ${Python3_LIBRARIES})
-  target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
-endif(Python3_FOUND)
+set(ZS_PYTHON_FOUND 0)
+if (NOT ZS_OVERWRITE_PYTHON_INCLUDE_DIR STREQUAL "" AND NOT ZS_OVERWRITE_PYTHON_LIBRARIES STREQUAL "")
+  set(ZS_PYTHON_FOUND 1)
+  # set(Python3_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES})
+  # set(Python3_INCLUDE_DIRS ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
+
+else()
+  find_package(Python3 COMPONENTS Interpreter Development)
+  if (Python3_FOUND)
+    set(ZS_PYTHON_FOUND 1)
+    set(ZS_OVERWRITE_PYTHON_LIBRARIES ${Python3_LIBRARIES})
+    set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
+  endif(Python3_FOUND)
+endif()
+
+set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
+
+if (ZS_PYTHON_FOUND)
+  message(STATUS "python3 libraries for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LIBRARIES}")
+  message(STATUS "python3 include directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}")
+  target_link_libraries(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LIBRARIES})
+  target_include_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
+
+  set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
+  set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
+endif(ZS_PYTHON_FOUND)
 
 #[=[
 # other overridden setup
@@ -718,6 +737,17 @@ if(ZS_ENABLE_JIT)
   add_dependencies(
       zpc_jit_py zpc_jit_clang
   )
+  if (ZS_PYTHON_FOUND)
+    add_custom_command(
+      TARGET zpc_py_interop
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy ${ZS_OVERWRITE_PYTHON_LIBRARIES} $<TARGET_FILE_DIR:zpc_py_interop>
+      VERBATIM
+      DEPENDS zpc_py_interop 
+        COMMENT "copying zpc_jit_py related python runtime shared libraries ${ZS_OVERWRITE_PYTHON_LIBRARIES}"
+    )
+  endif(ZS_PYTHON_FOUND)
+
   if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
     add_custom_command(
       TARGET zpc_jit_clang

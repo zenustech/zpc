@@ -420,8 +420,16 @@ if(ZS_ENABLE_OPENMP)
 
   if(WIN32)
     target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
-      PUBLIC $<$<COMPILE_LANGUAGE:CXX>: /openmp:llvm /openmp:experimental>
+      # PUBLIC $<$<COMPILE_LANGUAGE:CXX>: /openmp:llvm /openmp:experimental>
+      PUBLIC $<$<COMPILE_LANGUAGE:CXX>: /openmp>
     )
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("/openmp:experimental" MSVC_SUPPORT_OPENMP_EXPERIMENTAL)
+    if (MSVC_SUPPORT_OPENMP_EXPERIMENTAL)
+      target_compile_options(zpcomp
+        PUBLIC $<$<COMPILE_LANGUAGE:CXX>: /openmp:experimental>
+      )
+    endif()
   else()
     target_compile_options(zpcomp # MSVC, GNU, Clang, Intel
       PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:AppleClang>, -Xpreprocessor -fopenmp, -fopenmp> >

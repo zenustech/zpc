@@ -31,21 +31,22 @@ namespace zs {
                     const source_location &loc = source_location::current()) const {
       using namespace index_literals;
       constexpr auto dim = Collapse<Ts, Is>::dim;
+      using Ti = make_signed_t<RM_CVREF_T(dims.get(0_th))>;
       CppTimer timer;
       if (shouldProfile()) timer.tick();
       if constexpr (dim == 1) {
 #pragma omp parallel for if (_dop < dims.get(0_th)) num_threads(_dop)
-        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i) zs::invoke(f, i);
+        for (Ti i = 0; i < dims.get(0_th); ++i) zs::invoke(f, i);
       } else if constexpr (dim == 2) {
 #pragma omp parallel for collapse(2) if (_dop < dims.get(0_th) * dims.get(1_th)) num_threads(_dop)
-        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i)
-          for (RM_CVREF_T(dims.get(1_th)) j = 0; j < dims.get(1_th); ++j) zs::invoke(f, i, j);
+        for (Ti i = 0; i < dims.get(0_th); ++i)
+          for (Ti j = 0; j < dims.get(1_th); ++j) zs::invoke(f, i, j);
       } else if constexpr (dim == 3) {
 #pragma omp parallel for collapse(3) if (_dop < dims.get(0_th) * dims.get(1_th) * dims.get(2_th)) \
     num_threads(_dop)
-        for (RM_CVREF_T(dims.get(0_th)) i = 0; i < dims.get(0_th); ++i)
-          for (RM_CVREF_T(dims.get(1_th)) j = 0; j < dims.get(1_th); ++j)
-            for (RM_CVREF_T(dims.get(2_th)) k = 0; k < dims.get(2_th); ++k) zs::invoke(f, i, j, k);
+        for (Ti i = 0; i < dims.get(0_th); ++i)
+          for (Ti j = 0; j < dims.get(1_th); ++j)
+            for (Ti k = 0; k < dims.get(2_th); ++k) zs::invoke(f, i, j, k);
       } else {
         throw std::runtime_error(
             fmt::format("execution of {}-layers of loops not supported!", dim));
@@ -70,7 +71,9 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
         for (; iter; ++iter)
+#if !defined(ZS_PLATFORM_WINDOWS)
 #pragma omp task firstprivate(iter)
+#endif
         {
           if constexpr (is_invocable_v<F>)
             zs::invoke(f);
@@ -105,7 +108,9 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
           for (auto &&it : range)
+#if !defined(ZS_PLATFORM_WINDOWS)
 #pragma omp task firstprivate(it)
+#endif
           {
             if constexpr (is_invocable_v<F, decltype(it)>)
               zs::invoke(f, it);
@@ -141,7 +146,9 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
         for (; iter; ++iter)
+#if !defined(ZS_PLATFORM_WINDOWS)
 #pragma omp task firstprivate(iter)
+#endif
         {
           if constexpr (is_invocable_v<F, decltype(iter), ParamTuple>)
             zs::invoke(f, iter, params);
@@ -178,7 +185,9 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
           for (auto &&it : range)
+#if !defined(ZS_PLATFORM_WINDOWS)
 #pragma omp task firstprivate(it)
+#endif
           {
             if constexpr (is_invocable_v<F, decltype(it), ParamTuple>)
               zs::invoke(f, it, params);
@@ -210,7 +219,9 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
         for (auto &&it : range)
+#if !defined(ZS_PLATFORM_WINDOWS)
 #pragma omp task firstprivate(it)
+#endif
         {
           const auto args = shuffle(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)));
           (zs::apply(bodies, args), ...);
@@ -220,7 +231,9 @@ namespace zs {
 #pragma omp parallel num_threads(_dop)
 #pragma omp master
         for (auto &&it : range)
+#if !defined(ZS_PLATFORM_WINDOWS)
 #pragma omp task firstprivate(it)
+#endif
         {
           policy.template exec<I + 1>(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)),
                                       policies, ranges, bodies...);

@@ -243,12 +243,16 @@ if(ZS_ENABLE_CUDA)
   if(ZS_AUTO_DETECT_CUDA_ARCH)
     set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} PARENT_SCOPE)
   endif(ZS_AUTO_DETECT_CUDA_ARCH)
-endif(ZS_ENABLE_CUDA)
+endif(ZS_ENABLE_CUDA)  
+
+set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
+set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
+set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
 
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
+message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}, python inc: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
 # =================

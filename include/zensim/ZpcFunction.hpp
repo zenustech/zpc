@@ -152,8 +152,9 @@ namespace zs {
     function &operator=(F &&f) {
       if (_manageFn) (*_manageFn)(_storage.data(), nullptr, manage_op_e::destruct);
 
-      constexpr bool fit = sizeof(f) <= function_storage::capacity
-                           && alignof(decay_t<F>) <= function_storage::alignment;
+      constexpr bool fit
+          = sizeof(Owner<decay_t<F>>) <= detail::function_ref_dummy_member_pointer_size
+            && alignof(Owner<decay_t<F>>) <= detail::function_ref_dummy_member_pointer_alignment;
 
       if constexpr (fit) {
         using FuncOwner = Owner<decay_t<F>>;

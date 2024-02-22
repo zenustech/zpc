@@ -436,18 +436,20 @@ if(ZS_ENABLE_OPENMP)
     )
   endif()
 
-  add_custom_command(
-    TARGET zpcomp 
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND}
-    -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpcomp>
-    -DOUTPUT=$<TARGET_FILE_DIR:zpcomp>
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+  if(WIN32)
+    add_custom_command(
+      TARGET zpcomp 
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND}
+      -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpcomp>
+      -DOUTPUT=$<TARGET_FILE_DIR:zpcomp>
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
 
-    VERBATIM
-    DEPENDS zpcomp 
-      COMMENT "copying zpc omp deps"
-  )
+      VERBATIM
+      DEPENDS zpcomp 
+        COMMENT "copying zpc omp deps"
+    )
+  endif(WIN32)
 endif(ZS_ENABLE_OPENMP)
 
 # ############
@@ -922,18 +924,20 @@ if(ZS_ENABLE_OPENVDB)
   )
 endif(ZS_ENABLE_OPENVDB)
 
-add_custom_command(
-  TARGET zpctool 
-  POST_BUILD
-  COMMAND ${CMAKE_COMMAND}
-  -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpctool>
-  -DOUTPUT=$<TARGET_FILE_DIR:zpctool>
-  -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
+if (WIN32)
+  add_custom_command(
+    TARGET zpctool 
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+    -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpctool>
+    -DOUTPUT=$<TARGET_FILE_DIR:zpctool>
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
 
-  VERBATIM
-  DEPENDS zpctool  
-    COMMENT "copying zpc tool deps"
-)
+    VERBATIM
+    DEPENDS zpctool  
+      COMMENT "copying zpc tool deps"
+  )
+endif(WIN32)
 
 target_link_libraries(zensim INTERFACE zpctool) # zpctool -> zensim
 

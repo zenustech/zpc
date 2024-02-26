@@ -4,7 +4,8 @@
 
 namespace zs {
 
-  bool prepare_context(device_mem_tag, ProcID devid);
+  bool prepare_context(device_mem_tag, ProcID devid,
+                       const source_location &loc = source_location::current());
   void *allocate(device_mem_tag, size_t size, size_t alignment,
                  const source_location &loc = source_location::current());
   void deallocate(device_mem_tag, void *ptr, size_t size, size_t alignment,
@@ -20,7 +21,8 @@ namespace zs {
   void copyDtoD(device_mem_tag, void *dst, void *src, size_t size,
                 const source_location &loc = source_location::current());
 
-  bool prepare_context(um_mem_tag, ProcID devid);
+  bool prepare_context(um_mem_tag, ProcID devid,
+                       const source_location &loc = source_location::current());
   void *allocate(um_mem_tag, size_t size, size_t alignment,
                  const source_location &loc = source_location::current());
   void deallocate(um_mem_tag, void *ptr, size_t size, size_t alignment,

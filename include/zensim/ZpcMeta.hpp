@@ -43,6 +43,9 @@ namespace zs {
   /// fundamental building blocks
   ///
   /// @note fundamental type-value-seq wrapper
+  template <typename... Ts> struct type_seq;
+  template <auto... Ns> struct value_seq;
+
   template <class T, T v> struct integral_constant {
     static constexpr T value = v;
     using value_type = T;
@@ -135,9 +138,6 @@ namespace zs {
     template <typename T, auto I> static indexed_type<I, T> extract_index(indexed_type<I, T> *);
     template <typename T, typename Ti> static wrapv<(~(size_t)0)> extract_index(wrapt<Ti> *);
   }  // namespace type_impl
-
-  template <typename... Ts> struct type_seq;
-  template <auto... Ns> struct value_seq;
 
   template <typename> struct is_type_seq : false_type {};
   template <typename... Ts> struct is_type_seq<type_seq<Ts...>> : true_type {};

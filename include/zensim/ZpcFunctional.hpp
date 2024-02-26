@@ -454,11 +454,15 @@ namespace zs {
       return {};
     }
 
-    value_seq() noexcept = default;
+    constexpr value_seq() noexcept = default;
     template <typename Ti, auto cnt = count, enable_if_t<(cnt > 0)> = 0>
     constexpr value_seq(integer_sequence<Ti, Ns...>) noexcept {}
     template <auto... Ms, enable_if_all<(Ms == Ns)...> = 0>
     constexpr value_seq(wrapv<Ms>...) noexcept {}
+    constexpr value_seq(value_seq &&) noexcept = default;
+    constexpr value_seq(const value_seq &) noexcept = default;
+    constexpr value_seq &operator=(value_seq &&) noexcept = default;
+    constexpr value_seq &operator=(const value_seq &) noexcept = default;
     ///
     /// operations
     ///
@@ -536,8 +540,13 @@ namespace zs {
   };
   template <typename Ti, Ti... Ns> value_seq(integer_sequence<Ti, Ns...>) -> value_seq<Ns...>;
   template <auto... Ns> value_seq(wrapv<Ns>...) -> value_seq<Ns...>;
+  template <auto... Ns> value_seq(value_seq<Ns>...) -> value_seq<Ns...>;
 
   template <size_t... Ns> constexpr value_seq<Ns...> dim_c{};
+
+  template <typename T> struct static_value_extent;
+  template <auto... Ns> struct static_value_extent<value_seq<Ns...>> : wrapv<(Ns * ...)> {};
+  template <auto N> struct static_value_extent<wrapv<N>> : wrapv<N> {};
 
   /// select (constant integral) value (integral_constant<T, N>) by index
   template <zs::size_t I, typename ValueSeq> using select_value =

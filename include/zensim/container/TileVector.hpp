@@ -100,6 +100,27 @@ namespace zs {
                               alignof(value_type));
     }
 
+    template <typename Dims = value_seq<1>, typename T = const value_type,
+              enable_if_t<sizeof(T) == sizeof(value_type) && alignof(T) == alignof(value_type)> = 0>
+    inline auto getVal(channel_counter_type chn = 0, size_type i = 0, Dims dims = {},
+                       wrapt<T> = {}) const {
+      auto ptr = _base + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
+      constexpr auto ext = static_value_extent<Dims>::value;
+      if constexpr (ext == 1) {
+        remove_cvref_t<T> ret{};
+        Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&ret},
+                       MemoryEntity{memoryLocation(), ptr}, sizeof(T));
+        return ret;
+      } else {
+        constexpr value_seq seq{dims};
+        vec_impl<remove_cvref_t<T>, typename RM_CVREF_T(seq)::template to_iseq<int>> ret{};
+        for (typename Dims::value_type d = 0; d != ext; ++d, ptr += lane_width)
+          Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)ret.data(d)},
+                         MemoryEntity{memoryLocation(), ptr}, sizeof(T));
+        return ret;
+      }
+    }
+
     static auto numTotalChannels(const std::vector<PropertyTag> &tags) {
       channel_counter_type cnt = 0;
       for (size_t i = 0; i != tags.size(); ++i) cnt += tags[i].numChannels;
@@ -539,7 +560,7 @@ namespace zs {
     channel_counter_type _numChannels{1};
   };
 
-#define ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(LENGTH)                        \
+#define ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(LENGTH)                         \
   ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u32, LENGTH, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<u64, LENGTH, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT TileVector<i32, LENGTH, ZSPmrAllocator<>>;     \

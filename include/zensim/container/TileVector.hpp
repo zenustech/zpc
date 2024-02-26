@@ -120,6 +120,26 @@ namespace zs {
         return ret;
       }
     }
+    template <typename VecT,
+              enable_if_t<sizeof(typename VecT::value_type) == sizeof(value_type)
+                          && alignof(typename VecT::value_type) == alignof(value_type)>
+              = 0>
+    inline void setVal(const VecInterface<VecT> &v, channel_counter_type chn = 0,
+                       size_type i = 0) const {
+      auto ptr = _base + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
+
+      for (typename VecT::value_type d = 0; d != VecT::extent; ++d, ptr += lane_width)
+        Resource::copy(MemoryEntity{memoryLocation(), ptr},
+                       MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)v.data(d)},
+                       sizeof(value_type));
+    }
+    template <typename T,
+              enable_if_t<sizeof(T) == sizeof(value_type) && alignof(T) == alignof(value_type)> = 0>
+    inline void setVal(const T &v, channel_counter_type chn = 0, size_type i = 0) {
+      auto ptr = _base + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
+      Resource::copy(MemoryEntity{memoryLocation(), ptr},
+                     MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v}, sizeof(v));
+    }
 
     static auto numTotalChannels(const std::vector<PropertyTag> &tags) {
       channel_counter_type cnt = 0;

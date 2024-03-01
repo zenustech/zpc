@@ -70,6 +70,7 @@ option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda a
 
 set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR "" CACHE STRING "User overwriting of python include directory")
 set(ZS_OVERWRITE_PYTHON_LIBRARIES "" CACHE STRING "User overwriting of python libraries")
+set(ZS_OVERWRITE_PYTHON_EXECUTABLE "" CACHE STRING "User overwriting of python executable")
 
 option(ZS_ENABLE_INSTALL "Install targets" Off)
 option(ZS_ENABLE_PACKAGE "Build package" Off)
@@ -248,6 +249,7 @@ endif(ZS_ENABLE_CUDA)
 set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
 set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
 set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
+set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${ZS_OVERWRITE_PYTHON_EXECUTABLE} PARENT_SCOPE)
 
 message("cmake configure summary")
 message("project name: ${project_name}")

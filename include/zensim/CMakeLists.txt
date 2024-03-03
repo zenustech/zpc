@@ -436,7 +436,7 @@ if(ZS_ENABLE_OPENMP)
     )
   endif()
 
-  if(WIN32)
+  if(WIN32 AND ZS_BUILD_SHARED_LIBS)
     add_custom_command(
       TARGET zpcomp 
       POST_BUILD
@@ -449,7 +449,7 @@ if(ZS_ENABLE_OPENMP)
       DEPENDS zpcomp 
         COMMENT "copying zpc omp deps"
     )
-  endif(WIN32)
+  endif(WIN32 AND ZS_BUILD_SHARED_LIBS)
 endif(ZS_ENABLE_OPENMP)
 
 # ############
@@ -936,7 +936,7 @@ if(ZS_ENABLE_OPENVDB)
   )
 endif(ZS_ENABLE_OPENVDB)
 
-if (WIN32)
+if (WIN32 AND ZS_BUILD_SHARED_LIBS)
   add_custom_command(
     TARGET zpctool 
     POST_BUILD
@@ -949,7 +949,7 @@ if (WIN32)
     DEPENDS zpctool  
       COMMENT "copying zpc tool deps"
   )
-endif(WIN32)
+endif(WIN32 AND ZS_BUILD_SHARED_LIBS)
 
 target_link_libraries(zensim INTERFACE zpctool) # zpctool -> zensim
 

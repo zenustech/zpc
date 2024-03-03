@@ -21,6 +21,84 @@
 #endif
 
 namespace zs {
+
+  template <typename Signature> struct Bind;
+  /// @note bind expression predicate
+  template <typename Expr> struct is_bind_expression : false_type {};
+  template <typename Signature> struct is_bind_expression<Bind<Signature>> : true_type {};
+  template <typename Signature> struct is_bind_expression<const Bind<Signature>> : true_type {};
+  template <typename Signature> struct is_bind_expression<volatile Bind<Signature>> : true_type {};
+  template <typename Signature> struct is_bind_expression<const volatile Bind<Signature>>
+      : true_type {};
+
+  template <typename Expr> constexpr bool is_bind_expression_v = is_bind_expression<Expr>::value;
+
+  /// @note Bind
+  template <typename Functor, typename... BoundArgs> struct Bind<Functor(BoundArgs...)> {
+    using bound_indices = index_sequence_for<BoundArgs...>;
+
+    template <typename BArg, typename... Args, zs::size_t... Is>
+    static constexpr decltype(auto) dereference_bind_expr_argument(BArg &&arg,
+                                                                   zs::tuple<Args...> &callArgs,
+                                                                   zs::index_sequence<Is...>) {
+      return arg(zs::get<Is>(zs::move(callArgs))...);
+    }
+    template <typename BArg, typename Tuple>
+    static constexpr decltype(auto) dereference_argument(BArg &&arg, Tuple &callArgs) {
+      using T = remove_cvref_t<BArg>;
+      if constexpr (detail::is_reference_wrapper_v<T>) {
+        return arg.get();
+      } else if constexpr (is_bind_expression_v<T>) {
+        return dereference_bind_expr_argument(
+            arg, callArgs, make_index_sequence<tuple_size_v<remove_cv_t<Tuple>>>{});
+      } else if constexpr (is_value_wrapper_v<T>) {
+        return zs::get<(T::value - 1)>(zs::move(callArgs));  // ref: gcc11
+      } else {
+        return zs::forward<BArg>(arg);
+      }
+    }
+
+    template <typename... Args> explicit constexpr Bind(Functor &f, Args &&...args)
+        : _f{f}, _boundArgs{FWD(args)...} {}
+    template <typename... Args> explicit constexpr Bind(Functor &&f, Args &&...args)
+        : _f{zs::move(f)}, _boundArgs{FWD(args)...} {}
+    constexpr Bind(const Bind &) = default;
+    constexpr Bind(Bind &&) = default;
+
+    template <typename... Args, zs::size_t... Is>
+    constexpr decltype(auto) callImpl(zs::tuple<Args...> &&callArgs, zs::index_sequence<Is...>) {
+      return zs::invoke(_f, dereference_argument(zs::get<Is>(_boundArgs), callArgs)...);
+    }
+    template <typename... Args, zs::size_t... Is>
+    constexpr decltype(auto) callImpl(zs::tuple<Args...> &&callArgs,
+                                      zs::index_sequence<Is...>) const {
+      return zs::invoke(_f, dereference_argument(zs::get<Is>(_boundArgs), callArgs)...);
+    }
+
+    template <typename... Args> constexpr decltype(auto) operator()(Args &&...args) {
+      return callImpl(zs::forward_as_tuple(zs::forward<Args>(args)...), bound_indices{});
+    }
+    template <typename... Args> constexpr decltype(auto) operator()(Args &&...args) const {
+      return callImpl(zs::forward_as_tuple(zs::forward<Args>(args)...), bound_indices{});
+    }
+
+    Functor _f;
+    tuple<BoundArgs...> _boundArgs;
+  };
+
+  namespace detail {
+    template <typename Functor, typename... BoundArgs> struct bind_helper {
+      using func_type = decay_t<Functor>;
+      using bind_type = Bind<func_type(decay_t<BoundArgs>...)>;
+    };
+  }  // namespace detail
+
+  template <typename Functor, typename... BArgs>
+  constexpr auto bind(Functor &&functor, BArgs &&...bargs) {
+    return typename detail::bind_helper<Functor, BArgs...>::bind_type(zs::forward<Functor>(functor),
+                                                                      zs::forward<BArgs>(bargs)...);
+  }
+
   template <class T, class = int> struct printf_target;
 
   template <class T> struct printf_target<T, enable_if_t<is_floating_point_v<T>>> {

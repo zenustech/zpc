@@ -17,67 +17,9 @@ namespace zs {
   template <class T> struct unwrap_refwrapper;
   template <class T> using special_decay_t = typename unwrap_refwrapper<decay_t<T>>::type;
 
-/// Jorg Brown, Cppcon2019, reducing template compilation overhead using
-/// features from C++11, 14, 17, and 20
-#if !defined(ZS_COMPILER_MSVC)
-  template <zs::size_t I, typename T, typename = void> struct tuple_value : T {
-    constexpr tuple_value() = default;
-    ~tuple_value() = default;
-    template <typename V, enable_if_t<is_constructible_v<T, V>> = 0>
-    constexpr tuple_value(V &&v) noexcept : T(FWD(v)) {}
-    constexpr tuple_value(tuple_value &&) = default;
-    constexpr tuple_value(const tuple_value &) = default;
-    constexpr tuple_value &operator=(tuple_value &&) = default;
-    constexpr tuple_value &operator=(const tuple_value &) = default;
-
-    template <typename V, enable_if_t<is_assignable_v<T, V>> = 0>
-    constexpr tuple_value &operator=(V &&o) {
-      T::operator=(FWD(o));
-      return *this;
-    }
-
-    /// by index
-    constexpr T &get(index_t<I>) &noexcept { return *this; }
-    constexpr T &&get(index_t<I>) &&noexcept { return zs::move(*this); }
-    constexpr const T &get(index_t<I>) const &noexcept { return *this; }
-    /// by type
-    constexpr T &get(wrapt<T>) &noexcept { return *this; }
-    constexpr T &&get(wrapt<T>) &&noexcept { return zs::move(*this); }
-    constexpr const T &get(wrapt<T>) const &noexcept { return *this; }
-  };
-#else
+  /// Jorg Brown, Cppcon2019, reducing template compilation overhead using
+  /// features from C++11, 14, 17, and 20
   template <zs::size_t I, typename T, typename = void> struct tuple_value {
-    constexpr tuple_value() = default;
-    ~tuple_value() = default;
-    template <typename V, enable_if_t<is_constructible_v<T, V>> = 0>
-    constexpr tuple_value(V &&v) noexcept : base(FWD(v)) {}
-    constexpr tuple_value(tuple_value &&) = default;
-    constexpr tuple_value(const tuple_value &) = default;
-    constexpr tuple_value &operator=(tuple_value &&) = default;
-    constexpr tuple_value &operator=(const tuple_value &) = default;
-
-    template <typename V, enable_if_t<is_assignable_v<T, V>> = 0>
-    constexpr tuple_value &operator=(V &&o) {
-      base = (FWD(o));
-      return *this;
-    }
-
-    /// by index
-    constexpr T &get(index_t<I>) &noexcept { return base; }
-    constexpr T &&get(index_t<I>) &&noexcept { return zs::move(base); }
-    constexpr const T &get(index_t<I>) const &noexcept { return base; }
-    /// by type
-    constexpr T &get(wrapt<T>) &noexcept { return base; }
-    constexpr T &&get(wrapt<T>) &&noexcept { return zs::move(base); }
-    constexpr const T &get(wrapt<T>) const &noexcept { return base; }
-
-    T base;
-  };
-#endif
-  template <zs::size_t I, typename T>
-  struct tuple_value<I, T,
-                     enable_if_type<(is_fundamental_v<T> || is_final_v<T> || is_same_v<T, void *>
-                                     || is_reference_v<T> || is_pointer_v<T>)>> {
     constexpr tuple_value() = default;
     ~tuple_value() = default;
     template <typename V, enable_if_t<is_constructible_v<T, V>> = 0>
@@ -94,31 +36,59 @@ namespace zs {
     }
 
     /// by index
-    constexpr conditional_t<is_rvalue_reference_v<T>, T, T &> get(index_t<I>) &noexcept {
+    constexpr conditional_t<is_rvalue_reference_v<T>, T, T &> get(index_t<I>) & noexcept {
       if constexpr (is_rvalue_reference_v<T>)
         return zs::move(value);
       else
         return value;
     }
-    constexpr T &&get(index_t<I>) &&noexcept { return zs::move(value); }
+    constexpr T &&get(index_t<I>) && noexcept { return zs::move(value); }
     template <bool NonRValRef = !is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
-    constexpr decltype(auto) get(index_t<I>) const &noexcept {
+    constexpr decltype(auto) get(index_t<I>) const & noexcept {
       return value;
     }
     /// by type
-    constexpr conditional_t<is_rvalue_reference_v<T>, T, T &> get(wrapt<T>) &noexcept {
+    constexpr conditional_t<is_rvalue_reference_v<T>, T, T &> get(wrapt<T>) & noexcept {
       if constexpr (is_rvalue_reference_v<T>)
         return zs::move(value);
       else
         return value;
     }
-    constexpr T &&get(wrapt<T>) &&noexcept { return zs::move(value); }
+    constexpr T &&get(wrapt<T>) && noexcept { return zs::move(value); }
     template <bool NonRValRef = !is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
-    constexpr decltype(auto) get(wrapt<T>) const &noexcept {
+    constexpr decltype(auto) get(wrapt<T>) const & noexcept {
       return value;
     }
     T value;
   };
+#if !defined(ZS_COMPILER_MSVC)
+  template <zs::size_t I, typename T>
+  struct tuple_value<I, T, enable_if_type<(is_class_v<T> && !is_final_v<T>)>> : T {
+    constexpr tuple_value() = default;
+    ~tuple_value() = default;
+    template <typename V, enable_if_t<is_constructible_v<T, V>> = 0>
+    constexpr tuple_value(V &&v) noexcept : T(FWD(v)) {}
+    constexpr tuple_value(tuple_value &&) = default;
+    constexpr tuple_value(const tuple_value &) = default;
+    constexpr tuple_value &operator=(tuple_value &&) = default;
+    constexpr tuple_value &operator=(const tuple_value &) = default;
+
+    template <typename V, enable_if_t<is_assignable_v<T, V>> = 0>
+    constexpr tuple_value &operator=(V &&o) {
+      T::operator=(FWD(o));
+      return *this;
+    }
+
+    /// by index
+    constexpr T &get(index_t<I>) & noexcept { return *this; }
+    constexpr T &&get(index_t<I>) && noexcept { return zs::move(*this); }
+    constexpr const T &get(index_t<I>) const & noexcept { return *this; }
+    /// by type
+    constexpr T &get(wrapt<T>) & noexcept { return *this; }
+    constexpr T &&get(wrapt<T>) && noexcept { return zs::move(*this); }
+    constexpr const T &get(wrapt<T>) const & noexcept { return *this; }
+  };
+#endif
 
   template <typename, typename> struct tuple_base;
   template <typename... Ts> struct tuple;
@@ -134,14 +104,15 @@ namespace zs {
   template <typename Tup> constexpr enable_if_type<is_tuple_v<Tup>, zs::size_t> tuple_size_v
       = tuple_size<Tup>::value;
 
-  template <size_t... Is, typename... Ts> struct 
+  template <size_t... Is, typename... Ts> struct
 #if defined(ZS_COMPILER_MSVC)
-      ///  ref: https://stackoverflow.com/questions/12701469/why-is-the-empty-base-class-optimization-ebo-is-not-working-in-msvc
-      ///  ref: https://devblogs.microsoft.com/cppblog/optimizing-the-layout-of-empty-base-classes-in-vs2015-update-2-3/
+      ///  ref:
+      ///  https://stackoverflow.com/questions/12701469/why-is-the-empty-base-class-optimization-ebo-is-not-working-in-msvc
+      ///  ref:
+      ///  https://devblogs.microsoft.com/cppblog/optimizing-the-layout-of-empty-base-classes-in-vs2015-update-2-3/
       __declspec(empty_bases)
 #endif
-      tuple_base<index_sequence<Is...>, type_seq<Ts...>>
-      : tuple_value<Is, Ts>... {
+          tuple_base<index_sequence<Is...>, type_seq<Ts...>> : tuple_value<Is, Ts>... {
     using tuple_types = type_seq<Ts...>;
     static constexpr size_t tuple_size = sizeof...(Ts);
 
@@ -531,18 +502,18 @@ namespace zs {
 
 namespace std {
 #if defined(ZS_PLATFORM_OSX)
-inline namespace __1 {
+  inline namespace __1 {
 #endif
 
-  template <typename T> struct tuple_size;
-  template <typename... Ts> struct tuple_size<zs::tuple<Ts...>>
-      : zs::integral_constant<zs::size_t, zs::tuple_size_v<zs::tuple<Ts...>>> {};
+    template <typename T> struct tuple_size;
+    template <typename... Ts> struct tuple_size<zs::tuple<Ts...>>
+        : zs::integral_constant<zs::size_t, zs::tuple_size_v<zs::tuple<Ts...>>> {};
 
-  template <zs::size_t I, typename T> struct tuple_element;
-  template <zs::size_t I, typename... Ts> struct tuple_element<I, zs::tuple<Ts...>> {
-    using type = zs::tuple_element_t<I, zs::tuple<Ts...>>;
-  };
+    template <zs::size_t I, typename T> struct tuple_element;
+    template <zs::size_t I, typename... Ts> struct tuple_element<I, zs::tuple<Ts...>> {
+      using type = zs::tuple_element_t<I, zs::tuple<Ts...>>;
+    };
 #if defined(ZS_PLATFORM_OSX)
-}
+  }
 #endif
 }  // namespace std

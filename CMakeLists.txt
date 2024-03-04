@@ -67,6 +67,8 @@ option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend" OFF)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
 option(ZS_PROPAGATE_DEPS "Pass on dependencies" ON)
 option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda architecture" ON)
+option(ZS_ENABLE_SERIALIZATION "Enable ZPC serialization" OFF)
+option(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL "No throw upon the absence of ZPC serialization implementation" ON)
 
 set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR "" CACHE STRING "User overwriting of python include directory")
 set(ZS_OVERWRITE_PYTHON_LIBRARIES "" CACHE STRING "User overwriting of python libraries")
@@ -157,6 +159,7 @@ else()
 endif()
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
 
+# out of boundary check
 if(ZS_ENABLE_OFB_ACCESS_CHECK)
   target_compile_definitions(zpc_cxx_deps
     INTERFACE ZS_ENABLE_OFB_ACCESS_CHECK=1
@@ -166,6 +169,29 @@ else(ZS_ENABLE_OFB_ACCESS_CHECK)
     INTERFACE ZS_ENABLE_OFB_ACCESS_CHECK=0
   )
 endif(ZS_ENABLE_OFB_ACCESS_CHECK)
+
+# serialization
+if(ZS_ENABLE_SERIALIZATION)
+  target_compile_definitions(zpc_cxx_deps
+    INTERFACE ZS_ENABLE_SERIALIZATION=1
+  )
+
+if(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
+  target_compile_definitions(zpc_cxx_deps
+    INTERFACE ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=1
+  )
+else(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
+  target_compile_definitions(zpc_cxx_deps
+    INTERFACE ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=0
+  )
+endif(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
+
+else(ZS_ENABLE_SERIALIZATION)
+  target_compile_definitions(zpc_cxx_deps
+    INTERFACE ZS_ENABLE_SERIALIZATION=0
+              ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=0
+  )
+endif(ZS_ENABLE_SERIALIZATION)
 
 if (ZS_ENABLE_INSTALL)
 if (DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)

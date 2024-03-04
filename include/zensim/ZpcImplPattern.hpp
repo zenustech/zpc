@@ -717,8 +717,4 @@ namespace zs {
     storage_type _storage;
   };
 
-  template <typename = void> struct StaticException {
-    const char* what() const noexcept { return "zs exception occured!"; };
-  };
-
 }  // namespace zs

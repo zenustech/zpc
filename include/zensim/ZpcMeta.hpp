@@ -1443,4 +1443,18 @@ namespace zs {
   constexpr byte &operator&=(byte &l, byte r) noexcept { return l = l & r; }
   constexpr byte &operator^=(byte &l, byte r) noexcept { return l = l ^ r; }
 
+  template <typename = void> struct StaticException {
+    const char *what() const noexcept { return "zs exception occured!"; };
+  };
+
+  namespace detail {
+    template <typename S, typename O> auto serializable_through_freefunc(S &s, O &obj)
+        -> decltype(serialize(s, obj), true_type{});
+    false_type serializable_through_freefunc(...);
+
+    template <typename S, typename O> auto serializable_through_memfunc(S &s, O &obj)
+        -> decltype(obj.serialize(s), true_type{});
+    false_type serializable_through_memfunc(...);
+  }  // namespace detail
+
 }  // namespace zs

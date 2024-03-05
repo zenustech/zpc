@@ -59,31 +59,6 @@ namespace zs {
     constexpr decltype(auto) get(wrapt<T>) const & noexcept {
       return value;
     }
-#if ZS_ENABLE_SERIALIZATION
-    template <typename S, enable_if_t<!decltype(detail::serializable_through_freefunc(
-                              declval<S &>(), declval<T &>()))::value>
-                          = 0>
-    void serialize(S &s) {
-      if constexpr (is_reference_v<T>) {
-        throw StaticException{};
-      } else {
-        using TT = remove_cv_t<T>;
-        if constexpr (is_arithmetic_v<TT> || is_enum_v<TT>) {
-          s.template value<sizeof(TT)>(value);
-        } else if constexpr (is_pointer_v<TT>) {
-          static_assert(sizeof(TT) == sizeof(u64) && alignof(TT) == alignof(u64),
-                        "unexpected pointer storage layout.");
-          s.template value<8>(*reinterpret_cast<u64 *>(&value));
-        } else if constexpr (is_default_constructible_v<TT>) {
-#  if ZS_SILENT_ABSENCE_OFSERIALIZATION_IMPL
-#  else
-          throw StaticException{};
-#  endif
-        } else
-          throw StaticException{};
-      }
-    }
-#endif
     T value;
   };
 #if !defined(ZS_COMPILER_MSVC)
@@ -112,30 +87,33 @@ namespace zs {
     constexpr T &get(wrapt<T>) & noexcept { return *this; }
     constexpr T &&get(wrapt<T>) && noexcept { return zs::move(*this); }
     constexpr const T &get(wrapt<T>) const & noexcept { return *this; }
-#  if ZS_ENABLE_SERIALIZATION
-    template <typename S, enable_if_t<!decltype(detail::serializable_through_freefunc(
-                              declval<S &>(), declval<T &>()))::value>
-                          = 0>
-    void serialize(S &s) {
-      if constexpr (is_reference_v<T>) {
-        throw StaticException{};
-      } else {
-        using TT = remove_cv_t<T>;
-        if constexpr (decltype(detail::serializable_through_memfunc(declval<S &>(),
-                                                                    declval<T &>()))::value)
-          static_cast<T &>(*this).serialize(s);
-        else if constexpr (is_default_constructible_v<TT>) {
-#    if ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL
-#    else
-          throw StaticException{};
-#    endif
-        } else
-          throw StaticException{};
-      }
-    }
-    // template <typename S> void serialize(S &s) { s.object(static_cast<T &>(*this)); }
-#  endif
   };
+#endif
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, zs::size_t I, typename T> void serialize(S &s, tuple_value<I, T> &v) {
+    if constexpr (is_reference_v<T>) {
+      throw StaticException{};
+    } else {
+      using TT = remove_cvref_t<T>;
+      if constexpr (decltype(serializable_through_freefunc(s, v.get(index_c<I>)))::value) {
+        serialize(s, v.get(index_c<I>));
+      } else if constexpr (decltype(serializable_through_memfunc(s, v.get(index_c<I>)))::value) {
+        v.get(index_c<I>).serialize(s);
+      } else if constexpr (is_arithmetic_v<TT> || is_enum_v<TT>) {
+        s.template value<sizeof(TT)>(v.get(index_c<I>));
+      } else if constexpr (is_pointer_v<TT>) {
+        static_assert(sizeof(TT) == sizeof(u64) && alignof(TT) == alignof(u64),
+                      "unexpected pointer storage layout.");
+        s.template value<8>(*reinterpret_cast<u64 *>(&v.get(index_c<I>)));
+      } else if constexpr (is_default_constructible_v<TT>) {
+#  if ZS_SILENT_ABSENCE_OFSERIALIZATION_IMPL
+#  else
+        throw StaticException{};
+#  endif
+      } else
+        throw StaticException{};
+    }
+  }
 #endif
 
   template <typename, typename> struct tuple_base;
@@ -268,13 +246,13 @@ namespace zs {
     }
 
     constexpr operator tuple<Ts...>() const noexcept { return *this; }
-
-#if ZS_ENABLE_SERIALIZATION
-    template <typename S> void serialize(S &s) {
-      (void)((static_cast<tuple_value<Is, Ts> &>(*this).serialize(s)), ...);
-    }
-#endif
   };
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, size_t... Is, typename... Ts>
+  void serialize(S &s, tuple_base<index_sequence<Is...>, type_seq<Ts...>> &tup) {
+    (void)(serialize(s, static_cast<tuple_value<Is, Ts> &>(tup)), ...);
+  }
+#endif
 
   template <typename... Ts> struct tuple : tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>> {
     using base_t = tuple_base<index_sequence_for<Ts...>, type_seq<Ts...>>;

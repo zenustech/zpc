@@ -1447,14 +1447,14 @@ namespace zs {
     const char *what() const noexcept { return "zs exception occured!"; };
   };
 
-  namespace detail {
-    template <typename S, typename O> auto serializable_through_freefunc(S &s, O &obj)
-        -> decltype(serialize(s, obj), true_type{});
-    false_type serializable_through_freefunc(...);
+  template <typename S, typename O> auto serializable_through_freefunc(S &s, O &obj)
+      -> decltype(serialize(zs::declval<S &>(), zs::declval<O &>()), true_type{}) {
+    return {};
+  }
+  false_type serializable_through_freefunc(...);
 
-    template <typename S, typename O> auto serializable_through_memfunc(S &s, O &obj)
-        -> decltype(obj.serialize(s), true_type{});
-    false_type serializable_through_memfunc(...);
-  }  // namespace detail
+  template <typename S, typename O> auto serializable_through_memfunc(S &s, O &obj)
+      -> decltype(obj.serialize(s), true_type{});
+  false_type serializable_through_memfunc(...);
 
 }  // namespace zs

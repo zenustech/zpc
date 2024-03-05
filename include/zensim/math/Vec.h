@@ -8,20 +8,21 @@
 
 #include "VecInterface.hpp"
 #include "zensim/ZpcImplPattern.hpp"
+#include "zensim/ZpcIterator.hpp"
 #include "zensim/ZpcMathUtils.hpp"
 #include "zensim/ZpcTuple.hpp"
 
 namespace std {
 #if defined(ZS_PLATFORM_OSX)
-inline namespace __1 {
+  inline namespace __1 {
 #endif
 
-  template <typename, zs::size_t> struct array;
+    template <typename, zs::size_t> struct array;
 
 #if defined(ZS_PLATFORM_OSX)
-}
+  }
 #endif
-}
+}  // namespace std
 
 namespace zs {
 
@@ -311,6 +312,15 @@ namespace zs {
       return r;
     }
   };
+
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, typename T, typename Tn, Tn... Ns,
+            enable_if_t<(is_arithmetic_v<T> || is_enum_v<T>)> = 0>
+  void serialize(S &s, vec_impl<T, integer_sequence<Tn, Ns...>> &v) {
+    auto r = zs::range(v.data(), v.data() + v.extent);
+    s.template container<sizeof(T)>(r);
+  }
+#endif
 
   /// make vec
   template <typename... Args, enable_if_all<((is_fundamental_v<remove_cvref_t<Args>>), ...)> = 0>

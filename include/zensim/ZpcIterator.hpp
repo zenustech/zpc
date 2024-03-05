@@ -708,3 +708,30 @@ namespace zs {
   }
 
 }  // namespace zs
+
+#if ZS_ENABLE_SERIALIZATION
+namespace bitsery {
+  namespace traits {
+    template <typename T> struct ContainerTraits;
+    template <typename T> struct BufferAdapterTraits;
+
+    template <typename IterT> struct ContainerTraits<zs::detail::WrappedIterator<IterT, IterT>> {
+      static_assert(zs::detail::has_advance<IterT>::value
+                        && zs::detail::has_distance_to<IterT>::value,
+                    "must use a random-access-iterator range to assume contiguous for now...");
+      using TValue = typename zs::iterator_traits<IterT>::value_type;
+      static constexpr bool isResizable = false;
+      static constexpr bool isContiguous = true;  // may not be true
+      static zs::size_t size(const zs::detail::WrappedIterator<IterT, IterT> &container) {
+        return zs::range_size(container);
+      }
+    };
+    template <typename IterT>
+    struct BufferAdapterTraits<zs::detail::WrappedIterator<IterT, IterT>> {
+      using TIterator = IterT;
+      using TConstIterator = IterT;
+      using TValue = typename zs::iterator_traits<IterT>::value_type;
+    };
+  }  // namespace traits
+}  // namespace bitsery
+#endif

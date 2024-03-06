@@ -593,8 +593,25 @@ namespace zs {
     if (c.memoryLocation().onHost()) {
       c = c.clone({zs::memsrc_e::host, -1});
     }
-    s.template container<sizeof(typename C::value_type)>(
-        c, zs::detail::deduce_numeric_max<typename C::size_type>());
+    if constexpr (sizeof(typename C::value_type) <= 16)
+      s.template container<sizeof(typename C::value_type)>(
+          c, zs::detail::deduce_numeric_max<typename C::size_type>());
+    else
+      s.container(c, zs::detail::deduce_numeric_max<typename C::size_type>(), [](S &s, T &v) {
+        if constexpr (decltype(serializable_through_freefunc(s, v))::value)
+          serialize(s, v);
+        else if constexpr (decltype(serializable_through_memfunc(s, v))::value)
+          v.serialize(s);
+        else if constexpr (is_arithmetic_v<T> || is_enum_v<T>)
+          s.template value<sizeof(T)>(v);
+        else if constexpr (is_default_constructible_v<T>) {
+#  if ZS_SILENT_ABSENCE_OFSERIALIZATION_IMPL
+#  else
+          throw StaticException{};
+#  endif
+        }
+      });
+
     s.template value<sizeof(typename C::size_type)>(c.refSize());
     s.template value<sizeof(typename C::size_type)>(c.refCapacity());
   }

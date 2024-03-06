@@ -102,4 +102,11 @@ namespace zs {
     int numChannels;
   };
 
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S> void serialize(S &s, PropertyTag &tag) {
+    tag.name.serialize(s);
+    s.template value<sizeof(int)>(tag.numChannels);
+  }
+#endif
+
 }  // namespace zs

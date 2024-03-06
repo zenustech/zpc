@@ -587,6 +587,19 @@ namespace zs {
     *this = zs::move(orderedVector);
   }
 
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, typename T> void serialize(S &s, zs::Vector<T, zs::ZSPmrAllocator<>> &c) {
+    using C = zs::Vector<T, zs::ZSPmrAllocator<>>;
+    if (c.memoryLocation().onHost()) {
+      c = c.clone({zs::memsrc_e::host, -1});
+    }
+    s.template container<sizeof(typename C::value_type)>(
+        c, zs::detail::deduce_numeric_max<typename C::size_type>());
+    s.template value<sizeof(typename C::size_type)>(c.refSize());
+    s.template value<sizeof(typename C::size_type)>(c.refCapacity());
+  }
+#endif
+
 }  // namespace zs
 
 #if ZS_ENABLE_SERIALIZATION
@@ -622,16 +635,4 @@ namespace bitsery {
   }  // namespace traits
 }  // namespace bitsery
 
-#  if ZS_ENABLE_SERIALIZATION
-template <typename S, typename T> void serialize(S &s, zs::Vector<T, zs::ZSPmrAllocator<>> &c) {
-  using C = zs::Vector<T, zs::ZSPmrAllocator<>>;
-  if (c.memoryLocation().onHost()) {
-    c = c.clone({zs::memsrc_e::host, -1});
-  }
-  s.template container<sizeof(typename C::value_type)>(
-      c, zs::detail::deduce_numeric_max<typename C::size_type>());
-  s.template value<sizeof(typename C::size_type)>(c.refSize());
-  s.template value<sizeof(typename C::size_type)>(c.refCapacity());
-}
-#  endif
 #endif

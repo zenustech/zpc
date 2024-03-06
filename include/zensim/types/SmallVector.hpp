@@ -1,6 +1,7 @@
 #pragma once
 
 #include "zensim/ZpcIntrinsics.hpp"
+#include "zensim/ZpcIterator.hpp"
 #include "zensim/ZpcMeta.hpp"
 #if defined(__CUDACC__)
 #  ifdef ZPC_JIT_MODE
@@ -31,12 +32,9 @@ namespace zs {
       }
 #endif
     }
-    template <
-        typename StrT,
-        enable_if_t<is_assignable_v<
-                        char_type &,
-                        decltype(declval<StrT>()
-                                     [0])> && is_integral_v<decltype(declval<StrT>().size())>> = 0>
+    template <typename StrT, enable_if_t<is_assignable_v<char_type &, decltype(declval<StrT>()[0])>
+                                         && is_integral_v<decltype(declval<StrT>().size())>>
+                             = 0>
     BasicSmallString(const StrT &str) noexcept {
       size_type n = str.size() < nbytes ? str.size() : nbytes - 1;
       buf[n] = '\0';
@@ -88,6 +86,13 @@ namespace zs {
     }
 
     char_type buf[nbytes];
+
+#if ZS_ENABLE_SERIALIZATION
+    template <typename S> void serialize(S &s) {
+      auto r = zs::range(buf, buf + nbytes);
+      s.template container<sizeof(char_type)>(r);
+    }
+#endif
   };
   using SmallString = BasicSmallString<>;
 

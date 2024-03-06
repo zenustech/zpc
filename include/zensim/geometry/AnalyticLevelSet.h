@@ -43,6 +43,13 @@ namespace zs {
     }
 
     TV _origin{}, _normal{};
+
+#if ZS_ENABLE_SERIALIZATION
+    template <typename S> void serialize(S &s) {
+      serialize(s, _origin);
+      serialize(s, _normal);
+    }
+#endif
   };
 
   template <typename T, int d> struct AnalyticLevelSet<analytic_geometry_e::Cuboid, T, d>
@@ -111,6 +118,13 @@ namespace zs {
     }
 
     TV _min{}, _max{};
+
+#if ZS_ENABLE_SERIALIZATION
+    template <typename S> void serialize(S &s) {
+      serialize(s, _min);
+      serialize(s, _max);
+    }
+#endif
   };
 
   template <typename T, int d> struct AnalyticLevelSet<analytic_geometry_e::Sphere, T, d>
@@ -146,6 +160,13 @@ namespace zs {
 
     TV _center{};
     T _radius{};
+
+#if ZS_ENABLE_SERIALIZATION
+    template <typename S> void serialize(S &s) {
+      serialize(s, _center);
+      s.template value<sizeof(T)>(_radius);
+    }
+#endif
   };
 
   template <typename T, int d> struct AnalyticLevelSet<analytic_geometry_e::Cylinder, T, d>
@@ -221,6 +242,15 @@ namespace zs {
     TV _bottom{};
     T _radius{}, _length{};
     int _d{};
+
+#if ZS_ENABLE_SERIALIZATION
+    template <typename S> void serialize(S &s) {
+      serialize(s, _bottom);
+      s.template value<sizeof(T)>(_radius);
+      s.template value<sizeof(T)>(_length);
+      s.template value<sizeof(int)>(_d);
+    }
+#endif
   };
 
   /// Bounding Volume

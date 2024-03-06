@@ -2,6 +2,7 @@
 #include <type_traits>
 
 #include "zensim/Platform.hpp"
+#include "zensim/ZpcMathUtils.hpp"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 
@@ -584,3 +585,43 @@ namespace zs {
   }
 
 }  // namespace zs
+
+#if ZS_ENABLE_SERIALIZATION
+namespace bitsery {
+  namespace traits {
+    template <typename T> struct ContainerTraits;
+    template <typename T> struct BufferAdapterTraits;
+
+    template <typename T> struct ContainerTraits<zs::Vector<T, zs::ZSPmrAllocator<>>> {
+      using container_type = zs::Vector<T, zs::ZSPmrAllocator<>>;
+      using TValue = typename container_type::value_type;
+      static constexpr bool isResizable = true;
+      static constexpr bool isContiguous = true;
+      static size_t size(const container_type &container) { return container.size(); }
+      static void resize(container_type &container, size_t size) { container.resize(size); }
+    };
+    template <typename T> struct BufferAdapterTraits<zs::Vector<T, zs::ZSPmrAllocator<>>> {
+      using container_type = zs::Vector<T, zs::ZSPmrAllocator<>>;
+      using TIterator = typename container_type::iterator;
+      using TConstIterator = typename container_type::const_iterator;
+      using TValue = typename ContainerTraits<container_type>::TValue;
+      static void increaseBufferSize(T &container, size_t /*currSize*/, size_t minSize) {
+        // since we're writing to buffer use different resize strategy than default
+        // implementation when small size grow faster, to avoid thouse 2/4/8/16...
+        // byte allocations
+        auto newSize = static_cast<size_t>(static_cast<double>(container.size()) * 1.5) + 128;
+        // make data cache friendly
+        newSize -= newSize % 64;  // 64 is cache line size
+        container.resize(
+            zs::math::max(newSize > minSize ? newSize : minSize, container.capacity()));
+      }
+    };
+  }  // namespace traits
+}  // namespace bitsery
+
+#  if ZS_ENABLE_SERIALIZATION
+template <typename S, typename T> void serialize(S &s, zs::Vector<T, zs::ZSPmrAllocator<>> &c) {
+  s.template container<sizeof(T)>(c, zs::detail::deduce_numeric_max<size_t>());
+}
+#  endif
+#endif

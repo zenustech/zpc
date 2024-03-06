@@ -730,7 +730,7 @@ namespace bitsery {
     struct BufferAdapterTraits<zs::detail::WrappedIterator<IterT, IterT>> {
       using TIterator = IterT;
       using TConstIterator = IterT;
-      using TValue = typename zs::iterator_traits<IterT>::value_type;
+      using TValue = typename ContainerTraits<zs::detail::WrappedIterator<IterT, IterT>>::TValue;
     };
   }  // namespace traits
 }  // namespace bitsery

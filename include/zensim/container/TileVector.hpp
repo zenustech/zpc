@@ -5,6 +5,9 @@
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
 #include "zensim/types/SmallVector.hpp"
+#if ZS_ENABLE_SERIALIZATION
+#  include "zensim/zpc_tpls/bitsery/traits/vector.h"
+#endif
 
 namespace zs {
 
@@ -266,27 +269,34 @@ namespace zs {
     template <typename T = const value_type, typename Dims = value_seq<1>> using const_iterator
         = LegacyIterator<iterator_impl<std::add_const_t<T>, Dims>>;
 
+    // for serialization
+    constexpr value_type *begin() { return _base; }
+    constexpr add_const_t<value_type> *begin() const { return _base; }
+    constexpr value_type *end() { return _base + numTiles() * lane_width * numChannels(); }
+    constexpr add_const_t<value_type> *end() const {
+      return _base + numTiles() * lane_width * numChannels();
+    }
     // size-identical value iterator
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
-    constexpr auto begin(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) noexcept {
+    constexpr auto begin(channel_counter_type chn, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), chn,
                                                    numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
-    constexpr auto end(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) noexcept {
+    constexpr auto end(channel_counter_type chn, Dims = {}, wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, size(), chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
-    constexpr auto begin(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) const noexcept {
+    constexpr auto begin(channel_counter_type chn, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
           _base, static_cast<size_type>(0), chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
-    constexpr auto end(channel_counter_type chn = 0, Dims = {}, wrapt<T> = {}) const noexcept {
+    constexpr auto end(channel_counter_type chn, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), chn,
                                                                      numChannels());
     }
@@ -317,27 +327,27 @@ namespace zs {
     // size-varying value iterator
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
-    constexpr auto begin(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+    constexpr auto begin(channel_counter_type chn, size_type segNo = 0, Dims = {},
                          wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), segNo, chn,
                                                    numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
-    constexpr auto end(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+    constexpr auto end(channel_counter_type chn, size_type segNo = 0, Dims = {},
                        wrapt<T> = {}) noexcept {
       return make_iterator<iterator_impl<T, Dims>>(_base, size(), segNo, chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
-    constexpr auto begin(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+    constexpr auto begin(channel_counter_type chn, size_type segNo = 0, Dims = {},
                          wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
           _base, static_cast<size_type>(0), segNo, chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
-    constexpr auto end(channel_counter_type chn = 0, size_type segNo = 0, Dims = {},
+    constexpr auto end(channel_counter_type chn, size_type segNo = 0, Dims = {},
                        wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), segNo, chn,
                                                                      numChannels());
@@ -567,6 +577,14 @@ namespace zs {
     }
     constexpr PropertyTag getPropertyTag(size_t i = 0) const { return _tags[i]; }
     constexpr const auto &getPropertyTags() const { return _tags; }
+
+    auto &refTags() { return _tags; }
+    auto &refTagNames() { return _tagNames; }
+    auto &refTagSizes() { return _tagSizes; }
+    auto &refTagOffsets() { return _tagOffsets; }
+    auto &refSize() { return _size; }
+    auto &refCapacity() { return _capacity; }
+    auto &refNumChannels() { return _numChannels; }
 
   protected:
     allocator_type _allocator{};
@@ -1627,4 +1645,83 @@ namespace zs {
     return view<space>(tagNames, vec, false_c, tagName);
   }
 
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, typename T, size_t Length>
+  void serialize(S &s, TileVector<T, Length, ZSPmrAllocator<>> &c) {
+    using C = TileVector<T, Length, ZSPmrAllocator<>>;
+    if (!c.memoryLocation().onHost()) {
+      c = c.clone({memsrc_e::host, -1});
+    }
+    s.container(c, detail::deduce_numeric_max<typename C::size_type>(), [](S &s, T &v) {
+      if constexpr (decltype(serializable_through_freefunc(s, v))::value)
+        serialize(s, v);
+      else if constexpr (decltype(serializable_through_memfunc(s, v))::value)
+        v.serialize(s);
+      else if constexpr (is_arithmetic_v<T> || is_enum_v<T>)
+        s.template value<sizeof(T)>(v);
+      else {
+        // though default_constructible is ensured
+        throw StaticException{};
+      }
+    });
+    s.container(c.refTags(), detail::deduce_numeric_max<typename C::size_type>(),
+                [](S &s, PropertyTag &v) { serialize(s, v); });
+    serialize(s, c.refTagNames());
+    serialize(s, c.refTagSizes());
+    serialize(s, c.refTagOffsets());
+    s.template value<sizeof(typename C::size_type)>(c.refSize());
+    s.template value<sizeof(typename C::size_type)>(c.refCapacity());
+    s.template value<sizeof(typename C::channel_counter_type)>(c.refNumChannels());
+  }
+#endif
+
 }  // namespace zs
+
+#if ZS_ENABLE_SERIALIZATION
+namespace bitsery {
+  namespace traits {
+    template <typename T> struct ContainerTraits;
+    template <typename T> struct BufferAdapterTraits;
+
+    template <typename T, size_t Length>
+    struct ContainerTraits<zs::TileVector<T, Length, zs::ZSPmrAllocator<>>> {
+      using container_type = zs::TileVector<T, Length, zs::ZSPmrAllocator<>>;
+      using TValue = typename container_type::value_type;
+      static constexpr bool isResizable = true;
+      static constexpr bool isContiguous = true;
+      static size_t size(const container_type &container) {
+        return container.numTiles() * container.numChannels() * container_type::lane_width;
+      }
+      static void resize(container_type &container, size_t size) {
+        const auto numElePerTile = container.numChannels() * container_type::lane_width;
+        size = (size + numElePerTile - 1) / numElePerTile * numElePerTile;
+        container.resize(size / container.numChannels());
+      }
+    };
+    template <typename T, size_t Length>
+    struct BufferAdapterTraits<zs::TileVector<T, Length, zs::ZSPmrAllocator<>>> {
+      using container_type = zs::TileVector<T, Length, zs::ZSPmrAllocator<>>;
+      using TIterator = decltype(zs::declval<container_type &>().begin());
+      using TConstIterator = decltype(zs::declval<const container_type &>().begin());
+      using TValue = typename ContainerTraits<container_type>::TValue;
+      static void increaseBufferSize(T &container, size_t /*currSize*/, size_t minSize) {
+        const auto numElePerTile = container.numChannels() * container_type::lane_width;
+        minSize = (minSize + numElePerTile - 1) / numElePerTile * numElePerTile;
+        // since we're writing to buffer use different resize strategy than default
+        // implementation when small size grow faster, to avoid thouse 2/4/8/16...
+        // byte allocations
+        auto newSize = static_cast<size_t>(
+                           static_cast<double>(container.numTiles() * container_type::lane_width
+                                               * container.numChannels())
+                           * 1.5)
+                       + numElePerTile * 2;
+        // make data cache friendly
+        newSize -= newSize % numElePerTile;
+        container.resize(zs::math::max(
+            newSize > minSize ? newSize : minSize,
+            container.numReservedTiles() * container_type::lane_width * container.numChannels()));
+      }
+    };
+  }  // namespace traits
+}  // namespace bitsery
+#endif

@@ -115,8 +115,8 @@ namespace zs {
                        MemoryEntity{memoryLocation(), ptr}, sizeof(T));
         return ret;
       } else {
-        constexpr value_seq seq{dims};
-        vec_impl<remove_cvref_t<T>, typename RM_CVREF_T(seq)::template to_iseq<int>> ret{};
+        using VS = decltype(value_seq{dims});
+        vec_impl<remove_cvref_t<T>, typename VS::template to_iseq<int>> ret{};
         for (typename Dims::value_type d = 0; d != ext; ++d, ptr += lane_width)
           Resource::copy(MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)ret.data(d)},
                          MemoryEntity{memoryLocation(), ptr}, sizeof(T));

@@ -6,7 +6,9 @@
 #include "zensim/cuda/execution/ExecutionPolicy.cuh"
 #include "zensim/geometry/Predicates.hpp"
 #include "zensim/math/Vec.h"
-#include "zensim/omp/execution/ExecutionPolicy.hpp"
+#if ZS_ENABLE_OPENMP
+#  include "zensim/omp/execution/ExecutionPolicy.hpp"
+#endif
 #include "zensim/zpc_tpls/fmt/color.h"
 
 template <typename VectorView> struct SomeFunc {

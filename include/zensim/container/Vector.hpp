@@ -339,6 +339,32 @@ namespace zs {
 
     size_type &refSize() { return _size; }
     size_type &refCapacity() { return _capacity; }
+    void resizeBuffer(size_type newSize) {
+      const auto oldSize = size();
+      if (newSize < oldSize) {
+        _size = newSize;
+        return;
+      }
+      if (newSize > oldSize) {
+        const auto oldCapacity = capacity();
+        if (newSize > oldCapacity) {
+          if constexpr (!is_virtual_zs_allocator<allocator_type>::value) {
+            // host is demanded for serialization
+            Vector tmp{geometric_size_growth(newSize)};
+            if (size())
+              Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+                             MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
+            tmp._size = newSize;
+            swap(tmp);
+          } else {
+            throw std::runtime_error(
+                "Vector with virtual allocator is not serializable at the moment.");
+          }
+          return;
+        } else
+          _size = newSize;
+      }
+    }
 
   protected:
     constexpr size_t usedBytes() const noexcept { return sizeof(T) * size(); }
@@ -629,21 +655,22 @@ namespace bitsery {
       static constexpr bool isResizable = true;
       static constexpr bool isContiguous = true;
       static size_t size(const container_type &container) { return container.size(); }
-      static void resize(container_type &container, size_t size) { container.resize(size); }
+      static void resize(container_type &container, size_t size) { container.resizeBuffer(size); }
     };
     template <typename T> struct BufferAdapterTraits<zs::Vector<T, zs::ZSPmrAllocator<>>> {
       using container_type = zs::Vector<T, zs::ZSPmrAllocator<>>;
       using TIterator = typename container_type::iterator;
       using TConstIterator = typename container_type::const_iterator;
       using TValue = typename ContainerTraits<container_type>::TValue;
-      static void increaseBufferSize(T &container, size_t /*currSize*/, size_t minSize) {
+      static void increaseBufferSize(container_type &container, size_t /*currSize*/,
+                                     size_t minSize) {
         // since we're writing to buffer use different resize strategy than default
         // implementation when small size grow faster, to avoid thouse 2/4/8/16...
         // byte allocations
         auto newSize = static_cast<size_t>(static_cast<double>(container.size()) * 1.5) + 128;
         // make data cache friendly
         newSize -= newSize % 64;  // 64 is cache line size
-        container.resize(
+        container.resizeBuffer(
             zs::math::max(newSize > minSize ? newSize : minSize, container.capacity()));
       }
     };

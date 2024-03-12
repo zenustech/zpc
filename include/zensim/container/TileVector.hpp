@@ -65,13 +65,13 @@ namespace zs {
     TileVector(const allocator_type &allocator, const std::vector<PropertyTag> &channelTags,
                size_type count = 0)
         : _allocator{allocator},
-          _base{nullptr},
+          _buffer{},
           _tags{channelTags},
           _size{count},
-          _capacity{count_tiles(count) * lane_width},
           _numChannels{numTotalChannels(channelTags)} {
       const auto N = numProperties();
-      _base = allocate(sizeof(value_type) * numChannels() * capacity());
+      _buffer = Vector<value_type, allocator_type>{
+          _allocator, count_tiles(count) * lane_width * static_cast<size_type>(_numChannels)};
       {
         auto tagNames = Vector<SmallString, allocator_type>{static_cast<size_t>(N)};
         auto tagSizes = Vector<channel_counter_type, allocator_type>{static_cast<size_t>(N)};
@@ -97,17 +97,15 @@ namespace zs {
     TileVector(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : TileVector{get_default_allocator(mre, devid), {{"unnamed", 1}}, 0} {}
 
-    ~TileVector() {
-      if (_base && capacity() > 0)
-        _allocator.deallocate(_base, sizeof(value_type) * numChannels() * capacity(),
-                              alignof(value_type));
-    }
+    ~TileVector() = default;
 
+    pointer data() { return _buffer.data(); }
+    const_pointer data() const { return _buffer.data(); }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type) && alignof(T) == alignof(value_type)> = 0>
     inline auto getVal(channel_counter_type chn = 0, size_type i = 0, Dims dims = {},
                        wrapt<T> = {}) const {
-      auto ptr = _base + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
+      auto ptr = data() + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
       constexpr auto ext = static_value_extent<Dims>::value;
       if constexpr (ext == 1) {
         remove_cvref_t<T> ret{};
@@ -129,7 +127,7 @@ namespace zs {
               = 0>
     inline void setVal(const VecInterface<VecT> &v, channel_counter_type chn = 0,
                        size_type i = 0) const {
-      auto ptr = _base + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
+      auto ptr = data() + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
 
       for (typename VecT::value_type d = 0; d != VecT::extent; ++d, ptr += lane_width)
         Resource::copy(MemoryEntity{memoryLocation(), ptr},
@@ -139,7 +137,7 @@ namespace zs {
     template <typename T,
               enable_if_t<sizeof(T) == sizeof(value_type) && alignof(T) == alignof(value_type)> = 0>
     inline void setVal(const T &v, channel_counter_type chn = 0, size_type i = 0) {
-      auto ptr = _base + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
+      auto ptr = data() + (i / lane_width * _numChannels + chn) * lane_width + i % lane_width;
       Resource::copy(MemoryEntity{memoryLocation(), ptr},
                      MemoryEntity{MemoryLocation{memsrc_e::host, -1}, (void *)&v}, sizeof(v));
     }
@@ -270,100 +268,98 @@ namespace zs {
         = LegacyIterator<iterator_impl<std::add_const_t<T>, Dims>>;
 
     // for serialization
-    constexpr value_type *begin() { return _base; }
-    constexpr add_const_t<value_type> *begin() const { return _base; }
-    constexpr value_type *end() { return _base + numTiles() * lane_width * numChannels(); }
-    constexpr add_const_t<value_type> *end() const {
-      return _base + numTiles() * lane_width * numChannels();
-    }
+    constexpr auto begin() { return _buffer.begin(); }
+    constexpr auto begin() const { return _buffer.begin(); }
+    constexpr auto end() { return _buffer.end(); }
+    constexpr auto end() const { return _buffer.end(); }
     // size-identical value iterator
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(channel_counter_type chn, Dims = {}, wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), chn,
+      return make_iterator<iterator_impl<T, Dims>>(data(), static_cast<size_type>(0), chn,
                                                    numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(channel_counter_type chn, Dims = {}, wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, size(), chn, numChannels());
+      return make_iterator<iterator_impl<T, Dims>>(data(), size(), chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(channel_counter_type chn, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
-          _base, static_cast<size_type>(0), chn, numChannels());
+          data(), static_cast<size_type>(0), chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(channel_counter_type chn, Dims = {}, wrapt<T> = {}) const noexcept {
-      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), chn,
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(data(), size(), chn,
                                                                      numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(const SmallString &prop, Dims = {}, wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0),
+      return make_iterator<iterator_impl<T, Dims>>(data(), static_cast<size_type>(0),
                                                    getPropertyOffset(prop), numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(const SmallString &prop, Dims = {}, wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, size(), getPropertyOffset(prop),
+      return make_iterator<iterator_impl<T, Dims>>(data(), size(), getPropertyOffset(prop),
                                                    numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto begin(const SmallString &prop, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
-          _base, static_cast<size_type>(0), getPropertyOffset(prop), numChannels());
+          data(), static_cast<size_type>(0), getPropertyOffset(prop), numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<sizeof(T) == sizeof(value_type)> = 0>
     constexpr auto end(const SmallString &prop, Dims = {}, wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
-          _base, size(), getPropertyOffset(prop), numChannels());
+          data(), size(), getPropertyOffset(prop), numChannels());
     }
     // size-varying value iterator
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
     constexpr auto begin(channel_counter_type chn, size_type segNo = 0, Dims = {},
                          wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), segNo, chn,
+      return make_iterator<iterator_impl<T, Dims>>(data(), static_cast<size_type>(0), segNo, chn,
                                                    numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
     constexpr auto end(channel_counter_type chn, size_type segNo = 0, Dims = {},
                        wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, size(), segNo, chn, numChannels());
+      return make_iterator<iterator_impl<T, Dims>>(data(), size(), segNo, chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
     constexpr auto begin(channel_counter_type chn, size_type segNo = 0, Dims = {},
                          wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
-          _base, static_cast<size_type>(0), segNo, chn, numChannels());
+          data(), static_cast<size_type>(0), segNo, chn, numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
     constexpr auto end(channel_counter_type chn, size_type segNo = 0, Dims = {},
                        wrapt<T> = {}) const noexcept {
-      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(_base, size(), segNo, chn,
+      return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(data(), size(), segNo, chn,
                                                                      numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
     constexpr auto begin(const SmallString &prop, size_type segNo, Dims = {},
                          wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, static_cast<size_type>(0), segNo,
+      return make_iterator<iterator_impl<T, Dims>>(data(), static_cast<size_type>(0), segNo,
                                                    getPropertyOffset(prop), numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
     constexpr auto end(const SmallString &prop, size_type segNo, Dims = {},
                        wrapt<T> = {}) noexcept {
-      return make_iterator<iterator_impl<T, Dims>>(_base, size(), segNo, getPropertyOffset(prop),
+      return make_iterator<iterator_impl<T, Dims>>(data(), size(), segNo, getPropertyOffset(prop),
                                                    numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
@@ -371,19 +367,19 @@ namespace zs {
     constexpr auto begin(const SmallString &prop, size_type segNo, Dims = {},
                          wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
-          _base, static_cast<size_type>(0), segNo, getPropertyOffset(prop), numChannels());
+          data(), static_cast<size_type>(0), segNo, getPropertyOffset(prop), numChannels());
     }
     template <typename Dims = value_seq<1>, typename T = const value_type,
               enable_if_t<(sizeof(value_type) > sizeof(T))> = 0>
     constexpr auto end(const SmallString &prop, size_type segNo, Dims = {},
                        wrapt<T> = {}) const noexcept {
       return make_iterator<iterator_impl<std::add_const_t<T>, Dims>>(
-          _base, size(), segNo, getPropertyOffset(prop), numChannels());
+          data(), size(), segNo, getPropertyOffset(prop), numChannels());
     }
 
     /// capacity
     constexpr size_type size() const noexcept { return _size; }
-    constexpr size_type capacity() const noexcept { return _capacity; }
+    constexpr size_type capacity() const noexcept { return _buffer.capacity() / _numChannels; }
     constexpr channel_counter_type numChannels() const noexcept { return _numChannels; }
     constexpr size_type numTiles() const noexcept { return (size() + lane_width - 1) / lane_width; }
     constexpr size_type numReservedTiles() const noexcept {
@@ -393,8 +389,6 @@ namespace zs {
       return numChannels() * lane_width * sizeof(value_type);
     }
     constexpr bool empty() noexcept { return size() == 0; }
-    constexpr const_pointer data() const noexcept { return reinterpret_cast<const_pointer>(_base); }
-    constexpr pointer data() noexcept { return reinterpret_cast<pointer>(_base); }
 
     /// element access
     constexpr reference operator[](
@@ -417,13 +411,12 @@ namespace zs {
     /// ctor, assignment operator
     TileVector(const TileVector &o)
         : _allocator{o._allocator},
-          _base{allocate(sizeof(value_type) * o.numChannels() * o.capacity())},
+          _buffer{o._buffer},
           _tags{o._tags},
           _tagNames{o._tagNames},
           _tagSizes{o._tagSizes},
           _tagOffsets{o._tagOffsets},
           _size{o.size()},
-          _capacity{o.capacity()},
           _numChannels{o.numChannels()} {
       if (capacity() > 0)
         Resource::copy(MemoryEntity{memoryLocation(), (void *)data()},
@@ -452,14 +445,13 @@ namespace zs {
     /// leave the source object in a valid (default constructed) state
     TileVector(TileVector &&o) noexcept {
       const TileVector defaultVector{};
-      _base = zs::exchange(o._base, defaultVector._base);
+      _buffer = zs::exchange(o._buffer, defaultVector._buffer);
       _allocator = zs::exchange(o._allocator, defaultVector._allocator);
       _tags = zs::exchange(o._tags, defaultVector._tags);
       _tagNames = zs::exchange(o._tagNames, defaultVector._tagNames);
       _tagSizes = zs::exchange(o._tagSizes, defaultVector._tagSizes);
       _tagOffsets = zs::exchange(o._tagOffsets, defaultVector._tagOffsets);
       _size = zs::exchange(o._size, defaultVector.size());
-      _capacity = zs::exchange(o._capacity, defaultVector.capacity());
       _numChannels = zs::exchange(o._numChannels, defaultVector.numChannels());
     }
     /// make move-assignment safe for self-assignment
@@ -470,48 +462,23 @@ namespace zs {
       return *this;
     }
     void swap(TileVector &o) noexcept {
-      std::swap(_base, o._base);
+      std::swap(_buffer, o._buffer);
       std::swap(_allocator, o._allocator);
       std::swap(_tags, o._tags);
       std::swap(_tagNames, o._tagNames);
       std::swap(_tagSizes, o._tagSizes);
       std::swap(_tagOffsets, o._tagOffsets);
       std::swap(_size, o._size);
-      std::swap(_capacity, o._capacity);
       std::swap(_numChannels, o._numChannels);
     }
     friend void swap(TileVector &a, TileVector &b) noexcept { a.swap(b); }
 
     void clear() { *this = TileVector{_allocator, _tags, 0}; }
     void resize(size_type newSize) {
-      const auto oldSize = size();
-      if (newSize < oldSize) {
-        _size = newSize;
-        return;
-      }
-      if (newSize > oldSize) {
-        const auto oldCapacity = capacity();
-        if (newSize > oldCapacity) {
-          /// virtual memory way
-          if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
-            _capacity = count_tiles(geometric_size_growth(newSize)) * lane_width;
-            _allocator.commit(capacity() * numChannels() * sizeof(value_type));
-            _size = newSize;
-          }
-          /// conventional way
-          else {
-            TileVector tmp{_allocator, _tags, geometric_size_growth(newSize)};
-            if (size())
-              Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
-                             MemoryEntity{memoryLocation(), (void *)data()},
-                             numTiles() * tileBytes());
-            tmp._size = newSize;
-            swap(tmp);
-          }
-          return;
-        } else
-          _size = newSize;
-      }
+      _size = newSize;
+      newSize = count_tiles(newSize) * lane_width;
+      _buffer.alignedResize(newSize * static_cast<size_type>(_numChannels),
+                            lane_width * static_cast<size_type>(_numChannels));
     }
     void reset(int ch) {
       Resource::memset(MemoryEntity{memoryLocation(), (void *)data()}, ch,
@@ -524,17 +491,6 @@ namespace zs {
     template <typename Policy, typename MapRange, bool Scatter = true>
     void reorderTiles(Policy &&pol, MapRange &&mapR, wrapv<Scatter> = {});
 
-    constexpr size_type geometric_size_growth(size_type newSize,
-                                              size_type capacity) const noexcept {
-      size_type geometricSize = capacity;
-      geometricSize = geometricSize + geometricSize / 2;
-      geometricSize = count_tiles(geometricSize) * lane_width;
-      if (newSize > geometricSize) return count_tiles(newSize) * lane_width;
-      return geometricSize;
-    }
-    constexpr size_type geometric_size_growth(size_type newSize) const noexcept {
-      return geometric_size_growth(newSize, capacity());
-    }
     constexpr channel_counter_type numProperties() const noexcept { return _tags.size(); }
 
     bool hasProperty(const SmallString &str) const {
@@ -578,24 +534,28 @@ namespace zs {
     constexpr PropertyTag getPropertyTag(size_t i = 0) const { return _tags[i]; }
     constexpr const auto &getPropertyTags() const { return _tags; }
 
+    auto &refBuffer() { return _buffer; }
     auto &refTags() { return _tags; }
     auto &refTagNames() { return _tagNames; }
     auto &refTagSizes() { return _tagSizes; }
     auto &refTagOffsets() { return _tagOffsets; }
     auto &refSize() { return _size; }
-    auto &refCapacity() { return _capacity; }
     auto &refNumChannels() { return _numChannels; }
+    size_type bufferSize() const { return _buffer.size(); }
+    void resizeBuffer(size_type bufferSize) {
+      _buffer.resizeBuffer(bufferSize, lane_width * static_cast<size_type>(_numChannels));
+    }
 
   protected:
     allocator_type _allocator{};
-    pointer _base{nullptr};
+    Vector<value_type, allocator_type> _buffer{};
     std::vector<PropertyTag> _tags{};  // on host
     /// for proxy use
     Vector<SmallString, allocator_type> _tagNames{};
     Vector<channel_counter_type, allocator_type> _tagSizes{};
     Vector<channel_counter_type, allocator_type> _tagOffsets{};
-    size_type _size{0}, _capacity{0};  // element size
-    channel_counter_type _numChannels{1};
+    size_type _size{0};                    // element size
+    channel_counter_type _numChannels{1};  // this must be serialized ahead
   };
 
 #define ZS_FWD_DECL_TILEVECTOR_INSTANTIATIONS(LENGTH)                         \
@@ -1652,26 +1612,17 @@ namespace zs {
     if (!c.memoryLocation().onHost()) {
       c = c.clone({memsrc_e::host, -1});
     }
-    s.container(c, detail::deduce_numeric_max<typename C::size_type>(), [](S &s, T &v) {
-      if constexpr (decltype(serializable_through_freefunc(s, v))::value)
-        serialize(s, v);
-      else if constexpr (decltype(serializable_through_memfunc(s, v))::value)
-        v.serialize(s);
-      else if constexpr (is_arithmetic_v<T> || is_enum_v<T>)
-        s.template value<sizeof(T)>(v);
-      else {
-        // though default_constructible is ensured
-        throw StaticException{};
-      }
-    });
+
+    s.template value<sizeof(typename C::channel_counter_type)>(c.refNumChannels());
+
+    serialize(s, c.refBuffer());
     s.container(c.refTags(), detail::deduce_numeric_max<typename C::size_type>(),
                 [](S &s, PropertyTag &v) { serialize(s, v); });
     serialize(s, c.refTagNames());
     serialize(s, c.refTagSizes());
     serialize(s, c.refTagOffsets());
+
     s.template value<sizeof(typename C::size_type)>(c.refSize());
-    s.template value<sizeof(typename C::size_type)>(c.refCapacity());
-    s.template value<sizeof(typename C::channel_counter_type)>(c.refNumChannels());
   }
 #endif
 
@@ -1689,14 +1640,8 @@ namespace bitsery {
       using TValue = typename container_type::value_type;
       static constexpr bool isResizable = true;
       static constexpr bool isContiguous = true;
-      static size_t size(const container_type &container) {
-        return container.numTiles() * container.numChannels() * container_type::lane_width;
-      }
-      static void resize(container_type &container, size_t size) {
-        const auto numElePerTile = container.numChannels() * container_type::lane_width;
-        size = (size + numElePerTile - 1) / numElePerTile * numElePerTile;
-        container.resize(size / container.numChannels());
-      }
+      static size_t size(const container_type &container) { return container.bufferSize(); }
+      static void resize(container_type &container, size_t size) { container.resizeBuffer(size); }
     };
     template <typename T, size_t Length>
     struct BufferAdapterTraits<zs::TileVector<T, Length, zs::ZSPmrAllocator<>>> {
@@ -1704,22 +1649,11 @@ namespace bitsery {
       using TIterator = decltype(zs::declval<container_type &>().begin());
       using TConstIterator = decltype(zs::declval<const container_type &>().begin());
       using TValue = typename ContainerTraits<container_type>::TValue;
-      static void increaseBufferSize(T &container, size_t /*currSize*/, size_t minSize) {
+      static void increaseBufferSize(container_type &container, size_t /*currSize*/,
+                                     size_t minSize) {
         const auto numElePerTile = container.numChannels() * container_type::lane_width;
         minSize = (minSize + numElePerTile - 1) / numElePerTile * numElePerTile;
-        // since we're writing to buffer use different resize strategy than default
-        // implementation when small size grow faster, to avoid thouse 2/4/8/16...
-        // byte allocations
-        auto newSize = static_cast<size_t>(
-                           static_cast<double>(container.numTiles() * container_type::lane_width
-                                               * container.numChannels())
-                           * 1.5)
-                       + numElePerTile * 2;
-        // make data cache friendly
-        newSize -= newSize % numElePerTile;
-        container.resize(zs::math::max(
-            newSize > minSize ? newSize : minSize,
-            container.numReservedTiles() * container_type::lane_width * container.numChannels()));
+        container.resizeBuffer(minSize);
       }
     };
   }  // namespace traits

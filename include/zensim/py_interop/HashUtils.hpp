@@ -80,6 +80,10 @@ namespace zs {
     }
 
     key_type val;
+
+#if ZS_ENABLE_SERIALIZATION
+    template <typename S> void serialize(S &s) { serialize(s, val); }
+#endif
   };
 
 }  // namespace zs

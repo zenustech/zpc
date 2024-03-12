@@ -271,15 +271,15 @@ namespace zs {
     hasher_type _hf0, _hf1, _hf2;
   };
 
-#  define ZS_FWD_DECL_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                      \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
-    ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
+#define ZS_FWD_DECL_BHT_INSTANTIATIONS(CoordIndexType, IndexType, B)                       \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<>>;     \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 1, IndexType, B, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 2, IndexType, B, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 3, IndexType, B, ZSPmrAllocator<true>>; \
+  ZPC_FWD_DECL_TEMPLATE_STRUCT bht<CoordIndexType, 4, IndexType, B, ZSPmrAllocator<true>>;
 
   ZS_FWD_DECL_BHT_INSTANTIATIONS(i32, i32, 16)
   ZS_FWD_DECL_BHT_INSTANTIATIONS(i32, i64, 16)
@@ -1082,5 +1082,23 @@ namespace zs {
   constexpr decltype(auto) proxy(const bht<Tn, dim, Index, B, Allocator> &table) {
     return view<space>(table, false_c);
   }
+
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, typename Tn, int dim, typename Index, int B>
+  void serialize(S &s, bht<Tn, dim, Index, B, ZSPmrAllocator<>> &ht) {
+    using C = bht<Tn, dim, Index, B, ZSPmrAllocator<>>;
+    if (!ht.memoryLocation().onHost()) {
+      ht = ht.clone({memsrc_e::host, -1});
+    }
+
+    serialize(s, ht._table.keys);
+    serialize(s, ht._table.indices);
+    serialize(s, ht._table.status);
+    s.template value<sizeof(typename C::size_type)>(ht._tableSize);
+    serialize(s, ht._cnt);
+    serialize(s, ht._activeKeys);
+    serialize(s, ht._buildSuccess);
+  }
+#endif
 
 }  // namespace zs

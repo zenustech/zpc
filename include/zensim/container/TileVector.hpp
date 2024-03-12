@@ -481,8 +481,9 @@ namespace zs {
                             lane_width * static_cast<size_type>(_numChannels));
     }
     void reset(int ch) {
-      Resource::memset(MemoryEntity{memoryLocation(), (void *)data()}, ch,
-                       numTiles() * tileBytes());
+      _buffer.reset(ch);
+      // Resource::memset(MemoryEntity{memoryLocation(), (void *)data()}, ch,
+      //                  numTiles() * tileBytes());
     }
 
     template <typename Policy>

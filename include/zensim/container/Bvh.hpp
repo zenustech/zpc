@@ -1259,4 +1259,19 @@ namespace zs {
     return;
   }
 
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, int dim, typename Index, typename Value>
+  void serialize(S &s, LBvh<dim, Index, Value, ZSPmrAllocator<>> &bvh) {
+    if (!bvh.memoryLocation().onHost()) {
+      bvh = bvh.clone({memsrc_e::host, -1});
+    }
+
+    serialize(s, bvh.orderedBvs);
+    serialize(s, bvh.parents);
+    serialize(s, bvh.levels);
+    serialize(s, bvh.leafInds);
+    serialize(s, bvh.auxIndices);
+  }
+#endif
+
 }  // namespace zs

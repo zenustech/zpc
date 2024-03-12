@@ -253,6 +253,38 @@ namespace zs {
           _size = newSize;
       }
     }
+    void alignedResize(size_type newSize, size_type alignment) {
+      const auto oldSize = size();
+      if (newSize < oldSize) {
+        _size = newSize;
+        return;
+      }
+      if (newSize > oldSize) {
+        const auto oldCapacity = capacity();
+        if (newSize > oldCapacity) {
+          auto newCapacity = geometric_size_growth(newSize);
+          auto r = newCapacity % alignment;
+          newCapacity = newCapacity + (r ? alignment - r : static_cast<size_type>(0));
+          /// virtual memory way
+          if constexpr (is_virtual_zs_allocator<allocator_type>::value) {
+            _capacity = newCapacity;
+            _allocator.commit(_capacity * sizeof(value_type));
+            _size = newSize;
+          }
+          /// conventional way
+          else {
+            Vector tmp{_allocator, newCapacity};
+            if (size())
+              Resource::copy(MemoryEntity{tmp.memoryLocation(), (void *)tmp.data()},
+                             MemoryEntity{memoryLocation(), (void *)data()}, usedBytes());
+            tmp._size = newSize;
+            swap(tmp);
+          }
+          return;
+        } else
+          _size = newSize;
+      }
+    }
     void resize(size_type newSize, int ch) {
       const auto oldSize = size();
       if (newSize < oldSize) {
@@ -339,7 +371,7 @@ namespace zs {
 
     size_type &refSize() { return _size; }
     size_type &refCapacity() { return _capacity; }
-    void resizeBuffer(size_type newSize) {
+    void resizeBuffer(size_type newSize, size_type alignment = static_cast<size_type>(1)) {
       const auto oldSize = size();
       if (newSize < oldSize) {
         _size = newSize;
@@ -348,6 +380,8 @@ namespace zs {
       if (newSize > oldSize) {
         const auto oldCapacity = capacity();
         if (newSize > oldCapacity) {
+          auto r = newSize % alignment;
+          auto newCapacity = newSize + (r ? alignment - r : 0);
           if constexpr (!is_virtual_zs_allocator<allocator_type>::value) {
             // host is demanded for serialization
             Vector tmp{geometric_size_growth(newSize)};

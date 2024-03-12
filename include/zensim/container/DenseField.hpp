@@ -372,4 +372,15 @@ namespace zs {
     return view<space>(df, false_c, tagName);
   }
 
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, typename T> void serialize(S &s, DenseField<T, ZSPmrAllocator<>> &df) {
+    if (!df.memoryLocation().onHost()) {
+      df = df.clone({memsrc_e::host, -1});
+    }
+
+    serialize(s, df._field);
+    serialize(s, df._shape);
+  }
+#endif
+
 }  // namespace zs

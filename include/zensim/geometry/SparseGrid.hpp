@@ -946,4 +946,18 @@ namespace zs {
         spg};
   }
 
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, int dim, typename T, int SideLength, typename IntegerCoordT>
+  void serialize(S &s, SparseGrid<dim, T, SideLength, ZSPmrAllocator<>, IntegerCoordT> &spg) {
+    if (!spg.memoryLocation().onHost()) {
+      spg = spg.clone({memsrc_e::host, -1});
+    }
+
+    serialize(s, spg._table);
+    serialize(s, spg._grid);
+    serialize(s, spg._transform);
+    s.template value<sizeof(spg._background)>(spg._background);
+  }
+#endif
+
 }  // namespace zs

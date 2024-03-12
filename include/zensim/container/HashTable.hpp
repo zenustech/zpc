@@ -205,7 +205,7 @@ namespace zs {
     Vector<key_t, allocator_type> _activeKeys;
   };
 
-#define ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                            \
+#define ZS_FWD_DECL_HASHTABLE_INSTANTIATIONS(CoordIndexType, IndexType)                       \
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 1, IndexType, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 2, IndexType, ZSPmrAllocator<>>;     \
   ZPC_FWD_DECL_TEMPLATE_STRUCT HashTable<CoordIndexType, 3, IndexType, ZSPmrAllocator<>>;     \
@@ -566,5 +566,21 @@ namespace zs {
   constexpr decltype(auto) proxy(const HashTable<Tn, dim, Index, Allocator> &table) {
     return HashTableView<ExecSpace, const HashTable<Tn, dim, Index, Allocator>>{table};
   }
+
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, typename Tn, int dim, typename Index>
+  void serialize(S &s, HashTable<Tn, dim, Index, ZSPmrAllocator<>> &ht) {
+    if (!ht.memoryLocation().onHost()) {
+      ht = ht.clone({memsrc_e::host, -1});
+    }
+
+    serialize(s, ht._table.keys);
+    serialize(s, ht._table.indices);
+    serialize(s, ht._table.status);
+    s.template value<sizeof(ht._tableSize)>(ht._tableSize);
+    serialize(s, ht._cnt);
+    serialize(s, ht._activeKeys);
+  }
+#endif
 
 }  // namespace zs

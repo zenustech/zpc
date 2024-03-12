@@ -255,6 +255,15 @@ namespace zs {
         auto bg = table._activeKeys.begin();
         return detail::iter_range(bg, bg + numBlocks());
       }
+#if ZS_ENABLE_SERIALIZATION
+      template <typename S> void serialize(S &s) {
+        serialize(s, table);
+        serialize(s, grid);
+        serialize(s, valueMask);
+        serialize(s, childMask);
+        serialize(s, childOffset);
+      }
+#endif
 
       table_type table;
       grid_type grid;
@@ -1904,5 +1913,20 @@ namespace zs {
     /// @note maintain childMask info
     reorder(FWD(pol), wrapv<SortGridData>{});
   }
+
+#if ZS_ENABLE_SERIALIZATION
+  template <typename S, int dim, typename T, typename TileBits, typename ScalingBits,
+            typename Indices>
+  void serialize(S &s,
+                 AdaptiveGridImpl<dim, T, TileBits, ScalingBits, Indices, ZSPmrAllocator<>> &ag) {
+    if (!ag.memoryLocation().onHost()) {
+      ag = ag.clone({memsrc_e::host, -1});
+    }
+
+    serialize(s, ag._levels);
+    serialize(s, ag._transform);
+    s.template value<sizeof(ag._background)>(ag._background);
+  }
+#endif
 
 }  // namespace zs

@@ -221,21 +221,21 @@ namespace zs {
   public:
     constexpr auto operator->() { return getAddress(**this); }
     /// compare
-    friend constexpr bool operator==(const Derived &left, const Derived &right) {
+    constexpr bool operator==(const Derived &right) const {
       if constexpr (detail::has_equal_to<Derived>::value)
-        return left.equal_to(right);
+        return self().equal_to(right);
       else if constexpr (detail::has_distance_to<Derived>::value)
-        return left.distance_to(right) == 0;
+        return self().distance_to(right) == 0;
       else
         static_assert(detail::has_distance_to<Derived>::value,
                       "Iterator equality comparator missing");
       return false;
     }
-    friend constexpr bool operator!=(const Derived &left, const Derived &right) {
+    constexpr bool operator!=(const Derived &right) const {
       static_assert(
           detail::has_equal_to<Derived>::value,
           "Iterator should implement \"bool equal_to(Iter)\" or \"Integral distance_to(Iter)\"");
-      return !left.equal_to(right);
+      return !self().equal_to(right);
     }
     /// increment (forward iterator)
     constexpr Derived &operator++() {

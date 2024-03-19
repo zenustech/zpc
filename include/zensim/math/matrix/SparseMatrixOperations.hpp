@@ -10,20 +10,22 @@ namespace zs {
     constexpr void operator()(Index row, ParamT &&params) const {
       auto &[spmat, vin, vout, execTag] = params;
       using T = typename RM_CVREF_T(spmat)::value_type;
+      using TIn = RM_CVREF_T(*vin);
+      using TOutInfer = RM_CVREF_T(declval<T>() * declval<TIn>());
       using TOut = RM_CVREF_T(*vout);
       auto bg = spmat._ptrs[row];
       auto ed = spmat._ptrs[row + 1];
 
       if constexpr (is_vec<TOut>::value) {
-        static_assert(is_vec<T>::value && TOut::extent == T::extent,
+        static_assert(is_vec<T>::value && TOut::extent == TOutInfer::extent,
                       "[spmv] incompatible value type");
-        auto sum = T::constant(0);
+        auto sum = TOut::constant(0);
         for (auto i = bg; i < ed; ++i) sum += spmat._vals[i] * vin[spmat._inds[i]];
 
         for (typename TOut::index_type d = 0; d != TOut::extent; ++d)
           atomic_add(execTag, &vout[row].val(d), (typename TOut::value_type)sum.val(d));
       } else {
-        T sum = 0;
+        TOut sum = 0;
         for (auto i = bg; i < ed; ++i) sum += spmat._vals[i] * vin[spmat._inds[i]];
         atomic_add(execTag, &vout[row], (TOut)sum);
       }

@@ -6,7 +6,7 @@
 int main() {
   using namespace zs;
   // auto pol = seq_exec();
-  auto pol = omp_exec();
+  auto pol = seq_exec();
   auto reduction = [&pol](size_t n) {
     // Vector<int> vals = gen_rnd_ints(n, make_monoid(getmin<int>()).e);
     auto vals = gen_rnd_tv_ints(n, make_monoid(getmin<int>()).e);

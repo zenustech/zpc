@@ -18,7 +18,7 @@ namespace zs::math {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr void setToTranslation(const VecInterface<VecT> &v) noexcept {
       self() = mat_type::identity();
-      for (int i = 0; i != dim; ++i) self()(dim - 1, i) = v[i];
+      for (int i = 0; i != dim; ++i) self()(dim, i) = v[i];
     }
 
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>

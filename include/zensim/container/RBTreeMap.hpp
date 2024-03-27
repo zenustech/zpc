@@ -631,7 +631,8 @@ namespace zs {
      * Remove all entries that satisfy the filter condition.
      * @param filter
      */
-    void removeAll(KeyValueFilter filter) {
+    template <typename KeyValueFilterF>
+    void removeAll(KeyValueFilterF &&filter) {
       std::vector<Key> keys;
       this->inorderTraversal([&](const Node* node) {
         if (filter(node->first, node->second)) {
@@ -648,7 +649,8 @@ namespace zs {
      * The value is immutable for the action.
      * @param action
      */
-    void forEach(KeyValueConsumer action) const {
+    template <typename KeyValueConsumerF>
+    void forEach(KeyValueConsumerF &&action) const {
       this->inorderTraversal(
           [&](const Node* node) { action(node->first, node->second); });
     }
@@ -658,7 +660,8 @@ namespace zs {
      * The value is mutable for the action.
      * @param action
      */
-    void forEachMut(MutKeyValueConsumer action) {
+    template <typename KeyValueConsumerF>
+    void forEachMut(MutKeyValueConsumerF &&action) {
       this->inorderTraversal(
           [&](const Node* node) { action(node->first, node->second); });
     }

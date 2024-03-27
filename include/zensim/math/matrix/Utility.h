@@ -9,12 +9,6 @@ namespace zs {
       // return n == 0 ? 0 : 1;
     }
 
-    template <typename T> constexpr void swap(T *a, T *b) {
-      T tmp = *a;
-      *a = *b;
-      *b = tmp;
-    }
-
     template <typename T> constexpr void orthogonalVector(const T *input, T *output) noexcept {
       T abs_x = abs(input[0]), abs_y = abs(input[1]), abs_z = abs(input[2]);
       if (abs_x < abs_y) {

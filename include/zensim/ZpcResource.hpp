@@ -104,9 +104,8 @@ namespace zs {
     }
 
     constexpr void swap(Unique& o) noexcept {
-      using zs::swap;
-      swap(_storage.template get<0>(), o._storage.template get<0>());
-      swap(_storage.template get<1>(), o._storage.template get<1>());
+      zs_swap(_storage.template get<0>(), o._storage.template get<0>());
+      zs_swap(_storage.template get<1>(), o._storage.template get<1>());
     }
 
     ~Unique() noexcept {

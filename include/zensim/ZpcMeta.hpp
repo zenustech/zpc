@@ -985,7 +985,7 @@ namespace zs {
       = is_nothrow_move_assignable<T>::value;
 
   // c++11 convention
-  template <typename T> constexpr auto swap(T &l, T &r) noexcept(
+  template <typename T> constexpr auto zs_swap(T &l, T &r) noexcept(
       noexcept(T(declval<T &&>())) && noexcept(declval<T &>() = zs::move(declval<T &>())))
       -> decltype(void(T(declval<T &&>())), void(declval<T &>() = zs::move(declval<T &>()))) {
     T tmp = zs::move(l);
@@ -993,7 +993,7 @@ namespace zs {
     r = zs::move(tmp);
   }
   template <typename T, size_t S>
-  constexpr auto swap(T (&l)[S], T (&r)[S]) noexcept(noexcept(swap(*l, *r)))
+  constexpr auto zs_swap(T (&l)[S], T (&r)[S]) noexcept(noexcept(swap(*l, *r)))
       -> decltype(void(swap(*l, *r))) {
     if (&l != &r) {
       T *stL = l, *edL = l + S;

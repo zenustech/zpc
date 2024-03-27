@@ -984,6 +984,24 @@ namespace zs {
   template <typename T> constexpr bool is_nothrow_move_assignable_v
       = is_nothrow_move_assignable<T>::value;
 
+  // c++11 convention
+  template <typename T> constexpr auto swap(T &l, T &r) noexcept(
+      noexcept(T(declval<T &&>())) && noexcept(declval<T &>() = zs::move(declval<T &>())))
+      -> decltype(void(T(declval<T &&>())), void(declval<T &>() = zs::move(declval<T &>()))) {
+    T tmp = zs::move(l);
+    l = zs::move(r);
+    r = zs::move(tmp);
+  }
+  template <typename T, size_t S>
+  constexpr auto swap(T (&l)[S], T (&r)[S]) noexcept(noexcept(swap(*l, *r)))
+      -> decltype(void(swap(*l, *r))) {
+    if (&l != &r) {
+      T *stL = l, *edL = l + S;
+      T *stR = r;
+      for (; stL != edL;) swap(*(stL++), *(stR++));
+    }
+  }
+
   // is_convertible (from cppref)
   namespace detail {
     template <class T> auto test_returnable(int)

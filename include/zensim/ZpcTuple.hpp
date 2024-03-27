@@ -183,10 +183,20 @@ namespace zs {
     }
     constexpr bool operator!=(const tuple_base &o) const noexcept { return !(operator==(o)); }
     /// custom
-    constexpr auto &head() noexcept { return get(index_t<0>{}); }
-    constexpr auto const &head() const noexcept { return get(index_t<0>{}); }
-    constexpr auto &tail() noexcept { return get(index_t<tuple_size - 1>{}); }
-    constexpr auto const &tail() const noexcept { return get(index_t<tuple_size - 1>{}); }
+    template <size_t S = tuple_size, enable_if_t<(S > 0)> = 0> constexpr auto &head() noexcept {
+      return get(index_t<0>{});
+    }
+    template <size_t S = tuple_size, enable_if_t<(S > 0)> = 0>
+    constexpr auto const &head() const noexcept {
+      return get(index_t<0>{});
+    }
+    template <size_t S = tuple_size, enable_if_t<(S > 0)> = 0> constexpr auto &tail() noexcept {
+      return get(index_t<tuple_size - 1>{});
+    }
+    template <size_t S = tuple_size, enable_if_t<(S > 0)> = 0>
+    constexpr auto const &tail() const noexcept {
+      return get(index_t<tuple_size - 1>{});
+    }
     /// iterator
     /// compwise
     template <typename BinaryOp, typename... TTs>

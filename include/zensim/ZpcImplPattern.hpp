@@ -47,10 +47,6 @@ namespace zs {
     return static_cast<const volatile Derived*>(this);                                           \
   }
 
-  template <typename Derived> struct Tagged {
-    constexpr auto typeName() const { return get_type_str<Derived>(); }
-  };
-
   struct ObjectVisitor;
   struct VisitableObjectConcept : ObjectConcept {
     virtual void accept(ObjectVisitor&);

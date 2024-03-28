@@ -54,9 +54,7 @@ namespace zs {
     vk::Extent2D getExtent() const noexcept { return ci.imageExtent; }
     vk::Format getColorFormat() const noexcept { return ci.imageFormat; }
     vk::Format getDepthFormat() const noexcept { return depthFormat; }
-    vk::SampleCountFlagBits getSampleBits() const noexcept {
-      return sampleBits;
-    }
+    vk::SampleCountFlagBits getSampleBits() const noexcept { return sampleBits; }
     vk::PresentModeKHR getPresentMode() const noexcept { return ci.presentMode; }
     vk::ColorSpaceKHR getImageColorSpace() const noexcept { return ci.imageColorSpace; }
     std::vector<vk::ClearValue> getClearValues() const noexcept {
@@ -77,6 +75,7 @@ namespace zs {
     }
 
     vk::Result acquireNextImage(u32 &imageId);
+    vk::Result present(vk::Queue queue, u32 imageId);
     u32 getCurrentFrame() const noexcept { return frameIndex; }
     u32 nextFrame() noexcept { return frameIndex = (frameIndex + 1) % num_buffered_frames; }
     void initFramebuffersFor(vk::RenderPass renderPass);
@@ -137,7 +136,7 @@ namespace zs {
     ///
     std::vector<vk::Image> images;
     std::vector<vk::ImageView> imageViews;  // corresponds to [images] from swapchain
-    std::vector<Image> msColorBuffers;        // optional
+    std::vector<Image> msColorBuffers;      // optional
     std::vector<Image> depthBuffers;        // optional
     std::vector<Framebuffer> frameBuffers;  // initialized later
     ///

@@ -41,6 +41,21 @@ namespace zs {
     return res.value;
 #endif
   }
+  vk::Result Swapchain::present(vk::Queue queue, u32 imageId) {
+    vk::SwapchainKHR swapChains[] = {swapchain};
+    vk::Result presentResult = vk::Result::eSuccess;
+    auto presentInfo = vk::PresentInfoKHR{}
+                           .setSwapchainCount(1)
+                           .setPSwapchains(swapChains)
+                           .setPImageIndices(&imageId)
+                           .setPResults(&presentResult)
+                           .setWaitSemaphoreCount(1)
+                           .setPWaitSemaphores(&currentRenderCompleteSemaphore());
+
+    // https://github.com/KhronosGroup/Vulkan-Hpp/issues/599
+    return static_cast<vk::Result>(ctx.dispatcher.vkQueuePresentKHR(
+        static_cast<VkQueue>(queue), reinterpret_cast<const VkPresentInfoKHR*>(&presentInfo)));
+  }
 
   RenderPass Swapchain::getRenderPass() {
     const bool enableMS = multiSampleEnabled();

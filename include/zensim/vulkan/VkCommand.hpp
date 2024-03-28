@@ -45,6 +45,7 @@ namespace zs {
     const VulkanContext& ctx() const { return *_poolFamily.pctx; }
     VulkanContext& ctx() { return *_poolFamily.pctx; }
     vk::CommandPool getPool() const noexcept { return _poolFamily.cmdpool(_usage); }
+    vk::Queue getQueue() const noexcept { return _poolFamily.queue; }
 
     vk::CommandBuffer operator*() const noexcept { return _cmd; }
     operator vk::CommandBuffer() const noexcept { return _cmd; }

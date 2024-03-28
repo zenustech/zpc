@@ -5,7 +5,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <stack>
 #include <utility>
@@ -63,8 +62,8 @@ namespace zs {
     };
 
     enum Direction { LEFT = -1, ROOT = 0, RIGHT = 1 };
-    using NodeProvider = const std::function<Node*(void)> &;
-    using NodeConsumer = const std::function<void(const Node*)> &;
+    // using NodeProvider = const std::function<Node*(void)> &;
+    // using NodeConsumer = const std::function<void(const Node*)> &;
 
     Node* header = nullptr;
     Node* root = nullptr;
@@ -142,7 +141,7 @@ namespace zs {
         }
       }
       constexpr void decrement() noexcept {
-        if (_node->isRed() && _node->parent->parent == _node) { // TODO(@seeeagull): we should ensure root is always black
+        if (_node->isRed() && _node->parent->parent == _node) {
           _node = _node->right;
         } else if (_node->left != nullptr) {
           _node = _node->left;
@@ -293,9 +292,9 @@ namespace zs {
     };
 
   public:
-    using KeyValueConsumer = const std::function<void(K, V)> &;
-    using MutKeyValueConsumer = const std::function<void(K, Value &)> &;
-    using KeyValueFilter = const std::function<bool(K, V)> &;
+    // using KeyValueConsumer = const std::function<void(K, V)> &;
+    // using MutKeyValueConsumer = const std::function<void(K, Value &)> &;
+    // using KeyValueFilter = const std::function<bool(K, V)> &;
     using iterator = LegacyIterator<iterator_impl>;
     using const_iterator = LegacyIterator<const_iterator_impl>;
     using reverse_iterator = LegacyIterator<reverse_iterator_impl>;
@@ -332,21 +331,6 @@ namespace zs {
     constexpr auto rend() noexcept { return make_iterator<reverse_iterator_impl>(this->header); }
     constexpr auto crbegin() const noexcept { return make_iterator<const_reverse_iterator_impl>(this->header->right); }
     constexpr auto crend() const noexcept { return make_iterator<const_reverse_iterator_impl>(this->header); }
-
-    // // TODO(@seeeagull): debugging
-    // void outputTree(bool recursive = true) const {
-    //   std::cout << " header(" << this->header->isBlack() << "): " << static_cast<void *>(this->header) << " p: " << static_cast<void *>(this->header->parent) << " lm: " << static_cast<void *>(this->header->left) << " rm: " << static_cast<void *>(this->header->right) << std::endl;
-    //   std::cout << " root: " << static_cast<void *>(this->root) << std::endl;
-    //   outputNode(this->root, recursive);
-    // }
-    // void outputNode(const Node* node, bool recursive = true) const {
-    //   std::cout << "node " << node->first << "(" << node->isBlack() << "): " << node->second << " " << static_cast<const void *>(node);
-    //   std::cout << " p: " << static_cast<void *>(node->parent) << " l: " << static_cast<void *>(node->left) << " r: " << static_cast<void *>(node->right) << std::endl;
-    //   if (recursive && node->left)
-    //     outputNode(node->left);
-    //   if (recursive && node->right)
-    //     outputNode(node->right);
-    // }
 
     /**
      * Returns the number of entries in this map.
@@ -660,7 +644,7 @@ namespace zs {
      * The value is mutable for the action.
      * @param action
      */
-    template <typename KeyValueConsumerF>
+    template <typename MutKeyValueConsumerF>
     void forEachMut(MutKeyValueConsumerF &&action) {
       this->inorderTraversal(
           [&](const Node* node) { action(node->first, node->second); });

@@ -49,31 +49,39 @@ set(CMAKE_INSTALL_RPATH $ORIGIN $ORIGIN/${relDir})
 # build options
 # =============
 option(CMAKE_EXPORT_COMPILE_COMMANDS "Display Compile Commands" 1)
-
+# general cmake build setup
 option(ZS_ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ZS_ENABLE_TEST "Enable Tests" OFF)
 option(ZS_ENABLE_DOC "Enable Doxygen Documentation Generation" OFF)
-option(ZS_ENABLE_OFB_ACCESS_CHECK "Enable out-of-bound access check" OFF)
 option(ZS_BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
+option(ZS_PROPAGATE_DEPS "Pass on dependencies (TBD)" ON)
+# debug
+option(ZS_ENABLE_OFB_ACCESS_CHECK "Enable out-of-bound access check" OFF)
+# cuda
 option(ZS_ENABLE_CUDA "Enable cuda backend" ON)
 option(ZS_ENABLE_ZENO_CU_WRANGLE "Enable cuda wrangles for zeno" OFF)
+option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda architecture" ON)
+# vulkan
 option(ZS_ENABLE_VULKAN "Enable vulkan backend" OFF)
+option(ZS_ENABLE_VULKAN_VALIDATION "Enable vulkan validation" OFF)
+# openmp
 option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
+# JIT (llvm/clang)
 option(ZS_ENABLE_JIT "Enable JIT module" ON)
 option(ZS_ENABLE_OPENVDB "Enable openvdb-related build" ON)
+# sycl, cl
 option(ZS_ENABLE_SYCL_COMPUTECPP "Enable SYCL[ComputeCpp] backend" ON)
 option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" OFF)
 option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend" OFF)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
-option(ZS_PROPAGATE_DEPS "Pass on dependencies" ON)
-option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda architecture" ON)
+# serialization
 option(ZS_ENABLE_SERIALIZATION "Enable ZPC serialization" OFF)
 option(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL "No throw upon the absence of ZPC serialization implementation" ON)
-
+# python
 set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR "" CACHE STRING "User overwriting of python include directory")
 set(ZS_OVERWRITE_PYTHON_LIBRARIES "" CACHE STRING "User overwriting of python libraries")
 set(ZS_OVERWRITE_PYTHON_EXECUTABLE "" CACHE STRING "User overwriting of python executable")
-
+# package/shipping
 option(ZS_ENABLE_INSTALL "Install targets" Off)
 option(ZS_ENABLE_PACKAGE "Build package" Off)
 
@@ -89,8 +97,6 @@ include(CMake/Cache.cmake)
 include(CMake/StaticAnalyzers.cmake)
 include(CMake/Sanitizers.cmake)
 include(CMake/CompilerWarnings.cmake)
-include(CMake/Doxygen.cmake)
-enable_doxygen()
 
 # ---- dependencies ----
 # ======================
@@ -169,6 +175,16 @@ else(ZS_ENABLE_OFB_ACCESS_CHECK)
     INTERFACE ZS_ENABLE_OFB_ACCESS_CHECK=0
   )
 endif(ZS_ENABLE_OFB_ACCESS_CHECK)
+
+if(ZS_ENABLE_VULKAN_VALIDATION)
+  target_compile_definitions(zpc_cxx_deps
+    INTERFACE ZS_ENABLE_VULKAN_VALIDATION=1
+  )
+else(ZS_ENABLE_VULKAN_VALIDATION)
+  target_compile_definitions(zpc_cxx_deps
+    INTERFACE ZS_ENABLE_VULKAN_VALIDATION=0
+  )
+endif(ZS_ENABLE_VULKAN_VALIDATION)
 
 # serialization
 if(ZS_ENABLE_SERIALIZATION)
@@ -285,6 +301,9 @@ message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}
 # ----  Docs   ----
 # =================
 if(ZS_ENABLE_DOC)
+  set(DOXYGEN_CALLER_GRAPH YES)
+  set(DOXYGEN_CALL_GRAPH YES)
+  set(DOXYGEN_EXTRACT_ALL YES)
   find_package(Doxygen)
 
   if(DOXYGEN_FOUND)

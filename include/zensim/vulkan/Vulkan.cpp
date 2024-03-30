@@ -75,7 +75,11 @@ namespace zs {
 #if defined(ZS_PLATFORM_MACOS)
     extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 #endif
-    std::vector<const char*> enabledLayers = {"VK_LAYER_KHRONOS_validation"};
+    std::vector<const char*> enabledLayers = {
+#if ZS_ENABLE_VULKAN_VALIDATION
+      "VK_LAYER_KHRONOS_validation"
+#endif
+    };
     vk::InstanceCreateInfo instCI{{},
                                   &appInfo,
                                   (u32)enabledLayers.size(),

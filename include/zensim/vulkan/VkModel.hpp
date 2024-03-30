@@ -95,22 +95,22 @@ namespace zs {
     void bind(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const {
       switch (e) {
         case draw_category_e::tri: {
-          vk::Buffer buffers[] = {verts.pos.get(), verts.nrm.get(), verts.clr.get()};
-          vk::DeviceSize offsets[] = {0, 0, 0};
+          std::array<vk::Buffer, 3> buffers{verts.pos.get(), verts.nrm.get(), verts.clr.get()};
+          std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
           cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets,
                                 verts.pos.get().ctx.dispatcher);
           cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0,
                               vk::IndexType::eUint32, indices.get().ctx.dispatcher);
         } break;
         case draw_category_e::point: {
-          vk::Buffer buffers[] = {verts.pos.get(), verts.clr.get()};
-          vk::DeviceSize offsets[] = {0, 0};
+          std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
+          std::array<vk::DeviceSize, 2> offsets{0, 0};
           cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets,
                                 verts.pos.get().ctx.dispatcher);
         } break;
         case draw_category_e::pick: {
-          vk::Buffer buffers[] = {verts.pos.get(), verts.vids.get()};
-          vk::DeviceSize offsets[] = {0, 0};
+          std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.vids.get()};
+          std::array<vk::DeviceSize, 2> offsets{0, 0};
           cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets,
                                 verts.pos.get().ctx.dispatcher);
         } break;

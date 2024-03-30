@@ -61,10 +61,10 @@ namespace zs {
       vk::ClearValue val;
       std::vector<vk::ClearValue> vals;
       if (multiSampleEnabled()) {
-        val.color = vk::ClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
+        val.color = vk::ClearColorValue{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}};
         vals.push_back(val);
       }
-      val.color = vk::ClearColorValue{0.0f, 0.0f, 0.0f, 1.0f};
+      val.color = vk::ClearColorValue{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}};
       vals.push_back(val);
       if (depthEnabled()) {
         vk::ClearValue val;

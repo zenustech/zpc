@@ -5,6 +5,13 @@ target_link_libraries(tupletest PRIVATE zpc)
 add_test(ZsTuple tupletest)
 add_dependencies(zensim tupletest)
 
+# map
+add_executable(maptest map.cpp)
+target_link_libraries(maptest PRIVATE zpc)
+
+add_test(ZsRBTreeMap maptest)
+add_dependencies(zensim maptest)
+
 # nd vec
 add_executable(ndarraytest ndvec.cpp)
 target_link_libraries(ndarraytest PRIVATE zpc)

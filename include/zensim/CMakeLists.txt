@@ -257,6 +257,7 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
   container/Bht.hpp
   container/Bcht.hpp
   container/IndexBuckets.hpp
+  container/RBTreeMap.hpp
   geometry/PointDataGrid.hpp
   geometry/OverlayGrid.hpp
   geometry/AdaptiveGrid.hpp

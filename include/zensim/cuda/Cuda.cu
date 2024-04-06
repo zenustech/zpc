@@ -198,7 +198,6 @@ namespace zs {
     fmt::print("[Init -- Begin] Cuda\n");
     errorStatus = false;
     CUresult res = cuInit(0);
-    defaultDevice = 0;
 
     numTotalDevice = 0;
     cuDeviceGetCount(&numTotalDevice);
@@ -210,6 +209,27 @@ namespace zs {
     else
       fmt::print("\t[InitInfo -- DevNum] Detected {} CUDA Capable device(s)\n", numTotalDevice);
 
+    defaultDevice = 0;
+    {
+      CUcontext ctx = nullptr;
+      auto ec = cuCtxGetCurrent(&ctx);
+      if (ec != CUDA_SUCCESS) {
+        const char *errString = nullptr;
+        cuGetErrorString(ec, &errString);
+        checkCuApiError((u32)ec, errString);
+      } else {
+        int devid = defaultDevice;
+        if (ctx != NULL) {
+          auto ec = cuCtxGetDevice(&devid);
+          if (ec != CUDA_SUCCESS) {
+            const char *errString = nullptr;
+            cuGetErrorString(ec, &errString);
+            checkCuApiError((u32)ec, errString);
+          } else
+            defaultDevice = devid;  // record for restore later
+        }                           // otherwise, no context has been initialized yet.
+      }
+    }
     for (int i = 0; i < numTotalDevice; i++) {
       auto &context = contexts[i];
       int dev{};
@@ -330,7 +350,7 @@ namespace zs {
       }
     }
     // select gpu 0 by default
-    cuCtxSetCurrent((CUcontext)contexts[0].getContext());
+    cuCtxSetCurrent((CUcontext)contexts[defaultDevice].getContext());
     // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#um-requirements
     /* GPUs with SM architecture 6.x or higher (Pascal class or newer) provide additional
     Unified Memory features such as on-demand page migration and GPU memory oversubscription

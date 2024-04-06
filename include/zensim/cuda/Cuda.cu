@@ -5,6 +5,7 @@
 #include "../Logger.hpp"
 #include "../Platform.hpp"
 #include "Cuda.h"
+#include "zensim/cuda/memory/MemOps.hpp"
 #include "zensim/execution/ConcurrencyPrimitive.hpp"
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
@@ -185,10 +186,19 @@ namespace zs {
     cuCtxSetCurrent((CUcontext)getContext());
   }
 
+  bool Cuda::set_default_device(int dev, const source_location &loc) {
+    auto &inst = driver();
+    if (dev == inst.defaultDevice || dev >= inst.numTotalDevice || dev < 0) return false;
+    inst.defaultDevice = dev;
+    return prepare_context(mem_device, dev, loc);
+  }
+  int Cuda::get_default_device() noexcept { return driver().defaultDevice; }
+
   Cuda::Cuda() {
     fmt::print("[Init -- Begin] Cuda\n");
     errorStatus = false;
     CUresult res = cuInit(0);
+    defaultDevice = 0;
 
     numTotalDevice = 0;
     cuDeviceGetCount(&numTotalDevice);

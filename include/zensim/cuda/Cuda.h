@@ -70,6 +70,10 @@ namespace zs {
     // static void init_constant_cache(void *ptr, size_t size);
     // static void init_constant_cache(void *ptr, size_t size, void *stream);
 
+    static bool set_default_device(int dev,
+                                   const source_location &loc = source_location::current());
+    static int get_default_device() noexcept;
+
     /// error handling
     static u32 get_last_cuda_rt_error();
     static std::string_view get_cuda_rt_error_string(u32 errorCode);
@@ -245,6 +249,7 @@ namespace zs {
 
     std::vector<CudaContext> contexts;  ///< generally one per device
     int textureAlignment;
+    int defaultDevice;
   };
   inline bool checkCuApiError(u32 error, const source_location &loc,
                               std::string_view msg) noexcept {

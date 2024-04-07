@@ -59,7 +59,7 @@ int main() {
 #endif
 
   constexpr size_t N = 10000;
-  Vector<int> dvals{N, memsrc_e::device, 0};
+  Vector<int> dvals{N, memsrc_e::device};
   Vector<int> hvals{N, memsrc_e::host /*default device index is -1 indicating cpu*/};
 
   /// @note expressions in the comments could be used in substitution for the one ahead,

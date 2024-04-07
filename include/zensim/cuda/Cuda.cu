@@ -183,7 +183,12 @@ namespace zs {
   }
 
   void Cuda::CudaContext::setContext(const source_location &loc) const {
-    cuCtxSetCurrent((CUcontext)getContext());
+    const char *errString = nullptr;
+    auto ec = cuCtxSetCurrent((CUcontext)getContext());
+    if (ec != CUDA_SUCCESS) {
+      cuGetErrorString(ec, &errString);
+      checkCuApiError((u32)ec, loc, "[Cuda::CudaContext::setContext]", errString);
+    }
   }
 
   bool Cuda::set_default_device(int dev, const source_location &loc) {

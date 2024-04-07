@@ -20,12 +20,9 @@
 #include "zensim/Reflection.h"
 #include "zensim/profile/CppTimers.hpp"
 #include "zensim/types/SourceLocation.hpp"
-#include "zensim/types/Tuple.h"
 #include "zensim/zpc_tpls/fmt/format.h"
 
 namespace zs {
-
-  std::string get_cuda_error_message(uint32_t err);
 
   struct Cuda {
   private:
@@ -251,25 +248,10 @@ namespace zs {
     int textureAlignment;
     int defaultDevice;
   };
-  inline bool checkCuApiError(u32 error, const source_location &loc,
-                              std::string_view msg) noexcept {
-    if (error != 0) {
-      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
-      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
-      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
 
-      std::cerr << fmt::format("\nCuda Driver Api Error {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n", msg,
-                               " error location ", fileInfo, locInfo, funcInfo, "=");
-      return false;
-    }
-    return true;
-  }
-  inline bool checkCuApiError(u32 error, std::string_view msg,
-                              const source_location &loc = source_location::current()) noexcept {
-    return checkCuApiError(error, loc, msg);
-  }
-  inline bool checkCuApiError(u32 error, const source_location &loc, std::string_view msg,
-                              std::string_view errorString) noexcept {
+  [[maybe_unused]] inline bool checkCuApiError(u32 error, const source_location &loc,
+                                               std::string_view msg,
+                                               std::string_view errorString) noexcept {
     if (error != 0) {
       const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
       const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
@@ -281,6 +263,24 @@ namespace zs {
       return false;
     }
     return true;
+  }
+  [[maybe_unused]] inline bool checkCuApiError(u32 error, const source_location &loc,
+                                               std::string_view msg) noexcept {
+    if (error != 0) {
+      const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
+      const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
+      const auto funcInfo = fmt::format("# Func: \"{}\"", loc.function_name());
+
+      std::cerr << fmt::format("\nCuda Driver Api Error {}\n{:=^60}\n{}\n{}\n{}\n{:=^60}\n\n", msg,
+                               " error location ", fileInfo, locInfo, funcInfo, "=");
+      return false;
+    }
+    return true;
+  }
+  [[maybe_unused]] inline bool checkCuApiError(u32 error, std::string_view msg = "",
+                                               const source_location &loc
+                                               = source_location::current()) noexcept {
+    return checkCuApiError(error, loc, msg);
   }
 
   inline void checkKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,

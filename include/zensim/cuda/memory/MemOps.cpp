@@ -18,6 +18,7 @@ namespace zs {
       checkCuApiError((u32)ec, loc, "[cuCtxGetCurrent]", errString);
       return false;
     } else {
+      if (did < 0) did = Cuda::get_default_device();
       int devid = did;
       if (ctx != NULL) {
         auto ec = cuCtxGetDevice(&devid);
@@ -105,6 +106,7 @@ namespace zs {
       checkCuApiError((u32)ec, loc, "[cuCtxGetCurrent]", errString);
       return false;
     } else {
+      if (did < 0) did = Cuda::get_default_device();
       int devid = did;
       if (ctx != NULL) {
         auto ec = cuCtxGetDevice(&devid);

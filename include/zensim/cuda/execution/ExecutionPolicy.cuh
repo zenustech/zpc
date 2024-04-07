@@ -394,7 +394,7 @@ namespace zs {
 #endif
 
     void syncCtx(const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.syncStreamSpare(streamid, loc);
     }
 
@@ -403,7 +403,7 @@ namespace zs {
                     const source_location &loc = source_location::current()) const {
       using namespace index_literals;
       constexpr auto dim = Collapse<Ts, Is>::dim;
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -446,7 +446,7 @@ namespace zs {
     template <typename Range, typename F>
     auto operator()(Range &&range, F &&f,
                     const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -490,7 +490,7 @@ namespace zs {
     template <typename Range, typename... Args, typename F>
     auto operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
                     const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -558,7 +558,7 @@ namespace zs {
     void inclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
                              OutputIt &&d_first, BinaryOperation &&binary_op,
                              const source_location &loc) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -600,7 +600,7 @@ namespace zs {
     void exclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
                              OutputIt &&d_first, T init, BinaryOperation &&binary_op,
                              const source_location &loc) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -648,7 +648,7 @@ namespace zs {
     void reduce_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
                      OutputIt &&d_first, T init, BinaryOperation &&binary_op,
                      const source_location &loc) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -700,7 +700,7 @@ namespace zs {
         KeyIter &&keys, ValueIter &&vals,
         typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
         CompareOpT &&compOp, const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -728,7 +728,7 @@ namespace zs {
     enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>> merge_sort(
         KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
         const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -766,7 +766,7 @@ namespace zs {
       using DiffT = typename std::iterator_traits<KeyIterT>::difference_type;
       using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
       using ValueT = typename std::iterator_traits<ValueIterT>::value_type;
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -828,7 +828,7 @@ namespace zs {
                          OutputIt &&d_first, int sbit, int ebit, const source_location &loc) const {
       using KeyIterT = remove_cvref_t<InputIt>;
       using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
-      auto &context = Cuda::context(procid);
+      auto &context = Cuda::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
@@ -878,7 +878,10 @@ namespace zs {
                       ebit, loc);
     }
 
-    constexpr ProcID getProcid() const noexcept { return procid; }
+    constexpr ProcID getProcid() const noexcept {
+      if (procid < 0) return Cuda::get_default_device();
+      return procid;
+    }
     constexpr StreamID getStreamid() const noexcept { return streamid; }
     void *getStream() const noexcept {
       return Cuda::context(getProcid()).streamSpare(getStreamid());
@@ -903,7 +906,7 @@ namespace zs {
     size_t shmemBytes{0};   ///< amount of shared memory passed
     int blockSize{0};       ///< 0 to enable auto configure
     ProcID incomingProc{0};
-    ProcID procid{0};  ///< 0-th gpu
+    ProcID procid{-1};  ///< 0-th gpu
   };
 
   constexpr bool is_backend_available(CudaExecutionPolicy) noexcept { return true; }

@@ -487,7 +487,8 @@ namespace zs {
     }
 
     template <typename Policy>
-    void append_channels(Policy &&, const std::vector<PropertyTag> &tags);
+    void append_channels(Policy &&, const std::vector<PropertyTag> &tags,
+                         const source_location &loc = source_location::current());
     template <typename Policy> void reset(Policy &&policy, value_type val);
     template <typename Policy, typename MapRange, bool Scatter = true>
     void reorderTiles(Policy &&pol, MapRange &&mapR, wrapv<Scatter> = {});
@@ -595,8 +596,9 @@ namespace zs {
     TileVectorView src, dst;
   };
   template <typename T, size_t Length, typename Allocator> template <typename Policy>
-  void TileVector<T, Length, Allocator>::append_channels(
-      Policy &&policy, const std::vector<PropertyTag> &appendTags) {
+  void TileVector<T, Length, Allocator>::append_channels(Policy &&policy,
+                                                         const std::vector<PropertyTag> &appendTags,
+                                                         const source_location &loc) {
     constexpr execspace_e space = RM_REF_T(policy)::exec_tag::value;
     const auto s = size();
     auto tags = getPropertyTags();
@@ -616,7 +618,7 @@ namespace zs {
     }
     if (!modified) return;
     TileVector<T, Length, Allocator> tmp{get_allocator(), tags, s};
-    policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)});
+    policy(range(s), TileVectorCopy{proxy<space>(*this), proxy<space>(tmp)}, loc);
     *this = zs::move(tmp);
   }
   template <typename TileVectorView> struct TileVectorReset {

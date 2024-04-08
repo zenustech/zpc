@@ -906,7 +906,7 @@ namespace zs {
     size_t shmemBytes{0};   ///< amount of shared memory passed
     int blockSize{0};       ///< 0 to enable auto configure
     ProcID incomingProc{0};
-    ProcID procid{-1};  ///< 0-th gpu
+    ProcID procid{-1};  ///< use current default CUDA device
   };
 
   constexpr bool is_backend_available(CudaExecutionPolicy) noexcept { return true; }

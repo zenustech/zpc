@@ -117,8 +117,9 @@ namespace zs {
     }
     void resizeGrid(size_type numBlocks) { _grid.resize(numBlocks * (size_type)block_size); }
     template <typename Policy>
-    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
-      _grid.append_channels(FWD(policy), tags);
+    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags,
+                         const source_location &loc = source_location::current()) {
+      _grid.append_channels(FWD(policy), tags, loc);
     }
     template <typename Policy> void reset(Policy &&policy, value_type val) {
       _grid.reset(FWD(policy), val);

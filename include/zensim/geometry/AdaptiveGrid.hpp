@@ -227,8 +227,9 @@ namespace zs {
       }
 
       template <typename Policy>
-      void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
-        grid.append_channels(FWD(policy), tags);
+      void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags,
+                           const source_location &loc = source_location::current()) {
+        grid.append_channels(FWD(policy), tags, loc);
       }
       // byte-wise reset
       void reset(value_type val) { grid.reset(val); }
@@ -350,8 +351,9 @@ namespace zs {
       return get<I>(_levels).numReservedBlocks();
     }
     template <typename Policy>
-    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
-      ((void)get<Is>(_levels).append_channels(FWD(policy), tags), ...);
+    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags,
+                         const source_location &loc = source_location::current()) {
+      ((void)get<Is>(_levels).append_channels(FWD(policy), tags, loc), ...);
     }
     void reset(value_type val) { ((void)get<Is>(_levels).reset(val), ...); }
     // value-wise reset

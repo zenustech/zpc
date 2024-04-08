@@ -107,8 +107,9 @@ namespace zs {
 
     void resize(size_type numBlocks) { blocks.resize(numBlocks * (size_type)block_size); }
     template <typename Policy>
-    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags) {
-      blocks.append_channels(FWD(policy), tags);
+    void append_channels(Policy &&policy, const std::vector<PropertyTag> &tags,
+                         const source_location &loc = source_location::current()) {
+      blocks.append_channels(FWD(policy), tags, loc);
     }
     template <typename Policy> void reset(Policy &&policy, value_type val) {
       blocks.reset(FWD(policy), val);

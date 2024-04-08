@@ -33,20 +33,20 @@ namespace zs {
     constexpr DefaultDelete(const DefaultDelete<TT[]>&) noexcept {}
     constexpr void operator()(T* p) { delete[] p; };
   };
-  template <typename T, typename D = DefaultDelete<T>> struct Unique {
+  template <typename T, typename D = DefaultDelete<T>> struct UniquePtr {
   public:
     using pointer = T*;
     using element_type = T;
     using deleter_type = D;
 
     template <typename DD = D, enable_if_all<!is_pointer_v<DD>, is_default_constructible_v<DD>> = 0>
-    constexpr Unique() noexcept : _storage{} {}
+    constexpr UniquePtr() noexcept : _storage{} {}
 
     /// nullptr
     template <typename DD = D, enable_if_all<!is_pointer_v<DD>, is_default_constructible_v<DD>> = 0>
-    constexpr Unique(decltype(nullptr)) noexcept : _storage{} {}
+    constexpr UniquePtr(decltype(nullptr)) noexcept : _storage{} {}
 
-    constexpr Unique& operator=(decltype(nullptr)) noexcept {
+    constexpr UniquePtr& operator=(decltype(nullptr)) noexcept {
       reset();
       return *this;
     }
@@ -55,30 +55,30 @@ namespace zs {
     template <typename DD = D,
               enable_if_all<!is_pointer_v<DD>, !is_reference_v<DD>, is_default_constructible_v<DD>>
               = 0>
-    constexpr explicit Unique(pointer p) noexcept {
+    constexpr explicit UniquePtr(pointer p) noexcept {
       _storage.template get<1>() = p;
     }
 
     template <typename DD = D, enable_if_t<is_constructible_v<DD, const DD&>> = 0>
-    constexpr Unique(pointer p, const D& d) noexcept : _storage{d, p} {}
+    constexpr UniquePtr(pointer p, const D& d) noexcept : _storage{d, p} {}
 
     template <typename DD = D, enable_if_all<!is_reference_v<DD>, is_constructible_v<DD, DD>> = 0>
-    constexpr Unique(pointer p, D&& d) noexcept : _storage{zs::move(d), p} {}
+    constexpr UniquePtr(pointer p, D&& d) noexcept : _storage{zs::move(d), p} {}
 
     template <typename DD = D,
               enable_if_all<is_reference_v<DD>, is_constructible_v<DD, remove_reference_t<DD>>> = 0>
-    Unique(pointer, remove_reference_t<D>&&) = delete;
+    UniquePtr(pointer, remove_reference_t<D>&&) = delete;
 
     ///
-    Unique(const Unique&) = delete;
-    Unique& operator=(const Unique&) = delete;
+    UniquePtr(const UniquePtr&) = delete;
+    UniquePtr& operator=(const UniquePtr&) = delete;
 
     ///
     template <typename DD = D, enable_if_t<is_move_constructible_v<DD>> = 0>
-    constexpr Unique(Unique&& o) noexcept
+    constexpr UniquePtr(UniquePtr&& o) noexcept
         : _storage(zs::forward<D>(o.get_deleter()), o.release()) {}
     template <typename DD = D, enable_if_t<is_move_assignable_v<DD>> = 0>
-    constexpr Unique& operator=(Unique&& o) noexcept {
+    constexpr UniquePtr& operator=(UniquePtr&& o) noexcept {
       reset(o.release());
       _storage.template get<0>() = zs::forward<D>(o._storage.template get<0>());
       return *this;
@@ -87,28 +87,28 @@ namespace zs {
     ///
     template <
         typename TT, typename DD,
-        enable_if_all<!is_array_v<TT>, is_convertible_v<typename Unique<TT, DD>::pointer, pointer>,
+        enable_if_all<!is_array_v<TT>, is_convertible_v<typename UniquePtr<TT, DD>::pointer, pointer>,
                       (is_reference_v<D> ? is_same_v<DD, D> : is_convertible_v<DD, D>)>
         = 0>
-    constexpr Unique(Unique<TT, DD>&& o) noexcept
+    constexpr UniquePtr(UniquePtr<TT, DD>&& o) noexcept
         : _storage{zs::forward<DD>(o.get_deleter()), o.release()} {}
     template <
         typename TT, typename DD,
-        enable_if_all<!is_array_v<TT>, is_convertible_v<typename Unique<TT, DD>::pointer, pointer>,
+        enable_if_all<!is_array_v<TT>, is_convertible_v<typename UniquePtr<TT, DD>::pointer, pointer>,
                       is_assignable_v<D&, DD>>
         = 0>
-    constexpr Unique& operator=(Unique<TT, DD>&& o) noexcept {
+    constexpr UniquePtr& operator=(UniquePtr<TT, DD>&& o) noexcept {
       reset(o.release());
       _storage.template get<0>() = zs::forward<DD>(o._storage.template get<0>());
       return *this;
     }
 
-    constexpr void swap(Unique& o) noexcept {
+    constexpr void swap(UniquePtr& o) noexcept {
       zs_swap(_storage.template get<0>(), o._storage.template get<0>());
       zs_swap(_storage.template get<1>(), o._storage.template get<1>());
     }
 
-    ~Unique() noexcept {
+    ~UniquePtr() noexcept {
       if (auto p = _storage.template get<1>(); p) {
         _storage.template get<0>()(p);
         _storage.template get<1>() = nullptr;

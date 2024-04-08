@@ -48,7 +48,7 @@ void func(Pol &&pol) {
 
 int main() {
   using namespace zs;
-  auto cudaPol = cuda_exec().device(0).sync(true);
+  auto cudaPol = cuda_exec().sync(true);
   constexpr auto cuspace = execspace_e::cuda;
 #if ZS_ENABLE_OPENMP
   auto pol = omp_exec();

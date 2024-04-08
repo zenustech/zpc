@@ -248,7 +248,7 @@ namespace zs {
       zs::Vector<V> Ax = x;
       zs::Vector<V> z = x;
 
-      auto cudaPol = zs::cuda_exec().device(0);
+      auto cudaPol = zs::cuda_exec();
 
 #if 0
       {

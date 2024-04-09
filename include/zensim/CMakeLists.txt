@@ -980,6 +980,7 @@ if(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS ON # https://devblogs.nvidia.com/building-cuda-applications-cmake/
     CUDA_PTX_COMPILATION ON # https://stackoverflow.com/questions/55993745/how-should-i-get-cmake-to-also-create-ptx-files-for-my-kernels
+    CUDA_ARCHITECTURES 52
 
     # CUDA_VISIBILITY_PRESET default
   )

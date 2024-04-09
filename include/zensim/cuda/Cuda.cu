@@ -23,6 +23,7 @@ namespace {
 
 namespace zs {
 
+  static_assert(is_same_v<CUdevice, int>, "[CUdevice] is assumed to be [int]!");
 #if 0
   Cuda &Cuda::instance() {
     if (g_isCudaInitialized.load(std::memory_order_acquire)) return *g_cudaInstance;

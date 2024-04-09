@@ -480,6 +480,7 @@ if(ZS_ENABLE_CUDA)
   )
 
   target_link_libraries(zpccuda PUBLIC zpc_cuda_deps zpccore CUDA::nvrtc) # cuda_runtime cuda cudadevrt nvrtc cusolver cublas cusparse
+  target_link_libraries(zpccuda PRIVATE zpc_cuda_arch_options)
 
   target_compile_options(zpccuda
     PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:${CMAKE_CUDA_FLAGS} -lineinfo --ptxas-options=-allow-expensive-optimizations=true>
@@ -597,6 +598,11 @@ if(ZS_ENABLE_OPENCL)
 endif(ZS_ENABLE_OPENCL)
 
 target_link_libraries(zensim INTERFACE zpc) # zpc -> zensim
+if (ZS_ENABLE_CUDA)
+  if (ZS_AUTO_DETECT_CUDA_ARCH)
+    target_link_libraries(zensim INTERFACE zpc_cuda_arch_options)
+  endif(ZS_AUTO_DETECT_CUDA_ARCH)
+endif(ZS_ENABLE_CUDA)
 
 # ################
 # zpc_py_interop #
@@ -984,8 +990,18 @@ if(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
 
     # CUDA_VISIBILITY_PRESET default
   )
-
 #[=[
+  get_target_property(cuwrangler_compile_flags zs_cu_wrangler COMPILE_OPTIONS)
+  separate_arguments(cuwrangler_compile_flags)
+  foreach(flag ${cuwrangler_compile_flags})
+    message(STATUS "checking zs cu wrangler flag [${flag}]")
+    if(${flag} MATCHES "^-gencode=arch=compute_*")
+      message(STATUS " -> removing flag [${flag}] for zs_cu_wrangler!")
+      list(REMOVE_ITEM cuwrangler_compile_flags ${flag})
+    endif()
+  endforeach()
+  set_property(TARGET zs_cu_wrangler PROPERTY COMPILE_OPTIONS ${cuwrangler_compile_flags})
+
 # ref: developer.nvidia.com/blog/building-cuda-applications-cmake/
 find_program(bin_to_c
   NAMES bin2c

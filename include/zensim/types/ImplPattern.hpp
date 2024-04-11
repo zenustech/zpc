@@ -7,6 +7,7 @@
 namespace zs {
 
   template <typename T> using Shared = std::shared_ptr<T>;
+  template <typename T> using Weak = std::weak_ptr<T>;
   template <typename T, typename... Args> constexpr Shared<T> make_shared(Args &&...args) {
     return std::make_shared<T>(zs::forward<Args>(args)...);
   }

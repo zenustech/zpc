@@ -12,6 +12,13 @@ target_link_libraries(maptest PRIVATE zpc)
 add_test(ZsRBTreeMap maptest)
 add_dependencies(zensim maptest)
 
+# TODO(@seeeagull): temporarily hang the helper lexer here...
+add_executable(helperlexer help_parser.cpp)
+target_link_libraries(helperlexer PRIVATE zpc)
+
+add_test(HelperLexer helperlexer)
+add_dependencies(zensim helperlexer)
+
 # nd vec
 add_executable(ndarraytest ndvec.cpp)
 target_link_libraries(ndarraytest PRIVATE zpc)

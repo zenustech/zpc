@@ -12,7 +12,8 @@ struct Lexer {
     // items of an option
     // 1. <string> short form
     // 2. <string> long form
-    // 3. <string> description
+    // 3. <string> option form
+    // 4. <string> description
     std::vector<std::vector<std::string>> dict{};
     Lexer(std::string* t): text(t) {
         pos = 0;
@@ -58,7 +59,6 @@ struct Lexer {
     }
     void description(std::string &descript) {
         size_t start;
-        std::regex spaces_re("\\s+");
         leapSpace();
         descript += " ";
         start = pos;
@@ -67,8 +67,7 @@ struct Lexer {
             while (pos < tot && text->at(pos) != '\n')
                 ++pos;
             ++pos;
-            std::string line = text->substr(start, pos - start);
-            descript += std::regex_replace(line, spaces_re, " ");
+            descript += text->substr(start, pos - start);
             // if the following line is an empty line, we consider this item as finished
             if (pos < tot && text->at(pos) == '\n')
                 break;
@@ -120,7 +119,7 @@ struct Lexer {
             }
             ++pos;
         }
-        std::string short_opt, long_opt, descript;
+        std::string short_opt, long_opt, opt, descript;
         while (pos < tot) {
             if (!nextIsOption())
                 break;
@@ -136,14 +135,25 @@ struct Lexer {
                         longOption(long_opt);
                     descript += ", " + long_opt;
                 }
-                descript += " ";
             } else {
                 short_opt.clear();
                 longOption(long_opt);
-                descript += long_opt + " ";
+                descript += long_opt;
             }
             description(descript);
-            dict.push_back(std::vector<std::string>({short_opt, long_opt, descript}));
+            // option form
+            if (long_opt.size() > 0) {
+                opt = long_opt;
+                int param_pos = long_opt.find_first_of('=');
+                if (param_pos != std::string::npos) {
+                    opt = opt.substr(0, param_pos + 1);
+                    if (long_opt[long_opt.size() - 1] == ']')
+                        opt += ']';
+                }
+            } else {
+                opt = short_opt;
+            }
+            dict.push_back(std::vector<std::string>({short_opt, long_opt, opt, descript}));
         }
     }
     // TODO(@seeeagull): for debugging
@@ -153,7 +163,8 @@ struct Lexer {
             std::cout << "#" << i << ":" << std::endl;
             std::cout << "  short form:  " << it[0] << std::endl;
             std::cout << "  long form:   " << it[1] << std::endl;
-            std::cout << "  description: " << it[2] << std::endl;
+            std::cout << "  option form: " << it[2] << std::endl;
+            std::cout << "  description:\n" << it[3] << std::endl;
             ++i;
         }
     }

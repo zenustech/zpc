@@ -29,7 +29,7 @@ namespace zs {
       constexpr auto len = get_type_len_helper(p);
       return zs::BasicSmallString<char, len + 1>{p};
 #else
-      return zs::BasicSmallString<char, sizeof(__PRETTY_FUNCTION__)>{__PRETTY_FUNCTION__};
+      return zs::BasicSmallString{__PRETTY_FUNCTION__};
 #endif
     }
     template <typename T> constexpr auto get_var_type_str_helper(T &&) noexcept {
@@ -39,8 +39,8 @@ namespace zs {
     struct range_pair {
       size_t l{}, r{};
     };
-    constexpr range_pair locate_char_in_str_helper(const char *str,
-                                                   const char lc, const char rc) noexcept {
+    constexpr range_pair locate_char_in_str_helper(const char *str, const char lc,
+                                                   const char rc) noexcept {
       const char *p = str;
       if (p[0] == '\0') return range_pair{0, 0};
       size_t l{0};
@@ -62,17 +62,17 @@ namespace zs {
 
   template <typename T> constexpr auto get_type() noexcept {
 #if defined(_MSC_VER)
-#if 0
+#  if 0
     constexpr auto typestr = __FUNCSIG__;
     // static_assert(always_false<T>, __FUNCSIG__);
     // using StrT = RM_CVREF_T(typestr[0]);
     // using CharT = typename StrT::char_type;
     using CharT = RM_CVREF_T(typestr[0]);
-#else
+#  else
     constexpr auto typestr = zs::detail::get_type_str_helper<T>();
     using StrT = RM_CVREF_T(typestr);
     using CharT = typename StrT::char_type;
-#endif
+#  endif
     constexpr auto pair = detail::locate_char_in_str_helper(typestr, '<', '>');
     constexpr size_t head{pair.l + 1};
     constexpr size_t ed{pair.r};

@@ -22,6 +22,9 @@ namespace zs {
     constexpr BasicSmallString() noexcept : buf{} {
       for (auto &c : buf) c = '\0';
     }
+    constexpr BasicSmallString(const CharT (&tmp)[nbytes]) noexcept : buf{} {
+      for (size_type i = 0; i < nbytes; ++i) buf[i] = tmp[i];
+    }
     constexpr BasicSmallString(const char tmp[]) : buf{} {
       size_type i = 0;
       for (; i + (size_type)1 != nbytes && tmp[i]; ++i) buf[i] = tmp[i];
@@ -95,6 +98,9 @@ namespace zs {
 #endif
   };
   using SmallString = BasicSmallString<>;
+
+  template <typename CharT, zs::size_t NBytes> 
+  BasicSmallString(const CharT (&tmp)[NBytes]) -> BasicSmallString<CharT, NBytes>;
 
   /// property tag
   struct PropertyTag {

@@ -309,6 +309,40 @@ set(ZENSIM_LIBRARY_CUDA_WRANGLER_SOURCE_FILES
 add_library(zensim INTERFACE)
 
 # ############
+# zpc: stable#
+# ############
+add_library(zpcbase INTERFACE)
+target_sources(zpcbase 
+  INTERFACE
+
+  ZpcBuiltin.hpp
+  ZpcFunction.hpp
+  ZpcFunctional.hpp
+  ZpcImplPattern.hpp
+  ZpcIntrinsics.hpp
+  ZpcIterator.hpp
+  ZpcMathUtils.hpp
+  ZpcMeta.hpp
+  ZpcReflection.hpp
+  ZpcResource.hpp
+  ZpcTuple.hpp
+
+  types/Property.h
+  types/SmallVector.hpp
+
+  math/Tensor.hpp
+  math/Vec.h
+
+  execution/Atomics.hpp
+  # types/Mask.hpp
+)
+target_include_directories(zpcbase INTERFACE
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(zpcbase INTERFACE zpc_cxx_deps)
+
+# ############
 # zpc: core #
 # ############
 if(ZS_BUILD_SHARED_LIBS)
@@ -335,7 +369,7 @@ if(ENABLE_PCH)
   )
 endif()
 
-target_link_libraries(zpccore PUBLIC zpc_cxx_deps)
+target_link_libraries(zpccore PUBLIC zpc_cxx_deps zpcbase)
 target_link_libraries(zpccore PUBLIC zswhereami)
 # if (WIN32)
 #   target_link_libraries(zpccore PUBLIC synchronization)

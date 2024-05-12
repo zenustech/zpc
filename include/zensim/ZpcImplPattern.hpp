@@ -49,7 +49,7 @@ namespace zs {
 
   struct ObjectVisitor;
   struct VisitableObjectConcept : ObjectConcept {
-    virtual void accept(ObjectVisitor&);
+    virtual void accept(ObjectVisitor&) = 0;
   };
 
   template <typename Derived> struct Visitee {

@@ -128,6 +128,26 @@ static_assert(false, "32-bit Windows systems are not supported")
 #  define ZPC_BACKEND_API ZPC_IMPORT
 #endif
 
+#ifdef ZPC_BACKEND_TEMPLATE_EXPORT
+#  undef ZPC_BACKEND_TEMPLATE_EXPORT
+#endif
+#ifdef ZPC_BACKEND_TEMPLATE_IMPORT
+#  undef ZPC_BACKEND_TEMPLATE_IMPORT
+#endif
+
+#if defined(ZS_COMPILER_MSVC) && defined(ZS_BUILD_DLL)
+    #ifdef ZPC_BACKEND_PRIVATE
+        #define ZPC_BACKEND_TEMPLATE_EXPORT ZPC_EXPORT
+        #define ZPC_BACKEND_TEMPLATE_IMPORT
+    #else
+        #define ZPC_BACKEND_TEMPLATE_EXPORT
+        #define ZPC_BACKEND_TEMPLATE_IMPORT ZPC_IMPORT
+    #endif
+#else
+    #define ZPC_BACKEND_TEMPLATE_EXPORT
+    #define ZPC_BACKEND_TEMPLATE_IMPORT
+#endif
+
 /// @note for the assembled zpc target
 #ifdef ZPC_API
 #  undef ZPC_API

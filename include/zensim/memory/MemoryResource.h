@@ -1,7 +1,6 @@
 #pragma once
 #include <cstddef>
 #include <memory>
-#include <memory_resource>
 #include <stdexcept>
 
 #include "zensim/Platform.hpp"
@@ -11,68 +10,43 @@
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
-#ifdef ZS_PLATFORM_WINDOWS
-#  include <memory_resource>
-#endif
 namespace zs {
 
-#if 1
-
-  namespace pmr = std::pmr;
-  using mr_t = pmr::memory_resource;
-
-#else
-/// since we cannot use memory_resource header in libstdc++ (chrono_nvcc compilation issue)
-/// we directly use its implementation
-#  ifdef ZS_PLATFORM_WINDOWS
-
-  using mr_t = std::pmr::memory_resource;
-
-#  else
-  class memory_resource {
-    static constexpr size_t _S_max_align = alignof(max_align_t);
+  class ZPC_API mr_t {
+    static constexpr size_t s_maxAlign = alignof(max_align_t);
 
   public:
-    memory_resource() = default;
-    memory_resource(const memory_resource&) = default;
-    virtual ~memory_resource() = default;  // key function
+    mr_t() = default;
+    mr_t(const mr_t&) = default;
+    virtual ~mr_t() = default;  // key function
 
-    memory_resource& operator=(const memory_resource&) = default;
+    mr_t& operator=(const mr_t&) = default;
 
-    [[nodiscard]] void* allocate(size_t __bytes, size_t __alignment = _S_max_align)
-        __attribute__((__returns_nonnull__, __alloc_size__(2), __alloc_align__(3))) {
-      return do_allocate(__bytes, __alignment);
+    [[nodiscard]] void* allocate(size_t bytes, size_t alignment = s_maxAlign) {
+      return do_allocate(bytes, alignment);
     }
 
-    void deallocate(void* __p, size_t __bytes, size_t __alignment = _S_max_align)
-        __attribute__((__nonnull__)) {
-      return do_deallocate(__p, __bytes, __alignment);
+    void deallocate(void* p, size_t bytes, size_t alignment = s_maxAlign) {
+      return do_deallocate(p, bytes, alignment);
     }
 
-    bool is_equal(const memory_resource& __other) const noexcept { return do_is_equal(__other); }
+    bool is_equal(const mr_t& o) const noexcept { return do_is_equal(o); }
 
   private:
-    virtual void* do_allocate(size_t __bytes, size_t __alignment) = 0;
+    virtual void* do_allocate(size_t bytes, size_t alignment) = 0;
 
-    virtual void do_deallocate(void* __p, size_t __bytes, size_t __alignment) = 0;
+    virtual void do_deallocate(void* p, size_t bytes, size_t alignment) = 0;
 
-    virtual bool do_is_equal(const memory_resource& __other) const noexcept = 0;
+    virtual bool do_is_equal(const mr_t& o) const noexcept = 0;
   };
 
-  inline bool operator==(const memory_resource& __a, const memory_resource& __b) noexcept {
-    return &__a == &__b || __a.is_equal(__b);
+  inline bool operator==(const mr_t& l, const mr_t& r) noexcept {
+    return &l == &r || l.is_equal(r);
   }
 
-#    if __cpp_impl_three_way_comparison < 201907L
-  inline bool operator!=(const memory_resource& __a, const memory_resource& __b) noexcept {
-    return !(__a == __b);
+  inline bool operator!=(const mr_t& l, const mr_t& r) noexcept {
+    return !(l == r);
   }
-#    endif
-
-  using mr_t = memory_resource;
-#  endif
-
-#endif
 
   struct vmr_t : public mr_t {
     static constexpr size_t s_chunk_granularity_bits = (size_t)21;

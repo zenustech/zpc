@@ -425,7 +425,7 @@ namespace zs {
     g_lot.parkFor(
         &seq, 0 /* mask data used for unpark is irrelevant here*/,
         [this]() {
-          seq.store(1, std::memory_order_acquire);
+          seq.store(1);
           return true;
         },
         [&lk]() { lk.unlock(); }, (i64)-1);
@@ -435,7 +435,7 @@ namespace zs {
     detail::ParkResult res = g_lot.parkFor(
         &seq, 0 /* mask data used for unpark is irrelevant here*/,
         [this]() {
-          seq.store(1, std::memory_order_acquire);
+          seq.store(1);
           return true;
         },
         [&lk]() { lk.unlock(); }, duration);

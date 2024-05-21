@@ -831,7 +831,7 @@ namespace zs {
   template <class T> constexpr bool is_nothrow_destructible_v = is_nothrow_destructible<T>::value;
 
   template <class T> struct is_trivially_destructible
-      : bool_constant<detail::is_destructible<T>() && __has_trivial_destructor(T)> {};
+      : bool_constant<detail::is_destructible<T>() && __is_trivially_destructible(T)> {};
   // __has_trivial_destructor deprecated
   template <class T> constexpr bool is_trivially_destructible_v
       = is_trivially_destructible<T>::value;
@@ -986,7 +986,7 @@ namespace zs {
 
   // c++11 convention
   template <typename T> constexpr auto zs_swap(T &l, T &r) noexcept(
-      noexcept(T(declval<T &&>())) && noexcept(declval<T &>() = zs::move(declval<T &>())))
+      noexcept(T(declval<T &&>())) &&noexcept(declval<T &>() = zs::move(declval<T &>())))
       -> decltype(void(T(declval<T &&>())), void(declval<T &>() = zs::move(declval<T &>()))) {
     T tmp = zs::move(l);
     l = zs::move(r);

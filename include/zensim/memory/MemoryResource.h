@@ -12,7 +12,7 @@
 
 namespace zs {
 
-  class ZPC_API mr_t {
+  class ZPC_CORE_API mr_t {
     static constexpr size_t s_maxAlign = alignof(max_align_t);
 
   public:
@@ -48,7 +48,7 @@ namespace zs {
     return !(l == r);
   }
 
-  struct vmr_t : public mr_t {
+  struct ZPC_CORE_API vmr_t : public mr_t {
     static constexpr size_t s_chunk_granularity_bits = (size_t)21;
     static constexpr size_t s_chunk_granularity = (size_t)1 << s_chunk_granularity_bits;
     vmr_t() = default;

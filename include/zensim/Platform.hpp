@@ -118,6 +118,16 @@ static_assert(false, "32-bit Windows systems are not supported")
 #  error "unknown compiler!"
 #endif
 
+/// @note for zpc core
+#ifdef ZPC_CORE_API
+#  undef ZPC_CORE_API
+#endif
+#ifdef ZPC_CORE_PRIVATE
+#  define ZPC_CORE_API ZPC_EXPORT
+#else
+#  define ZPC_CORE_API ZPC_IMPORT
+#endif
+
 /// @note for individual zpc backends
 #ifdef ZPC_BACKEND_API
 #  undef ZPC_BACKEND_API

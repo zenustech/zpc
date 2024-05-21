@@ -347,6 +347,7 @@ target_link_libraries(zpcbase INTERFACE zpc_cxx_deps)
 # ############
 if(ZS_BUILD_SHARED_LIBS)
   add_library(zpccore SHARED)
+  target_compile_definitions(zpccore PRIVATE ZPC_CORE_PRIVATE)
   target_compile_definitions(zpccore PRIVATE ZPC_BACKEND_PRIVATE)
 else()
   add_library(zpccore STATIC)

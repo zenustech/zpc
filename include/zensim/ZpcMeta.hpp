@@ -831,8 +831,8 @@ namespace zs {
   template <class T> constexpr bool is_nothrow_destructible_v = is_nothrow_destructible<T>::value;
 
   template <class T> struct is_trivially_destructible
-      : bool_constant<detail::is_destructible<T>() && __is_trivially_destructible(T)> {};
-  // __has_trivial_destructor deprecated
+      : bool_constant<detail::is_destructible<T>() && __has_trivial_destructor(T)> {};
+  // __has_trivial_destructor deprecated, use __is_trivially_destructible?
   template <class T> constexpr bool is_trivially_destructible_v
       = is_trivially_destructible<T>::value;
 

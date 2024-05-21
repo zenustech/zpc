@@ -123,6 +123,8 @@ namespace zs {
     ProcID did;
   };
 
+  extern template struct ZPC_BACKEND_TEMPLATE_IMPORT advisor_memory_resource<host_mem_tag>;
+
   template <typename MemTag> struct stack_virtual_memory_resource
       : vmr_t {  // default impl falls back to
     template <typename... Args> stack_virtual_memory_resource(Args...) {

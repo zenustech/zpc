@@ -65,6 +65,8 @@ namespace zs {
     }
   }
 
+  template struct ZPC_TEMPLATE_EXPORT advisor_memory_resource<device_mem_tag>;
+
 #if 0
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(
       ProcID did, std::string_view type)

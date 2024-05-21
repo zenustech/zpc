@@ -5,6 +5,9 @@
 
 namespace zs {
 
+  template struct ZPC_TEMPLATE_EXPORT ZSPmrAllocator<false, byte>;
+  template struct ZPC_TEMPLATE_EXPORT ZSPmrAllocator<true, byte>;
+
   static std::shared_mutex g_resource_rw_mutex{};
   static concurrent_map<void *, Resource::AllocationRecord> g_resource_records;
 

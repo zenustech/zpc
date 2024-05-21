@@ -45,7 +45,7 @@ namespace zs {
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
 
-  template <> struct temporary_memory_resource<device_mem_tag> : mr_t {
+  template <> struct ZPC_BACKEND_API temporary_memory_resource<device_mem_tag> : mr_t {
     using value_type = std::byte;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -63,6 +63,8 @@ namespace zs {
     void *context{nullptr};
     void *stream{nullptr};
   };
+
+  extern template struct ZPC_BACKEND_TEMPLATE_IMPORT advisor_memory_resource<device_mem_tag>;
 
   template <> struct raw_memory_resource<um_mem_tag> : mr_t {
   private:

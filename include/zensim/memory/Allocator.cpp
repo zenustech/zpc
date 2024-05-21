@@ -16,6 +16,7 @@
 
 namespace zs {
 
+  template struct ZPC_TEMPLATE_EXPORT advisor_memory_resource<host_mem_tag>;
 #if defined(ZS_PLATFORM_UNIX)
 
 #  if 0

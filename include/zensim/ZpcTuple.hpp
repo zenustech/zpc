@@ -241,9 +241,6 @@ namespace zs {
       return mop(bop(get<Is>(), t.template get<Is>())...);
     }
     /// shuffle
-    template <typename... Args> constexpr auto shuffle(Args &&...args) const noexcept {
-      return zs::make_tuple(get<FWD(args)>()...);
-    }
     template <auto... Js> constexpr auto shuffle(value_seq<Js...>) const noexcept {
       return zs::make_tuple(get<Js>()...);
     }

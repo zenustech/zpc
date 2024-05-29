@@ -72,12 +72,12 @@ namespace zs {
     /// random access
     // ()
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
-    constexpr decltype(auto) operator()(Args &&...args) noexcept {
-      return base_t::val(indexer_type::offset(forward<Args>(args)...));
+    constexpr decltype(auto) operator()(Args... args) noexcept {
+      return base_t::val(indexer_type::offset(args...));
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
-    constexpr decltype(auto) operator()(Args &&...args) const noexcept {
-      return base_t::val(indexer_type::offset(forward<Args>(args)...));
+    constexpr decltype(auto) operator()(Args... args) const noexcept {
+      return base_t::val(indexer_type::offset(args...));
     }
     // []
     constexpr decltype(auto) operator[](index_type index) noexcept {
@@ -196,7 +196,7 @@ namespace zs {
               enable_if_all<!IsPtrStruct, (sizeof...(Ts) <= extent),
                             (is_convertible_v<remove_cvref_t<Ts>, value_type> && ...)>
               = 0>
-    constexpr vec_impl(Ts &&...ts) noexcept : _data{(value_type)FWD(ts)...} {}
+    constexpr vec_impl(Ts... ts) noexcept : _data{(value_type)zs::move(ts)...} {}
     template <typename... Ts, bool IsPtrStruct = is_pointer_structure,
               enable_if_all<IsPtrStruct, (sizeof...(Ts) == extent),
                             ((alignof(Ts) == alignof(value_type)) && ...)>
@@ -252,12 +252,12 @@ namespace zs {
     /// random access
     // ()
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
-    constexpr decltype(auto) operator()(Args &&...args) noexcept {
-      return base_t::val(indexer_type::offset(forward<Args>(args)...));
+    constexpr decltype(auto) operator()(Args... args) noexcept {
+      return base_t::val(indexer_type::offset(args...));
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
-    constexpr decltype(auto) operator()(Args &&...args) const noexcept {
-      return base_t::val(indexer_type::offset(forward<Args>(args)...));
+    constexpr decltype(auto) operator()(Args... args) const noexcept {
+      return base_t::val(indexer_type::offset(args...));
     }
     // []
     template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
@@ -324,9 +324,9 @@ namespace zs {
 
   /// make vec
   template <typename... Args, enable_if_all<((is_fundamental_v<remove_cvref_t<Args>>), ...)> = 0>
-  constexpr auto make_vec(Args &&...args) noexcept {
+  constexpr auto make_vec(Args... args) noexcept {
     using Tn = math::op_result_t<remove_cvref_t<Args>...>;
-    return vec<Tn, sizeof...(Args)>{FWD(args)...};
+    return vec<Tn, sizeof...(Args)>{zs::move(args)...};
   }
   /// make vec from std/zs tuple
   template <typename T, template <typename...> class TupT, typename... Ts, size_t... Is>
@@ -343,11 +343,11 @@ namespace zs {
   /// vector(vec+{0}) homogeneous coordinates
 
 #if 0
-  template <typename... Args> constexpr auto make_array(Args &&...args) {
-    return std::array<math::op_result_t<remove_cvref_t<Args>...>, sizeof...(Args)>{FWD(args)...};
+  template <typename... Args> constexpr auto make_array(Args ...args) {
+    return std::array<math::op_result_t<remove_cvref_t<Args>...>, sizeof...(Args)>{args...};
   }
-  template <typename RetT, typename... Args> constexpr auto make_array(Args &&...args) {
-    return std::array<RetT, sizeof...(Args)>{FWD(args)...};
+  template <typename RetT, typename... Args> constexpr auto make_array(Args ...args) {
+    return std::array<RetT, sizeof...(Args)>{args...};
   }
 #endif
 

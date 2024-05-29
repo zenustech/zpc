@@ -39,8 +39,8 @@ namespace zs {
       return (... + ((index_type)args * lookup_bases::template type<Js>::value));
     }
     template <typename... Args, enable_if_t<sizeof...(Args) <= dim> = 0>
-    static constexpr index_type offset(Args&&... args) noexcept {
-      return offset_impl(index_sequence_for<Args...>{}, FWD(args)...);
+    static constexpr index_type offset(Args... args) noexcept {
+      return offset_impl(index_sequence_for<Args...>{}, args...);
     }
     template <typename... Args, enable_if_t<sizeof...(Args) == dim> = 0>
     static constexpr index_type offset(tuple<Args...> args) noexcept {

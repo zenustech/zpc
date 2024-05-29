@@ -555,7 +555,7 @@ namespace zs {
   template <typename... Tn, enable_if_all<is_integral_v<Tn>...> = 0> Collapse(Tn...)
       -> Collapse<type_seq<Tn...>, index_sequence_for<Tn...>>;
 
-  template <typename... Tn> constexpr auto ndrange(Tn &&...ns) { return Collapse{FWD(ns)...}; }
+  template <typename... Tn> constexpr auto ndrange(Tn... ns) { return Collapse{ns...}; }
   namespace detail {
     template <typename T, size_t... Is> constexpr auto ndrange_impl(T n, index_sequence<Is...>) {
       return Collapse{(Is + 1 ? n : n)...};

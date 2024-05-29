@@ -8,8 +8,8 @@ int main() {
   using namespace zs;
   auto pol = cuda_exec();
   auto reduction = [&pol](size_t n) {
-    // Vector<int> vals = gen_rnd_ints(n, make_monoid(getmin<int>()).e);
-    auto vals = gen_rnd_tv_ints(n, make_monoid(getmin<int>()).e);
+    // Vector<int> vals = gen_rnd_ints(n, make_monoid(getmin<int>()).identity());
+    auto vals = gen_rnd_tv_ints(n, make_monoid(getmin<int>()).identity());
     vals = vals.clone({memsrc_e::device});
     if (!test_reduction(pol, range(vals, "b"), getmax<int>()))
       throw std::runtime_error("getmax<int> failed");

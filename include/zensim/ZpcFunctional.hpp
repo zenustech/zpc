@@ -141,20 +141,19 @@ namespace zs {
             typename T = typename detail::extract_template_type_argument<BinaryOp>::type,
             typename = void>
   struct monoid {
-    template <typename BOp, typename TT> constexpr monoid(BOp &&op, TT &&e)
-        : bop{FWD(op)}, e{FWD(e)} {}
+    template <typename BOp, typename TT> constexpr monoid(BOp op, TT e) : bop{op}, e{e} {}
     ~monoid() = default;
 
     constexpr T identity() const noexcept { return e; }
 
     constexpr T operator()() const noexcept { return identity(); }
-    template <typename Arg> constexpr T operator()(Arg &&arg) const noexcept { return FWD(arg); }
+    template <typename Arg> constexpr T operator()(Arg arg) const noexcept { return arg; }
     template <typename Arg, typename... Args>
-    constexpr T operator()(Arg &&arg, Args &&...args) const noexcept {
+    constexpr T operator()(Arg arg, Args... args) const noexcept {
       if constexpr (is_invocable_v<BinaryOp, Arg, Args...>)
-        return bop(FWD(arg), FWD(args)...);
+        return bop(arg, args...);
       else
-        return bop(FWD(arg), operator()(FWD(args)...));
+        return bop(arg, operator()(args...));
     }
 
     BinaryOp bop;
@@ -166,36 +165,32 @@ namespace zs {
   /// @brief predefined monoids
   template <typename T> struct monoid<plus<T>, T> {
     static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
-    static constexpr T e{0};
-    static constexpr auto identity() noexcept { return e; }
-    template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
+    static constexpr auto identity() noexcept { return 0; }
+    template <typename... Args> constexpr T operator()(Args... args) const noexcept {
       return (args + ...);
     }
   };
   template <typename T> struct monoid<multiplies<T>, T> {
     static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
-    static constexpr T e{1};
-    static constexpr T identity() noexcept { return e; }
-    template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
+    static constexpr T identity() noexcept { return 1; }
+    template <typename... Args> constexpr T operator()(Args... args) const noexcept {
       if constexpr (sizeof...(Args) == 0)
-        return e;
+        return identity();
       else
         return (args * ...);
     }
   };
   template <typename T> struct monoid<logical_or<T>, T> {
     static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
-    static constexpr bool e{false};
-    static constexpr bool identity() noexcept { return e; }
-    template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
+    static constexpr bool identity() noexcept { return false; }
+    template <typename... Args> constexpr bool operator()(Args... args) const noexcept {
       return (args || ...);
     }
   };
   template <typename T> struct monoid<logical_and<T>, T> {
     static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
-    static constexpr bool e{true};
-    static constexpr bool identity() noexcept { return e; }
-    template <typename... Args> constexpr bool operator()(Args &&...args) const noexcept {
+    static constexpr bool identity() noexcept { return true; }
+    template <typename... Args> constexpr bool operator()(Args... args) const noexcept {
       return (args && ...);
     }
   };
@@ -258,20 +253,18 @@ namespace zs {
   template <typename T> struct monoid<getmax<T>, T> {
     static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     // -infinity() only for floating point
-    static constexpr T e{detail::deduce_numeric_lowest<T>()};
-    static constexpr T identity() noexcept { return e; }
-    template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
-      T res{e};
+    static constexpr T identity() noexcept { return detail::deduce_numeric_lowest<T>(); }
+    template <typename... Args> constexpr T operator()(Args... args) const noexcept {
+      T res{identity()};
       return ((res = res > args ? res : args), ...);
     }
   };
   template <typename T> struct monoid<getmin<T>, T> {
     static_assert(is_arithmetic_v<T>, "T must be an arithmetic type.");
     // infinity() only for floating point
-    static constexpr T e{detail::deduce_numeric_max<T>()};
-    static constexpr T identity() noexcept { return e; }
-    template <typename... Args> constexpr T operator()(Args &&...args) const noexcept {
-      T res{e};
+    static constexpr T identity() noexcept { return detail::deduce_numeric_max<T>(); }
+    template <typename... Args> constexpr T operator()(Args... args) const noexcept {
+      T res{identity()};
       return ((res = res < args ? res : args), ...);
     }
   };
@@ -318,13 +311,12 @@ namespace zs {
     // identity
     constexpr value_type identity() noexcept { return monoid_type::identity(); }
     // add
-    template <typename... Args> constexpr value_type add(Args &&...args) const noexcept {
-      return monoid_type::operator()(FWD(args)...);
+    template <typename... Args> constexpr value_type add(Args... args) const noexcept {
+      return monoid_type::operator()(args...);
     }
     // multiply is inherited from base_t (i.e. semiring_impl)
-    template <typename T0, typename T1>
-    constexpr value_type multiply(T0 &&a, T1 &&b) const noexcept {
-      return multiply_op::operator()(FWD(a), FWD(b));
+    template <typename T0, typename T1> constexpr value_type multiply(T0 a, T1 b) const noexcept {
+      return multiply_op::operator()(a, b);
     }
   };
 

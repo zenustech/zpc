@@ -18,7 +18,7 @@ namespace zs::math {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr void setToTranslation(const VecInterface<VecT> &v) noexcept {
       self() = mat_type::identity();
-      for (int i = 0; i != dim; ++i) self()(dim, i) = v[i];
+      for (int i = 0; i != dim_; ++i) self()(dim_, i) = v[i];
     }
 
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
@@ -39,28 +39,28 @@ namespace zs::math {
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr void setToScale(const VecInterface<VecT> &v) noexcept {
       self() = mat_type::identity();
-      for (int d = 0; d != dim; ++d) self()(d, d) = v[d];
+      for (int d = 0; d != dim_; ++d) self()(d, d) = v[d];
     }
 
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr void preScale(const VecInterface<VecT> &v) noexcept {
-      for (int i = 0; i != dim; ++i)
-        for (int j = 0; j != dim + 1; ++j) self()(i, j) *= v[i];
+      for (int i = 0; i != dim_; ++i)
+        for (int j = 0; j != dim_ + 1; ++j) self()(i, j) *= v[i];
     }
 
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::extent == dim> = 0>
     constexpr void postScale(const VecInterface<VecT> &v) noexcept {
-      for (int i = 0; i != dim + 1; ++i)
-        for (int j = 0; j != dim; ++j) self()(i, j) *= v[j];
+      for (int i = 0; i != dim_ + 1; ++i)
+        for (int j = 0; j != dim_; ++j) self()(i, j) *= v[j];
     }
 
     /// rotation
     template <typename T, enable_if_t<is_convertible_v<T, value_type>> = 0>
     void setToRotation(const Rotation<T, dim> &r) noexcept {
       self() = mat_type::zeros();
-      for (int i = 0; i != dim; ++i)
-        for (int j = 0; j != dim; ++j) self()(i, j) = r(j, i);
-      self()(dim, dim) = 1;
+      for (int i = 0; i != dim_; ++i)
+        for (int j = 0; j != dim_; ++j) self()(i, j) = r(j, i);
+      self()(dim_, dim_) = 1;
     }
 
     template <typename T, enable_if_t<is_convertible_v<T, value_type>> = 0>
@@ -78,9 +78,9 @@ namespace zs::math {
     }
   };
 
-  template <typename VecTM,
-            enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value
-                                               == VecTM::template range_t<1>::value> = 0>
+  template <typename VecTM, enable_if_all<VecTM::dim == 2, VecTM::template range_t<0>::value
+                                                               == VecTM::template range_t<1>::value>
+                            = 0>
   constexpr auto decompose_transform(const VecInterface<VecTM> &m,
                                      bool applyOnColumn = true) noexcept {
     constexpr auto dim = VecTM::template range_t<0>::value - 1;
@@ -128,7 +128,8 @@ namespace zs::math {
                     is_floating_point_v<typename VecTM::value_type>,
                     is_floating_point_v<typename VecTS::value_type>,
                     is_floating_point_v<typename VecTR::value_type>,
-                    is_floating_point_v<typename VecTT::value_type>> = 0>
+                    is_floating_point_v<typename VecTT::value_type>>
+      = 0>
   constexpr void decompose_transform(const VecInterface<VecTM> &m, VecInterface<VecTS> &s,
                                      VecInterface<VecTR> &r, VecInterface<VecTT> &t,
                                      bool applyOnColumn = true) noexcept {

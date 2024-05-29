@@ -8,8 +8,8 @@ int main() {
   // auto pol = seq_exec();
   auto pol = seq_exec();
   auto reduction = [&pol](size_t n) {
-    // Vector<int> vals = gen_rnd_ints(n, make_monoid(getmin<int>()).e);
-    auto vals = gen_rnd_tv_ints(n, make_monoid(getmin<int>()).e);
+    // Vector<int> vals = gen_rnd_ints(n, make_monoid(getmin<int>()).identity()
+    auto vals = gen_rnd_tv_ints(n, make_monoid(getmin<int>()).identity());
     if (!test_reduction(pol, range(vals, "b"), getmax<int>()))
       throw std::runtime_error("getmax<int> failed");
     if (!test_reduction(pol, range(vals, "b"), getmin<int>()))

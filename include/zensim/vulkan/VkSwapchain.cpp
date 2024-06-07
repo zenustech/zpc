@@ -20,7 +20,7 @@ namespace zs {
       throw std::runtime_error(fmt::format(
           "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
           frameIndex, res));
-#if 1
+#if 0
     auto res = ctx.device.acquireNextImageKHR(
         swapchain, detail::deduce_numeric_max<u64>(),
         currentImageAcquiredSemaphore(),  // must be a not signaled semaphore

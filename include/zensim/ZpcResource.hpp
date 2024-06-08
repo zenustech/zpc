@@ -85,18 +85,18 @@ namespace zs {
     }
 
     ///
-    template <
-        typename TT, typename DD,
-        enable_if_all<!is_array_v<TT>, is_convertible_v<typename UniquePtr<TT, DD>::pointer, pointer>,
-                      (is_reference_v<D> ? is_same_v<DD, D> : is_convertible_v<DD, D>)>
-        = 0>
+    template <typename TT, typename DD,
+              enable_if_all<!is_array_v<TT>,
+                            is_convertible_v<typename UniquePtr<TT, DD>::pointer, pointer>,
+                            (is_reference_v<D> ? is_same_v<DD, D> : is_convertible_v<DD, D>)>
+              = 0>
     constexpr UniquePtr(UniquePtr<TT, DD>&& o) noexcept
         : _storage{zs::forward<DD>(o.get_deleter()), o.release()} {}
-    template <
-        typename TT, typename DD,
-        enable_if_all<!is_array_v<TT>, is_convertible_v<typename UniquePtr<TT, DD>::pointer, pointer>,
-                      is_assignable_v<D&, DD>>
-        = 0>
+    template <typename TT, typename DD,
+              enable_if_all<!is_array_v<TT>,
+                            is_convertible_v<typename UniquePtr<TT, DD>::pointer, pointer>,
+                            is_assignable_v<D&, DD>>
+              = 0>
     constexpr UniquePtr& operator=(UniquePtr<TT, DD>&& o) noexcept {
       reset(o.release());
       _storage.template get<0>() = zs::forward<DD>(o._storage.template get<0>());
@@ -147,5 +147,10 @@ namespace zs {
 
     tuple<D, pointer> _storage;
   };
+
+  template <typename T, typename... Args> auto make_unique(Args&&... args)
+      -> decltype(UniquePtr<T>(new T(FWD(args)...))) {
+    return UniquePtr<T>(new T(FWD(args)...));
+  }
 
 }  // namespace zs

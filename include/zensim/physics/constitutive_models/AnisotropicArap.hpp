@@ -69,8 +69,17 @@ namespace zs {
       zs::tie(I5, g5, H5) = base_t::I_wrt_F_a<5, 2>(F, a);
       const auto S_I4 = I4_sign(F, a);
       const auto Sqrt_I5 = zs::sqrt(I5);
+
+      auto alpha = (1 - S_I4 / Sqrt_I5);
+      auto beta = (S_I4 + S_I4) / (Sqrt_I5 * I5);
+      alpha = alpha < 0 ? 0 : alpha;
+      beta = beta < 0 ? 0 : beta;
+
+      // return mu
+      //        * ((1 - S_I4 / Sqrt_I5) * H5 + (S_I4 + S_I4) / (Sqrt_I5 * I5) * dyadic_prod(g5, g5));
+
       return mu
-             * ((1 - S_I4 / Sqrt_I5) * H5 + (S_I4 + S_I4) / (Sqrt_I5 * I5) * dyadic_prod(g5, g5));
+             * (alpha * H5 + beta * dyadic_prod(g5, g5));
     }
   };
 

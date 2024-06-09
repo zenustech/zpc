@@ -348,10 +348,10 @@ namespace zs {
       //   );
       // }
 
-      for (Ti i = 0; i != 9; ++i)
-        eigen_vals[i] = eigen_vals[i] < limits<value_type>::epsilon()
-                            ? limits<value_type>::epsilon()
-                            : eigen_vals[i];
+      for (Ti i = 0; i != 9; ++i) {
+        // eigen_vals[i] = eigen_vals[i] < limits<value_type>::epsilon() ? limits<value_type>::epsilon()  : eigen_vals[i];
+        eigen_vals[i] = zs::abs(eigen_vals[i]);
+      }
 
       // if(elm_id == 0)
       //   printf("epsilon : %e

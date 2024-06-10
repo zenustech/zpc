@@ -757,6 +757,7 @@ target_sources(zpc_jit_clang
 
   py_interop/Clang.cpp  # may include omp backend
 )
+target_compile_definitions(zpc_jit_clang PUBLIC -DZS_LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
 # target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
 endif(ZS_ENABLE_JIT)

@@ -9,7 +9,11 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/InitializePasses.h>
 #include <llvm/MC/TargetRegistry.h>
+#if ZS_LLVM_VERSION_MAJOR < 18
 #include <llvm/Support/Host.h>
+#else
+#include <llvm/TargetParser/Host.h>
+#endif
 #include <llvm/Support/TargetSelect.h>
 
 #include "zensim/io/Filesystem.hpp"
@@ -156,7 +160,11 @@ ZENSIM_EXPORT int cpp_compile_program(const char *cpp_src, const char *include_d
   llvm::raw_fd_ostream output(output_file, error_code, llvm::sys::fs::OF_None);
 
   llvm::legacy::PassManager pass_manager;
+#if ZS_LLVM_VERSION_MAJOR < 18
   llvm::CodeGenFileType file_type = llvm::CGFT_ObjectFile;
+#else
+  llvm::CodeGenFileType file_type = llvm::CodeGenFileType::ObjectFile;
+#endif
   target_machine->addPassesToEmitFile(pass_manager, output, nullptr, file_type);
 
   pass_manager.run(*module);

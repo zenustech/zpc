@@ -237,6 +237,67 @@ namespace zs {
       }
     }
 
+    template <typename VecT,int d = dim,
+              enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
+                            VecT::dim == 1, VecT::template range_t<0>::value == 4> = 0>
+    static constexpr VecT quaternionMultiply(const VecInterface<VecT> &q1,const VecInterface<VecT>& q2) noexcept {
+      VecT res{};
+      const T w1 = q1.w();
+      const T x1 = q1.x();
+      const T y1 = q1.y();
+      const T z1 = q1.z();
+
+      const T w2 = q2.w();
+      const T x2 = q2.x();
+      const T y2 = q2.y();
+      const T z2 = q2.z();
+
+      
+      res.w() = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
+      res.x() = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
+      res.y() = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
+      res.z() = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
+
+      return res;
+    }
+
+
+    template <typename VecT,int d = dim,
+              enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
+                            VecT::dim == 1, VecT::template range_t<0>::value == 4> = 0>
+    static constexpr VecT quaternionConjugateMultiply(const VecInterface<VecT> &q1,const VecInterface<VecT>& q2) noexcept {
+      VecT res{};
+      const T w1 = q1.w();
+      const T x1 = -q1.x();
+      const T y1 = -q1.y();
+      const T z1 = -q1.z();
+
+      const T w2 = q2.w();
+      const T x2 = q2.x();
+      const T y2 = q2.y();
+      const T z2 = q2.z();
+
+      
+      res.w() = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
+      res.x() = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
+      res.y() = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
+      res.z() = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
+
+      return res;
+    }
+    // template <typename VecT,int d = dim,
+    //         enable_if_all<d == 3,std::is_convertible_v<typename VecT::value_type,T>,
+    //                     typename VecT::dim == 1,typename VecT::extent == 4> = 0>
+    // static constexpr VecT quaternionConjugate(const VecInterface<VecT>& q) noexcept {
+    //     auto res = q;
+    //     res.x() = -res.x();
+    //     res.y() = -res.y();
+    //     res.z() = -res.z();
+
+    //     return res;
+    // }
+
+
     template <typename VecT, int d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
                             VecT::dim == 1, VecT::template range_t<0>::value == 4> = 0>

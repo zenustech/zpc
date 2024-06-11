@@ -236,6 +236,27 @@ namespace zs {
     constexpr decltype(auto) operator[](Ti is) const noexcept {
       return derivedPtr()->operator[](is);
     }
+
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    constexpr decltype(auto) x() noexcept {
+      return derivedPtr()->operator[](0);
+    }
+
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    constexpr decltype(auto) y() noexcept {
+      return derivedPtr()->operator[](1);
+    }
+
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    constexpr decltype(auto) z() noexcept {
+      return derivedPtr()->operator[](2);
+    }
+
+    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    constexpr decltype(auto) w() noexcept {
+      return derivedPtr()->operator[](3);
+    }
+
     // tuple as index
     template <typename VecT = Derived, typename... Ts,
               enable_if_all<sizeof...(Ts) <= VecT::dim, (is_integral_v<remove_cvref_t<Ts>> && ...)>

@@ -110,11 +110,11 @@ namespace zs {
     return std::basic_string<CharT>{begin(str), end(str)};
   }
 #endif
-  template <typename T> auto get_var_type_str(T &&v) noexcept {
+  template <typename T> constexpr auto get_var_type_str(T &&v) noexcept {
     // return convert_char_array_to_string(get_var_type(FWD(v)));
     return get_var_type(FWD(v));
   }
-  template <typename T> auto get_type_str() noexcept {
+  template <typename T> constexpr auto get_type_str() noexcept {
     // return convert_char_array_to_string(get_type<T>());
     return get_type<T>();
   }

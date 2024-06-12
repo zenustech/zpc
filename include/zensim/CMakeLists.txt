@@ -671,15 +671,29 @@ endif()
 set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
 
 if (ZS_PYTHON_FOUND)
+  if (WIN32)
+	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_ROOT)
+  else()
+	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_ROOT)
+	  cmake_path(GET ZS_OVERWRITE_PYTHON_ROOT PARENT_PATH ZS_OVERWRITE_PYTHON_ROOT)
+  endif()
+  set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_ROOT}/libs)
+
+  message(STATUS "python3 root for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_ROOT}")
+  message(STATUS "python3 link directory for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY}")
   message(STATUS "python3 libraries for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LIBRARIES}")
   message(STATUS "python3 include directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}")
   message(STATUS "python3 executable for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}")
+
   target_link_libraries(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LIBRARIES})
   target_include_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
+  target_link_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY})
 
   set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
   set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
   set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${ZS_OVERWRITE_PYTHON_EXECUTABLE} PARENT_SCOPE)
+  set(ZS_OVERWRITE_PYTHON_ROOT ${ZS_OVERWRITE_PYTHON_ROOT} PARENT_SCOPE)
+  set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY} PARENT_SCOPE)
 endif(ZS_PYTHON_FOUND)
 
 #[=[
@@ -810,7 +824,7 @@ endif(ENABLE_PCH)
 add_dependencies(zensim zpc_py_interop)
 # do not link the target (zpc_py_interop) to zensim!
 
-### general JIT-dependent shared library installation
+### general JIT-dependent shared library installation upon build
 if(ZS_ENABLE_JIT)
   add_dependencies(
       zpc_jit_py zpc_jit_clang

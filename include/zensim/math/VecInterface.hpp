@@ -237,22 +237,22 @@ namespace zs {
       return derivedPtr()->operator[](is);
     }
 
-    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    template <typename VecT = Derived, enable_if_t<(VecT::extent > 0)> = 0>
     constexpr decltype(auto) x() noexcept {
       return derivedPtr()->operator[](0);
     }
 
-    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    template <typename VecT = Derived, enable_if_t<(VecT::extent > 1)> = 0>
     constexpr decltype(auto) y() noexcept {
       return derivedPtr()->operator[](1);
     }
 
-    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    template <typename VecT = Derived, enable_if_t<(VecT::extent > 2)> = 0>
     constexpr decltype(auto) z() noexcept {
       return derivedPtr()->operator[](2);
     }
 
-    template <typename Ti, enable_if_t<is_integral_v<Ti>> = 0>
+    template <typename VecT = Derived, enable_if_t<(VecT::extent > 3)> = 0>
     constexpr decltype(auto) w() noexcept {
       return derivedPtr()->operator[](3);
     }

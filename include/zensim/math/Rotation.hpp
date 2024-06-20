@@ -47,7 +47,8 @@ namespace zs {
     /// axis + rotation
     template <typename VecT, auto unit = angle_unit_e::radian, auto d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
-                            VecT::dim == 1, VecT::template range_t<0>::value == 3> = 0>
+                            VecT::dim == 1, VecT::template range_t<0>::value == 3>
+              = 0>
     constexpr Rotation(const VecInterface<VecT> &p_, value_type alpha, wrapv<unit> = {}) noexcept
         : TM{} {
       if constexpr (unit == angle_unit_e::degree) alpha *= ((value_type)g_pi / (value_type)180);
@@ -182,9 +183,9 @@ namespace zs {
                               theta * (value_type)180 / (value_type)g_pi,
                               phi * (value_type)180 / (value_type)g_pi);
     }
-    template <typename VecT,
-              enable_if_all<std::is_convertible_v<typename VecT::value_type, T>, VecT::dim == 1,
-                            VecT::template range_t<0>::value == 4> = 0>
+    template <typename VecT, enable_if_all<std::is_convertible_v<typename VecT::value_type, T>,
+                                           VecT::dim == 1, VecT::template range_t<0>::value == 4>
+                             = 0>
     constexpr Rotation(const VecInterface<VecT> &q) noexcept : TM{} {
       if constexpr (dim == 2) {
         /// Construct a 2D counter clock wise rotation from the angle \a a in
@@ -200,12 +201,12 @@ namespace zs {
         self() = quaternion2matrix(q);
       }
     }
-    template <
-        typename VecTA, typename VecTB,
-        enable_if_all<std::is_convertible_v<typename VecTA::value_type, value_type>,
-                      std::is_convertible_v<typename VecTB::value_type, value_type>,
-                      VecTA::dim == 1, VecTB::dim == 1,
-                      VecTA::template range_t<0>::value == VecTB::template range_t<0>::value> = 0>
+    template <typename VecTA, typename VecTB,
+              enable_if_all<std::is_convertible_v<typename VecTA::value_type, value_type>,
+                            std::is_convertible_v<typename VecTB::value_type, value_type>,
+                            VecTA::dim == 1, VecTB::dim == 1,
+                            VecTA::template range_t<0>::value == VecTB::template range_t<0>::value>
+              = 0>
     constexpr Rotation(const VecInterface<VecTA> &a, const VecInterface<VecTB> &b) noexcept : TM{} {
       if constexpr (dim == 2 && VecTA::template range_t<0>::value == 2) {
         auto aa = a.normalized();
@@ -237,11 +238,14 @@ namespace zs {
       }
     }
 
-    template <typename VecT,int d = dim,
+    template <typename VecT, int d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
-                            VecT::dim == 1, VecT::template range_t<0>::value == 4> = 0>
-    static constexpr VecT quaternionMultiply(const VecInterface<VecT> &q1,const VecInterface<VecT>& q2) noexcept {
-      VecT res{};
+                            VecT::dim == 1, VecT::template range_t<0>::value == 4>
+              = 0>
+    static constexpr auto quaternionMultiply(const VecInterface<VecT> &q1,
+                                             const VecInterface<VecT> &q2) noexcept {
+      // VecT res{};
+      typename VecT::template variant_vec<typename VecT::value_type, typename VecT::extents> res{};
       const T w1 = q1.w();
       const T x1 = q1.x();
       const T y1 = q1.y();
@@ -252,7 +256,6 @@ namespace zs {
       const T y2 = q2.y();
       const T z2 = q2.z();
 
-      
       res.w() = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
       res.x() = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
       res.y() = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
@@ -261,12 +264,14 @@ namespace zs {
       return res;
     }
 
-
-    template <typename VecT,int d = dim,
+    template <typename VecT, int d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
-                            VecT::dim == 1, VecT::template range_t<0>::value == 4> = 0>
-    static constexpr VecT quaternionConjugateMultiply(const VecInterface<VecT> &q1,const VecInterface<VecT>& q2) noexcept {
-      VecT res{};
+                            VecT::dim == 1, VecT::template range_t<0>::value == 4>
+              = 0>
+    static constexpr auto quaternionConjugateMultiply(const VecInterface<VecT> &q1,
+                                                      const VecInterface<VecT> &q2) noexcept {
+      // VecT res{};
+      typename VecT::template variant_vec<typename VecT::value_type, typename VecT::extents> res{};
       const T w1 = q1.w();
       const T x1 = -q1.x();
       const T y1 = -q1.y();
@@ -277,7 +282,6 @@ namespace zs {
       const T y2 = q2.y();
       const T z2 = q2.z();
 
-      
       res.w() = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
       res.x() = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
       res.y() = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
@@ -297,10 +301,10 @@ namespace zs {
     //     return res;
     // }
 
-
     template <typename VecT, int d = dim,
               enable_if_all<d == 3, std::is_convertible_v<typename VecT::value_type, T>,
-                            VecT::dim == 1, VecT::template range_t<0>::value == 4> = 0>
+                            VecT::dim == 1, VecT::template range_t<0>::value == 4>
+              = 0>
     static constexpr TM quaternion2matrix(const VecInterface<VecT> &q) noexcept {
       /// (0, 1, 2, 3)
       /// (x, y, z, w)

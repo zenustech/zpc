@@ -658,6 +658,17 @@ if (NOT ZS_OVERWRITE_PYTHON_INCLUDE_DIR STREQUAL "" AND NOT ZS_OVERWRITE_PYTHON_
     endif(WIN32)
   endif()
 
+  # ananconda python, vanilla python
+  if (WIN32)
+	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
+    set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}/libs)
+  else()
+	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
+	  cmake_path(GET ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
+    set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}/lib)
+    set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY})
+  endif()
+
 else()
   find_package(Python3 COMPONENTS Interpreter Development)
   if (Python3_FOUND)
@@ -665,25 +676,49 @@ else()
     set(ZS_OVERWRITE_PYTHON_LIBRARIES ${Python3_LIBRARIES})
     set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
     set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+    set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${Python3_LIBRARY_DIRS})
+    set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${Python3_RUNTIME_LIBRARY_DIRS})
   endif(Python3_FOUND)
 endif()
 
 set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
 
 if (ZS_PYTHON_FOUND)
-  if (WIN32)
-	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_ROOT)
-  else()
-	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_ROOT)
-	  cmake_path(GET ZS_OVERWRITE_PYTHON_ROOT PARENT_PATH ZS_OVERWRITE_PYTHON_ROOT)
-  endif()
-  set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_ROOT}/libs)
-
-  message(STATUS "python3 root for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_ROOT}")
   message(STATUS "python3 link directory for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY}")
   message(STATUS "python3 libraries for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LIBRARIES}")
   message(STATUS "python3 include directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}")
   message(STATUS "python3 executable for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}")
+  message(STATUS "python3 runtime library directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}")
+
+  if (WIN32)
+    set(ZS_PYTHON_DLLS "")
+    string (REPLACE ";" " " ZS_PYTHON_LIBS "${ZS_OVERWRITE_PYTHON_LIBRARIES}")
+    separate_arguments(ZS_PYTHON_LIBS)
+    foreach(lib ${ZS_PYTHON_LIBS})
+      cmake_path(GET lib EXTENSION LAST_ONLY lib_type)
+      if (lib_type STREQUAL ".lib")
+        cmake_path(GET lib STEM dll_name)
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+          if (dll_name MATCHES "_d$")
+            foreach(rtdir ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS})
+              if (EXISTS "${rtdir}/${dll_name}.dll")
+                list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
+              endif() # check existence
+            endforeach() # iterate runtime library directories
+          endif() # dll filename has _d suffix
+        else()
+          if (NOT dll_name MATCHES "_d$")
+            foreach(rtdir ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS})
+              if (EXISTS "${rtdir}/${dll_name}.dll")
+                list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
+              endif() # check existence
+            endforeach() # iterate runtime library directories
+          endif() # dll filename has no _d suffix
+        endif()
+      endif()
+    endforeach()
+    message(STATUS "python3 runtime dlls for zpc_jit_py: ${ZS_PYTHON_DLLS}")
+  endif()
 
   target_link_libraries(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LIBRARIES})
   target_include_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
@@ -692,8 +727,12 @@ if (ZS_PYTHON_FOUND)
   set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
   set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
   set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${ZS_OVERWRITE_PYTHON_EXECUTABLE} PARENT_SCOPE)
-  set(ZS_OVERWRITE_PYTHON_ROOT ${ZS_OVERWRITE_PYTHON_ROOT} PARENT_SCOPE)
   set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY} PARENT_SCOPE)
+  # useful for windows
+  # set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS} PARENT_SCOPE)
+  if (WIN32)
+    set(ZS_PYTHON_DLLS ${ZS_PYTHON_DLLS} PARENT_SCOPE)
+  endif()
 endif(ZS_PYTHON_FOUND)
 
 #[=[

@@ -138,7 +138,7 @@ namespace zs {
       ///  https://devblogs.microsoft.com/cppblog/optimizing-the-layout-of-empty-base-classes-in-vs2015-update-2-3/
       __declspec(empty_bases)
 #endif
-          tuple_base<index_sequence<Is...>, type_seq<Ts...>> : tuple_value<Is, Ts>... {
+      tuple_base<index_sequence<Is...>, type_seq<Ts...>> : tuple_value<Is, Ts>... {
     using tuple_types = type_seq<Ts...>;
     static constexpr size_t tuple_size = sizeof...(Ts);
 
@@ -257,7 +257,7 @@ namespace zs {
 #if ZS_ENABLE_SERIALIZATION
   template <typename S, size_t... Is, typename... Ts>
   void serialize(S &s, tuple_base<index_sequence<Is...>, type_seq<Ts...>> &tup) {
-    (void)(serialize(s, static_cast<tuple_value<Is, Ts> &>(tup)), ...);
+    ((void)serialize(s, static_cast<tuple_value<Is, Ts> &>(tup)), ...);
   }
 #endif
 
@@ -317,8 +317,8 @@ namespace zs {
       ((void)(this->template get<Is>() = v.val(Is)), ...);
     }
     template <typename Vec, size_t... Is>
-    constexpr auto assign_impl(const Vec &v, index_sequence<Is...>) noexcept
-        -> decltype(v[0], void()) {
+    constexpr auto assign_impl(const Vec &v, index_sequence<Is...>) noexcept -> decltype(v[0],
+                                                                                         void()) {
       ((void)(this->template get<Is>() = v[Is]), ...);
     }
 #if 0

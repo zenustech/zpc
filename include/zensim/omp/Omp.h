@@ -5,7 +5,7 @@
 #endif
 
 #if !defined(ZPC_JIT_MODE)
-#  include "omp.h"
+#  include <omp.h>
 #else
 
 #  if defined(_WIN32)

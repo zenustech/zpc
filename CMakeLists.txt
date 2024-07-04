@@ -21,8 +21,6 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake ${CMAKE_CURRENT_BINARY_DIR})
 
-include(GNUInstallDirs)
-
 # global rpath setup (before target creations)
 # ============================================
 # https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling#common-questions
@@ -81,11 +79,23 @@ set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR "" CACHE STRING "User overwriting of python 
 set(ZS_OVERWRITE_PYTHON_LIBRARIES "" CACHE STRING "User overwriting of python libraries")
 set(ZS_OVERWRITE_PYTHON_EXECUTABLE "" CACHE STRING "User overwriting of python executable")
 # package/shipping
-option(ZS_ENABLE_INSTALL "Install targets" Off)
-option(ZS_ENABLE_PACKAGE "Build package" Off)
+option(ZS_ENABLE_INSTALL "Install targets" OFF)
+option(ZS_ENABLE_PACKAGE "Build package" OFF)
 
 # option(ZENSIM_CORE_SHARED "Build dynamically linked version of the core library." ON)
 # option(ZENSIM_CORE_STATIC "Build statically linked version of the core library." ON)
+
+if (CMAKE_VERSION VERSION_LESS "3.21")
+    # ref: VulkanMemoryAllocator repo
+    # https://cmake.org/cmake/help/latest/variable/PROJECT_IS_TOP_LEVEL.html
+    string(COMPARE EQUAL ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR} PROJECT_IS_TOP_LEVEL)
+endif()
+
+if (PROJECT_IS_TOP_LEVEL)
+  if (ZS_ENABLE_INSTALL)
+    set(ZS_ENABLE_INSTALL OFF)
+  endif(ZS_ENABLE_INSTALL)
+endif(PROJECT_IS_TOP_LEVEL)
 
 # project base targets
 # ====================
@@ -300,7 +310,8 @@ endif()
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}, python inc: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
+message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
+message("dependent library options: python inc: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
 # =================
@@ -392,6 +403,7 @@ if(ZS_ENABLE_INSTALL)
   message("install_rpath: $ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
 
   # libs, includes
+  include(GNUInstallDirs)
   include(CMakePackageConfigHelpers)
   set(ZENSIM_CONFIG_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config-version.cmake")
   set(ZENSIM_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${project_name}-config.cmake")

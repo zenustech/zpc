@@ -67,37 +67,37 @@ zs::size_t shape_dims_get_size(std::vector<zs::size_t> *v) { return v->size(); }
     return v->capacity();                                                                          \
   }                                                                                                \
   /* iterator */                                                                                   \
-  aosoa_iterator_##T##_1 get_iterator_1##__##df##_##T(                                             \
+  aosoa_iterator_port_##T##_1 get_iterator_1##__##df##_##T(                                        \
       zs::DenseField<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                               \
-    return aosoa_iterator_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                  \
+    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                      \
   }                                                                                                \
-  aosoa_iterator_const_##T##_1 get_iterator_1##__##df##_##const##_##T(                             \
+  aosoa_iterator_port_const_##T##_1 get_iterator_1##__##df##_##const##_##T(                        \
       const zs::DenseField<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                         \
-    return aosoa_iterator_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};            \
+    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                \
   }                                                                                                \
-  aosoa_iterator_##T##_1 get_iterator_1##__##df##_##T##_##virtual(                                 \
+  aosoa_iterator_port_##T##_1 get_iterator_1##__##df##_##T##_##virtual(                            \
       zs::DenseField<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                               \
-    return aosoa_iterator_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                  \
+    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                      \
   }                                                                                                \
-  aosoa_iterator_const_##T##_1 get_iterator_1##__##df##_##const##_##T##_##virtual(                 \
+  aosoa_iterator_port_const_##T##_1 get_iterator_1##__##df##_##const##_##T##_##virtual(            \
       const zs::DenseField<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                          \
-    return aosoa_iterator_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};            \
+    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                \
   }                                                                                                \
-  aosoa_iterator_##T##_3 get_iterator_3##__##df##_##T(                                             \
+  aosoa_iterator_port_##T##_3 get_iterator_3##__##df##_##T(                                        \
       zs::DenseField<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                               \
-    return aosoa_iterator_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                  \
+    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                      \
   }                                                                                                \
-  aosoa_iterator_const_##T##_3 get_iterator_3##__##df##_##const##_##T(                             \
+  aosoa_iterator_port_const_##T##_3 get_iterator_3##__##df##_##const##_##T(                        \
       const zs::DenseField<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                         \
-    return aosoa_iterator_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};            \
+    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                \
   }                                                                                                \
-  aosoa_iterator_##T##_3 get_iterator_3##__##df##_##T##_##virtual(                                 \
+  aosoa_iterator_port_##T##_3 get_iterator_3##__##df##_##T##_##virtual(                            \
       zs::DenseField<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                               \
-    return aosoa_iterator_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                  \
+    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                      \
   }                                                                                                \
-  aosoa_iterator_const_##T##_3 get_iterator_3##__##df##_##const##_##T##_##virtual(                 \
+  aosoa_iterator_port_const_##T##_3 get_iterator_3##__##df##_##const##_##T##_##virtual(            \
       const zs::DenseField<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                          \
-    return aosoa_iterator_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};            \
+    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                \
   }                                                                                                \
   /* custom */                                                                                     \
   T get_val_container##__##df##_##T(zs::DenseField<T, zs::ZSPmrAllocator<false>> *v) {             \

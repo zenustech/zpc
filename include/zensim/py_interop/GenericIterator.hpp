@@ -6,15 +6,24 @@ namespace zs {
 
   /// @note assume the tile size is a power of two.
   /// @note assume either scalar or zs::vec (where T is its value_type, dim is its extent)
+  template <typename T, auto... Ns> struct aosoa_iterator;
+
+  template <typename T, auto... Ns> struct aosoa_iterator_port {
+    using size_type = u32;
+
+    T* base;  /// @note base pointer already embeds the channel offset
+    size_type idx, numTileBits, tileMask, numChns;
+  };
   template <typename T, auto... Ns> struct aosoa_iterator
       : IteratorInterface<aosoa_iterator<T, Ns...>> {
     using primitive_type = T;
     using iter_value_type = remove_cvref_t<primitive_type>;
+    using port_type = aosoa_iterator_port<T, Ns...>;
     static constexpr auto extent = (Ns * ...);
     static constexpr bool is_const_structure = is_const_v<primitive_type>;
     static constexpr bool is_scalar_access = (extent == 1);
 
-    using size_type = u32;
+    using size_type = typename port_type::size_type;
     using difference_type = make_signed_t<size_type>;
 
     using element_pointer_type
@@ -23,6 +32,21 @@ namespace zs {
         = conditional_t<is_scalar_access, decltype(*declval<element_pointer_type>()),
                         vec<element_pointer_type, Ns...>>;
 
+    explicit constexpr aosoa_iterator(port_type it) noexcept
+        : base{it.base},
+          idx{it.idx},
+          numTileBits{it.numTileBits},
+          tileMask{it.tileMask},
+          numChns{it.numChns} {}
+    constexpr operator port_type() noexcept {
+      port_type ret{};
+      ret.base = base;
+      ret.idx = idx;
+      ret.numTileBits = numTileBits;
+      ret.tileMask = tileMask;
+      ret.numChns = numChns;
+      return ret;
+    }
     constexpr aosoa_iterator() noexcept = default;
     template <bool IsConst = is_const_structure, enable_if_t<IsConst> = 0>
     constexpr aosoa_iterator(const aosoa_iterator<iter_value_type, Ns...>& o) noexcept
@@ -91,20 +115,28 @@ extern "C" {
 
 /// @note make sure these are POD types
 #define ZS_DECLARE_GENERIC_ITERATOR_TYPE(T, n)                                               \
+  template struct zs::aosoa_iterator_port<T, n>;                                             \
   template struct zs::aosoa_iterator<T, n>;                                                  \
   template struct zs::LegacyIterator<zs::aosoa_iterator<T, n>>;                              \
+  typedef zs::aosoa_iterator_port<T, n> aosoa_iterator_port_##T##_##n;                       \
   typedef zs::aosoa_iterator<T, n> aosoa_iter_##T##_##n;                                     \
   typedef zs::LegacyIterator<zs::aosoa_iterator<T, n>> aosoa_iterator_##T##_##n;             \
+  template struct zs::aosoa_iterator_port<const T, n>;                                       \
   template struct zs::aosoa_iterator<const T, n>;                                            \
   template struct zs::LegacyIterator<zs::aosoa_iterator<const T, n>>;                        \
+  typedef zs::aosoa_iterator_port<const T, n> aosoa_iterator_port_const_##T##_##n;           \
   typedef zs::aosoa_iterator<const T, n> aosoa_iter_const_##T##_##n;                         \
   typedef zs::LegacyIterator<zs::aosoa_iterator<const T, n>> aosoa_iterator_const_##T##_##n; \
+  template struct zs::aosoa_iterator_port<T, n, n>;                                          \
   template struct zs::aosoa_iterator<T, n, n>;                                               \
   template struct zs::LegacyIterator<zs::aosoa_iterator<T, n, n>>;                           \
+  typedef zs::aosoa_iterator_port<T, n, n> aosoa_iterator_port_##T##_##n##_##n;              \
   typedef zs::aosoa_iterator<T, n, n> aosoa_iter_##T##_##n##_##n;                            \
   typedef zs::LegacyIterator<zs::aosoa_iterator<T, n, n>> aosoa_iterator_##T##_##n##_##n;    \
+  template struct zs::aosoa_iterator_port<const T, n, n>;                                    \
   template struct zs::aosoa_iterator<const T, n, n>;                                         \
   template struct zs::LegacyIterator<zs::aosoa_iterator<const T, n, n>>;                     \
+  typedef zs::aosoa_iterator_port<const T, n, n> aosoa_iterator_port_const_##T##_##n##_##n;  \
   typedef zs::aosoa_iterator<const T, n, n> aosoa_iter_const_##T##_##n##_##n;                \
   typedef zs::LegacyIterator<zs::aosoa_iterator<const T, n, n>>                              \
       aosoa_iterator_const_##T##_##n##_##n;

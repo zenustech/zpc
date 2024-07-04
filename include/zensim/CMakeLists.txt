@@ -695,12 +695,10 @@ if (ZS_PYTHON_FOUND)
   message(STATUS "python3 executable for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}")
   message(STATUS "python3 runtime library directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}")
 
-  if (WIN32)
-    set(ZS_PYTHON_DLLS "")
-    string (REPLACE ";" " " ZS_PYTHON_LIBS "${ZS_OVERWRITE_PYTHON_LIBRARIES}")
-    separate_arguments(ZS_PYTHON_LIBS)
-    foreach(lib ${ZS_PYTHON_LIBS})
-      cmake_path(GET lib EXTENSION LAST_ONLY lib_type)
+  set(ZS_PYTHON_DLLS "")
+  foreach(lib ${ZS_OVERWRITE_PYTHON_LIBRARIES})
+    cmake_path(GET lib EXTENSION LAST_ONLY lib_type)
+    if (WIN32)
       if (lib_type STREQUAL ".lib")
         cmake_path(GET lib STEM dll_name)
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -710,20 +708,30 @@ if (ZS_PYTHON_FOUND)
                 list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
               endif() # check existence
             endforeach() # iterate runtime library directories
-          endif() # dll filename has _d suffix
-        else()
+          endif(dll_name MATCHES "_d$") # dll filename has _d suffix
+        else(CMAKE_BUILD_TYPE STREQUAL "Debug")
           if (NOT dll_name MATCHES "_d$")
             foreach(rtdir ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS})
               if (EXISTS "${rtdir}/${dll_name}.dll")
                 list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
               endif() # check existence
             endforeach() # iterate runtime library directories
-          endif() # dll filename has no _d suffix
-        endif()
-      endif()
-    endforeach()
-    message(STATUS "python3 runtime dlls for zpc_jit_py: ${ZS_PYTHON_DLLS}")
-  endif()
+          endif(NOT dll_name MATCHES "_d$") # dll filename has no _d suffix
+        endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      endif(lib_type STREQUAL ".lib")
+    else(WIN32)
+      # assume only .a .so .dylib
+      set(VALID_LIB_SUFFIXES ".a" ".so" ".dylib")
+      set(SHARED_LIB_SUFFIXES ".so" ".dylib")
+      if (NOT ${lib_type} IN_LIST VALID_LIB_SUFFIXES)
+        message(FATAL_ERROR "Unknown lib suffix [${lib_type}]!")
+      endif(NOT ${lib_type} IN_LIST VALID_LIB_SUFFIXES)
+      if (${lib_type} IN_LIST SHARED_LIB_SUFFIXES)
+        list(APPEND ZS_PYTHON_DLLS ${lib})
+      endif(${lib_type} IN_LIST SHARED_LIB_SUFFIXES)
+    endif(WIN32)
+  endforeach()
+  message(STATUS "python3 runtime shared libs for zpc_jit_py: ${ZS_PYTHON_DLLS}")
 
   target_link_libraries(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LIBRARIES})
   target_include_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
@@ -735,9 +743,7 @@ if (ZS_PYTHON_FOUND)
   set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY} PARENT_SCOPE)
   # useful for windows
   # set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS} PARENT_SCOPE)
-  if (WIN32)
-    set(ZS_PYTHON_DLLS ${ZS_PYTHON_DLLS} PARENT_SCOPE)
-  endif()
+  set(ZS_PYTHON_DLLS ${ZS_PYTHON_DLLS} PARENT_SCOPE)
 endif(ZS_PYTHON_FOUND)
 
 #[=[
@@ -874,17 +880,16 @@ if(ZS_ENABLE_JIT)
       zpc_jit_py zpc_jit_clang
   )
   if (ZS_PYTHON_FOUND)
-    add_custom_command(
-      TARGET zpc_py_interop
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND}
-      -DOBJECTS=${ZS_OVERWRITE_PYTHON_LIBRARIES}
-      -DOUTPUT=$<TARGET_FILE_DIR:zpc_py_interop>
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
-      VERBATIM
-      DEPENDS zpc_py_interop 
-        COMMENT "copying zpc_jit_py related python runtime shared libraries ${ZS_OVERWRITE_PYTHON_LIBRARIES}"
-    )
+    foreach(lib ${ZS_PYTHON_DLLS})
+      add_custom_command(
+        TARGET zpc_py_interop
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${lib} $<TARGET_FILE_DIR:zpc_py_interop>
+        VERBATIM
+        DEPENDS zpc_py_interop 
+          COMMENT "copying zpc_jit_py related python runtime shared library [${lib}]"
+      )
+    endforeach()
   endif(ZS_PYTHON_FOUND)
 
   if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
@@ -896,7 +901,7 @@ if(ZS_ENABLE_JIT)
 
       VERBATIM
       DEPENDS zpc_jit_clang 
-        COMMENT "copying JIT-dependent 3rd party runtime shared libraries"
+        COMMENT "copying JIT-dependent runtime shared library [$<TARGET_FILE:zswhereami>]"
     )
     find_package(LLVM CONFIG)
     find_package(Clang CONFIG HINTS "${LLVM_DIR}/../clang" "${LLVM_DIR}/../lib/cmake/clang")
@@ -912,7 +917,7 @@ if(ZS_ENABLE_JIT)
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:zpc_jit_clang>/$<TARGET_FILE_BASE_NAME:${lib}>$<TARGET_FILE_SUFFIX:${lib}>
             VERBATIM
             DEPENDS zpc_jit_clang 
-              COMMENT "copying JIT-dependent llvm/clang runtime shared libraries"
+              COMMENT "copying JIT-dependent llvm/clang runtime shared libraries [$<TARGET_FILE:${lib}>]"
           )
         endif(lib_type STREQUAL "SHARED_LIBRARY")
       endif(TARGET ${lib})

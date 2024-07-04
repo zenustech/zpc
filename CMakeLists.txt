@@ -59,25 +59,25 @@ option(ZS_ENABLE_CUDA "Enable cuda backend" ON)
 option(ZS_ENABLE_ZENO_CU_WRANGLE "Enable cuda wrangles for zeno" OFF)
 option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda architecture" ON)
 # vulkan
-option(ZS_ENABLE_VULKAN "Enable vulkan backend" OFF)
-option(ZS_ENABLE_VULKAN_VALIDATION "Enable vulkan validation" OFF)
+option(ZS_ENABLE_VULKAN "Enable vulkan backend" ON)
 # openmp
 option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
 # JIT (llvm/clang)
 option(ZS_ENABLE_JIT "Enable JIT module" ON)
-option(ZS_ENABLE_OPENVDB "Enable openvdb-related build" ON)
 # sycl, cl
 option(ZS_ENABLE_SYCL_COMPUTECPP "Enable SYCL[ComputeCpp] backend" ON)
 option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" OFF)
 option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend" OFF)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
-# serialization
-option(ZS_ENABLE_SERIALIZATION "Enable ZPC serialization" OFF)
-option(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL "No throw upon the absence of ZPC serialization implementation" ON)
 # python
 set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR "" CACHE STRING "User overwriting of python include directory")
 set(ZS_OVERWRITE_PYTHON_LIBRARIES "" CACHE STRING "User overwriting of python libraries")
 set(ZS_OVERWRITE_PYTHON_EXECUTABLE "" CACHE STRING "User overwriting of python executable")
+# serialization
+option(ZS_ENABLE_SERIALIZATION "Enable ZPC serialization" OFF)
+option(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL "No throw upon the absence of ZPC serialization implementation" ON)
+# openvdb
+option(ZS_ENABLE_OPENVDB "Enable openvdb-related build" ON)
 # package/shipping
 option(ZS_ENABLE_INSTALL "Install targets" OFF)
 option(ZS_ENABLE_PACKAGE "Build package" OFF)
@@ -91,8 +91,8 @@ if (CMAKE_VERSION VERSION_LESS "3.21")
     string(COMPARE EQUAL ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR} PROJECT_IS_TOP_LEVEL)
 endif()
 
-if (PROJECT_IS_TOP_LEVEL)
-  if (ZS_ENABLE_INSTALL)
+if(PROJECT_IS_TOP_LEVEL)
+  if(ZS_ENABLE_INSTALL)
     set(ZS_ENABLE_INSTALL OFF)
   endif(ZS_ENABLE_INSTALL)
 endif(PROJECT_IS_TOP_LEVEL)
@@ -111,6 +111,12 @@ include(CMake/CompilerWarnings.cmake)
 # ======================
 add_subdirectory(include/zensim/zpc_tpls) # build zsproj_deps target
 enable_sanitizers(zsproj_deps)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(ZS_ENABLE_VULKAN)
+    set(ZS_ENABLE_VULKAN_VALIDATION ON)
+  endif(ZS_ENABLE_VULKAN)
+endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 if(ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which
@@ -135,19 +141,6 @@ if(ZS_ENABLE_CUDA)
 
   set(CUDA_FOUND ${CMAKE_CUDA_COMPILER})
 endif(ZS_ENABLE_CUDA)
-
-# =========vk===========
-if(ZS_ENABLE_VULKAN)
-  find_package(Vulkan QUIET)
-
-  if(Vulkan_FOUND)
-    message("-- vulkan libraries" ${Vulkan_LIBRARIES})
-    message("-- vulkan include directory" ${Vulkan_INCLUDE_DIRS})
-  else()
-    message(STATUS "No Vulkan found")
-    set(ZS_ENABLE_VULKAN OFF)
-  endif()
-endif(ZS_ENABLE_VULKAN)
 
 # ========proj==========
 if(MSVC)
@@ -278,13 +271,17 @@ if(ZS_ENABLE_SYCL_COMPUTECPP)
   set(COMPUTECPP_DEVICE_COMPILER_FLAGS ${COMPUTECPP_DEVICE_COMPILER_FLAGS} PARENT_SCOPE)
 endif()
 
-set(ZS_ENABLE_SYCL_DPCPP ${ZS_ENABLE_SYCL_DPCPP} PARENT_SCOPE)
-set(ZS_ENABLE_SYCL ${ZS_ENABLE_SYCL} PARENT_SCOPE)
+# backends
 set(ZS_ENABLE_CUDA ${ZS_ENABLE_CUDA} PARENT_SCOPE)
-set(ZS_ENABLE_OPENCL ${ZS_ENABLE_OPENCL} PARENT_SCOPE)
-set(ZS_ENABLE_PTHREADS ${ZS_ENABLE_PTHREADS} PARENT_SCOPE)
+set(ZS_ENABLE_VULKAN ${ZS_ENABLE_VULKAN} PARENT_SCOPE)
 set(ZS_ENABLE_OPENMP ${ZS_ENABLE_OPENMP} PARENT_SCOPE)
 set(ZS_ENABLE_JIT ${ZS_ENABLE_JIT} PARENT_SCOPE)
+set(ZS_ENABLE_SYCL_DPCPP ${ZS_ENABLE_SYCL_DPCPP} PARENT_SCOPE)
+set(ZS_ENABLE_SYCL ${ZS_ENABLE_SYCL} PARENT_SCOPE)
+set(ZS_ENABLE_OPENCL ${ZS_ENABLE_OPENCL} PARENT_SCOPE)
+set(ZS_ENABLE_PTHREADS ${ZS_ENABLE_PTHREADS} PARENT_SCOPE)
+# 3rd party utils
+set(ZS_ENABLE_SERIALIZATION ${ZS_ENABLE_SERIALIZATION} PARENT_SCOPE)
 set(ZS_ENABLE_OPENVDB ${ZS_ENABLE_OPENVDB} PARENT_SCOPE)
 set(ZS_ENABLE_PARTIO ${ZS_ENABLE_PARTIO} PARENT_SCOPE)
 set(ZS_ENABLE_MSHIO ${ZS_ENABLE_MSHIO} PARENT_SCOPE)
@@ -542,6 +539,6 @@ cpack_ifw_configure_component(
   DISPLAY_NAME  en  Core
   DEPENDS com.examplecompany.product.Core.core
 )
-#]=]
+]=]
   endif()
 endif(ZS_ENABLE_PACKAGE)

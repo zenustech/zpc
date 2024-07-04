@@ -429,6 +429,11 @@ else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL=0)
 endif(ZS_ENABLE_SYCL)
 
+# ############
+# vulkan #
+# ############
+set(ZS_ENABLE_VULKAN ${ZS_ENABLE_VULKAN} PARENT_SCOPE)
+
 # ##############
 # zpc: openmp #
 # ##############
@@ -749,7 +754,7 @@ message(STATUS "python3 libraries for zpc_jit_py: ${Python3_LIBRARIES}")
 message(STATUS "python3 include directories for zpc_jit_py: ${Python3_INCLUDE_DIRS}")
 target_link_libraries(zpc_jit_py INTERFACE ${Python3_LIBRARIES})
 target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
-#]=]
+]=]
 
 add_library(zpc_py_interop SHARED)  # 
 set_target_properties(zpc_py_interop 
@@ -979,7 +984,7 @@ if (TARGET CUDA::nvJitLink)
     COMMENT "copying nvJitLink shared library"
   )
   endif()
-#]=]
+]=]
   endif (nvrtc_target_type STREQUAL "UNKNOWN_LIBRARY" OR nvrtc_target_type STREQUAL "SHARED_LIBRARY")
 endif(ZS_ENABLE_CUDA)
 
@@ -1116,7 +1121,7 @@ add_custom_command(
   DEPENDS zpctool
   COMMENT "converting ptx files to a header"
 )
-#]=]
+]=]
   add_custom_command(
     TARGET zpctool
     POST_BUILD

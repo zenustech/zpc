@@ -118,7 +118,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif(ZS_ENABLE_VULKAN)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
-if(ENABLE_PCH)
+if(ZS_ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which
   # is a good idea if any #define's change
   # consider breaking this out per project as necessary

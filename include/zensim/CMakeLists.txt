@@ -114,10 +114,10 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   # math
   math/bit/Bits.h
   math/curve/InterpolationKernel.hpp
-  math/linear/ConjugateResidual.hpp
-  math/linear/ConjugateGradient.hpp
-  math/linear/MinimumResidual.hpp
-  math/linear/LinearOperators.hpp
+  # math/linear/ConjugateResidual.hpp
+  # math/linear/ConjugateGradient.hpp
+  # math/linear/MinimumResidual.hpp
+  # math/linear/LinearOperators.hpp
   math/matrix/MatrixUtils.h
   math/matrix/Utility.h
   math/matrix/MatrixTransform.hpp
@@ -164,7 +164,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   types/BuilderBase.hpp
   types/SmallVector.hpp
   types/SourceLocation.hpp
-  types/View.h
+  # types/View.h
   Logger.hpp
   Platform.hpp
   Reflection.h
@@ -196,7 +196,7 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   simulation/Utils.hpp
 
   # tpp
-  simulation/sparsity/SparsityCompute.tpp
+  # simulation/sparsity/SparsityCompute.tpp
 
   io/Filesystem.hpp
 )
@@ -364,7 +364,7 @@ if(ZS_ENABLE_VULKAN)
   )
 endif(ZS_ENABLE_VULKAN)
 
-if(ENABLE_PCH)
+if(ZS_ENABLE_PCH)
   target_precompile_headers(zpccore INTERFACE
     ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
   )
@@ -449,7 +449,7 @@ if(ZS_ENABLE_OPENMP)
     PRIVATE ${ZENSIM_LIBRARY_OMP_SOURCE_FILES} ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES}
   )
 
-  if(ENABLE_PCH)
+  if(ZS_ENABLE_PCH)
     target_precompile_headers(zpcomp INTERFACE ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
   endif()
 
@@ -509,9 +509,10 @@ if(ZS_ENABLE_CUDA)
     PRIVATE ${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} # ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
   )
 
-  if(ENABLE_PCH)
-    target_precompile_headers(zpccuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
-  endif()
+  # precompiling cuda header files not viable (it seems)
+  # if(ZS_ENABLE_PCH)
+  #   target_precompile_headers(zpccuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
+  # endif()
 
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES LANGUAGE CUDA)
 
@@ -867,7 +868,7 @@ if(ZS_ENABLE_CUDA)
     PROPERTIES LANGUAGE CUDA)
 endif(ZS_ENABLE_CUDA)
 
-if(ENABLE_PCH)
+if(ZS_ENABLE_PCH)
   target_precompile_headers(zpc_py_interop INTERFACE ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
@@ -1010,7 +1011,7 @@ target_sources(zpctool
   ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}
 )
 
-if(ENABLE_PCH)
+if(ZS_ENABLE_PCH)
   target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
 endif(ENABLE_PCH)
 
@@ -1030,7 +1031,7 @@ endif(ZS_ENABLE_MSHIO)
 
 # set_property(TARGET zpctool APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}")
 if(ZS_ENABLE_OPENVDB)
-  if(ENABLE_PCH)
+  if(ZS_ENABLE_PCH)
     target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES})
   endif(ENABLE_PCH)
 

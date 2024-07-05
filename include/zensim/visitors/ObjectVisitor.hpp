@@ -1,8 +1,10 @@
+#pragma once
+#include "zensim/Platform.hpp"
 #include "zensim/ZpcImplPattern.hpp"
 
 namespace zs {
 
-  struct ObjectVisitor {
+  struct ZPC_CORE_API ObjectVisitor {
     virtual void visit(VisitableObjectConcept &);
     /// TBD: add interfaces for other visitees inheriting from VisitableObjectConcept
   };

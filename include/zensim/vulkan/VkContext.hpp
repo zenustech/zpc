@@ -70,9 +70,11 @@ namespace zs {
 
     void reset(void * = nullptr);
     operator bool() const noexcept { return _handle; }
-    template <typename T> explicit operator T *() noexcept { return static_cast<T *>(_handle); }
+    explicit operator SwapchainBuilder *() noexcept {
+      return static_cast<SwapchainBuilder *>(_handle);
+    }
 
-    void *_handle;
+    void *_handle{nullptr};
   };
 
   struct ZPC_CORE_API VulkanContext {

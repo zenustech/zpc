@@ -164,6 +164,11 @@ else()
   target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 endif()
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
+if(WIN32)
+  target_compile_definitions(zpc_cxx_deps
+    INTERFACE -DWIN32_LEAN_AND_MEAN
+  )
+endif(WIN32)
 
 # out of boundary check
 if(ZS_ENABLE_OFB_ACCESS_CHECK)

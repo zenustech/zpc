@@ -5,7 +5,7 @@
 
 namespace zs {
 
-  struct DescriptorSetLayout {
+  struct ZPC_CORE_API DescriptorSetLayout {
     DescriptorSetLayout(VulkanContext& ctx)
         : ctx{ctx}, bindings{}, descriptorSetLayout{VK_NULL_HANDLE} {}
     DescriptorSetLayout(VulkanContext& ctx,
@@ -41,7 +41,7 @@ namespace zs {
     vk::DescriptorSetLayout descriptorSetLayout;
   };
 
-  class DescriptorSetLayoutBuilder {
+  class ZPC_CORE_API DescriptorSetLayoutBuilder {
   public:
     DescriptorSetLayoutBuilder(VulkanContext& ctx) noexcept : ctx{ctx} {}
     DescriptorSetLayoutBuilder(DescriptorSetLayoutBuilder&& o) noexcept
@@ -60,7 +60,7 @@ namespace zs {
     std::map<u32, vk::DescriptorSetLayoutBinding> bindings{};
   };
 
-  struct DescriptorPool {
+  struct ZPC_CORE_API DescriptorPool {
     DescriptorPool(VulkanContext& ctx) noexcept : pctx{&ctx}, descriptorPool{VK_NULL_HANDLE} {}
     DescriptorPool(VulkanContext& ctx, const std::vector<vk::DescriptorPoolSize>& poolSizes,
                    u32 maxSets = 1000,
@@ -113,7 +113,7 @@ namespace zs {
   };
 
   /// @ref little vulkan engine
-  struct DescriptorWriter {
+  struct ZPC_CORE_API DescriptorWriter {
     DescriptorWriter(VulkanContext& ctx, const DescriptorSetLayout& setLayout) noexcept
         : ctx{ctx}, setLayout{setLayout} {}
     // DescriptorWriter(VulkanContext& ctx) noexcept : ctx{ctx}, setLayout{DescriptorSetLayout{ctx}} {}

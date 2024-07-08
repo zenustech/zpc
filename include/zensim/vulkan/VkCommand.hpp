@@ -3,7 +3,7 @@
 
 namespace zs {
 
-  struct VkCommand {
+  struct ZPC_CORE_API VkCommand {
     using PoolFamily = ExecutionContext::PoolFamily;
     VkCommand(PoolFamily& poolFamily, vk::CommandBuffer cmd, vk_cmd_usage_e usage)
         : _poolFamily{poolFamily},

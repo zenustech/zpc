@@ -17,7 +17,7 @@ namespace zs {
   //  |
   // (-1, 1)
 
-  struct Pipeline {
+  struct ZPC_CORE_API Pipeline {
     Pipeline(VulkanContext& ctx) : ctx{ctx}, pipeline{VK_NULL_HANDLE}, layout{VK_NULL_HANDLE} {}
     Pipeline(Pipeline&& o) noexcept : ctx{o.ctx}, pipeline{o.pipeline}, layout{o.layout} {
       o.pipeline = VK_NULL_HANDLE;
@@ -43,7 +43,7 @@ namespace zs {
     vk::PipelineLayout layout;
   };
 
-  struct PipelineBuilder {
+  struct ZPC_CORE_API PipelineBuilder {
     PipelineBuilder(VulkanContext& ctx) : ctx{ctx} { default_pipeline_configs(); }
     PipelineBuilder(PipelineBuilder&& o) noexcept
         : ctx{o.ctx},

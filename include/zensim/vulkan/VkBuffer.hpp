@@ -61,7 +61,7 @@ namespace zs {
     vk::DeviceSize size;
   };
 
-  struct Buffer {
+  struct ZPC_CORE_API Buffer {
     Buffer() = delete;
     Buffer(VulkanContext& ctx)
         : ctx{ctx},
@@ -245,7 +245,7 @@ namespace zs {
     vk::BufferUsageFlags usageFlags;
   };
 
-  struct BufferView {
+  struct ZPC_CORE_API BufferView {
     BufferView(VulkanContext& ctx) : ctx{ctx}, bufv{} {}
     BufferView(const BufferView&) = delete;
     BufferView(BufferView&&) noexcept = default;

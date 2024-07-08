@@ -12,7 +12,7 @@
 namespace zs {
 
   /// @ref little vulkan engine
-  std::vector<char> read_binary_file(std::string_view filePath);
+  ZPC_CORE_API std::vector<char> read_binary_file(std::string_view filePath);
 
   template <typename BitType> constexpr auto get_flag_value(vk::Flags<BitType> flags) {
     // using MaskType = typename vk::Flags<BitType>::MaskType;
@@ -437,12 +437,12 @@ namespace zs {
   }
 
   /// @ref sascha willems, VulkanTools
-  ZPC_BACKEND_API vk::ImageMemoryBarrier image_layout_transition_barrier(
+  ZPC_CORE_API vk::ImageMemoryBarrier image_layout_transition_barrier(
       vk::Image image, vk::ImageLayout oldImageLayout, vk::ImageLayout newImageLayout,
       vk::ImageSubresourceRange subresourceRange, vk::PipelineStageFlags srcStageMask,
       vk::PipelineStageFlags dstStageMask);
 
-  ZPC_BACKEND_API vk::ImageMemoryBarrier image_layout_transition_barrier(
+  ZPC_CORE_API vk::ImageMemoryBarrier image_layout_transition_barrier(
       vk::Image image, vk::ImageAspectFlags aspectMask, vk::ImageLayout oldImageLayout,
       vk::ImageLayout newImageLayout, vk::PipelineStageFlags srcStageMask,
       vk::PipelineStageFlags dstStageMask);

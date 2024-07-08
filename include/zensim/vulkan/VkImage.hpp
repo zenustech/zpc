@@ -5,7 +5,7 @@
 namespace zs {
 
   struct VkTexture;
-  struct Image {
+  struct ZPC_CORE_API Image {
     Image() = delete;
     Image(VulkanContext &ctx)
         : ctx{ctx},

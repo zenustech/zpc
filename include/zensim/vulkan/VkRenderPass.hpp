@@ -6,7 +6,7 @@
 namespace zs {
 
   enum attachment_category_e { color = 0, depth_stencil, input, preserve };
-  struct AttachmentDesc {
+  struct ZPC_CORE_API AttachmentDesc {
     AttachmentDesc(vk::Format format, vk::ImageLayout initialLayout, vk::ImageLayout finalLayout)
         : format{format}, initialLayout{initialLayout}, finalLayout{finalLayout} {}
     ~AttachmentDesc() = default;
@@ -19,7 +19,7 @@ namespace zs {
     vk::SampleCountFlagBits sampleBits{vk::SampleCountFlagBits::e1};
   };
 
-  struct SubpassDesc {
+  struct ZPC_CORE_API SubpassDesc {
     /// @note depth attachment and its ref always come last
 
     // a. check this setup first
@@ -108,7 +108,7 @@ namespace zs {
   };
 
   /// @note https://www.khronos.org/blog/streamlining-render-passes
-  struct RenderPass {
+  struct ZPC_CORE_API RenderPass {
     RenderPass(VulkanContext& ctx)
         : ctx{ctx}, renderpass{VK_NULL_HANDLE}, attachments{}, subpasses{} {}
     RenderPass(RenderPass&& o) noexcept
@@ -136,7 +136,7 @@ namespace zs {
     std::vector<SubpassDesc> subpasses;
   };
 
-  struct RenderPassBuilder {
+  struct ZPC_CORE_API RenderPassBuilder {
     RenderPassBuilder(VulkanContext& ctx) noexcept
         : ctx{ctx}, _attachments{}, _subpassCount{1}, _subpasses{}, _subpassDependencies{} {}
     ~RenderPassBuilder() = default;

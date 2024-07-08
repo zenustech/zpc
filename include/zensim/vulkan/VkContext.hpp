@@ -57,13 +57,31 @@ namespace zs {
   static constexpr u32 num_max_bindless_resources = 1000;
   static constexpr u32 bindless_texture_binding = 0;
 
+  /// @note wrapper class for SwapchainBuilder, behave like Unique<SwapchainBuilder>
+  struct SwapchainBuilderOwner {
+    SwapchainBuilderOwner() = default;
+    SwapchainBuilderOwner(void *) noexcept;
+    ~SwapchainBuilderOwner();
+
+    SwapchainBuilderOwner(SwapchainBuilderOwner &&o) noexcept;
+    SwapchainBuilderOwner &operator=(SwapchainBuilderOwner &&o);
+    SwapchainBuilderOwner(const SwapchainBuilderOwner &o) = delete;
+    SwapchainBuilderOwner &operator=(const SwapchainBuilderOwner &o) = delete;
+
+    void reset(void * = nullptr);
+    operator bool() const noexcept { return _handle; }
+    template <typename T> explicit operator T *() noexcept { return static_cast<T *>(_handle); }
+
+    void *_handle;
+  };
+
   struct ZPC_CORE_API VulkanContext {
     Vulkan &driver() const noexcept;
     VulkanContext(int devid, vk::Instance instance, vk::PhysicalDevice device,
                   const vk::DispatchLoaderDynamic &instDispatcher);
-    ~VulkanContext() noexcept;
-    VulkanContext(VulkanContext &&);
-    VulkanContext &operator=(VulkanContext &&);
+    ~VulkanContext() noexcept = default;
+    VulkanContext(VulkanContext &&) = default;
+    VulkanContext &operator=(VulkanContext &&) = default;
     VulkanContext(const VulkanContext &) = delete;
     VulkanContext &operator=(const VulkanContext &) = delete;
 
@@ -225,8 +243,9 @@ namespace zs {
     friend struct VkPipeline;
 
     /// resource builders
+
     // generally at most one swapchain is associated with a context, thus reuse preferred
-    SwapchainBuilder *swapchainBuilder;
+    SwapchainBuilderOwner swapchainBuilder;
   };
 
   struct ExecutionContext {

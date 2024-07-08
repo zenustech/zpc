@@ -149,7 +149,7 @@ namespace zs {
   };
 
   // ref: LegitEngine (https://github.com/Raikiri/LegitEngine), nvpro_core
-  struct ZPC_BACKEND_API SwapchainBuilder {
+  struct ZPC_CORE_API SwapchainBuilder {
     SwapchainBuilder(VulkanContext &ctx, vk::SurfaceKHR targetSurface);
     SwapchainBuilder(const SwapchainBuilder &) = delete;
     SwapchainBuilder(SwapchainBuilder &&) noexcept = default;

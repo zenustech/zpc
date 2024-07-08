@@ -5,7 +5,7 @@
 
 namespace zs {
 
-  struct VkTexture {
+  struct ZPC_CORE_API VkTexture {
     VkTexture() noexcept = default;
     VkTexture(VkTexture &&o) noexcept
         : image{std::move(o.image)},
@@ -46,7 +46,7 @@ namespace zs {
     vk::ImageLayout imageLayout;
   };
 
-  VkTexture load_texture(VulkanContext &ctx, u8 *data, size_t numBytes, vk::Extent2D extent,
+  ZPC_CORE_API VkTexture load_texture(VulkanContext &ctx, u8 *data, size_t numBytes, vk::Extent2D extent,
                          vk::Format format = vk::Format::eR8G8B8A8Unorm,
                          vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 

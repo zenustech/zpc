@@ -5,7 +5,7 @@
 
 namespace zs {
 
-  struct ShaderModule {
+  struct ZPC_CORE_API ShaderModule {
     ShaderModule(VulkanContext& ctx)
         : ctx{ctx},
           setLayouts{},

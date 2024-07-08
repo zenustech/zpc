@@ -76,7 +76,10 @@ namespace zs {
     defaultAllocator = 0;  // ref: nvpro-core
 
     /// destroy logical device
-    device.destroy(nullptr, dispatcher);
+    if (device) {
+      device.destroy(nullptr, dispatcher);
+      device = vk::Device{};
+    }
     fmt::print("vulkan context [{}] (of {}) has been successfully reset.\n", devid,
                driver().num_devices());
   }
@@ -104,9 +107,9 @@ namespace zs {
         registeredImages{zs::move(o.registeredImages)},
         registeredBuffers{zs::move(o.registeredBuffers)},
         swapchainBuilder{zs::exchange(o.swapchainBuilder, nullptr)} {
-    for (int i = 0; i < sizeof(queueFamilyIndices); ++i)
+    for (int i = 0; i < sizeof(queueFamilyIndices) / sizeof(queueFamilyIndices[0]); ++i)
       queueFamilyIndices[i] = zs::exchange(o.queueFamilyIndices[i], -1);
-    for (int i = 0; i < sizeof(queueFamilyMaps); ++i)
+    for (int i = 0; i < sizeof(queueFamilyMaps) / sizeof(queueFamilyMaps[0]); ++i)
       queueFamilyMaps[i] = zs::exchange(o.queueFamilyMaps[i], -1);
   }
   VulkanContext& VulkanContext::operator=(VulkanContext&& o) {
@@ -130,15 +133,19 @@ namespace zs {
     registeredImages = zs::move(o.registeredImages);
     registeredBuffers = zs::move(o.registeredBuffers);
     swapchainBuilder = zs::exchange(o.swapchainBuilder, nullptr);
-    for (int i = 0; i < sizeof(queueFamilyIndices); ++i)
+    for (int i = 0; i < sizeof(queueFamilyIndices) / sizeof(queueFamilyIndices[0]); ++i)
       queueFamilyIndices[i] = zs::exchange(o.queueFamilyIndices[i], -1);
-    for (int i = 0; i < sizeof(queueFamilyMaps); ++i)
+    for (int i = 0; i < sizeof(queueFamilyMaps) / sizeof(queueFamilyMaps[0]); ++i)
       queueFamilyMaps[i] = zs::exchange(o.queueFamilyMaps[i], -1);
     return *this;
   }
   VulkanContext::VulkanContext(int devId, vk::Instance instance, vk::PhysicalDevice phydev,
                                const vk::DispatchLoaderDynamic& instDispatcher)
-      : devid{devId}, physicalDevice{phydev}, device{}, dispatcher{instDispatcher} {
+      : devid{devId},
+        physicalDevice{phydev},
+        device{},
+        dispatcher{instDispatcher},
+        swapchainBuilder{nullptr} {
     /// @note logical device
     std::vector<vk::ExtensionProperties> devExts
         = physicalDevice.enumerateDeviceExtensionProperties();

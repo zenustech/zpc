@@ -312,6 +312,30 @@ add_library(zensim INTERFACE)
 # zpc: stable#
 # ############
 add_library(zpcbase INTERFACE)
+
+if(ZS_ENABLE_PCH)
+  target_precompile_headers(zpcbase INTERFACE
+    ZpcBuiltin.hpp
+    ZpcFunction.hpp
+    ZpcFunctional.hpp
+    ZpcImplPattern.hpp
+    ZpcIntrinsics.hpp
+    ZpcIterator.hpp
+    ZpcMathUtils.hpp
+    ZpcMeta.hpp
+    ZpcReflection.hpp
+    ZpcResource.hpp
+    ZpcTuple.hpp
+
+    types/Property.h
+    types/SmallVector.hpp
+
+    math/Tensor.hpp
+    math/Vec.h
+
+    execution/Atomics.hpp
+  )
+endif(ZS_ENABLE_PCH)
 target_sources(zpcbase 
   INTERFACE
 
@@ -368,7 +392,7 @@ if(ZS_ENABLE_PCH)
   target_precompile_headers(zpccore INTERFACE
     ${ZENSIM_LIBRARY_CORE_INCLUDE_FILES}
   )
-endif()
+endif(ZS_ENABLE_PCH)
 
 target_link_libraries(zpccore PUBLIC zpc_cxx_deps zpcbase)
 target_link_libraries(zpccore PRIVATE zswhereami)
@@ -387,8 +411,6 @@ target_link_options(zpccore
 )
 set_target_properties(zpccore
   PROPERTIES POSITION_INDEPENDENT_CODE ON
-
-  # CXX_VISIBILITY_PRESET default
 )
 
 # target_link_libraries(zpc_cxx_deps INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>, synchronization.lib, >)
@@ -451,7 +473,7 @@ if(ZS_ENABLE_OPENMP)
 
   if(ZS_ENABLE_PCH)
     target_precompile_headers(zpcomp INTERFACE ${ZENSIM_LIBRARY_OMP_INCLUDE_FILES})
-  endif()
+  endif(ZS_ENABLE_PCH)
 
   set_target_properties(zpcomp
     PROPERTIES POSITION_INDEPENDENT_CODE ON
@@ -514,7 +536,7 @@ if(ZS_ENABLE_CUDA)
   if(ZS_ENABLE_PCH)
     target_precompile_headers(zpccuda INTERFACE cuda/memory/MemOps.hpp)
     # ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
-  endif()
+  endif(ZS_ENABLE_PCH)
 
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES LANGUAGE CUDA)
 

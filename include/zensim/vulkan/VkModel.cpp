@@ -7,12 +7,10 @@
 
 namespace zs {
 
-  template <typename Ti>
-  VkModel::VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs,
+  VkModel::VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,
                    const vec3_t &trans, const vec3_t &rotation, const vec3_t &scale)
       : translate{trans}, rotate{rotation}, scale{scale} {
-    static_assert(sizeof(Ti) == sizeof(u32) && alignof(Ti) == alignof(u32),
-                  "index type should be u32-alike");
+    using Ti = u32;
 
     const auto &vs = surfs.nodes;
     const auto &is = surfs.elems;
@@ -107,12 +105,5 @@ namespace zs {
     ctx.device.freeCommandBuffers(pool.cmdpool(zs::vk_cmd_usage_e::single_use), cmd,
                                   ctx.dispatcher);
   }
-
-  extern template ZPC_CORE_TEMPLATE_EXPORT VkModel::VkModel(
-      VulkanContext &ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,
-      const vec3_t &translation, const vec3_t &rotation, const vec3_t &scale);
-  extern template ZPC_CORE_TEMPLATE_EXPORT VkModel::VkModel(
-      VulkanContext &ctx, const Mesh<float, /*dim*/ 3, i32, /*codim*/ 3> &surfs,
-      const vec3_t &translation, const vec3_t &rotation, const vec3_t &scale);
 
 }  // namespace zs

@@ -10,13 +10,13 @@ namespace zs {
     enum UnparkControl { RetainContinue, RemoveContinue, RetainBreak, RemoveBreak };
     enum ParkResult { Skip, Unpark, Timeout };
   }  // namespace detail
-  ZPC_CORE_API enum FutexResult {
+  enum ZPC_CORE_API FutexResult {
     value_changed,  // when expected != atomic value
     awoken,         // awoken from 'wake' (success state)
     interrupted,    // interrupted by certain signal
     timedout        // not applicable to wait, applicable to wait until
   };
-  ZPC_CORE_API enum class CvStatus {  // identical to std cpp
+  enum class ZPC_CORE_API CvStatus {  // identical to std cpp
     no_timeout,
     timeout
   };

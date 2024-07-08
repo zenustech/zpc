@@ -6,7 +6,7 @@
 
 namespace zs {
 
-  struct ZPC_CORE_API VkModel {
+  struct ZPC_API VkModel {
     enum draw_category_e { tri = 0, point, pick };
     using vec3_t = vec<float, 3>;
     using transform_t = vec<float, 4, 4>;
@@ -19,11 +19,10 @@ namespace zs {
     };
 
     VkModel() = default;
-    template <typename Ti> VkModel(VulkanContext &ctx,
-                                   const Mesh<float, /*dim*/ 3, Ti, /*codim*/ 3> &surfs,
-                                   const vec3_t &translation = vec3_t::constant(0.f),
-                                   const vec3_t &eulerXYZradians = vec3_t::constant(0.f),
-                                   const vec3_t &scale = vec3_t::constant(1.f));
+    VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,
+            const vec3_t &translation = vec3_t::constant(0.f),
+            const vec3_t &eulerXYZradians = vec3_t::constant(0.f),
+            const vec3_t &scale = vec3_t::constant(1.f));
     VkModel(VkModel &&o) = default;
     VkModel &operator=(VkModel &&o) = default;
     void reset() {
@@ -125,17 +124,5 @@ namespace zs {
     Owner<Buffer> indices;
     vec3_t scale, rotate, translate;
   };
-
-  extern template ZPC_CORE_TEMPLATE_IMPORT VkModel::VkModel(VulkanContext &ctx,
-                                                               const Mesh<float, 3, u32, 3> &surfs,
-                                                               const vec3_t &translation,
-                                                               const vec3_t &rotation,
-                                                               const vec3_t &scale);
-  // ZPC_FWD_DECL_FUNC
-  extern template ZPC_CORE_TEMPLATE_IMPORT VkModel::VkModel(VulkanContext &ctx,
-                                                               const Mesh<float, 3, i32, 3> &surfs,
-                                                               const vec3_t &translation,
-                                                               const vec3_t &rotation,
-                                                               const vec3_t &scale);
 
 }  // namespace zs

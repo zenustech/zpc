@@ -315,7 +315,7 @@ add_library(zpcbase INTERFACE)
 
 if(ZS_ENABLE_PCH)
   target_precompile_headers(zpcbase INTERFACE
-    ZpcBuiltin.hpp
+    # ZpcBuiltin.hpp
     ZpcFunction.hpp
     ZpcFunctional.hpp
     ZpcImplPattern.hpp

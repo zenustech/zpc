@@ -12,7 +12,7 @@ namespace zs {
 
   template <> struct raw_memory_resource<device_mem_tag> : mr_t {
   private:
-    raw_memory_resource();
+    ZPC_BACKEND_API raw_memory_resource();
 
   public:
     using value_type = std::byte;
@@ -22,30 +22,15 @@ namespace zs {
     using propagate_on_container_copy_assignment = true_type;
     using propagate_on_container_swap = true_type;
 
-    ZPC_BACKEND_API static raw_memory_resource &instance() {
-      static raw_memory_resource s_instance{};
-      return s_instance;
-    }
+    ZPC_BACKEND_API static raw_memory_resource &instance();
     ~raw_memory_resource() = default;
 
-    void *do_allocate(size_t bytes, size_t alignment) override {
-      if (bytes) {
-        auto ret = zs::allocate(mem_device, bytes, alignment);
-        // record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
-        return ret;
-      }
-      return nullptr;
-    }
-    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override {
-      if (bytes) {
-        zs::deallocate(mem_device, ptr, bytes, alignment);
-        // erase_allocation(ptr);
-      }
-    }
+    ZPC_BACKEND_API void *do_allocate(size_t bytes, size_t alignment) override;
+    ZPC_BACKEND_API void do_deallocate(void *ptr, size_t bytes, size_t alignment) override;
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
   };
 
-  template <> struct ZPC_BACKEND_API temporary_memory_resource<device_mem_tag> : mr_t {
+  template <> struct temporary_memory_resource<device_mem_tag> : mr_t {
     using value_type = std::byte;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -56,8 +41,9 @@ namespace zs {
     /// @note [context] param implies that Cuda singleton has already been initialized
     temporary_memory_resource(void *c = nullptr, void *s = nullptr) : context{c}, stream{s} {}
 
-    void *do_allocate(std::size_t bytes, std::size_t alignment) override;
-    void do_deallocate(void *ptr, std::size_t bytes, std::size_t alignment) override;
+    ZPC_BACKEND_API void *do_allocate(std::size_t bytes, std::size_t alignment) override;
+    ZPC_BACKEND_API void do_deallocate(void *ptr, std::size_t bytes,
+                                       std::size_t alignment) override;
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     void *context{nullptr};
@@ -68,7 +54,7 @@ namespace zs {
 
   template <> struct raw_memory_resource<um_mem_tag> : mr_t {
   private:
-    raw_memory_resource();
+    ZPC_BACKEND_API raw_memory_resource();
 
   public:
     using value_type = std::byte;
@@ -78,10 +64,7 @@ namespace zs {
     using propagate_on_container_copy_assignment = true_type;
     using propagate_on_container_swap = true_type;
 
-    ZPC_BACKEND_API static raw_memory_resource &instance() {
-      static raw_memory_resource s_instance{};
-      return s_instance;
-    }
+    ZPC_BACKEND_API static raw_memory_resource &instance();
     ~raw_memory_resource() = default;
 
     void *do_allocate(size_t bytes, size_t alignment) override {
@@ -128,18 +111,18 @@ namespace zs {
   };
 #else
   template <> struct stack_virtual_memory_resource<device_mem_tag> : vmr_t {
-    stack_virtual_memory_resource(ProcID did = 0, size_t size = vmr_t::s_chunk_granularity);
-    ~stack_virtual_memory_resource();
+    ZPC_BACKEND_API stack_virtual_memory_resource(ProcID did, size_t size);
+    ZPC_BACKEND_API ~stack_virtual_memory_resource();
 
-    bool do_check_residency(size_t offset, size_t bytes) const override;
-    bool do_commit(size_t offset, size_t bytes) override;
-    bool do_evict(size_t offset, size_t bytes) override;
+    ZPC_BACKEND_API bool do_check_residency(size_t offset, size_t bytes) const override;
+    ZPC_BACKEND_API bool do_commit(size_t offset, size_t bytes) override;
+    ZPC_BACKEND_API bool do_evict(size_t offset, size_t bytes) override;
     void *do_address(size_t offset) const override {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }
 
-    void *do_allocate(size_t bytes, size_t alignment) override;
-    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override;
+    ZPC_BACKEND_API void *do_allocate(size_t bytes, size_t alignment) override;
+    ZPC_BACKEND_API void do_deallocate(void *ptr, size_t bytes, size_t alignment) override;
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     std::vector<unsigned long long> _allocHandles;
@@ -159,11 +142,11 @@ namespace zs {
     static constexpr size_t s_chunk_granularity_bits = vmr_t::s_chunk_granularity_bits;
     static constexpr size_t s_chunk_granularity = vmr_t::s_chunk_granularity;
 
-    arena_virtual_memory_resource(ProcID did = -1, size_t space = s_chunk_granularity);
-    ~arena_virtual_memory_resource();
-    bool do_check_residency(size_t offset, size_t bytes) const override;
-    bool do_commit(size_t offset, size_t bytes) override;
-    bool do_evict(size_t offset, size_t bytes) override;
+    ZPC_BACKEND_API arena_virtual_memory_resource(ProcID did, size_t space);
+    ZPC_BACKEND_API ~arena_virtual_memory_resource();
+    ZPC_BACKEND_API bool do_check_residency(size_t offset, size_t bytes) const override;
+    ZPC_BACKEND_API bool do_commit(size_t offset, size_t bytes) override;
+    ZPC_BACKEND_API bool do_evict(size_t offset, size_t bytes) override;
     void *do_address(size_t offset) const override {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }

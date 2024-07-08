@@ -76,19 +76,19 @@ namespace zs {
     parts->release();
   }
 
-  template void write_partio<float, 3>(std::string, const std::vector<std::array<float, 3>> &,
+  template ZPC_BACKEND_TEMPLATE_EXPORT void write_partio<float, 3>(std::string, const std::vector<std::array<float, 3>> &,
                                        std::string);
-  template void write_partio<double, 3>(std::string, const std::vector<std::array<double, 3>> &,
+  template ZPC_BACKEND_TEMPLATE_EXPORT void write_partio<double, 3>(std::string, const std::vector<std::array<double, 3>> &,
                                         std::string);
 
-  template void write_partio_with_stress(std::string, const std::vector<std::array<float, 3>> &,
+  template ZPC_BACKEND_TEMPLATE_EXPORT void write_partio_with_stress(std::string, const std::vector<std::array<float, 3>> &,
                                          const std::vector<float> &);
-  template void write_partio_with_stress(std::string, const std::vector<std::array<double, 3>> &,
+  template ZPC_BACKEND_TEMPLATE_EXPORT void write_partio_with_stress(std::string, const std::vector<std::array<double, 3>> &,
                                          const std::vector<double> &);
 
-  template void write_partio_with_grid(std::string, const std::vector<std::array<float, 3>> &,
+  template ZPC_BACKEND_TEMPLATE_EXPORT void write_partio_with_grid(std::string, const std::vector<std::array<float, 3>> &,
                                        const std::vector<std::array<float, 3>> &);
-  template void write_partio_with_grid(std::string, const std::vector<std::array<double, 3>> &,
+  template ZPC_BACKEND_TEMPLATE_EXPORT void write_partio_with_grid(std::string, const std::vector<std::array<double, 3>> &,
                                        const std::vector<std::array<double, 3>> &);
 
 }  // namespace zs

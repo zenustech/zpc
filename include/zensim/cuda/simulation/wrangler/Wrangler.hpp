@@ -66,9 +66,9 @@ namespace zs {
     }
 #endif
     constexpr std::intptr_t operator()(size_t i) const noexcept {
-      return (std::intptr_t)((char*)base
-                             + (((((i >> numTileBits) * chnCnt) << numTileBits) | (i & tileMask))
-                                << numUnitSizeBits));
+      return (std::intptr_t)(
+          (char*)base
+          + (((((i >> numTileBits) * chnCnt) << numTileBits) | (i & tileMask)) << numUnitSizeBits));
     }
 
     void* base;
@@ -80,9 +80,11 @@ namespace zs {
 namespace zs::cudri {
 
   /// jitify: preprocess() -> compile() -> link() -> load()
-  std::vector<std::string> load_all_ptx_files_at(const std::string& localPath = "resource");
-  std::string compile_cuda_source_to_ptx(std::string_view code, std::string_view name = "unnamed",
-                                         std::vector<std::string_view> additionalOptions = {});
-  void precompile_wranglers(std::string_view progname, std::string_view source);
+  ZPC_EXTENSION_API std::vector<std::string> load_all_ptx_files_at(const std::string& localPath
+                                                                   = "resource");
+  ZPC_EXTENSION_API std::string compile_cuda_source_to_ptx(
+      std::string_view code, std::string_view name = "unnamed",
+      std::vector<std::string_view> additionalOptions = {});
+  ZPC_EXTENSION_API void precompile_wranglers(std::string_view progname, std::string_view source);
 
 }  // namespace zs::cudri

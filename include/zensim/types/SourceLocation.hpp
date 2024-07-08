@@ -8,7 +8,7 @@ namespace zs {
   // ref:
   // https://github.com/microsoft/STL/blob/62137922ab168f8e23ec1a95c946821e24bde230/stl/inc/source_location
   // https://github.com/microsoft/STL/issues/54
-  struct source_location {
+  struct ZPC_CORE_API source_location {
 // 14.1.2, source_location creation
 #if defined(__SYCL_DEVICE_ONLY__)
     static constexpr source_location current(const char* __file = "", const char* __func = "",

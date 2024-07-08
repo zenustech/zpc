@@ -3,7 +3,7 @@
 
 namespace zs {
 
-  struct Swapchain {
+  struct ZPC_CORE_API Swapchain {
     /// triple buffering
 
     Swapchain() = delete;
@@ -149,7 +149,7 @@ namespace zs {
   };
 
   // ref: LegitEngine (https://github.com/Raikiri/LegitEngine), nvpro_core
-  struct SwapchainBuilder {
+  struct ZPC_BACKEND_API SwapchainBuilder {
     SwapchainBuilder(VulkanContext &ctx, vk::SurfaceKHR targetSurface);
     SwapchainBuilder(const SwapchainBuilder &) = delete;
     SwapchainBuilder(SwapchainBuilder &&) noexcept = default;

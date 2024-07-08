@@ -7,14 +7,14 @@
 
 namespace zs {
 
-  void *allocate(host_mem_tag, size_t size, size_t alignment,
-                 const source_location &loc = source_location::current());
-  void deallocate(host_mem_tag, void *ptr, size_t size, size_t alignment,
-                  const source_location &loc = source_location::current());
-  void memset(host_mem_tag, void *addr, int chval, size_t size,
-              const source_location &loc = source_location::current());
-  void copy(host_mem_tag, void *dst, void *src, size_t size,
-            const source_location &loc = source_location::current());
+  ZPC_CORE_API void *allocate(host_mem_tag, size_t size, size_t alignment,
+                              const source_location &loc = source_location::current());
+  ZPC_CORE_API void deallocate(host_mem_tag, void *ptr, size_t size, size_t alignment,
+                               const source_location &loc = source_location::current());
+  ZPC_CORE_API void memset(host_mem_tag, void *addr, int chval, size_t size,
+                           const source_location &loc = source_location::current());
+  ZPC_CORE_API void copy(host_mem_tag, void *dst, void *src, size_t size,
+                         const source_location &loc = source_location::current());
 
 #if 0
   /// dispatch mem op calls

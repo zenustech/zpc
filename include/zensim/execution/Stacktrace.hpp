@@ -3,6 +3,7 @@
 #include <ostream>
 #include <string>
 
+#include "zensim/Platform.hpp"
 #include "zensim/ZpcFunction.hpp"
 
 namespace Kokkos {
@@ -10,7 +11,7 @@ namespace Kokkos {
 
     /// \brief Return the demangled version of the input symbol, or the
     ///   original input if demangling is not possible.
-    std::string demangle(const std::string &name);
+    ZPC_CORE_API std::string demangle(const std::string &name);
 
     /// \brief Save the current stacktrace.
     ///

@@ -45,10 +45,10 @@ namespace zs {
       const VdbGrid<3, f32, index_sequence<3, 4, 5>> &grid, SmallString propTag = "v",
       SmallString gridName = "SparseGrid");
 
-  void assign_floatgrid_to_adaptive_grid(const OpenVDBStruct &grid,
+  ZPC_EXTENSION_API void assign_floatgrid_to_adaptive_grid(const OpenVDBStruct &grid,
                                          VdbGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
                                          SmallString propTag);
-  void assign_float3grid_to_adaptive_grid(const OpenVDBStruct &grid,
+  ZPC_EXTENSION_API void assign_float3grid_to_adaptive_grid(const OpenVDBStruct &grid,
                                           VdbGrid<3, f32, index_sequence<3, 4, 5>> &ag_,
                                           SmallString propTag);
 

@@ -53,7 +53,10 @@ namespace zs {
 
   void VulkanContext::reset() {
     /// clear builders
-    // if (swapchainBuilder) swapchainBuilder.reset(nullptr);
+    if (swapchainBuilder) {
+      delete swapchainBuilder;
+      swapchainBuilder = nullptr;
+    }
     /// clear execution resources
     {
       // working contexts (command pool resources)
@@ -78,6 +81,61 @@ namespace zs {
                driver().num_devices());
   }
 
+  VulkanContext::~VulkanContext() noexcept { reset(); }
+
+  VulkanContext::VulkanContext(VulkanContext&& o)
+      : devid{zs::exchange(o.devid, -1)},
+        physicalDevice{zs::move(o.physicalDevice)},
+        device{zs::exchange(o.device, vk::Device{})},
+        dispatcher{zs::move(o.dispatcher)},
+        uniqueQueueFamilyIndices{zs::move(o.uniqueQueueFamilyIndices)},
+        memoryProperties{zs::move(o.memoryProperties)},
+        depthStencilResolveProperties{zs::move(o.depthStencilResolveProperties)},
+        deviceProperties{zs::move(o.deviceProperties)},
+        supportedVk12Features{zs::move(o.supportedVk12Features)},
+        enabledVk12Features{zs::move(o.enabledVk12Features)},
+        supportedDeviceFeatures{zs::move(o.supportedDeviceFeatures)},
+        enabledDeviceFeatures{zs::move(o.enabledDeviceFeatures)},
+        defaultDescriptorPool{zs::move(o.defaultDescriptorPool)},
+        defaultAllocator{zs::move(o.defaultAllocator)},
+        bindlessDescriptorPool{zs::move(o.bindlessDescriptorPool)},
+        bindlessDescriptorSetLayout{zs::move(o.bindlessDescriptorSetLayout)},
+        bindlessDescriptorSet{zs::move(o.bindlessDescriptorSet)},
+        registeredImages{zs::move(o.registeredImages)},
+        registeredBuffers{zs::move(o.registeredBuffers)},
+        swapchainBuilder{zs::exchange(o.swapchainBuilder, nullptr)} {
+    for (int i = 0; i < sizeof(queueFamilyIndices); ++i)
+      queueFamilyIndices[i] = zs::exchange(o.queueFamilyIndices[i], -1);
+    for (int i = 0; i < sizeof(queueFamilyMaps); ++i)
+      queueFamilyMaps[i] = zs::exchange(o.queueFamilyMaps[i], -1);
+  }
+  VulkanContext& VulkanContext::operator=(VulkanContext&& o) {
+    devid = zs::exchange(o.devid, -1);
+    physicalDevice = zs::move(o.physicalDevice);
+    device = zs::exchange(o.device, vk::Device{});
+    dispatcher = zs::move(o.dispatcher);
+    uniqueQueueFamilyIndices = zs::move(o.uniqueQueueFamilyIndices);
+    memoryProperties = zs::move(o.memoryProperties);
+    depthStencilResolveProperties = zs::move(o.depthStencilResolveProperties);
+    deviceProperties = zs::move(o.deviceProperties);
+    supportedVk12Features = zs::move(o.supportedVk12Features);
+    enabledVk12Features = zs::move(o.enabledVk12Features);
+    supportedDeviceFeatures = zs::move(o.supportedDeviceFeatures);
+    enabledDeviceFeatures = zs::move(o.enabledDeviceFeatures);
+    defaultDescriptorPool = zs::move(o.defaultDescriptorPool);
+    defaultAllocator = zs::move(o.defaultAllocator);
+    bindlessDescriptorPool = zs::move(o.bindlessDescriptorPool);
+    bindlessDescriptorSetLayout = zs::move(o.bindlessDescriptorSetLayout);
+    bindlessDescriptorSet = zs::move(o.bindlessDescriptorSet);
+    registeredImages = zs::move(o.registeredImages);
+    registeredBuffers = zs::move(o.registeredBuffers);
+    swapchainBuilder = zs::exchange(o.swapchainBuilder, nullptr);
+    for (int i = 0; i < sizeof(queueFamilyIndices); ++i)
+      queueFamilyIndices[i] = zs::exchange(o.queueFamilyIndices[i], -1);
+    for (int i = 0; i < sizeof(queueFamilyMaps); ++i)
+      queueFamilyMaps[i] = zs::exchange(o.queueFamilyMaps[i], -1);
+    return *this;
+  }
   VulkanContext::VulkanContext(int devId, vk::Instance instance, vk::PhysicalDevice phydev,
                                const vk::DispatchLoaderDynamic& instDispatcher)
       : devid{devId}, physicalDevice{phydev}, device{}, dispatcher{instDispatcher} {
@@ -487,8 +545,10 @@ namespace zs {
   ///
   SwapchainBuilder& VulkanContext::swapchain(vk::SurfaceKHR surface, bool reset) {
     if ((!swapchainBuilder || reset || swapchainBuilder->getSurface() != surface)
-        && surface != VK_NULL_HANDLE)
-      swapchainBuilder.reset(new SwapchainBuilder(*this, surface));
+        && surface != VK_NULL_HANDLE) {
+      if (swapchainBuilder) delete swapchainBuilder;
+      swapchainBuilder = new SwapchainBuilder(*this, surface);
+    }
     if (swapchainBuilder)
       return *swapchainBuilder;
     else

@@ -43,7 +43,7 @@ namespace zs {
   };
 
   template <> struct raw_memory_resource<host_mem_tag> : mr_t {
-    ZPC_BACKEND_API static raw_memory_resource &instance() {
+    ZPC_CORE_API static raw_memory_resource &instance() {
       static raw_memory_resource s_instance{};
       return s_instance;
     }
@@ -123,7 +123,7 @@ namespace zs {
     ProcID did;
   };
 
-  extern template struct ZPC_BACKEND_TEMPLATE_IMPORT advisor_memory_resource<host_mem_tag>;
+  extern template struct ZPC_CORE_TEMPLATE_IMPORT advisor_memory_resource<host_mem_tag>;
 
   template <typename MemTag> struct stack_virtual_memory_resource
       : vmr_t {  // default impl falls back to
@@ -218,17 +218,17 @@ namespace zs {
 #else
   template <> struct stack_virtual_memory_resource<host_mem_tag>
       : vmr_t {  // default impl falls back to
-    stack_virtual_memory_resource(ProcID did = -1, size_t size = vmr_t::s_chunk_granularity);
-    ~stack_virtual_memory_resource();
-    bool do_check_residency(size_t offset, size_t bytes) const override;
-    bool do_commit(size_t offset, size_t bytes) override;
-    bool do_evict(size_t offset, size_t bytes) override;
+    ZPC_CORE_API stack_virtual_memory_resource(ProcID did, size_t size);
+    ZPC_CORE_API ~stack_virtual_memory_resource();
+    ZPC_CORE_API bool do_check_residency(size_t offset, size_t bytes) const override;
+    ZPC_CORE_API bool do_commit(size_t offset, size_t bytes) override;
+    ZPC_CORE_API bool do_evict(size_t offset, size_t bytes) override;
     void *do_address(size_t offset) const override {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }
 
-    void *do_allocate(size_t bytes, size_t alignment) override;
-    void do_deallocate(void *ptr, size_t bytes, size_t alignment) override;
+    ZPC_CORE_API void *do_allocate(size_t bytes, size_t alignment) override;
+    ZPC_CORE_API void do_deallocate(void *ptr, size_t bytes, size_t alignment) override;
     bool do_is_equal(const mr_t &other) const noexcept override { return this == &other; }
 
     size_t _granularity;
@@ -248,11 +248,11 @@ namespace zs {
     static constexpr size_t s_chunk_granularity_bits = vmr_t::s_chunk_granularity_bits;
     static constexpr size_t s_chunk_granularity = vmr_t::s_chunk_granularity;
 
-    arena_virtual_memory_resource(ProcID did = -1, size_t space = s_chunk_granularity);
-    ~arena_virtual_memory_resource();
-    bool do_check_residency(size_t offset, size_t bytes) const override;
-    bool do_commit(size_t offset, size_t bytes) override;
-    bool do_evict(size_t offset, size_t bytes) override;
+    ZPC_CORE_API arena_virtual_memory_resource(ProcID did, size_t space);
+    ZPC_CORE_API ~arena_virtual_memory_resource();
+    ZPC_CORE_API bool do_check_residency(size_t offset, size_t bytes) const override;
+    ZPC_CORE_API bool do_commit(size_t offset, size_t bytes) override;
+    ZPC_CORE_API bool do_evict(size_t offset, size_t bytes) override;
     void *do_address(size_t offset) const override {
       return static_cast<void *>(static_cast<char *>(_addr) + offset);
     }
@@ -387,7 +387,7 @@ namespace zs {
   };
 #endif
 
-  struct general_allocator {
+  struct ZPC_CORE_API general_allocator {
     general_allocator() noexcept : _mr{&raw_memory_resource<host_mem_tag>::instance()} {};
     general_allocator(const general_allocator &other) : _mr{other.resource()} {}
     general_allocator(mr_t *r) noexcept : _mr{r} {}
@@ -405,11 +405,11 @@ namespace zs {
     mr_t *_mr{nullptr};
   };
 
-  struct heap_allocator : general_allocator {
+  struct ZPC_CORE_API heap_allocator : general_allocator {
     heap_allocator() : general_allocator{&raw_memory_resource<host_mem_tag>::instance()} {}
   };
 
-  struct stack_allocator {
+  struct ZPC_CORE_API stack_allocator {
     explicit stack_allocator(mr_t *mr, size_t totalMemBytes, size_t alignBytes);
     stack_allocator() = delete;
     ~stack_allocator();

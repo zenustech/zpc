@@ -10,13 +10,13 @@ namespace zs {
     enum UnparkControl { RetainContinue, RemoveContinue, RetainBreak, RemoveBreak };
     enum ParkResult { Skip, Unpark, Timeout };
   }  // namespace detail
-  enum FutexResult {
+  ZPC_CORE_API enum FutexResult {
     value_changed,  // when expected != atomic value
     awoken,         // awoken from 'wake' (success state)
     interrupted,    // interrupted by certain signal
     timedout        // not applicable to wait, applicable to wait until
   };
-  enum class CvStatus {  // identical to std cpp
+  ZPC_CORE_API enum class CvStatus {  // identical to std cpp
     no_timeout,
     timeout
   };
@@ -28,16 +28,16 @@ namespace zs {
     // put the current thread to sleep if the expected value matches the value in the atomic
     // waitmask will be saved and compared to the wakemask later in the wake call
     // to check if you wanna wake up this thread or keep it sleeping
-    static FutexResult wait(std::atomic<u32> *v, u32 expected, u32 waitMask = 0xffffffff);
+    ZPC_CORE_API static FutexResult wait(std::atomic<u32> *v, u32 expected, u32 waitMask = 0xffffffff);
     /// @note duration in milli-seconds
-    static FutexResult wait_for(std::atomic<u32> *v, u32 expected, i64 duration = -1,
+    ZPC_CORE_API static FutexResult wait_for(std::atomic<u32> *v, u32 expected, i64 duration = -1,
                                 u32 waitMask = 0xffffffff);
     // wake up the thread if (wakeMask & waitMask == true)
-    static int wake(std::atomic<u32> *v, int count = limits<int>::max(), u32 wakeMask = 0xffffffff);
+    ZPC_CORE_API static int wake(std::atomic<u32> *v, int count = limits<int>::max(), u32 wakeMask = 0xffffffff);
   };
 
-  ZPC_BACKEND_API void await_change(std::atomic<u32> &v, u32 cur);
-  ZPC_BACKEND_API void await_equal(std::atomic<u32> &v, u32 desired);
+  ZPC_CORE_API void await_change(std::atomic<u32> &v, u32 cur);
+  ZPC_CORE_API void await_equal(std::atomic<u32> &v, u32 desired);
 
   // process-local mutex
   struct Mutex : std::atomic<u32> {
@@ -46,24 +46,24 @@ namespace zs {
     // 257: locked and contended (...0001 | 00000001)
     // Mutex(u32 offset = 0) noexcept : _kMask{(u32)1 << (offset & (u32)31)} {}
     // ~Mutex() = default;
-    void lock() noexcept;
-    void unlock() noexcept;
-    bool try_lock() noexcept;
+    ZPC_CORE_API void lock() noexcept;
+    ZPC_CORE_API void unlock() noexcept;
+    ZPC_CORE_API bool try_lock() noexcept;
     static constexpr u32 _kMask{1};
   };
 
   // 8 bytes alignment for rollover issue
   // https://docs.ntpsec.org/latest/rollover.html
   struct ConditionVariable {
-    void notify_one() noexcept;
-    void notify_all() noexcept;
+    ZPC_CORE_API void notify_one() noexcept;
+    ZPC_CORE_API void notify_all() noexcept;
 
-    void wait(Mutex &lk) noexcept;
+    ZPC_CORE_API void wait(Mutex &lk) noexcept;
     template <typename Pred> void wait(Mutex &lk, Pred p) {
       while (!p()) wait(lk);
     }
 
-    CvStatus wait_for(Mutex &lk, i64 duration) noexcept;
+    ZPC_CORE_API CvStatus wait_for(Mutex &lk, i64 duration) noexcept;
     template <typename Pred> bool wait_for(Mutex &lk, i64 duration, Pred p) {
       while (!p())
         if (wait_for(lk, duration) == CvStatus::timeout) return p();

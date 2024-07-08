@@ -47,7 +47,7 @@ namespace zs {
       Total = Default + 1
     };
     /// @ref nvidia warp
-    class ContextGuard {
+    class ZPC_BACKEND_API ContextGuard {
     public:
       // default policy for restoring contexts
       explicit ContextGuard(void *context, bool restore = false,
@@ -67,25 +67,29 @@ namespace zs {
     // static void init_constant_cache(void *ptr, size_t size);
     // static void init_constant_cache(void *ptr, size_t size, void *stream);
 
-    static bool set_default_device(int dev,
-                                   const source_location &loc = source_location::current());
-    static int get_default_device() noexcept;
+    ZPC_BACKEND_API static bool set_default_device(int dev, const source_location &loc
+                                                            = source_location::current());
+    ZPC_BACKEND_API static int get_default_device() noexcept;
 
     /// error handling
-    static u32 get_last_cuda_rt_error();
-    static std::string_view get_cuda_rt_error_string(u32 errorCode);
-    static void check_cuda_rt_error(u32 errorCode, ProcID did = -1,
-                                    const source_location &loc = source_location::current());
+    ZPC_BACKEND_API static u32 get_last_cuda_rt_error();
+    ZPC_BACKEND_API static std::string_view get_cuda_rt_error_string(u32 errorCode);
+    ZPC_BACKEND_API static void check_cuda_rt_error(u32 errorCode, ProcID did = -1,
+                                                    const source_location &loc
+                                                    = source_location::current());
     /// kernel launch
-    static u32 launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
-                            unsigned int bx, unsigned int by, unsigned int bz, void **args,
-                            size_t shmem, void *stream);
-    static u32 launchCooperativeKernel(const void *f, unsigned int gx, unsigned int gy,
-                                       unsigned int gz, unsigned int bx, unsigned int by,
-                                       unsigned int bz, void **args, size_t shmem, void *stream);
-    static u32 launchCallback(void *stream, void *f, void *data);
+    ZPC_BACKEND_API static u32 launchKernel(const void *f, unsigned int gx, unsigned int gy,
+                                            unsigned int gz, unsigned int bx, unsigned int by,
+                                            unsigned int bz, void **args, size_t shmem,
+                                            void *stream);
+    ZPC_BACKEND_API static u32 launchCooperativeKernel(const void *f, unsigned int gx,
+                                                       unsigned int gy, unsigned int gz,
+                                                       unsigned int bx, unsigned int by,
+                                                       unsigned int bz, void **args, size_t shmem,
+                                                       void *stream);
+    ZPC_BACKEND_API static u32 launchCallback(void *stream, void *f, void *data);
 
-    struct CudaContext {
+    struct ZPC_BACKEND_API CudaContext {
       auto &driver() const noexcept { return Cuda::driver(); }
       CudaContext(int devId = 0, int device = 0, void *contextIn = nullptr)
           : devid{devId}, dev{device}, context{contextIn}, errorStatus{false} {}
@@ -236,8 +240,9 @@ namespace zs {
 
     /// other utilities
     /// reference: kokkos/core/src/Cuda/Kokkos_Cuda_BlockSize_Deduction.hpp, Ln 101
-    static int deduce_block_size(const source_location &loc, const CudaContext &ctx, void *f,
-                                 function<size_t(int)>, std::string_view = "");
+    ZPC_BACKEND_API static int deduce_block_size(const source_location &loc, const CudaContext &ctx,
+                                                 void *f, function<size_t(int)>,
+                                                 std::string_view = "");
 
     mutable bool errorStatus;
 

@@ -6,7 +6,7 @@
 
 namespace zs {
 
-  struct VkModel {
+  struct ZPC_CORE_API VkModel {
     enum draw_category_e { tri = 0, point, pick };
     using vec3_t = vec<float, 3>;
     using transform_t = vec<float, 4, 4>;
@@ -126,11 +126,16 @@ namespace zs {
     vec3_t scale, rotate, translate;
   };
 
-  ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, u32, 3> &surfs,
-                                     const vec3_t &translation, const vec3_t &rotation,
-                                     const vec3_t &scale);
-  ZPC_FWD_DECL_FUNC VkModel::VkModel(VulkanContext &ctx, const Mesh<float, 3, i32, 3> &surfs,
-                                     const vec3_t &translation, const vec3_t &rotation,
-                                     const vec3_t &scale);
+  extern template ZPC_CORE_TEMPLATE_IMPORT VkModel::VkModel(VulkanContext &ctx,
+                                                               const Mesh<float, 3, u32, 3> &surfs,
+                                                               const vec3_t &translation,
+                                                               const vec3_t &rotation,
+                                                               const vec3_t &scale);
+  // ZPC_FWD_DECL_FUNC
+  extern template ZPC_CORE_TEMPLATE_IMPORT VkModel::VkModel(VulkanContext &ctx,
+                                                               const Mesh<float, 3, i32, 3> &surfs,
+                                                               const vec3_t &translation,
+                                                               const vec3_t &rotation,
+                                                               const vec3_t &scale);
 
 }  // namespace zs

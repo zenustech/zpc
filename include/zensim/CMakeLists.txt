@@ -371,7 +371,7 @@ if(ZS_ENABLE_PCH)
 endif()
 
 target_link_libraries(zpccore PUBLIC zpc_cxx_deps zpcbase)
-target_link_libraries(zpccore PUBLIC zswhereami)
+target_link_libraries(zpccore PRIVATE zswhereami)
 # if (WIN32)
 #   target_link_libraries(zpccore PUBLIC synchronization)
 # endif(WIN32)
@@ -455,6 +455,7 @@ if(ZS_ENABLE_OPENMP)
 
   set_target_properties(zpcomp
     PROPERTIES POSITION_INDEPENDENT_CODE ON
+               WINDOWS_EXPORT_ALL_SYMBOLS ON  # otherwise fail at runtime(?)
   )
 
   target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
@@ -510,9 +511,10 @@ if(ZS_ENABLE_CUDA)
   )
 
   # precompiling cuda header files not viable (it seems)
-  # if(ZS_ENABLE_PCH)
-  #   target_precompile_headers(zpccuda INTERFACE ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES})
-  # endif()
+  if(ZS_ENABLE_PCH)
+    target_precompile_headers(zpccuda INTERFACE cuda/memory/MemOps.hpp)
+    # ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
+  endif()
 
   set_source_files_properties(${ZENSIM_LIBRARY_CUDA_SOURCE_FILES} ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES} PROPERTIES LANGUAGE CUDA)
 
@@ -1022,11 +1024,11 @@ set_target_properties(zpctool
 )
 
 if(ZS_ENABLE_PARTIO)
-  target_link_libraries(zpctool PUBLIC zspartio)
+  target_link_libraries(zpctool PRIVATE zspartio)
 endif(ZS_ENABLE_PARTIO)
 
 if(ZS_ENABLE_MSHIO)
-  target_link_libraries(zpctool PUBLIC mshio::mshio)
+  target_link_libraries(zpctool PRIVATE mshio::mshio)
 endif(ZS_ENABLE_MSHIO)
 
 # set_property(TARGET zpctool APPEND PROPERTY PUBLIC_HEADER "${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES} ${ZENSIM_LIBRARY_IO_INCLUDE_FILES}")

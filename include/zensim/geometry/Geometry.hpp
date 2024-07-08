@@ -288,9 +288,9 @@ namespace zs {
   constexpr bool colinear_point_on_segment(const VecInterface<VecT>& pt,
                                            const VecInterface<VecT>& s0,
                                            const VecInterface<VecT>& s1) {
-    if (zs::min(s0[0], s1[0]) <= pt[0] <= zs::max(s0[0], s1[0]))
-      if (zs::min(s0[1], s1[1]) <= pt[1] <= zs::max(s0[1], s1[1]))
-        if (zs::min(s0[2], s1[2]) <= pt[2] <= zs::max(s0[2], s1[2])) return true;
+    if (zs::min(s0[0], s1[0]) <= pt[0] && pt[0] <= zs::max(s0[0], s1[0]))
+      if (zs::min(s0[1], s1[1]) <= pt[1] && pt[1] <= zs::max(s0[1], s1[1]))
+        if (zs::min(s0[2], s1[2]) <= pt[2] && pt[2] <= zs::max(s0[2], s1[2])) return true;
     return false;
   }
   template <typename VecT, enable_if_all<is_floating_point_v<typename VecT::value_type>,

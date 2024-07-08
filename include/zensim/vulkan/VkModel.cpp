@@ -108,13 +108,11 @@ namespace zs {
                                   ctx.dispatcher);
   }
 
-  ZPC_INSTANTIATE VkModel::VkModel(VulkanContext &ctx,
-                                   const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,
-                                   const vec3_t &translation, const vec3_t &rotation,
-                                   const vec3_t &scale);
-  ZPC_INSTANTIATE VkModel::VkModel(VulkanContext &ctx,
-                                   const Mesh<float, /*dim*/ 3, i32, /*codim*/ 3> &surfs,
-                                   const vec3_t &translation, const vec3_t &rotation,
-                                   const vec3_t &scale);
+  extern template ZPC_CORE_TEMPLATE_EXPORT VkModel::VkModel(
+      VulkanContext &ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,
+      const vec3_t &translation, const vec3_t &rotation, const vec3_t &scale);
+  extern template ZPC_CORE_TEMPLATE_EXPORT VkModel::VkModel(
+      VulkanContext &ctx, const Mesh<float, /*dim*/ 3, i32, /*codim*/ 3> &surfs,
+      const vec3_t &translation, const vec3_t &rotation, const vec3_t &scale);
 
 }  // namespace zs

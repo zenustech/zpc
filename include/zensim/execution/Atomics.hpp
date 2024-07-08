@@ -276,76 +276,74 @@ namespace zs {
   // https://herbsutter.com/2012/08/31/reader-qa-how-to-write-a-cas-loop-using-stdatomics/
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>> atomic_max(
-      ExecTag execTag, T *const dest, const T val) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_max(ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_integral_v<T>) {
-      atomicMax(dest, val);
-      return;
+      return atomicMax(dest, val);
     } else {
       T old = *dest;
       for (T assumed = old;
            assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
            assumed = old)
         ;
-      return;
+      return old;
     }
   }
 #endif
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>()>
+  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
   atomic_max(ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old < val) *dest = val;
-      return;
+      return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
       for (T assumed = old;
            assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
            assumed = old)
         ;
-      return;
+      return old;
     } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_max impl!");
     }
-    return;
+    return (T)0;
   }
 
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>> atomic_min(
-      ExecTag execTag, T *const dest, const T val) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
+  atomic_min(ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_integral_v<T>) {
-      atomicMin(dest, val);
-      return;
+      return atomicMin(dest, val);
     } else {
       T old = *dest;
       for (T assumed = old;
            assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
            assumed = old)
         ;
-      return;
+      return old;
     }
   }
 #endif
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>()>
+  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
   atomic_min(ExecTag execTag, T *const dest, const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old > val) *dest = val;
-      return;
+      return old;
     } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
       T old = *dest;
       for (T assumed = old;
            assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
            assumed = old)
         ;
-      return;
+      return old;
     } else {
       static_assert(always_false<ExecTag>, "no backend corresponding atomic_min impl!");
     }
-    return;
+    return (T)0;
   }
 
   ///

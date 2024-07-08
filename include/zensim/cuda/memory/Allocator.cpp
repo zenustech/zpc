@@ -27,9 +27,37 @@ namespace zs {
     return *g_rawCudaUmInstance;
   }
 #endif
-
+  /// @ref
+  /// https://stackoverflow.com/questions/6380326/c-symbol-export-for-class-extending-template-class
   raw_memory_resource<device_mem_tag>::raw_memory_resource() { (void)Cuda::instance(); }
+
+  raw_memory_resource<device_mem_tag> &raw_memory_resource<device_mem_tag>::instance() {
+    static raw_memory_resource s_instance{};
+    return s_instance;
+  }
+
+  void *raw_memory_resource<device_mem_tag>::do_allocate(size_t bytes, size_t alignment) {
+    if (bytes) {
+      auto ret = zs::allocate(mem_device, bytes, alignment);
+      // record_allocation(MemTag{}, ret, demangle(*this), bytes, alignment);
+      return ret;
+    }
+    return nullptr;
+  }
+  void raw_memory_resource<device_mem_tag>::do_deallocate(void *ptr, size_t bytes,
+                                                          size_t alignment) {
+    if (bytes) {
+      zs::deallocate(mem_device, ptr, bytes, alignment);
+      // erase_allocation(ptr);
+    }
+  }
+
   raw_memory_resource<um_mem_tag>::raw_memory_resource() { (void)Cuda::instance(); }
+
+  raw_memory_resource<um_mem_tag> &raw_memory_resource<um_mem_tag>::instance() {
+    static raw_memory_resource s_instance{};
+    return s_instance;
+  }
 
   void *temporary_memory_resource<device_mem_tag>::do_allocate(std::size_t bytes,
                                                                std::size_t alignment) {
@@ -65,7 +93,7 @@ namespace zs {
     }
   }
 
-  template struct ZPC_TEMPLATE_EXPORT advisor_memory_resource<device_mem_tag>;
+  template struct ZPC_BACKEND_TEMPLATE_EXPORT advisor_memory_resource<device_mem_tag>;
 
 #if 0
   stack_virtual_memory_resource<device_mem_tag>::stack_virtual_memory_resource(

@@ -19,4 +19,19 @@ namespace zs {
   void write_partio_with_grid(std::string filename, const std::vector<std::array<T, dim>> &pos,
                               const std::vector<std::array<T, dim>> &force);
 
+  extern template ZPC_BACKEND_TEMPLATE_IMPORT void write_partio<float, 3>(std::string, const std::vector<std::array<float, 3>> &,
+                                       std::string);
+  extern template ZPC_BACKEND_TEMPLATE_IMPORT void write_partio<double, 3>(std::string, const std::vector<std::array<double, 3>> &,
+                                        std::string);
+
+  extern template ZPC_BACKEND_TEMPLATE_IMPORT void write_partio_with_stress(std::string, const std::vector<std::array<float, 3>> &,
+                                         const std::vector<float> &);
+  extern template ZPC_BACKEND_TEMPLATE_IMPORT void write_partio_with_stress(std::string, const std::vector<std::array<double, 3>> &,
+                                         const std::vector<double> &);
+
+  extern template ZPC_BACKEND_TEMPLATE_IMPORT void write_partio_with_grid(std::string, const std::vector<std::array<float, 3>> &,
+                                       const std::vector<std::array<float, 3>> &);
+  extern template ZPC_BACKEND_TEMPLATE_IMPORT void write_partio_with_grid(std::string, const std::vector<std::array<double, 3>> &,
+                                       const std::vector<std::array<double, 3>> &);
+
 }  // namespace zs

@@ -57,13 +57,13 @@ namespace zs {
   static constexpr u32 num_max_bindless_resources = 1000;
   static constexpr u32 bindless_texture_binding = 0;
 
-  struct VulkanContext {
+  struct ZPC_CORE_API VulkanContext {
     Vulkan &driver() const noexcept;
     VulkanContext(int devid, vk::Instance instance, vk::PhysicalDevice device,
                   const vk::DispatchLoaderDynamic &instDispatcher);
-    ~VulkanContext() noexcept = default;
-    VulkanContext(VulkanContext &&) = default;
-    VulkanContext &operator=(VulkanContext &&) = default;
+    ~VulkanContext() noexcept;
+    VulkanContext(VulkanContext &&);
+    VulkanContext &operator=(VulkanContext &&);
     VulkanContext(const VulkanContext &) = delete;
     VulkanContext &operator=(const VulkanContext &) = delete;
 
@@ -226,7 +226,7 @@ namespace zs {
 
     /// resource builders
     // generally at most one swapchain is associated with a context, thus reuse preferred
-    std::unique_ptr<SwapchainBuilder> swapchainBuilder;
+    SwapchainBuilder *swapchainBuilder;
   };
 
   struct ExecutionContext {

@@ -5,7 +5,7 @@
 namespace zs {
 
   /// wall time clock for now
-  struct CppTimer {
+  struct ZPC_CORE_API CppTimer {
     void tick();
     void tock();
     float elapsed() const noexcept;

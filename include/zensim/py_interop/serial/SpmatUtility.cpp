@@ -5,42 +5,42 @@
 extern "C" {
 
 #define INSTANTIATE_SPMAT_CAPIS(T, RowMajor, Ti, Tn)                                               \
-  void build_from_triplets##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(                      \
+  ZPC_EXPORT void build_from_triplets##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(           \
       zs::SequentialExecutionPolicy *ppol,                                                         \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat, Ti nrows, Ti ncols, \
       Ti *is, Ti *js, T *vals, Tn nnz) {                                                           \
     spmat->build(*ppol, nrows, ncols, zs::range(is, is + nnz), zs::range(js, js + nnz),            \
                  zs::range(vals, vals + nnz));                                                     \
   }                                                                                                \
-  void build_from_doublets##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(                      \
+  ZPC_EXPORT void build_from_doublets##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(           \
       zs::SequentialExecutionPolicy *ppol,                                                         \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat, Ti nrows, Ti ncols, \
       Ti *is, Ti *js, Tn nnz) {                                                                    \
     spmat->build(*ppol, nrows, ncols, zs::range(is, is + nnz), zs::range(js, js + nnz),            \
                  zs::false_c);                                                                     \
   }                                                                                                \
-  void build_from_doublets_sym##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(                  \
+  ZPC_EXPORT void build_from_doublets_sym##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(       \
       zs::SequentialExecutionPolicy *ppol,                                                         \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat, Ti nrows, Ti ncols, \
       Ti *is, Ti *js, Tn nnz) {                                                                    \
     spmat->build(*ppol, nrows, ncols, zs::range(is, is + nnz), zs::range(js, js + nnz),            \
                  zs::true_c);                                                                      \
   }                                                                                                \
-  void fast_build_from_doublets##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(                 \
+  ZPC_EXPORT void fast_build_from_doublets##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(      \
       zs::SequentialExecutionPolicy *ppol,                                                         \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat, Ti nrows, Ti ncols, \
       Ti *is, Ti *js, Tn nnz) {                                                                    \
     spmat->fastBuild(*ppol, nrows, ncols, zs::range(is, is + nnz), zs::range(js, js + nnz),        \
                      zs::false_c);                                                                 \
   }                                                                                                \
-  void fast_build_from_doublets_sym##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(             \
+  ZPC_EXPORT void fast_build_from_doublets_sym##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(  \
       zs::SequentialExecutionPolicy *ppol,                                                         \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat, Ti nrows, Ti ncols, \
       Ti *is, Ti *js, Tn nnz) {                                                                    \
     spmat->fastBuild(*ppol, nrows, ncols, zs::range(is, is + nnz), zs::range(js, js + nnz),        \
                      zs::true_c);                                                                  \
   }                                                                                                \
-  void transpose##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(                                \
+  ZPC_EXPORT void transpose##__##seq##_##spm##_##T##_##RowMajor##_##Ti##_##Tn(                     \
       zs::SequentialExecutionPolicy *ppol,                                                         \
       zs::SparseMatrix<T, RowMajor, Ti, Tn, zs::ZSPmrAllocator<false>> *spmat) {                   \
     spmat->transposeFrom(*ppol, *spmat, zs::true_c);                                               \

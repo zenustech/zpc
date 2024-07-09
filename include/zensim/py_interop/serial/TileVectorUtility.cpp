@@ -4,12 +4,12 @@
 extern "C" {
 
 #define INSTANTIATE_TILE_VECTOR_CAPIS(T, L)                                                     \
-  void append_properties##__##seq##_##tv##_##T##_##L(                                           \
+  ZPC_EXPORT void append_properties##__##seq##_##tv##_##T##_##L(                                \
       zs::SequentialExecutionPolicy *ppol, zs::TileVector<T, L, zs::ZSPmrAllocator<false>> *v,  \
       const std::vector<zs::PropertyTag> *tags) {                                               \
     v->append_channels(*ppol, *tags);                                                           \
   }                                                                                             \
-  void append_properties##__##seq##_##tv##_##T##_##L##_##virtual(                               \
+  ZPC_EXPORT void append_properties##__##seq##_##tv##_##T##_##L##_##virtual(                    \
       zs::SequentialExecutionPolicy * ppol, zs::TileVector<T, L, zs::ZSPmrAllocator<true>> * v, \
       const std::vector<zs::PropertyTag> *tags) {                                               \
     v->append_channels(*ppol, *tags);                                                           \

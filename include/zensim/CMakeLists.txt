@@ -894,7 +894,7 @@ endif(ZS_ENABLE_CUDA)
 
 if(ZS_ENABLE_PCH)
   target_precompile_headers(zpc_py_interop INTERFACE ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES})
-endif(ENABLE_PCH)
+endif(ZS_ENABLE_PCH)
 
 add_dependencies(zensim zpc_py_interop)
 # do not link the target (zpc_py_interop) to zensim!

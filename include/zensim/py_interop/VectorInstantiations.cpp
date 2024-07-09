@@ -7,114 +7,122 @@ extern "C" {
 
 #define INSTANTIATE_VECTOR_CAPIS(T)                                                              \
   /* container */                                                                                \
-  zs::Vector<T, zs::ZSPmrAllocator<false>> *container##__##v##_##T(                              \
+  ZPC_EXPORT zs::Vector<T, zs::ZSPmrAllocator<false>> *container##__##v##_##T(                   \
       const zs::ZSPmrAllocator<false> *allocator, zs::size_t size) {                             \
     return new zs::Vector<T, zs::ZSPmrAllocator<false>>{*allocator, size};                       \
   }                                                                                              \
-  zs::Vector<T, zs::ZSPmrAllocator<true>> *container##__##v##_##T##_##virtual(                   \
+  ZPC_EXPORT zs::Vector<T, zs::ZSPmrAllocator<true>> *container##__##v##_##T##_##virtual(        \
       const zs::ZSPmrAllocator<true> *allocator, zs::size_t size) {                              \
     return new zs::Vector<T, zs::ZSPmrAllocator<true>>{*allocator, size};                        \
   }                                                                                              \
-  void del_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) { delete v; }     \
-  void del_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> * v) {     \
+  ZPC_EXPORT void del_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {      \
     delete v;                                                                                    \
   }                                                                                              \
-  void relocate_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,              \
-                                       zs::memsrc_e mre, zs::ProcID devid) {                     \
+  ZPC_EXPORT void del_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> \
+                                                         * v) {                                  \
+    delete v;                                                                                    \
+  }                                                                                              \
+  ZPC_EXPORT void relocate_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,   \
+                                                  zs::memsrc_e mre, zs::ProcID devid) {          \
     *v = v->clone({mre, devid});                                                                 \
   }                                                                                              \
-  void relocate_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> * v,  \
-                                                   zs::memsrc_e mre, zs::ProcID devid) {         \
+  ZPC_EXPORT void relocate_container##__##v##_##T##_##virtual(                                   \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::memsrc_e mre, zs::ProcID devid) {         \
     *v = v->clone({mre, devid});                                                                 \
   }                                                                                              \
-  void resize_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,                \
-                                     zs::size_t newSize) {                                       \
+  ZPC_EXPORT void resize_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,     \
+                                                zs::size_t newSize) {                            \
     v->resize(newSize);                                                                          \
   }                                                                                              \
-  void resize_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> * v,    \
-                                                 zs::size_t newSize) {                           \
+  ZPC_EXPORT void resize_container##__##v##_##T##_##virtual(                                     \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::size_t newSize) {                         \
     v->resize(newSize);                                                                          \
   }                                                                                              \
-  void reset_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, int ch) {       \
+  ZPC_EXPORT void reset_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,      \
+                                               int ch) {                                         \
     v->reset(ch);                                                                                \
   }                                                                                              \
-  void reset_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> * v,     \
-                                                int ch) {                                        \
+  ZPC_EXPORT void reset_container##__##v##_##T##_##virtual(                                      \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, int ch) {                                     \
     v->reset(ch);                                                                                \
   }                                                                                              \
-  size_t container_size##__##v##_##T(const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {        \
+  ZPC_EXPORT size_t container_size##__##v##_##T(                                                 \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                       \
     return v->size();                                                                            \
   }                                                                                              \
-  size_t container_size##__##v##_##T##_##virtual(                                                \
+  ZPC_EXPORT size_t container_size##__##v##_##T##_##virtual(                                     \
       const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
     return v->size();                                                                            \
   }                                                                                              \
-  size_t container_capacity##__##v##_##T(const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {    \
+  ZPC_EXPORT size_t container_capacity##__##v##_##T(                                             \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                       \
     return v->capacity();                                                                        \
   }                                                                                              \
-  size_t container_capacity##__##v##_##T##_##virtual(                                            \
+  ZPC_EXPORT size_t container_capacity##__##v##_##T##_##virtual(                                 \
       const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
     return v->capacity();                                                                        \
   }                                                                                              \
   /* custom */                                                                                   \
-  T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                \
+  ZPC_EXPORT T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {     \
     return v->getVal();                                                                          \
   }                                                                                              \
-  void set_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v, T newVal) {   \
+  ZPC_EXPORT void set_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,    \
+                                                 T newVal) {                                     \
     v->setVal(newVal);                                                                           \
   }                                                                                              \
   /* pyview */                                                                                   \
-  zs::VectorViewLite<T> *pyview##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {      \
+  ZPC_EXPORT zs::VectorViewLite<T> *pyview##__##v##_##T(                                         \
+      zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                             \
     return new zs::VectorViewLite<T>{v->data()};                                                 \
   }                                                                                              \
-  zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T(                                    \
+  ZPC_EXPORT zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T(                         \
       const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                       \
     return new zs::VectorViewLite<const T>{v->data()};                                           \
   }                                                                                              \
-  zs::VectorViewLite<T> *pyview##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> \
-                                                         * v) {                                  \
+  ZPC_EXPORT zs::VectorViewLite<T> *pyview##__##v##_##T##_##virtual(                             \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v) {                                             \
     return new zs::VectorViewLite<T>{v->data()};                                                 \
   }                                                                                              \
-  zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T##_##virtual(                        \
+  ZPC_EXPORT zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T##_##virtual(             \
       const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
     return new zs::VectorViewLite<const T>{v->data()};                                           \
   }                                                                                              \
-  void del_pyview##__##v##_##T(zs::VectorViewLite<T> *v) { delete v; }                           \
-  void del_pyview##__##v##_##const##_##T(zs::VectorViewLite<const T> *v) { delete v; }
+  ZPC_EXPORT void del_pyview##__##v##_##T(zs::VectorViewLite<T> *v) { delete v; }                \
+  ZPC_EXPORT void del_pyview##__##v##_##const##_##T(zs::VectorViewLite<const T> *v) { delete v; }
 
-#define INSTANTIATE_VECTOR_ITERATOR_CAPIS(T)                                           \
-  /* iterator */                                                                       \
-  aosoa_iterator_port_##T##_1 get_iterator_1##__##v##_##T(                             \
-      zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                       \
-    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};          \
-  }                                                                                    \
-  aosoa_iterator_port_const_##T##_1 get_iterator_1##__##v##_##const##_##T(             \
-      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                 \
-    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};    \
-  }                                                                                    \
-  aosoa_iterator_port_##T##_1 get_iterator_1##__##v##_##T##_##virtual(                 \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                       \
-    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};          \
-  }                                                                                    \
-  aosoa_iterator_port_const_##T##_1 get_iterator_1##__##v##_##const##_##T##_##virtual( \
-      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                  \
-    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};    \
-  }                                                                                    \
-  aosoa_iterator_port_##T##_3 get_iterator_3##__##v##_##T(                             \
-      zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                       \
-    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};          \
-  }                                                                                    \
-  aosoa_iterator_port_const_##T##_3 get_iterator_3##__##v##_##const##_##T(             \
-      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                 \
-    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};    \
-  }                                                                                    \
-  aosoa_iterator_port_##T##_3 get_iterator_3##__##v##_##T##_##virtual(                 \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                       \
-    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};          \
-  }                                                                                    \
-  aosoa_iterator_port_const_##T##_3 get_iterator_3##__##v##_##const##_##T##_##virtual( \
-      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                  \
-    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};    \
+#define INSTANTIATE_VECTOR_ITERATOR_CAPIS(T)                                                      \
+  /* iterator */                                                                                  \
+  ZPC_EXPORT aosoa_iterator_port_##T##_1 get_iterator_1##__##v##_##T(                             \
+      zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                                  \
+    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                     \
+  }                                                                                               \
+  ZPC_EXPORT aosoa_iterator_port_const_##T##_1 get_iterator_1##__##v##_##const##_##T(             \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                            \
+    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};               \
+  }                                                                                               \
+  ZPC_EXPORT aosoa_iterator_port_##T##_1 get_iterator_1##__##v##_##T##_##virtual(                 \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                  \
+    return aosoa_iter_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                     \
+  }                                                                                               \
+  ZPC_EXPORT aosoa_iterator_port_const_##T##_1 get_iterator_1##__##v##_##const##_##T##_##virtual( \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                             \
+    return aosoa_iter_const_##T##_1{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};               \
+  }                                                                                               \
+  ZPC_EXPORT aosoa_iterator_port_##T##_3 get_iterator_3##__##v##_##T(                             \
+      zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                                  \
+    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                     \
+  }                                                                                               \
+  ZPC_EXPORT aosoa_iterator_port_const_##T##_3 get_iterator_3##__##v##_##const##_##T(             \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v, zs::u32 id) {                            \
+    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};               \
+  }                                                                                               \
+  ZPC_EXPORT aosoa_iterator_port_##T##_3 get_iterator_3##__##v##_##T##_##virtual(                 \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::u32 id) {                                  \
+    return aosoa_iter_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};                     \
+  }                                                                                               \
+  ZPC_EXPORT aosoa_iterator_port_const_##T##_3 get_iterator_3##__##v##_##const##_##T##_##virtual( \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v, zs::u32 id) {                             \
+    return aosoa_iter_const_##T##_3{zs::wrapv<zs::layout_e::aos>{}, v->data(), id};               \
   }
 
 INSTANTIATE_VECTOR_CAPIS(int)

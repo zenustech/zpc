@@ -60,13 +60,13 @@ namespace zs {
       if (!(buf[i] || str[i])) return true;
       return false;
     }
+    constexpr bool operator!=(const char str[]) const noexcept { return !operator==(str); }
 
     constexpr const char *asChars() const noexcept { return buf; }
     constexpr operator const char *() const noexcept { return buf; }
     constexpr size_type size() const noexcept {
       size_type i = 0;
-      for (; buf[i]; ++i)
-        ;
+      for (; buf[i]; ++i);
       return i;
     }
     friend constexpr BasicSmallString operator+(const BasicSmallString &a,
@@ -96,8 +96,8 @@ namespace zs {
   };
   using SmallString = BasicSmallString<>;
 
-  template <typename CharT, zs::size_t NBytes> BasicSmallString(const CharT (&tmp)[NBytes])
-      -> BasicSmallString<CharT, NBytes>;
+  template <typename CharT, zs::size_t NBytes>
+  BasicSmallString(const CharT (&tmp)[NBytes]) -> BasicSmallString<CharT, NBytes>;
 
   /// property tag
   struct PropertyTag {

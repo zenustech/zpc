@@ -63,8 +63,7 @@ option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
 # JIT (llvm/clang)
 option(ZS_ENABLE_JIT "Enable JIT module" ON)
 # sycl, cl
-option(ZS_ENABLE_SYCL_COMPUTECPP "Enable SYCL[ComputeCpp] backend" ON)
-option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" OFF)
+option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" ON)
 option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend" OFF)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
 # python
@@ -268,11 +267,6 @@ target_link_libraries(zpc_deps INTERFACE zpc_cxx_deps)
 add_subdirectory(include/zensim)
 
 set(ZS_ENABLE_OPENGL ${ZS_ENABLE_OPENGL} PARENT_SCOPE)
-set(ZS_ENABLE_SYCL_COMPUTECPP ${ZS_ENABLE_SYCL_COMPUTECPP} PARENT_SCOPE)
-
-if(ZS_ENABLE_SYCL_COMPUTECPP)
-  set(COMPUTECPP_DEVICE_COMPILER_FLAGS ${COMPUTECPP_DEVICE_COMPILER_FLAGS} PARENT_SCOPE)
-endif()
 
 # backends
 set(ZS_ENABLE_CUDA ${ZS_ENABLE_CUDA} PARENT_SCOPE)
@@ -310,7 +304,7 @@ endif()
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, sycl(computecpp): ${ZS_ENABLE_SYCL_COMPUTECPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
+message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
 message("dependent library options: python inc: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
@@ -379,7 +373,7 @@ if(ZS_ENABLE_INSTALL)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpccuda zpc_cuda_deps)
   endif(ZS_ENABLE_CUDA)
 
-  if(ZS_ENABLE_SYCL_COMPUTECPP OR ZS_ENABLE_SYCL_DPCPP OR ZS_ENABLE_SYCL)
+  if(ZS_ENABLE_SYCL_DPCPP OR ZS_ENABLE_SYCL)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpcsycl zpc_sycl_deps)
   endif() # ZS_ENABLE_SYCL
 

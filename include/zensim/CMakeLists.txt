@@ -433,12 +433,6 @@ else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_VULKAN=0)
 endif(ZS_ENABLE_VULKAN)
 
-if(ZS_ENABLE_SYCL_COMPUTECPP)
-  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_COMPUTECPP=1)
-else()
-  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_COMPUTECPP=0)
-endif(ZS_ENABLE_SYCL_COMPUTECPP)
-
 if(ZS_ENABLE_SYCL_DPCPP)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_DPCPP=1)
 else()
@@ -579,18 +573,14 @@ endif(ZS_ENABLE_CUDA)
 # ############
 # zpc: sycl #
 # ############
-if(ZS_ENABLE_SYCL_COMPUTECPP)
-  add_library(zpcsycl INTERFACE)
-  target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
-
-elseif(ZS_ENABLE_SYCL_DPCPP)
+if(ZS_ENABLE_SYCL_DPCPP)
   add_library(zpcsycl INTERFACE)
   target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
 
 elseif(ZS_ENABLE_SYCL)
   add_library(zpcsycl INTERFACE)
   target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
-endif(ZS_ENABLE_SYCL_COMPUTECPP)
+endif(ZS_ENABLE_SYCL_DPCPP)
 
 # ############
 # zpc: cl   #
@@ -650,13 +640,11 @@ if(ZS_ENABLE_CUDA)
   # target_link_libraries(zpc PUBLIC zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
 
-if(ZS_ENABLE_SYCL_COMPUTECPP)
-  target_link_libraries(zpc PUBLIC zpcsycl)
-elseif(ZS_ENABLE_SYCL_DPCPP)
+if(ZS_ENABLE_SYCL_DPCPP)
   target_link_libraries(zpc PUBLIC zpcsycl)
 elseif(ZS_ENABLE_SYCL)
   target_link_libraries(zpc PUBLIC zpcsycl)
-endif(ZS_ENABLE_SYCL_COMPUTECPP)
+endif(ZS_ENABLE_SYCL_DPCPP)
 
 if(ZS_ENABLE_OPENCL)
   target_link_libraries(zpc PUBLIC zpccl)
@@ -673,9 +661,10 @@ endif(ZS_ENABLE_CUDA)
 # zpc_py_interop #
 # ################
 add_library(zpc_jit_py INTERFACE)  # cmake helper target for zpc JIT
-set(ZS_PYTHON_FOUND 0)
+set(ZS_PYTHON_FOUND OFF)
+message(STATUS "\n-- ------------------------------- Checking Python ------------------------------- ")
 if (NOT ZS_OVERWRITE_PYTHON_INCLUDE_DIR STREQUAL "" AND NOT ZS_OVERWRITE_PYTHON_LIBRARIES STREQUAL "")
-  set(ZS_PYTHON_FOUND 1)
+  set(ZS_PYTHON_FOUND ON)
   # set(Python3_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES})
   # set(Python3_INCLUDE_DIRS ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
   if (ZS_OVERWRITE_PYTHON_EXECUTABLE STREQUAL "")
@@ -702,7 +691,7 @@ if (NOT ZS_OVERWRITE_PYTHON_INCLUDE_DIR STREQUAL "" AND NOT ZS_OVERWRITE_PYTHON_
 else()
   find_package(Python3 COMPONENTS Interpreter Development)
   if (Python3_FOUND)
-    set(ZS_PYTHON_FOUND 1)
+    set(ZS_PYTHON_FOUND ON)
     set(ZS_OVERWRITE_PYTHON_LIBRARIES ${Python3_LIBRARIES})
     set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
     set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
@@ -770,6 +759,8 @@ if (ZS_PYTHON_FOUND)
   # set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS} PARENT_SCOPE)
   set(ZS_PYTHON_DLLS ${ZS_PYTHON_DLLS} PARENT_SCOPE)
 endif(ZS_PYTHON_FOUND)
+
+message(STATUS "############################### ZPC: Python (${ZS_PYTHON_FOUND}) ###############################")
 
 #[=[
 # other overridden setup

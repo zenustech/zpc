@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdint>
 
 #include "zensim/math/bit/Bits.h"
 #include "zensim/types/Property.h"

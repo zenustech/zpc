@@ -109,6 +109,11 @@ include(CMake/CompilerWarnings.cmake)
 add_subdirectory(include/zensim/zpc_tpls) # build zsproj_deps target
 enable_sanitizers(zsproj_deps)
 
+if (${ZS_ENABLE_SYCL_DPCPP} OR ${ZS_ENABLE_SYCL})
+  set(ZS_ENABLE_PCH OFF)
+  message(STATUS "When SYCL is enabled, precompile-headers are disabled.")
+endif(${ZS_ENABLE_SYCL_DPCPP} OR ${ZS_ENABLE_SYCL})
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(ZS_ENABLE_VULKAN)
     set(ZS_ENABLE_VULKAN_VALIDATION ON)
@@ -153,7 +158,8 @@ target_compile_definitions(zsproj_deps INTERFACE
   $<INSTALL_INTERFACE:ZS_INCLUDE_DIR="${CMAKE_INSTALL_INCLUDEDIR}">
 )
 
-# =========cxx==========
+# ------ cxx ------
+# =================
 add_library(zpc_cxx_deps INTERFACE)
 if (${CMAKE_CXX_COMPILER_ID} MATCHES ".*Clang")
   target_compile_options(zpc_cxx_deps INTERFACE
@@ -305,7 +311,7 @@ message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
 message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
-message("dependent library options: python inc: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
+message("dependent library options: python: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
 # =================

@@ -242,8 +242,6 @@ namespace zs {
     std::vector<const Buffer *> registeredBuffers;
 
   protected:
-    friend struct VkPipeline;
-
     /// resource builders
 
     // generally at most one swapchain is associated with a context, thus reuse preferred

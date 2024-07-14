@@ -61,7 +61,7 @@ namespace zs {
   }  // namespace detail
 
   template <typename T> constexpr auto get_type() noexcept {
-#if defined(_MSC_VER)
+#if defined(ZS_PLATFORM_MSVC) && !defined(ZS_COMPILER_INTEL_LLVM)
 #  if 0
     constexpr auto typestr = __FUNCSIG__;
     // static_assert(always_false<T>, __FUNCSIG__);

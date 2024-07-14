@@ -2,12 +2,13 @@
 // from taichi/common/core.h
 
 ///
-/// system
+/// @brief OS specific macros
 ///
-// Windows
+
+/// @note Windows
 #if defined(_WIN64)
 #  define ZS_PLATFORM_WINDOWS
-/// @ref vcruntime.h
+// ref vcruntime.h
 #  ifndef ZPC_ACRTIMP
 #    if defined _CRTIMP && !defined _VCRT_DEFINED_CRTIMP
 #      define ZPC_ACRTIMP _CRTIMP
@@ -23,24 +24,7 @@
 static_assert(false, "32-bit Windows systems are not supported")
 #endif
 
-// Linux
-#if defined(__linux__)
-#  define ZS_PLATFORM_LINUX
-#endif
-
-// OSX
-#if defined(__APPLE__)
-#  define ZS_PLATFORM_OSX
-#endif
-
-// Unix
-#if (defined(ZS_PLATFORM_LINUX) || defined(ZS_PLATFORM_OSX))
-#  define ZS_PLATFORM_UNIX
-#endif
-
 #if defined(ZS_PLATFORM_WINDOWS)
-#  define ZS_UNREACHABLE __assume(0);
-
 #  ifndef NOMINMAX
 #    define NOMINMAX
 #  endif
@@ -49,23 +33,74 @@ static_assert(false, "32-bit Windows systems are not supported")
 #    define ZS_BUILD_DLL
 #  endif
 
+#endif
+
+/// @note Android
+#if defined(__ANDROID__)
+#  define ZS_PLATFORM_ANDROID
+#endif
+
+/// @note Linux
+#if defined(__linux__) && !defined(ZS_PLATFORM_ANDROID)
+#  define ZS_PLATFORM_LINUX
+#endif
+
+/// @note OSX
+#if defined(__APPLE__)
+#  define ZS_PLATFORM_OSX
+#endif
+
+/// @note Unix
+#if (defined(ZS_PLATFORM_LINUX) || defined(ZS_PLATFORM_OSX))
+#  define ZS_PLATFORM_UNIX
+#endif
+
+
+///
+/// @brief architecture specific macros
+///
+/// @note See https://github.com/abseil/abseil.github.io/blob/master/docs/cpp/platforms/macros.md
+#if defined(__x86_64__) or defined(_M_X64)
+#  define ZS_ARCH_AMD64
+#elif defined(__aarch64__) or defined(_M_ARM64)
+#  define ZS_ARCH_ARM64
 #else
-
-#  define ZS_UNREACHABLE __builtin_unreachable();
+static_assert(false, "Only 64-bit x86/arm archs are supported.")
 #endif
 
 ///
-/// compiler
+/// @brief Compiler predefined macros
+/// @note See https://sourceforge.net/p/predef/wiki/Compilers/, https://blog.kowalczyk.info/article/j/guide-to-predefined-macros-in-c-compilers-gcc-clang-msvc-etc..html
 ///
+
+/// @note SYCL_LANGUAGE_VERSION is defined for all sycl compilers
+/// @note See https://www.intel.com/content/www/us/en/developer/articles/technical/use-predefined-macros-for-specific-code-for-intel-dpcpp-compiler-intel-cpp-compiler-intel-cpp-compiler-classic.html
 #if defined(SYCL_LANGUAGE_VERSION)
-#  define ZS_COMPILER_SYCL
+#  define ZS_COMPILER_SYCL_VER SYCL_LANGUAGE_VERSION
+#endif
+/// @note Query if GNUC extensions are supported
+#if defined(__GNUC__)
+#  define ZS_COMPILER_GNUC_VER __GNUC__
 #endif
 
+/// @note Webassembly
+#if defined(__EMSCRIPTEN__)
+#  define ZS_COMPILER_EMSCRIPTEN
+#endif
+
+/// @note This compiler is deprecated by intel, use icx/icpx instead
+/// @note See https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/additional-predefined-macros.html
 #if defined(__INTEL_COMPILER)
 #  define ZS_COMPILER_INTEL_CLASSIC
 #endif
 
-#if defined(__GNUC__)
+/// @note See https://www.intel.com/content/www/us/en/developer/articles/technical/use-predefined-macros-for-specific-code-for-intel-dpcpp-compiler-intel-cpp-compiler-intel-cpp-compiler-classic.html
+#if defined(__INTEL_LLVM_COMPILER)
+#  define ZS_COMPILER_INTEL_LLVM
+#endif
+
+/// @note See https://stackoverflow.com/questions/38499462/how-to-tell-clang-to-stop-pretending-to-be-other-compilers
+#if defined(__GNUC__) && !defined(__llvm__) && !defined(ZS_COMPILER_INTEL_CLASSIC)
 #  define ZS_COMPILER_GCC
 #endif
 
@@ -76,7 +111,8 @@ static_assert(false, "32-bit Windows systems are not supported")
 #  endif
 #endif
 
-#if defined(_MSC_VER)
+/// @note See https://stackoverflow.com/questions/77012074/macro-to-check-if-i-am-running-msvc-or-intel-compiler
+#if defined(_MSC_VER) && !defined(__llvm__) && !defined(ZS_COMPILER_INTEL_CLASSIC)
 #  define ZS_COMPILER_MSVC
 #endif
 
@@ -233,7 +269,9 @@ static_assert(false, "32-bit Windows systems are not supported")
 #define ZPC_FWD_DECL_TEMPLATE_CLASS extern template class ZPC_TEMPLATE_IMPORT
 #define ZPC_FWD_DECL_TEMPLATE_STRUCT extern template struct ZPC_TEMPLATE_IMPORT
 
-/// compiler attributes
+///
+/// @brief Useful compiler attributes
+///
 #if defined(ZS_COMPILER_MSVC)
 #  define ZS_NO_INLINE __declspec(noinline)
 #else
@@ -248,4 +286,10 @@ static_assert(false, "32-bit Windows systems are not supported")
 #else
 #define ZS_LIKELY(x) (x)
 #define ZS_UNLIKELY(x) (x)
+#endif
+
+#if defined(ZS_PLATFORM_WINDOWS)
+#  define ZS_UNREACHABLE __assume(0);
+#else
+#  define ZS_UNREACHABLE __builtin_unreachable();
 #endif

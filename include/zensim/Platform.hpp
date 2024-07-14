@@ -55,18 +55,18 @@ static_assert(false, "32-bit Windows systems are not supported")
 #  define ZS_PLATFORM_UNIX
 #endif
 
-
-///
-/// @brief architecture specific macros
-///
-/// @note See https://github.com/abseil/abseil.github.io/blob/master/docs/cpp/platforms/macros.md
-#if defined(__x86_64__) or defined(_M_X64)
-#  define ZS_ARCH_AMD64
-#elif defined(__aarch64__) or defined(_M_ARM64)
-#  define ZS_ARCH_ARM64
-#else
-static_assert(false, "Only 64-bit x86/arm archs are supported.")
-#endif
+    ///
+    /// @brief architecture specific macros
+    ///
+    /// @note See
+    /// https://github.com/abseil/abseil.github.io/blob/master/docs/cpp/platforms/macros.md
+    // #if defined(__x86_64__) or defined(_M_X64)
+    // #  define ZS_ARCH_AMD64
+    // #elif defined(__aarch64__) or defined(_M_ARM64)
+    // #  define ZS_ARCH_ARM64
+    // #else
+    // #endif
+    static_assert(sizeof(void *) == 8, "Only 64-bit x86/arm archs are supported.");
 
 ///
 /// @brief Compiler predefined macros

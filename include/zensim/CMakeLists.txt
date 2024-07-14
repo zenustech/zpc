@@ -398,11 +398,11 @@ target_link_libraries(zpccore PRIVATE zswhereami)
 #   target_link_libraries(zpccore PUBLIC synchronization)
 # endif(WIN32)
 target_compile_options(zpccore
-  PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC>, /Zc:__cplusplus /utf-8 /bigobj $<IF:$<CONFIG:Debug>, , /O2> /EHsc, $<IF:$<CXX_COMPILER_ID:Clang>, -Xclang -O3, -O3> >> # -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi
+  PUBLIC $<$<COMPILE_LANGUAGE:CXX>: $<IF:$<CXX_COMPILER_ID:MSVC,Intel>, /Zc:__cplusplus /utf-8 /bigobj $<IF:$<CONFIG:Debug>, , /O2> /EHsc, $<IF:$<CXX_COMPILER_ID:Clang>, -Xclang -O3, -O3> >> # -fuse-ld=lld -fvisibility=hidden># -flto=thin -fsanitize=cfi
 )
 target_link_options(zpccore
   PUBLIC $<HOST_LINK:
-  $<IF:$<CXX_COMPILER_ID:MSVC>, /MACHINE:X64 /OPT:REF /OPT:ICF,
+  $<IF:$<CXX_COMPILER_ID:MSVC,Intel>, /MACHINE:X64 /OPT:REF /OPT:ICF,
   $<IF:$<CXX_COMPILER_ID:GNU>, "LINKER:--no-as-needed" , >
   $<IF:$<CXX_COMPILER_ID:Clang>, ,>
   -O3 -m64>>
@@ -544,7 +544,7 @@ if(ZS_ENABLE_CUDA)
 
     # https://stackoverflow.com/questions/64523302/cuda-missing-return-statement-at-end-of-non-void-function-in-constexpr-if-fun
     # https://docs.nvidia.com/cuda/cuda-driver-api/stream-sync-behavior.html#stream-sync-behavior
-    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread $<IF:$<CXX_COMPILER_ID:MSVC>, -Xcompiler="/bigobj", > -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=loop_not_reachable --diag_suppress=69 --diag_suppress=2642 --diag_suppress=1394" > # -dlto -Xptxas -dlcm=cg
+    PUBLIC $<$<COMPILE_LANGUAGE:CUDA>: --extended-lambda --expt-relaxed-constexpr --default-stream=per-thread $<IF:$<CXX_COMPILER_ID:MSVC,Intel>, -Xcompiler="/bigobj", > -Xcudafe "--display_error_number --diag_suppress=implicit_return_from_non_void_function --diag_suppress=loop_not_reachable --diag_suppress=69 --diag_suppress=2642 --diag_suppress=1394" > # -dlto -Xptxas -dlcm=cg
     # lto issue: https://forums.developer.nvidia.com/t/using-dlink-time-opt-together-with-gencode-in-cmake/165224
   )
 

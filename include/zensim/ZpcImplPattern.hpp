@@ -7,7 +7,7 @@ namespace zs {
   template <template <typename> class... Skills> struct Object
       : private Skills<Object<Skills...>>... {};
   template <typename Derived, template <typename> class... Skills> struct
-#if defined(ZS_COMPILER_MSVC)
+#if defined(ZS_COMPILER_MSVC) || defined(ZS_COMPILER_INTEL_LLVM)
       ///  ref:
       ///  https://stackoverflow.com/questions/12701469/why-is-the-empty-base-class-optimization-ebo-is-not-working-in-msvc
       ///  ref:

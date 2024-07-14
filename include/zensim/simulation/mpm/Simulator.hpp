@@ -52,7 +52,7 @@ namespace zs {
 
   template <execspace_e, typename Simulator, typename = void> struct MPMSimulatorView;
 
-  template <execspace_e ExecSpace> constexpr decltype(auto) proxy(MPMSimulator& simulator) {
+  template <execspace_e ExecSpace> decltype(auto) proxy(MPMSimulator& simulator) {
     return MPMSimulatorView<ExecSpace, MPMSimulator>{simulator};
   }
 

@@ -915,7 +915,7 @@ namespace zs {
 
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const std::vector<SmallString> &tagNames,
       SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
@@ -923,7 +923,7 @@ namespace zs {
   }
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const std::vector<SmallString> &tagNames,
       const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
@@ -933,14 +933,14 @@ namespace zs {
 
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
                           SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{spg};
   }
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
                           const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{

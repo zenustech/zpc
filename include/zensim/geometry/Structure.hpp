@@ -1124,37 +1124,37 @@ namespace zs {
   };
 
   template <execspace_e space, typename V, int d, auto SideLength, typename Allocator>
-  constexpr decltype(auto) proxy(Grids<V, d, SideLength, Allocator> &grids) {
+  decltype(auto) proxy(Grids<V, d, SideLength, Allocator> &grids) {
     return GridsView<space, Grids<V, d, SideLength, Allocator>>{grids};
   }
   template <execspace_e space, typename V, int d, auto SideLength, typename Allocator>
-  constexpr decltype(auto) proxy(const Grids<V, d, SideLength, Allocator> &grids) {
+  decltype(auto) proxy(const Grids<V, d, SideLength, Allocator> &grids) {
     return GridsView<space, const Grids<V, d, SideLength, Allocator>>{grids};
   }
 
   template <execspace_e space, typename V, int d, auto SideLength, grid_e category,
             typename Allocator>
-  constexpr decltype(auto) proxy(Grid<V, d, SideLength, category, Allocator> &grid) {
+  decltype(auto) proxy(Grid<V, d, SideLength, category, Allocator> &grid) {
     return GridView<space, Grid<V, d, SideLength, category, Allocator>, true, false>{
         proxy<space>({}, grid.blocks), grid.dx};
   }
   template <execspace_e space, typename V, int d, auto SideLength, grid_e category,
             typename Allocator>
-  constexpr decltype(auto) proxy(const Grid<V, d, SideLength, category, Allocator> &grid) {
+  decltype(auto) proxy(const Grid<V, d, SideLength, category, Allocator> &grid) {
     return GridView<space, const Grid<V, d, SideLength, category, Allocator>, true, false>{
         proxy<space>({}, grid.blocks), grid.dx};
   }
 
   template <execspace_e space, typename V, int d, auto SideLength, grid_e category,
             typename Allocator>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  Grid<V, d, SideLength, category, Allocator> &grid) {
     return GridView<space, Grid<V, d, SideLength, category, Allocator>, true, false>{
         proxy<space>({}, grid.blocks), grid.dx};
   }
   template <execspace_e space, typename V, int d, auto SideLength, grid_e category,
             typename Allocator>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  const Grid<V, d, SideLength, category, Allocator> &grid) {
     return GridView<space, const Grid<V, d, SideLength, category, Allocator>, true, false>{
         proxy<space>({}, grid.blocks), grid.dx};

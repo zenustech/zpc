@@ -1066,20 +1066,20 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
+  decltype(auto) view(bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
     return BHTView<ExecSpace, bht<Tn, dim, Index, B, Allocator>, Base>{table};
   }
   template <execspace_e ExecSpace, typename Tn, int dim, typename Index, int B, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
+  decltype(auto) view(const bht<Tn, dim, Index, B, Allocator> &table, wrapv<Base> = {}) {
     return BHTView<ExecSpace, const bht<Tn, dim, Index, B, Allocator>, Base>{table};
   }
   template <execspace_e space, typename Tn, int dim, typename Index, int B, typename Allocator>
-  constexpr decltype(auto) proxy(bht<Tn, dim, Index, B, Allocator> &table) {
+  decltype(auto) proxy(bht<Tn, dim, Index, B, Allocator> &table) {
     return view<space>(table, false_c);
   }
   template <execspace_e space, typename Tn, int dim, typename Index, int B, typename Allocator>
-  constexpr decltype(auto) proxy(const bht<Tn, dim, Index, B, Allocator> &table) {
+  decltype(auto) proxy(const bht<Tn, dim, Index, B, Allocator> &table) {
     return view<space>(table, false_c);
   }
 

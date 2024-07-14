@@ -119,13 +119,13 @@ namespace zs {
 
   template <execspace_e ExecSpace, int dim, typename Index, typename Tn, grid_e category,
             typename AllocatorT>
-  constexpr decltype(auto) proxy(IndexBuckets<dim, Index, Tn, category, AllocatorT> &indexBuckets) {
+  decltype(auto) proxy(IndexBuckets<dim, Index, Tn, category, AllocatorT> &indexBuckets) {
     return IndexBucketsView<ExecSpace, IndexBuckets<dim, Index, Tn, category, AllocatorT>>{
         indexBuckets};
   }
   template <execspace_e ExecSpace, int dim, typename Index, typename Tn, grid_e category,
             typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const IndexBuckets<dim, Index, Tn, category, AllocatorT> &indexBuckets) {
     return IndexBucketsView<ExecSpace, const IndexBuckets<dim, Index, Tn, category, AllocatorT>>{
         indexBuckets};

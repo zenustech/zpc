@@ -1771,13 +1771,13 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
+  decltype(auto) view(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
                                 wrapv<Base> = {}) {
     return BCHTView<ExecSpace, bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{table};
   }
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
+  decltype(auto) view(const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
                                 wrapv<Base> = {}) {
     return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{
         table};
@@ -1785,12 +1785,12 @@ namespace zs {
 
   template <execspace_e space, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT>
-  constexpr decltype(auto) proxy(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
+  decltype(auto) proxy(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
     return view<space>(table, false_c);
   }
   template <execspace_e space, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
     return view<space>(table, false_c);
   }

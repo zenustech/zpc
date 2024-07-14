@@ -1088,19 +1088,19 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, size_t Length, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
+  decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
     return TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, Base>{
         vec};
   }
   template <execspace_e ExecSpace, typename T, size_t Length, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
+  decltype(auto) view(TileVector<T, Length, Allocator> &vec, wrapv<Base> = {}) {
     return TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, Base>{vec};
   }
 
   template <execspace_e ExecSpace, typename T, size_t Length, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base>,
+  decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret
         = TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, Base>{
@@ -1112,7 +1112,7 @@ namespace zs {
   }
   template <execspace_e ExecSpace, typename T, size_t Length, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(TileVector<T, Length, Allocator> &vec, wrapv<Base>,
+  decltype(auto) view(TileVector<T, Length, Allocator> &vec, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -1122,21 +1122,21 @@ namespace zs {
   }
 
   template <execspace_e space, typename T, size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec) {
+  decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec) {
     return view<space>(vec, false_c);
   }
   template <execspace_e space, typename T, size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec) {
+  decltype(auto) proxy(TileVector<T, Length, Allocator> &vec) {
     return view<space>(vec, false_c);
   }
 
   template <execspace_e space, typename T, size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec,
+  decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec,
                                  const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
   }
   template <execspace_e space, typename T, size_t Length, typename Allocator>
-  constexpr decltype(auto) proxy(TileVector<T, Length, Allocator> &vec,
+  decltype(auto) proxy(TileVector<T, Length, Allocator> &vec,
                                  const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
   }

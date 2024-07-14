@@ -130,7 +130,7 @@ namespace zs {
   };
 
   template <zs::execspace_e space, int dim, typename Ti, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const SpatialHash<dim, Ti, T, Allocator> &sh) {
+  decltype(auto) proxy(const SpatialHash<dim, Ti, T, Allocator> &sh) {
     return SpatialHashView<space, const SpatialHash<dim, Ti, T, Allocator>>{sh};
   }
 

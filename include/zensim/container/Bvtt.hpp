@@ -186,11 +186,11 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename PrimIdT, typename NodeIdT>
-  constexpr decltype(auto) proxy(BvttFront<PrimIdT, NodeIdT> &front) {
+  decltype(auto) proxy(BvttFront<PrimIdT, NodeIdT> &front) {
     return BvttFrontView<ExecSpace, BvttFront<PrimIdT, NodeIdT>>{front};
   }
   template <execspace_e ExecSpace, typename PrimIdT, typename NodeIdT>
-  constexpr decltype(auto) proxy(const BvttFront<PrimIdT, NodeIdT> &front) {
+  decltype(auto) proxy(const BvttFront<PrimIdT, NodeIdT> &front) {
     return BvttFrontView<ExecSpace, const BvttFront<PrimIdT, NodeIdT>>{front};
   }
 

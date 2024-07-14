@@ -261,7 +261,7 @@ namespace zs {
   };
 
   template <execspace_e space, int dim, typename Ti, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const LBvs<dim, Ti, T, Allocator> &lbvs) {
+  decltype(auto) proxy(const LBvs<dim, Ti, T, Allocator> &lbvs) {
     return LBvsView<space, const LBvs<dim, Ti, T, Allocator>>{lbvs};
   }
 

@@ -559,11 +559,11 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename Tn, int dim, typename Index, typename Allocator>
-  constexpr decltype(auto) proxy(HashTable<Tn, dim, Index, Allocator> &table) {
+  decltype(auto) proxy(HashTable<Tn, dim, Index, Allocator> &table) {
     return HashTableView<ExecSpace, HashTable<Tn, dim, Index, Allocator>>{table};
   }
   template <execspace_e ExecSpace, typename Tn, int dim, typename Index, typename Allocator>
-  constexpr decltype(auto) proxy(const HashTable<Tn, dim, Index, Allocator> &table) {
+  decltype(auto) proxy(const HashTable<Tn, dim, Index, Allocator> &table) {
     return HashTableView<ExecSpace, const HashTable<Tn, dim, Index, Allocator>>{table};
   }
 

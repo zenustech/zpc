@@ -322,18 +322,18 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base> = {}) {
+  decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base> = {}) {
     return DenseFieldView<ExecSpace, DenseField<T, Allocator>, Base>{df};
   }
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base> = {}) {
+  decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base> = {}) {
     return DenseFieldView<ExecSpace, const DenseField<T, Allocator>, Base>{df};
   }
 
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base>,
+  decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = DenseFieldView<ExecSpace, DenseField<T, Allocator>, Base>{df};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -344,7 +344,7 @@ namespace zs {
   }
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base>,
+  decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = DenseFieldView<ExecSpace, const DenseField<T, Allocator>, Base>{df};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -355,20 +355,20 @@ namespace zs {
   }
 
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(DenseField<T, Allocator> &df) {
+  decltype(auto) proxy(DenseField<T, Allocator> &df) {
     return view<space>(df, false_c);
   }
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const DenseField<T, Allocator> &df) {
+  decltype(auto) proxy(const DenseField<T, Allocator> &df) {
     return view<space>(df, false_c);
   }
 
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(DenseField<T, Allocator> &df, const SmallString &tagName) {
+  decltype(auto) proxy(DenseField<T, Allocator> &df, const SmallString &tagName) {
     return view<space>(df, false_c, tagName);
   }
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const DenseField<T, Allocator> &df, const SmallString &tagName) {
+  decltype(auto) proxy(const DenseField<T, Allocator> &df, const SmallString &tagName) {
     return view<space>(df, false_c, tagName);
   }
 

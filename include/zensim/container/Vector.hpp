@@ -565,18 +565,18 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base> = {}) {
+  decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base> = {}) {
     return VectorView<ExecSpace, Vector<T, Allocator>, Base>{vec};
   }
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base> = {}) {
+  decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base> = {}) {
     return VectorView<ExecSpace, const Vector<T, Allocator>, Base>{vec};
   }
 
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base>,
+  decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, Vector<T, Allocator>, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -586,7 +586,7 @@ namespace zs {
   }
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base>,
+  decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base>,
                                 const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, const Vector<T, Allocator>, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -596,20 +596,20 @@ namespace zs {
   }
 
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(Vector<T, Allocator> &vec) {
+  decltype(auto) proxy(Vector<T, Allocator> &vec) {
     return view<space>(vec, false_c);
   }
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const Vector<T, Allocator> &vec) {
+  decltype(auto) proxy(const Vector<T, Allocator> &vec) {
     return view<space>(vec, false_c);
   }
 
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(Vector<T, Allocator> &vec, const SmallString &tagName) {
+  decltype(auto) proxy(Vector<T, Allocator> &vec, const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
   }
   template <execspace_e space, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const Vector<T, Allocator> &vec, const SmallString &tagName) {
+  decltype(auto) proxy(const Vector<T, Allocator> &vec, const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
   }
 

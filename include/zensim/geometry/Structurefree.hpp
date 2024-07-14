@@ -331,11 +331,11 @@ namespace zs {
   };
 
   template <execspace_e ExecSpace, typename V, int d>
-  constexpr decltype(auto) proxy(Particles<V, d> &particles) {
+  decltype(auto) proxy(Particles<V, d> &particles) {
     return ParticlesView<ExecSpace, Particles<V, d>>{particles};
   }
   template <execspace_e ExecSpace, typename V, int d>
-  constexpr decltype(auto) proxy(const Particles<V, d> &particles) {
+  decltype(auto) proxy(const Particles<V, d> &particles) {
     return ParticlesView<ExecSpace, const Particles<V, d>>{particles};
   }
 

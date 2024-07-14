@@ -774,29 +774,29 @@ namespace zs {
 
   // directly
   template <execspace_e ExecSpace, typename HashTableT, typename GridT>
-  constexpr decltype(auto) proxy(HashTableView<ExecSpace, HashTableT> tablev,
+  decltype(auto) proxy(HashTableView<ExecSpace, HashTableT> tablev,
                                  GridView<ExecSpace, GridT, true, false> gridv) {
     constexpr int dim = RM_CVREF_T(tablev)::dim;
     constexpr auto category = RM_CVREF_T(gridv)::category;
     return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{tablev, gridv};
   }
   template <execspace_e ExecSpace, int dim, grid_e category>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  SparseLevelSet<dim, category> &levelset) {
     return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{levelset};
   }
   template <execspace_e ExecSpace, int dim, grid_e category>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  const SparseLevelSet<dim, category> &levelset) {
     return SparseLevelSetView<ExecSpace, const SparseLevelSet<dim, category>>{levelset};
   }
 
   template <execspace_e ExecSpace, int dim, grid_e category>
-  constexpr decltype(auto) proxy(SparseLevelSet<dim, category> &levelset) {
+  decltype(auto) proxy(SparseLevelSet<dim, category> &levelset) {
     return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{levelset};
   }
   template <execspace_e ExecSpace, int dim, grid_e category>
-  constexpr decltype(auto) proxy(const SparseLevelSet<dim, category> &levelset) {
+  decltype(auto) proxy(const SparseLevelSet<dim, category> &levelset) {
     return SparseLevelSetView<ExecSpace, const SparseLevelSet<dim, category>>{levelset};
   }
 

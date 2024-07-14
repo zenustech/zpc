@@ -793,12 +793,12 @@ namespace zs {
 
   template <zs::execspace_e space, int dim, typename Ti, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(const LBvh<dim, Ti, T, Allocator> &lbvh, wrapv<Base> = {}) {
+  decltype(auto) view(const LBvh<dim, Ti, T, Allocator> &lbvh, wrapv<Base> = {}) {
     return LBvhView<space, const LBvh<dim, Ti, T, Allocator>, Base>{lbvh};
   }
 
   template <zs::execspace_e space, int dim, typename Ti, typename T, typename Allocator>
-  constexpr decltype(auto) proxy(const LBvh<dim, Ti, T, Allocator> &lbvh) {
+  decltype(auto) proxy(const LBvh<dim, Ti, T, Allocator> &lbvh) {
     return view<space>(lbvh, false_c);
   }
 

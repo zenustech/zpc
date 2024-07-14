@@ -1358,7 +1358,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                              index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
       wrapv<Base> = {}) {
@@ -1371,7 +1371,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag,
       wrapv<Base> = {}) {
@@ -1385,7 +1385,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                              index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
       wrapv<Base>, const SmallString &tagName) {
@@ -1402,7 +1402,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag,
       wrapv<Base>, const SmallString &tagName) {
@@ -1419,14 +1419,14 @@ namespace zs {
 
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
+  decltype(auto) proxy(const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                                                         index_sequence<ScalingBits...>,
                                                         index_sequence<Is...>, AllocatorT> &ag) {
     return view<space>(ag, false_c);
   }
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag) {
     return view<space>(ag, false_c);
@@ -1434,7 +1434,7 @@ namespace zs {
 
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                              index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
       const SmallString &tagName) {
@@ -1442,7 +1442,7 @@ namespace zs {
   }
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag,
       const SmallString &tagName) {
@@ -1563,7 +1563,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       const std::vector<SmallString> &tagNames,
       const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                              index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
@@ -1577,7 +1577,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       const std::vector<SmallString> &tagNames,
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag,
@@ -1592,7 +1592,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       const std::vector<SmallString> &tagNames,
       const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                              index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
@@ -1610,7 +1610,7 @@ namespace zs {
   template <execspace_e ExecSpace, int dim, typename ValueT, size_t... TileBits,
             size_t... ScalingBits, size_t... Is, typename AllocatorT,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  constexpr decltype(auto) view(
+  decltype(auto) view(
       const std::vector<SmallString> &tagNames,
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag,
@@ -1628,7 +1628,7 @@ namespace zs {
 
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
                                  const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                                                         index_sequence<ScalingBits...>,
                                                         index_sequence<Is...>, AllocatorT> &ag) {
@@ -1640,7 +1640,7 @@ namespace zs {
   }
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const std::vector<SmallString> &tagNames,
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag) {
@@ -1653,7 +1653,7 @@ namespace zs {
 
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const std::vector<SmallString> &tagNames,
       const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
                              index_sequence<ScalingBits...>, index_sequence<Is...>, AllocatorT> &ag,
@@ -1666,7 +1666,7 @@ namespace zs {
   }
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
-  constexpr decltype(auto) proxy(
+  decltype(auto) proxy(
       const std::vector<SmallString> &tagNames,
       AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>, index_sequence<ScalingBits...>,
                        index_sequence<Is...>, AllocatorT> &ag,

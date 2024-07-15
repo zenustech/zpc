@@ -106,12 +106,19 @@ include(CMake/CompilerWarnings.cmake)
 
 # ---- dependencies ----
 # ======================
+if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+  if (ZS_ENABLE_CUDA)
+    set(ZS_ENABLE_CUDA OFF)
+    message(STATUS "== Intel compiler as host compiler is not supported by NVidia nvcc, thus turned off. ==")
+  endif (ZS_ENABLE_CUDA)
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+
 add_subdirectory(include/zensim/zpc_tpls) # build zsproj_deps target
 enable_sanitizers(zsproj_deps)
 
 if (${ZS_ENABLE_SYCL_DPCPP} OR ${ZS_ENABLE_SYCL})
   set(ZS_ENABLE_PCH OFF)
-  message(STATUS "When SYCL is enabled, precompile-headers are disabled.")
+  message(STATUS "== When SYCL is enabled, precompile-headers are disabled. ==")
 endif(${ZS_ENABLE_SYCL_DPCPP} OR ${ZS_ENABLE_SYCL})
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

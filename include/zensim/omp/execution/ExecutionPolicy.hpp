@@ -1,10 +1,13 @@
 #pragma once
 
+#include "zensim/Platform.hpp"
+
 #if !defined(ZS_ENABLE_OPENMP) || (defined(ZS_ENABLE_OPENMP) && !ZS_ENABLE_OPENMP)
 #  error "ZS_ENABLE_OPENMP was not enabled, but Omp::ExecutionPolicy.hpp was included anyway."
 #endif
 
-#if ZS_ENABLE_OPENMP && !defined(_OPENMP) && !defined(__CUDACC__)
+#if ZS_ENABLE_OPENMP && !defined(_OPENMP) && !defined(__CUDACC__) \
+    && !defined(ZS_COMPILER_INTEL_LLVM)
 #  error "ZS_ENABLE_OPENMP defined but the compiler is not defining the _OPENMP macro as expected"
 #endif
 
@@ -72,7 +75,7 @@ namespace zs {
 #pragma omp master
         for (; iter; ++iter)
 #if !defined(ZS_PLATFORM_WINDOWS)
-#pragma omp task firstprivate(iter)
+#  pragma omp task firstprivate(iter)
 #endif
         {
           if constexpr (is_invocable_v<F>)
@@ -109,7 +112,7 @@ namespace zs {
 #pragma omp master
           for (auto &&it : range)
 #if !defined(ZS_PLATFORM_WINDOWS)
-#pragma omp task firstprivate(it)
+#  pragma omp task firstprivate(it)
 #endif
           {
             if constexpr (is_invocable_v<F, decltype(it)>)
@@ -147,7 +150,7 @@ namespace zs {
 #pragma omp master
         for (; iter; ++iter)
 #if !defined(ZS_PLATFORM_WINDOWS)
-#pragma omp task firstprivate(iter)
+#  pragma omp task firstprivate(iter)
 #endif
         {
           if constexpr (is_invocable_v<F, decltype(iter), ParamTuple>)
@@ -186,7 +189,7 @@ namespace zs {
 #pragma omp master
           for (auto &&it : range)
 #if !defined(ZS_PLATFORM_WINDOWS)
-#pragma omp task firstprivate(it)
+#  pragma omp task firstprivate(it)
 #endif
           {
             if constexpr (is_invocable_v<F, decltype(it), ParamTuple>)
@@ -220,7 +223,7 @@ namespace zs {
 #pragma omp master
         for (auto &&it : range)
 #if !defined(ZS_PLATFORM_WINDOWS)
-#pragma omp task firstprivate(it)
+#  pragma omp task firstprivate(it)
 #endif
         {
           const auto args = shuffle(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)));
@@ -232,7 +235,7 @@ namespace zs {
 #pragma omp master
         for (auto &&it : range)
 #if !defined(ZS_PLATFORM_WINDOWS)
-#pragma omp task firstprivate(it)
+#  pragma omp task firstprivate(it)
 #endif
         {
           policy.template exec<I + 1>(indices, zs::tuple_cat(prefixIters, zs::make_tuple(it)),

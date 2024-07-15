@@ -57,6 +57,9 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
   omp/math/matrix/MatrixTransform.cpp
   # omp/execution/ExecutionPolicy.cpp
 )
+set(ZENSIM_LIBRARY_SYCL_SOURCE_FILES
+  sycl/Sycl.cpp
+)
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   # ref: https://stackoverflow.com/questions/2351148/explicit-template-instantiation-when-is-it-used
   container/HashTable.cpp
@@ -242,6 +245,9 @@ set(ZENSIM_LIBRARY_CUDA_INCLUDE_FILES
 set(ZENSIM_LIBRARY_OMP_INCLUDE_FILES
   omp/execution/ExecutionPolicy.hpp
   omp/math/matrix/MatrixTransform.hpp
+)
+set(ZENSIM_LIBRARY_SYCL_INCLUDE_FILES
+  sycl/Sycl.hpp
 )
 set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
   # container
@@ -572,8 +578,17 @@ endif(ZS_ENABLE_CUDA)
 # zpc: sycl #
 # ###########
 if(ZS_ENABLE_SYCL_DPCPP)
-  add_library(zpcsycl INTERFACE)
-  target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
+  if(ZS_BUILD_SHARED_LIBS)
+    add_library(zpcsycl SHARED)
+    target_compile_definitions(zpcsycl PRIVATE ZPC_BACKEND_PRIVATE)
+  else()
+    add_library(zpcsycl STATIC)
+  endif()
+
+  target_sources(zpcsycl 
+    PRIVATE ${ZENSIM_LIBRARY_SYCL_SOURCE_FILES}
+  )
+  target_link_libraries(zpcsycl PUBLIC zpc_sycl_deps zpccore)
 
 elseif(ZS_ENABLE_SYCL)
   add_library(zpcsycl INTERFACE)

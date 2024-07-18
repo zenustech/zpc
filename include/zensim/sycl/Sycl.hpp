@@ -19,6 +19,9 @@ namespace zs {
       static Sycl s_instance{};
       return s_instance;
     }
+
+    struct ZPC_BACKEND_API SyclContext {
+    };
   };
 
 }  // namespace zs

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "zensim/Platform.hpp"
 #include "zensim/types/SmallVector.hpp"
 namespace zs {
 
@@ -61,7 +61,7 @@ namespace zs {
   }  // namespace detail
 
   template <typename T> constexpr auto get_type() noexcept {
-#if defined(ZS_PLATFORM_MSVC) && !defined(ZS_COMPILER_INTEL_LLVM)
+#if defined(_MSC_VER) && !defined(ZS_COMPILER_INTEL_LLVM)
 #  if 0
     constexpr auto typestr = __FUNCSIG__;
     // static_assert(always_false<T>, __FUNCSIG__);

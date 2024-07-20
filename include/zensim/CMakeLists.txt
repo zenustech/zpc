@@ -1041,7 +1041,7 @@ target_sources(zpctool
 
 if(ZS_ENABLE_PCH)
   target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_IO_INCLUDE_FILES})
-endif(ENABLE_PCH)
+endif(ZS_ENABLE_PCH)
 
 target_link_libraries(zpctool PUBLIC zpc)
 
@@ -1061,7 +1061,7 @@ endif(ZS_ENABLE_MSHIO)
 if(ZS_ENABLE_OPENVDB)
   if(ZS_ENABLE_PCH)
     target_precompile_headers(zpctool INTERFACE ${ZENSIM_LIBRARY_TOOL_INCLUDE_FILES})
-  endif(ENABLE_PCH)
+  endif(ZS_ENABLE_PCH)
 
   target_link_libraries(zpctool PRIVATE zsopenvdb)
   target_sources(zpctool

@@ -89,7 +89,7 @@ namespace zs {
       }
 
       auto block = gridv.tile(bno);
-      for (auto it = node.cbeginValueOn(); it; ++it) {
+      for (auto it = node.cbeginValueAll(); it; ++it) {
         if constexpr (is_scalar_v)
           block(0, it.pos()) = it.getValue();
         else {
@@ -134,7 +134,7 @@ namespace zs {
       }
 
       auto block = gridv.tile(bno);
-      for (auto it = lf.cbeginValueOn(); it; ++it) {
+      for (auto it = lf.cbeginValueAll(); it; ++it) {
         if constexpr (is_scalar_v)
           block(0, it.pos()) = it.getValue();
         else {

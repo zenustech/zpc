@@ -385,10 +385,10 @@ namespace zs {
           value_type val{};
           bool found = const_cast<remove_cvref_t<grid_view_type> *>(gridPtr)->probeValue(
               chn, iCorner + make_vec<integer_coord_component_type>(offset), val);
-          if (!found) val = defaultVal;
+          // if (!found) val = defaultVal;
           pad.val(offset) = val;
         } else {
-          pad.val(offset) = gridPtr->valueOr(
+          pad.val(offset) = gridPtr->value(
               false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
         }
       }

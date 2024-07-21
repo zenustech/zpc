@@ -1146,6 +1146,26 @@ namespace zs {
       if (int f = orientation % (dim + dim); f >= dim) ++indexCoord[f - dim];
       return valueOr(false_c, chn, indexCoord, defaultVal);
     }
+    template <int I> constexpr value_type value(size_type chn,
+                                                typename table_type::index_type blockno,
+                                                integer_coord_component_type cellno,
+                                                value_type defaultVal, wrapv<I>) const noexcept {
+      const auto &l = level(wrapv<I>{});
+      return blockno == table_type::sentinel_v ? defaultVal : l.grid(chn, blockno, cellno);
+    }
+    constexpr auto value(false_type, size_type chn,
+                         const integer_coord_type &indexCoord) const noexcept {
+      value_type ret{};
+      auto found = probeValue(chn, indexCoord, ret, sentinel_v, wrapv<true>{});
+      return ret;
+    }
+    constexpr value_type value(true_type, size_type chn, integer_coord_type indexCoord,
+                               int orientation) const noexcept {
+      /// 0, ..., dim-1: within cell
+      /// dim, ..., dim+dim-1: neighbor cell
+      if (int f = orientation % (dim + dim); f >= dim) ++indexCoord[f - dim];
+      return value(false_c, chn, indexCoord);
+    }
 
     // arena
     template <kernel_e kt = kernel_e::linear, typename VecT = int,

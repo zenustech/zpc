@@ -187,6 +187,9 @@ namespace zs {
     value_type _background;  // background value
   };
 
+  ZPC_FWD_DECL_TEMPLATE_STRUCT
+  SparseGrid<3, f32, 8, ZSPmrAllocator<>, i32>;
+
   template <int dim, typename ValueT, int SideLength, typename AllocatorT, typename IndexT>
   struct is_spg<SparseGrid<dim, ValueT, SideLength, AllocatorT, IndexT>> : true_type {};
 
@@ -195,7 +198,7 @@ namespace zs {
 
   template <execspace_e Space, typename SparseGridT> struct SparseGridView
       : LevelSetInterface<SparseGridView<Space, SparseGridT>> {
-    static constexpr bool is_const_structure = std::is_const_v<SparseGridT>;
+    static constexpr bool is_const_structure = is_const_v<SparseGridT>;
     static constexpr auto space = Space;
     using container_type = remove_const_t<SparseGridT>;
     using value_type = typename container_type::value_type;

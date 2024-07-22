@@ -311,7 +311,7 @@ namespace zs {
 
   /// proxy to work within each backends
   template <execspace_e space, typename HashTableT, typename = void> struct HashTableView {
-    static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
+    static constexpr bool is_const_structure = is_const_v<HashTableT>;
     using hash_table_type = remove_const_t<HashTableT>;
     static constexpr int dim = hash_table_type::dim;
     static constexpr auto exectag = wrapv<space>{};

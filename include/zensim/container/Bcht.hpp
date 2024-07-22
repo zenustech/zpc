@@ -436,7 +436,7 @@ namespace zs {
   };
 
   template <execspace_e space, typename BCHT, bool Base = false, typename = void> struct BCHTView {
-    static constexpr bool is_const_structure = std::is_const_v<BCHT>;
+    static constexpr bool is_const_structure = is_const_v<BCHT>;
     using hash_table_type = remove_const_t<BCHT>;
     static constexpr auto exectag = wrapv<space>{};
 

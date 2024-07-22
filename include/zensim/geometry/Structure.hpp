@@ -268,7 +268,7 @@ namespace zs {
 
   /// GridT can be const decorated
   template <typename GridT, typename = void> struct grid_traits {
-    static constexpr bool is_const_structure = std::is_const_v<GridT>;
+    static constexpr bool is_const_structure = is_const_v<GridT>;
     using grid_t = remove_const_t<GridT>;
     using value_type = typename grid_t::value_type;
     using size_type = typename grid_t::size_type;  // basically size_t
@@ -810,7 +810,7 @@ namespace zs {
 
   template <execspace_e, typename GridsT, typename = void> struct GridsView;
   template <execspace_e space, typename GridsT> struct GridsView<space, GridsT> {
-    static constexpr bool is_const_structure = std::is_const_v<GridsT>;
+    static constexpr bool is_const_structure = is_const_v<GridsT>;
     using grids_t = remove_const_t<GridsT>;
     using value_type = typename grids_t::value_type;
     static constexpr int dim = grids_t::dim;

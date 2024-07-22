@@ -792,7 +792,7 @@ namespace zs {
 
   template <execspace_e Space, typename SpMatT, bool Base = false, typename = void>
   struct SparseMatrixView {
-    static constexpr bool is_const_structure = std::is_const_v<SpMatT>;
+    static constexpr bool is_const_structure = is_const_v<SpMatT>;
     static constexpr auto space = Space;
     template <typename T> using decorate_t
         = conditional_t<is_const_structure, std::add_const_t<T>, T>;

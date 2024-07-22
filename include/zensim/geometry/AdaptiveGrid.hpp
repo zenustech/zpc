@@ -720,6 +720,15 @@ namespace zs {
     value_type _background;  // background value
   };
 
+  // openvdb float grid
+  ZPC_FWD_DECL_TEMPLATE_STRUCT
+  AdaptiveGridImpl<3, f32, index_sequence<3, 4, 5>, index_sequence<3, 4, 5>,
+                   index_sequence<0, 1, 2>, ZSPmrAllocator<>>;
+  // bifrost adaptive tile tree
+  ZPC_FWD_DECL_TEMPLATE_STRUCT
+  AdaptiveGridImpl<3, f32, index_sequence<2, 2, 2>, index_sequence<1, 1, 1>,
+                   index_sequence<0, 1, 2>, ZSPmrAllocator<>>;
+
   /// @note floatgrid: <3, f32, 3, 4, 5>
   template <int dim, typename ValueT, typename BitSeq, typename AllocatorT = ZSPmrAllocator<>>
   struct VdbGrid;
@@ -741,6 +750,9 @@ namespace zs {
     VdbGrid clone(const zs::MemoryLocation &mloc) const { return base_t::clone(mloc); }
   };
 
+  ZPC_FWD_DECL_TEMPLATE_STRUCT
+  VdbGrid<3, f32, index_sequence<3, 4, 5>, ZSPmrAllocator<>>;
+
   /// @note bifrost adaptive tile tree: <3, f32, 3, 2>
   template <int dim, typename ValueT, int NumLevels, size_t N,
             typename AllocatorT = ZSPmrAllocator<>>
@@ -761,6 +773,9 @@ namespace zs {
     }
     AdaptiveTileTree clone(const zs::MemoryLocation &mloc) const { return base_t::clone(mloc); }
   };
+
+  ZPC_FWD_DECL_TEMPLATE_STRUCT
+  AdaptiveTileTree<3, f32, 3, 2, ZSPmrAllocator<>>;
 
   /// @brief adaptive grid predicate
   template <int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits, size_t... Is,
@@ -1438,8 +1453,8 @@ namespace zs {
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
   decltype(auto) proxy(const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
-                                                        index_sequence<ScalingBits...>,
-                                                        index_sequence<Is...>, AllocatorT> &ag) {
+                                              index_sequence<ScalingBits...>, index_sequence<Is...>,
+                                              AllocatorT> &ag) {
     return view<space>(ag, false_c);
   }
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
@@ -1647,9 +1662,9 @@ namespace zs {
   template <execspace_e space, int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits,
             size_t... Is, typename AllocatorT>
   decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
-                                                        index_sequence<ScalingBits...>,
-                                                        index_sequence<Is...>, AllocatorT> &ag) {
+                       const AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
+                                              index_sequence<ScalingBits...>, index_sequence<Is...>,
+                                              AllocatorT> &ag) {
     for (auto &&tag : tagNames)
       if (!ag.hasProperty(tag))
         throw std::runtime_error(

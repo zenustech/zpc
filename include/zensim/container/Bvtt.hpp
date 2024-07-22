@@ -105,7 +105,7 @@ namespace zs {
   }
 
   template <execspace_e space, typename BvttFrontT, typename = void> struct BvttFrontView {
-    static constexpr bool is_const_structure = std::is_const_v<BvttFrontT>;
+    static constexpr bool is_const_structure = is_const_v<BvttFrontT>;
     using prim_id_t = typename BvttFrontT::prim_id_t;
     using node_id_t = typename BvttFrontT::node_id_t;
     using prim_vector_t = typename BvttFrontT::prim_vector_t;

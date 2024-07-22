@@ -162,7 +162,7 @@ namespace zs {
       static_assert(extent > 0, "the access extent of the iterator should be positive.");
 
       using iter_value_type = remove_cvref_t<ValT>;
-      static constexpr bool is_const_structure = std::is_const_v<ValT>;
+      static constexpr bool is_const_structure = is_const_v<ValT>;
       static constexpr bool is_native_value_type = is_same_v<value_type, iter_value_type>;
       static constexpr bool is_scalar_access = (extent == 1);
 
@@ -215,7 +215,7 @@ namespace zs {
       static_assert(extent > 0, "the access extent of the iterator should be positive.");
 
       using iter_value_type = remove_cvref_t<ValT>;
-      static constexpr bool is_const_structure = std::is_const_v<ValT>;
+      static constexpr bool is_const_structure = is_const_v<ValT>;
       static constexpr bool is_scalar_access = (extent == 1);
 
       static constexpr size_t num_segments
@@ -694,7 +694,7 @@ namespace zs {
             typename = void>
   struct TileVectorUnnamedView {
     static constexpr auto space = Space;
-    static constexpr bool is_const_structure = std::is_const_v<TileVectorT>;
+    static constexpr bool is_const_structure = is_const_v<TileVectorT>;
     using tile_vector_type = remove_const_t<TileVectorT>;
     using const_tile_vector_type = std::add_const_t<tile_vector_type>;
     using pointer = typename tile_vector_type::pointer;

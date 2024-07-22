@@ -66,7 +66,7 @@ namespace zs {
 
   /// proxy to work within each backends
   template <zs::execspace_e Space, typename ShT> struct SpatialHashView<Space, ShT> {
-    static constexpr bool is_const_structure = std::is_const_v<ShT>;
+    static constexpr bool is_const_structure = is_const_v<ShT>;
     static constexpr auto space = Space;
     using container_type = remove_const_t<ShT>;
     static constexpr int dim = ShT::dim;

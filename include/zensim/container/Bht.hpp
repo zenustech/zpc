@@ -404,7 +404,7 @@ namespace zs {
   struct BHTView {
     static constexpr auto space = space_;
     static constexpr auto exectag = wrapv<space>{};
-    static constexpr bool is_const_structure = std::is_const_v<HashTableT>;
+    static constexpr bool is_const_structure = is_const_v<HashTableT>;
     using hash_table_type = remove_const_t<HashTableT>;
     using hasher_type = typename hash_table_type::hasher_type;
 

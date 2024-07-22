@@ -68,6 +68,8 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   container/TileVector.cpp
   container/DenseField.cpp
   geometry/Mesh.cpp
+  geometry/SparseGrid.cpp
+  geometry/AdaptiveGrid.cpp
   math/matrix/Matrix.cpp
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp

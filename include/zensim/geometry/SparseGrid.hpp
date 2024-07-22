@@ -91,7 +91,7 @@ namespace zs {
         : SparseGrid{get_default_allocator(mre, devid), channelTags, numBlocks} {}
     SparseGrid(size_type numChns, size_type numBlocks, memsrc_e mre = memsrc_e::host,
                ProcID devid = -1)
-        : SparseGrid{get_default_allocator(mre, devid), {{"unnamed", numChns}}, numBlocks} {}
+        : SparseGrid{get_default_allocator(mre, devid), {{"unnamed", (int)numChns}}, numBlocks} {}
     SparseGrid(memsrc_e mre = memsrc_e::host, ProcID devid = -1)
         : SparseGrid{get_default_allocator(mre, devid), {{"sdf", 1}}, 0} {}
 

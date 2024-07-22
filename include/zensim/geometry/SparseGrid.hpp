@@ -187,10 +187,8 @@ namespace zs {
     value_type _background;  // background value
   };
 
-  template <typename T, typename = void> struct is_spg : false_type {};
   template <int dim, typename ValueT, int SideLength, typename AllocatorT, typename IndexT>
   struct is_spg<SparseGrid<dim, ValueT, SideLength, AllocatorT, IndexT>> : true_type {};
-  template <typename T> constexpr bool is_spg_v = is_spg<T>::value;
 
   // forward decl
   template <typename GridViewT, kernel_e kt, int drv_order> struct GridArena;
@@ -915,17 +913,15 @@ namespace zs {
 
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  decltype(auto) proxy(
-      const std::vector<SmallString> &tagNames,
-      SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                       SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
                           SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{spg};
   }
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  decltype(auto) proxy(
-      const std::vector<SmallString> &tagNames,
-      const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+  decltype(auto) proxy(const std::vector<SmallString> &tagNames,
+                       const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
                           const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{
         spg};
@@ -933,15 +929,13 @@ namespace zs {
 
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  decltype(auto) proxy(
-      SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+  decltype(auto) proxy(SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
                           SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{spg};
   }
   template <execspace_e ExecSpace, int dim, typename ValueT, int SideLength, typename AllocatorT,
             typename IntegerCoordT>
-  decltype(auto) proxy(
-      const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
+  decltype(auto) proxy(const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT> &spg) {
     return SparseGridView<ExecSpace,
                           const SparseGrid<dim, ValueT, SideLength, AllocatorT, IntegerCoordT>>{
         spg};

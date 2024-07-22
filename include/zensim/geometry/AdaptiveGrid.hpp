@@ -763,7 +763,6 @@ namespace zs {
   };
 
   /// @brief adaptive grid predicate
-  template <typename T, typename = void> struct is_ag : false_type {};
   template <int dim, typename ValueT, size_t... TileBits, size_t... ScalingBits, size_t... Is,
             typename AllocatorT>
   struct is_ag<AdaptiveGridImpl<dim, ValueT, index_sequence<TileBits...>,
@@ -775,7 +774,6 @@ namespace zs {
   // adaptive tile tree
   template <int dim, typename ValueT, int NumLevels, size_t N, typename AllocatorT>
   struct is_ag<AdaptiveTileTree<dim, ValueT, NumLevels, N, AllocatorT>> : true_type {};
-  template <typename T> constexpr bool is_ag_v = is_ag<T>::value;
 
   ///
   /// @brief adaptive grid unnamed view

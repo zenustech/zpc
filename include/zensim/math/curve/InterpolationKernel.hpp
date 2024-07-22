@@ -1,9 +1,9 @@
 #pragma once
+#include "zensim/ZpcIterator.hpp"
 #include "zensim/math/MathUtils.h"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Property.h"
 #include "zensim/types/Tuple.h"
-#include "zensim/ZpcIterator.hpp"
 
 namespace zs {
 
@@ -387,8 +387,11 @@ namespace zs {
               chn, iCorner + make_vec<integer_coord_component_type>(offset), val);
           // if (!found) val = defaultVal;
           pad.val(offset) = val;
-        } else {
+        } else if constexpr (is_ag_v<typename grid_view_type::container_type>) {
           pad.val(offset) = gridPtr->value(
+              false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
+        } else {
+          pad.val(offset) = gridPtr->valueOr(
               false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
         }
       }

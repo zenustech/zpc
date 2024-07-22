@@ -39,4 +39,9 @@ namespace zs {
     }
   };
 
+  template <typename T, typename = void> struct is_ag : false_type {};
+  template <typename T, typename = void> struct is_spg : false_type {};
+  template <typename T> constexpr bool is_spg_v = is_spg<T>::value;
+  template <typename T> constexpr bool is_ag_v = is_ag<T>::value;
+
 }  // namespace zs

@@ -187,8 +187,8 @@ namespace zs {
     value_type _background;  // background value
   };
 
-  ZPC_FWD_DECL_TEMPLATE_STRUCT
-  SparseGrid<3, f32, 8, ZSPmrAllocator<>, i32>;
+  // ZPC_FWD_DECL_TEMPLATE_STRUCT
+  // SparseGrid<3, f32, 8, ZSPmrAllocator<>, i32>;
 
   template <int dim, typename ValueT, int SideLength, typename AllocatorT, typename IndexT>
   struct is_spg<SparseGrid<dim, ValueT, SideLength, AllocatorT, IndexT>> : true_type {};

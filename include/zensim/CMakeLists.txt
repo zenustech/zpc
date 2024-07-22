@@ -70,6 +70,8 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   geometry/Mesh.cpp
   geometry/SparseGrid.cpp
   geometry/AdaptiveGrid.cpp
+  geometry/Collider.cpp
+
   math/matrix/Matrix.cpp
   simulation/mpm/Simulator.cpp
   simulation/sparsity/SparsityCompute.cpp
@@ -107,7 +109,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   # geometry
   geometry/AnalyticLevelSet.h
   geometry/BoundingVolumeInterface.hpp
-  geometry/Collider.h
   geometry/GenericLevelSet.h
   geometry/LevelSet.h
   geometry/LevelSetInterface.h
@@ -270,6 +271,7 @@ set(ZENSIM_LIBRARY_ZPC_INCLUDE_FILES
   geometry/Structure.hpp
   geometry/Structurefree.hpp
   geometry/SparseGrid.hpp
+  geometry/Collider.h
   math/matrix/SparseMatrix.hpp
   math/matrix/SparseMatrixOperations.hpp
   graph/ConnectedComponents.hpp

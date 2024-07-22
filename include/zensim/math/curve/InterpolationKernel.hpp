@@ -389,7 +389,7 @@ namespace zs {
           pad.val(offset) = val;
         } else if constexpr (is_ag_v<typename grid_view_type::container_type>) {
           pad.val(offset) = gridPtr->value(
-              false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);
+              false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset));
         } else {
           pad.val(offset) = gridPtr->valueOr(
               false_c, chn, iCorner + make_vec<integer_coord_component_type>(offset), defaultVal);

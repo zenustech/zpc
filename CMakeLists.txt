@@ -168,7 +168,7 @@ target_compile_definitions(zsproj_deps INTERFACE
 # ------ cxx ------
 # =================
 add_library(zpc_cxx_deps INTERFACE)
-if (${CMAKE_CXX_COMPILER_ID} MATCHES ".*Clang")
+if (${CMAKE_CXX_COMPILER_ID} MATCHES "AppleClang")
   target_compile_options(zpc_cxx_deps INTERFACE
       $<$<COMPILE_LANGUAGE:CXX>: -std=c++17 -Wno-deprecated-builtins>
   )

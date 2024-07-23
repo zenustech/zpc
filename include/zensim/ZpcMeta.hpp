@@ -158,6 +158,7 @@ namespace zs {
     /// types with uniform type/value params
     template <template <typename...> class T, typename Arg> using uniform_types_t
         = T<enable_if_type<(Is >= 0), Arg>...>;
+    template <template <auto> class T> using type_seq_t = type_seq<T<Is>...>;
     template <template <typename...> class T, typename Arg>
     static constexpr auto uniform_values(const Arg &arg) {
       return uniform_types_t<T, Arg>{((void)Is, arg)...};

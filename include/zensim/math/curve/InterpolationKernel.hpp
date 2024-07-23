@@ -596,18 +596,18 @@ namespace zs {
     struct CacheRecord {
       integer_coord_type coord{get_key_sentinel()};
       index_type blockNo{sentinel_v};
-      index_type childBlockNo{sentinel_v};
     };
     using cache_type =
         typename gen_seq<cache_depths>::template uniform_types_t<zs::tuple, CacheRecord>;
 
-    // template <size_t I, typename AgT = typename AdaptiveGridViewT, enable_if_t<is_ag_v<typename AgT::container_type>> = 0>
-    // static auto deduce_level_grid_tile_type()
+    // template <size_t I, typename AgT = typename AdaptiveGridViewT, enable_if_t<is_ag_v<typename
+    // AgT::container_type>> = 0> static auto deduce_level_grid_tile_type()
     //     -> decltype(declval<typename AgT::template level_view_type<I>::grid_type>().tile(0));
-    // template <size_t I, typename SpgT = typename AdaptiveGridViewT, enable_if_t<is_spg_v<typename SpgT::container_type>> = 0>
-    // static auto deduce_level_grid_tile_type() -> decltype(declval<SpgT>()._grid.tile(0));
-    // template <size_t I> using grid_tile_type = decltype(deduce_level_grid_tile_type<cache_depths - 1 - I>());
-    // using cached_tiles_type = assemble_t<zs::tuple, typename gen_seq<cache_depths>::template type_seq_t<grid_tile_type>>;
+    // template <size_t I, typename SpgT = typename AdaptiveGridViewT, enable_if_t<is_spg_v<typename
+    // SpgT::container_type>> = 0> static auto deduce_level_grid_tile_type() ->
+    // decltype(declval<SpgT>()._grid.tile(0)); template <size_t I> using grid_tile_type =
+    // decltype(deduce_level_grid_tile_type<cache_depths - 1 - I>()); using cached_tiles_type =
+    // assemble_t<zs::tuple, typename gen_seq<cache_depths>::template type_seq_t<grid_tile_type>>;
 
     constexpr AdaptiveGridAccessor() noexcept = default;
     constexpr AdaptiveGridAccessor(AdaptiveGridViewT *gridPtr) noexcept
@@ -620,21 +620,21 @@ namespace zs {
     template <int D> constexpr CacheRecord &cache() const { return zs::get<D>(_cache); }
     template <int D> constexpr CacheRecord &cache() { return zs::get<D>(_cache); }
 
-    template <typename T, int D = cache_depths - 1>
-    constexpr enable_if_type<!is_const_v<T>, bool> probeValue(size_type chn,
-                                                              const integer_coord_type &coord,
-                                                              T &val, wrapv<D> = {}) {
+    template <typename T, int D = cache_depths - 1, enable_if_t<!is_const_v<T>> = 0>
+    constexpr bool probeValue(size_type chn, const integer_coord_type &coord, T &val,
+                              wrapv<D> = {}) {
       if (isHashed(coord, wrapv<D>{})) {
         // check cache first
         return _gridPtr->probeValueAndCache(*this, chn, coord, val, retrieveCache<D>(),
-                                            /*Ordered*/ true_c, wrapv<num_levels - 1 - D>{});
+                                            /*Ordered*/ true_c, wrapv<num_levels - 1 - D>{},
+                                            wrapv<false>{});
       } else {
         if constexpr (D == 0)  // the last cache level
           return _gridPtr->probeValueAndCache(*this, chn, coord, val, sentinel_v,
-                                              /*Ordered*/ true_c, wrapv<num_levels - 1>{});
-        else
-          return this->probeValue(chn, coord, val, wrapv<D - 1>{});
+                                              /*Ordered*/ true_c, wrapv<num_levels - 1>{},
+                                              wrapv<true>{});
       }
+      if constexpr (D != 0) return this->probeValue(chn, coord, val, wrapv<D - 1>{});
     }
 
     /// @note I is depth index here rather than level
@@ -645,25 +645,23 @@ namespace zs {
       if constexpr (D + 1 < cache_depths) clear<D + 1>();
     }
 
-    template <int D> constexpr enable_if_type<(D < 0 || D >= cache_depths), void> insert(
-        const integer_coord_type &coord, index_type index, wrapv<D>,
-        index_type childIndex = sentinel_v) const {}
-    template <int D> constexpr enable_if_type<(D >= 0 && D < cache_depths), void> insert(
-        const integer_coord_type &coord, index_type index, wrapv<D>,
-        index_type childIndex = sentinel_v) const {
-      cache<D>() = CacheRecord{coord & origin_mask<D>, index, childIndex};
+    template <int D> constexpr void insert(const integer_coord_type &coord, index_type index,
+                                           wrapv<D>) const {
+      if constexpr (D >= 0 && D < cache_depths) {
+        auto &c = cache<D>();
+        c.coord = coord & origin_mask<D>;
+        c.blockNo = index;
+      }
     }
-
-    template <int D> constexpr enable_if_type<(D < 0 || D >= cache_depths), bool> isHashed(
-        const integer_coord_type &coord, index_type index, wrapv<D>) const {
-      return false;
-    }
-    template <int D> constexpr enable_if_type<(D >= 0 && D < cache_depths), bool> isHashed(
-        const integer_coord_type &coord, wrapv<D>) const {
-      const auto &cc = cache<D>().coord;
-      for (int d = 0; d != dim; ++d)
-        if ((coord[d] & origin_mask<D>) != cc[d]) return false;
-      return true;
+    template <int D> constexpr bool isHashed(const integer_coord_type &coord, wrapv<D>) const {
+      if constexpr (D < 0 || D >= cache_depths)
+        return false;
+      else {
+        const auto &cc = cache<D>().coord;
+        for (int d = 0; d < dim; ++d)
+          if ((coord[d] & origin_mask<D>) != cc[d]) return false;
+        return true;
+      }
     }
 
     AdaptiveGridViewT *_gridPtr{nullptr};

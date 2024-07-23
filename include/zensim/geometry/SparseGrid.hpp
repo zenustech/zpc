@@ -307,12 +307,12 @@ namespace zs {
       auto blockid = indexCoord - cellid;
       return make_tuple(_table.query(blockid), local_coord_to_offset(cellid));
     }
-    template <typename AccessorGridView, typename T>
+    template <typename AccessorGridView, typename T, bool RequireHash>
     constexpr enable_if_type<!is_const_v<T>, bool> probeValueAndCache(
         AdaptiveGridAccessor<AccessorGridView, 1> &acc, size_type chn,
-        const integer_coord_type &coord, T &val, index_type bno, wrapv<true>, wrapv<0>) const {
+        const integer_coord_type &coord, T &val, index_type bno, wrapv<true>, wrapv<0>, wrapv<RequireHash>) const {
       constexpr bool IsVec = is_vec<T>::value;
-      if (bno == sentinel_v) {
+      if constexpr (RequireHash) {
         auto c = coord & origin_mask;
         bno = _table.query(c);
         if (bno == sentinel_v) {
@@ -336,35 +336,7 @@ namespace zs {
         val = block(chn, cno);
       return true;
     }
-    template <typename AccessorGridView, typename T>
-    constexpr enable_if_type<!is_const_v<T>, bool> probeValueAndCache(
-        AdaptiveGridAccessor<AccessorGridView, 1> &acc, size_type chn,
-        const integer_coord_type &coord, T &val, index_type bno, index_type chBno, wrapv<true>,
-        wrapv<0>) const {
-      constexpr bool IsVec = is_vec<T>::value;
-      if (bno == sentinel_v) {
-        auto c = coord & origin_mask;
-        bno = _table.query(c);
-        if (bno == sentinel_v) {
-          if constexpr (IsVec) {
-            val = T::constant(_background);
-          } else
-            val = _background;
-          return false;
-        }
-      }
-      integer_coord_component_type cno{};
-      zs::tie(bno, cno) = decomposeCoord(coord);
 
-      acc.insert(coord, bno, wrapv<0>{});
-      auto tile = _grid.tile(bno);
-      /// @note leaf level
-      if constexpr (IsVec) {
-        for (int d = 0; d != T::extent; ++d) val.val(d) = tile(chn + d, cno);
-      } else
-        val = tile(chn, cno);
-      return true;
-    }
     constexpr value_type valueOr(size_type chn, typename table_type::index_type blockno,
                                  integer_coord_component_type cellno,
                                  value_type defaultVal) const noexcept {

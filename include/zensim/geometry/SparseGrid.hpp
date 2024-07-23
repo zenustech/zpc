@@ -336,10 +336,10 @@ namespace zs {
         val = block(chn, cno);
       return true;
     }
-    template <typename AccessorGridView, typename T, typename TileT>
+    template <typename AccessorGridView, typename T>
     constexpr enable_if_type<!is_const_v<T>, bool> probeValueAndCache(
         AdaptiveGridAccessor<AccessorGridView, 1> &acc, size_type chn,
-        const integer_coord_type &coord, T &val, TileT &tile, index_type bno, wrapv<true>,
+        const integer_coord_type &coord, T &val, index_type bno, index_type chBno, wrapv<true>,
         wrapv<0>) const {
       constexpr bool IsVec = is_vec<T>::value;
       if (bno == sentinel_v) {
@@ -352,15 +352,12 @@ namespace zs {
             val = _background;
           return false;
         }
-        if constexpr (!is_same_v<remove_cv_t<TileT>, RM_CVREF_T(_grid.tile(bno))>) {
-          name_that_type(zs::make_tuple(tile, _grid.tile(bno)));
-        }
       }
       integer_coord_component_type cno{};
       zs::tie(bno, cno) = decomposeCoord(coord);
 
       acc.insert(coord, bno, wrapv<0>{});
-      tile = _grid.tile(bno);
+      auto tile = _grid.tile(bno);
       /// @note leaf level
       if constexpr (IsVec) {
         for (int d = 0; d != T::extent; ++d) val.val(d) = tile(chn + d, cno);

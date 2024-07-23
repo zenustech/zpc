@@ -627,11 +627,11 @@ namespace zs {
                                                               T &val, wrapv<D> = {}) {
       if (isHashed(coord, wrapv<D>{})) {
         // check cache first
-        return _gridPtr->probeValueAndCache(*this, chn, coord, val, retrieveCache<D>(),
+        return _gridPtr->probeValueAndCache(*this, chn, coord, val, cachedTile<D>(), retrieveCache<D>(),
                                             /*Ordered*/ true_c, wrapv<num_levels - 1 - D>{});
       } else {
         if constexpr (D == 0)  // the last cache level
-          return _gridPtr->probeValueAndCache(*this, chn, coord, val, sentinel_v,
+          return _gridPtr->probeValueAndCache(*this, chn, coord, val, cachedTile<D>(), sentinel_v,
                                               /*Ordered*/ true_c, wrapv<num_levels - 1>{});
         else
           return this->probeValue(chn, coord, val, wrapv<D - 1>{});

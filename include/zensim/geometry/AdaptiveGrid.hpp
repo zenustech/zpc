@@ -1136,6 +1136,62 @@ namespace zs {
         return lev.valueMask[bno].isOn(n);
       }
     }
+#if 1
+    template <typename AccessorAgView, int AccessorDepths, typename T, typename TileT, bool Ordered = false,
+              int I = num_levels - 1>
+    constexpr enable_if_type<!is_const_v<T>, bool> probeValueAndCache(
+        AdaptiveGridAccessor<AccessorAgView, AccessorDepths> &acc, size_type chn,
+        const integer_coord_type &coord, T &val, TileT &tile, index_type bno, wrapv<Ordered>, wrapv<I>) const {
+      constexpr bool IsVec = is_vec<T>::value;
+      auto &lev = level(dim_c<I>);
+      if (bno == sentinel_v) {
+        auto c = coord_to_key<I>(coord);
+        bno = lev.table.query(c);
+        if (bno == sentinel_v) {
+          if constexpr (IsVec) {
+            val = T::constant(_background);
+          } else
+            val = _background;
+          return false;
+        }
+        if constexpr (!is_same_v<remove_cv_t<TileT>, RM_CVREF_T(lev.grid.tile(bno))>) {
+          name_that_type(zs::make_tuple(tile, lev.grid.tile(bno)));
+        }
+      }
+
+      acc.insert(coord, bno, wrapv<num_levels - 1 - I>{});
+      tile = lev.grid.tile(bno);
+      if constexpr (I > 0) {
+        integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
+        /// @note internal level
+        if (lev.childMask[bno].isOff(n)) {
+          n = coord_to_tile_offset<I>(coord);
+          if constexpr (IsVec) {
+            for (int d = 0; d != T::extent; ++d) val.val(d) = tile(chn + d, n);
+          } else
+            val = tile(chn, n);
+          return lev.valueMask[bno].isOn(n);
+        }
+        /// TODO: an optimal layout should directly give child-n position
+        if constexpr (Ordered)
+          return probeValueAndCache(
+              acc, chn, coord, val,
+              lev.childOffset[bno] + lev.childMask[bno].countOffset(n, wrapv<space>{}),
+              wrapv<Ordered>{}, wrapv<I - 1>{});
+        else
+          return probeValueAndCache(acc, chn, coord, val, sentinel_v, wrapv<Ordered>{},
+                                    wrapv<I - 1>{});
+      } else {
+        const integer_coord_component_type n = coord_to_tile_offset<I>(coord);
+        /// @note leaf level
+        if constexpr (IsVec) {
+          for (int d = 0; d != T::extent; ++d) val.val(d) = tile(chn + d, n);
+        } else
+          val = tile(chn, n);
+        return lev.valueMask[bno].isOn(n);
+      }
+    }
+#endif
     template <int I> constexpr value_type valueOr(size_type chn,
                                                   typename table_type::index_type blockno,
                                                   integer_coord_component_type cellno,

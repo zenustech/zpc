@@ -600,13 +600,18 @@ namespace zs {
     using cache_type =
         typename gen_seq<cache_depths>::template uniform_types_t<zs::tuple, CacheRecord>;
 
-    template <size_t I, typename AgT = typename AdaptiveGridViewT, enable_if_t<is_ag_v<typename AgT::container_type>> = 0>
+    template <size_t I, typename AgT = AdaptiveGridViewT,
+              enable_if_t<is_ag_v<typename AgT::container_type>> = 0>
     static auto deduce_level_grid_tile_type()
         -> decltype(declval<typename AgT::template level_view_type<I>::grid_type>().tile(0));
-    template <size_t I, typename SpgT = typename AdaptiveGridViewT, enable_if_t<is_spg_v<typename SpgT::container_type>> = 0>
+    template <size_t I, typename SpgT = AdaptiveGridViewT,
+              enable_if_t<is_spg_v<typename SpgT::container_type>> = 0>
     static auto deduce_level_grid_tile_type() -> decltype(declval<SpgT>()._grid.tile(0));
-    template <size_t I> using grid_tile_type = decltype(deduce_level_grid_tile_type<cache_depths - 1 - I>());
-    using cached_tiles_type = assemble_t<zs::tuple, typename gen_seq<cache_depths>::template type_seq_t<grid_tile_type>>;
+    template <size_t I> using grid_tile_type
+        = decltype(deduce_level_grid_tile_type<cache_depths - 1 - I>());
+    using cached_tiles_type
+        = assemble_t<zs::tuple,
+                     typename gen_seq<cache_depths>::template type_seq_t<grid_tile_type>>;
 
     constexpr AdaptiveGridAccessor() noexcept = default;
     constexpr AdaptiveGridAccessor(AdaptiveGridViewT *gridPtr) noexcept

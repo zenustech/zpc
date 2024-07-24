@@ -620,6 +620,37 @@ namespace zs {
     template <int D> constexpr CacheRecord &cache() const { return zs::get<D>(_cache); }
     template <int D> constexpr CacheRecord &cache() { return zs::get<D>(_cache); }
 
+#if 0
+    template <typename T, int D>
+    constexpr bool eval(size_type chn, const integer_coord_type &coord, T &val, wrapv<D>) {
+      if constexpr (D == 0) {
+        return _gridPtr->probeValueAndCache(*this, chn, coord, val, sentinel_v,
+                                            /*Ordered*/ true_c, wrapv<num_levels - 1>{},
+                                            wrapv<true>{});
+      } else
+        return false;
+    }
+    template <typename T, int D, size_t... Is>
+    constexpr bool evalFirstCached(size_type chn, const integer_coord_type &coord, T &val, wrapv<D>,
+                                   index_sequence<Is...>) {
+      bool ret = false;
+      ((isHashed(coord, wrapv<D - (int)Is>{})
+            ? /*0*/ (
+                ret = _gridPtr->probeValueAndCache(
+                    *this, chn, coord, val, retrieveCache<D - (int)Is>(),
+                    /*Ordered*/ true_c, wrapv<num_levels - 1 - (D - (int)Is)>{}, wrapv<false>{}),
+                true)
+            : (/*1*/ (ret = eval(chn, coord, val, wrapv<D - (int)Is>{})), false))
+       || ...);
+      return ret;
+    }
+    template <typename T, int D = cache_depths - 1, enable_if_t<!is_const_v<T>> = 0>
+    constexpr bool probeValue(size_type chn, const integer_coord_type &coord, T &val,
+                              wrapv<D> = {}) {
+      return evalFirstCached(chn, coord, val, wrapv<D>{}, typename gen_seq<D + 1>::ascend{});
+    }
+#else
+
     template <typename T, int D = cache_depths - 1, enable_if_t<!is_const_v<T>> = 0>
     constexpr bool probeValue(size_type chn, const integer_coord_type &coord, T &val,
                               wrapv<D> = {}) {
@@ -636,6 +667,7 @@ namespace zs {
       }
       if constexpr (D != 0) return this->probeValue(chn, coord, val, wrapv<D - 1>{});
     }
+#endif
 
     /// @note I is depth index here rather than level
     template <int D> constexpr index_type retrieveCache() const { return cache<D>().blockNo; }
@@ -645,8 +677,8 @@ namespace zs {
       if constexpr (D + 1 < cache_depths) clear<D + 1>();
     }
 
-    template <int D> constexpr void insert(const integer_coord_type &coord, index_type index,
-                                           wrapv<D>) const {
+    template <int D>
+    constexpr void insert(const integer_coord_type &coord, index_type index, wrapv<D>) const {
       if constexpr (D >= 0 && D < cache_depths) {
         auto &c = cache<D>();
         c.coord = coord & origin_mask<D>;

@@ -1118,25 +1118,26 @@ namespace zs {
       if constexpr (I > 0) {
         integer_coord_component_type n = coord_to_hierarchy_offset<I>(coord);
         /// @note internal level
-        if (lev.childMask[bno].isOff(n)) {
+        if (lev.childMask[bno].isOn(n)) {
+          acc.insert(coord, bno, wrapv<num_levels - 1 - I>{});
+          /// TODO: an optimal layout should directly give child-n position
+          if constexpr (Ordered)
+            return probeValueAndCache(
+                acc, chn, coord, val,
+                lev.childOffset[bno] + lev.childMask[bno].countOffset(n, wrapv<space>{}),
+                wrapv<Ordered>{}, wrapv<I - 1>{}, wrapv<false>{});
+          else
+            return probeValueAndCache(acc, chn, coord, val, sentinel_v, wrapv<Ordered>{},
+                                      wrapv<I - 1>{}, wrapv<true>{});
+        } else {
           auto block = lev.grid.tile(bno);
           n = coord_to_tile_offset<I>(coord);
           if constexpr (IsVec) {
             for (int d = 0; d != T::extent; ++d) val.val(d) = block(chn + d, n);
           } else
             val = block(chn, n);
-          return lev.valueMask[bno].isOn(n);
+          return lev.valueMask[bno].isOn(n);  // isTileOn (root), isValueMaskOn (internal)
         }
-        acc.insert(coord, bno, wrapv<num_levels - 1 - I>{});
-        /// TODO: an optimal layout should directly give child-n position
-        if constexpr (Ordered)
-          return probeValueAndCache(
-              acc, chn, coord, val,
-              lev.childOffset[bno] + lev.childMask[bno].countOffset(n, wrapv<space>{}),
-              wrapv<Ordered>{}, wrapv<I - 1>{}, wrapv<false>{});
-        else
-          return probeValueAndCache(acc, chn, coord, val, sentinel_v, wrapv<Ordered>{},
-                                    wrapv<I - 1>{}, wrapv<true>{});
       }
     }
     

@@ -44,7 +44,7 @@ namespace zs {
     }
     constexpr T &&get(index_t<I>) && noexcept { return zs::move(value); }
     template <bool NonRValRef = !is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
-    constexpr decltype(auto) get(index_t<I>) const & noexcept {
+    constexpr const T &get(index_t<I>) const & noexcept {
       return value;
     }
     /// by type
@@ -56,7 +56,7 @@ namespace zs {
     }
     constexpr T &&get(wrapt<T>) && noexcept { return zs::move(value); }
     template <bool NonRValRef = !is_rvalue_reference_v<T>, enable_if_t<NonRValRef> = 0>
-    constexpr decltype(auto) get(wrapt<T>) const & noexcept {
+    constexpr const T &get(wrapt<T>) const & noexcept {
       return value;
     }
     T value;

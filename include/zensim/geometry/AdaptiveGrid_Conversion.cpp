@@ -310,7 +310,7 @@ namespace zs {
     grid->setTransform(openvdb::math::Transform::createLinearTransform(v2w));
 
     // build leaf
-    auto &l0 = ag.level(dim_c<0>);
+    const auto &l0 = ag.level(dim_c<0>);
     const int propOffset = l0.grid.getPropertyOffset(propTag);
     auto nlvs = l0.numBlocks();
     zs::tuple<std::vector<LeafType *>, std::vector<Int1Type *>, std::vector<Int2Type *>> nodes;

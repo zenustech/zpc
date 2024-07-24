@@ -545,12 +545,12 @@ namespace zs {
   };
 
   template <typename Tn, int dim> using collapse_t
-      = Collapse<typename gen_seq<dim>::template uniform_types_t<type_seq, int>,
+      = Collapse<typename build_seq<dim>::template uniform_types_t<type_seq, int>,
                  make_index_sequence<dim>>;
 
   template <typename VecT, enable_if_t<is_integral_v<typename VecT::value_type>> = 0>
   Collapse(const VecInterface<VecT> &) -> Collapse<
-      typename gen_seq<VecT::extent>::template uniform_types_t<type_seq, typename VecT::value_type>,
+      typename build_seq<VecT::extent>::template uniform_types_t<type_seq, typename VecT::value_type>,
       make_index_sequence<VecT::extent>>;
   template <typename... Tn, enable_if_all<is_integral_v<Tn>...> = 0> Collapse(Tn...)
       -> Collapse<type_seq<Tn...>, index_sequence_for<Tn...>>;

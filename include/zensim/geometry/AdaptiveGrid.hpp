@@ -757,12 +757,12 @@ namespace zs {
   template <int dim, typename ValueT, int NumLevels, size_t N,
             typename AllocatorT = ZSPmrAllocator<>>
   struct AdaptiveTileTree
-      : AdaptiveGridImpl<dim, ValueT, typename gen_seq<NumLevels>::template constant<N>,
-                         typename gen_seq<NumLevels>::template constant<(size_t)1>,
-                         typename gen_seq<NumLevels>::ascend, AllocatorT> {
-    using base_t = AdaptiveGridImpl<dim, ValueT, typename gen_seq<NumLevels>::template constant<N>,
-                                    typename gen_seq<NumLevels>::template constant<(size_t)1>,
-                                    typename gen_seq<NumLevels>::ascend, AllocatorT>;
+      : AdaptiveGridImpl<dim, ValueT, typename build_seq<NumLevels>::template constant<N>,
+                         typename build_seq<NumLevels>::template constant<(size_t)1>,
+                         typename build_seq<NumLevels>::ascend, AllocatorT> {
+    using base_t = AdaptiveGridImpl<dim, ValueT, typename build_seq<NumLevels>::template constant<N>,
+                                    typename build_seq<NumLevels>::template constant<(size_t)1>,
+                                    typename build_seq<NumLevels>::ascend, AllocatorT>;
     AdaptiveTileTree() = default;
     ~AdaptiveTileTree() = default;
     AdaptiveTileTree(base_t &&ag) : base_t{zs::move(ag)} {}

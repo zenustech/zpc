@@ -638,7 +638,7 @@ namespace zs {
   template <size_t... Is, typename... Ranges, typename... Bodies>
   constexpr void par_exec(zs::tuple<Ranges...> ranges, Bodies &&...bodies) {
     using SeqPolicies =
-        typename gen_seq<sizeof...(Ranges)>::template uniform_types_t<zs::tuple,
+        typename build_seq<sizeof...(Ranges)>::template uniform_types_t<zs::tuple,
                                                                       SequentialExecutionPolicy>;
     par_exec<Is...>(SeqPolicies{}, std::move(ranges), FWD(bodies)...);
   }

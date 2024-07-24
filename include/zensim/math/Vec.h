@@ -84,7 +84,7 @@ namespace zs {
       if constexpr (dim == 1) {
         return base_t::val(index);
       } else {
-        using R = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
+        using R = vec_view<T, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>>;
         const auto st = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
@@ -101,7 +101,7 @@ namespace zs {
         using TT = conditional_t<is_pointer_structure, add_pointer_t<add_const_t<value_type>>,
                                  add_const_t<value_type>>;
         using R
-            = vec_view<TT, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
+            = vec_view<TT, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>>;
         const auto st = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
@@ -265,7 +265,7 @@ namespace zs {
       if constexpr (dim == 1) {
         return base_t::val(index);
       } else {
-        using R = vec_view<T, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
+        using R = vec_view<T, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>>;
         auto offset = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};
@@ -283,7 +283,7 @@ namespace zs {
         using TT = conditional_t<is_pointer_structure, add_pointer_t<add_const_t<value_type>>,
                                  add_const_t<value_type>>;
         using R
-            = vec_view<TT, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>;
+            = vec_view<TT, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>>;
         auto offset = indexer_type::offset(index);
         if constexpr (is_pointer_structure) {
           R ret{};

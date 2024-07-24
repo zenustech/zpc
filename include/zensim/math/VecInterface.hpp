@@ -276,7 +276,7 @@ namespace zs {
     ///
     template <size_t... Is, typename VecT = Derived, enable_if_t<sizeof...(Is) == VecT::extent> = 0>
     constexpr auto to_tuple(index_sequence<Is...>) const noexcept {
-      // using RetT = typename gen_seq<extent>::template uniform_types_t<tuple, value_type>;
+      // using RetT = typename build_seq<extent>::template uniform_types_t<tuple, value_type>;
       return zs::make_tuple(val(Is)...);
     }
     template <typename VecT = Derived> constexpr auto to_tuple() const noexcept {
@@ -322,7 +322,7 @@ namespace zs {
       auto r = zeros();
       constexpr index_type N = VecT::template range_t<0>::value;
       for (index_type i = 0; i != N; ++i)
-        r.val(gen_seq<VecT::dim>::template uniform_values<zs::tuple>(i)) = 1;
+        r.val(build_seq<VecT::dim>::template uniform_values<zs::tuple>(i)) = 1;
       return r;
     }
     template <typename VecT = Derived> constexpr auto vectorize() const noexcept {

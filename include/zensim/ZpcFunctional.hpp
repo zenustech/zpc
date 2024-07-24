@@ -629,9 +629,9 @@ namespace zs {
           return (*this)(seq_func<0, SeqT...>(), seq_func<1, SeqT...>());
         else {
           constexpr size_t halfN = N / 2;
-          return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
+          return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename build_seq<halfN>::ascend{})),
                          (*this)(type_seq<SeqT...>{}.shuffle(
-                             typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
+                             typename build_seq<N - halfN>::template arithmetic<halfN>{})));
         }
       }
     };
@@ -681,9 +681,9 @@ namespace zs {
           return (*this)(seq_func<0, SeqT...>(), seq_func<1, SeqT...>());
         else if constexpr (N > 2) {
           constexpr size_t halfN = N / 2;
-          return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename gen_seq<halfN>::ascend{})),
+          return (*this)((*this)(type_seq<SeqT...>{}.shuffle(typename build_seq<halfN>::ascend{})),
                          (*this)(type_seq<SeqT...>{}.shuffle(
-                             typename gen_seq<N - halfN>::template arithmetic<halfN>{})));
+                             typename build_seq<N - halfN>::template arithmetic<halfN>{})));
         }
       }
     };

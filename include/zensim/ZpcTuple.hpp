@@ -221,7 +221,7 @@ namespace zs {
       return zs::make_tuple(op(Js, get<Is>()...)...);
     }
     template <zs::size_t N, typename MapOp> constexpr auto map(MapOp &&op) const noexcept {
-      return map_impl(forward<MapOp>(op), gen_seq<N>::ascend());
+      return map_impl(forward<MapOp>(op), build_seq<N>::ascend());
     }
     /// reduce
     template <typename MonoidOp> constexpr auto reduce(MonoidOp &&op) const noexcept {
@@ -383,7 +383,7 @@ namespace zs {
   constexpr auto index_to_coord(size_t I, value_seq<Ns...> vs, index_sequence<Is...>) {
     constexpr auto N = sizeof...(Ns);
     using Tn = typename value_seq<Ns...>::value_type;
-    // using RetT = typename gen_seq<N>::template uniform_types_t<tuple, Tn>;
+    // using RetT = typename build_seq<N>::template uniform_types_t<tuple, Tn>;
     constexpr auto exsuf = vs.template scan<2>(multiplies<size_t>{});
     Tn bases[N]{exsuf.get_value(wrapv<Is>()).value...};
     Tn cs[N]{};
@@ -419,7 +419,7 @@ namespace zs {
                     "concat should only take zs::tuple type template params!");
       using counts = value_seq<remove_cvref_t<Tuples>::tuple_types::count...>;
       static constexpr auto length = counts{}.reduce(plus<size_t>{}).value;
-      using indices = typename gen_seq<length>::ascend;
+      using indices = typename build_seq<length>::ascend;
       using outer
           = decltype(counts{}.template scan<1, plus<size_t>>().map(count_leq{}, wrapv<length>{}));
       using inner = decltype(vseq_t<indices>{}.compwise(
@@ -471,7 +471,7 @@ namespace zs {
         constexpr auto offsets = marks.scan();  // exclusive scan
         constexpr auto tags = marks.pair(offsets);
         constexpr auto seq
-            = tags.filter(typename vseq_t<typename gen_seq<N>::ascend>::template to_iseq<int>{});
+            = tags.filter(typename vseq_t<typename build_seq<N>::ascend>::template to_iseq<int>{});
         return tuple_cat(seq, FWD(tuples)...);
       }
     }

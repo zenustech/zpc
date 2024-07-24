@@ -144,8 +144,8 @@ namespace zs {
   template <typename SeqT> static constexpr bool is_type_seq_v = is_type_seq<SeqT>::value;
 
   /// generate index sequence declaration
-  template <typename> struct gen_seq_impl;
-  template <size_t... Is> struct gen_seq_impl<index_sequence<Is...>> {
+  template <typename> struct build_seq_impl;
+  template <size_t... Is> struct build_seq_impl<index_sequence<Is...>> {
     /// arithmetic sequences
     template <auto N0 = 0, auto Step = 1> using arithmetic = index_sequence<static_cast<size_t>(
         static_cast<signed long long int>(N0)
@@ -166,7 +166,7 @@ namespace zs {
     template <template <auto...> class T, auto Arg> using uniform_values_t
         = T<(Is >= 0 ? Arg : 0)...>;
   };
-  template <zs::size_t N> using gen_seq = gen_seq_impl<make_index_sequence<N>>;
+  template <zs::size_t N> using build_seq = build_seq_impl<make_index_sequence<N>>;
 
   template <typename... Seqs> struct concat;
   template <typename... Seqs> using concat_t = typename concat<Seqs...>::type;

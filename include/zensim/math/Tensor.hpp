@@ -23,8 +23,8 @@ namespace zs {
 
     static constexpr auto prefix_dim = tensor_type::dim - dim;
 
-    using prefix_type = typename gen_seq<prefix_dim>::template uniform_types_t<tuple, index_type>;
-    using base_type = typename gen_seq<dim>::template uniform_types_t<tuple, index_type>;
+    using prefix_type = typename build_seq<prefix_dim>::template uniform_types_t<tuple, index_type>;
+    using base_type = typename build_seq<dim>::template uniform_types_t<tuple, index_type>;
 
     template <typename OtherT, typename ExtentsT> using variant_vec =
         typename tensor_type::template variant_vec<OtherT, ExtentsT>;
@@ -70,10 +70,10 @@ namespace zs {
         return _tensorPtr->val(getTensorCoord(make_tuple(index), indices{}));
       else
         return tensor_view<Tensor,
-                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
-            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{},
+                           gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>>{
+            *_tensorPtr, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>{},
             tuple_cat(_prefix, make_tuple((index_type)index + get<0>(_base))),
-            _base.shuffle(typename gen_seq<dim - 1>::template arithmetic<1>{})};
+            _base.shuffle(typename build_seq<dim - 1>::template arithmetic<1>{})};
     }
     template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
     constexpr decltype(auto) operator[](Index index) const noexcept {
@@ -81,10 +81,10 @@ namespace zs {
         return _tensorPtr->val(getTensorCoord(make_tuple(index), indices{}));
       else
         return tensor_view<add_const_t<Tensor>,
-                           gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>>{
-            *_tensorPtr, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{},
+                           gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>>{
+            *_tensorPtr, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>{},
             tuple_cat(_prefix, make_tuple((index_type)index + get<0>(_base))),
-            _base.shuffle(typename gen_seq<dim - 1>::template arithmetic<1>{})};
+            _base.shuffle(typename build_seq<dim - 1>::template arithmetic<1>{})};
     }
     // val
     template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
@@ -133,7 +133,7 @@ namespace zs {
       constexpr auto tags = marks.pair(offsets);
       constexpr auto seq = tags.filter(
           typename vseq_t<
-              typename gen_seq<marks.reduce(plus<int>{}).value>::ascend>::template to_iseq<int>{});
+              typename build_seq<marks.reduce(plus<int>{}).value>::ascend>::template to_iseq<int>{});
       return value_seq<Is...>{}.shuffle(seq);
     }
 
@@ -151,7 +151,7 @@ namespace zs {
             indexer_impl<
                 Extents,
                 decltype(value_seq<Is...>{}.concat(
-                    typename gen_seq<vseq_t<Extents>::count - dim>::template arithmetic<dim>{})),
+                    typename build_seq<vseq_t<Extents>::count - dim>::template arithmetic<dim>{})),
                 make_index_sequence<vseq_t<Extents>::count>>>>;
 
     template <typename OtherT, typename ExtentsT> using variant_vec
@@ -174,7 +174,7 @@ namespace zs {
         return _data[indexer_type::offset(index)];
       else
         return tensor_view{
-            *this, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{},
+            *this, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>{},
             make_tuple((index_type)index), make_uniform_tuple<dim - 1>((index_type)0)};
     }
     template <typename Index, enable_if_t<is_integral_v<Index>> = 0>
@@ -183,7 +183,7 @@ namespace zs {
         return _data[indexer_type::offset(index)];
       else
         return tensor_view{
-            *this, gather_t<typename gen_seq<dim - 1>::template arithmetic<1>, extents>{},
+            *this, gather_t<typename build_seq<dim - 1>::template arithmetic<1>, extents>{},
             make_tuple((index_type)index), make_uniform_tuple<dim - 1>((index_type)0)};
     }
     // val (in ascending access order rather than memory storage order)

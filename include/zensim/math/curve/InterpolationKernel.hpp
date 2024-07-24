@@ -598,7 +598,7 @@ namespace zs {
       index_type blockNo{sentinel_v};
     };
     using cache_type =
-        typename gen_seq<cache_depths>::template uniform_types_t<zs::tuple, CacheRecord>;
+        typename build_seq<cache_depths>::template uniform_types_t<zs::tuple, CacheRecord>;
 
     // template <size_t I, typename AgT = typename AdaptiveGridViewT, enable_if_t<is_ag_v<typename
     // AgT::container_type>> = 0> static auto deduce_level_grid_tile_type()
@@ -607,7 +607,7 @@ namespace zs {
     // SpgT::container_type>> = 0> static auto deduce_level_grid_tile_type() ->
     // decltype(declval<SpgT>()._grid.tile(0)); template <size_t I> using grid_tile_type =
     // decltype(deduce_level_grid_tile_type<cache_depths - 1 - I>()); using cached_tiles_type =
-    // assemble_t<zs::tuple, typename gen_seq<cache_depths>::template type_seq_t<grid_tile_type>>;
+    // assemble_t<zs::tuple, typename build_seq<cache_depths>::template type_seq_t<grid_tile_type>>;
 
     constexpr AdaptiveGridAccessor() noexcept = default;
     constexpr AdaptiveGridAccessor(AdaptiveGridViewT *gridPtr) noexcept
@@ -647,7 +647,7 @@ namespace zs {
     template <typename T, int D = cache_depths - 1, enable_if_t<!is_const_v<T>> = 0>
     constexpr bool probeValue(size_type chn, const integer_coord_type &coord, T &val,
                               wrapv<D> = {}) {
-      return evalFirstCached(chn, coord, val, wrapv<D>{}, typename gen_seq<D + 1>::ascend{});
+      return evalFirstCached(chn, coord, val, wrapv<D>{}, typename build_seq<D + 1>::ascend{});
     }
 #else
 

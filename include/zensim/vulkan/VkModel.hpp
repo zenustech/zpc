@@ -23,8 +23,10 @@ namespace zs {
             const vec3_t &translation = vec3_t::constant(0.f),
             const vec3_t &eulerXYZradians = vec3_t::constant(0.f),
             const vec3_t &scale = vec3_t::constant(1.f));
+    VkModel(VulkanContext& ctx, const Mesh<float, 3, u32, 3>& surfs, const transform_t& transform);
     VkModel(VkModel &&o) = default;
     VkModel &operator=(VkModel &&o) = default;
+    void parseFromMesh(VulkanContext&, const Mesh<float, 3, u32, 3>& surfs);
     void reset() {
       verts.pos.reset();
       verts.nrm.reset();
@@ -118,11 +120,14 @@ namespace zs {
     }
 
     bool isParticle() const noexcept { return indexCount == 0; }
+    bool isValid() const noexcept { return verts.vertexCount > 0; }
 
     Vertices verts;
     vk::DeviceSize indexCount;
     Owner<Buffer> indices;
     vec3_t scale, rotate, translate;
+    transform_t transform;
+    bool useTransform = false;
   };
 
 }  // namespace zs

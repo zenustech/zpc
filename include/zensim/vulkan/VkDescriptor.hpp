@@ -28,7 +28,8 @@ namespace zs {
     }
 
     vk::DescriptorSetLayout operator*() const { return descriptorSetLayout; }
-    operator vk::DescriptorSetLayout() const { return descriptorSetLayout; }
+    operator vk::DescriptorSetLayout&() { return descriptorSetLayout; }
+    operator const vk::DescriptorSetLayout&() const { return descriptorSetLayout; }
 
     vk::DescriptorSetLayoutBinding getBinding(u32 binding) const { return bindings.at(binding); }
 

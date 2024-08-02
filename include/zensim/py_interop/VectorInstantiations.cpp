@@ -5,89 +5,120 @@
 
 extern "C" {
 
-#define INSTANTIATE_VECTOR_CAPIS(T)                                                              \
-  /* container */                                                                                \
-  ZPC_EXPORT zs::Vector<T, zs::ZSPmrAllocator<false>> *container##__##v##_##T(                   \
-      const zs::ZSPmrAllocator<false> *allocator, zs::size_t size) {                             \
-    return new zs::Vector<T, zs::ZSPmrAllocator<false>>{*allocator, size};                       \
-  }                                                                                              \
-  ZPC_EXPORT zs::Vector<T, zs::ZSPmrAllocator<true>> *container##__##v##_##T##_##virtual(        \
-      const zs::ZSPmrAllocator<true> *allocator, zs::size_t size) {                              \
-    return new zs::Vector<T, zs::ZSPmrAllocator<true>>{*allocator, size};                        \
-  }                                                                                              \
-  ZPC_EXPORT void del_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {      \
-    delete v;                                                                                    \
-  }                                                                                              \
-  ZPC_EXPORT void del_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> \
-                                                         * v) {                                  \
-    delete v;                                                                                    \
-  }                                                                                              \
-  ZPC_EXPORT void relocate_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,   \
-                                                  zs::memsrc_e mre, zs::ProcID devid) {          \
-    *v = v->clone({mre, devid});                                                                 \
-  }                                                                                              \
-  ZPC_EXPORT void relocate_container##__##v##_##T##_##virtual(                                   \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::memsrc_e mre, zs::ProcID devid) {         \
-    *v = v->clone({mre, devid});                                                                 \
-  }                                                                                              \
-  ZPC_EXPORT void resize_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,     \
-                                                zs::size_t newSize) {                            \
-    v->resize(newSize);                                                                          \
-  }                                                                                              \
-  ZPC_EXPORT void resize_container##__##v##_##T##_##virtual(                                     \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::size_t newSize) {                         \
-    v->resize(newSize);                                                                          \
-  }                                                                                              \
-  ZPC_EXPORT void reset_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,      \
-                                               int ch) {                                         \
-    v->reset(ch);                                                                                \
-  }                                                                                              \
-  ZPC_EXPORT void reset_container##__##v##_##T##_##virtual(                                      \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, int ch) {                                     \
-    v->reset(ch);                                                                                \
-  }                                                                                              \
-  ZPC_EXPORT size_t container_size##__##v##_##T(                                                 \
-      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                       \
-    return v->size();                                                                            \
-  }                                                                                              \
-  ZPC_EXPORT size_t container_size##__##v##_##T##_##virtual(                                     \
-      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
-    return v->size();                                                                            \
-  }                                                                                              \
-  ZPC_EXPORT size_t container_capacity##__##v##_##T(                                             \
-      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                       \
-    return v->capacity();                                                                        \
-  }                                                                                              \
-  ZPC_EXPORT size_t container_capacity##__##v##_##T##_##virtual(                                 \
-      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
-    return v->capacity();                                                                        \
-  }                                                                                              \
-  /* custom */                                                                                   \
-  ZPC_EXPORT T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {     \
-    return v->getVal();                                                                          \
-  }                                                                                              \
-  ZPC_EXPORT void set_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,    \
-                                                 T newVal) {                                     \
-    v->setVal(newVal);                                                                           \
-  }                                                                                              \
-  /* pyview */                                                                                   \
-  ZPC_EXPORT zs::VectorViewLite<T> *pyview##__##v##_##T(                                         \
-      zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                             \
-    return new zs::VectorViewLite<T>{v->data()};                                                 \
-  }                                                                                              \
-  ZPC_EXPORT zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T(                         \
-      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                       \
-    return new zs::VectorViewLite<const T>{v->data()};                                           \
-  }                                                                                              \
-  ZPC_EXPORT zs::VectorViewLite<T> *pyview##__##v##_##T##_##virtual(                             \
-      zs::Vector<T, zs::ZSPmrAllocator<true>> * v) {                                             \
-    return new zs::VectorViewLite<T>{v->data()};                                                 \
-  }                                                                                              \
-  ZPC_EXPORT zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T##_##virtual(             \
-      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                        \
-    return new zs::VectorViewLite<const T>{v->data()};                                           \
-  }                                                                                              \
-  ZPC_EXPORT void del_pyview##__##v##_##T(zs::VectorViewLite<T> *v) { delete v; }                \
+#define INSTANTIATE_VECTOR_CAPIS(T)                                                               \
+  /* container */                                                                                 \
+  ZPC_EXPORT zs::Vector<T, zs::ZSPmrAllocator<false>> *container##__##v##_##T(                    \
+      const zs::ZSPmrAllocator<false> *allocator, zs::size_t size) {                              \
+    return new zs::Vector<T, zs::ZSPmrAllocator<false>>{*allocator, size};                        \
+  }                                                                                               \
+  ZPC_EXPORT zs::Vector<T, zs::ZSPmrAllocator<true>> *container##__##v##_##T##_##virtual(         \
+      const zs::ZSPmrAllocator<true> *allocator, zs::size_t size) {                               \
+    return new zs::Vector<T, zs::ZSPmrAllocator<true>>{*allocator, size};                         \
+  }                                                                                               \
+  ZPC_EXPORT void del_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {       \
+    delete v;                                                                                     \
+  }                                                                                               \
+  ZPC_EXPORT void del_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>>  \
+                                                         * v) {                                   \
+    delete v;                                                                                     \
+  }                                                                                               \
+  ZPC_EXPORT void relocate_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,    \
+                                                  zs::memsrc_e mre, zs::ProcID devid) {           \
+    *v = v->clone({mre, devid});                                                                  \
+  }                                                                                               \
+  ZPC_EXPORT void relocate_container##__##v##_##T##_##virtual(                                    \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::memsrc_e mre, zs::ProcID devid) {          \
+    *v = v->clone({mre, devid});                                                                  \
+  }                                                                                               \
+  ZPC_EXPORT void resize_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,      \
+                                                zs::size_t newSize) {                             \
+    v->resize(newSize);                                                                           \
+  }                                                                                               \
+  ZPC_EXPORT void resize_container##__##v##_##T##_##virtual(                                      \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::size_t newSize) {                          \
+    v->resize(newSize);                                                                           \
+  }                                                                                               \
+  ZPC_EXPORT void reset_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,       \
+                                               int ch) {                                          \
+    v->reset(ch);                                                                                 \
+  }                                                                                               \
+  ZPC_EXPORT void reset_container##__##v##_##T##_##virtual(                                       \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, int ch) {                                      \
+    v->reset(ch);                                                                                 \
+  }                                                                                               \
+  ZPC_EXPORT size_t container_size##__##v##_##T(                                                  \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                        \
+    return v->size();                                                                             \
+  }                                                                                               \
+  ZPC_EXPORT size_t container_size##__##v##_##T##_##virtual(                                      \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                         \
+    return v->size();                                                                             \
+  }                                                                                               \
+  ZPC_EXPORT size_t container_capacity##__##v##_##T(                                              \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                        \
+    return v->capacity();                                                                         \
+  }                                                                                               \
+  ZPC_EXPORT size_t container_capacity##__##v##_##T##_##virtual(                                  \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                         \
+    return v->capacity();                                                                         \
+  }                                                                                               \
+  /* custom */                                                                                    \
+  ZPC_EXPORT T get_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {      \
+    return v->getVal();                                                                           \
+  }                                                                                               \
+  ZPC_EXPORT T get_val_container##__##v##_##T##_##virtual(zs::Vector<T, zs::ZSPmrAllocator<true>> \
+                                                          * v) {                                  \
+    return v->getVal();                                                                           \
+  }                                                                                               \
+  ZPC_EXPORT void set_val_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,     \
+                                                 T newVal) {                                      \
+    v->setVal(newVal);                                                                            \
+  }                                                                                               \
+  ZPC_EXPORT void set_val_container##__##v##_##T##_##virtual(                                     \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, T newVal) {                                    \
+    v->setVal(newVal);                                                                            \
+  }                                                                                               \
+  ZPC_EXPORT T get_val_i_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,      \
+                                                zs::size_t i) {                                   \
+    return v->getVal(i);                                                                          \
+  }                                                                                               \
+  ZPC_EXPORT T get_val_i_container##__##v##_##T##_##virtual(                                      \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::size_t i) {                                \
+    return v->getVal(i);                                                                          \
+  }                                                                                               \
+  ZPC_EXPORT void set_val_i_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,   \
+                                                   zs::size_t i, T newVal) {                      \
+    v->setVal(newVal, i);                                                                         \
+  }                                                                                               \
+  ZPC_EXPORT void set_val_i_container##__##v##_##T##_##virtual(                                   \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::size_t i, T newVal) {                      \
+    v->setVal(newVal, i);                                                                         \
+  }                                                                                               \
+  ZPC_EXPORT T *get_handle_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {  \
+    return v->data();                                                                             \
+  }                                                                                               \
+  ZPC_EXPORT T *get_handle_container##__##v##_##T##_##virtual(                                    \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v) {                                              \
+    return v->data();                                                                             \
+  }                                                                                               \
+  /* pyview */                                                                                    \
+  ZPC_EXPORT zs::VectorViewLite<T> *pyview##__##v##_##T(                                          \
+      zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                              \
+    return new zs::VectorViewLite<T>{v->data()};                                                  \
+  }                                                                                               \
+  ZPC_EXPORT zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T(                          \
+      const zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {                                        \
+    return new zs::VectorViewLite<const T>{v->data()};                                            \
+  }                                                                                               \
+  ZPC_EXPORT zs::VectorViewLite<T> *pyview##__##v##_##T##_##virtual(                              \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v) {                                              \
+    return new zs::VectorViewLite<T>{v->data()};                                                  \
+  }                                                                                               \
+  ZPC_EXPORT zs::VectorViewLite<const T> *pyview##__##v##_##const##_##T##_##virtual(              \
+      const zs::Vector<T, zs::ZSPmrAllocator<true>> *v) {                                         \
+    return new zs::VectorViewLite<const T>{v->data()};                                            \
+  }                                                                                               \
+  ZPC_EXPORT void del_pyview##__##v##_##T(zs::VectorViewLite<T> *v) { delete v; }                 \
   ZPC_EXPORT void del_pyview##__##v##_##const##_##T(zs::VectorViewLite<const T> *v) { delete v; }
 
 #define INSTANTIATE_VECTOR_ITERATOR_CAPIS(T)                                                      \

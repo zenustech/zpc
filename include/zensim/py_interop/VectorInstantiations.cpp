@@ -94,6 +94,22 @@ extern "C" {
       zs::Vector<T, zs::ZSPmrAllocator<true>> * v, zs::size_t i, T newVal) {                      \
     v->setVal(newVal, i);                                                                         \
   }                                                                                               \
+  ZPC_EXPORT void copy_to_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,     \
+                                                 void *src) {                                     \
+    v->assignVals(static_cast<T *>(src));                                                         \
+  }                                                                                               \
+  ZPC_EXPORT void copy_to_container##__##v##_##T##_##virtual(                                     \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, void *src) {                                   \
+    v->assignVals(static_cast<T *>(src));                                                         \
+  }                                                                                               \
+  ZPC_EXPORT void copy_from_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v,   \
+                                                   void *dst) {                                   \
+    v->retrieveVals(static_cast<T *>(dst));                                                       \
+  }                                                                                               \
+  ZPC_EXPORT void copy_from_container##__##v##_##T##_##virtual(                                   \
+      zs::Vector<T, zs::ZSPmrAllocator<true>> * v, void *dst) {                                   \
+    v->retrieveVals(static_cast<T *>(dst));                                                       \
+  }                                                                                               \
   ZPC_EXPORT T *get_handle_container##__##v##_##T(zs::Vector<T, zs::ZSPmrAllocator<false>> *v) {  \
     return v->data();                                                                             \
   }                                                                                               \

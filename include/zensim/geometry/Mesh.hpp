@@ -11,8 +11,14 @@ namespace zs {
   template <typename T, int dim, typename Tn = int, int dimE = dim + 1> struct Mesh {
     using Node = std::array<T, dim>;
     using Elem = std::array<Tn, dimE>;
+    using UV = std::array<float, 2>;
+    using Norm = std::array<float, 3>;
+    using COLOR = std::array<float, 3>;
     std::vector<Node> nodes;
     std::vector<Elem> elems;
+    std::vector<UV> uvs;
+    std::vector<Norm> norms;
+    std::vector<COLOR> colors;
   };
 
   ZPC_API void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float,

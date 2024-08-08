@@ -12,6 +12,7 @@ namespace zs {
 
       const auto& vs = surfs.nodes;
       const auto& is = surfs.elems;
+      const auto& clrs = surfs.colors;
 
       verts.vertexCount = vs.size();
       indexCount = is.size() * 3;
@@ -38,11 +39,10 @@ namespace zs {
       cmd.copyBuffer(stagingBuffer, verts.pos.get(), { copyRegion });
 
       /// @note colors
-      std::vector<std::array<float, 3>> vals(vs.size(), std::array<float, 3>{0.7f, 0.7f, 0.7f});
-      auto stagingColorBuffer
-          = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
+      std::vector<std::array<float, 3>> vals(vs.size(), std::array<float, 3>{0.7f, 0.7f, 0.7f}); // use 0.7 as default color
+      auto stagingColorBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
       stagingColorBuffer.map();
-      memcpy(stagingColorBuffer.mappedAddress(), vals.data(), numBytes);
+      memcpy(stagingColorBuffer.mappedAddress(), clrs.size() > 0 ? clrs.data() : vals.data(), numBytes);
       stagingColorBuffer.unmap();
       verts.clr = ctx.createBuffer(
           numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);

@@ -19,6 +19,8 @@ namespace zs {
 
     auto &pos = surfs.nodes;
     auto &tris = surfs.elems;
+    auto& norms = surfs.norms;
+    bool useVertNorms = norms.size() == pos.size();
 
     std::memset(nrms.data(), 0, sizeof(ValueT) * nrms.size());
 
@@ -30,18 +32,30 @@ namespace zs {
     auto pol = seq_exec();
 #endif
 
-    pol(tris, [&pos, &nrms, execTag = wrapv<space>{}](const std::array<Ti, 3> &tri) {
-      const auto &a = pos[tri[0]];
-      const auto &b = pos[tri[1]];
-      const auto &c = pos[tri[2]];
-      zs::vec<T, 3> e0{b[0] - a[0], b[1] - a[1], b[2] - a[2]};
-      zs::vec<T, 3> e1{c[0] - a[0], c[1] - a[1], c[2] - a[2]};
-      auto n = cross(e0, e1);
+    pol(tris, [&pos, &nrms, &norms, &useVertNorms, execTag = wrapv<space>{}](const std::array<Ti, 3> &tri) {
+        if (useVertNorms) {
+            for (int i = 0; i < 3; ++i) {
+                int index = tri[i];
+                auto& to = nrms[index];
+                const auto& from = norms[index];
+                for (int d = 0; d < 3; ++d) {
+                    to[d] = from[d];
+                }
+            }
+            return;
+        }
 
-      for (int j = 0; j != 3; ++j) {
+        const auto &a = pos[tri[0]];
+        const auto &b = pos[tri[1]];
+        const auto &c = pos[tri[2]];
+        zs::vec<T, 3> e0{b[0] - a[0], b[1] - a[1], b[2] - a[2]};
+        zs::vec<T, 3> e1{c[0] - a[0], c[1] - a[1], c[2] - a[2]};
+        auto n = cross(e0, e1);
+
+        for (int j = 0; j != 3; ++j) {
         auto &n_i = nrms[tri[j]];
         for (int d = 0; d != 3; ++d) atomic_add(execTag, &n_i[d], n[d]);
-      }
+        }
     });
 
     pol(nrms, [scale](ValueT &nrm) {

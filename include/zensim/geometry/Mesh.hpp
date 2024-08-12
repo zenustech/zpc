@@ -13,12 +13,12 @@ namespace zs {
     using Elem = std::array<Tn, dimE>;
     using UV = std::array<float, 2>;
     using Norm = std::array<float, 3>;
-    using COLOR = std::array<float, 3>;
+    using Color = std::array<float, 3>;
     std::vector<Node> nodes;
     std::vector<Elem> elems;
     std::vector<UV> uvs;
     std::vector<Norm> norms;
-    std::vector<COLOR> colors;
+    std::vector<Color> colors;
   };
 
   ZPC_API void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float,

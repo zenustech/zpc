@@ -172,9 +172,11 @@ namespace zs {
     MemoryLocation location{};
     void* ptr{nullptr};
     MemoryEntity() = default;
-    constexpr explicit MemoryEntity(MemoryLocation location, void* ptr)
-        : location{location}, ptr{ptr} {}
-    constexpr explicit MemoryEntity(MemoryProperty prop, void* ptr) : location{prop}, ptr{ptr} {}
+    template <typename T>
+    constexpr explicit MemoryEntity(MemoryLocation location, T* ptr)
+        : location{location}, ptr{(void *)ptr} {}
+    template <typename T>
+    constexpr explicit MemoryEntity(MemoryProperty prop, T* ptr) : location{prop}, ptr{(void *)ptr} {}
   };
 
   /// this should be refactored

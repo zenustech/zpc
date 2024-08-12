@@ -18,6 +18,10 @@ namespace zs {
       Owner<Buffer> vids;  // optional
     };
 
+    Buffer &getColorBuffer() {
+      return verts.clr.get();
+    }
+
     VkModel() = default;
     VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,
             const vec3_t &translation = vec3_t::constant(0.f),

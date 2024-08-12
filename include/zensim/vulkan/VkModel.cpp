@@ -34,7 +34,7 @@ namespace zs {
       stagingBuffer.unmap();
       //
       verts.pos = ctx.createBuffer(
-          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible);
       copyRegion.size = numBytes;
       cmd.copyBuffer(stagingBuffer, verts.pos.get(), { copyRegion });
 
@@ -45,7 +45,7 @@ namespace zs {
       memcpy(stagingColorBuffer.mappedAddress(), clrs.size() > 0 ? clrs.data() : vals.data(), numBytes);
       stagingColorBuffer.unmap();
       verts.clr = ctx.createBuffer(
-          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible);
       cmd.copyBuffer(stagingColorBuffer, verts.clr.get(), { copyRegion });
 
       /// @note normals

@@ -20,10 +20,10 @@ namespace zs {
 
   template <typename T, int dim, typename Tn>
   bool read_tri_mesh_obj(const std::string &file, Mesh<T, dim, Tn, 3> &mesh) {
-    auto nV = mesh.verts.size();
+    auto nV = mesh.nodes.size();
     auto nE = mesh.elems.size();
     bool ret = load_obj(file, &mesh.nodes, &mesh.norms, &mesh.uvs, &mesh.elems);
-    printf("mesh append: pos, tri [%d, %d] -> [%d, %d]\n", nV, nE, mesh.verts.size(),
+    printf("mesh append: pos, tri [%d, %d] -> [%d, %d]\n", nV, nE, mesh.nodes.size(),
            mesh.elems.size());
     return ret;
   }

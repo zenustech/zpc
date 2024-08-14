@@ -678,7 +678,7 @@ namespace zs {
     if (!valid_memspace_for_execution(pol, get_allocator()))
       throw std::runtime_error("current memory location not compatible with the execution policy");
 
-    TileVector orderedTiles{get_allocator(), getPropertyTags(), capacity()};
+    TileVector orderedTiles{get_allocator(), getPropertyTags(), size()};
     {
       auto tiles = view<space>(*this);
       auto oTiles = view<space>(orderedTiles);
@@ -1101,7 +1101,7 @@ namespace zs {
   template <execspace_e ExecSpace, typename T, size_t Length, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   decltype(auto) view(const TileVector<T, Length, Allocator> &vec, wrapv<Base>,
-                                const SmallString &tagName) {
+                      const SmallString &tagName) {
     auto ret
         = TileVectorUnnamedView<ExecSpace, const TileVector<T, Length, Allocator>, false, Base>{
             vec};
@@ -1113,7 +1113,7 @@ namespace zs {
   template <execspace_e ExecSpace, typename T, size_t Length, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   decltype(auto) view(TileVector<T, Length, Allocator> &vec, wrapv<Base>,
-                                const SmallString &tagName) {
+                      const SmallString &tagName) {
     auto ret = TileVectorUnnamedView<ExecSpace, TileVector<T, Length, Allocator>, false, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;
@@ -1131,13 +1131,11 @@ namespace zs {
   }
 
   template <execspace_e space, typename T, size_t Length, typename Allocator>
-  decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec,
-                                 const SmallString &tagName) {
+  decltype(auto) proxy(const TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
   }
   template <execspace_e space, typename T, size_t Length, typename Allocator>
-  decltype(auto) proxy(TileVector<T, Length, Allocator> &vec,
-                                 const SmallString &tagName) {
+  decltype(auto) proxy(TileVector<T, Length, Allocator> &vec, const SmallString &tagName) {
     return view<space>(vec, false_c, tagName);
   }
 

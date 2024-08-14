@@ -186,7 +186,8 @@ namespace zs {
       return *this;
     }
     Vector clone(const allocator_type &allocator) const {
-      Vector ret{allocator, capacity()};
+      /// @note preserve original size info rather than capacity
+      Vector ret{allocator, size()};
       Resource::copy(MemoryEntity{allocator.location, (void *)ret.data()},
                      MemoryEntity{memoryLocation(), (void *)this->data()}, usedBytes());
       return ret;
@@ -576,8 +577,7 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base>,
-                                const SmallString &tagName) {
+  decltype(auto) view(Vector<T, Allocator> &vec, wrapv<Base>, const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, Vector<T, Allocator>, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;
@@ -586,8 +586,7 @@ namespace zs {
   }
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base>,
-                                const SmallString &tagName) {
+  decltype(auto) view(const Vector<T, Allocator> &vec, wrapv<Base>, const SmallString &tagName) {
     auto ret = VectorView<ExecSpace, const Vector<T, Allocator>, Base>{vec};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._nameTag = tagName;

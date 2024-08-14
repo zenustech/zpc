@@ -27,6 +27,10 @@ namespace zs {
                                    std::vector<std::array<float, 3>> &);
   ZPC_API void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float, Vector<vec<float, 3>> &);
   ZPC_API void compute_mesh_normal(const Mesh<float, 3, u32, 3> &, float, Vector<vec<float, 3>> &);
+  ZPC_API void compute_mesh_normal(const std::vector<std::array<float, 3>> &nodes,
+                                   size_t nodeOffset, size_t nodeNum,
+                                   const std::vector<std::array<u32, 3>> &tris, size_t triOffset,
+                                   size_t triNum, std::array<float, 3> *nrms);
 
 #if 0
   template <typename T, typename Ti, template <typename> class VectorT, typename ValueT>

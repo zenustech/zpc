@@ -18,6 +18,7 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   ZpcImplPattern.cpp
 
   io/Filesystem.cpp
+  io/MeshIO.cpp
   # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES

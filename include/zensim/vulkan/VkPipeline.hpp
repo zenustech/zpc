@@ -162,6 +162,10 @@ namespace zs {
       this->colorBlendAttachments[i].setBlendEnable(enable);
       return *this;
     }
+    PipelineBuilder& setDepthTestEnable(bool enable) {
+      this->depthStencilInfo.setDepthTestEnable(enable);
+      return *this;
+    }
     PipelineBuilder& setTopology(vk::PrimitiveTopology topology) {
       this->inputAssemblyInfo.setTopology(topology);
       return *this;

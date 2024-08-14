@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "zensim/geometry/Mesh.hpp"
@@ -13,54 +14,18 @@
 
 namespace zs {
 
+  bool load_obj(std::string_view file, std::vector<std::array<float, 3>> *pos,
+                std::vector<std::array<float, 3>> *nrm, std::vector<std::array<float, 2>> *uv,
+                std::vector<std::array<u32, 3>> *tris);
+
   template <typename T, int dim, typename Tn>
   bool read_tri_mesh_obj(const std::string &file, Mesh<T, dim, Tn, 3> &mesh) {
-    // TriMesh
-    std::ifstream is(file);
-    if (!is || file.empty()) {
-      printf("%s not found!\n", file.c_str());
-      return false;
-    }
-
-    using Node = typename Mesh<T, dim, Tn, 3>::Node;
-    using Elem = typename Mesh<T, dim, Tn, 3>::Elem;
-    std::string line;
-    auto &X = mesh.nodes;
-    auto &triangles = mesh.elems;
-    Node position;
-    Elem tri;
-    vec<Tn, 4> counter{X.size(), triangles.size(), 0, 0};
-    while (std::getline(is, line)) {
-      std::stringstream ss(line);
-      if (line[0] == 'v' && line[1] == ' ') {
-        ss.ignore();
-        for (int i = 0; i < dim; i++) ss >> position[i];
-        X.emplace_back(position);
-      } else if (line[0] == 'f') {
-        int cnt = 0;
-        int length = line.size();
-        for (int d = 0; d < 3; ++d) {
-          while (cnt < length && (line[cnt] < '0' || line[cnt] > '9')) cnt++;
-          Tn index = 0;
-          while (cnt < length && '0' <= line[cnt] && line[cnt] <= '9') {
-            index = index * 10 + line[cnt] - '0';
-            cnt++;
-          }
-          tri[d] = index - 1;
-          while (cnt < length && line[cnt] != ' ') cnt++;
-        }
-        for (int d = 0; d < 3; ++d) tri[d] += counter[0];
-        triangles.emplace_back(tri);
-      }
-    }
-
-    is.close();
-
-    counter[2] = X.size();
-    counter[3] = triangles.size();
-    printf("mesh append: pos, tri [%d, %d] -> [%d, %d]\n", counter[0], counter[1], counter[2],
-           counter[3]);
-    return true;
+    auto nV = mesh.verts.size();
+    auto nE = mesh.elems.size();
+    bool ret = load_obj(file, &mesh.nodes, &mesh.norms, &mesh.uvs, &mesh.elems);
+    printf("mesh append: pos, tri [%d, %d] -> [%d, %d]\n", nV, nE, mesh.verts.size(),
+           mesh.elems.size());
+    return ret;
   }
 
   template <typename T, typename Tn>

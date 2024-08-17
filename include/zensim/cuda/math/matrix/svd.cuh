@@ -9,7 +9,6 @@
 #define gone 1065353216
 #define gsine_pi_over_eight 1053028117
 #define gcosine_pi_over_eight 1064076127
-#define gone_half 0.5f
 #define gsmall_number 1.e-12f
 #define gtiny_number 1.e-20f
 #define gfour_gamma_squared 5.8284273147583007813f

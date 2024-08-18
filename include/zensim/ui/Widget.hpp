@@ -9,6 +9,10 @@ namespace zs {
 
     virtual void paint() = 0;
   };
+  struct EmptyWidget : WidgetComponentConcept {
+    ~EmptyWidget() override = default;
+    void paint() override {}
+  };
   struct WidgetConcept : virtual HierarchyConcept, WidgetComponentConcept {
     virtual ~WidgetConcept() = default;
 

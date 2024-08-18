@@ -845,26 +845,29 @@ namespace zs {
   namespace detail {
     // __is_nothrow_constructible(T, Args...)
     /// @ref gcc10
-    static false_type is_nothrow_constructible_impl(...);
-    template <typename T, typename... Args, enable_if_t<(sizeof...(Args) > 1)> = 0>
-    static bool_constant<noexcept(T(declval<Args>()...))> is_nothrow_constructible_impl(
-        type_seq<T, Args...>);
-    template <typename T, typename Arg>
-    static bool_constant<noexcept(static_cast<T>(declval<Arg>()))> is_nothrow_constructible_impl(
-        type_seq<T, Arg>);
-    template <typename T>
-    static bool_constant<noexcept(T())> is_nothrow_constructible_impl(type_seq<T>);
-    template <typename T, size_t N> static auto is_nothrow_constructible_impl(type_seq<T[N]>)
-        -> decltype(is_nothrow_constructible_impl(declval<type_seq<remove_all_extents_t<T>>>()));
-    template <typename T, size_t N, typename... Args, enable_if_t<(sizeof...(Args) > 1)> = 0>
-    static auto is_nothrow_constructible_impl(type_seq<T[N], Args...>)
-        -> decltype(is_nothrow_constructible_impl(declval<type_seq<T, Args...>>()));
+    template <typename T, typename = void> struct is_nothrow_constructible_impl : false_type {};
+    template <typename T, typename... Args>
+    struct is_nothrow_constructible_impl<type_seq<T, Args...>,
+                                         enable_if_type<(sizeof...(Args) > 1), void>>
+        : bool_constant<noexcept(T(declval<Args>()...))> {};
+    template <typename T, typename Arg> struct is_nothrow_constructible_impl<type_seq<T, Arg>>
+        : bool_constant<noexcept(T(declval<Arg>()))> {};
+    template <typename T> struct is_nothrow_constructible_impl<type_seq<T>>
+        : bool_constant<noexcept(T())> {};
+    template <typename T, size_t N> struct is_nothrow_constructible_impl<type_seq<T[N]>>
+        : is_nothrow_constructible_impl<type_seq<remove_all_extents_t<T>>> {};
+    template <typename T, size_t N, typename... Args>
+    struct is_nothrow_constructible_impl<type_seq<T[N], Args...>,
+                                         enable_if_type<(sizeof...(Args) > 1), void>>
+        : is_nothrow_constructible_impl<type_seq<T, Args...>> {};
     template <typename T, size_t N, typename Arg>
-    static auto is_nothrow_constructible_impl(type_seq<T[N], Arg>)
-        -> decltype(is_nothrow_constructible_impl(declval<type_seq<T, Arg>>()));
+    struct is_nothrow_constructible_impl<type_seq<T[N], Arg>>
+        : is_nothrow_constructible_impl<type_seq<T, Arg>> {};
   }  // namespace detail
+  // template <typename T, typename... Args> struct is_nothrow_constructible
+  //     : decltype(detail::is_nothrow_constructible_impl(declval<type_seq<T, Args...>>())) {};
   template <typename T, typename... Args> struct is_nothrow_constructible
-      : decltype(detail::is_nothrow_constructible_impl(declval<type_seq<T, Args...>>())) {};
+      : detail::is_nothrow_constructible_impl<T, Args...> {};
   template <typename T, typename... Args> constexpr bool is_nothrow_constructible_v
       = is_nothrow_constructible<T, Args...>::value;
 

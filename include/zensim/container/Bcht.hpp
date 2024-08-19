@@ -192,7 +192,7 @@ namespace zs {
     }
     static constexpr storage_key_type compare_key_sentinel_v = deduce_compare_key_sentinel();
     static constexpr index_type sentinel_v = -1;
-    static constexpr index_type failure_token_v = limits<index_type>::max();
+    static constexpr index_type failure_token_v = detail::deduce_numeric_max<index_type>();
 
     static size_t padded_capacity(size_t capacity) noexcept {
       if (auto remainder = capacity % bucket_size; remainder) capacity += (bucket_size - remainder);
@@ -664,8 +664,7 @@ namespace zs {
           if (lane_id == 0) {
             spin_iter = 0;
             while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
-                   && ++spin_iter != spin_iter_cap)
-              ;  // acquiring spin lock
+                   && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
             // check again
@@ -749,8 +748,7 @@ namespace zs {
           if (lane_id == 0) {
             spin_iter = 0;
             while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
-                   && ++spin_iter != spin_iter_cap)
-              ;  // acquiring spin lock
+                   && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
             // check again
@@ -869,8 +867,7 @@ namespace zs {
           if (lane_id == 0) {
             spin_iter = 0;
             while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
-                   && ++spin_iter != spin_iter_cap)
-              ;  // acquiring spin lock
+                   && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
             // check again
@@ -945,8 +942,7 @@ namespace zs {
           if (lane_id == 0) {
             spin_iter = 0;
             while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
-                   && ++spin_iter != spin_iter_cap)
-              ;  // acquiring spin lock
+                   && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
             // check again
@@ -1122,7 +1118,7 @@ namespace zs {
         if constexpr (retrieve_index)
           return sentinel_v;
         else
-          return limits<index_type>::max();
+          return detail::deduce_numeric_max<index_type>();
       }
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
 
@@ -1199,7 +1195,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return sentinel_v;
       else
-        return limits<index_type>::max();
+        return detail::deduce_numeric_max<index_type>();
     }
 
     template <bool retrieve_index = true, execspace_e S = space,
@@ -1212,7 +1208,7 @@ namespace zs {
         if constexpr (retrieve_index)
           return sentinel_v;
         else
-          return limits<index_type>::max();
+          return detail::deduce_numeric_max<index_type>();
       }
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
       const int cap = math::min((int)tile.size(), (int)bucket_size);
@@ -1265,7 +1261,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return sentinel_v;
       else
-        return limits<index_type>::max();
+        return detail::deduce_numeric_max<index_type>();
     }
 
     template <bool retrieve_index = true, execspace_e S = space,
@@ -1277,7 +1273,7 @@ namespace zs {
         if constexpr (retrieve_index)
           return sentinel_v;
         else
-          return limits<index_type>::max();
+          return detail::deduce_numeric_max<index_type>();
       }
       constexpr auto compare_key_sentinel_v = hash_table_type::deduce_compare_key_sentinel();
       auto bucket_offset
@@ -1317,7 +1313,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return sentinel_v;
       else
-        return limits<index_type>::max();
+        return detail::deduce_numeric_max<index_type>();
     }
 
     template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
@@ -1512,7 +1508,7 @@ namespace zs {
         if constexpr (retrieve_index)
           return sentinel_v;
         else
-          return limits<index_type>::max();
+          return detail::deduce_numeric_max<index_type>();
       }
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
@@ -1547,7 +1543,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return sentinel_v;
       else
-        return limits<index_type>::max();
+        return detail::deduce_numeric_max<index_type>();
     }
 
     ///
@@ -1601,8 +1597,7 @@ namespace zs {
 
           spin_iter = 0;
           while (atomic_cas(exec_omp, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
-                 && ++spin_iter != spin_iter_cap)
-            ;
+                 && ++spin_iter != spin_iter_cap);
           if (spin_iter == spin_iter_cap) continue;
           thread_fence(exec_omp);
 
@@ -1656,8 +1651,7 @@ namespace zs {
           {
             spin_iter = 0;
             while (atomic_cas(exec_omp, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
-                   && ++spin_iter != spin_iter_cap)
-              ;
+                   && ++spin_iter != spin_iter_cap);
             if (spin_iter == spin_iter_cap) continue;
 
             auto random_location = rng() % bucket_size;
@@ -1709,7 +1703,7 @@ namespace zs {
         if constexpr (retrieve_index)
           return sentinel_v;
         else
-          return limits<index_type>::max();
+          return detail::deduce_numeric_max<index_type>();
       }
       auto bucket_offset
           = reinterpret_bits<mapped_hashed_key_type>(_hf0(key)) % _numBuckets * bucket_size;
@@ -1744,7 +1738,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return sentinel_v;
       else
-        return limits<index_type>::max();
+        return detail::deduce_numeric_max<index_type>();
     }
 
     ///
@@ -1772,13 +1766,13 @@ namespace zs {
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   decltype(auto) view(bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
-                                wrapv<Base> = {}) {
+                      wrapv<Base> = {}) {
     return BCHTView<ExecSpace, bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{table};
   }
   template <execspace_e ExecSpace, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   decltype(auto) view(const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table,
-                                wrapv<Base> = {}) {
+                      wrapv<Base> = {}) {
     return BCHTView<ExecSpace, const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT>, Base>{
         table};
   }
@@ -1790,8 +1784,7 @@ namespace zs {
   }
   template <execspace_e space, typename KeyT, typename Index, bool KeyCompare, typename Hasher,
             int B, typename AllocatorT>
-  decltype(auto) proxy(
-      const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
+  decltype(auto) proxy(const bcht<KeyT, Index, KeyCompare, Hasher, B, AllocatorT> &table) {
     return view<space>(table, false_c);
   }
 

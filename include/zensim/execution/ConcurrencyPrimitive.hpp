@@ -2,7 +2,7 @@
 #include <atomic>
 
 #include "zensim/TypeAlias.hpp"
-#include "zensim/meta/Functional.h"
+#include "zensim/ZpcFunctional.hpp"
 
 namespace zs {
 
@@ -28,12 +28,14 @@ namespace zs {
     // put the current thread to sleep if the expected value matches the value in the atomic
     // waitmask will be saved and compared to the wakemask later in the wake call
     // to check if you wanna wake up this thread or keep it sleeping
-    ZPC_CORE_API static FutexResult wait(std::atomic<u32> *v, u32 expected, u32 waitMask = 0xffffffff);
+    ZPC_CORE_API static FutexResult wait(std::atomic<u32> *v, u32 expected,
+                                         u32 waitMask = 0xffffffff);
     /// @note duration in milli-seconds
     ZPC_CORE_API static FutexResult wait_for(std::atomic<u32> *v, u32 expected, i64 duration = -1,
-                                u32 waitMask = 0xffffffff);
+                                             u32 waitMask = 0xffffffff);
     // wake up the thread if (wakeMask & waitMask == true)
-    ZPC_CORE_API static int wake(std::atomic<u32> *v, int count = limits<int>::max(), u32 wakeMask = 0xffffffff);
+    ZPC_CORE_API static int wake(std::atomic<u32> *v, int count = detail::deduce_numeric_max<int>(),
+                                 u32 wakeMask = 0xffffffff);
   };
 
   ZPC_CORE_API void await_change(std::atomic<u32> &v, u32 cur);

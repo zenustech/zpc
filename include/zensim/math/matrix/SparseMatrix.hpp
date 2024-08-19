@@ -656,11 +656,11 @@ namespace zs {
     Ti nsegs = is_row_major ? _nrows : _ncols;
     Ti innerSize = is_row_major ? _ncols : _nrows;
     auto nnz = _inds.size();
-    if (nnz >= limits<int>::max())
+    if (nnz >= detail::deduce_numeric_max<int>())
       throw std::runtime_error(
           "NVidia CUB currently cannot segmented-sort upon sequences of length larger than "
           "INT_MAX");
-    if (nsegs >= limits<int>::max())
+    if (nsegs >= detail::deduce_numeric_max<int>())
       throw std::runtime_error(
           "NVidia CUB currently cannot segmented-sorting more than INT_MAX segments");
 
@@ -692,11 +692,11 @@ namespace zs {
     Ti nsegs = is_row_major ? _nrows : _ncols;
     Ti innerSize = is_row_major ? _ncols : _nrows;
     auto nnz = _inds.size();
-    if (nnz >= limits<int>::max())
+    if (nnz >= detail::deduce_numeric_max<int>())
       throw std::runtime_error(
           "NVidia CUB currently cannot segmented-sort upon sequences of length larger than "
           "INT_MAX");
-    if (nsegs >= limits<int>::max())
+    if (nsegs >= detail::deduce_numeric_max<int>())
       throw std::runtime_error(
           "NVidia CUB currently cannot segmented-sorting more than INT_MAX segments");
     if (_inds.size() != _vals.size())
@@ -897,7 +897,7 @@ namespace zs {
         return id;
       else {
         printf("cannot find the spmat entry at (%d, %d)\n", (int)i, (int)j);
-        return limits<size_type>::max();
+        return detail::deduce_numeric_max<size_type>();
       }
     }
     /// @note binary search
@@ -932,7 +932,7 @@ namespace zs {
       // return limits<index_type>::max();
       return locate(i, j);
 #endif
-      return limits<size_type>::max();
+      return detail::deduce_numeric_max<size_type>();
     }
     constexpr bool exist(index_type i, index_type j, true_type) const noexcept {
       size_type st{}, ed{}, mid{};
@@ -970,21 +970,20 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
-                                wrapv<Base> = {}) {
+  decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat, wrapv<Base> = {}) {
     return SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
   }
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
-                                wrapv<Base> = {}) {
+                      wrapv<Base> = {}) {
     return SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
   }
 
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
   decltype(auto) view(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat, wrapv<Base>,
-                                const SmallString &tagName) {
+                      const SmallString &tagName) {
     auto ret = SparseMatrixView<ExecSpace, SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret._ptrs._nameTag = tagName + SmallString{":ptrs"};
@@ -995,8 +994,8 @@ namespace zs {
   }
   template <execspace_e ExecSpace, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT, bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
-                                wrapv<Base>, const SmallString &tagName) {
+  decltype(auto) view(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat, wrapv<Base>,
+                      const SmallString &tagName) {
     auto ret
         = SparseMatrixView<ExecSpace, const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>>{spmat};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
@@ -1021,13 +1020,13 @@ namespace zs {
   template <execspace_e space, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT>
   decltype(auto) proxy(SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
-                                 const SmallString &tagName) {
+                       const SmallString &tagName) {
     return view<space>(spmat, false_c, tagName);
   }
   template <execspace_e space, typename T, bool RowMajor, typename Ti, typename Tn,
             typename AllocatorT>
   decltype(auto) proxy(const SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT> &spmat,
-                                 const SmallString &tagName) {
+                       const SmallString &tagName) {
     return view<space>(spmat, false_c, tagName);
   }
 

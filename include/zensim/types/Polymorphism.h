@@ -3,8 +3,6 @@
 #include <type_traits>
 #include <variant>
 
-#include "zensim/meta/Sequence.h"
-
 namespace zs {
 
   /// https://github.com/SuperV1234/ndctechtown2020/blob/master/7_a_match.pdf
@@ -55,8 +53,8 @@ namespace zs {
       static constexpr bool value = test<Fn, Args...>(nullptr);
     };
 
-    template <zs::size_t No, typename Args, size_t... Ns, size_t i, size_t... js,
-              size_t I, size_t... Js>
+    template <zs::size_t No, typename Args, size_t... Ns, size_t i, size_t... js, size_t I,
+              size_t... Js>
     constexpr void traverse(bool &tagMatch, Args &args,
                             const std::array<zs::size_t, sizeof...(Ns)> &varIndices,
                             index_sequence<Ns...> dims, index_sequence<i, js...> indices,
@@ -77,8 +75,9 @@ namespace zs {
           }
         }
       } else {
-        traverse<No - 1>(tagMatch, args, varIndices, dims, indices,
-                         index_sequence<select_indexed_value<No - 1, Ns...>::value - 1, I, Js...>{});
+        traverse<No - 1>(
+            tagMatch, args, varIndices, dims, indices,
+            index_sequence<select_indexed_value<No - 1, Ns...>::value - 1, I, Js...>{});
         if (tagMatch) return;
       }
       if constexpr (I > 0) {  // next loop
@@ -102,8 +101,7 @@ namespace zs {
       bool tagMatch{false};
 
       traverse<narg - 1>(tagMatch, packedArgs, varIndices, variant_sizes{},
-                         index_sequence_for<Args...>{},
-                         index_sequence<lastVariantSize - 1>{});
+                         index_sequence_for<Args...>{}, index_sequence<lastVariantSize - 1>{});
     }
   };
   template <typename Visitor> VariantTaskExecutor(Visitor) -> VariantTaskExecutor<Visitor>;

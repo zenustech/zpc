@@ -287,6 +287,7 @@ namespace zs {
         return 3;
       else if (kt == kernel_e::cubic || kt == kernel_e::delta4)
         return 4;
+      return -1;
     }(kt);
     static constexpr int deriv_order = drv_order;
 

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cmath>
+#include <limits>
 
+#include "zensim/ZpcFunctional.hpp"
 #include "zensim/ZpcMathUtils.hpp"
 #include "zensim/types/Property.h"
 #if defined(__CUDACC__)
@@ -14,9 +16,10 @@
 #include "Complex.hpp"
 #include "zensim/math/bit/Bits.h"
 #include "zensim/meta/Meta.h"
-#include "zensim/meta/Sequence.h"
 
 namespace zs {
+
+  template <typename T> using limits = std::numeric_limits<T>;
 
   // 26.2.7/3 abs(__z):  Returns the magnitude of __z.
   template <typename T> constexpr T abs(const complex<T> &z) noexcept {
@@ -235,7 +238,7 @@ namespace zs {
 #else
     template <typename T, enable_if_t<is_floating_point_v<T>> = 0>
     constexpr T sqrtNewtonRaphson(T n, T relTol = (T)(sizeof(T) > 4 ? 1e-9 : 1e-6)) noexcept {
-      constexpr auto eps = (T)128 * limits<T>::epsilon();
+      constexpr auto eps = (T)128 * zs::detail::deduce_numeric_epsilon<T>();
       if (n < -eps) return (T)limits<T>::quiet_NaN();
       if (n < (T)eps) return (T)0;
 

@@ -213,7 +213,7 @@ namespace zs {
 
   static detail::ParkingLot<u32> g_lot;
 
-  static int emulated_futex_wake(void *addr, int count = limits<int>::max(),
+  static int emulated_futex_wake(void *addr, int count = detail::deduce_numeric_max<int>(),
                                  u32 wakeMask = 0xffffffff) {
     int woken = 0;
     g_lot.unpark(addr, [&count, &woken, wakeMask](u32 const &mask) {

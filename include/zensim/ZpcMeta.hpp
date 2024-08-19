@@ -452,8 +452,9 @@ namespace zs {
   // Distributed under the Boost Software License, Version 1.0.
   // (See accompanying file LICENSE.md or copy at http://boost.org/LICENSE_1_0.txt)
   namespace detail {
-    template <typename F, typename... Args> constexpr auto is_valid_impl(int) noexcept
-        -> decltype(declval<F &&>()(declval<Args &&>()...), true_type{}) {
+    template <typename F, typename... Args>
+    constexpr auto is_valid_impl(int) noexcept -> decltype(declval<F &&>()(declval<Args &&>()...),
+                                                           true_type{}) {
       return true_c;
     }
     template <typename F, typename... Args> constexpr auto is_valid_impl(...) noexcept {
@@ -904,11 +905,11 @@ namespace zs {
     template <typename B> true_type test_ptr_conv(const volatile B *);
     template <typename> false_type test_ptr_conv(const volatile void *);
 
-    template <typename B, typename D> auto test_is_base_of(int)
-        -> decltype(test_ptr_conv<B>(static_cast<D *>(nullptr)));
-    template <typename, typename> auto test_is_base_of(...)
-        -> true_type;  // private or ambiguous base
-  }                    // namespace details
+    template <typename B, typename D>
+    auto test_is_base_of(int) -> decltype(test_ptr_conv<B>(static_cast<D *>(nullptr)));
+    template <typename, typename>
+    auto test_is_base_of(...) -> true_type;  // private or ambiguous base
+  }  // namespace details
   template <typename Base, typename Derived> struct is_base_of
       : bool_constant<is_class_v<Base>
                       && is_class_v<Derived> &&decltype(details::test_is_base_of<Base, Derived>(
@@ -989,16 +990,17 @@ namespace zs {
       = is_nothrow_move_assignable<T>::value;
 
   // c++11 convention
-  template <typename T> constexpr auto zs_swap(T &l, T &r) noexcept(
-      noexcept(T(declval<T &&>())) &&noexcept(declval<T &>() = zs::move(declval<T &>())))
+  template <typename T>
+  constexpr auto zs_swap(T &l,
+                         T &r) noexcept(noexcept(T(declval<T &&>()))
+                                        && noexcept(declval<T &>() = zs::move(declval<T &>())))
       -> decltype(void(T(declval<T &&>())), void(declval<T &>() = zs::move(declval<T &>()))) {
     T tmp = zs::move(l);
     l = zs::move(r);
     r = zs::move(tmp);
   }
-  template <typename T, size_t S>
-  constexpr auto zs_swap(T (&l)[S], T (&r)[S]) noexcept(noexcept(swap(*l, *r)))
-      -> decltype(void(swap(*l, *r))) {
+  template <typename T, size_t S> constexpr auto zs_swap(T (&l)[S], T (&r)[S]) noexcept(
+      noexcept(swap(*l, *r))) -> decltype(void(swap(*l, *r))) {
     if (&l != &r) {
       T *stL = l, *edL = l + S;
       T *stR = r;
@@ -1008,8 +1010,8 @@ namespace zs {
 
   // is_convertible (from cppref)
   namespace detail {
-    template <class T> auto test_returnable(int)
-        -> decltype(void(static_cast<T (*)()>(nullptr)), true_type{});
+    template <class T>
+    auto test_returnable(int) -> decltype(void(static_cast<T (*)()>(nullptr)), true_type{});
     template <class> false_type test_returnable(...);
 
     template <class From, class To> auto test_implicitly_convertible(int)
@@ -1320,8 +1322,9 @@ namespace zs {
   template <typename _Fn, typename... _Args> constexpr bool is_nothrow_invocable_v
       = is_nothrow_invocable<_Fn, _Args...>::value;
 
-  template <class T, class U = T> constexpr T exchange(T &obj, U &&new_value) noexcept(
-      is_nothrow_move_constructible<T>::value &&is_nothrow_assignable<T &, U>::value) {
+  template <class T, class U = T>
+  constexpr T exchange(T &obj, U &&new_value) noexcept(is_nothrow_move_constructible<T>::value
+                                                       && is_nothrow_assignable<T &, U>::value) {
     T old_value = zs::move(obj);
     obj = zs::forward<U>(new_value);
     return old_value;
@@ -1475,8 +1478,8 @@ namespace zs {
   }
   false_type serializable_through_freefunc(...);
 
-  template <typename S, typename O> auto serializable_through_memfunc(S &s, O &obj)
-      -> decltype(obj.serialize(s), true_type{});
+  template <typename S, typename O>
+  auto serializable_through_memfunc(S &s, O &obj) -> decltype(obj.serialize(s), true_type{});
   false_type serializable_through_memfunc(...);
 
 }  // namespace zs

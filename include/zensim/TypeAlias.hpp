@@ -25,6 +25,22 @@ namespace zs {
 #define ZS_DBL_MIN 2.2250738585072013e-308
 #define ZS_FLT_ROUNDS 1
 
+  /// arithmetic type
+  constexpr wrapt<u8> u8_c{};
+  constexpr wrapt<int> int_c{};
+  constexpr wrapt<uint> uint_c{};
+  constexpr wrapt<i16> i16_c{};
+  constexpr wrapt<i32> i32_c{};
+  constexpr wrapt<i64> i64_c{};
+  constexpr wrapt<u16> u16_c{};
+  constexpr wrapt<u32> u32_c{};
+  constexpr wrapt<u64> u64_c{};
+  constexpr wrapt<f32> f32_c{};
+  constexpr wrapt<float> float_c{};
+  constexpr wrapt<f64> f64_c{};
+  constexpr wrapt<double> double_c{};
+  template <typename T> constexpr wrapt<enable_if_type<is_arithmetic_v<T>, T>> number_c{};
+
   union dat32 {
     f32 f;
     i32 i;

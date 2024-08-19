@@ -64,7 +64,7 @@ namespace zs {
             && std::allocator_traits<allocator_type>::propagate_on_container_swap::value,
         "allocator should propagate on copy, move and swap (for impl simplicity)!");
 
-    static constexpr Tn key_scalar_sentinel_v = limits<Tn>::max();
+    static constexpr Tn key_scalar_sentinel_v = detail::deduce_numeric_max<Tn>();
     static constexpr value_t sentinel_v{-1};  // this requires value_t to be signed type
     static constexpr status_t status_sentinel_v{-1};
     static constexpr size_t reserve_ratio_v = 16;
@@ -224,8 +224,8 @@ namespace zs {
 
     constexpr void operator()(typename HashTableView::size_type entry) noexcept {
       using namespace placeholders;
-      table._table.keys[entry]
-          = hash_table_type::key_t::constant(limits<typename hash_table_type::index_type>::max());
+      table._table.keys[entry] = hash_table_type::key_t::constant(
+          detail::deduce_numeric_max<typename hash_table_type::index_type>());
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;
@@ -252,8 +252,8 @@ namespace zs {
       auto entry = table.entry(blockid);
       if (entry == hash_table_type::sentinel_v)
         printf("%llu-th key does not exist in the table??\n", (unsigned long long)blockno);
-      table._table.keys[entry]
-          = hash_table_type::key_t::constant(limits<typename hash_table_type::index_type>::max());
+      table._table.keys[entry] = hash_table_type::key_t::constant(
+          detail::deduce_numeric_max<typename hash_table_type::index_type>());
       table._table.indices[entry]
           = hash_table_type::sentinel_v;  // necessary for query to terminate
       table._table.status[entry] = -1;

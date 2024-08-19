@@ -667,7 +667,7 @@ namespace zs {
         if constexpr (retrieve_index)
           return HashTableT::sentinel_v;
         else
-          return limits<value_type>::max();
+          return detail::deduce_numeric_max<value_type>();
       }
       int loc = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -690,7 +690,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return HashTableT::sentinel_v;
       else
-        return limits<value_type>::max();
+        return detail::deduce_numeric_max<value_type>();
     }
 #if defined(__CUDACC__)
     template <bool retrieve_index = true, execspace_e S = space,
@@ -703,7 +703,7 @@ namespace zs {
         if constexpr (retrieve_index)
           return HashTableT::sentinel_v;
         else
-          return limits<value_type>::max();
+          return detail::deduce_numeric_max<value_type>();
       }
       int loc = 0;
       size_type bucketOffset = _hf0(key) % _numBuckets * bucket_size;
@@ -727,7 +727,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return HashTableT::sentinel_v;
       else
-        return limits<value_type>::max();
+        return detail::deduce_numeric_max<value_type>();
     }
 #endif
     constexpr size_type entry(const key_type &key) const noexcept {
@@ -810,8 +810,7 @@ namespace zs {
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_cuda, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_cuda, lock, 0) == 0);
       thread_fence(exec_cuda);
       /// cas
       storage_key_type temp;
@@ -873,8 +872,7 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_cuda, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_cuda, lock, 0) == 0);
       thread_fence(exec_cuda);
       ///
       key_type return_val;
@@ -934,8 +932,7 @@ namespace zs {
       }
       /// lock
       if (tile.thread_rank() == 0)
-        while (atomic_exch(exec_cuda, lock, 0) == 0)
-          ;
+        while (atomic_exch(exec_cuda, lock, 0) == 0);
       tile.sync();
       thread_fence(exec_cuda);
       ///
@@ -996,8 +993,7 @@ namespace zs {
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(execTag, lock, 0) == 0)
-        ;
+      while (atomic_exch(execTag, lock, 0) == 0);
       thread_fence(execTag);
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
@@ -1051,8 +1047,7 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(execTag, lock, 0) == 0)
-        ;
+      while (atomic_exch(execTag, lock, 0) == 0);
       thread_fence(execTag);
       ///
       key_type return_val;

@@ -1061,7 +1061,7 @@ namespace zs {
         if constexpr (WithinTile)
           return lane_width;
         else
-          return limits<size_type>::max();
+          return detail::deduce_numeric_max<size_type>();
       }
       channel_counter_type _numChannels{0};
     };

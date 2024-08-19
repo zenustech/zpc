@@ -151,7 +151,6 @@ set(ZENSIM_LIBRARY_CORE_INCLUDE_FILES
   # meta
   meta/Functional.h
   meta/Meta.h
-  meta/Sequence.h
 
   # visitors
   visitors/ObjectVisitor.hpp

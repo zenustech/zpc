@@ -252,7 +252,7 @@ namespace zs {
       if constexpr (retrieve_index)
         return HashTableT::sentinel_v;
       else
-        return limits<value_type>::max();
+        return detail::deduce_numeric_max<value_type>();
     }
 
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
@@ -302,8 +302,7 @@ namespace zs {
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_cuda, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_cuda, lock, 0) == 0);
       thread_fence(exec_cuda);
       /// cas
       storage_key_type temp;
@@ -363,8 +362,7 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_cuda, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_cuda, lock, 0) == 0);
       thread_fence(exec_cuda);
       ///
       key_type return_val;
@@ -422,8 +420,7 @@ namespace zs {
       }
       /// lock
       if (tile.thread_rank() == 0)
-        while (atomic_exch(exec_cuda, lock, 0) == 0)
-          ;
+        while (atomic_exch(exec_cuda, lock, 0) == 0);
       tile.sync();
       thread_fence(exec_cuda);
       ///
@@ -579,8 +576,7 @@ namespace zs {
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_omp, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_omp, lock, 0) == 0);
       thread_fence(exec_omp);
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
@@ -632,8 +628,7 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_omp, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_omp, lock, 0) == 0);
       thread_fence(exec_omp);
       ///
       key_type return_val;
@@ -783,8 +778,7 @@ namespace zs {
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_seq, lock, 0) == 0);
       thread_fence(exec_seq);
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
@@ -836,8 +830,7 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_seq, lock, 0) == 0);
       thread_fence(exec_seq);
       ///
       key_type return_val;
@@ -989,8 +982,7 @@ namespace zs {
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_seq, lock, 0) == 0);
       thread_fence(exec_seq);
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
@@ -1042,8 +1034,7 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0)
-        ;
+      while (atomic_exch(exec_seq, lock, 0) == 0);
       thread_fence(exec_seq);
       ///
       key_type return_val;

@@ -62,8 +62,8 @@ namespace zs {
           _backgroundVecValue{TV::zeros()},
           _table{allocator, count},
           _grid{allocator, channelTags, dx, count},
-          _min{TV::constant(limits<value_type>::max())},
-          _max{TV::constant(limits<value_type>::lowest())},
+          _min{TV::constant(detail::deduce_numeric_max<value_type>())},
+          _max{TV::constant(detail::deduce_numeric_lowest<value_type>())},
           _i2wSinv{TM::identity() / dx},
           _i2wRinv{TM::identity()},
           _i2wT{TV::zeros()},  // origin offset
@@ -190,8 +190,8 @@ namespace zs {
     TV _backgroundVecValue{TV::zeros()};
     table_t _table{};
     grid_t _grid{};
-    TV _min{TV::constant(limits<value_type>::max())},
-        _max{TV::constant(limits<value_type>::lowest())};
+    TV _min{TV::constant(detail::deduce_numeric_max<value_type>())},
+        _max{TV::constant(detail::deduce_numeric_lowest<value_type>())};
     // initial index-to-world affine transformation
     TM _i2wSinv{TM::identity()}, _i2wRinv{TM::identity()};
     TV _i2wT{TV::zeros()};
@@ -350,8 +350,8 @@ namespace zs {
     constexpr auto numChannels() const noexcept { return _grid.numChannels(); }
 
     constexpr auto do_getBoundingBox() const noexcept {
-      auto mi = TV::constant(limits<value_type>::max());
-      auto ma = TV::constant(limits<value_type>::lowest());
+      auto mi = TV::constant(detail::deduce_numeric_max<value_type>());
+      auto ma = TV::constant(detail::deduce_numeric_lowest<value_type>());
       auto length = _max - _min;
       for (auto loc : ndrange<dim>(2)) {
         auto coord = _min + make_vec<value_type>(loc) * length;
@@ -763,9 +763,10 @@ namespace zs {
 
     table_view_t _table{};
     grid_view_t _grid{};
-    T _backgroundValue{limits<T>::max()};
-    TV _backgroundVecValue{TV::constant(limits<T>::max())};
-    TV _min{TV::constant(limits<T>::max())}, _max{TV::constant(limits<T>::lowest())};
+    T _backgroundValue{detail::deduce_numeric_max<T>()};
+    TV _backgroundVecValue{TV::constant(detail::deduce_numeric_max<T>())};
+    TV _min{TV::constant(detail::deduce_numeric_max<T>())},
+        _max{TV::constant(detail::deduce_numeric_lowest<T>())};
 
     TV _i2wT{TV::zeros()};
     TM _i2wRinv{TM::identity()}, _i2wSinv{TM::identity()};
@@ -775,19 +776,19 @@ namespace zs {
   // directly
   template <execspace_e ExecSpace, typename HashTableT, typename GridT>
   decltype(auto) proxy(HashTableView<ExecSpace, HashTableT> tablev,
-                                 GridView<ExecSpace, GridT, true, false> gridv) {
+                       GridView<ExecSpace, GridT, true, false> gridv) {
     constexpr int dim = RM_CVREF_T(tablev)::dim;
     constexpr auto category = RM_CVREF_T(gridv)::category;
     return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{tablev, gridv};
   }
   template <execspace_e ExecSpace, int dim, grid_e category>
   decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 SparseLevelSet<dim, category> &levelset) {
+                       SparseLevelSet<dim, category> &levelset) {
     return SparseLevelSetView<ExecSpace, SparseLevelSet<dim, category>>{levelset};
   }
   template <execspace_e ExecSpace, int dim, grid_e category>
   decltype(auto) proxy(const std::vector<SmallString> &tagNames,
-                                 const SparseLevelSet<dim, category> &levelset) {
+                       const SparseLevelSet<dim, category> &levelset) {
     return SparseLevelSetView<ExecSpace, const SparseLevelSet<dim, category>>{levelset};
   }
 
@@ -910,8 +911,8 @@ namespace zs {
 
     /// minimum
     constexpr value_type minimum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
-      auto pad = arena(chn, limits<value_type>::max());
-      value_type ret = limits<value_type>::max();
+      auto pad = arena(chn, detail::deduce_numeric_max<value_type>());
+      value_type ret = detail::deduce_numeric_max<value_type>();
       for (auto offset : ndrange<dim>(width))
         if (const auto &v = pad.val(offset); v < ret) ret = v;
       return ret;
@@ -923,8 +924,8 @@ namespace zs {
 
     /// maximum
     constexpr value_type maximum(typename lsv_t::channel_counter_type chn = 0) const noexcept {
-      auto pad = arena(chn, limits<value_type>::lowest());
-      value_type ret = limits<value_type>::lowest();
+      auto pad = arena(chn, detail::deduce_numeric_lowest<value_type>());
+      value_type ret = detail::deduce_numeric_lowest<value_type>();
       for (auto offset : ndrange<dim>(width))
         if (const auto &v = pad.val(offset); v > ret) ret = v;
       return ret;
@@ -1032,7 +1033,7 @@ namespace zs {
   }
 
   template <kernel_e kt, int drv_order, typename LsvT, typename... Args>
-  LevelSetArena(wrapv<kt>, wrapv<drv_order>, LsvT &, Args...)
-      -> LevelSetArena<remove_reference_t<LsvT>, kt, drv_order>;
+  LevelSetArena(wrapv<kt>, wrapv<drv_order>, LsvT &,
+                Args...) -> LevelSetArena<remove_reference_t<LsvT>, kt, drv_order>;
 
 }  // namespace zs

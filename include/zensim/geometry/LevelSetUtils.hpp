@@ -171,7 +171,7 @@ namespace zs {
 
       if (block("tagmask", cellid) == 1 && block("tag", cellid) == 0) {
         value_type dis[dim] = {};
-        for (auto &&d : dis) d = limits<value_type>::max();
+        for (auto &&d : dis) d = detail::deduce_numeric_max<value_type>();
         value_type sign[dim] = {};
 
         for (int i = -1; i != 3; i += 2)

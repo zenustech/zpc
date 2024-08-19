@@ -63,11 +63,11 @@ namespace zs {
           gmin = bvs(d, i);
           gmax = bvs(dim + d, i);
         });
-        reduce(pol, std::begin(gmins), std::end(gmins), std::begin(ret), limits<value_type>::max(),
-               getmin<value_type>{});
+        reduce(pol, std::begin(gmins), std::end(gmins), std::begin(ret),
+               detail::deduce_numeric_max<value_type>(), getmin<value_type>{});
         gbv._min[d] = ret.getVal();
         reduce(pol, std::begin(gmaxs), std::end(gmaxs), std::begin(ret),
-               limits<value_type>::lowest(), getmax<value_type>{});
+               detail::deduce_numeric_lowest<value_type>(), getmax<value_type>{});
         gbv._max[d] = ret.getVal();
       }
       return gbv;

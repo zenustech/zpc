@@ -273,7 +273,7 @@ namespace zs {
       if (offset >= shape[0]) {
         printf("densefield [%s] ofb! accessing %lld out of [0, %lld)\n", field._nameTag.asChars(),
                (long long)offset, (long long)shape[0]);
-        return field[limits<std::uintptr_t>::max()];
+        return field[detail::deduce_numeric_max<std::uintptr_t>()];
       }
 #endif
       return field[offset];
@@ -283,7 +283,7 @@ namespace zs {
       if (offset >= shape[0]) {
         printf("densefield [%s] ofb! accessing %lld out of [0, %lld)\n", field._nameTag.asChars(),
                (long long)offset, (long long)shape[0]);
-        return field[limits<std::uintptr_t>::max()];
+        return field[detail::deduce_numeric_max<std::uintptr_t>()];
       }
 #endif
       return field[offset];
@@ -333,8 +333,7 @@ namespace zs {
 
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base>,
-                                const SmallString &tagName) {
+  decltype(auto) view(DenseField<T, Allocator> &df, wrapv<Base>, const SmallString &tagName) {
     auto ret = DenseFieldView<ExecSpace, DenseField<T, Allocator>, Base>{df};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret.field._nameTag = tagName;
@@ -344,8 +343,7 @@ namespace zs {
   }
   template <execspace_e ExecSpace, typename T, typename Allocator,
             bool Base = !ZS_ENABLE_OFB_ACCESS_CHECK>
-  decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base>,
-                                const SmallString &tagName) {
+  decltype(auto) view(const DenseField<T, Allocator> &df, wrapv<Base>, const SmallString &tagName) {
     auto ret = DenseFieldView<ExecSpace, const DenseField<T, Allocator>, Base>{df};
 #if ZS_ENABLE_OFB_ACCESS_CHECK
     ret.field._nameTag = tagName;

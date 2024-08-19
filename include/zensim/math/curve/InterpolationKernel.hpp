@@ -422,8 +422,8 @@ namespace zs {
 
     /// minimum
     constexpr value_type minimum(size_type chn = 0) const noexcept {
-      auto pad = arena(chn, limits<value_type>::max());
-      value_type ret = limits<value_type>::max();
+      auto pad = arena(chn, detail::deduce_numeric_max<value_type>());
+      value_type ret = detail::deduce_numeric_max<value_type>();
       for (auto offset : ndrange<dim>(width))
         if (const auto &v = pad.val(offset); v < ret) ret = v;
       return ret;
@@ -434,8 +434,8 @@ namespace zs {
 
     /// maximum
     constexpr value_type maximum(size_type chn = 0) const noexcept {
-      auto pad = arena(chn, limits<value_type>::lowest());
-      value_type ret = limits<value_type>::lowest();
+      auto pad = arena(chn, detail::deduce_numeric_lowest<value_type>());
+      value_type ret = detail::deduce_numeric_lowest<value_type>();
       for (auto offset : ndrange<dim>(width))
         if (const auto &v = pad.val(offset); v > ret) ret = v;
       return ret;

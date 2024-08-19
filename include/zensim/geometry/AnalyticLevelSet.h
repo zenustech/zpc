@@ -391,7 +391,7 @@ namespace zs {
     static_assert(is_floating_point_v<typename VecT::value_type>,
                   "ray direction should be in floating point");
     using T = math::op_result_t<typename VecT::value_type, T_>;
-    // if (rd.l2NormSqr() < limits<T>::epsilon() * 10) return false;
+    // if (rd.l2NormSqr() < detail::deduce_numeric_epsilon<T>() * 10) return false;
     T invd[3] = {1 / rd[0], 1 / rd[1], 1 / rd[2]};  // allow div 0, assuming IEEE standard
     int sign[3] = {invd[0] < 0, invd[1] < 0, invd[2] < 0};
     T tmin{}, tmax{}, tymin{}, tymax{}, tzmin{}, tzmax{};

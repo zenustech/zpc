@@ -202,7 +202,8 @@ namespace zs {
     void setStepDt(const value_type dt) noexcept { _stepDt = dt; }
     void advance(const value_type ratio) noexcept {
       _alpha += ratio;
-      constexpr auto threshold = (value_type)1 - (value_type)128 * limits<value_type>::epsilon();
+      constexpr auto threshold
+          = (value_type)1 - (value_type)128 * detail::deduce_numeric_epsilon<value_type>();
       while (_alpha > threshold) {
         _alpha -= (value_type)1;
         if (_fields.size()) pop();
@@ -340,7 +341,7 @@ namespace zs {
   };
   template <typename SdfLsView, typename VelLsView, typename... Args>
   TransitionLevelSetView(SdfVelFieldView<SdfLsView, VelLsView>,
-                         SdfVelFieldView<SdfLsView, VelLsView>, Args...)
-      -> TransitionLevelSetView<SdfVelFieldView<SdfLsView, VelLsView>>;
+                         SdfVelFieldView<SdfLsView, VelLsView>,
+                         Args...) -> TransitionLevelSetView<SdfVelFieldView<SdfLsView, VelLsView>>;
 
 }  // namespace zs

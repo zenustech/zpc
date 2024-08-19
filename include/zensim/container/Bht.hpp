@@ -129,8 +129,8 @@ namespace zs {
       return key_type::constant(v);
     }
     static constexpr key_type key_sentinel_v = deduce_key_sentinel();
-    // static constexpr index_type key_scalar_sentinel_v = limits<index_type>::max(); //
-    // detail::deduce_numeric_max<index_type>();
+    // static constexpr index_type key_scalar_sentinel_v = detail::deduce_numeric_max<index_type>();
+    // // detail::deduce_numeric_max<index_type>();
     static constexpr value_type sentinel_v{-1};  // this requires key_type to be signed type
     static constexpr status_type status_sentinel_v{-1};
     static constexpr value_type failure_token_v = detail::deduce_numeric_lowest<value_type>();

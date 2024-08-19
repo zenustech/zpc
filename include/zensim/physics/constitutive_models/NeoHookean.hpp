@@ -19,7 +19,8 @@ namespace zs {
 
     // do_psi_sigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>>
+                             = 0>
     constexpr typename VecT::value_type do_psi_sigma(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -30,7 +31,8 @@ namespace zs {
     }
     // do_dpsi_dsigma
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto do_dpsi_dsigma(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       // constexpr auto dim = VecT::template range_t<0>::value;
@@ -41,7 +43,8 @@ namespace zs {
     }
     // do_d2psi_dsigma2
     template <typename VecT, enable_if_all<VecT::dim == 1, VecT::template range_t<0>::value <= 3,
-                                           is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto do_d2psi_dsigma2(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
@@ -68,13 +71,15 @@ namespace zs {
     template <typename VecT, enable_if_all<VecT::dim == 1,
                                            VecT::template range_t<0>::value == 2
                                                || VecT::template range_t<0>::value == 3,
-                                           is_floating_point_v<typename VecT::value_type>> = 0>
+                                           is_floating_point_v<typename VecT::value_type>>
+                             = 0>
     constexpr auto do_Bij_neg_coeff(const VecInterface<VecT>& S) const noexcept {
       using value_type = typename VecT::value_type;
       constexpr auto dim = VecT::template range_t<0>::value;
       using RetT = typename VecT::template variant_vec<
           typename VecT::value_type,
-          integer_sequence<typename VecT::index_type, (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
+          integer_sequence<typename VecT::index_type,
+                           (VecT::template range_t<0>::value == 3 ? 3 : 1)>>;
       RetT coeffs{};
       const auto S_prod = S.prod();
       if constexpr (dim == 2)
@@ -171,7 +176,8 @@ namespace zs {
               enable_if_all<VecT::dim == 1, VecS::dim == 1, VecT::template range_t<0>::value == 3,
                             VecS::template range_t<0>::value == 3,
                             is_floating_point_v<typename VecT::value_type>,
-                            is_floating_point_v<typename VecS::value_type>> = 0>
+                            is_floating_point_v<typename VecS::value_type>>
+              = 0>
     constexpr auto eval_stretching_matrix(const VecInterface<VecT>& Is,
                                           const VecInterface<VecS>& sigma) const noexcept {
       typename VecT::template variant_vec<typename VecT::value_type,
@@ -194,7 +200,8 @@ namespace zs {
     template <typename VecT,
               enable_if_all<VecT::dim == 2, VecT::template range_t<0>::value == 3,
                             VecT::template range_t<0>::value == VecT::template range_t<1>::value,
-                            is_floating_point_v<typename VecT::value_type>> = 0>
+                            is_floating_point_v<typename VecT::value_type>>
+              = 0>
     constexpr auto do_first_piola_derivative_spd(const VecInterface<VecT>& F) const noexcept {
       // sum_i ((d2Psi / dI_i2) g_i g_i^T + ((dPsi / dI_i) H_i))
       // printf("do_first_piola_derivative_spd get called\n");
@@ -349,13 +356,14 @@ namespace zs {
       // }
 
       for (Ti i = 0; i != 9; ++i) {
-        // eigen_vals[i] = eigen_vals[i] < limits<value_type>::epsilon() ? limits<value_type>::epsilon()  : eigen_vals[i];
+        // eigen_vals[i] = eigen_vals[i] < detail::deduce_numeric_epsilon<value_type>() ?
+        // detail::deduce_numeric_epsilon<value_type>()  : eigen_vals[i];
         eigen_vals[i] = zs::abs(eigen_vals[i]);
       }
 
       // if(elm_id == 0)
       //   printf("epsilon : %e
-      //   %e\n",(double)limits<value_type>::epsilon(),(double)limits<value_type>::min());
+      //   %e\n",(double)detail::deduce_numeric_epsilon<value_type>(),(double)limits<value_type>::min());
 
       for (Ti i = 0; i != 9; ++i)
         dPdF += eigen_vals[i] * zs::dyadic_prod(eigen_vecs[i], eigen_vecs[i]);

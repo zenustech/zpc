@@ -1146,7 +1146,7 @@ namespace zs {
                                        const VecInterface<VecTE> &e1) noexcept {
     using T = math::op_result_t<typename VecTP::value_type, typename VecTE::value_type>;
     constexpr int dim = VecTP::extent;
-    T ret = limits<T>::max();
+    T ret = detail::deduce_numeric_max<T>();
     switch (pe_distance_type(p, e0, e1)) {
       case 0:
         ret = dist2_pp(p, e0);
@@ -2399,7 +2399,7 @@ namespace zs {
                                        const VecInterface<VecTB> &eb0,
                                        const VecInterface<VecTB> &eb1) noexcept {
     using T = math::op_result_t<typename VecTA::value_type, typename VecTB::value_type>;
-    T dist2{limits<T>::max()};
+    T dist2{detail::deduce_numeric_max<T>()};
     switch (ee_distance_type(ea0, ea1, eb0, eb1)) {
       case 0:
         dist2 = dist2_pp(ea0, eb0);
@@ -3954,7 +3954,7 @@ namespace zs {
                                        const VecInterface<VecT> &t1,
                                        const VecInterface<VecT> &t2) noexcept {
     using T = math::op_result_t<typename VecTP::value_type, typename VecT::value_type>;
-    T dist2{limits<T>::max()};
+    T dist2{detail::deduce_numeric_max<T>()};
     switch (pt_distance_type(p, t0, t1, t2)) {
       case 0:
         dist2 = dist2_pp(p, t0);

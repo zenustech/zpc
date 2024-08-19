@@ -98,7 +98,7 @@ namespace zs {
                                 wrapv<IndexRequired> = {}) const {
       using T = typename VecT::value_type;
       index_type idx = -1;
-      T dist = limits<T>::max();
+      T dist = detail::deduce_numeric_max<T>();
       if (auto nl = numNodes(); nl <= 2) {
         for (index_type i = 0; i != nl; ++i) {
           if (auto d = distance(p, getNodeBV(i)); d < dist) {
@@ -130,7 +130,8 @@ namespace zs {
     }
     template <typename VecT, bool IndexRequired = false>
     constexpr auto find_nearest_point(const VecInterface<VecT> &p,
-                                      typename VecT::value_type dist2 = limits<value_type>::max(),
+                                      typename VecT::value_type dist2
+                                      = detail::deduce_numeric_max<value_type>(),
                                       index_type idx = -1, wrapv<IndexRequired> = {}) const {
       using T = typename VecT::value_type;
       if (auto nl = numNodes(); nl <= 2) {

@@ -144,7 +144,7 @@ namespace zs {
     constexpr auto execTag = wrapv<space>{};
 
     _dx = dx;
-    if (_dx < limits<value_type>::epsilon() * 10)
+    if (_dx < detail::deduce_numeric_epsilon<value_type>() * 10)
       throw std::runtime_error("cell side_length for spatial hashing should be greater than zero.");
 
     if (primBvs.size() == 0) return;

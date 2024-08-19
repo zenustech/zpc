@@ -330,7 +330,7 @@ namespace zs {
     float sc{}, sN{}, sD = D;  // sc = sN/sD
     float tc{}, tN{}, tD = D;
 
-    constexpr auto eps = (T)128 * limits<T>::epsilon();
+    constexpr auto eps = (T)128 * detail::deduce_numeric_epsilon<T>();
     if (D < eps) {
       sN = (T)0;
       sD = (T)1;
@@ -401,7 +401,7 @@ namespace zs {
     int uCate = -1;
     int vCate = -1;
     constexpr T eps = detail::deduce_numeric_epsilon<T>() * 16;
-    // constexpr auto eps = (T)128 * limits<T>::epsilon();
+    // constexpr auto eps = (T)128 * detail::deduce_numeric_epsilon<T>();
     if (D < eps) {
       sN = (T)0;
       sD = (T)1;

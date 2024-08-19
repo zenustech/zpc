@@ -18,8 +18,10 @@ namespace zs {
       using value_type = typename BoxT::value_type;
       auto &[box, execTag] = params;
       for (int d = 0; d != dim; ++d) {
-        atomic_min(execTag, &box[0]._min[d], bv._min[d] - 10 * limits<value_type>::epsilon());
-        atomic_max(execTag, &box[0]._max[d], bv._max[d] + 10 * limits<value_type>::epsilon());
+        atomic_min(execTag, &box[0]._min[d],
+                   bv._min[d] - 10 * detail::deduce_numeric_epsilon<value_type>());
+        atomic_max(execTag, &box[0]._max[d],
+                   bv._max[d] + 10 * detail::deduce_numeric_epsilon<value_type>());
       }
     }
   };
@@ -32,8 +34,8 @@ namespace zs {
       Ti offset{};
       for (int d = 0; d < dim; ++d) {
         offset = d * sz;
-        gmins[offset + i] = bv._min[d] - 10 * limits<value_type>::epsilon();
-        gmaxs[offset + i] = bv._max[d] + 10 * limits<value_type>::epsilon();
+        gmins[offset + i] = bv._min[d] - 10 * detail::deduce_numeric_epsilon<value_type>();
+        gmaxs[offset + i] = bv._max[d] + 10 * detail::deduce_numeric_epsilon<value_type>();
       }
     }
   };
@@ -160,8 +162,8 @@ namespace zs {
       Vector<Box> box{orderedBvs.get_allocator(), 1};
       if (numLeaves <= 2) {
         using TV = typename Box::TV;
-        box.setVal(Box{TV::constant(limits<value_type>::max()),
-                       TV::constant(limits<value_type>::lowest())});
+        box.setVal(Box{TV::constant(detail::deduce_numeric_max<value_type>()),
+                       TV::constant(detail::deduce_numeric_lowest<value_type>())});
         auto bvhv = proxy<space>(*this);
         auto boxv = proxy<space>(box);
         pol(Collapse{numLeaves}, _GetBoxHelper<RM_CVREF_T(bvhv), RM_CVREF_T(boxv)>{bvhv, boxv});
@@ -231,8 +233,7 @@ namespace zs {
             for (step = 2; right = left + step * dir,
                 (right < num_leaves && right >= 0 ? count_lz(execTag, mcs(right) ^ curCode) > minLZ
                                                   : false);
-                 step <<= 1)
-              ;
+                 step <<= 1);
             index_type len{};
             for (len = 0, step >>= 1; step >= 1; step >>= 1) {
               right = left + (len + step) * dir;
@@ -589,7 +590,7 @@ namespace zs {
                                 wrapv<IndexRequired> = {}) const {
       using T = typename VecT::value_type;
       index_t idx = -1;
-      T dist = limits<T>::max();
+      T dist = detail::deduce_numeric_max<T>();
       if (auto nl = numNodes(); nl <= 2) {
         for (index_t i = 0; i != nl; ++i) {
           if (auto d = distance(p, getNodeBV(i)); d < dist) {
@@ -621,7 +622,8 @@ namespace zs {
     }
     template <typename VecT, bool IndexRequired = false>
     constexpr auto find_nearest_point(const VecInterface<VecT> &p,
-                                      typename VecT::value_type dist2 = limits<value_type>::max(),
+                                      typename VecT::value_type dist2
+                                      = detail::deduce_numeric_max<value_type>(),
                                       index_t idx = -1, wrapv<IndexRequired> = {}) const {
       using T = typename VecT::value_type;
       if (auto nl = numNodes(); nl <= 2) {
@@ -866,8 +868,8 @@ namespace zs {
     auto lOffsets = proxy<space>(leafOffsets);
 
     // total bounding volume
-    const auto defaultBox
-        = Box{TV::constant(limits<value_type>::max()), TV::constant(limits<value_type>::lowest())};
+    const auto defaultBox = Box{TV::constant(detail::deduce_numeric_max<value_type>()),
+                                TV::constant(detail::deduce_numeric_lowest<value_type>())};
     Vector<Box> wholeBox{primBvs.get_allocator(), 1};
 #if 0
     wholeBox.setVal(defaultBox);
@@ -1152,8 +1154,8 @@ namespace zs {
     auto bvs = proxy<space>(orderedBvs);
 
     // total bounding volume
-    const auto defaultBox
-        = Box{TV::constant(limits<value_type>::max()), TV::constant(limits<value_type>::lowest())};
+    const auto defaultBox = Box{TV::constant(detail::deduce_numeric_max<value_type>()),
+                                TV::constant(detail::deduce_numeric_lowest<value_type>())};
     Vector<Box> wholeBox{primBvs.get_allocator(), 1};
     wholeBox.setVal(compute_bounding_box(policy, range(primBvs)));
 

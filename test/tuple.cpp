@@ -14,8 +14,8 @@
 
 struct Dummy {
   using T = float;
-  constexpr Dummy() : n{zs::limits<int>::lowest()} {}
-  int n = zs::limits<int>::lowest();
+  constexpr Dummy() : n{zs::detail::deduce_numeric_lowest<int>()} {}
+  int n = zs::detail::deduce_numeric_lowest<int>();
   operator int() { return n; }
 };
 

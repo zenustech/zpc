@@ -363,7 +363,7 @@ namespace zs {
 
       // if(elm_id == 0)
       //   printf("epsilon : %e
-      //   %e\n",(double)detail::deduce_numeric_epsilon<value_type>(),(double)limits<value_type>::min());
+      //   %e\n",(double)detail::deduce_numeric_epsilon<value_type>(),(double)deduce_numeric_min<value_type>());
 
       for (Ti i = 0; i != 9; ++i)
         dPdF += eigen_vals[i] * zs::dyadic_prod(eigen_vecs[i], eigen_vecs[i]);

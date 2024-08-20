@@ -28,7 +28,7 @@ namespace zs {
     bool shouldSync = policy.shouldSync();
     policy.sync(true);
 
-    policy(colors, [] ZS_LAMBDA(ColorT & color) { color = limits<ColorT>::max(); });
+    policy(colors, [] ZS_LAMBDA(ColorT & color) { color = detail::deduce_numeric_max<ColorT>(); });
 
     auto allocator = get_temporary_memory_source(policy);
     zs::Vector<int> done{allocator, 2};
@@ -112,7 +112,7 @@ namespace zs {
     bool shouldSync = policy.shouldSync();
     policy.sync(true);
 
-    policy(colors, [] ZS_LAMBDA(ColorT & color) { color = limits<ColorT>::max(); });
+    policy(colors, [] ZS_LAMBDA(ColorT & color) { color = detail::deduce_numeric_max<ColorT>(); });
 
     // @note 0: free, 1: colored, 2: temporaral exclusion (reset upon the next color iteration)
     auto allocator = get_temporary_memory_source(policy);

@@ -159,8 +159,8 @@ namespace zs {
     BinaryOp bop;
     T e;
   };
-  template <typename Bop, typename T> monoid(Bop, T)
-      -> monoid<remove_cvref_t<Bop>, remove_cvref_t<T>>;
+  template <typename Bop, typename T>
+  monoid(Bop, T) -> monoid<remove_cvref_t<Bop>, remove_cvref_t<T>>;
 
   /// @brief predefined monoids
   template <typename T> struct monoid<plus<T>, T> {
@@ -214,11 +214,26 @@ namespace zs {
         if constexpr (is_signed_v<T>)
           return static_cast<T>(~(static_cast<T>(1) << (sizeof(T) * 8 - 1)));
         else
-          return ~(T)0;
+          return ~static_cast<T>(0);
       } else if constexpr (is_same_v<T, float>)
         return ZS_FLT_MAX;
       else if constexpr (is_same_v<T, double>)
         return ZS_DBL_MAX;
+      else
+        static_assert(always_false<T>, "not implemented for this type!");
+    }
+    template <typename T> constexpr T deduce_numeric_min() {
+      static_assert(is_arithmetic_v<T> && !is_same_v<T, long double>,
+                    "T must be an arithmetic type (long double excluded).");
+      if constexpr (is_integral_v<T>) {
+        if constexpr (is_signed_v<T>)
+          return (static_cast<T>(1) << (sizeof(T) * 8 - 1));
+        else
+          return static_cast<T>(0);
+      } else if constexpr (is_same_v<T, float>)
+        return ZS_FLT_MIN;
+      else if constexpr (is_same_v<T, double>)
+        return ZS_DBL_MIN;
       else
         static_assert(always_false<T>, "not implemented for this type!");
     }
@@ -336,8 +351,9 @@ namespace zs {
         : base_t(FWD(mulop), FWD(monoid)) {}
     ~semiring() = default;
   };
-  template <typename MultiplyOpT, typename MonoidT> semiring(MultiplyOpT &&, MonoidT &&)
-      -> semiring<remove_cvref_t<MultiplyOpT>, remove_cvref_t<MonoidT>>;
+  template <typename MultiplyOpT, typename MonoidT>
+  semiring(MultiplyOpT &&,
+           MonoidT &&) -> semiring<remove_cvref_t<MultiplyOpT>, remove_cvref_t<MonoidT>>;
 
   ///
   template <typename MultiplyOp, typename BinaryOp>
@@ -416,7 +432,7 @@ namespace zs {
   }  // namespace index_literals
 
   template <char... c> constexpr auto operator""_c() noexcept {
-    return index_literals::operator""_th<c...>();
+    return index_literals::operator""_th < c... > ();
   }
 
   /// value_seq

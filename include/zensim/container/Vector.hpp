@@ -474,7 +474,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (RetT)(*((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (RetT)(*((value_type *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -486,7 +486,7 @@ namespace zs {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
         return (
-            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+            RetT)(*((const value_type *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -499,7 +499,7 @@ namespace zs {
       if (i >= _vectorSize) {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
-        return (RetT)(*((value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+        return (RetT)(*((value_type *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];
@@ -511,7 +511,7 @@ namespace zs {
         printf("vector [%s] ofb! accessing %lld out of [0, %lld)\n", _nameTag.asChars(),
                (long long)i, (long long)_vectorSize);
         return (
-            RetT)(*((const value_type *)(limits<std::uintptr_t>::max() - sizeof(value_type) + 1)));
+            RetT)(*((const value_type *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(value_type) + 1)));
       }
 #endif
       return _vector[i];

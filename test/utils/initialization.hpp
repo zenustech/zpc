@@ -46,7 +46,7 @@ namespace zs {
     Vector<float> vals(n);
     pol(enumerate(vals), [](size_t i, float &v) {
       u64 sd = i;
-      v = 1.f * zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) / limits<u32>::max();
+      v = 1.f * zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) / detail::deduce_numeric_max<u32>();
     });
     return vals;
   }
@@ -56,7 +56,7 @@ namespace zs {
     TileVector<float, 32> vals({{"a", 3}, {"b", 2}, {"c", 1}}, n);
     pol(enumerate(range(vals, "b")), [](size_t i, float &v) {
       u64 sd = i;
-      v = 1.f * zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) / limits<u32>::max();
+      v = 1.f * zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) / detail::deduce_numeric_max<u32>();
     });
     return vals;
   }

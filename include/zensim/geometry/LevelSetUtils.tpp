@@ -64,7 +64,7 @@ namespace zs {
   template <typename ExecPol, int dim, grid_e category>
   void mark_level_set(ExecPol &&pol, SparseLevelSet<dim, category> &ls,
                       typename SparseLevelSet<dim, category>::value_type threshold
-                      = limits<typename SparseLevelSet<dim, category>::value_type>::epsilon()
+                      = detail::deduce_numeric_epsilon<typename SparseLevelSet<dim, category>::value_type>()
                         * 128) {
     auto nbs = ls.numBlocks();
     constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;
@@ -139,7 +139,7 @@ namespace zs {
   template <typename ExecPol, int dim, grid_e category> void refit_level_set_domain(
       ExecPol &&pol, SparseLevelSet<dim, category> &ls,
       typename SparseLevelSet<dim, category>::value_type threshold
-      = zs::limits<typename SparseLevelSet<dim, category>::value_type>::epsilon() * 128) {
+      = zs::detail::deduce_numeric_epsilon<typename SparseLevelSet<dim, category>::value_type>() * 128) {
     using SplsT = SparseLevelSet<dim, category>;
 
     constexpr execspace_e space = RM_REF_T(pol)::exec_tag::value;

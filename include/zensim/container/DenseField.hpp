@@ -192,8 +192,8 @@ namespace zs {
     }
     DenseField(DenseField &&o) noexcept {
       const DenseField defaultVector{};
-      _field = std::exchange(o._field, defaultVector._field);
-      _shape = std::exchange(o._shape, defaultVector._shape);
+      _field = zs::exchange(o._field, defaultVector._field);
+      _shape = zs::exchange(o._shape, defaultVector._shape);
     }
     /// make move-assignment safe for self-assignment
     DenseField &operator=(DenseField &&o) noexcept {

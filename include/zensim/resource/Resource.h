@@ -246,7 +246,7 @@ namespace zs {
         }
       std::cerr << fmt::format(
           "invalid option \"{}\" for allocations of virtual memory resource \"{}\".", option,
-          get_var_type_str(tag))
+          get_var_type_str(tag).asChars())
                 << std::endl;
     })(tag);
     return ret;

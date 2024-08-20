@@ -5,6 +5,7 @@
 #include "zensim/vulkan/VkImage.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
 #include "zensim/vulkan/Vulkan.hpp"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
 
@@ -19,7 +20,7 @@ namespace zs {
         res != vk::Result::eSuccess)
       throw std::runtime_error(fmt::format(
           "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
-          frameIndex, res));
+          frameIndex, magic_enum::enum_name(res)));
 #if 0
     auto res = ctx.device.acquireNextImageKHR(
         swapchain, detail::deduce_numeric_max<u64>(),
@@ -180,7 +181,8 @@ namespace zs {
         ci.presentMode = mode;
         return *this;
       }
-    ZS_WARN(fmt::format("Present mode [{}] is not supported in this context. Ignored.\n", mode));
+    ZS_WARN(fmt::format("Present mode [{}] is not supported in this context. Ignored.\n",
+                        magic_enum::enum_name(mode)));
     return *this;
   }
   void SwapchainBuilder::build(Swapchain& obj) {

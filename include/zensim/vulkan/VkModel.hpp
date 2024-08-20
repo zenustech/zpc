@@ -35,6 +35,7 @@ namespace zs {
       verts.pos.reset();
       verts.nrm.reset();
       verts.clr.reset();
+      verts.vids.reset();
       indices.reset();
     }
     ~VkModel() { reset(); }

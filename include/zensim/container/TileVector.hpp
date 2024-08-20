@@ -614,7 +614,7 @@ namespace zs {
         throw std::runtime_error(
             fmt::format("append_channels: property[{}] currently has [{}] channels, cannot change "
                         "it to [{}] channels.",
-                        tag.name, tags[i].numChannels, tag.numChannels));
+                        tag.name.asChars(), tags[i].numChannels, tag.numChannels));
     }
     if (!modified) return;
     TileVector<T, Length, Allocator> tmp{get_allocator(), tags, s};

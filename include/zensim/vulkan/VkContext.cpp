@@ -34,6 +34,7 @@
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
+#include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
 
@@ -321,7 +322,7 @@ namespace zs {
         "\n\t\t(Graphics/Compute/Transfer) queue family index: {}, {}, {}. Ray-tracing support: "
         "{}. Bindless support: {}."
         "\n\tEnabled the following device tensions ({} in total):",
-        devid, devProps.deviceName, queueFamilyIndices[vk_queue_e::graphics],
+        devid, devProps.deviceName.data(), queueFamilyIndices[vk_queue_e::graphics],
         queueFamilyIndices[vk_queue_e::compute], queueFamilyIndices[vk_queue_e::transfer],
         rtPreds == rtRequiredPreds, supportBindless(), enabledExtensions.size());
     u32 accum = 0;

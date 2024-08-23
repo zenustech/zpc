@@ -22,7 +22,7 @@ namespace zs {
     constexpr BasicSmallString() noexcept : buf{} {
       for (auto &c : buf) c = '\0';
     }
-    constexpr BasicSmallString(const char *tmp) : buf{} {
+    constexpr BasicSmallString(const char_type *tmp) : buf{} {
       size_type i = 0;
       for (; i + (size_type)1 != nbytes && tmp[i]; ++i) buf[i] = tmp[i];
       buf[i] = '\0';
@@ -53,17 +53,17 @@ namespace zs {
 
     constexpr decltype(auto) operator[](size_type i) const noexcept { return buf[i]; }
     constexpr decltype(auto) operator[](size_type i) noexcept { return buf[i]; }
-    constexpr bool operator==(const char str[]) const noexcept {
+    constexpr bool operator==(const char_type str[]) const noexcept {
       size_type i = 0, sz = size();
       for (; i != sz && str[i]; ++i)
         if (buf[i] != str[i]) return false;
       if (!(buf[i] || str[i])) return true;
       return false;
     }
-    constexpr bool operator!=(const char str[]) const noexcept { return !operator==(str); }
+    constexpr bool operator!=(const char_type str[]) const noexcept { return !operator==(str); }
 
-    constexpr const char *asChars() const noexcept { return buf; }
-    constexpr operator const char *() const noexcept { return buf; }
+    constexpr const char_type *asChars() const noexcept { return buf; }
+    constexpr operator const char_type *() const noexcept { return buf; }
     constexpr size_type size() const noexcept {
       size_type i = 0;
       for (; buf[i]; ++i);
@@ -98,6 +98,11 @@ namespace zs {
 
   template <typename CharT, zs::size_t NBytes>
   BasicSmallString(const CharT (&tmp)[NBytes]) -> BasicSmallString<CharT, NBytes>;
+
+  template <typename CharT, zs::size_t NB>
+  const CharT *format_as(const BasicSmallString<CharT, NB> &str) {
+    return str.asChars();
+  }
 
   /// property tag
   struct PropertyTag {

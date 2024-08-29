@@ -3,6 +3,9 @@
 #include <type_traits>
 #include <variant>
 
+#include "zensim/ZpcFunctional.hpp"
+#include "zensim/ZpcMeta.hpp"
+
 namespace zs {
 
   /// https://github.com/SuperV1234/ndctechtown2020/blob/master/7_a_match.pdf

@@ -287,6 +287,14 @@ namespace zs {
 #define RM_REF_T(...) ::zs::remove_reference_t<decltype(__VA_ARGS__)>
 #define ZS_TYPE(...) typename ::zs::remove_reference_t<decltype(__VA_ARGS__)>::type
 #define ZS_VALUE(...) typename ::zs::remove_reference_t<decltype(__VA_ARGS__)>::value
+
+  template <class T> struct remove_rvalue_reference {
+    using type = T;
+  };
+  template <class T> struct remove_rvalue_reference<T &&> {
+    using type = T;
+  };
+  template <typename T> using remove_rvalue_reference_t = typename remove_rvalue_reference<T>::type;
   // remove cv
   template <class T> struct remove_cv {
     using type = T;

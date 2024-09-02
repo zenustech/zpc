@@ -18,7 +18,6 @@ set(ZENSIM_LIBRARY_CORE_SOURCE_FILES
   ZpcImplPattern.cpp
 
   io/Filesystem.cpp
-  io/MeshIO.cpp
   # simulation
 )
 set(ZENSIM_LIBRARY_IO_SOURCE_FILES
@@ -68,10 +67,12 @@ set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   container/Vector.cpp
   container/TileVector.cpp
   container/DenseField.cpp
-  geometry/Mesh.cpp
   geometry/SparseGrid.cpp
   geometry/AdaptiveGrid.cpp
   geometry/Collider.cpp
+
+  geometry/Mesh.cpp
+  io/MeshIO.cpp
 
   math/matrix/Matrix.cpp
   simulation/mpm/Simulator.cpp

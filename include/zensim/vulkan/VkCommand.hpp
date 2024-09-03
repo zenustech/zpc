@@ -63,7 +63,7 @@ namespace zs {
     std::vector<vk::Semaphore> _waitSemaphores, _signalSemaphores;
   };
 
-  struct Fence {
+  struct ZPC_CORE_API Fence {
     Fence(VulkanContext& ctx, bool signaled = false) : _ctx{ctx} {
       vk::FenceCreateInfo ci{};
       if (signaled) ci.setFlags(vk::FenceCreateFlagBits::eSignaled);

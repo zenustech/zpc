@@ -23,26 +23,25 @@
 
 namespace zs {
 
-  struct Vulkan {
+  struct ZPC_CORE_API Vulkan {
   private:
     Vulkan();
 
+    Vulkan(Vulkan &&) = delete;
+    Vulkan &operator=(Vulkan &&) = delete;
+    Vulkan(const Vulkan &) = delete;
+    Vulkan &operator=(const Vulkan &) = delete;
   public:
-    ZPC_BACKEND_API static Vulkan &instance() {
-      static Vulkan s_instance{};
-      return s_instance;
-    }
+    static Vulkan &instance();
     ~Vulkan();
     void reset();
 
-    static auto &driver() noexcept { return instance(); }
-    static size_t num_devices() noexcept { return instance()._contexts.size(); }
-    static vk::Instance vk_inst() noexcept { return instance()._instance; }
-    static const vk::DispatchLoaderDynamic &vk_inst_dispatcher() noexcept {
-      return instance()._dispatcher;
-    }
-    static auto &context(int devid) { return driver()._contexts[devid]; }
-    static auto &context() { return instance()._contexts[instance()._defaultContext]; }
+    static Vulkan &driver() noexcept;
+    static size_t num_devices() noexcept;
+    static vk::Instance vk_inst() noexcept;
+    static const vk::DispatchLoaderDynamic &vk_inst_dispatcher() noexcept;
+    static VulkanContext &context(int devid);
+    static VulkanContext &context();
 
     template <typename F>
     static enable_if_type<is_invocable_r_v<void, F &&>, void> add_instance_destruction_callback(
@@ -55,6 +54,11 @@ namespace zs {
       instance()._onDestroyCallback = [cb = FWD(f)]() mutable { cb(); };
     }
 
+    friend struct VulkanContext;
+
+    template <typename T> T &working_contexts() { return *static_cast<T*>(_workingContexts); }
+    template <typename T> T &mutex() { return *static_cast<T*>(_mutex); }
+
   private:
     vk::Instance _instance;
     vk::DispatchLoaderDynamic _dispatcher;  // store vulkan-instance calls
@@ -62,6 +66,8 @@ namespace zs {
     std::vector<VulkanContext> _contexts;  ///< generally one per device
     zs::callbacks<void()> _onDestroyCallback;
     int _defaultContext = 0;
+
+    void *_workingContexts, *_mutex;
   };
 
 }  // namespace zs

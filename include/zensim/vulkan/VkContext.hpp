@@ -248,7 +248,7 @@ namespace zs {
     SwapchainBuilderOwner swapchainBuilder;
   };
 
-  struct ExecutionContext {
+  struct ZPC_CORE_API ExecutionContext {
     ExecutionContext(VulkanContext &ctx);
     ~ExecutionContext();
 

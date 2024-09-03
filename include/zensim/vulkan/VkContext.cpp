@@ -40,10 +40,12 @@ namespace zs {
 
   using ContextEnvs = std::map<int, ExecutionContext>;
   using WorkerEnvs = std::map<std::thread::id, ContextEnvs>;
-  namespace {
-    static WorkerEnvs g_workingContexts;
-    static Mutex g_mtx{};
-  }  // namespace
+
+  // now moved to Vulkan singleton
+  // namespace {
+  //   static WorkerEnvs g_workingContexts;
+  //   static Mutex g_mtx{};
+  // }  // namespace
 
   ///
   ///
@@ -83,18 +85,8 @@ namespace zs {
     /// clear builders
     // if (swapchainBuilder) swapchainBuilder.reset(nullptr);
     /// clear execution resources
-    {
-      // working contexts (command pool resources)
-      // g_mtx.lock();
-      if (g_mtx.try_lock()) {
-        g_workingContexts.clear();
-        g_mtx.unlock();
-      } else
-        throw std::runtime_error(
-            "Other worker threads are still accessing vk command contexts while the ctx is being "
-            "destroyed!");
-      // g_mtx.unlock();
-    }
+    // handled by Vulkan
+    
     destructDescriptorPool();
 
     vmaDestroyAllocator(defaultAllocator);
@@ -503,15 +495,16 @@ namespace zs {
   ExecutionContext& VulkanContext::env() {
     WorkerEnvs::iterator workerIter;
     ContextEnvs::iterator iter;
+    auto &g_mtx = Vulkan::instance().mutex<Mutex>();
     g_mtx.lock();
     bool tag;
     std::tie(workerIter, tag)
-        = g_workingContexts.try_emplace(std::this_thread::get_id(), ContextEnvs{});
+        = Vulkan::instance().working_contexts<WorkerEnvs>().try_emplace(std::this_thread::get_id(), ContextEnvs{});
     std::tie(iter, tag) = workerIter->second.try_emplace(devid, *this);
     g_mtx.unlock();
     return iter->second;
   }
-  u32 check_current_working_contexts() { return g_workingContexts.size(); }
+  u32 check_current_working_contexts() { return Vulkan::instance().working_contexts<WorkerEnvs>().size(); }
 
   ///
   /// builders

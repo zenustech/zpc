@@ -14,9 +14,10 @@
 
 namespace zs {
 
-  bool load_obj(std::string_view file, std::vector<std::array<float, 3>> *pos,
-                std::vector<std::array<float, 3>> *nrm, std::vector<std::array<float, 2>> *uv,
-                std::vector<std::array<u32, 3>> *tris);
+  ZPC_API bool load_obj(std::string_view file, std::vector<std::array<float, 3>> *pos,
+                        std::vector<std::array<float, 3>> *nrm,
+                        std::vector<std::array<float, 2>> *uv,
+                        std::vector<std::array<u32, 3>> *tris);
 
   template <typename T, int dim, typename Tn>
   bool read_tri_mesh_obj(const std::string &file, Mesh<T, dim, Tn, 3> &mesh) {

@@ -30,6 +30,9 @@ namespace {
 
 namespace zs {
 
+  using ContextEnvs = std::map<int, ExecutionContext>;
+  using WorkerEnvs = std::map<std::thread::id, ContextEnvs>;
+
   /// @ref: dokipen3d/vulkanHppMinimalExample
   static VKAPI_ATTR VkBool32 VKAPI_CALL
   zsvk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -39,12 +42,21 @@ namespace zs {
     return VK_FALSE;
   }
 
-#if 0
   Vulkan& Vulkan::instance() {
-    if (!g_vulkanInstance) g_vulkanInstance = new Vulkan;
-    return *g_vulkanInstance;
+    static Vulkan s_instance{};
+    return s_instance;
   }
-#endif
+
+  Vulkan &Vulkan::driver() noexcept { return instance(); }
+  size_t Vulkan::num_devices() noexcept { return instance()._contexts.size(); }
+  vk::Instance Vulkan::vk_inst() noexcept { return instance()._instance; }
+  const vk::DispatchLoaderDynamic &Vulkan::vk_inst_dispatcher() noexcept {
+      return instance()._dispatcher;
+  }
+  VulkanContext &Vulkan::context(int devid) { return driver()._contexts[devid]; }
+  VulkanContext &Vulkan::context() { return instance()._contexts[instance()._defaultContext]; }
+
+
 
   /// @ref:
   /// https://github.com/KhronosGroup/Vulkan-Hpp/blob/main/README.md#extensions--per-device-function-pointers
@@ -128,8 +140,35 @@ namespace zs {
       _contexts.emplace_back(i, _instance, physDev, _dispatcher);
       if (_defaultContext == -1 && _contexts.back().supportGraphics()) _defaultContext = i;
     }
+
+    _workingContexts = new WorkerEnvs();
+    _mutex = new Mutex();
   }  // namespace zs
   void Vulkan::reset() {
+#if 0
+    {
+      WorkerEnvs &g_workingContexts = working_contexts<WorkerEnvs>();
+      Mutex &g_mtx = working_mutex<Mutex>();
+      // working contexts (command pool resources)
+      // g_mtx.lock();
+      if (g_mtx.try_lock()) {
+        g_workingContexts.clear();
+        g_mtx.unlock();
+      } else
+        throw std::runtime_error(
+            "Other worker threads are still accessing vk command contexts while the ctx is being "
+            "destroyed!");
+      // g_mtx.unlock();
+    }
+#endif
+    if (_workingContexts) {
+      delete static_cast<WorkerEnvs *>(_workingContexts);
+      _workingContexts = nullptr;
+    }
+    if (_mutex) {
+      delete static_cast<Mutex *>(_mutex);
+      _mutex = nullptr;
+    }
     /// @note clear contexts
     for (auto& ctx : _contexts) ctx.reset();
     _contexts.clear();

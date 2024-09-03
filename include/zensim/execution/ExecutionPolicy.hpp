@@ -666,7 +666,7 @@ namespace zs {
     }
   }
   template <execspace_e space> constexpr void assert_backend_presence() noexcept {
-    assert_backend_presence<space>();
+    assert_backend_presence(wrapv<space>{});
   }
 
   // ===================== parallel pattern wrapper ====================

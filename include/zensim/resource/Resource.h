@@ -136,8 +136,8 @@ namespace zs {
     MemoryLocation location{memsrc_e::host, -1};
   };
 
-  template struct ZPC_TEMPLATE_IMPORT ZSPmrAllocator<false, byte>;
-  template struct ZPC_TEMPLATE_IMPORT ZSPmrAllocator<true, byte>;
+  extern template struct ZPC_TEMPLATE_IMPORT ZSPmrAllocator<false, byte>;
+  extern template struct ZPC_TEMPLATE_IMPORT ZSPmrAllocator<true, byte>;
 
   /// @note might not be sufficient for multi-GPU-context scenarios
   template <typename Policy, bool is_virtual, typename T>

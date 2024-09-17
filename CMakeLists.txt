@@ -170,11 +170,12 @@ target_compile_definitions(zsproj_deps INTERFACE
 add_library(zpc_cxx_deps INTERFACE)
 if (${CMAKE_CXX_COMPILER_ID} MATCHES "AppleClang")
   target_compile_options(zpc_cxx_deps INTERFACE
-      $<$<COMPILE_LANGUAGE:CXX>: -std=c++17 -Wno-deprecated-builtins>
+      $<$<COMPILE_LANGUAGE:CXX>: -Wno-deprecated-builtins>
   )
 else()
-  target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
+  # target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 endif()
+target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
 target_link_libraries(zpc_cxx_deps INTERFACE zsproj_deps)
 if(WIN32)
   target_compile_definitions(zpc_cxx_deps

@@ -1,5 +1,6 @@
 #pragma once
 #include "zensim/vulkan/VkContext.hpp"
+#include "VkImage.hpp"
 
 namespace zs {
 

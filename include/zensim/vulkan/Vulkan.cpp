@@ -84,7 +84,7 @@ namespace zs {
             static_assert(false, "unsupported platform for vulkan instance creation!");
 #endif
           };
-#if defined(ZS_PLATFORM_MACOS)
+#ifdef ZS_PLATFORM_OSX
     extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 #endif
     std::vector<const char*> enabledLayers = {
@@ -98,7 +98,7 @@ namespace zs {
                                   enabledLayers.data(),
                                   (u32)extensions.size(),
                                   extensions.data()};
-#if defined(ZS_PLATFORM_MACOS)
+#ifdef ZS_PLATFORM_OSX
     instCI.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 #endif
 

@@ -1,6 +1,10 @@
 // vulkan memory allocator impl
+#define VK_ENABLE_BETA_EXTENSIONS
+// to use VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR
 #include "vulkan/vulkan_core.h"
-#if defined(ZS_PLATFORM_MACOS)
+#include "zensim/Platform.hpp"
+//
+#if defined(ZS_PLATFORM_OSX)
 #  include "vulkan/vulkan_beta.h"
 #endif
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -27,7 +31,6 @@
 
 //
 #include "zensim/Logger.hpp"
-#include "zensim/Platform.hpp"
 #include "zensim/ZpcReflection.hpp"
 #include "zensim/execution/ConcurrencyPrimitive.hpp"
 #include "zensim/types/Iterator.h"
@@ -86,7 +89,7 @@ namespace zs {
     // if (swapchainBuilder) swapchainBuilder.reset(nullptr);
     /// clear execution resources
     // handled by Vulkan
-    
+
     destructDescriptorPool();
 
     vmaDestroyAllocator(defaultAllocator);
@@ -176,18 +179,22 @@ namespace zs {
     int rtPreds = 0;
     constexpr int rtRequiredPreds = 5;
     /// @note the first 5 extensions are required for rt support
-    std::vector<const char*> expectedExtensions{"VK_KHR_ray_tracing_pipeline",
-                                                "VK_KHR_acceleration_structure",
-                                                "VK_EXT_descriptor_indexing",
-                                                "VK_KHR_buffer_device_address",
-                                                "VK_KHR_deferred_host_operations",
-                                                "VK_KHR_swapchain",
-                                                "VK_KHR_driver_properties",
-                                                "VK_KHR_portability_subset",
-                                                VK_KHR_MULTIVIEW_EXTENSION_NAME,
-                                                VK_KHR_MAINTENANCE2_EXTENSION_NAME,
-                                                VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-                                                VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME};
+    std::vector<const char*> expectedExtensions{
+        "VK_KHR_ray_tracing_pipeline",
+        "VK_KHR_acceleration_structure",
+        "VK_EXT_descriptor_indexing",
+        "VK_KHR_buffer_device_address",
+        "VK_KHR_deferred_host_operations",
+        "VK_KHR_swapchain",
+        "VK_KHR_driver_properties",
+        "VK_KHR_portability_subset",
+        VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,  // "VK_EXT_extended_dynamic_state",
+        VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
+        VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
+        VK_KHR_MULTIVIEW_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE2_EXTENSION_NAME,
+        VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+        VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME};
     std::vector<const char*> enabledExtensions(0);
     // pick up supported extensions
     for (int i = 0; i != expectedExtensions.size(); ++i) {
@@ -270,7 +277,26 @@ namespace zs {
         = supportedVk12Features.descriptorBindingStorageImageUpdateAfterBind;
     this->enabledVk12Features = vk12Features;
 
-    devCI.pNext = &vk12Features;
+    // dynamic states features
+    vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeaturesEXT{};
+    extendedDynamicStateFeaturesEXT.setExtendedDynamicState(vk::True);
+    vk::PhysicalDeviceExtendedDynamicState2FeaturesEXT extendedDynamicState2FeaturesEXT{};
+    vk::PhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3FeaturesEXT{};
+    extendedDynamicState3FeaturesEXT.setExtendedDynamicState3DepthClampEnable(vk::True);
+    extendedDynamicState3FeaturesEXT.setExtendedDynamicState3DepthClipEnable(vk::True);
+
+    extendedDynamicStateFeaturesEXT.setPNext(&extendedDynamicState2FeaturesEXT);
+    extendedDynamicState2FeaturesEXT.setPNext(&extendedDynamicState3FeaturesEXT);
+    extendedDynamicState3FeaturesEXT.setPNext(&vk12Features);
+    // features.setPNext(&extendedDynamicStateFeaturesEXT);
+
+    // https://www.lunarg.com/wp-content/uploads/2023/08/Vulkan-Development-in-Apple-Environments-08-09-2023.pdf
+    VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures;
+    portabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
+    portabilityFeatures.triangleFans = vk::True;
+    portabilityFeatures.pNext = &extendedDynamicStateFeaturesEXT;
+
+    devCI.setPNext(&portabilityFeatures);
 
     // ray-tracing feature chaining
     vk::PhysicalDeviceAccelerationStructureFeaturesKHR asFeatures{};
@@ -495,16 +521,18 @@ namespace zs {
   ExecutionContext& VulkanContext::env() {
     WorkerEnvs::iterator workerIter;
     ContextEnvs::iterator iter;
-    auto &g_mtx = Vulkan::instance().mutex<Mutex>();
+    auto& g_mtx = Vulkan::instance().mutex<Mutex>();
     g_mtx.lock();
     bool tag;
-    std::tie(workerIter, tag)
-        = Vulkan::instance().working_contexts<WorkerEnvs>().try_emplace(std::this_thread::get_id(), ContextEnvs{});
+    std::tie(workerIter, tag) = Vulkan::instance().working_contexts<WorkerEnvs>().try_emplace(
+        std::this_thread::get_id(), ContextEnvs{});
     std::tie(iter, tag) = workerIter->second.try_emplace(devid, *this);
     g_mtx.unlock();
     return iter->second;
   }
-  u32 check_current_working_contexts() { return Vulkan::instance().working_contexts<WorkerEnvs>().size(); }
+  u32 check_current_working_contexts() {
+    return Vulkan::instance().working_contexts<WorkerEnvs>().size();
+  }
 
   ///
   /// builders

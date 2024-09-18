@@ -7,7 +7,7 @@
 namespace zs {
 
   struct ZPC_API VkModel {
-    enum draw_category_e { tri = 0, point, pick };
+    enum draw_category_e { tri = 0, point, pick, normal };
     using vec3_t = vec<float, 3>;
     using transform_t = vec<float, 4, 4>;
     struct Vertices {
@@ -57,6 +57,11 @@ namespace zs {
           return std::vector<vk::VertexInputBindingDescription>{
               {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
               {1, /*vid*/ sizeof(u32), vk::VertexInputRate::eVertex}};
+        case draw_category_e::normal:
+            return {
+                {0, /* pos */ sizeof(float) * 3, vk::VertexInputRate::eVertex},
+                {1, /* normal */ sizeof(float) * 3, vk::VertexInputRate::eVertex},
+            };
         default:;
       }
       return {};
@@ -77,6 +82,11 @@ namespace zs {
           return std::vector<vk::VertexInputAttributeDescription>{
               {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
               {/*location*/ 1, /*binding*/ 1, vk::Format::eR32Uint, /*offset*/ (u32)0}};
+        case draw_category_e::normal:
+            return {
+              {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+              {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0}
+            };
         default:;
       }
       return {};
@@ -91,6 +101,7 @@ namespace zs {
           break;
         case draw_category_e::point:
         case draw_category_e::pick:
+        case draw_category_e::normal:
           cmd.draw(/*vertex count*/ verts.vertexCount, /*instance count*/ 1,
                    /*first vertex*/ 0, /*first instance*/ 0, indices.get().ctx.dispatcher);
           break;
@@ -119,6 +130,12 @@ namespace zs {
           std::array<vk::DeviceSize, 2> offsets{0, 0};
           cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets,
                                 verts.pos.get().ctx.dispatcher);
+        } break;
+        case draw_category_e::normal:
+        {
+            std::array<vk::Buffer, 2> buffers{ verts.pos.get(), verts.nrm.get() };
+            std::array<vk::DeviceSize, 2> offsets{ 0, 0 };
+            cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
         } break;
         default:;
       }

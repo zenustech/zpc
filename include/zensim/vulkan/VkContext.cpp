@@ -293,7 +293,7 @@ namespace zs {
     // https://www.lunarg.com/wp-content/uploads/2023/08/Vulkan-Development-in-Apple-Environments-08-09-2023.pdf
     VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures;
     portabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
-    portabilityFeatures.triangleFans = vk::True;
+    portabilityFeatures.triangleFans = VK_TRUE;
     portabilityFeatures.pNext = &extendedDynamicStateFeaturesEXT;
 
     devCI.setPNext(&portabilityFeatures);

@@ -318,13 +318,14 @@ namespace zs {
     }
     ///
     template <typename Self = Derived, enable_if_t<detail::has_distance_to<Self>::value> = 0>
-    friend constexpr auto operator-(const Derived &left, const Derived &right) {
+    friend constexpr detail::infer_difference_type_t<Self> operator-(const Self &left,
+                                                                     const Derived &right) {
       /// the deducted type must be inside the function body or template parameters
       return static_cast<detail::infer_difference_type_t<Derived>>(right.distance_to(left));
     }
 #define LEGACY_ITERATOR_OP(OP)                                                        \
   template <typename T = Derived, enable_if_t<detail::has_distance_to<T>::value> = 0> \
-  friend constexpr bool operator OP(const Derived &a, const Derived &b) {             \
+  friend constexpr bool operator OP(const T &a, const Derived &b) {                   \
     return (a - b) OP 0;                                                              \
   }
     LEGACY_ITERATOR_OP(<)
@@ -549,9 +550,10 @@ namespace zs {
                  make_index_sequence<dim>>;
 
   template <typename VecT, enable_if_t<is_integral_v<typename VecT::value_type>> = 0>
-  Collapse(const VecInterface<VecT> &) -> Collapse<
-      typename build_seq<VecT::extent>::template uniform_types_t<type_seq, typename VecT::value_type>,
-      make_index_sequence<VecT::extent>>;
+  Collapse(const VecInterface<VecT> &)
+      -> Collapse<typename build_seq<VecT::extent>::template uniform_types_t<
+                      type_seq, typename VecT::value_type>,
+                  make_index_sequence<VecT::extent>>;
   template <typename... Tn, enable_if_all<is_integral_v<Tn>...> = 0> Collapse(Tn...)
       -> Collapse<type_seq<Tn...>, index_sequence_for<Tn...>>;
 

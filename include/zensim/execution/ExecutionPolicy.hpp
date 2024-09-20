@@ -650,7 +650,7 @@ namespace zs {
 
   template <typename ExecTag> constexpr void assert_backend_presence(ExecTag) noexcept {
     if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-#if ZS_ENABLE_OPENMP && defined(_OPENMP)
+#if ZS_ENABLE_OPENMP && (defined(_OPENMP) || defined(ZS_COMPILER_INTEL_LLVM))
       static_assert(is_same_v<ExecTag, omp_exec_tag>, "zs openmp compiler not activated here");
 #else
       static_assert(!is_same_v<ExecTag, omp_exec_tag>, "openmp compiler not activated here");

@@ -209,8 +209,8 @@ namespace zs {
     }
 
     // query properties 2
-    vk::PhysicalDeviceDepthStencilResolveProperties dsResolveProperties;
-    vk::PhysicalDeviceProperties2 devProperties;
+    vk::PhysicalDeviceDepthStencilResolveProperties dsResolveProperties{};
+    vk::PhysicalDeviceProperties2 devProperties{};
     devProperties.pNext = &dsResolveProperties;
     physicalDevice.getProperties2(&devProperties);
 
@@ -227,7 +227,7 @@ namespace zs {
     this->supportedVk12Features = supportedVk12Features;
     this->supportedDeviceFeatures = devFeatures2;
 
-    vk::PhysicalDeviceFeatures2 features;
+    vk::PhysicalDeviceFeatures2 features{};
 
     features.features.fillModeNonSolid = supportedDeviceFeatures.features.fillModeNonSolid;
     features.features.wideLines = supportedDeviceFeatures.features.wideLines;
@@ -291,7 +291,7 @@ namespace zs {
     // features.setPNext(&extendedDynamicStateFeaturesEXT);
 
     // https://www.lunarg.com/wp-content/uploads/2023/08/Vulkan-Development-in-Apple-Environments-08-09-2023.pdf
-    VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures;
+    VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures{};
     portabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
     portabilityFeatures.triangleFans = VK_TRUE;
     portabilityFeatures.pNext = &extendedDynamicStateFeaturesEXT;

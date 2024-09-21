@@ -187,7 +187,9 @@ namespace zs {
         "VK_KHR_deferred_host_operations",
         "VK_KHR_swapchain",
         "VK_KHR_driver_properties",
+#ifdef ZS_PLATFORM_OSX
         "VK_KHR_portability_subset",
+#endif
         VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,  // "VK_EXT_extended_dynamic_state",
         VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
         VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
@@ -290,6 +292,7 @@ namespace zs {
     extendedDynamicState3FeaturesEXT.setPNext(&vk12Features);
     // features.setPNext(&extendedDynamicStateFeaturesEXT);
 
+#ifdef ZS_PLATFORM_OSX
     // https://www.lunarg.com/wp-content/uploads/2023/08/Vulkan-Development-in-Apple-Environments-08-09-2023.pdf
     VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures{};
     portabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
@@ -297,6 +300,9 @@ namespace zs {
     portabilityFeatures.pNext = &extendedDynamicStateFeaturesEXT;
 
     devCI.setPNext(&portabilityFeatures);
+#else
+    devCI.setPNext(&extendedDynamicStateFeaturesEXT);
+#endif
 
     // ray-tracing feature chaining
     vk::PhysicalDeviceAccelerationStructureFeaturesKHR asFeatures{};

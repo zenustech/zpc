@@ -231,6 +231,10 @@ namespace zs {
 
     vk::PhysicalDeviceFeatures2 features{};
 
+    features.features.fragmentStoresAndAtomics
+        = supportedDeviceFeatures.features.fragmentStoresAndAtomics;
+    features.features.vertexPipelineStoresAndAtomics
+        = supportedDeviceFeatures.features.vertexPipelineStoresAndAtomics;
     features.features.fillModeNonSolid = supportedDeviceFeatures.features.fillModeNonSolid;
     features.features.wideLines = supportedDeviceFeatures.features.wideLines;
     features.features.independentBlend = supportedDeviceFeatures.features.independentBlend;
@@ -250,6 +254,9 @@ namespace zs {
     /// features
     // ref: TU Wien Vulkan Tutorial Ep1
     vk::PhysicalDeviceVulkan12Features vk12Features{};
+    // timeline semaphore
+    vk12Features.timelineSemaphore = supportedVk12Features.timelineSemaphore;
+    //
     vk12Features.descriptorIndexing = supportedVk12Features.descriptorIndexing;
     if (!vk12Features.descriptorIndexing
         && std::find(enabledExtensions.begin(), enabledExtensions.end(),

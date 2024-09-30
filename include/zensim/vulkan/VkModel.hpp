@@ -14,7 +14,7 @@ namespace zs {
       // vec3: pos, color, normal
       // vec2: uv
       vk::DeviceSize vertexCount;
-      Owner<Buffer> pos, nrm, clr;
+      Owner<Buffer> pos, nrm, clr, uv;
       Owner<Buffer> vids;  // optional
     };
 
@@ -33,6 +33,7 @@ namespace zs {
       verts.pos.reset();
       verts.nrm.reset();
       verts.clr.reset();
+      verts.uv.reset();
       verts.vids.reset();
       indices.reset();
     }
@@ -45,7 +46,8 @@ namespace zs {
           return std::vector<vk::VertexInputBindingDescription>{
               {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
               {1, /*normal*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
-              {2, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex}};
+              {2, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
+              {3, /*uv*/ sizeof(float) * 3, vk::VertexInputRate::eVertex}};
         case draw_category_e::line:
           return std::vector<vk::VertexInputBindingDescription>{
               {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
@@ -73,9 +75,11 @@ namespace zs {
       switch (e) {
         case draw_category_e::tri:
           return std::vector<vk::VertexInputAttributeDescription>{
-              {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
-              {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
-              {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0}};
+            {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+            {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0 },
+            {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0 },
+            {/*location*/ 3, /*binding*/ 3, vk::Format::eR32G32Sfloat, /*offset*/ (u32)0 }
+        };
         case draw_category_e::line:
           return std::vector<vk::VertexInputAttributeDescription>{
               {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
@@ -121,8 +125,8 @@ namespace zs {
     void bind(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const {
       switch (e) {
         case draw_category_e::tri: {
-          std::array<vk::Buffer, 3> buffers{verts.pos.get(), verts.nrm.get(), verts.clr.get()};
-          std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
+          std::array<vk::Buffer, 4> buffers{verts.pos.get(), verts.nrm.get(), verts.clr.get(), verts.uv.get()};
+          std::array<vk::DeviceSize, 4> offsets{0, 0, 0, 0};
           cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets,
                                 verts.pos.get().ctx.dispatcher);
           cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0,

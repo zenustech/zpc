@@ -13,6 +13,7 @@ namespace zs {
       const auto& vs = surfs.nodes;
       const auto& is = surfs.elems;
       const auto& clrs = surfs.colors;
+      const auto& uvs = surfs.uvs;
 
       verts.vertexCount = vs.size();
       indexCount = is.size() * 3;
@@ -58,6 +59,26 @@ namespace zs {
       verts.nrm = ctx.createBuffer(
           numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
       cmd.copyBuffer(stagingNrmBuffer, verts.nrm.get(), { copyRegion });
+
+      /// @note uvs
+      numBytes = 2 * sizeof(float) * vs.size();
+      auto stagingUVBuffer = ctx.createStagingBuffer(
+          numBytes,
+          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferSrc
+      );
+      stagingUVBuffer.map();
+      if (uvs.size()) {
+          memcpy(stagingUVBuffer.mappedAddress(), uvs.data(), numBytes);
+      } else {
+          std::vector<std::array<float, 2>> defaultUVs{ vs.size(), {0.0f, 0.0f} };
+          memcpy(stagingUVBuffer.mappedAddress(), defaultUVs.data(), numBytes);
+      }
+      stagingUVBuffer.unmap();
+      verts.uv = ctx.createBuffer(
+          numBytes,
+          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst
+      );
+      cmd.copyBuffer(stagingUVBuffer, verts.uv.get(), { copyRegion });
 
       auto numIndexBytes = sizeof(u32) * vs.size();
       auto stagingVidBuffer

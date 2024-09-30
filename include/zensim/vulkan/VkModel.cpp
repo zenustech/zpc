@@ -67,7 +67,7 @@ namespace zs {
           vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferSrc
       );
       stagingUVBuffer.map();
-      if (uvs.size()) {
+      if (uvs.size() == vs.size()) {
           memcpy(stagingUVBuffer.mappedAddress(), uvs.data(), numBytes);
       } else {
           std::vector<std::array<float, 2>> defaultUVs{ vs.size(), {0.0f, 0.0f} };
@@ -78,6 +78,7 @@ namespace zs {
           numBytes,
           vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst
       );
+      copyRegion.size = numBytes;
       cmd.copyBuffer(stagingUVBuffer, verts.uv.get(), { copyRegion });
 
       auto numIndexBytes = sizeof(u32) * vs.size();

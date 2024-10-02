@@ -19,6 +19,14 @@ namespace zs {
     std::vector<UV> uvs;
     std::vector<Norm> norms;
     std::vector<Color> colors;
+
+    inline void clear() {
+      nodes.clear();
+      uvs.clear();
+      norms.clear();
+      colors.clear();
+      elems.clear();
+    }
   };
 
   ZPC_API void compute_mesh_normal(const Mesh<float, 3, int, 3> &, float,

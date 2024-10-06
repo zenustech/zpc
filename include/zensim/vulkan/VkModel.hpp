@@ -75,11 +75,10 @@ namespace zs {
       switch (e) {
         case draw_category_e::tri:
           return std::vector<vk::VertexInputAttributeDescription>{
-            {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
-            {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0 },
-            {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0 },
-            {/*location*/ 3, /*binding*/ 3, vk::Format::eR32G32Sfloat, /*offset*/ (u32)0 }
-        };
+              {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+              {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+              {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+              {/*location*/ 3, /*binding*/ 3, vk::Format::eR32G32Sfloat, /*offset*/ (u32)0}};
         case draw_category_e::line:
           return std::vector<vk::VertexInputAttributeDescription>{
               {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
@@ -125,7 +124,8 @@ namespace zs {
     void bind(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const {
       switch (e) {
         case draw_category_e::tri: {
-          std::array<vk::Buffer, 4> buffers{verts.pos.get(), verts.nrm.get(), verts.clr.get(), verts.uv.get()};
+          std::array<vk::Buffer, 4> buffers{verts.pos.get(), verts.nrm.get(), verts.clr.get(),
+                                            verts.uv.get()};
           std::array<vk::DeviceSize, 4> offsets{0, 0, 0, 0};
           cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets,
                                 verts.pos.get().ctx.dispatcher);
@@ -164,6 +164,15 @@ namespace zs {
 
     bool isParticle() const noexcept { return indexCount == 0; }
     bool isValid() const noexcept { return verts.vertexCount > 0; }
+
+    VulkanContext *pCtx() noexcept {
+      if (verts.pos) return verts.pos.get().pCtx();
+      return nullptr;
+    }
+    const VulkanContext *pCtx() const noexcept {
+      if (verts.pos) return verts.pos.get().pCtx();
+      return nullptr;
+    }
 
     Vertices verts;
     vk::DeviceSize indexCount;

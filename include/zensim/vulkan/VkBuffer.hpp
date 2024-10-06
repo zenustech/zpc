@@ -224,6 +224,8 @@ namespace zs {
     vk::DescriptorBufferInfo descriptorInfo() {
       return vk::DescriptorBufferInfo{buffer, (u32)0, size};
     }
+    VulkanContext *pCtx() noexcept { return &ctx; }
+    const VulkanContext *pCtx() const noexcept { return &ctx; }
 
   protected:
     friend struct VulkanContext;

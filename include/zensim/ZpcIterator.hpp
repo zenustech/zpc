@@ -55,8 +55,8 @@ namespace zs::detail {
   template <typename T> struct has_distance_to {
   private:
     template <typename U> static false_type test(...);
-    template <typename U> static auto test(char)
-        -> decltype(declval<U &>().distance_to(declval<U>()), true_type{});
+    template <typename U>
+    static auto test(char) -> decltype(declval<U &>().distance_to(declval<U>()), true_type{});
 
   public:
     static constexpr bool value = decltype(test<T>(0))::value;
@@ -126,14 +126,14 @@ namespace zs {
 
   template <class C> constexpr auto begin(C &c) -> decltype(c.begin()) { return c.begin(); }
   template <class C> constexpr auto begin(const C &c) -> decltype(c.begin()) { return c.begin(); }
-  template <class C> constexpr auto cbegin(const C &c) noexcept(noexcept(begin(c)))
-      -> decltype(begin(c)) {
+  template <class C>
+  constexpr auto cbegin(const C &c) noexcept(noexcept(begin(c))) -> decltype(begin(c)) {
     return begin(c);
   }
   template <class C> constexpr auto end(C &c) -> decltype(c.end()) { return c.end(); }
   template <class C> constexpr auto end(const C &c) -> decltype(c.end()) { return c.end(); }
-  template <class C> constexpr auto cend(const C &c) noexcept(noexcept(end(c)))
-      -> decltype(end(c)) {
+  template <class C>
+  constexpr auto cend(const C &c) noexcept(noexcept(end(c))) -> decltype(end(c)) {
     return end(c);
   }
 
@@ -480,10 +480,10 @@ namespace zs {
   };
   template <typename BaseT, typename DiffT, enable_if_t<!is_integral_constant<DiffT>::value> = 0>
   IndexIterator(BaseT, DiffT) -> IndexIterator<BaseT, DiffT>;
-  template <typename BaseT> IndexIterator(BaseT)
-      -> IndexIterator<BaseT, integral<sint_t, (sint_t)1>>;
-  template <typename BaseT, sint_t Diff> IndexIterator(BaseT, integral<sint_t, Diff>)
-      -> IndexIterator<BaseT, integral<sint_t, Diff>>;
+  template <typename BaseT>
+  IndexIterator(BaseT) -> IndexIterator<BaseT, integral<sint_t, (sint_t)1>>;
+  template <typename BaseT, sint_t Diff>
+  IndexIterator(BaseT, integral<sint_t, Diff>) -> IndexIterator<BaseT, integral<sint_t, Diff>>;
 
   // pointer iterator
   template <typename Data> struct PointerIterator : IteratorInterface<PointerIterator<Data>> {
@@ -554,8 +554,8 @@ namespace zs {
       -> Collapse<typename build_seq<VecT::extent>::template uniform_types_t<
                       type_seq, typename VecT::value_type>,
                   make_index_sequence<VecT::extent>>;
-  template <typename... Tn, enable_if_all<is_integral_v<Tn>...> = 0> Collapse(Tn...)
-      -> Collapse<type_seq<Tn...>, index_sequence_for<Tn...>>;
+  template <typename... Tn, enable_if_all<is_integral_v<Tn>...> = 0>
+  Collapse(Tn...) -> Collapse<type_seq<Tn...>, index_sequence_for<Tn...>>;
 
   template <typename... Tn> constexpr auto ndrange(Tn... ns) { return Collapse{ns...}; }
   namespace detail {
@@ -617,8 +617,8 @@ namespace zs {
     zs::tuple<Iters...> iters;
   };
 
-  template <typename... Iters> zip_iterator(Iters...)
-      -> zip_iterator<zs::tuple<Iters...>, index_sequence_for<Iters...>>;
+  template <typename... Iters>
+  zip_iterator(Iters...) -> zip_iterator<zs::tuple<Iters...>, index_sequence_for<Iters...>>;
 
   template <typename Iter> struct is_zip_iterator : false_type {};
   template <typename Iter, typename Indices>
@@ -704,10 +704,76 @@ namespace zs {
   }
 
   // helper
-  template <typename Range> constexpr auto range_size(const Range &range)
-      -> decltype(zs::end(range) - zs::begin(range)) {
+  template <typename Range>
+  constexpr auto range_size(const Range &range) -> decltype(zs::end(range) - zs::begin(range)) {
     return zs::end(range) - zs::begin(range);
   }
+
+  template <typename RaRange, typename Tn> struct chunk_view {
+    constexpr chunk_view(RaRange &&r, Tn n) noexcept : _originalRange(r), _chunkSize{n} {}
+    constexpr chunk_view(RaRange &r, Tn n) noexcept : _originalRange(r), _chunkSize{n} {}
+    using RaIter = decltype(declval<RaRange &>().begin());
+    using ConstRaIter = decltype(declval<add_const_t<RaRange> &>().begin());
+    using difference_type = typename RaIter::difference_type;
+
+    template <bool IsConst> struct iterator_impl : IteratorInterface<iterator_impl<IsConst>> {
+      using Iter = conditional_t<IsConst, ConstRaIter, RaIter>;
+      constexpr iterator_impl(Iter iter, Tn chunkNo, Tn chunkSize, Tn originalSize)
+          : _originalIter{iter},
+            _originalSize{originalSize},
+            _chunkNo{chunkNo},
+            _chunkSize{chunkSize} {}
+
+      /// @note also a (sub)range
+      constexpr auto dereference() {
+        Tn st = _chunkNo * _chunkSize;
+        Tn ed = st + _chunkSize;
+        if (ed > _originalSize) ed = _originalSize;
+        return detail::iter_range(_originalIter + st, _originalIter + ed);
+      }
+      constexpr bool equal_to(iterator_impl it) const noexcept {
+        return it._chunkNo == it._chunkNo;
+      }
+      constexpr void advance(difference_type offset) noexcept { _chunkNo += offset; }
+      constexpr difference_type distance_to(iterator_impl it) const noexcept {
+        return it._chunkNo - _chunkNo;
+      }
+
+    protected:
+      Iter _originalIter;
+      difference_type _originalSize;
+      Tn _chunkNo, _chunkSize;
+    };
+
+    constexpr auto begin() noexcept {
+      static_assert(is_ra_iter<decltype(_originalRange.begin())>::value,
+                    "currently chunk_view only accepts a random access range.");
+      return make_iterator<iterator_impl<false>>(_originalRange.begin(), 0, _chunkSize,
+                                                 range_size(_originalRange));
+    }
+    constexpr auto end() noexcept {
+      auto numRequiredChunks = (range_size(_originalRange) + _chunkSize - 1) / _chunkSize;
+      return make_iterator<iterator_impl<false>>(_originalRange.begin(), numRequiredChunks,
+                                                 _chunkSize, range_size(_originalRange));
+    }
+    constexpr auto begin() const noexcept {
+      static_assert(is_ra_iter<decltype(_originalRange.begin())>::value,
+                    "currently chunk_view only accepts a random access range.");
+      return make_iterator<iterator_impl<true>>(_originalRange.begin(), 0, _chunkSize,
+                                                range_size(_originalRange));
+    }
+    constexpr auto end() const noexcept {
+      auto numRequiredChunks = (range_size(_originalRange) + _chunkSize - 1) / _chunkSize;
+      return make_iterator<iterator_impl<true>>(_originalRange.begin(), numRequiredChunks,
+                                                _chunkSize, range_size(_originalRange));
+    }
+
+    /// data members
+    RaRange &_originalRange;
+    Tn _chunkSize;
+  };
+  template <typename RaRange, typename Tn>
+  chunk_view(RaRange &&, Tn) -> chunk_view<remove_reference_t<RaRange>, Tn>;
 
 }  // namespace zs
 

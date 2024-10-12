@@ -47,7 +47,7 @@ namespace zs {
               {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
               {1, /*normal*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
               {2, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
-              {3, /*uv*/ sizeof(float) * 3, vk::VertexInputRate::eVertex}};
+              {3, /*uv*/ sizeof(float) * 2, vk::VertexInputRate::eVertex}};
         case draw_category_e::line:
           return std::vector<vk::VertexInputBindingDescription>{
               {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "zensim/ZpcMeta.hpp"
 #include "zensim/ZpcTuple.hpp"
 
 namespace zs::detail {
@@ -704,28 +704,41 @@ namespace zs {
   }
 
   // helper
-  template <typename Range>
-  constexpr auto range_size(const Range &range) -> decltype(zs::end(range) - zs::begin(range)) {
-    return zs::end(range) - zs::begin(range);
+  template <typename Range> constexpr auto range_size(const Range &range) {
+    constexpr auto hasBeginEnd = is_valid(
+        [](auto t) -> decltype((void)(zs::end(declval<typename decltype(t)::type>())
+                                      - zs::end(declval<typename decltype(t)::type>()))) {});
+    if constexpr (hasBeginEnd(wrapt<Range>{}))
+      return zs::end(range) - zs::begin(range);
+    else {
+      constexpr auto hasSize
+          = is_valid([](auto t) -> decltype((void)declval<typename decltype(t)::type>().size()) {});
+      if constexpr (hasSize(wrapt<Range>{})) {
+        return range.size();
+      } else
+        return -1;
+    }
   }
 
-  template <typename RaRange, typename Tn> struct chunk_view {
-    constexpr chunk_view(RaRange &&r, Tn n) noexcept : _originalRange(r), _chunkSize{n} {}
-    constexpr chunk_view(RaRange &r, Tn n) noexcept : _originalRange(r), _chunkSize{n} {}
-    using RaIter = decltype(declval<RaRange &>().begin());
-    using ConstRaIter = decltype(declval<add_const_t<RaRange> &>().begin());
+  template <typename RaRange, typename Tn, typename = void> struct chunk_view;
+  template <typename RaRange, typename Tn>
+  struct chunk_view<RaRange, Tn,
+                    enable_if_type<is_ra_iter_v<decltype(declval<RaRange &&>().begin())>>> {
+    constexpr chunk_view(RaRange &&r, Tn n) noexcept
+        : _originalRange(static_cast<RaRange &&>(r)), _chunkSize{n} {}
+    using RaIter = decltype(declval<RaRange &&>().begin());
     using difference_type = typename RaIter::difference_type;
 
-    template <bool IsConst> struct iterator_impl : IteratorInterface<iterator_impl<IsConst>> {
-      using Iter = conditional_t<IsConst, ConstRaIter, RaIter>;
-      constexpr iterator_impl(Iter iter, Tn chunkNo, Tn chunkSize, Tn originalSize)
+    template <typename Iter> struct iterator_impl : IteratorInterface<iterator_impl<Iter>> {
+      constexpr iterator_impl(Iter iter, Tn chunkNo, Tn chunkSize,
+                              difference_type originalSize) noexcept
           : _originalIter{iter},
             _originalSize{originalSize},
             _chunkNo{chunkNo},
             _chunkSize{chunkSize} {}
 
       /// @note also a (sub)range
-      constexpr auto dereference() {
+      constexpr auto dereference() const {
         Tn st = _chunkNo * _chunkSize;
         Tn ed = st + _chunkSize;
         if (ed > _originalSize) ed = _originalSize;
@@ -739,41 +752,40 @@ namespace zs {
         return it._chunkNo - _chunkNo;
       }
 
-    protected:
+      // protected:
       Iter _originalIter;
       difference_type _originalSize;
       Tn _chunkNo, _chunkSize;
     };
 
-    constexpr auto begin() noexcept {
-      static_assert(is_ra_iter<decltype(_originalRange.begin())>::value,
-                    "currently chunk_view only accepts a random access range.");
-      return make_iterator<iterator_impl<false>>(_originalRange.begin(), 0, _chunkSize,
-                                                 range_size(_originalRange));
+    constexpr auto begin() {
+      return make_iterator<iterator_impl<decltype(_originalRange.begin())>>(
+          _originalRange.begin(), (Tn)0, _chunkSize,
+          static_cast<difference_type>(range_size(_originalRange)));
     }
-    constexpr auto end() noexcept {
-      auto numRequiredChunks = (range_size(_originalRange) + _chunkSize - 1) / _chunkSize;
-      return make_iterator<iterator_impl<false>>(_originalRange.begin(), numRequiredChunks,
-                                                 _chunkSize, range_size(_originalRange));
+    constexpr auto end() {
+      Tn numRequiredChunks = (range_size(_originalRange) + _chunkSize - 1) / _chunkSize;
+      return make_iterator<iterator_impl<decltype(_originalRange.begin())>>(
+          _originalRange.begin(), numRequiredChunks, _chunkSize,
+          static_cast<difference_type>(range_size(_originalRange)));
     }
-    constexpr auto begin() const noexcept {
-      static_assert(is_ra_iter<decltype(_originalRange.begin())>::value,
-                    "currently chunk_view only accepts a random access range.");
-      return make_iterator<iterator_impl<true>>(_originalRange.begin(), 0, _chunkSize,
-                                                range_size(_originalRange));
+    constexpr auto begin() const {
+      return make_iterator<iterator_impl<decltype(_originalRange.begin())>>(
+          _originalRange.begin(), 0, _chunkSize,
+          static_cast<difference_type>(range_size(_originalRange)));
     }
-    constexpr auto end() const noexcept {
-      auto numRequiredChunks = (range_size(_originalRange) + _chunkSize - 1) / _chunkSize;
-      return make_iterator<iterator_impl<true>>(_originalRange.begin(), numRequiredChunks,
-                                                _chunkSize, range_size(_originalRange));
+    constexpr auto end() const {
+      Tn numRequiredChunks = (range_size(_originalRange) + _chunkSize - 1) / _chunkSize;
+      return make_iterator<iterator_impl<decltype(_originalRange.begin())>>(
+          _originalRange.begin(), numRequiredChunks, _chunkSize,
+          static_cast<difference_type>(range_size(_originalRange)));
     }
 
     /// data members
-    RaRange &_originalRange;
+    RaRange &&_originalRange;
     Tn _chunkSize;
   };
-  template <typename RaRange, typename Tn>
-  chunk_view(RaRange &&, Tn) -> chunk_view<remove_reference_t<RaRange>, Tn>;
+  template <typename RaRange, typename Tn> chunk_view(RaRange &&, Tn) -> chunk_view<RaRange, Tn>;
 
 }  // namespace zs
 

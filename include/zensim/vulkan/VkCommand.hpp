@@ -5,24 +5,8 @@ namespace zs {
 
   struct ZPC_CORE_API VkCommand {
     using PoolFamily = ExecutionContext::PoolFamily;
-    VkCommand(PoolFamily& poolFamily, vk::CommandBuffer cmd, vk_cmd_usage_e usage)
-        : _poolFamily{poolFamily},
-          _cmd{cmd},
-          _usage{usage},
-          _stage{nullptr},
-          _waitSemaphores{},
-          _signalSemaphores{} {}
-
-    VkCommand(VkCommand&& o) noexcept
-        : _poolFamily{o._poolFamily},
-          _cmd{o._cmd},
-          _usage{o._usage},
-          _stage{o._stage},
-          _waitSemaphores{zs::move(o._waitSemaphores)},
-          _signalSemaphores{zs::move(o._signalSemaphores)} {
-      o._cmd = VK_NULL_HANDLE;
-      o._stage = nullptr;
-    }
+    VkCommand(PoolFamily& poolFamily, vk::CommandBuffer cmd, vk_cmd_usage_e usage);
+    VkCommand(VkCommand&& o) noexcept;
     ~VkCommand();
 
     void begin(const vk::CommandBufferBeginInfo& bi) { _cmd.begin(bi); }
@@ -51,6 +35,16 @@ namespace zs {
     operator vk::CommandBuffer() const noexcept { return _cmd; }
     operator vk::CommandBuffer*() noexcept { return &_cmd; }
     operator const vk::CommandBuffer*() const noexcept { return &_cmd; }
+
+#if 0
+    void swap(VkCommand& r) noexcept {
+      zs_swap(_cmd, r._cmd);
+      zs_swap(_usage, r._usage);
+      zs_swap(_stage, r._stage);
+      zs_swap(_waitSemaphores, r._waitSemaphores);
+      zs_swap(_signalSemaphores, r._signalSemaphores);
+    }
+#endif
 
   protected:
     friend struct VulkanContext;

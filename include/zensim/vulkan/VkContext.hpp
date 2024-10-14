@@ -9,7 +9,6 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include "vma/vk_mem_alloc.h"
 //
-#include "zensim/ZpcResource.hpp"
 #include "zensim/vulkan/VkUtils.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
@@ -253,14 +252,14 @@ namespace zs {
     ExecutionContext(VulkanContext &ctx);
     ~ExecutionContext();
 
-    struct PoolFamily {
+    struct ZPC_CORE_API PoolFamily {
       vk::CommandPool reusePool;      // submit multiple times
       vk::CommandPool singleUsePool;  // submit once
       vk::CommandPool resetPool;      // reset and re-record
       vk::Queue queue;
       VulkanContext *pctx{nullptr};
 
-      std::vector<UniquePtr<VkCommand>> secondaryCmds;
+      std::vector<VkCommand *> secondaryCmds;
       std::vector<vk::CommandBuffer> secondaryCmdHandles;
 
       vk::CommandPool cmdpool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) const {

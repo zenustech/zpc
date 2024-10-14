@@ -10,6 +10,25 @@ namespace zs {
         != vk::Result::eSuccess)
       throw std::runtime_error("error waiting for fences");
   }
+
+  VkCommand::VkCommand(PoolFamily& poolFamily, vk::CommandBuffer cmd, vk_cmd_usage_e usage)
+      : _poolFamily{poolFamily},
+        _cmd{cmd},
+        _usage{usage},
+        _stage{nullptr},
+        _waitSemaphores{},
+        _signalSemaphores{} {}
+
+  VkCommand::VkCommand(VkCommand&& o) noexcept
+      : _poolFamily{o._poolFamily},
+        _cmd{zs::exchange(o._cmd, VK_NULL_HANDLE)},
+        _usage{o._usage},
+        _stage{o._stage},
+        _waitSemaphores{zs::move(o._waitSemaphores)},
+        _signalSemaphores{zs::move(o._signalSemaphores)} {
+    o._cmd = VK_NULL_HANDLE;
+    o._stage = nullptr;
+  }
   VkCommand::~VkCommand() {
     if (_cmd != VK_NULL_HANDLE) {
       auto& c = this->ctx();

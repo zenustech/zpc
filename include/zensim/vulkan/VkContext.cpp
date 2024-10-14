@@ -941,6 +941,8 @@ namespace zs {
   ExecutionContext::~ExecutionContext() {
     for (auto& family : poolFamilies) {
       /// @brief clear secondary command buffers before destroying command pools
+      for (auto& ptr : family.secondaryCmds)
+        if (ptr) delete ptr;
       family.secondaryCmds.clear();
 #if 0
       // reset and reuse
@@ -972,12 +974,12 @@ namespace zs {
     return ret;
   }
   VkCommand& ExecutionContext::PoolFamily::acquireSecondaryVkCommand() {
-    auto cmdPtr = UniquePtr<VkCommand>{
-        new VkCommand(*this,
-                      createCommandBuffer(vk::CommandBufferLevel::eSecondary, false,
-                                          /*inheritance info*/ nullptr, vk_cmd_usage_e::reset),
-                      vk_cmd_usage_e::reset)};
-    secondaryCmds.emplace_back(zs::move(cmdPtr));
+    auto cmdPtr
+        = new VkCommand(*this,
+                        createCommandBuffer(vk::CommandBufferLevel::eSecondary, false,
+                                            /*inheritance info*/ nullptr, vk_cmd_usage_e::reset),
+                        vk_cmd_usage_e::reset);
+    secondaryCmds.emplace_back(cmdPtr);
     secondaryCmdHandles.emplace_back(*secondaryCmds.back());
     return *secondaryCmds.back();
   }

@@ -9,6 +9,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include "vma/vk_mem_alloc.h"
 //
+#include "zensim/ZpcResource.hpp"
 #include "zensim/vulkan/VkUtils.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
@@ -259,6 +260,9 @@ namespace zs {
       vk::Queue queue;
       VulkanContext *pctx{nullptr};
 
+      std::vector<UniquePtr<VkCommand>> secondaryCmds;
+      std::vector<vk::CommandBuffer> secondaryCmdHandles;
+
       vk::CommandPool cmdpool(vk_cmd_usage_e usage = vk_cmd_usage_e::reset) const {
         switch (usage) {
           case vk_cmd_usage_e::reuse:
@@ -307,6 +311,13 @@ namespace zs {
         if (usage == vk_cmd_usage_e::single_use)
           pctx->device.freeCommandBuffers(singleUsePool, count, cmds, pctx->dispatcher);
       }
+
+      /// @note reuse is mandatory for secondary commands here
+      VkCommand &acquireSecondaryVkCommand();
+      VkCommand &acquireSecondaryVkCommand(int k);
+      const VkCommand &retrieveSecondaryVkCommand(int k) const;
+      auto numSecondaryVkCommand() const noexcept { return secondaryCmds.size(); }
+      std::vector<vk::CommandBuffer> retrieveSecondaryVkCommands(int n = -1) const;
 
       void submit(const vk::CommandBuffer &cmd, vk::Fence fence,
                   vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {

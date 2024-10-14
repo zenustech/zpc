@@ -940,6 +940,8 @@ namespace zs {
   }
   ExecutionContext::~ExecutionContext() {
     for (auto& family : poolFamilies) {
+      /// @brief clear secondary command buffers before destroying command pools
+      family.secondaryCmds.clear();
 #if 0
       // reset and reuse
       for (auto& cmd : family.cmds)
@@ -967,6 +969,33 @@ namespace zs {
         pctx->dispatcher);
     VkCommand ret{*this, cmd[0], usage};
     if (begin) ret.begin();
+    return ret;
+  }
+  VkCommand& ExecutionContext::PoolFamily::acquireSecondaryVkCommand() {
+    auto cmdPtr = UniquePtr<VkCommand>{
+        new VkCommand(*this,
+                      createCommandBuffer(vk::CommandBufferLevel::eSecondary, false,
+                                          /*inheritance info*/ nullptr, vk_cmd_usage_e::reset),
+                      vk_cmd_usage_e::reset)};
+    secondaryCmds.emplace_back(zs::move(cmdPtr));
+    secondaryCmdHandles.emplace_back(*secondaryCmds.back());
+    return *secondaryCmds.back();
+  }
+  VkCommand& ExecutionContext::PoolFamily::acquireSecondaryVkCommand(int k) {
+    while (k >= secondaryCmds.size()) acquireSecondaryVkCommand();
+    return *secondaryCmds[k];
+  }
+
+  const VkCommand& ExecutionContext::PoolFamily::retrieveSecondaryVkCommand(int k) const {
+    assert(k >= 0 && k < secondaryCmds.size());
+    return *secondaryCmds[k];
+  }
+
+  std::vector<vk::CommandBuffer> ExecutionContext::PoolFamily::retrieveSecondaryVkCommands(
+      int n) const {
+    if (n < 0 || n >= secondaryCmdHandles.size()) return secondaryCmdHandles;
+    std::vector<vk::CommandBuffer> ret(n);
+    for (int i = 0; i < n; ++i) ret.push_back(secondaryCmdHandles[i]);
     return ret;
   }
 

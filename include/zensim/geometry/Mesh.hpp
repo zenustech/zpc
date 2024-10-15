@@ -19,6 +19,7 @@ namespace zs {
     std::vector<UV> uvs;
     std::vector<Norm> norms;
     std::vector<Color> colors;
+    std::string texturePath;
 
     inline void clear() {
       nodes.clear();
@@ -26,6 +27,7 @@ namespace zs {
       norms.clear();
       colors.clear();
       elems.clear();
+      texturePath.clear();
     }
   };
 

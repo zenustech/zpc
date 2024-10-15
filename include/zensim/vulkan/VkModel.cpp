@@ -15,6 +15,8 @@ namespace zs {
       const auto& clrs = surfs.colors;
       const auto& uvs = surfs.uvs;
 
+      texturePath = surfs.texturePath;
+
       verts.vertexCount = vs.size();
       indexCount = is.size() * 3;
 

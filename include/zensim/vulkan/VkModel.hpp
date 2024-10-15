@@ -36,6 +36,7 @@ namespace zs {
       verts.uv.reset();
       verts.vids.reset();
       indices.reset();
+      texturePath.clear();
     }
     ~VkModel() { reset(); }
 
@@ -180,6 +181,7 @@ namespace zs {
     vec3_t scale, rotate, translate;
     transform_t transform;
     bool useTransform = false;
+    std::string texturePath;
   };
 
 }  // namespace zs

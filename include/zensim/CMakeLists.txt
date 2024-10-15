@@ -1213,6 +1213,10 @@ add_custom_command(
   ${RESOURCE_BASE_DIR}/resource/icons
 
   COMMAND ${CMAKE_COMMAND} -E copy_directory
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Textures
+  ${RESOURCE_BASE_DIR}/resource/textures
+  
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
   ${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/TriMesh
   ${RESOURCE_BASE_DIR}/resource/models
 

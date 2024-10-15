@@ -97,6 +97,12 @@ namespace zs {
     int getQueueFamilyIndex(vk_queue_e e = vk_queue_e::graphics) const noexcept {
       return queueFamilyIndices[e];
     }
+    const auto &getQueueFamilyPropertyByIndex(int i) const noexcept {
+      return queueFamilyProps[i];
+    }
+    const auto &getQueueFamilyPropertyByFamily(vk_queue_e e) const noexcept {
+      return queueFamilyProps[queueFamilyMaps[e]];
+    }
     bool retrieveQueue(vk::Queue &q, vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const noexcept;
     vk::Queue getQueue(vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const {
       auto index = queueFamilyIndices[e];
@@ -226,6 +232,8 @@ namespace zs {
                                 // transferQueueFamilyMap;
 
     std::vector<u32> uniqueQueueFamilyIndices;
+    std::vector<vk::QueueFamilyProperties> queueFamilyProps;
+
     vk::PhysicalDeviceMemoryProperties memoryProperties;
     vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
     vk::PhysicalDeviceProperties2 deviceProperties;
@@ -257,6 +265,7 @@ namespace zs {
       vk::CommandPool singleUsePool;  // submit once
       vk::CommandPool resetPool;      // reset and re-record
       vk::Queue queue;
+      std::vector<vk::Queue> allQueues;
       VulkanContext *pctx{nullptr};
 
       std::vector<VkCommand *> secondaryCmds;

@@ -19,9 +19,9 @@ namespace zs {
       indexCount = is.size() * 3;
 
       auto& env = ctx.env();
-      auto& pool = env.pools(zs::vk_queue_e::graphics);
+      auto& pool = env.pools(zs::vk_queue_e::transfer);
       // auto copyQueue = env.pools(zs::vk_queue_e::transfer).queue;
-      auto copyQueue = pool.queue;
+      auto copyQueue = pool.allQueues.back();
       vk::CommandBuffer cmd = pool.createCommandBuffer(vk::CommandBufferLevel::ePrimary, false,
           nullptr, zs::vk_cmd_usage_e::single_use);
       cmd.begin(vk::CommandBufferBeginInfo{});

@@ -117,9 +117,11 @@ namespace zs {
     for (auto& queueFamilyIndex : queueFamilyIndices) queueFamilyIndex = -1;
     for (auto& queueFamilyMap : queueFamilyMaps) queueFamilyMap = -1;
     int graphicsAndCompute = -1;
+    this->queueFamilyProps.reserve(queueFamilyProps.size());
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
       int both = 0;
       auto& q = queueFamilyProps[i];
+      this->queueFamilyProps.push_back(q);
       if (queueFamilyIndices[vk_queue_e::graphics] == -1
           && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
         queueFamilyIndices[vk_queue_e::graphics] = i;
@@ -154,13 +156,19 @@ namespace zs {
                                            (u32)queueFamilyIndices[vk_queue_e::transfer]};
     this->uniqueQueueFamilyIndices.reserve(uniqueQueueFamilyIndices.size());
     std::vector<vk::DeviceQueueCreateInfo> dqCIs(uniqueQueueFamilyIndices.size());
-    float priority = 1.f;
+    std::vector<std::vector<float>> uniqueQueuePriorities(uniqueQueueFamilyIndices.size());
     {
       u32 i = 0;
       for (auto index : uniqueQueueFamilyIndices) {
-        auto& dqCI = dqCIs[i];
+        const auto& queueFamilyProp = queueFamilyProps[i];
         this->uniqueQueueFamilyIndices.push_back(index);
-        dqCI.setQueueFamilyIndex(index).setQueueCount(1).setPQueuePriorities(&priority);
+        uniqueQueuePriorities[i].resize(queueFamilyProp.queueCount);
+        for (auto& v : uniqueQueuePriorities[i]) v = 0.5f;
+        dqCIs[i]
+            .setQueueCount(queueFamilyProp.queueCount)
+            .setQueueFamilyIndex(index)
+            .setQueuePriorities(uniqueQueuePriorities[i]);
+        // .setPQueuePriorities(uniqueQueuePriorities[i].data());
 
         if (queueFamilyIndices[vk_queue_e::graphics] == index)
           queueFamilyMaps[vk_queue_e::graphics] = i;
@@ -171,8 +179,15 @@ namespace zs {
 
         i++;
       }
-      fmt::print("queue family maps (graphics: {}, compute: {}, transfer: {})\n",
-                 queueFamilyMaps[0], queueFamilyMaps[1], queueFamilyMaps[2]);
+      fmt::print(
+          "queue family maps [graphics: {} ({} queues), compute: {} ({} queues), transfer: {} ({} "
+          "queues)]\n",
+          queueFamilyMaps[vk_queue_e::graphics],
+          queueFamilyProps[queueFamilyMaps[vk_queue_e::graphics]].queueCount,
+          queueFamilyMaps[vk_queue_e::compute],
+          queueFamilyProps[queueFamilyMaps[vk_queue_e::compute]].queueCount,
+          queueFamilyMaps[vk_queue_e::transfer],
+          queueFamilyProps[queueFamilyMaps[vk_queue_e::transfer]].queueCount);
     }
 
     /// extensions
@@ -922,7 +937,7 @@ namespace zs {
   ///
   ExecutionContext::ExecutionContext(VulkanContext& ctx)
       : ctx{ctx}, poolFamilies(ctx.numDistinctQueueFamilies()) {
-    for (const auto& [family, queueFamilyIndex] : zip(poolFamilies, ctx.uniqueQueueFamilyIndices)) {
+    for (const auto& [no, family, queueFamilyIndex] : enumerate(poolFamilies, ctx.uniqueQueueFamilyIndices)) {
       family.reusePool = ctx.device.createCommandPool(
           vk::CommandPoolCreateInfo{{}, queueFamilyIndex}, nullptr, ctx.dispatcher);
       /// @note for memory allcations, etc.
@@ -935,6 +950,9 @@ namespace zs {
                                     queueFamilyIndex},
           nullptr, ctx.dispatcher);
       family.queue = ctx.device.getQueue(queueFamilyIndex, 0, ctx.dispatcher);
+      family.allQueues.resize(ctx.getQueueFamilyPropertyByIndex(no).queueCount);
+      for (int i = 0; i < family.allQueues.size(); ++i)
+        family.allQueues[i] = ctx.device.getQueue(queueFamilyIndex, i, ctx.dispatcher);
       family.pctx = &ctx;
     }
   }

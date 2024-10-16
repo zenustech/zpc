@@ -237,6 +237,7 @@ namespace zs {
     constexpr void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
                                   BinaryOperation &&binary_op = {},
                                   const source_location &loc = source_location::current()) const {
+      if (first == last) return;
       auto prev = *(d_first++) = *(first++);
       while (first != last) *(d_first++) = prev = binary_op(prev, *(first++));
     }
@@ -247,10 +248,10 @@ namespace zs {
                                   T init = deduce_identity<BinaryOperation, T>(),
                                   BinaryOperation &&binary_op = {},
                                   const source_location &loc = source_location::current()) const {
+      if (first == last) return;
       *(d_first++) = init;
-      do {
-        *(d_first++) = init = binary_op(init, *first);
-      } while (++first != last);
+      while (first + 1 != last) 
+        *(d_first++) = init = binary_op(init, *(first++));
     }
     template <class InputIt, class OutputIt,
               class BinaryOp = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>

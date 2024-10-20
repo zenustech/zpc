@@ -366,11 +366,12 @@ namespace zs {
     fmt::print(
         "\t[InitInfo -- Dev Property] Vulkan device [{}] name: {}."
         "\n\t\t(Graphics/Compute/Transfer) queue family index: {}, {}, {}. Ray-tracing support: "
-        "{}. Bindless support: {}."
+        "{}. Bindless support: {}. Timeline semaphore support: {}"
         "\n\tEnabled the following device tensions ({} in total):",
         devid, devProps.deviceName.data(), queueFamilyIndices[vk_queue_e::graphics],
         queueFamilyIndices[vk_queue_e::compute], queueFamilyIndices[vk_queue_e::transfer],
-        rtPreds == rtRequiredPreds, supportBindless(), enabledExtensions.size());
+        rtPreds == rtRequiredPreds, supportBindless(), vk12Features.timelineSemaphore,
+        enabledExtensions.size());
     u32 accum = 0;
     for (auto ext : enabledExtensions) {
       if ((accum++) % 2 == 0) fmt::print("\n\t\t");
@@ -937,7 +938,8 @@ namespace zs {
   ///
   ExecutionContext::ExecutionContext(VulkanContext& ctx)
       : ctx{ctx}, poolFamilies(ctx.numDistinctQueueFamilies()) {
-    for (const auto& [no, family, queueFamilyIndex] : enumerate(poolFamilies, ctx.uniqueQueueFamilyIndices)) {
+    for (const auto& [no, family, queueFamilyIndex] :
+         enumerate(poolFamilies, ctx.uniqueQueueFamilyIndices)) {
       family.reusePool = ctx.device.createCommandPool(
           vk::CommandPoolCreateInfo{{}, queueFamilyIndex}, nullptr, ctx.dispatcher);
       /// @note for memory allcations, etc.

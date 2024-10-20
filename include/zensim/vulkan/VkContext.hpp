@@ -97,17 +97,22 @@ namespace zs {
     int getQueueFamilyIndex(vk_queue_e e = vk_queue_e::graphics) const noexcept {
       return queueFamilyIndices[e];
     }
-    const auto &getQueueFamilyPropertyByIndex(int i) const noexcept {
-      return queueFamilyProps[i];
-    }
+    const auto &getQueueFamilyPropertyByIndex(int i) const noexcept { return queueFamilyProps[i]; }
     const auto &getQueueFamilyPropertyByFamily(vk_queue_e e) const noexcept {
       return queueFamilyProps[queueFamilyMaps[e]];
     }
     bool retrieveQueue(vk::Queue &q, vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const noexcept;
+    u32 getNumQueues(vk_queue_e e = vk_queue_e::graphics) const {
+      if (auto id = queueFamilyMaps[e]; id != -1) return queueFamilyProps[id].queueCount;
+      return 0;
+    }
     vk::Queue getQueue(vk_queue_e e = vk_queue_e::graphics, u32 i = 0) const {
       auto index = queueFamilyIndices[e];
       if (index == -1) throw std::runtime_error("queue does not exist.");
       return device.getQueue(index, i, dispatcher);
+    }
+    vk::Queue getLastQueue(vk_queue_e e = vk_queue_e::graphics) const {
+      return getQueue(e, getNumQueues(e) - 1);
     }
     vk::DescriptorPool descriptorPool() const noexcept { return defaultDescriptorPool; }
     VmaAllocator &allocator() noexcept { return defaultAllocator; }

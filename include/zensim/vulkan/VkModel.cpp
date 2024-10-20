@@ -8,18 +8,20 @@
 namespace zs {
 
   void VkModel::parseFromMesh(VulkanContext& ctx, const Mesh<float, 3, u32, 3>& surfs) {
-      using Ti = u32;
+    using Ti = u32;
 
-      const auto& vs = surfs.nodes;
-      const auto& is = surfs.elems;
-      const auto& clrs = surfs.colors;
-      const auto& uvs = surfs.uvs;
+    const auto& vs = surfs.nodes;
+    const auto& is = surfs.elems;
+    const auto& clrs = surfs.colors;
+    const auto& uvs = surfs.uvs;
+    const auto& nrms = surfs.norms;
 
-      texturePath = surfs.texturePath;
+    texturePath = surfs.texturePath;
 
-      verts.vertexCount = vs.size();
-      indexCount = is.size() * 3;
+    verts.vertexCount = vs.size();
+    indexCount = is.size() * 3;
 
+#if 0
       auto& env = ctx.env();
       auto& pool = env.pools(zs::vk_queue_e::transfer);
       // auto copyQueue = env.pools(zs::vk_queue_e::transfer).queue;
@@ -88,11 +90,11 @@ namespace zs {
           = ctx.createStagingBuffer(numIndexBytes, vk::BufferUsageFlagBits::eTransferSrc);
       stagingVidBuffer.map();
       std::vector<u32> hVids(vs.size());
-#if ZS_ENABLE_OPENMP
+#  if ZS_ENABLE_OPENMP
       auto pol = omp_exec();
-#else
+#  else
       auto pol = seq_exec();
-#endif
+#  endif
       pol(enumerate(hVids), [](u32 i, u32& dst) { dst = i; });
       memcpy(stagingVidBuffer.mappedAddress(), hVids.data(), numIndexBytes);
       stagingVidBuffer.unmap();
@@ -126,6 +128,90 @@ namespace zs {
       ctx.device.destroyFence(fence, nullptr, ctx.dispatcher);
       ctx.device.freeCommandBuffers(pool.cmdpool(zs::vk_cmd_usage_e::single_use), cmd,
           ctx.dispatcher);
+#else
+    /// @note pos
+    auto numBytes = sizeof(float) * 3 * vs.size();
+    verts.pos = ctx.createBuffer(
+        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+        vk::MemoryPropertyFlagBits::eHostVisible);
+    verts.pos.get().map();
+    memcpy(verts.pos.get().mappedAddress(), vs.data(), numBytes);
+    verts.pos.get().unmap();
+    verts.pos.get().flush();
+
+    /// @note colors
+    verts.clr = ctx.createBuffer(
+        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+        vk::MemoryPropertyFlagBits::eHostVisible);
+    verts.clr.get().map();
+    if (clrs.size() == vs.size())
+      memcpy(verts.clr.get().mappedAddress(), clrs.data(), numBytes);
+    else {
+      std::vector<std::array<float, 3>> vals(
+          vs.size(), std::array<float, 3>{0.7f, 0.7f, 0.7f});  // use 0.7 as default color
+      memcpy(verts.clr.get().mappedAddress(), vals.data(), numBytes);
+    }
+    verts.clr.get().unmap();
+    verts.clr.get().flush();
+
+    /// @note normals
+    verts.nrm = ctx.createBuffer(
+        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+        vk::MemoryPropertyFlagBits::eHostVisible);
+    verts.nrm.get().map();
+    if (nrms.size() == vs.size())
+      memcpy(verts.nrm.get().mappedAddress(), nrms.data(), numBytes);
+    else {
+      std::vector<std::array<float, 3>> vals(vs.size());
+      compute_mesh_normal(surfs, 1.f, vals);
+      memcpy(verts.nrm.get().mappedAddress(), vals.data(), numBytes);
+    }
+    verts.nrm.get().unmap();
+    verts.nrm.get().flush();
+
+    /// @note uvs
+    numBytes = 2 * sizeof(float) * vs.size();
+    verts.uv = ctx.createBuffer(
+        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+        vk::MemoryPropertyFlagBits::eHostVisible);
+    verts.uv.get().map();
+    if (uvs.size() == vs.size()) {
+      memcpy(verts.uv.get().mappedAddress(), uvs.data(), numBytes);
+    } else {
+      std::vector<std::array<float, 2>> defaultUVs{vs.size(), {0.0f, 0.0f}};
+      memcpy(verts.uv.get().mappedAddress(), defaultUVs.data(), numBytes);
+    }
+    verts.uv.get().unmap();
+    verts.uv.get().flush();
+
+    /// @note verts
+    auto numIndexBytes = sizeof(u32) * vs.size();
+    verts.vids = ctx.createBuffer(
+        numIndexBytes,
+        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+        vk::MemoryPropertyFlagBits::eHostVisible);
+    verts.vids.get().map();
+    std::vector<u32> hVids(vs.size());
+#  if ZS_ENABLE_OPENMP
+    auto pol = omp_exec();
+#  else
+    auto pol = seq_exec();
+#  endif
+    pol(enumerate(hVids), [](u32 i, u32& dst) { dst = i; });
+    memcpy(verts.vids.get().mappedAddress(), hVids.data(), numIndexBytes);
+    verts.vids.get().unmap();
+    verts.vids.get().flush();
+
+    /// @note tris
+    numBytes = sizeof(Ti) * 3 * is.size();
+    indices = ctx.createBuffer(
+        numBytes, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+        vk::MemoryPropertyFlagBits::eHostVisible);
+    indices.get().map();
+    memcpy(indices.get().mappedAddress(), is.data(), numBytes);
+    indices.get().unmap();
+    indices.get().flush();
+#endif
   }
 
   VkModel::VkModel(VulkanContext &ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3> &surfs,

@@ -676,7 +676,10 @@ namespace zs {
     VmaAllocationCreateInfo vmaAllocCI = {};
     if (dedicatedReqs.requiresDedicatedAllocation)
       vmaAllocCI.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-    vmaAllocCI.usage = vk_to_vma_memory_usage(props);
+    vmaAllocCI.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    vmaAllocCI.usage = VMA_MEMORY_USAGE_UNKNOWN;
+    // vmaAllocCI.usage = vk_to_vma_memory_usage(props);  // deprecated
+    vmaAllocCI.requiredFlags = static_cast<VkMemoryPropertyFlags>(props);
     vmaAllocCI.priority = 1.f;
 
     VmaAllocationInfo allocationDetail;
@@ -759,7 +762,9 @@ namespace zs {
     VmaAllocationCreateInfo vmaAllocCI = {};
     if (dedicatedReqs.requiresDedicatedAllocation)
       vmaAllocCI.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-    vmaAllocCI.usage = vk_to_vma_memory_usage(props);
+    vmaAllocCI.usage = VMA_MEMORY_USAGE_UNKNOWN;
+    // vmaAllocCI.usage = vk_to_vma_memory_usage(props);  // deprecated
+    vmaAllocCI.requiredFlags = static_cast<VkMemoryPropertyFlags>(props);
     vmaAllocCI.priority = 1.f;
 
     VmaAllocationInfo allocationDetail;

@@ -21,7 +21,7 @@ namespace zs {
     verts.vertexCount = vs.size();
     indexCount = is.size() * 3;
 
-#if 0
+#if 1
       auto& env = ctx.env();
       auto& pool = env.pools(zs::vk_queue_e::transfer);
       // auto copyQueue = env.pools(zs::vk_queue_e::transfer).queue;
@@ -39,7 +39,7 @@ namespace zs {
       stagingBuffer.unmap();
       //
       verts.pos = ctx.createBuffer(
-          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible);
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
       copyRegion.size = numBytes;
       cmd.copyBuffer(stagingBuffer, verts.pos.get(), { copyRegion });
 
@@ -50,7 +50,7 @@ namespace zs {
       memcpy(stagingColorBuffer.mappedAddress(), clrs.size() > 0 ? clrs.data() : vals.data(), numBytes);
       stagingColorBuffer.unmap();
       verts.clr = ctx.createBuffer(
-          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible);
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
       cmd.copyBuffer(stagingColorBuffer, verts.clr.get(), { copyRegion });
 
       /// @note normals
@@ -61,7 +61,7 @@ namespace zs {
       memcpy(stagingNrmBuffer.mappedAddress(), vals.data(), numBytes);
       stagingNrmBuffer.unmap();
       verts.nrm = ctx.createBuffer(
-          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
       cmd.copyBuffer(stagingNrmBuffer, verts.nrm.get(), { copyRegion });
 
       /// @note uvs
@@ -80,7 +80,7 @@ namespace zs {
       stagingUVBuffer.unmap();
       verts.uv = ctx.createBuffer(
           numBytes,
-          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst
+          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal
       );
       copyRegion.size = numBytes;
       cmd.copyBuffer(stagingUVBuffer, verts.uv.get(), { copyRegion });
@@ -99,7 +99,7 @@ namespace zs {
       memcpy(stagingVidBuffer.mappedAddress(), hVids.data(), numIndexBytes);
       stagingVidBuffer.unmap();
       verts.vids = ctx.createBuffer(numIndexBytes, vk::BufferUsageFlagBits::eVertexBuffer
-          | vk::BufferUsageFlagBits::eTransferDst);
+          | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
       copyRegion.size = numIndexBytes;
       cmd.copyBuffer(stagingVidBuffer, verts.vids.get(), { copyRegion });
 
@@ -112,7 +112,7 @@ namespace zs {
       stagingIndexBuffer.unmap();
 
       indices = ctx.createBuffer(
-          numBytes, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+          numBytes, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
       copyRegion.size = numBytes;
       cmd.copyBuffer(stagingIndexBuffer, indices.get(), { copyRegion });
 

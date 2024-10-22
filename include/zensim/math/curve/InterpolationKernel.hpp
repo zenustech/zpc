@@ -1,5 +1,6 @@
 #pragma once
 #include "zensim/ZpcIterator.hpp"
+#include "zensim/geometry/LevelSetInterface.h"
 #include "zensim/math/MathUtils.h"
 #include "zensim/math/Vec.h"
 #include "zensim/types/Property.h"

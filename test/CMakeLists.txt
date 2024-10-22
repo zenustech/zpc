@@ -33,6 +33,13 @@ target_link_libraries(paraprim PRIVATE zpc)
 add_test(ZsParallelPrimitive paraprim)
 add_dependencies(zensim paraprim)
 
+# binary search
+add_executable(binarysearchtest binary_search.cpp)
+target_link_libraries(binarysearchtest PRIVATE zpc)
+
+add_test(ZsBinarySearch binarysearchtest)
+add_dependencies(zensim binarysearchtest)
+
 # cuda backends
 if (ZS_ENABLE_CUDA)
 #

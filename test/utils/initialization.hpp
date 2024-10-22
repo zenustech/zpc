@@ -20,6 +20,14 @@ namespace zs {
     auto pol = seq_exec();
 #endif
 
+  auto preferred_host_policy() {
+#if ZS_ENABLE_OPENMP
+    return omp_exec();
+#else
+    return host_exec();
+#endif
+  }
+
   struct CustomKey {
     u64 k;
     double v;
@@ -37,7 +45,7 @@ namespace zs {
     Vector<int> vals(n);
     pol(enumerate(vals), [upper](size_t i, int &v) {
       u64 sd = i;
-      v = zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) % upper;
+      v = std::rand() % upper;  // zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) % upper;
     });
     return vals;
   }
@@ -46,9 +54,20 @@ namespace zs {
     Vector<float> vals(n);
     pol(enumerate(vals), [](size_t i, float &v) {
       u64 sd = i;
-      v = 1.f * zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) / detail::deduce_numeric_max<u32>();
+      v = 1.f * std::rand()  // zs::PCG::pcg32_random_r(sd, 1442695040888963407ull)
+          / detail::deduce_numeric_max<u32>();
     });
     return vals;
+  }
+
+  void sort_ints(Vector<int> &vs) {
+    DEF_POLICY
+    merge_sort(pol, zs::begin(vs), zs::end(vs));
+  }
+
+  void sort_floats(Vector<float> &vs) {
+    DEF_POLICY
+    merge_sort(pol, zs::begin(vs), zs::end(vs));
   }
 
   inline TileVector<float, 32> gen_rnd_tv_floats(size_t n) {
@@ -56,7 +75,8 @@ namespace zs {
     TileVector<float, 32> vals({{"a", 3}, {"b", 2}, {"c", 1}}, n);
     pol(enumerate(range(vals, "b")), [](size_t i, float &v) {
       u64 sd = i;
-      v = 1.f * zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) / detail::deduce_numeric_max<u32>();
+      v = 1.f * std::rand()  // zs::PCG::pcg32_random_r(sd, 1442695040888963407ull)
+          / detail::deduce_numeric_max<u32>();
     });
     return vals;
   }
@@ -66,7 +86,8 @@ namespace zs {
     TileVector<int, 32> vals({{"a", 3}, {"b", 2}, {"c", 1}}, n);
     pol(enumerate(range(vals, "b")), [upper](size_t i, int &v) {
       u64 sd = i;
-      v = zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) % upper;
+      // v = zs::PCG::pcg32_random_r(sd, 1442695040888963407ull) % upper;
+      v = std::rand() % upper;
     });
     return vals;
   }

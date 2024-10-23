@@ -666,6 +666,7 @@ namespace zs {
 #if ZS_VULKAN_USE_VMA
     auto bufferReqs = vk::BufferMemoryRequirementsInfo2{}.setBuffer(buf);
     auto dedicatedReqs = vk::MemoryDedicatedRequirements{};
+    dedicatedReqs.prefersDedicatedAllocation = true;
     auto memReqs2 = vk::MemoryRequirements2{};
     memReqs2.pNext = &dedicatedReqs;
 
@@ -752,6 +753,7 @@ namespace zs {
 #if ZS_VULKAN_USE_VMA
     auto imageReqs = vk::ImageMemoryRequirementsInfo2{}.setImage(img);
     auto dedicatedReqs = vk::MemoryDedicatedRequirements{};
+    dedicatedReqs.prefersDedicatedAllocation = true;
     auto memReqs2 = vk::MemoryRequirements2{};
     memReqs2.pNext = &dedicatedReqs;
 

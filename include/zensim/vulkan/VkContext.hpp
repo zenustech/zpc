@@ -21,6 +21,7 @@ namespace zs {
   struct ImageView;
   struct Buffer;
   struct VkCommand;
+  struct Fence;
   struct Framebuffer;
   struct RenderPass;
   struct RenderPassBuilder;
@@ -37,7 +38,14 @@ namespace zs {
   struct Vulkan;
 
   /// @note CAUTION: must match the member order defined in VulkanContext
-  enum vk_queue_e { graphics = 0, compute, transfer };
+  enum vk_queue_e {
+    graphics = 0,
+    compute,
+    transfer,
+    dedicated_compute,
+    dedicated_transfer,
+    num_queue_types
+  };
   enum vk_cmd_usage_e { reuse = 0, single_use, reset };
   enum vk_descriptor_e {
     uniform = 0,
@@ -231,10 +239,10 @@ namespace zs {
     vk::DispatchLoaderDynamic dispatcher;  // store device-specific calls
     // graphics queue family should also be used for presentation if swapchain required
 
-    int queueFamilyIndices[3];  // graphicsQueueFamilyIndex, computeQueueFamilyIndex,
-                                // transferQueueFamilyIndex;
-    int queueFamilyMaps[3];     // graphicsQueueFamilyMap, computeQueueFamilyMap,
-                                // transferQueueFamilyMap;
+    int queueFamilyIndices[num_queue_types];  // graphicsQueueFamilyIndex, computeQueueFamilyIndex,
+                                              // transferQueueFamilyIndex;
+    int queueFamilyMaps[num_queue_types];     // graphicsQueueFamilyMap, computeQueueFamilyMap,
+                                              // transferQueueFamilyMap;
 
     std::vector<u32> uniqueQueueFamilyIndices;
     std::vector<vk::QueueFamilyProperties> queueFamilyProps;
@@ -273,6 +281,8 @@ namespace zs {
       std::vector<vk::Queue> allQueues;
       VulkanContext *pctx{nullptr};
 
+      VkCommand * primaryCmd;
+      Fence * fence;
       std::vector<VkCommand *> secondaryCmds;
       std::vector<vk::CommandBuffer> secondaryCmdHandles;
 

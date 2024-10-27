@@ -113,15 +113,13 @@ namespace zs {
     vk::PhysicalDeviceProperties devProps = physicalDevice.getProperties();
 
     /// queue family
-    auto queueFamilyProps = physicalDevice.getQueueFamilyProperties();
+    queueFamilyProps = physicalDevice.getQueueFamilyProperties();
     for (auto& queueFamilyIndex : queueFamilyIndices) queueFamilyIndex = -1;
     for (auto& queueFamilyMap : queueFamilyMaps) queueFamilyMap = -1;
     int graphicsAndCompute = -1;
-    this->queueFamilyProps.reserve(queueFamilyProps.size());
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
       int both = 0;
       auto& q = queueFamilyProps[i];
-      this->queueFamilyProps.push_back(q);
       if (queueFamilyIndices[vk_queue_e::graphics] == -1
           && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
         queueFamilyIndices[vk_queue_e::graphics] = i;
@@ -137,7 +135,13 @@ namespace zs {
       if (queueFamilyIndices[vk_queue_e::transfer] == -1
           && (q.queueFlags & vk::QueueFlagBits::eTransfer))
         queueFamilyIndices[vk_queue_e::transfer] = i;
+
       if (both == 2) graphicsAndCompute = i;
+
+      if (queueFamilyIndices[vk_queue_e::dedicated_transfer] == -1
+          && (q.queueFlags & vk::QueueFlagBits::eTransfer) && both == 0) {
+        queueFamilyIndices[vk_queue_e::dedicated_transfer] = i;
+      }
     }
     if (graphicsAndCompute == -1)
       throw std::runtime_error(
@@ -145,15 +149,31 @@ namespace zs {
     queueFamilyIndices[vk_queue_e::graphics] = queueFamilyIndices[vk_queue_e::compute]
         = graphicsAndCompute;
 
+    for (int i = 0; i != queueFamilyProps.size(); ++i) {
+      int both = 0;
+      auto& q = queueFamilyProps[i];
+      if (!(q.queueFlags & vk::QueueFlagBits::eCompute)
+          || i == queueFamilyIndices[vk_queue_e::graphics])
+        continue;
+      if (queueFamilyIndices[vk_queue_e::dedicated_compute] == -1
+          || i != queueFamilyIndices[vk_queue_e::dedicated_transfer])
+        queueFamilyIndices[vk_queue_e::dedicated_compute] = i;
+    }
+
     ZS_ERROR_IF(queueFamilyIndices[vk_queue_e::graphics] == -1,
                 "graphics queue family does not exist!");
-    fmt::print("selected queue family [{}] for graphics! (compute: {}, transfer: {})\n",
-               queueFamilyIndices[vk_queue_e::graphics], queueFamilyIndices[vk_queue_e::compute],
-               queueFamilyIndices[vk_queue_e::transfer]);
+    fmt::print(
+        "selected queue family [{}] for graphics! (compute: {}, transfer: {}, dedicated compute: "
+        "{}, dedicated transfer: {})\n",
+        queueFamilyIndices[vk_queue_e::graphics], queueFamilyIndices[vk_queue_e::compute],
+        queueFamilyIndices[vk_queue_e::transfer], queueFamilyIndices[vk_queue_e::dedicated_compute],
+        queueFamilyIndices[vk_queue_e::dedicated_transfer]);
 
     std::set<u32> uniqueQueueFamilyIndices{(u32)queueFamilyIndices[vk_queue_e::graphics],
                                            (u32)queueFamilyIndices[vk_queue_e::compute],
-                                           (u32)queueFamilyIndices[vk_queue_e::transfer]};
+                                           (u32)queueFamilyIndices[vk_queue_e::transfer],
+                                           (u32)queueFamilyIndices[vk_queue_e::dedicated_compute],
+                                           (u32)queueFamilyIndices[vk_queue_e::dedicated_transfer]};
     this->uniqueQueueFamilyIndices.reserve(uniqueQueueFamilyIndices.size());
     std::vector<vk::DeviceQueueCreateInfo> dqCIs(uniqueQueueFamilyIndices.size());
     std::vector<std::vector<float>> uniqueQueuePriorities(uniqueQueueFamilyIndices.size());
@@ -176,18 +196,26 @@ namespace zs {
           queueFamilyMaps[vk_queue_e::compute] = i;
         if (queueFamilyIndices[vk_queue_e::transfer] == index)
           queueFamilyMaps[vk_queue_e::transfer] = i;
+        if (queueFamilyIndices[vk_queue_e::dedicated_compute] == index)
+          queueFamilyMaps[vk_queue_e::dedicated_compute] = i;
+        if (queueFamilyIndices[vk_queue_e::dedicated_transfer] == index)
+          queueFamilyMaps[vk_queue_e::dedicated_transfer] = i;
 
         i++;
       }
       fmt::print(
           "queue family maps [graphics: {} ({} queues), compute: {} ({} queues), transfer: {} ({} "
-          "queues)]\n",
+          "queues), dedicated compute: {} ({} queues), dedicated transfer: {} ({} queues)]\n",
           queueFamilyMaps[vk_queue_e::graphics],
           queueFamilyProps[queueFamilyMaps[vk_queue_e::graphics]].queueCount,
           queueFamilyMaps[vk_queue_e::compute],
           queueFamilyProps[queueFamilyMaps[vk_queue_e::compute]].queueCount,
           queueFamilyMaps[vk_queue_e::transfer],
-          queueFamilyProps[queueFamilyMaps[vk_queue_e::transfer]].queueCount);
+          queueFamilyProps[queueFamilyMaps[vk_queue_e::transfer]].queueCount,
+          queueFamilyMaps[vk_queue_e::dedicated_compute],
+          queueFamilyProps[queueFamilyMaps[vk_queue_e::dedicated_compute]].queueCount,
+          queueFamilyMaps[vk_queue_e::dedicated_transfer],
+          queueFamilyProps[queueFamilyMaps[vk_queue_e::dedicated_transfer]].queueCount);
     }
 
     /// extensions
@@ -958,6 +986,17 @@ namespace zs {
                                         | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
                                     queueFamilyIndex},
           nullptr, ctx.dispatcher);
+      /// setup preset primary command buffers (reuse)
+      family.primaryCmd
+          = new VkCommand(family,
+                          ctx.device.allocateCommandBuffers(
+                              vk::CommandBufferAllocateInfo{
+                                  family.resetPool, vk::CommandBufferLevel::ePrimary, (u32)1},
+                              ctx.dispatcher)[0],
+                          vk_cmd_usage_e::reset);
+      family.fence = new Fence(ctx, true);
+
+      //
       family.queue = ctx.device.getQueue(queueFamilyIndex, 0, ctx.dispatcher);
       family.allQueues.resize(ctx.getQueueFamilyPropertyByIndex(no).queueCount);
       for (int i = 0; i < family.allQueues.size(); ++i)
@@ -968,6 +1007,14 @@ namespace zs {
   ExecutionContext::~ExecutionContext() {
     for (auto& family : poolFamilies) {
       /// @brief clear secondary command buffers before destroying command pools
+      if (family.primaryCmd) {
+        delete family.primaryCmd;
+        family.primaryCmd = nullptr;
+      }
+      if (family.fence) {
+        delete family.fence;
+        family.fence = nullptr;
+      }
       for (auto& ptr : family.secondaryCmds)
         if (ptr) delete ptr;
       family.secondaryCmds.clear();

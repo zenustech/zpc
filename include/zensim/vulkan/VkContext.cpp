@@ -120,6 +120,7 @@ namespace zs {
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
       int both = 0;
       auto& q = queueFamilyProps[i];
+      if (q.queueCount == 0) continue;
       if (queueFamilyIndices[vk_queue_e::graphics] == -1
           && (q.queueFlags & vk::QueueFlagBits::eGraphics)) {
         queueFamilyIndices[vk_queue_e::graphics] = i;
@@ -142,6 +143,18 @@ namespace zs {
           && (q.queueFlags & vk::QueueFlagBits::eTransfer) && both == 0) {
         queueFamilyIndices[vk_queue_e::dedicated_transfer] = i;
       }
+
+      /// queue family info
+      fmt::print(
+          "\n\t====> {}-th queue family has {} queue(s).\n\tQueue "
+          "capabilities [graphics: {}, compute: {}, transfer: {}, sparse binding: {}, \n\t\tvideo "
+          "encode: {}, video decode: {}]\n",
+          i, q.queueCount, static_cast<bool>(q.queueFlags & vk::QueueFlagBits::eGraphics),
+          static_cast<bool>(q.queueFlags & vk::QueueFlagBits::eCompute),
+          static_cast<bool>(q.queueFlags & vk::QueueFlagBits::eTransfer),
+          static_cast<bool>(q.queueFlags & vk::QueueFlagBits::eSparseBinding),
+          static_cast<bool>(q.queueFlags & vk::QueueFlagBits::eVideoEncodeKHR),
+          static_cast<bool>(q.queueFlags & vk::QueueFlagBits::eVideoDecodeKHR));
     }
     if (graphicsAndCompute == -1)
       throw std::runtime_error(
@@ -150,9 +163,8 @@ namespace zs {
         = graphicsAndCompute;
 
     for (int i = 0; i != queueFamilyProps.size(); ++i) {
-      int both = 0;
       auto& q = queueFamilyProps[i];
-      if (!(q.queueFlags & vk::QueueFlagBits::eCompute)
+      if (q.queueCount == 0 || !(q.queueFlags & vk::QueueFlagBits::eCompute)
           || i == queueFamilyIndices[vk_queue_e::graphics])
         continue;
       if (queueFamilyIndices[vk_queue_e::dedicated_compute] == -1

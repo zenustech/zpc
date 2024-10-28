@@ -24,11 +24,14 @@ namespace zs {
 
 #if 1
     auto& env = ctx.env();
-    auto& pool = env.pools(zs::vk_queue_e::transfer);
+    auto preferredQueueType = ctx.isQueueValid(zs::vk_queue_e::dedicated_transfer)
+                                  ? zs::vk_queue_e::dedicated_transfer
+                                  : zs::vk_queue_e::transfer;
+    auto& pool = env.pools(preferredQueueType);
     // auto copyQueue = env.pools(zs::vk_queue_e::transfer).queue;
     // auto copyQueue = pool.allQueues.back();
     auto& cmd = *pool.primaryCmd;
-    auto copyQueue = ctx.getLastQueue(vk_queue_e::dedicated_transfer);
+    auto copyQueue = ctx.getLastQueue(preferredQueueType);
     // vk::CommandBuffer cmd = pool.createCommandBuffer(vk::CommandBufferLevel::ePrimary, false,
     //     nullptr, zs::vk_cmd_usage_e::single_use);
     cmd.begin(vk::CommandBufferBeginInfo{});

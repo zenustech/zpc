@@ -122,6 +122,8 @@ namespace zs {
     vk::Queue getLastQueue(vk_queue_e e = vk_queue_e::graphics) const {
       return getQueue(e, getNumQueues(e) - 1);
     }
+    /// @note usually queried for dedicated queue types (e.g. compute/transfer)
+    bool isQueueValid(vk_queue_e e) const { return queueFamilyIndices[e] != -1; }
     vk::DescriptorPool descriptorPool() const noexcept { return defaultDescriptorPool; }
     VmaAllocator &allocator() noexcept { return defaultAllocator; }
     const VmaAllocator &allocator() const noexcept { return defaultAllocator; }
@@ -281,8 +283,8 @@ namespace zs {
       std::vector<vk::Queue> allQueues;
       VulkanContext *pctx{nullptr};
 
-      VkCommand * primaryCmd;
-      Fence * fence;
+      VkCommand *primaryCmd;
+      Fence *fence;
       std::vector<VkCommand *> secondaryCmds;
       std::vector<vk::CommandBuffer> secondaryCmdHandles;
 
@@ -349,7 +351,7 @@ namespace zs {
     };
 
     PoolFamily &pools(vk_queue_e e = vk_queue_e::graphics) {
-      if (ctx.queueFamilyMaps[e] >= poolFamilies.size())
+      if (ctx.queueFamilyMaps[e] >= poolFamilies.size() || ctx.queueFamilyMaps[e] < 0)
         throw std::runtime_error(fmt::format("accessing {}-th pool while there are {} in total.",
                                              ctx.queueFamilyMaps[e], poolFamilies.size()));
       return poolFamilies[ctx.queueFamilyMaps[e]];

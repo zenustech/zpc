@@ -186,6 +186,7 @@ namespace zs {
                                            (u32)queueFamilyIndices[vk_queue_e::transfer],
                                            (u32)queueFamilyIndices[vk_queue_e::dedicated_compute],
                                            (u32)queueFamilyIndices[vk_queue_e::dedicated_transfer]};
+    uniqueQueueFamilyIndices.erase(-1);
     this->uniqueQueueFamilyIndices.reserve(uniqueQueueFamilyIndices.size());
     std::vector<vk::DeviceQueueCreateInfo> dqCIs(uniqueQueueFamilyIndices.size());
     std::vector<std::vector<float>> uniqueQueuePriorities(uniqueQueueFamilyIndices.size());
@@ -224,10 +225,18 @@ namespace zs {
           queueFamilyProps[queueFamilyMaps[vk_queue_e::compute]].queueCount,
           queueFamilyMaps[vk_queue_e::transfer],
           queueFamilyProps[queueFamilyMaps[vk_queue_e::transfer]].queueCount,
-          queueFamilyMaps[vk_queue_e::dedicated_compute],
-          queueFamilyProps[queueFamilyMaps[vk_queue_e::dedicated_compute]].queueCount,
-          queueFamilyMaps[vk_queue_e::dedicated_transfer],
-          queueFamilyProps[queueFamilyMaps[vk_queue_e::dedicated_transfer]].queueCount);
+          queueFamilyMaps[vk_queue_e::dedicated_compute] != -1
+              ? queueFamilyMaps[vk_queue_e::dedicated_compute]
+              : -1,
+          queueFamilyMaps[vk_queue_e::dedicated_compute] != -1
+              ? queueFamilyProps[queueFamilyMaps[vk_queue_e::dedicated_compute]].queueCount
+              : -1,
+          queueFamilyMaps[vk_queue_e::dedicated_transfer] != -1
+              ? queueFamilyMaps[vk_queue_e::dedicated_transfer]
+              : -1,
+          queueFamilyMaps[vk_queue_e::dedicated_transfer] != -1
+              ? queueFamilyProps[queueFamilyMaps[vk_queue_e::dedicated_transfer]].queueCount
+              : -1);
     }
 
     /// extensions

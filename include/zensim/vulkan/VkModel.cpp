@@ -39,65 +39,78 @@ namespace zs {
 
     /// @note pos
     auto numBytes = sizeof(float) * 3 * vs.size();
-    auto stagingBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingBuffer.map();
-    memcpy(stagingBuffer.mappedAddress(), vs.data(), numBytes);
-    stagingBuffer.unmap();
+    if (!stagingBuffer || numBytes > stagingBuffer.get().getSize())
+      stagingBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
+    stagingBuffer.get().map();
+    memcpy(stagingBuffer.get().mappedAddress(), vs.data(), numBytes);
+    stagingBuffer.get().unmap();
     //
-    verts.pos = ctx.createBuffer(
-        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
+    if (!verts.pos || numBytes > verts.pos.get().getSize())
+      verts.pos = ctx.createBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
     copyRegion.size = numBytes;
-    (*cmd).copyBuffer(stagingBuffer, verts.pos.get(), {copyRegion});
+    (*cmd).copyBuffer(stagingBuffer.get(), verts.pos.get(), {copyRegion});
 
     /// @note colors
     std::vector<std::array<float, 3>> vals(
         vs.size(), std::array<float, 3>{0.7f, 0.7f, 0.7f});  // use 0.7 as default color
-    auto stagingColorBuffer
-        = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingColorBuffer.map();
-    memcpy(stagingColorBuffer.mappedAddress(), clrs.size() > 0 ? clrs.data() : vals.data(),
-           numBytes);
-    stagingColorBuffer.unmap();
-    verts.clr = ctx.createBuffer(
-        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
-    (*cmd).copyBuffer(stagingColorBuffer, verts.clr.get(), {copyRegion});
+    if (!stagingColorBuffer || numBytes > stagingColorBuffer.get().getSize())
+      stagingColorBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
+    stagingColorBuffer.get().map();
+    if (clrs.size() == vs.size())
+      memcpy(stagingColorBuffer.get().mappedAddress(), clrs.data(), numBytes);
+    else
+      memcpy(stagingColorBuffer.get().mappedAddress(), vals.data(), numBytes);
+    stagingColorBuffer.get().unmap();
+    if (!verts.clr || numBytes > verts.clr.get().getSize())
+      verts.clr = ctx.createBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
+    (*cmd).copyBuffer(stagingColorBuffer.get(), verts.clr.get(), {copyRegion});
 
     /// @note normals
-    compute_mesh_normal(surfs, 1.f, vals);
-    auto stagingNrmBuffer
-        = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingNrmBuffer.map();
-    memcpy(stagingNrmBuffer.mappedAddress(), vals.data(), numBytes);
-    stagingNrmBuffer.unmap();
-    verts.nrm = ctx.createBuffer(
-        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
-    (*cmd).copyBuffer(stagingNrmBuffer, verts.nrm.get(), {copyRegion});
+    if (!stagingNrmBuffer || numBytes > stagingNrmBuffer.get().getSize())
+      stagingNrmBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
+    stagingNrmBuffer.get().map();
+    if (nrms.size() == vs.size())
+      memcpy(stagingNrmBuffer.get().mappedAddress(), nrms.data(), numBytes);
+    else {
+      compute_mesh_normal(surfs, 1.f, vals);
+      memcpy(stagingNrmBuffer.get().mappedAddress(), vals.data(), numBytes);
+    }
+    stagingNrmBuffer.get().unmap();
+    if (!verts.nrm || numBytes > verts.nrm.get().getSize())
+      verts.nrm = ctx.createBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
+    (*cmd).copyBuffer(stagingNrmBuffer.get(), verts.nrm.get(), {copyRegion});
 
     /// @note uvs
     numBytes = 2 * sizeof(float) * vs.size();
-    auto stagingUVBuffer = ctx.createStagingBuffer(
-        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferSrc);
-    stagingUVBuffer.map();
+    if (!stagingUVBuffer || numBytes > stagingUVBuffer.get().getSize())
+      stagingUVBuffer = ctx.createStagingBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferSrc);
+    stagingUVBuffer.get().map();
     if (uvs.size() == vs.size()) {
-      memcpy(stagingUVBuffer.mappedAddress(), uvs.data(), numBytes);
+      memcpy(stagingUVBuffer.get().mappedAddress(), uvs.data(), numBytes);
     } else {
       std::vector<std::array<float, 2>> defaultUVs{vs.size(), {0.0f, 0.0f}};
-      memcpy(stagingUVBuffer.mappedAddress(), defaultUVs.data(), numBytes);
+      memcpy(stagingUVBuffer.get().mappedAddress(), defaultUVs.data(), numBytes);
     }
-    stagingUVBuffer.unmap();
-    verts.uv = ctx.createBuffer(
-        numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
+    stagingUVBuffer.get().unmap();
+    if (!verts.uv || numBytes > verts.uv.get().getSize())
+      verts.uv = ctx.createBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
     copyRegion.size = numBytes;
-    (*cmd).copyBuffer(stagingUVBuffer, verts.uv.get(), {copyRegion});
+    (*cmd).copyBuffer(stagingUVBuffer.get(), verts.uv.get(), {copyRegion});
 
     auto numIndexBytes = sizeof(u32) * vs.size();
-    auto stagingVidBuffer
-        = ctx.createStagingBuffer(numIndexBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingVidBuffer.map();
+    if (!stagingVidBuffer || numIndexBytes > stagingVidBuffer.get().getSize())
+      stagingVidBuffer
+          = ctx.createStagingBuffer(numIndexBytes, vk::BufferUsageFlagBits::eTransferSrc);
+    stagingVidBuffer.get().map();
     std::vector<u32> hVids(vs.size());
 #  if ZS_ENABLE_OPENMP
     auto pol = omp_exec();
@@ -105,28 +118,30 @@ namespace zs {
     auto pol = seq_exec();
 #  endif
     pol(enumerate(hVids), [](u32 i, u32& dst) { dst = i; });
-    memcpy(stagingVidBuffer.mappedAddress(), hVids.data(), numIndexBytes);
-    stagingVidBuffer.unmap();
-    verts.vids = ctx.createBuffer(
-        numIndexBytes,
-        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
+    memcpy(stagingVidBuffer.get().mappedAddress(), hVids.data(), numIndexBytes);
+    stagingVidBuffer.get().unmap();
+    if (!verts.vids || numIndexBytes > verts.vids.get().getSize())
+      verts.vids = ctx.createBuffer(
+          numIndexBytes,
+          vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
     copyRegion.size = numIndexBytes;
-    (*cmd).copyBuffer(stagingVidBuffer, verts.vids.get(), {copyRegion});
+    (*cmd).copyBuffer(stagingVidBuffer.get(), verts.vids.get(), {copyRegion});
 
     /// @note tris
     numBytes = sizeof(Ti) * 3 * is.size();
-    auto stagingIndexBuffer
-        = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingIndexBuffer.map();
-    memcpy(stagingIndexBuffer.mappedAddress(), is.data(), numBytes);
-    stagingIndexBuffer.unmap();
+    if (!stagingIndexBuffer || numBytes > stagingIndexBuffer.get().getSize())
+      stagingIndexBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
+    stagingIndexBuffer.get().map();
+    memcpy(stagingIndexBuffer.get().mappedAddress(), is.data(), numBytes);
+    stagingIndexBuffer.get().unmap();
 
-    indices = ctx.createBuffer(
-        numBytes, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-        vk::MemoryPropertyFlagBits::eDeviceLocal);
+    if (!indices || numBytes > indices.get().getSize())
+      indices = ctx.createBuffer(
+          numBytes, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
     copyRegion.size = numBytes;
-    (*cmd).copyBuffer(stagingIndexBuffer, indices.get(), {copyRegion});
+    (*cmd).copyBuffer(stagingIndexBuffer.get(), indices.get(), {copyRegion});
 
     cmd.end();
     // auto submitInfo = vk::SubmitInfo().setCommandBufferCount(1).setPCommandBuffers(&cmd);

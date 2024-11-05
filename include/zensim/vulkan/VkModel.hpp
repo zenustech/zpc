@@ -17,6 +17,9 @@ namespace zs {
       Owner<Buffer> pos, nrm, clr, uv;
       Owner<Buffer> vids;  // optional
     };
+    // staging buffers
+    Owner<Buffer> stagingBuffer, stagingNrmBuffer, stagingColorBuffer, stagingUVBuffer,
+        stagingVidBuffer, stagingIndexBuffer;
 
     Buffer &getColorBuffer() { return verts.clr.get(); }
 

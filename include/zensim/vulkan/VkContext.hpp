@@ -221,7 +221,7 @@ namespace zs {
                                   vk::RenderPass renderPass);
 
     /// @note query pool
-    QueryPool createQueryPool(vk::QueryType queryType, uint32_t queryCount);
+    QueryPool createQueryPool(vk::QueryType queryType, u32 queryCount);
 
     /// @note descriptor
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,

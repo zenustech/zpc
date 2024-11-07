@@ -23,8 +23,8 @@
 #include "zensim/vulkan/VkCommand.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
 #include "zensim/vulkan/VkImage.hpp"
-#include "zensim/vulkan/VkQueryPool.hpp"
 #include "zensim/vulkan/VkPipeline.hpp"
+#include "zensim/vulkan/VkQueryPool.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
 #include "zensim/vulkan/VkShader.hpp"
 #include "zensim/vulkan/VkSwapchain.hpp"
@@ -943,20 +943,12 @@ namespace zs {
     return obj;
   }
 
-  QueryPool VulkanContext::createQueryPool(vk::QueryType queryType, uint32_t queryCount) {
-    QueryPool q{ *this };
-
-    {
-      VkQueryPoolCreateInfo info{};
-      info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-      info.queryType = VkQueryType(queryType);
-      info.queryCount = queryCount;
-      info.flags = {};
-      info.pipelineStatistics = 0;
-      info.pNext = nullptr;
-      q.queryPool = this->device.createQueryPool(info, nullptr, dispatcher);
-    }
-
+  QueryPool VulkanContext::createQueryPool(vk::QueryType queryType, u32 queryCount) {
+    QueryPool q{*this};
+    auto info = vk::QueryPoolCreateInfo{}.setQueryType(queryType).setQueryCount(queryCount);
+    q.queryPool = this->device.createQueryPool(info, nullptr, dispatcher);
+    q.queryType = queryType;
+    q.queryCount = queryCount;
     return q;
   }
 

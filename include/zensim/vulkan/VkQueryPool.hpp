@@ -5,30 +5,33 @@
 namespace zs {
   struct QueryPool {
   public:
-    QueryPool() = delete;
-    QueryPool(VulkanContext& _ctx) : ctx(_ctx), queryPool(VK_NULL_HANDLE) {}
-    QueryPool(QueryPool&& o) noexcept : ctx(o.ctx), queryPool(o.queryPool) {
-      o.queryPool = VK_NULL_HANDLE;
-    }
+    QueryPool(VulkanContext& ctx)
+        : ctx(ctx), queryPool{VK_NULL_HANDLE}, queryType{}, queryCount{0} {}
+    QueryPool(QueryPool&& o) noexcept
+        : ctx(o.ctx),
+          queryPool{zs::exchange(o.queryPool, VK_NULL_HANDLE)},
+          queryType{zs::exchange(o.queryType, {})},
+          queryCount{zs::exchange(o.queryCount, 0)} {}
     ~QueryPool() {
-      ctx.device.destroyQueryPool(queryPool, nullptr, ctx.dispatcher);
-      queryPool = VK_NULL_HANDLE;
+      if (queryPool) {
+        ctx.device.destroyQueryPool(queryPool, nullptr, ctx.dispatcher);
+        queryPool = VK_NULL_HANDLE;
+        queryCount = 0;
+      }
     }
 
-    vk::QueryPool operator*() const {
-      return queryPool;
-    }
-    operator VkQueryPool() const {
-      return queryPool;
-    }
-    operator vk::QueryPool() const {
-      return queryPool;
-    }
+    u32 getCount() const noexcept { return queryCount; }
+
+    vk::QueryPool operator*() const { return queryPool; }
+    operator VkQueryPool() const { return queryPool; }
+    operator vk::QueryPool() const { return queryPool; }
 
   protected:
     friend struct VulkanContext;
 
     VulkanContext& ctx;
     vk::QueryPool queryPool;
+    vk::QueryType queryType;
+    u32 queryCount;
   };
-}
+}  // namespace zs

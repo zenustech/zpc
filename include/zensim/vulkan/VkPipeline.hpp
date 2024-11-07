@@ -166,6 +166,10 @@ namespace zs {
       this->depthStencilInfo.setDepthTestEnable(enable);
       return *this;
     }
+    PipelineBuilder& setDepthWriteEnable(bool enable) {
+      this->depthStencilInfo.setDepthWriteEnable(enable);
+      return *this;
+    }
     PipelineBuilder& setTopology(vk::PrimitiveTopology topology) {
       this->inputAssemblyInfo.setTopology(topology);
       return *this;

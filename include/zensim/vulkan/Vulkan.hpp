@@ -10,6 +10,7 @@
 #include "zensim/vulkan/VkContext.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
 #include "zensim/vulkan/VkImage.hpp"
+#include "zensim/vulkan/VkQueryPool.hpp"
 // #include "zensim/vulkan/VkModel.hpp"
 #include "zensim/vulkan/VkPipeline.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"

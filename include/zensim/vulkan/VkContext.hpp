@@ -34,6 +34,7 @@ namespace zs {
   struct DescriptorPool;
   struct ExecutionContext;
   struct VkTexture;
+  struct QueryPool;
 
   struct Vulkan;
 
@@ -218,6 +219,9 @@ namespace zs {
 
     Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
                                   vk::RenderPass renderPass);
+
+    /// @note query pool
+    QueryPool createQueryPool(vk::QueryType queryType, uint32_t queryCount);
 
     /// @note descriptor
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,

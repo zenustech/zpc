@@ -23,6 +23,7 @@
 #include "zensim/vulkan/VkCommand.hpp"
 #include "zensim/vulkan/VkDescriptor.hpp"
 #include "zensim/vulkan/VkImage.hpp"
+#include "zensim/vulkan/VkQueryPool.hpp"
 #include "zensim/vulkan/VkPipeline.hpp"
 #include "zensim/vulkan/VkRenderPass.hpp"
 #include "zensim/vulkan/VkShader.hpp"
@@ -940,6 +941,23 @@ namespace zs {
         (u32)1};
     obj.framebuffer = device.createFramebuffer(ci, nullptr, dispatcher);
     return obj;
+  }
+
+  QueryPool VulkanContext::createQueryPool(vk::QueryType queryType, uint32_t queryCount) {
+    QueryPool q{ *this };
+
+    {
+      VkQueryPoolCreateInfo info{};
+      info.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+      info.queryType = VkQueryType(queryType);
+      info.queryCount = queryCount;
+      info.flags = {};
+      info.pipelineStatistics = 0;
+      info.pNext = nullptr;
+      q.queryPool = this->device.createQueryPool(info, nullptr, dispatcher);
+    }
+
+    return q;
   }
 
   VkCommand VulkanContext::createCommandBuffer(vk_cmd_usage_e usage, vk_queue_e queueFamily,

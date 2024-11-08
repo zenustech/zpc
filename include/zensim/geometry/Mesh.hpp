@@ -13,20 +13,23 @@ namespace zs {
     using Elem = std::array<Tn, dimE>;
     using UV = std::array<float, 2>;
     using Norm = std::array<float, 3>;
+    using Tan = std::array<float, 3>;
     using Color = std::array<float, 3>;
     std::vector<Node> nodes;
     std::vector<Elem> elems;
     std::vector<UV> uvs;
     std::vector<Norm> norms;
+    std::vector<Tan> tans;
     std::vector<Color> colors;
     std::string texturePath;
 
     inline void clear() {
       nodes.clear();
+      elems.clear();
       uvs.clear();
       norms.clear();
+      tans.clear();
       colors.clear();
-      elems.clear();
       texturePath.clear();
     }
   };

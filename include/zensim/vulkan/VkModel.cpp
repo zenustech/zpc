@@ -30,7 +30,8 @@ namespace zs {
     auto& pool = env.pools(preferredQueueType);
     // auto copyQueue = env.pools(zs::vk_queue_e::transfer).queue;
     // auto copyQueue = pool.allQueues.back();
-    auto& cmd = *pool.primaryCmd;
+    // auto& cmd = *pool.primaryCmd;
+    auto cmd = ctx.createCommandBuffer(vk_cmd_usage_e::single_use, preferredQueueType, false);
     auto copyQueue = ctx.getLastQueue(preferredQueueType);
     // vk::CommandBuffer cmd = pool.createCommandBuffer(vk::CommandBufferLevel::ePrimary, false,
     //     nullptr, zs::vk_cmd_usage_e::single_use);
@@ -144,12 +145,16 @@ namespace zs {
     (*cmd).copyBuffer(stagingIndexBuffer.get(), indices.get(), {copyRegion});
 
     cmd.end();
-    // auto submitInfo = vk::SubmitInfo().setCommandBufferCount(1).setPCommandBuffers(&cmd);
     // vk::Fence fence = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
     auto& fence = *pool.fence;
-    // ctx.device.resetFences(1, &fence);
-    // auto res = copyQueue.submit(1, &submitInfo, fence, ctx.dispatcher);
+#if 0
     cmd.submit(fence, true, true);
+    fence.wait();
+#else
+    ctx.device.resetFences({fence}, ctx.dispatcher);
+    vk::CommandBuffer cmd_ = *cmd;
+    auto submitInfo = vk::SubmitInfo().setCommandBufferCount(1).setPCommandBuffers(&cmd_);
+    auto res = copyQueue.submit(1, &submitInfo, fence, ctx.dispatcher);
     fence.wait();
     // if (ctx.device.waitForFences(1, &fence, VK_TRUE, std::numeric_limits<u64>::max(),
     //                              ctx.dispatcher)
@@ -158,6 +163,8 @@ namespace zs {
     // ctx.device.destroyFence(fence, nullptr, ctx.dispatcher);
     // ctx.device.freeCommandBuffers(pool.cmdpool(zs::vk_cmd_usage_e::single_use), cmd,
     //                               ctx.dispatcher);
+#endif
+
 #else
     /// @note pos
     auto numBytes = sizeof(float) * 3 * vs.size();

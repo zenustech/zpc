@@ -16,6 +16,7 @@ namespace zs {
     const auto& clrs = surfs.colors;
     const auto& uvs = surfs.uvs;
     const auto& nrms = surfs.norms;
+    const auto& tans = surfs.tans;
 
     texturePath = surfs.texturePath;
 
@@ -40,11 +41,12 @@ namespace zs {
 
     /// @note pos
     auto numBytes = sizeof(float) * 3 * vs.size();
-    if (!stagingBuffer || numBytes > stagingBuffer.get().getSize())
+    if (!stagingBuffer || numBytes > stagingBuffer.get().getSize()) {
+      if (stagingBuffer) stagingBuffer.get().unmap();
       stagingBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingBuffer.get().map();
+      stagingBuffer.get().map();
+    }
     memcpy(stagingBuffer.get().mappedAddress(), vs.data(), numBytes);
-    stagingBuffer.get().unmap();
     //
     if (!verts.pos || numBytes > verts.pos.get().getSize())
       verts.pos = ctx.createBuffer(
@@ -56,14 +58,15 @@ namespace zs {
     /// @note colors
     std::vector<std::array<float, 3>> vals(
         vs.size(), std::array<float, 3>{0.7f, 0.7f, 0.7f});  // use 0.7 as default color
-    if (!stagingColorBuffer || numBytes > stagingColorBuffer.get().getSize())
+    if (!stagingColorBuffer || numBytes > stagingColorBuffer.get().getSize()) {
+      if (stagingColorBuffer) stagingColorBuffer.get().unmap();
       stagingColorBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingColorBuffer.get().map();
+      stagingColorBuffer.get().map();
+    }
     if (clrs.size() == vs.size())
       memcpy(stagingColorBuffer.get().mappedAddress(), clrs.data(), numBytes);
     else
       memcpy(stagingColorBuffer.get().mappedAddress(), vals.data(), numBytes);
-    stagingColorBuffer.get().unmap();
     if (!verts.clr || numBytes > verts.clr.get().getSize())
       verts.clr = ctx.createBuffer(
           numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
@@ -71,35 +74,57 @@ namespace zs {
     (*cmd).copyBuffer(stagingColorBuffer.get(), verts.clr.get(), {copyRegion});
 
     /// @note normals
-    if (!stagingNrmBuffer || numBytes > stagingNrmBuffer.get().getSize())
+    if (!stagingNrmBuffer || numBytes > stagingNrmBuffer.get().getSize()) {
+      if (stagingNrmBuffer) stagingNrmBuffer.get().unmap();
       stagingNrmBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingNrmBuffer.get().map();
+      stagingNrmBuffer.get().map();
+    }
     if (nrms.size() == vs.size())
       memcpy(stagingNrmBuffer.get().mappedAddress(), nrms.data(), numBytes);
     else {
       compute_mesh_normal(surfs, 1.f, vals);
       memcpy(stagingNrmBuffer.get().mappedAddress(), vals.data(), numBytes);
     }
-    stagingNrmBuffer.get().unmap();
     if (!verts.nrm || numBytes > verts.nrm.get().getSize())
       verts.nrm = ctx.createBuffer(
           numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
           vk::MemoryPropertyFlagBits::eDeviceLocal);
     (*cmd).copyBuffer(stagingNrmBuffer.get(), verts.nrm.get(), {copyRegion});
 
+    /// @note tangents
+    if (!stagingTangentBuffer || numBytes > stagingTangentBuffer.get().getSize()) {
+      if (stagingTangentBuffer) stagingTangentBuffer.get().unmap();
+      stagingTangentBuffer = ctx.createStagingBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferSrc);
+      stagingTangentBuffer.get().map();
+    }
+    if (tans.size() == vs.size()) {
+      memcpy(stagingTangentBuffer.get().mappedAddress(), tans.data(), numBytes);
+    } else {
+      std::vector<std::array<float, 3>> defaultTans{vs.size(), {0.0f, 0.0f, 0.f}};
+      memcpy(stagingTangentBuffer.get().mappedAddress(), defaultTans.data(), numBytes);
+    }
+    if (!verts.tan || numBytes > verts.tan.get().getSize())
+      verts.tan = ctx.createBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
+    copyRegion.size = numBytes;
+    (*cmd).copyBuffer(stagingTangentBuffer.get(), verts.tan.get(), {copyRegion});
+
     /// @note uvs
     numBytes = 2 * sizeof(float) * vs.size();
-    if (!stagingUVBuffer || numBytes > stagingUVBuffer.get().getSize())
+    if (!stagingUVBuffer || numBytes > stagingUVBuffer.get().getSize()) {
+      if (stagingUVBuffer) stagingUVBuffer.get().unmap();
       stagingUVBuffer = ctx.createStagingBuffer(
           numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferSrc);
-    stagingUVBuffer.get().map();
+      stagingUVBuffer.get().map();
+    }
     if (uvs.size() == vs.size()) {
       memcpy(stagingUVBuffer.get().mappedAddress(), uvs.data(), numBytes);
     } else {
       std::vector<std::array<float, 2>> defaultUVs{vs.size(), {0.0f, 0.0f}};
       memcpy(stagingUVBuffer.get().mappedAddress(), defaultUVs.data(), numBytes);
     }
-    stagingUVBuffer.get().unmap();
     if (!verts.uv || numBytes > verts.uv.get().getSize())
       verts.uv = ctx.createBuffer(
           numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
@@ -108,10 +133,12 @@ namespace zs {
     (*cmd).copyBuffer(stagingUVBuffer.get(), verts.uv.get(), {copyRegion});
 
     auto numIndexBytes = sizeof(u32) * vs.size();
-    if (!stagingVidBuffer || numIndexBytes > stagingVidBuffer.get().getSize())
+    if (!stagingVidBuffer || numIndexBytes > stagingVidBuffer.get().getSize()) {
+      if (stagingVidBuffer) stagingVidBuffer.get().unmap();
       stagingVidBuffer
           = ctx.createStagingBuffer(numIndexBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingVidBuffer.get().map();
+      stagingVidBuffer.get().map();
+    }
     std::vector<u32> hVids(vs.size());
 #  if ZS_ENABLE_OPENMP
     auto pol = omp_exec();
@@ -120,7 +147,6 @@ namespace zs {
 #  endif
     pol(enumerate(hVids), [](u32 i, u32& dst) { dst = i; });
     memcpy(stagingVidBuffer.get().mappedAddress(), hVids.data(), numIndexBytes);
-    stagingVidBuffer.get().unmap();
     if (!verts.vids || numIndexBytes > verts.vids.get().getSize())
       verts.vids = ctx.createBuffer(
           numIndexBytes,
@@ -131,11 +157,12 @@ namespace zs {
 
     /// @note tris
     numBytes = sizeof(Ti) * 3 * is.size();
-    if (!stagingIndexBuffer || numBytes > stagingIndexBuffer.get().getSize())
+    if (!stagingIndexBuffer || numBytes > stagingIndexBuffer.get().getSize()) {
+      if (stagingIndexBuffer) stagingIndexBuffer.get().unmap();
       stagingIndexBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
-    stagingIndexBuffer.get().map();
+      stagingIndexBuffer.get().map();
+    }
     memcpy(stagingIndexBuffer.get().mappedAddress(), is.data(), numBytes);
-    stagingIndexBuffer.get().unmap();
 
     if (!indices || numBytes > indices.get().getSize())
       indices = ctx.createBuffer(
@@ -147,10 +174,10 @@ namespace zs {
     cmd.end();
     // vk::Fence fence = ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
     auto& fence = *pool.fence;
-#if 0
+#  if 0
     cmd.submit(fence, true, true);
     fence.wait();
-#else
+#  else
     ctx.device.resetFences({fence}, ctx.dispatcher);
     vk::CommandBuffer cmd_ = *cmd;
     auto submitInfo = vk::SubmitInfo().setCommandBufferCount(1).setPCommandBuffers(&cmd_);
@@ -163,7 +190,7 @@ namespace zs {
     // ctx.device.destroyFence(fence, nullptr, ctx.dispatcher);
     // ctx.device.freeCommandBuffers(pool.cmdpool(zs::vk_cmd_usage_e::single_use), cmd,
     //                               ctx.dispatcher);
-#endif
+#  endif
 
 #else
     /// @note pos
@@ -249,6 +276,99 @@ namespace zs {
     indices.get().unmap();
     indices.get().flush();
 #endif
+  }
+
+  void VkModel::updateAttribsFromMesh(const Mesh<float, 3, u32, 3>& surfs, bool updatePos,
+                                      bool updateColor, bool updateUv, bool updateNormal,
+                                      bool updateTangent) {
+    using Ti = u32;
+
+    const auto& vs = surfs.nodes;
+    const auto& clrs = surfs.colors;
+    const auto& uvs = surfs.uvs;
+    const auto& nrms = surfs.norms;
+    const auto& tans = surfs.tans;
+
+    if (verts.vertexCount == 0 || !verts.pos
+        || !(updatePos || updateColor || updateUv || updateNormal || updateTangent))
+      return;
+    if (verts.vertexCount != vs.size()) {
+      std::cerr << "the zs mesh to update from has a different point size " << vs.size()
+                << " with current size " << verts.vertexCount << std::endl;
+      return;
+    }
+    // indexCount = is.size() * 3;
+
+    auto& ctx = *verts.pos.get().pCtx();
+    auto& env = ctx.env();
+    auto preferredQueueType = ctx.isQueueValid(zs::vk_queue_e::dedicated_transfer)
+                                  ? zs::vk_queue_e::dedicated_transfer
+                                  : zs::vk_queue_e::transfer;
+    auto& pool = env.pools(preferredQueueType);
+    auto cmd = ctx.createCommandBuffer(vk_cmd_usage_e::single_use, preferredQueueType, false);
+    auto copyQueue = ctx.getLastQueue(preferredQueueType);
+
+    cmd.begin(vk::CommandBufferBeginInfo{});
+    vk::BufferCopy copyRegion{};
+
+    vk::DeviceSize numBytes;
+    /// @note pos
+    if (updatePos) {
+      numBytes = sizeof(float) * 3 * vs.size();
+      memcpy(stagingBuffer.get().mappedAddress(), vs.data(), numBytes);
+      copyRegion.size = numBytes;
+      (*cmd).copyBuffer(stagingBuffer.get(), verts.pos.get(), {copyRegion});
+    }
+
+    /// @note colors
+    if (updateColor) {
+      assert(verts.vertexCount == clrs.size());
+      numBytes = sizeof(float) * 3 * clrs.size();
+      memcpy(stagingColorBuffer.get().mappedAddress(), clrs.data(), numBytes);
+      copyRegion.size = numBytes;
+      (*cmd).copyBuffer(stagingColorBuffer.get(), verts.clr.get(), {copyRegion});
+    }
+
+    /// @note normals
+    if (updateNormal || updatePos) {
+      numBytes = sizeof(float) * 3 * verts.vertexCount;
+      if (verts.vertexCount == nrms.size()) {
+        memcpy(stagingNrmBuffer.get().mappedAddress(), nrms.data(), numBytes);
+      } else {
+        std::vector<std::array<float, 3>> vals(verts.vertexCount);
+        compute_mesh_normal(surfs, 1.f, vals);
+        memcpy(stagingNrmBuffer.get().mappedAddress(), vals.data(), numBytes);
+      }
+      copyRegion.size = numBytes;
+      (*cmd).copyBuffer(stagingNrmBuffer.get(), verts.nrm.get(), {copyRegion});
+    }
+
+    /// @note tangent
+    if (updateTangent) {
+      assert(verts.vertexCount == tans.size());
+      numBytes = sizeof(float) * 3 * verts.vertexCount;
+      memcpy(stagingTangentBuffer.get().mappedAddress(), tans.data(), numBytes);
+      copyRegion.size = numBytes;
+      (*cmd).copyBuffer(stagingTangentBuffer.get(), verts.tan.get(), {copyRegion});
+    }
+
+    /// @note uvs
+    if (updateUv) {
+      assert(verts.vertexCount == uvs.size());
+      numBytes = sizeof(float) * 2 * uvs.size();
+      memcpy(stagingUVBuffer.get().mappedAddress(), uvs.data(), numBytes);
+      copyRegion.size = numBytes;
+      (*cmd).copyBuffer(stagingUVBuffer.get(), verts.uv.get(), {copyRegion});
+    }
+
+    cmd.end();
+    auto& fence = *pool.fence;
+
+    ctx.device.resetFences({fence}, ctx.dispatcher);
+    vk::CommandBuffer cmd_ = *cmd;
+    auto submitInfo = vk::SubmitInfo().setCommandBufferCount(1).setPCommandBuffers(&cmd_);
+    auto res = copyQueue.submit(1, &submitInfo, fence, ctx.dispatcher);
+    fence.wait();
   }
 
   VkModel::VkModel(VulkanContext& ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3>& surfs,

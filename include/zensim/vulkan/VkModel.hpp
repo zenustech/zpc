@@ -14,12 +14,12 @@ namespace zs {
       // vec3: pos, color, normal
       // vec2: uv
       vk::DeviceSize vertexCount;
-      Owner<Buffer> pos, nrm, clr, uv;
+      Owner<Buffer> pos, nrm, tan, clr, uv;
       Owner<Buffer> vids;  // optional
     };
     // staging buffers
-    Owner<Buffer> stagingBuffer, stagingNrmBuffer, stagingColorBuffer, stagingUVBuffer,
-        stagingVidBuffer, stagingIndexBuffer;
+    Owner<Buffer> stagingBuffer, stagingNrmBuffer, stagingTangentBuffer, stagingColorBuffer,
+        stagingUVBuffer, stagingVidBuffer, stagingIndexBuffer;
 
     Buffer &getColorBuffer() { return verts.clr.get(); }
 
@@ -32,9 +32,20 @@ namespace zs {
     VkModel(VkModel &&o) = default;
     VkModel &operator=(VkModel &&o) = default;
     void parseFromMesh(VulkanContext &, const Mesh<float, 3, u32, 3> &surfs);
+    void updateAttribsFromMesh(const Mesh<float, 3, u32, 3> &surfs, bool updatePos,
+                               bool updateColor, bool updateUv, bool updateNormal,
+                               bool updateTangent);
     void reset() {
+      if (stagingBuffer) stagingBuffer.get().unmap();
+      if (stagingNrmBuffer) stagingNrmBuffer.get().unmap();
+      if (stagingTangentBuffer) stagingTangentBuffer.get().unmap();
+      if (stagingColorBuffer) stagingColorBuffer.get().unmap();
+      if (stagingUVBuffer) stagingUVBuffer.get().unmap();
+      if (stagingVidBuffer) stagingVidBuffer.get().unmap();
+      if (stagingIndexBuffer) stagingIndexBuffer.get().unmap();
       verts.pos.reset();
       verts.nrm.reset();
+      verts.tan.reset();
       verts.clr.reset();
       verts.uv.reset();
       verts.vids.reset();

@@ -61,6 +61,13 @@ namespace zs {
     void draw(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
     void bind(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
 
+    static std::vector<vk::VertexInputBindingDescription> get_binding_descriptions_color(
+        draw_category_e e = draw_category_e::tri) noexcept;
+    static std::vector<vk::VertexInputAttributeDescription> get_attribute_descriptions_color(
+        draw_category_e e = draw_category_e::tri) noexcept;
+    void drawColor(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
+    void bindColor(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
+
     bool isParticle() const noexcept { return indexCount == 0; }
     bool isValid() const noexcept { return verts.vertexCount > 0; }
 

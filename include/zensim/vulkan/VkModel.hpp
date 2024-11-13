@@ -35,6 +35,10 @@ namespace zs {
     void updateAttribsFromMesh(const Mesh<float, 3, u32, 3> &surfs, bool updatePos,
                                bool updateColor, bool updateUv, bool updateNormal,
                                bool updateTangent);
+    void parseFromMesh(VulkanContext &, vk::CommandBuffer, const Mesh<float, 3, u32, 3> &surfs);
+    void updateAttribsFromMesh(vk::CommandBuffer, const Mesh<float, 3, u32, 3> &surfs,
+                               bool updatePos, bool updateColor, bool updateUv, bool updateNormal,
+                               bool updateTangent);
     void reset() {
       if (stagingBuffer) stagingBuffer.get().unmap();
       if (stagingNrmBuffer) stagingNrmBuffer.get().unmap();
@@ -67,6 +71,13 @@ namespace zs {
         draw_category_e e = draw_category_e::tri) noexcept;
     void drawColor(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
     void bindColor(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
+
+    static std::vector<vk::VertexInputBindingDescription> get_binding_descriptions_uv(
+        draw_category_e e = draw_category_e::tri) noexcept;
+    static std::vector<vk::VertexInputAttributeDescription> get_attribute_descriptions_uv(
+        draw_category_e e = draw_category_e::tri) noexcept;
+    void drawUV(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
+    void bindUV(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
 
     bool isParticle() const noexcept { return indexCount == 0; }
     bool isValid() const noexcept { return verts.vertexCount > 0; }

@@ -170,6 +170,10 @@ namespace zs {
       this->depthStencilInfo.setDepthWriteEnable(enable);
       return *this;
     }
+    PipelineBuilder& setDepthCompareOp(vk::CompareOp compareOp) {
+      this->depthStencilInfo.setDepthCompareOp(compareOp);
+      return *this;
+    }
     PipelineBuilder& setTopology(vk::PrimitiveTopology topology) {
       this->inputAssemblyInfo.setTopology(topology);
       return *this;

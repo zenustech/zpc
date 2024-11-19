@@ -162,6 +162,28 @@ namespace zs {
       this->colorBlendAttachments[i].setBlendEnable(enable);
       return *this;
     }
+    PipelineBuilder& setAlphaBlendOp(vk::BlendOp blendOp, u32 i = 0) {
+      this->colorBlendAttachments[i].setAlphaBlendOp(blendOp);
+      return *this;
+    }
+    PipelineBuilder& setAlphaBlendFactor(vk::BlendFactor srcFactor, vk::BlendFactor dstFactor, u32 i = 0) {
+      this->colorBlendAttachments[i].setSrcAlphaBlendFactor(srcFactor);
+      this->colorBlendAttachments[i].setDstAlphaBlendFactor(dstFactor);
+      return *this;
+    }
+    PipelineBuilder& setColorBlendOp(vk::BlendOp blendOp, u32 i = 0) {
+      this->colorBlendAttachments[i].setColorBlendOp(blendOp);
+      return *this;
+    }
+    PipelineBuilder& setColorBlendFactor(vk::BlendFactor srcFactor, vk::BlendFactor dstFactor, u32 i = 0) {
+      this->colorBlendAttachments[i].setSrcColorBlendFactor(srcFactor);
+      this->colorBlendAttachments[i].setDstColorBlendFactor(dstFactor);
+      return *this;
+    }
+    PipelineBuilder& setColorWriteMask(vk::ColorComponentFlagBits colorWriteMask, u32 i = 0) {
+      this->colorBlendAttachments[i].setColorWriteMask(colorWriteMask);
+      return *this;
+    }
     PipelineBuilder& setDepthTestEnable(bool enable) {
       this->depthStencilInfo.setDepthTestEnable(enable);
       return *this;

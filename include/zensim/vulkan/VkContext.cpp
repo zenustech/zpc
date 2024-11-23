@@ -591,6 +591,7 @@ namespace zs {
 
     vk::DescriptorBindingFlags bindlessFlag = vk::DescriptorBindingFlagBits::ePartiallyBound
                                               | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+    // | vk::DescriptorBindingFlagBits::eVariableDescriptorCount
     std::array<vk::DescriptorBindingFlags, vk_descriptor_e::num_descriptor_types> bindingFlags;
     for (auto& flag : bindingFlags) flag = bindlessFlag;
     bindingFlags[vk_descriptor_e::input_attachment]

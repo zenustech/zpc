@@ -32,6 +32,7 @@ namespace zs {
     operator const vk::DescriptorSetLayout&() const { return descriptorSetLayout; }
 
     vk::DescriptorSetLayoutBinding getBinding(u32 binding) const { return bindings.at(binding); }
+    auto numBindings() const noexcept { return bindings.size(); }
 
   protected:
     friend struct VulkanContext;

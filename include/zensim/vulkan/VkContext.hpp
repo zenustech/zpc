@@ -166,6 +166,10 @@ namespace zs {
       // Might want to create a "DescriptorPoolManager" class that handles this case, and builds
       // a new pool whenever an old pool fills up. But this is beyond our current scope
     }
+    const auto &bindlessPool() const noexcept { return bindlessDescriptorPool; }
+    const auto &bindlessSetLayout() const noexcept { return bindlessDescriptorSetLayout; }
+    const auto &bindlessSet() const noexcept { return bindlessDescriptorSet; }
+
     SwapchainBuilder &swapchain(vk::SurfaceKHR surface = VK_NULL_HANDLE, bool reset = false);
     PipelineBuilder pipeline();
     RenderPassBuilder renderpass();

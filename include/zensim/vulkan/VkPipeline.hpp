@@ -119,11 +119,12 @@ namespace zs {
 
     /// @note if shaders are set through zs::ShaderModule, no need to explicitly configure
     /// descriptor set layouts anymore
-    PipelineBuilder& addDescriptorSetLayout(vk::DescriptorSetLayout descrSetLayout, int no = -1) {
-      if (no == -1) {
+    PipelineBuilder& addDescriptorSetLayout(vk::DescriptorSetLayout descrSetLayout,
+                                            int setNo = -1) {
+      if (setNo == -1) {
         descriptorSetLayouts[descriptorSetLayouts.size()] = descrSetLayout;
       } else
-        descriptorSetLayouts[no] = descrSetLayout;
+        descriptorSetLayouts[setNo] = descrSetLayout;
       return *this;
     }
     PipelineBuilder& setDescriptorSetLayouts(const std::map<u32, DescriptorSetLayout>& layouts,
@@ -166,7 +167,8 @@ namespace zs {
       this->colorBlendAttachments[i].setAlphaBlendOp(blendOp);
       return *this;
     }
-    PipelineBuilder& setAlphaBlendFactor(vk::BlendFactor srcFactor, vk::BlendFactor dstFactor, u32 i = 0) {
+    PipelineBuilder& setAlphaBlendFactor(vk::BlendFactor srcFactor, vk::BlendFactor dstFactor,
+                                         u32 i = 0) {
       this->colorBlendAttachments[i].setSrcAlphaBlendFactor(srcFactor);
       this->colorBlendAttachments[i].setDstAlphaBlendFactor(dstFactor);
       return *this;
@@ -175,7 +177,8 @@ namespace zs {
       this->colorBlendAttachments[i].setColorBlendOp(blendOp);
       return *this;
     }
-    PipelineBuilder& setColorBlendFactor(vk::BlendFactor srcFactor, vk::BlendFactor dstFactor, u32 i = 0) {
+    PipelineBuilder& setColorBlendFactor(vk::BlendFactor srcFactor, vk::BlendFactor dstFactor,
+                                         u32 i = 0) {
       this->colorBlendAttachments[i].setSrcColorBlendFactor(srcFactor);
       this->colorBlendAttachments[i].setDstColorBlendFactor(dstFactor);
       return *this;

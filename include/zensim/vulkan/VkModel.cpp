@@ -275,6 +275,8 @@ namespace zs {
     indices.get().unmap();
     indices.get().flush();
 #endif
+
+    updatePointTextureId(cmd);  // init
   }
 
   void VkModel::updateAttribsFromMesh(const Mesh<float, 3, u32, 3>& surfs, bool updatePos,
@@ -375,6 +377,58 @@ namespace zs {
       copyRegion.size = numBytes;
       cmd.copyBuffer(stagingUVBuffer.get(), verts.uv.get(), {copyRegion});
     }
+  }
+
+  void VkModel::updatePointTextureId(const int* texIds, size_t numBytes) {
+    auto& ctx = *verts.pos.get().pCtx();
+    auto& env = ctx.env();
+    auto preferredQueueType = ctx.isQueueValid(zs::vk_queue_e::dedicated_transfer)
+                                  ? zs::vk_queue_e::dedicated_transfer
+                                  : zs::vk_queue_e::transfer;
+    auto& pool = env.pools(preferredQueueType);
+    auto cmd = ctx.createCommandBuffer(vk_cmd_usage_e::single_use, preferredQueueType, false);
+    auto copyQueue = ctx.getLastQueue(preferredQueueType);
+
+    cmd.begin(vk::CommandBufferBeginInfo{});
+
+    updatePointTextureId(*cmd, texIds, numBytes);
+
+    cmd.end();
+    auto& fence = *pool.fence;
+
+    ctx.device.resetFences({fence}, ctx.dispatcher);
+    vk::CommandBuffer cmd_ = *cmd;
+    auto submitInfo = vk::SubmitInfo().setCommandBufferCount(1).setPCommandBuffers(&cmd_);
+    auto res = copyQueue.submit(1, &submitInfo, fence, ctx.dispatcher);
+    fence.wait();
+  }
+
+  void VkModel::updatePointTextureId(vk::CommandBuffer cmd, const int* texIds, size_t numBytes) {
+    if (verts.vertexCount == 0 || !verts.pos || (texIds && numBytes == 0)) return;
+
+    if (texIds == nullptr) numBytes = verts.vertexCount * 2 * sizeof(int);
+    /// @note texture ids
+    auto& ctx = *verts.pos.get().pCtx();
+    if (!stagingTexIdBuffer || numBytes > stagingTexIdBuffer.get().getSize()) {
+      if (stagingTexIdBuffer) stagingTexIdBuffer.get().unmap();
+      stagingTexIdBuffer = ctx.createStagingBuffer(numBytes, vk::BufferUsageFlagBits::eTransferSrc);
+      stagingTexIdBuffer.get().map();
+    }
+    if (!verts.texid || numBytes > verts.texid.get().getSize())
+      verts.texid = ctx.createBuffer(
+          numBytes, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+          vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+    if (texIds)
+      memcpy(stagingTexIdBuffer.get().mappedAddress(), texIds, numBytes);
+    else {
+      std::vector<int> tmp(verts.vertexCount * 2, 0);
+      memcpy(stagingTexIdBuffer.get().mappedAddress(), tmp.data(), numBytes);
+    }
+
+    vk::BufferCopy copyRegion{};
+    copyRegion.size = numBytes;
+    cmd.copyBuffer(stagingTexIdBuffer.get(), verts.texid.get(), {copyRegion});
   }
 
   VkModel::VkModel(VulkanContext& ctx, const Mesh<float, /*dim*/ 3, u32, /*codim*/ 3>& surfs,
@@ -597,7 +651,9 @@ namespace zs {
         return std::vector<vk::VertexInputBindingDescription>{
             {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
             {1, /*normal*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
-            {2, /*uv*/ sizeof(float) * 2, vk::VertexInputRate::eVertex}};
+            {2, /*uv*/ sizeof(float) * 2, vk::VertexInputRate::eVertex},
+            {3, /*texid*/ sizeof(int) * 2, vk::VertexInputRate::eVertex},
+        };
       case draw_category_e::line:
         return std::vector<vk::VertexInputBindingDescription>{
             {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
@@ -618,7 +674,9 @@ namespace zs {
         return std::vector<vk::VertexInputAttributeDescription>{
             {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
             {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
-            {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32Sfloat, /*offset*/ (u32)0}};
+            {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32Sfloat, /*offset*/ (u32)0},
+            {/*location*/ 3, /*binding*/ 3, vk::Format::eR32G32Sint, /*offset*/ (u32)0},
+        };
       case draw_category_e::line:
         return std::vector<vk::VertexInputAttributeDescription>{
             {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
@@ -654,8 +712,9 @@ namespace zs {
   void VkModel::bindUV(const vk::CommandBuffer& cmd, draw_category_e e) const {
     switch (e) {
       case draw_category_e::tri: {
-        std::array<vk::Buffer, 3> buffers{verts.pos.get(), verts.nrm.get(), verts.uv.get()};
-        std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
+        std::array<vk::Buffer, 4> buffers{verts.pos.get(), verts.nrm.get(), verts.uv.get(),
+                                          verts.texid.get()};
+        std::array<vk::DeviceSize, 4> offsets{0, 0, 0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
         cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);

@@ -341,6 +341,9 @@ namespace zs {
     vk12Features.shaderSampledImageArrayNonUniformIndexing
         = supportedVk12Features.shaderSampledImageArrayNonUniformIndexing;
 
+    vk12Features.descriptorBindingUpdateUnusedWhilePending
+        = supportedVk12Features.descriptorBindingUpdateUnusedWhilePending;
+
     vk12Features.descriptorBindingUniformBufferUpdateAfterBind
         = supportedVk12Features.descriptorBindingUniformBufferUpdateAfterBind;
     vk12Features.descriptorBindingSampledImageUpdateAfterBind
@@ -350,6 +353,20 @@ namespace zs {
     vk12Features.descriptorBindingStorageImageUpdateAfterBind
         = supportedVk12Features.descriptorBindingStorageImageUpdateAfterBind;
     this->enabledVk12Features = vk12Features;
+
+#if 0
+    fmt::print(
+        "shaderSampledImageArrayNonUniformIndexing: {}, "
+        "descriptorBindingSampledImageUpdateAfterBind: {}, descriptorBindingPartiallyBound: {}, "
+        "descriptorBindingVariableDescriptorCount: {}, descriptorBindingUpdateUnusedWhilePending: "
+        "{}\n",
+        supportedVk12Features.shaderSampledImageArrayNonUniformIndexing,
+        supportedVk12Features.descriptorBindingSampledImageUpdateAfterBind,
+        supportedVk12Features.descriptorBindingPartiallyBound,
+        supportedVk12Features.descriptorBindingVariableDescriptorCount,
+        supportedVk12Features.descriptorBindingUpdateUnusedWhilePending);
+    getchar();
+#endif
 
     // dynamic states features
     vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeaturesEXT{};

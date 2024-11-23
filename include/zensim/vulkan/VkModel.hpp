@@ -15,11 +15,12 @@ namespace zs {
       // vec2: uv
       vk::DeviceSize vertexCount;
       Owner<Buffer> pos, nrm, tan, clr, uv;
-      Owner<Buffer> vids;  // optional
+      Owner<Buffer> texid;  // <texture type, dst arr element>
+      Owner<Buffer> vids;   // optional
     };
     // staging buffers
     Owner<Buffer> stagingBuffer, stagingNrmBuffer, stagingTangentBuffer, stagingColorBuffer,
-        stagingUVBuffer, stagingVidBuffer, stagingIndexBuffer;
+        stagingUVBuffer, stagingTexIdBuffer, stagingVidBuffer, stagingIndexBuffer;
 
     Buffer &getColorBuffer() { return verts.clr.get(); }
 
@@ -39,6 +40,9 @@ namespace zs {
     void updateAttribsFromMesh(vk::CommandBuffer, const Mesh<float, 3, u32, 3> &surfs,
                                bool updatePos, bool updateColor, bool updateUv, bool updateNormal,
                                bool updateTangent);
+    /// @note aos layout, <texture type, texture element index>
+    void updatePointTextureId(const int *ids = nullptr, size_t numBytes = 0);
+    void updatePointTextureId(vk::CommandBuffer, const int *ids = nullptr, size_t numBytes = 0);
     void reset() {
       if (stagingBuffer) stagingBuffer.get().unmap();
       if (stagingNrmBuffer) stagingNrmBuffer.get().unmap();

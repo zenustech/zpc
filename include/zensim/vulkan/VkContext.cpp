@@ -276,11 +276,14 @@ namespace zs {
     }
 
     // query properties 2
+    vk::PhysicalDeviceDescriptorIndexingProperties descriptorIndexingProperties;
     vk::PhysicalDeviceDepthStencilResolveProperties dsResolveProperties{};
+    dsResolveProperties.pNext = &descriptorIndexingProperties;
     vk::PhysicalDeviceProperties2 devProperties{};
     devProperties.pNext = &dsResolveProperties;
     physicalDevice.getProperties2(&devProperties);
 
+    this->descriptorIndexingProperties = descriptorIndexingProperties;
     this->depthStencilResolveProperties = dsResolveProperties;
     this->deviceProperties = devProperties;
 
@@ -460,6 +463,24 @@ namespace zs {
       fmt::print("\t\t[{}] flag:\t{:0>10b} ({})\n", typeIndex, static_cast<BitType>(propertyFlags),
                  tag);
     }
+    fmt::print("[DESCRIPTOR LIMITS]\n");
+    fmt::print("max per-stage samplers: {} (update_after_bind: {})\n",
+               maxPerStageDescriptorSamplers(), maxPerStageDescriptorUpdateAfterBindSamplers());
+    fmt::print("max per-stage sampled images: {} (update_after_bind: {})\n",
+               maxPerStageDescriptorSampledImages(),
+               maxPerStageDescriptorUpdateAfterBindSampledImages());
+    fmt::print("max per-stage storage images: {} (update_after_bind: {})\n",
+               maxPerStageDescriptorStorageImages(),
+               maxPerStageDescriptorUpdateAfterBindStorageImages());
+    fmt::print("max per-stage storage buffers: {} (update_after_bind: {})\n",
+               maxPerStageDescriptorStorageBuffers(),
+               maxPerStageDescriptorUpdateAfterBindStorageBuffers());
+    fmt::print("max per-stage uniform buffers: {} (update_after_bind: {})\n",
+               maxPerStageDescriptorUniformBuffers(),
+               maxPerStageDescriptorUpdateAfterBindUniformBuffers());
+    fmt::print("max per-stage input attachments: {} (update_after_bind: {})\n",
+               maxPerStageDescriptorInputAttachments(),
+               maxPerStageDescriptorUpdateAfterBindInputAttachments());
   }
 
   void VulkanContext::destructDescriptorPool() {
@@ -562,32 +583,38 @@ namespace zs {
     uniformBinding = vk::DescriptorSetLayoutBinding{}
                          .setBinding(bindless_texture_binding)
                          .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-                         .setDescriptorCount(num_max_bindless_resources)
+                         .setDescriptorCount(
+                             std::max(1u, maxPerStageDescriptorUpdateAfterBindUniformBuffers() - 2))
                          .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& imageSamplerBinding = bindings[vk_descriptor_e::image_sampler];
     imageSamplerBinding = vk::DescriptorSetLayoutBinding{}
                               .setBinding(bindless_texture_binding + 1)
                               .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                              .setDescriptorCount(num_max_bindless_resources)
+                              .setDescriptorCount(std::min(
+                                  maxDescriptorSetUpdateAfterBindSamplers(),
+                                  std::min(maxPerStageDescriptorUpdateAfterBindSamplers(),
+                                           maxPerStageDescriptorUpdateAfterBindSampledImages())))
                               .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& storageBinding = bindings[vk_descriptor_e::storage];
     storageBinding = vk::DescriptorSetLayoutBinding{}
                          .setBinding(bindless_texture_binding + 2)
                          .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                         .setDescriptorCount(num_max_bindless_resources)
+                         .setDescriptorCount(maxPerStageDescriptorUpdateAfterBindStorageBuffers())
                          .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& storageImageBinding = bindings[vk_descriptor_e::storage_image];
-    storageImageBinding = vk::DescriptorSetLayoutBinding{}
-                              .setBinding(bindless_texture_binding + 3)
-                              .setDescriptorType(vk::DescriptorType::eStorageImage)
-                              .setDescriptorCount(num_max_bindless_resources)
-                              .setStageFlags(vk::ShaderStageFlagBits::eAll);
+    storageImageBinding
+        = vk::DescriptorSetLayoutBinding{}
+              .setBinding(bindless_texture_binding + 3)
+              .setDescriptorType(vk::DescriptorType::eStorageImage)
+              .setDescriptorCount(maxPerStageDescriptorUpdateAfterBindStorageImages())
+              .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& inputAttachmentBinding = bindings[vk_descriptor_e::input_attachment];
-    inputAttachmentBinding = vk::DescriptorSetLayoutBinding{}
-                                 .setBinding(bindless_texture_binding + 4)
-                                 .setDescriptorType(vk::DescriptorType::eInputAttachment)
-                                 .setDescriptorCount(num_max_bindless_resources)
-                                 .setStageFlags(vk::ShaderStageFlagBits::eFragment);
+    inputAttachmentBinding
+        = vk::DescriptorSetLayoutBinding{}
+              .setBinding(bindless_texture_binding + 4)
+              .setDescriptorType(vk::DescriptorType::eInputAttachment)
+              .setDescriptorCount(maxPerStageDescriptorUpdateAfterBindInputAttachments())
+              .setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
     vk::DescriptorBindingFlags bindlessFlag = vk::DescriptorBindingFlagBits::ePartiallyBound
                                               | vk::DescriptorBindingFlagBits::eUpdateAfterBind;

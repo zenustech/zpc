@@ -98,7 +98,12 @@ namespace zs {
 
     auto getDevId() const noexcept { return devid; }
 
-    /// queries
+    /// behaviors
+    void reset();
+
+    ///
+    /// queue
+    ///
     u32 numDistinctQueueFamilies() const noexcept { return uniqueQueueFamilyIndices.size(); }
 
     vk::PhysicalDevice getPhysicalDevice() const noexcept { return physicalDevice; }
@@ -125,9 +130,14 @@ namespace zs {
     }
     /// @note usually queried for dedicated queue types (e.g. compute/transfer)
     bool isQueueValid(vk_queue_e e) const { return queueFamilyIndices[e] != -1; }
-    vk::DescriptorPool descriptorPool() const noexcept { return defaultDescriptorPool; }
-    VmaAllocator &allocator() noexcept { return defaultAllocator; }
+
+    void sync() const { device.waitIdle(dispatcher); }
+
+    ///
+    /// property queries
+    ///
     const VmaAllocator &allocator() const noexcept { return defaultAllocator; }
+    VmaAllocator &allocator() noexcept { return defaultAllocator; }
 
     bool supportDepthResolveModes(vk::ResolveModeFlags expected) const noexcept {
       return (expected & depthStencilResolveProperties.supportedDepthResolveModes) == expected;
@@ -143,15 +153,38 @@ namespace zs {
     bool supportGraphics() const { return queueFamilyIndices[vk_queue_e::graphics] != -1; }
     /// @note usually called right before swapchain creation for assurance
     bool supportSurface(vk::SurfaceKHR surface) const;
+
+    // various descriptor types
+    // samplers
+    inline u32 maxPerStageDescriptorUpdateAfterBindSamplers() const noexcept;
+    inline u32 maxDescriptorSetUpdateAfterBindSamplers() const noexcept;
+    inline u32 maxPerStageDescriptorSamplers() const noexcept;
+    // sampled image
+    inline u32 maxPerStageDescriptorUpdateAfterBindSampledImages() const noexcept;
+    inline u32 maxPerStageDescriptorSampledImages() const noexcept;
+    // storage image
+    inline u32 maxPerStageDescriptorUpdateAfterBindStorageImages() const noexcept;
+    inline u32 maxPerStageDescriptorStorageImages() const noexcept;
+    // storage buffer
+    inline u32 maxPerStageDescriptorUpdateAfterBindStorageBuffers() const noexcept;
+    inline u32 maxPerStageDescriptorStorageBuffers() const noexcept;
+    // uniform buffer
+    inline u32 maxPerStageDescriptorUpdateAfterBindUniformBuffers() const noexcept;
+    inline u32 maxPerStageDescriptorUniformBuffers() const noexcept;
+    // input attachment
+    inline u32 maxPerStageDescriptorUpdateAfterBindInputAttachments() const noexcept;
+    inline u32 maxPerStageDescriptorInputAttachments() const noexcept;
+
     u32 numMemoryTypes() const { return memoryProperties.memoryTypeCount; }
     u32 findMemoryType(u32 memoryTypeBits, vk::MemoryPropertyFlags properties) const;
     vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates,
                                    vk::ImageTiling tiling, vk::FormatFeatureFlags features) const;
     vk::FormatProperties getFormatProperties(vk::Format) const noexcept;
 
-    /// behaviors
-    void reset();
-    void sync() const { device.waitIdle(dispatcher); }
+    ///
+    /// descriptor
+    ///
+    vk::DescriptorPool descriptorPool() const noexcept { return defaultDescriptorPool; }
 
     /// resource builders
     void setupDescriptorPool();
@@ -259,6 +292,7 @@ namespace zs {
 
     vk::PhysicalDeviceMemoryProperties memoryProperties;
     vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
+    vk::PhysicalDeviceDescriptorIndexingProperties descriptorIndexingProperties;
     vk::PhysicalDeviceProperties2 deviceProperties;
 
     VkPhysicalDeviceVulkan12Features supportedVk12Features, enabledVk12Features;
@@ -278,6 +312,52 @@ namespace zs {
     // generally at most one swapchain is associated with a context, thus reuse preferred
     SwapchainBuilderOwner swapchainBuilder;
   };
+
+  // samplers
+  u32 VulkanContext::maxPerStageDescriptorUpdateAfterBindSamplers() const noexcept {
+    return descriptorIndexingProperties.maxPerStageDescriptorUpdateAfterBindSamplers;
+  }
+  u32 VulkanContext::maxPerStageDescriptorSamplers() const noexcept {
+    return deviceProperties.properties.limits.maxPerStageDescriptorSamplers;
+  }
+  u32 VulkanContext::maxDescriptorSetUpdateAfterBindSamplers() const noexcept {
+    return descriptorIndexingProperties.maxDescriptorSetUpdateAfterBindSamplers;
+  }
+  // sampled image
+  u32 VulkanContext::maxPerStageDescriptorUpdateAfterBindSampledImages() const noexcept {
+    return descriptorIndexingProperties.maxPerStageDescriptorUpdateAfterBindSampledImages;
+  }
+  u32 VulkanContext::maxPerStageDescriptorSampledImages() const noexcept {
+    return deviceProperties.properties.limits.maxPerStageDescriptorSampledImages;
+  }
+  // storage image
+  u32 VulkanContext::maxPerStageDescriptorUpdateAfterBindStorageImages() const noexcept {
+    return descriptorIndexingProperties.maxPerStageDescriptorUpdateAfterBindStorageImages;
+  }
+  u32 VulkanContext::maxPerStageDescriptorStorageImages() const noexcept {
+    return deviceProperties.properties.limits.maxPerStageDescriptorStorageImages;
+  }
+  // storage buffer
+  u32 VulkanContext::maxPerStageDescriptorUpdateAfterBindStorageBuffers() const noexcept {
+    return descriptorIndexingProperties.maxPerStageDescriptorUpdateAfterBindStorageBuffers;
+  }
+  u32 VulkanContext::maxPerStageDescriptorStorageBuffers() const noexcept {
+    return deviceProperties.properties.limits.maxPerStageDescriptorStorageBuffers;
+  }
+  // uniform buffer
+  u32 VulkanContext::maxPerStageDescriptorUpdateAfterBindUniformBuffers() const noexcept {
+    return descriptorIndexingProperties.maxPerStageDescriptorUpdateAfterBindUniformBuffers;
+  }
+  u32 VulkanContext::maxPerStageDescriptorUniformBuffers() const noexcept {
+    return deviceProperties.properties.limits.maxPerStageDescriptorUniformBuffers;
+  }
+  // input attachment
+  u32 VulkanContext::maxPerStageDescriptorUpdateAfterBindInputAttachments() const noexcept {
+    return descriptorIndexingProperties.maxPerStageDescriptorUpdateAfterBindInputAttachments;
+  }
+  u32 VulkanContext::maxPerStageDescriptorInputAttachments() const noexcept {
+    return deviceProperties.properties.limits.maxPerStageDescriptorInputAttachments;
+  }
 
   struct ZPC_CORE_API ExecutionContext {
     ExecutionContext(VulkanContext &ctx);

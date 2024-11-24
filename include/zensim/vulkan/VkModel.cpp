@@ -644,6 +644,92 @@ namespace zs {
     }
   }
 
+  std::vector<vk::VertexInputBindingDescription> VkModel::get_binding_descriptions_normal_color(
+      draw_category_e e) noexcept {
+    switch (e) {
+      case draw_category_e::tri:
+        return std::vector<vk::VertexInputBindingDescription>{
+            {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
+            {1, /*normal*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
+            {2, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex}};
+      case draw_category_e::line:
+        return std::vector<vk::VertexInputBindingDescription>{
+            {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
+            {1, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex}};
+      case draw_category_e::point:
+        // radius is specified through push constant
+        return std::vector<vk::VertexInputBindingDescription>{
+            {0, /*pos*/ sizeof(float) * 3, vk::VertexInputRate::eVertex},
+            {1, /*color*/ sizeof(float) * 3, vk::VertexInputRate::eVertex}};
+      default:;
+    }
+    return {};
+  }
+  std::vector<vk::VertexInputAttributeDescription> VkModel::get_attribute_descriptions_normal_color(
+      draw_category_e e) noexcept {
+    switch (e) {
+      case draw_category_e::tri:
+        return std::vector<vk::VertexInputAttributeDescription>{
+            {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+            {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+            {/*location*/ 2, /*binding*/ 2, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0}};
+      case draw_category_e::line:
+        return std::vector<vk::VertexInputAttributeDescription>{
+            {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+            {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0}};
+      case draw_category_e::point:
+        return std::vector<vk::VertexInputAttributeDescription>{
+            {/*location*/ 0, /*binding*/ 0, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0},
+            {/*location*/ 1, /*binding*/ 1, vk::Format::eR32G32B32Sfloat, /*offset*/ (u32)0}};
+      default:;
+    }
+    return {};
+  }
+  void VkModel::drawNormalColor(const vk::CommandBuffer& cmd, draw_category_e e) const {
+    switch (e) {
+      case draw_category_e::tri:
+        cmd.drawIndexed(/*index count*/ indexCount, /*instance count*/ 1,
+                        /*first index*/ 0, /*vertex offset*/ 0,
+                        /*first instance*/ 0, indices.get().ctx.dispatcher);
+        break;
+      case draw_category_e::line:
+        cmd.drawIndexed(/*index count*/ indexCount, /*instance count*/ 1,
+                        /*first index*/ 0, /*vertex offset*/ 0,
+                        /*first instance*/ 0, indices.get().ctx.dispatcher);
+        break;
+      case draw_category_e::point:
+        cmd.draw(/*vertex count*/ verts.vertexCount, /*instance count*/ 1,
+                 /*first vertex*/ 0, /*first instance*/ 0, indices.get().ctx.dispatcher);
+        break;
+      default:;
+    }
+  }
+
+  void VkModel::bindNormalColor(const vk::CommandBuffer& cmd, draw_category_e e) const {
+    switch (e) {
+      case draw_category_e::tri: {
+        std::array<vk::Buffer, 3> buffers{verts.pos.get(), verts.nrm.get(), verts.clr.get()};
+        std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
+        cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
+        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+                            indices.get().ctx.dispatcher);
+      } break;
+      case draw_category_e::line: {
+        std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
+        std::array<vk::DeviceSize, 2> offsets{0, 0};
+        cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
+        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+                            indices.get().ctx.dispatcher);
+      } break;
+      case draw_category_e::point: {
+        std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
+        std::array<vk::DeviceSize, 2> offsets{0, 0};
+        cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
+      } break;
+      default:;
+    }
+  }
+
   std::vector<vk::VertexInputBindingDescription> VkModel::get_binding_descriptions_uv(
       draw_category_e e) noexcept {
     switch (e) {

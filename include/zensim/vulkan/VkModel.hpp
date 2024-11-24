@@ -76,6 +76,15 @@ namespace zs {
     void drawColor(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
     void bindColor(const vk::CommandBuffer &cmd, draw_category_e e = draw_category_e::tri) const;
 
+    static std::vector<vk::VertexInputBindingDescription> get_binding_descriptions_normal_color(
+        draw_category_e e = draw_category_e::tri) noexcept;
+    static std::vector<vk::VertexInputAttributeDescription> get_attribute_descriptions_normal_color(
+        draw_category_e e = draw_category_e::tri) noexcept;
+    void drawNormalColor(const vk::CommandBuffer &cmd,
+                         draw_category_e e = draw_category_e::tri) const;
+    void bindNormalColor(const vk::CommandBuffer &cmd,
+                         draw_category_e e = draw_category_e::tri) const;
+
     static std::vector<vk::VertexInputBindingDescription> get_binding_descriptions_uv(
         draw_category_e e = draw_category_e::tri) noexcept;
     static std::vector<vk::VertexInputAttributeDescription> get_attribute_descriptions_uv(

@@ -580,40 +580,48 @@ namespace zs {
     /// set layout
     std::array<vk::DescriptorSetLayoutBinding, vk_descriptor_e::num_descriptor_types> bindings;
     auto& uniformBinding = bindings[vk_descriptor_e::uniform];
-    uniformBinding = vk::DescriptorSetLayoutBinding{}
-                         .setBinding(bindless_texture_binding)
-                         .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-                         .setDescriptorCount(
-                             std::max(1u, maxPerStageDescriptorUpdateAfterBindUniformBuffers() - 2))
-                         .setStageFlags(vk::ShaderStageFlagBits::eAll);
+    uniformBinding
+        = vk::DescriptorSetLayoutBinding{}
+              .setBinding(bindless_texture_binding)
+              .setDescriptorType(vk::DescriptorType::eUniformBuffer)
+              .setDescriptorCount(
+                  std::min(num_max_bindless_resources,
+                           std::max(1u, maxPerStageDescriptorUpdateAfterBindUniformBuffers() - 2)))
+              .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& imageSamplerBinding = bindings[vk_descriptor_e::image_sampler];
-    imageSamplerBinding = vk::DescriptorSetLayoutBinding{}
-                              .setBinding(bindless_texture_binding + 1)
-                              .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-                              .setDescriptorCount(std::min(
-                                  maxDescriptorSetUpdateAfterBindSamplers(),
-                                  std::min(maxPerStageDescriptorUpdateAfterBindSamplers(),
-                                           maxPerStageDescriptorUpdateAfterBindSampledImages())))
-                              .setStageFlags(vk::ShaderStageFlagBits::eAll);
+    imageSamplerBinding
+        = vk::DescriptorSetLayoutBinding{}
+              .setBinding(bindless_texture_binding + 1)
+              .setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+              .setDescriptorCount(
+                  std::min(num_max_bindless_resources,
+                           std::min(maxDescriptorSetUpdateAfterBindSamplers(),
+                                    std::min(maxPerStageDescriptorUpdateAfterBindSamplers(),
+                                             maxPerStageDescriptorUpdateAfterBindSampledImages()))))
+              .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& storageBinding = bindings[vk_descriptor_e::storage];
-    storageBinding = vk::DescriptorSetLayoutBinding{}
-                         .setBinding(bindless_texture_binding + 2)
-                         .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-                         .setDescriptorCount(maxPerStageDescriptorUpdateAfterBindStorageBuffers())
-                         .setStageFlags(vk::ShaderStageFlagBits::eAll);
+    storageBinding
+        = vk::DescriptorSetLayoutBinding{}
+              .setBinding(bindless_texture_binding + 2)
+              .setDescriptorType(vk::DescriptorType::eStorageBuffer)
+              .setDescriptorCount(std::min(num_max_bindless_resources,
+                                           maxPerStageDescriptorUpdateAfterBindStorageBuffers()))
+              .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& storageImageBinding = bindings[vk_descriptor_e::storage_image];
     storageImageBinding
         = vk::DescriptorSetLayoutBinding{}
               .setBinding(bindless_texture_binding + 3)
               .setDescriptorType(vk::DescriptorType::eStorageImage)
-              .setDescriptorCount(maxPerStageDescriptorUpdateAfterBindStorageImages())
+              .setDescriptorCount(std::min(num_max_bindless_resources,
+                                           maxPerStageDescriptorUpdateAfterBindStorageImages()))
               .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& inputAttachmentBinding = bindings[vk_descriptor_e::input_attachment];
     inputAttachmentBinding
         = vk::DescriptorSetLayoutBinding{}
               .setBinding(bindless_texture_binding + 4)
               .setDescriptorType(vk::DescriptorType::eInputAttachment)
-              .setDescriptorCount(maxPerStageDescriptorUpdateAfterBindInputAttachments())
+              .setDescriptorCount(std::min(num_max_bindless_resources,
+                                           maxPerStageDescriptorUpdateAfterBindInputAttachments()))
               .setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
     vk::DescriptorBindingFlags bindlessFlag = vk::DescriptorBindingFlagBits::ePartiallyBound

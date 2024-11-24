@@ -118,7 +118,8 @@ namespace zs {
   struct ZPC_CORE_API DescriptorWriter {
     DescriptorWriter(VulkanContext& ctx, const DescriptorSetLayout& setLayout) noexcept
         : ctx{ctx}, setLayout{setLayout} {}
-    // DescriptorWriter(VulkanContext& ctx) noexcept : ctx{ctx}, setLayout{DescriptorSetLayout{ctx}} {}
+    // DescriptorWriter(VulkanContext& ctx) noexcept : ctx{ctx}, setLayout{DescriptorSetLayout{ctx}}
+    // {}
 
     DescriptorWriter& writeBuffer(u32 binding, vk::DescriptorBufferInfo* bufferInfo) {
       if (setLayout.bindings.count(binding) != 1)
@@ -172,6 +173,19 @@ namespace zs {
       vk::WriteDescriptorSet write{};
       write.descriptorType = type;
       write.dstBinding = binding;
+      write.pImageInfo = imageInfo;
+      write.descriptorCount = 1;
+
+      writes.push_back(write);
+      return *this;
+    }
+    /// @note usually for bindless set
+    DescriptorWriter& writeImageI(u32 binding, vk::DescriptorType type, u32 i,
+                                  vk::DescriptorImageInfo* imageInfo) {
+      vk::WriteDescriptorSet write{};
+      write.descriptorType = type;
+      write.dstBinding = binding;
+      write.dstArrayElement = i;
       write.pImageInfo = imageInfo;
       write.descriptorCount = 1;
 

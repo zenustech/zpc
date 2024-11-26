@@ -50,6 +50,7 @@ namespace zs {
     const auto& uvs = surfs.uvs;
     const auto& nrms = surfs.norms;
     const auto& tans = surfs.tans;
+    const auto& texids = surfs.texids;
 
     texturePath = surfs.texturePath;
 
@@ -276,7 +277,8 @@ namespace zs {
     indices.get().flush();
 #endif
 
-    updatePointTextureId(cmd);  // init
+    updatePointTextureId(cmd, reinterpret_cast<const int*>(texids.data()),
+                         texids.size() * sizeof(RM_REF_T(texids)::value_type));  // init texture ids
   }
 
   void VkModel::updateAttribsFromMesh(const Mesh<float, 3, u32, 3>& surfs, bool updatePos,

@@ -15,12 +15,14 @@ namespace zs {
     using Norm = std::array<float, 3>;
     using Tan = std::array<float, 3>;
     using Color = std::array<float, 3>;
+    using TexId = std::array<int, 2>;  // <type, element id>
     std::vector<Node> nodes;
     std::vector<Elem> elems;
     std::vector<UV> uvs;
     std::vector<Norm> norms;
     std::vector<Tan> tans;
     std::vector<Color> colors;
+    std::vector<TexId> texids;
     std::string texturePath;
 
     inline void clear() {
@@ -30,6 +32,7 @@ namespace zs {
       norms.clear();
       tans.clear();
       colors.clear();
+      texids.clear();
       texturePath.clear();
     }
   };

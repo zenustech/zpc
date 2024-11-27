@@ -21,6 +21,7 @@ void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 int printf(const char *, ...);
 
 #  elif defined(ZS_PLATFORM_WINDOWS)
+#    ifdef ZPC_JIT_MODE
 ZPC_ACRTIMP void *malloc(zs::size_t __size);
 void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 struct _iobuf;
@@ -34,7 +35,6 @@ __declspec(noinline) __inline unsigned __int64 *__zs_local_stdio_printf_options(
   static unsigned __int64 _OptionsStorage;
   return &_OptionsStorage;
 }
-#    ifdef ZPC_JIT_MODE
 inline int printf(char const *const fmtstr, ...) {
   int _Result;
   char *_ArgList;

@@ -436,6 +436,12 @@ else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_CUDA=0)
 endif(ZS_ENABLE_CUDA)
 
+if(ZS_ENABLE_JIT)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_JIT=1)
+else()
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_JIT=0)
+endif(ZS_ENABLE_JIT)
+
 if(ZS_ENABLE_VULKAN)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_VULKAN=1)
 else()

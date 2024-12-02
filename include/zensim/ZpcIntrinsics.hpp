@@ -21,9 +21,9 @@ void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 int printf(const char *, ...);
 
 #  elif defined(ZS_PLATFORM_WINDOWS)
+void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 #    ifdef ZPC_JIT_MODE
 ZPC_ACRTIMP void *malloc(zs::size_t __size);
-void *memcpy(void *__dest, const void *__src, zs::size_t __n);
 struct _iobuf;
 struct __crt_locale_pointers;
 using FILE = _iobuf;

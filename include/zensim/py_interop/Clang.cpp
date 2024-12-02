@@ -106,8 +106,12 @@ namespace zs {
     // msvc
     compiler_instance.getLangOpts().MicrosoftExt = 1;
     compiler_instance.getLangOpts().DeclSpecKeyword = 1;
-
+    
+#if LLVM_VERSION_MAJOR >= 19
+    compiler_instance.createDiagnostics(compiler_instance.getVirtualFileSystem(), text_diagnostic_printer.get(), false);
+#else
     compiler_instance.createDiagnostics(text_diagnostic_printer.get(), false);
+#endif
 
     clang::EmitLLVMOnlyAction emit_llvm_only_action(&context);
     bool success = compiler_instance.ExecuteAction(emit_llvm_only_action);

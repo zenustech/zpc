@@ -519,7 +519,7 @@ if(ZS_ENABLE_OPENMP)
       -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
 
       VERBATIM
-      DEPENDS zpcomp 
+      # DEPENDS zpcomp 
         COMMENT "copying zpc omp deps"
     )
   endif(WIN32 AND ZS_BUILD_SHARED_LIBS)
@@ -926,7 +926,7 @@ if(ZS_ENABLE_JIT)
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${lib} $<TARGET_FILE_DIR:zpc_py_interop>
         VERBATIM
-        DEPENDS zpc_py_interop 
+        # DEPENDS zpc_py_interop 
           COMMENT "copying zpc_jit_py related python runtime shared library [${lib}]"
       )
     endforeach()
@@ -940,7 +940,7 @@ if(ZS_ENABLE_JIT)
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zswhereami> $<TARGET_FILE_DIR:zpc_jit_clang>
 
       VERBATIM
-      DEPENDS zpc_jit_clang 
+      # DEPENDS zpc_jit_clang 
         COMMENT "copying JIT-dependent runtime shared library [$<TARGET_FILE:zswhereami>]"
     )
     find_package(LLVM CONFIG)
@@ -956,7 +956,7 @@ if(ZS_ENABLE_JIT)
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:zpc_jit_clang>/$<TARGET_FILE_BASE_NAME:${lib}>$<TARGET_FILE_SUFFIX:${lib}>
             VERBATIM
-            DEPENDS zpc_jit_clang 
+            # DEPENDS zpc_jit_clang 
               COMMENT "copying JIT-dependent llvm/clang runtime shared libraries [$<TARGET_FILE:${lib}>]"
           )
         endif(lib_type STREQUAL "SHARED_LIBRARY")
@@ -972,7 +972,7 @@ if(ZS_ENABLE_JIT)
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccore> $<TARGET_FILE_DIR:zpc_jit_clang>
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpc> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-      DEPENDS zpc_jit_clang 
+      # DEPENDS zpc_jit_clang 
         COMMENT "copying JIT-dependent zpc core runtime shared libraries"
   )
   if (ZS_ENABLE_OPENMP)
@@ -981,7 +981,7 @@ if(ZS_ENABLE_JIT)
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpcomp> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-      DEPENDS zpc_jit_clang 
+      # DEPENDS zpc_jit_clang 
         COMMENT "copying JIT-dependent zpc (omp) runtime shared libraries"
     )
   endif(ZS_ENABLE_OPENMP)
@@ -991,7 +991,7 @@ if(ZS_ENABLE_JIT)
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccuda> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-      DEPENDS zpc_jit_clang 
+      # DEPENDS zpc_jit_clang 
         COMMENT "copying JIT-dependent zpc (cuda) runtime shared libraries"
     )
   endif(ZS_ENABLE_CUDA)
@@ -1014,7 +1014,7 @@ if (ZS_ENABLE_CUDA)
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cudart> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
 
     VERBATIM
-    DEPENDS zpc_jit_nvrtc 
+    # DEPENDS zpc_jit_nvrtc 
       COMMENT "copying nvrtc related runtime shared libraries"
   )
 #[=[
@@ -1025,7 +1025,7 @@ if (TARGET CUDA::nvJitLink)
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvJitLink> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
 
     VERBATIM
-    DEPENDS zpc_jit_nvrtc 
+    # DEPENDS zpc_jit_nvrtc 
     COMMENT "copying nvJitLink shared library"
   )
   endif()
@@ -1106,7 +1106,7 @@ if (WIN32 AND ZS_BUILD_SHARED_LIBS)
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
 
     VERBATIM
-    DEPENDS zpctool  
+    # DEPENDS zpctool  
       COMMENT "copying zpc tool deps"
   )
 endif(WIN32 AND ZS_BUILD_SHARED_LIBS)
@@ -1177,7 +1177,7 @@ add_custom_command(
     -DOUTPUT=${zs_cu_wrangler_output_file}
     -P bin2c_wrapper.cmake
   VERBATIM
-  DEPENDS zpctool
+  # DEPENDS zpctool
   COMMENT "converting ptx files to a header"
 )
 ]=]
@@ -1192,7 +1192,7 @@ add_custom_command(
 
     # COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_OBJECTS:zs_cu_wrangler> ${ZS_PTX_INCLUDE_DIR}
     VERBATIM
-    DEPENDS zpctool
+    # DEPENDS zpctool
     COMMENT "copying wrangler ptx files"
   )
 
@@ -1214,7 +1214,7 @@ add_custom_command(
   -P ${CMAKE_CURRENT_SOURCE_DIR}/cuda/copy_ptx.cmake
 
   VERBATIM
-  DEPENDS zpc
+  # DEPENDS zpc
     COMMENT "copying resource file [particles-1000k.dat] for poisson disk sampling"
 )
 
@@ -1241,7 +1241,7 @@ add_custom_command(
   ${RESOURCE_BASE_DIR}/resource/models
 
   VERBATIM
-  DEPENDS zpc
+  # DEPENDS zpc
     COMMENT "copying resource files (fonts, icons, textures...) for gui"
 )
 
@@ -1253,7 +1253,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Scripts/ ${RESOURCE_BASE_DIR}/resource
 
   VERBATIM
-  DEPENDS zpc
+  # DEPENDS zpc
     COMMENT "copying script files [${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Scripts/]"
 )
 

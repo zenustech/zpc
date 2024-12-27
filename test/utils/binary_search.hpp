@@ -22,15 +22,14 @@ namespace zs {
     policy(enumerate(r),
            [sz, samples = view<space>(samples)] ZS_LAMBDA(size_t i, const value_t &v) mutable {
              samples[i + 1] = v;
-             if (i == 0)
-               samples[0] = v - 1;
-             if (i == sz - 1)
-               samples[sz + 1] = v + 1;
+             if (i == 0) samples[0] = v - 1;
+             if (i == sz - 1) samples[sz + 1] = v + 1;
            });
     /// search results
     Vector<int> res{allocator, (size_t)(sz + 2)}, groundTruth{(size_t)(sz + 2)};
 
-    // binary search
+// binary search
+#if 0
     policy(enumerate(samples), [r, sz, res = view<space>(res)](int i, const auto &v) ZS_LAMBDA {
       using index_type = int;
       index_type left = 0, right = sz;
@@ -48,6 +47,33 @@ namespace zs {
       // left could be -1
       res[i] = left;
     });
+#elif 1
+    policy(enumerate(samples), [r, sz, res = view<space>(res)](int i, const auto &v) ZS_LAMBDA {
+      using index_type = int;
+      index_type left = 0, right = sz;  // [left, right)
+      while (left <= right) {
+        auto mid = left + (right - left) / 2;
+        if (r[mid] > v)
+          right = mid;
+        else
+          left = mid + 1;
+      }
+      res[i] = right - 1;
+    });
+#else
+    policy(enumerate(samples), [r, sz, res = view<space>(res)](int i, const auto &v) ZS_LAMBDA {
+      using index_type = int;
+      index_type left = 0, right = sz - 1;  // [left, right]
+      while (left <= right) {
+        auto mid = left + (right - left) / 2;
+        if (r[mid] > v)
+          right = mid - 1;
+        else
+          left = mid + 1;
+      }
+      res[i] = right;
+    });
+#endif
     res = res.clone({memsrc_e::host, -1});
 
     // ground truth
@@ -64,9 +90,7 @@ namespace zs {
       else {
         int j = 1;
         for (; j < sz; ++j)
-          if (sample < vals[j]) {
-            break;
-          }
+          if (sample < vals[j]) break;
         groundTruth[i] = j - 1;
       }
     });

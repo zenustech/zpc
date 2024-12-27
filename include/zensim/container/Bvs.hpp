@@ -15,7 +15,7 @@ namespace zs {
     using index_type = zs::make_signed_t<Index>;
     using size_type = zs::make_unsigned_t<Index>;
     static_assert(is_floating_point_v<value_type>, "value_type should be floating point");
-    static_assert(is_integral_v<index_type>, "index_type should be an integral");
+    static_assert(is_signed_v<index_type>, "index_type should be a signed integral");
 
     using mc_t = conditional_t<(sizeof(value_type) > sizeof(f64)), u64, u32>;
     using Box = AABBBox<dim, value_type>;
@@ -219,20 +219,15 @@ namespace zs {
 
     constexpr index_type locate(value_type v) const {
       // vs[i - 1] (if exist) < vs[i] <= v <= vs[i + 1]
-      index_type left = 0, right = numNodes();
-      while (left < right) {
+      index_type left = 0, right = numNodes() - 1;
+      while (left <= right) {
         auto mid = left + (right - left) / 2;
         if (_bvs(_axis, mid) > v)
-          right = mid;
+          right = mid - 1;
         else
           left = mid + 1;
       }
-      if (left < numNodes()) {
-        if (_bvs(_axis, left) > v) left--;
-      } else
-        left = numNodes() - 1;
-      // left could be -1
-      return left;
+      return right;
     }
 
     // BV can be either VecInterface<VecT> or AABBBox<dim, T>

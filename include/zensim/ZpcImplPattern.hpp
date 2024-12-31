@@ -14,7 +14,7 @@ namespace zs {
       ///  https://devblogs.microsoft.com/cppblog/optimizing-the-layout-of-empty-base-classes-in-vs2015-update-2-3/
       __declspec(empty_bases)
 #endif
-          Mixin : public Skills<Derived>... {
+      Mixin : public Skills<Derived>... {
   };
 
   struct ObjectConcept {
@@ -31,9 +31,7 @@ namespace zs {
     HierarchyConcept* parent() const {  // get parent widget, may return null for the root widget
       return _parent;
     }
-    HierarchyConcept*& parent() {  // get parent widget, may return null for the root widget
-      return _parent;
-    }
+    void setParent(HierarchyConcept* p) { _parent = p; }
 
   protected:
     HierarchyConcept* _parent{nullptr};
@@ -57,17 +55,16 @@ namespace zs {
     constexpr void accept(...) {}
     constexpr void accept(...) const {}
 
-    template <typename Visitor> constexpr auto accept(Visitor&& visitor)
-        -> decltype(FWD(visitor)(declval<Derived&>())) {
+    template <typename Visitor>
+    constexpr auto accept(Visitor&& visitor) -> decltype(FWD(visitor)(declval<Derived&>())) {
       return FWD(visitor)(*derivedPtr());
     }
     template <typename Visitor> constexpr auto accept(Visitor&& visitor) const
         -> decltype(FWD(visitor)(declval<const Derived&>())) {
       return FWD(visitor)(*derivedPtr());
     }
-    template <typename Policy, typename Visitor>
-    constexpr auto accept(Policy&& pol, Visitor&& visitor)
-        -> decltype(FWD(visitor)(FWD(pol), declval<Derived&>())) {
+    template <typename Policy, typename Visitor> constexpr auto accept(
+        Policy&& pol, Visitor&& visitor) -> decltype(FWD(visitor)(FWD(pol), declval<Derived&>())) {
       return FWD(visitor)(FWD(pol), *derivedPtr());
     }
     template <typename Policy, typename Visitor>
@@ -561,11 +558,10 @@ namespace zs {
     template <bool V = (!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>)
                        || is_copy_assignable_v<Type>>
     enable_if_type<V, Owner&> operator=(const Type& obj) noexcept(
-        ((!is_copy_assignable_v<Type>
-          && is_copy_constructible_v<Type>)&&is_nothrow_copy_constructible_v<Type>
-         && is_nothrow_destructible_v<Type>)
-        || ((is_copy_assignable_v<Type>)&&is_nothrow_copy_assignable_v<Type>
-            && is_nothrow_copy_constructible_v<Type>)) {
+        ((!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>)
+         && is_nothrow_copy_constructible_v<Type> && is_nothrow_destructible_v<Type>)
+        || ((is_copy_assignable_v<Type>)
+            && is_nothrow_copy_assignable_v<Type> && is_nothrow_copy_constructible_v<Type>)) {
       if constexpr (!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>) {
         if (_active) _storage.template destroy<Type>();
         _storage.template create<Type>(obj);
@@ -585,11 +581,10 @@ namespace zs {
     template <bool V = (!is_move_assignable_v<Type> && is_move_constructible_v<Type>)
                        || is_move_assignable_v<Type>>
     enable_if_type<V, Owner&> operator=(Type&& obj) noexcept(
-        ((!is_move_assignable_v<Type>
-          && is_move_constructible_v<Type>)&&is_nothrow_move_constructible_v<Type>
-         && is_nothrow_destructible_v<Type>)
-        || ((is_move_assignable_v<Type>)&&is_nothrow_move_assignable_v<Type>
-            && is_nothrow_move_constructible_v<Type>)) {
+        ((!is_move_assignable_v<Type> && is_move_constructible_v<Type>)
+         && is_nothrow_move_constructible_v<Type> && is_nothrow_destructible_v<Type>)
+        || ((is_move_assignable_v<Type>)
+            && is_nothrow_move_assignable_v<Type> && is_nothrow_move_constructible_v<Type>)) {
       if constexpr (!is_move_assignable_v<Type> && is_move_constructible_v<Type>) {
         if (_active) _storage.template destroy<Type>();
         _storage.template create<Type>(zs::move(obj));
@@ -610,11 +605,10 @@ namespace zs {
     template <bool V = (!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>)
                        || is_copy_assignable_v<Type>>
     enable_if_type<V, Owner&> operator=(const Owner& obj) noexcept(
-        ((!is_copy_assignable_v<Type>
-          && is_copy_constructible_v<Type>)&&is_nothrow_copy_constructible_v<Type>
-         && is_nothrow_destructible_v<Type>)
-        || ((is_copy_assignable_v<Type>)&&is_nothrow_copy_assignable_v<Type>
-            && is_nothrow_copy_constructible_v<Type>)) {
+        ((!is_copy_assignable_v<Type> && is_copy_constructible_v<Type>)
+         && is_nothrow_copy_constructible_v<Type> && is_nothrow_destructible_v<Type>)
+        || ((is_copy_assignable_v<Type>)
+            && is_nothrow_copy_assignable_v<Type> && is_nothrow_copy_constructible_v<Type>)) {
       if (this == zs::addressof(obj)) return *this;
       if (obj._active)
         operator=(obj.get());
@@ -627,11 +621,10 @@ namespace zs {
     template <bool V = (!is_move_assignable_v<Type> && is_move_constructible_v<Type>)
                        || is_move_assignable_v<Type>>
     enable_if_type<V, Owner&> operator=(Owner&& obj) noexcept(
-        ((!is_move_assignable_v<Type>
-          && is_move_constructible_v<Type>)&&is_nothrow_move_constructible_v<Type>
-         && is_nothrow_destructible_v<Type>)
-        || ((is_move_assignable_v<Type>)&&is_nothrow_move_assignable_v<Type>
-            && is_nothrow_move_constructible_v<Type>)) {
+        ((!is_move_assignable_v<Type> && is_move_constructible_v<Type>)
+         && is_nothrow_move_constructible_v<Type> && is_nothrow_destructible_v<Type>)
+        || ((is_move_assignable_v<Type>)
+            && is_nothrow_move_assignable_v<Type> && is_nothrow_move_constructible_v<Type>)) {
       if (this == &obj) return *this;
       if (obj._active) {
         operator=(zs::move(obj.get()));

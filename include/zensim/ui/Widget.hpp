@@ -4,6 +4,13 @@
 
 namespace zs {
 
+  using EventCategoryType = u32;
+  enum event_e : EventCategoryType { event_unknown = 0, event_gui = 10 };
+  struct ZsEvent {
+    virtual ~ZsEvent() = default;
+    virtual ZsEvent *clone() const { return nullptr; }
+    virtual event_e getEventType() const { return event_unknown; }
+  };
   /// @ref https://doc.qt.io/archives/qq/qq11-events.html
   using GuiEventType = u32;
   enum gui_event_e : GuiEventType {
@@ -21,9 +28,9 @@ namespace zs {
     gui_event_user = 8192,
     gui_event_user_max = 32768,
   };
-  struct GuiEvent {
-    virtual ~GuiEvent() = default;
-    virtual GuiEvent *clone() const = 0;
+  struct GuiEvent : virtual ZsEvent {
+    ~GuiEvent() override = default;
+    GuiEvent *clone() const override { return nullptr; }
     virtual gui_event_e getType() const { return gui_event_unknown; }
 
     void accept() { _accepted = true; }
@@ -59,6 +66,7 @@ namespace zs {
     virtual ~WidgetConcept() = default;
 
     virtual bool onEvent(GuiEvent *e) { return true; }
+    virtual bool eventFilter(ObjectConcept *obj, GuiEvent *e) { return false; }
     virtual void paint() = 0;
     virtual gui_widget_e getType() const { return gui_widget_unknown; }
   };

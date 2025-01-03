@@ -24,6 +24,7 @@ namespace zs {
     // keyboard
     gui_event_keyPressed,
     gui_event_keyReleased,
+    gui_event_keyCharacter,
     // user customization
     gui_event_user = 8192,
     gui_event_user_max = 32768,

@@ -17,9 +17,22 @@ namespace zs {
       Mixin : public Skills<Derived>... {
   };
 
+  using EventCategoryType = u32;
+  enum event_e : EventCategoryType { event_none = 0, event_gui = 10 };
+  struct ZsEvent {
+    virtual ~ZsEvent() = default;
+    virtual ZsEvent* cloneEvent() const { return nullptr; }
+    virtual event_e getEventType() const { return event_none; }
+  };
   struct ObjectConcept {
     virtual ~ObjectConcept() = default;
+
+    virtual ObjectConcept* cloneObject() const { return nullptr; }
+
+    virtual bool onEvent(ZsEvent* e) { return false; }
+    virtual bool eventFilter(ObjectConcept* obj, ZsEvent* e) { return false; }
   };
+
   // struct NodeConcept {
   // NodeConcept(NodeConcept* parent) noexcept : _parent{parent} {}
   // NodeConcept* _parent{nullptr};

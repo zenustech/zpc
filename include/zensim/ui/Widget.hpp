@@ -4,17 +4,10 @@
 
 namespace zs {
 
-  using EventCategoryType = u32;
-  enum event_e : EventCategoryType { event_unknown = 0, event_gui = 10 };
-  struct ZsEvent {
-    virtual ~ZsEvent() = default;
-    virtual ZsEvent *clone() const { return nullptr; }
-    virtual event_e getEventType() const { return event_unknown; }
-  };
   /// @ref https://doc.qt.io/archives/qq/qq11-events.html
   using GuiEventType = u32;
   enum gui_event_e : GuiEventType {
-    gui_event_unknown = 0,
+    gui_event_none = 0,
     // mouse
     gui_event_mousePressed,
     gui_event_mouseReleased,
@@ -31,8 +24,10 @@ namespace zs {
   };
   struct GuiEvent : virtual ZsEvent {
     ~GuiEvent() override = default;
-    GuiEvent *clone() const override { return nullptr; }
-    virtual gui_event_e getType() const { return gui_event_unknown; }
+    GuiEvent *cloneEvent() const override { return nullptr; }
+    event_e getEventType() const override { return event_gui; }
+
+    virtual gui_event_e getGuiEventType() const { return gui_event_none; }
 
     void accept() { _accepted = true; }
     void ignore() { _accepted = false; }
@@ -44,7 +39,7 @@ namespace zs {
 
   using GuiWidgetType = u32;
   enum gui_widget_e : GuiWidgetType {
-    gui_widget_unknown = 0,
+    gui_widget_none = 0,
     gui_widget_item,
     gui_widget_item_image,
     gui_widget_item_button,
@@ -66,10 +61,10 @@ namespace zs {
   struct WidgetConcept : virtual HierarchyConcept, virtual ObjectConcept {
     virtual ~WidgetConcept() = default;
 
-    virtual bool onEvent(GuiEvent *e) { return true; }
+    virtual bool onEvent(GuiEvent *e) { return false; }
     virtual bool eventFilter(ObjectConcept *obj, GuiEvent *e) { return false; }
     virtual void paint() = 0;
-    virtual gui_widget_e getType() const { return gui_widget_unknown; }
+    virtual gui_widget_e getWidgetType() const { return gui_widget_none; }
   };
   struct EmptyWidget : WidgetConcept {
     ~EmptyWidget() override = default;
@@ -78,7 +73,7 @@ namespace zs {
   struct WindowConcept : virtual WidgetConcept {
     virtual ~WindowConcept() = default;
 
-    virtual gui_widget_e getType() const { return gui_widget_window; }
+    gui_widget_e getWidgetType() const override { return gui_widget_window; }
     virtual void placeAt(u32 layoutNodeId) {}
   };
 

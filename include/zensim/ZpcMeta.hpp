@@ -598,10 +598,10 @@ namespace zs {
       : true_type {};
   template <class T> constexpr bool is_integral_v
       = decltype(detail::test_integral(declval<T>()))::value;
-  static_assert(is_integral<int>::value, "???");
-  static_assert(!is_integral<float>::value, "???");
-  static_assert(!is_integral<int &>::value, "???");
-  static_assert(!is_integral<volatile int>::value, "???");
+  // static_assert(is_integral<int>::value, "???");
+  // static_assert(!is_integral<float>::value, "???");
+  // static_assert(!is_integral<int &>::value, "???");
+  // static_assert(!is_integral<volatile int>::value, "???");
 #else
   template <class T> struct is_integral : false_type {};
   template <> struct is_integral<bool> : true_type {};

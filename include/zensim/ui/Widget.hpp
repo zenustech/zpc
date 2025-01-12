@@ -61,10 +61,16 @@ namespace zs {
   struct WidgetConcept : virtual HierarchyConcept, virtual ObjectConcept {
     virtual ~WidgetConcept() = default;
 
+    void setZsUserPointer(void *p) override { _userPointer = p; }
+    void *getZsUserPointer() const override { return _userPointer; }
+    /// @note GuiEvent different from event
     virtual bool onEvent(GuiEvent *e) { return false; }
     virtual bool eventFilter(ObjectConcept *obj, GuiEvent *e) { return false; }
     virtual void paint() = 0;
     virtual gui_widget_e getWidgetType() const { return gui_widget_none; }
+
+  protected:
+    void *_userPointer{nullptr};
   };
   struct EmptyWidget : WidgetConcept {
     ~EmptyWidget() override = default;

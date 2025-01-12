@@ -29,6 +29,8 @@ namespace zs {
 
     virtual ObjectConcept* cloneObject() const { return nullptr; }
 
+    virtual void setZsUserPointer(void* p) {}
+    virtual void* getZsUserPointer() const { return nullptr; }
     virtual bool onEvent(ZsEvent* e) { return false; }
     virtual bool eventFilter(ObjectConcept* obj, ZsEvent* e) { return false; }
   };

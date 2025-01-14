@@ -69,6 +69,17 @@ namespace zs {
     virtual void paint() = 0;
     virtual gui_widget_e getWidgetType() const { return gui_widget_none; }
 
+    /// @note checked and called in the following order.
+    /// @note returning true means an action actually takes place.
+    virtual bool onActivated() { return false; }
+    virtual bool onDeactivated() { return false; }
+    virtual bool onActive() { return false; }
+    virtual bool onVisible() { return false; }
+    virtual bool onFocused() { return false; }
+    virtual bool onHovered() { return false; }
+    virtual bool onMouseButtonClicked(int mouseButton) { return false; }
+    virtual bool onEdited() { return false; }
+
   protected:
     void *_userPointer{nullptr};
   };

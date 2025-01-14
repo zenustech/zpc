@@ -1030,4 +1030,7 @@ namespace zs {
     return view<space>(spmat, false_c, tagName);
   }
 
+  template <typename T, bool RowMajor, typename Ti, typename Tn, typename AllocatorT>
+  struct is_spmat<SparseMatrix<T, RowMajor, Ti, Tn, AllocatorT>> : true_type {};
+
 }  // namespace zs

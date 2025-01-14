@@ -1009,6 +1009,9 @@ namespace zs {
     }
   };
 
+  template <typename T, typename = void> struct is_spmat : false_type {};
+  template <typename T> constexpr bool is_spmat_v = is_spmat<T>::value;
+
   namespace detail {
     template <typename VecT, size_t dim, size_t... dims, size_t... Is>
     constexpr bool vec_fits_shape(integer_sequence<zs::size_t, dims...>,

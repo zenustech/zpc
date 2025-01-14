@@ -57,6 +57,8 @@ namespace zs {
     verts.vertexCount = vs.size();
     indexCount = is.size() * 3;
 
+    if (indexCount == 0) return;
+
 #if 1
     vk::BufferCopy copyRegion{};
 

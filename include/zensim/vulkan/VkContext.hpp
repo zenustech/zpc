@@ -9,6 +9,7 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
 #include "vma/vk_mem_alloc.h"
 //
+#include "zensim/types/SourceLocation.hpp"
 #include "zensim/vulkan/VkUtils.hpp"
 #include "zensim/zpc_tpls/fmt/format.h"
 
@@ -211,8 +212,8 @@ namespace zs {
 
     /// @note command buffer
     VkCommand createCommandBuffer(vk_cmd_usage_e usage,
-                                  vk_queue_e queueFamily = vk_queue_e::graphics,
-                                  bool begin = false);
+                                  vk_queue_e queueFamily = vk_queue_e::graphics, bool begin = false,
+                                  const source_location &loc = source_location::current());
 
     /// @note combined image sampler/ storage image (render target)
     image_handle_t registerImage(const VkTexture &img);
@@ -220,22 +221,27 @@ namespace zs {
 
     /// @note buffer
     Buffer createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
-                        vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal);
+                        vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
+                        const source_location &loc = source_location::current());
     Buffer createStagingBuffer(vk::DeviceSize size,
-                               vk::BufferUsageFlags usage = vk::BufferUsageFlagBits::eTransferSrc);
+                               vk::BufferUsageFlags usage = vk::BufferUsageFlagBits::eTransferSrc,
+                               const source_location &loc = source_location::current());
 
     /// @note image/ sampler/ texture
-    ImageSampler createSampler(const vk::SamplerCreateInfo &);
-    ImageSampler createDefaultSampler();
+    ImageSampler createSampler(const vk::SamplerCreateInfo &,
+                               const source_location &loc = source_location::current());
+    ImageSampler createDefaultSampler(const source_location &loc = source_location::current());
 
     Image createImage(vk::ImageCreateInfo imageCI,
                       vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
-                      bool createView = true);
+                      bool createView = true,
+                      const source_location &loc = source_location::current());
     Image create2DImage(const vk::Extent2D &dim, vk::Format format = vk::Format::eR8G8B8A8Unorm,
                         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled,
                         vk::MemoryPropertyFlags props = vk::MemoryPropertyFlagBits::eDeviceLocal,
                         bool mipmaps = false, bool createView = true, bool enableTransfer = true,
-                        vk::SampleCountFlagBits sampleBits = vk::SampleCountFlagBits::e1);
+                        vk::SampleCountFlagBits sampleBits = vk::SampleCountFlagBits::e1,
+                        const source_location &loc = source_location::current());
     Image createOptimal2DImage(const vk::Extent2D &dim,
                                vk::Format format = vk::Format::eR8G8B8A8Unorm,
                                vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled,
@@ -243,26 +249,31 @@ namespace zs {
                                = vk::MemoryPropertyFlagBits::eDeviceLocal,
                                bool mipmaps = false, bool createView = true,
                                bool enableTransfer = true,
-                               vk::SampleCountFlagBits sampleBits = vk::SampleCountFlagBits::e1);
+                               vk::SampleCountFlagBits sampleBits = vk::SampleCountFlagBits::e1,
+                               const source_location &loc = source_location::current());
     Image createInputAttachment(const vk::Extent2D &dim,
                                 vk::Format format = vk::Format::eR8G8B8A8Unorm,
                                 vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled,
-                                bool enableTransfer = true);
+                                bool enableTransfer = true,
+                                const source_location &loc = source_location::current());
 
     ImageView create2DImageView(vk::Image image, vk::Format format = vk::Format::eR8G8B8A8Unorm,
                                 vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eColor,
                                 u32 levels = VK_REMAINING_MIP_LEVELS,
-                                const void *pNextImageView = nullptr);
+                                const void *pNextImageView = nullptr,
+                                const source_location &loc = source_location::current());
 
     Framebuffer createFramebuffer(const std::vector<vk::ImageView> &imageViews, vk::Extent2D size,
-                                  vk::RenderPass renderPass);
+                                  vk::RenderPass renderPass,
+                                  const source_location &loc = source_location::current());
 
     /// @note query pool
     QueryPool createQueryPool(vk::QueryType queryType, u32 queryCount);
 
     /// @note descriptor
     DescriptorPool createDescriptorPool(const std::vector<vk::DescriptorPoolSize> &poolSizes,
-                                        u32 maxSets = 1000);
+                                        u32 maxSets = 1000,
+                                        const source_location &loc = source_location::current());
     void writeDescriptorSet(const vk::DescriptorBufferInfo &bufferInfo, vk::DescriptorSet dstSet,
                             vk::DescriptorType type, u32 binding, u32 dstArrayNo = 0);
     void writeDescriptorSet(const vk::DescriptorImageInfo &imageInfo, vk::DescriptorSet dstSet,
@@ -411,7 +422,8 @@ namespace zs {
 
         return cmd[0];
       }
-      VkCommand createVkCommand(vk_cmd_usage_e usage, bool begin = false);
+      VkCommand createVkCommand(vk_cmd_usage_e usage, bool begin = false,
+                                const source_location &loc = source_location::current());
       void submit(u32 count, const vk::CommandBuffer *cmds, vk::Fence fence,
                   vk_cmd_usage_e usage = vk_cmd_usage_e::single_use) {
         for (u32 i = 0; i < count; i++) cmds[i].end();

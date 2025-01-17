@@ -24,8 +24,8 @@
 #include "zensim/zpc_tpls/fmt/format.h"
 
 namespace {
-  std::set<const char*> g_vulkanInstanceExtensions;
-  std::map<int, std::set<const char*>> g_vulkanDeviceExtensions;
+  std::set<const char *> g_vulkanInstanceExtensions;
+  std::map<int, std::set<const char *>> g_vulkanDeviceExtensions;
 }  // namespace
 
 namespace zs {
@@ -37,12 +37,13 @@ namespace zs {
   static VKAPI_ATTR VkBool32 VKAPI_CALL
   zsvk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                       VkDebugUtilsMessageTypeFlagsEXT messageType,
-                      const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+                      const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
+    std::cerr << "[VALIDATION LAYER]: {" << pCallbackData->pMessageIdName << "}, "
+              << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
   }
 
-  Vulkan& Vulkan::instance() {
+  Vulkan &Vulkan::instance() {
     static Vulkan s_instance{};
     return s_instance;
   }
@@ -51,12 +52,10 @@ namespace zs {
   size_t Vulkan::num_devices() noexcept { return instance()._contexts.size(); }
   vk::Instance Vulkan::vk_inst() noexcept { return instance()._instance; }
   const vk::DispatchLoaderDynamic &Vulkan::vk_inst_dispatcher() noexcept {
-      return instance()._dispatcher;
+    return instance()._dispatcher;
   }
   VulkanContext &Vulkan::context(int devid) { return driver()._contexts[devid]; }
   VulkanContext &Vulkan::context() { return instance()._contexts[instance()._defaultContext]; }
-
-
 
   /// @ref:
   /// https://github.com/KhronosGroup/Vulkan-Hpp/blob/main/README.md#extensions--per-device-function-pointers
@@ -70,9 +69,9 @@ namespace zs {
     vk::ApplicationInfo appInfo{"zpc_app", 0, "zpc", 0, VK_API_VERSION_1_3};
 
     /// @ref: VkBootstrap
-    std::vector<const char*> extensions
+    std::vector<const char *> extensions
         = { "VK_KHR_surface",
-            "VK_EXT_debug_utils",
+            "VK_EXT_debug_utils",  // VK_EXT_DEBUG_UTILS_EXTENSION_NAME
             VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 #if defined(ZS_PLATFORM_WINDOWS)
             "VK_KHR_win32_surface"
@@ -87,9 +86,9 @@ namespace zs {
 #ifdef ZS_PLATFORM_OSX
     extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 #endif
-    std::vector<const char*> enabledLayers = {
+    std::vector<const char *> enabledLayers = {
 #if ZS_ENABLE_VULKAN_VALIDATION
-      "VK_LAYER_KHRONOS_validation"
+        "VK_LAYER_KHRONOS_validation"
 #endif
     };
     vk::InstanceCreateInfo instCI{{},
@@ -115,12 +114,13 @@ namespace zs {
 #else
     _dispatcher.init(_instance);
 #endif
+
     _messenger = _instance.createDebugUtilsMessengerEXT(
         vk::DebugUtilsMessengerCreateInfoEXT{
             {},
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
                 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-            // | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+                | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
             // | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
             ,
             vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
@@ -136,7 +136,7 @@ namespace zs {
 
     _defaultContext = -1;
     for (int i = 0; i != physicalDevices.size(); ++i) {
-      auto& physDev = physicalDevices[i];
+      auto &physDev = physicalDevices[i];
       _contexts.emplace_back(i, _instance, physDev, _dispatcher);
       if (_defaultContext == -1 && _contexts.back().supportGraphics()) _defaultContext = i;
     }
@@ -170,7 +170,7 @@ namespace zs {
       _mutex = nullptr;
     }
     /// @note clear contexts
-    for (auto& ctx : _contexts) ctx.reset();
+    for (auto &ctx : _contexts) ctx.reset();
     _contexts.clear();
 
     /// @note clear instance-created objects

@@ -38,6 +38,7 @@
 #include "zensim/types/SourceLocation.hpp"
 #include "zensim/zpc_tpls/fmt/color.h"
 #include "zensim/zpc_tpls/fmt/format.h"
+#include "zensim/zpc_tpls/fmt/std.h"
 #include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 
 namespace zs {
@@ -254,6 +255,10 @@ namespace zs {
         "VK_KHR_driver_properties",
 #ifdef ZS_PLATFORM_OSX
         "VK_KHR_portability_subset",
+#endif
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
 #endif
         VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,  // "VK_EXT_extended_dynamic_state",
         VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
@@ -757,7 +762,7 @@ namespace zs {
   }
 
   Buffer VulkanContext::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
-                                     vk::MemoryPropertyFlags props) {
+                                     vk::MemoryPropertyFlags props, const source_location& loc) {
     Buffer buffer(*this);
 
     vk::BufferCreateInfo bufCI{};
@@ -819,20 +824,43 @@ namespace zs {
     memory.memoryPropertyFlags = memoryProperties.memoryTypes[memoryTypeIndex].propertyFlags;
     buffer.pmem = std::make_shared<VkMemory>(std::move(memory));
 #endif
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eBuffer;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkBuffer)(*buffer));
+    auto name = fmt::format("[[ zs::Buffer (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
     return buffer;
   }
-  Buffer VulkanContext::createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage) {
+  Buffer VulkanContext::createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
+                                            const source_location& loc) {
     return createBuffer(
         size, usage,
-        vk::MemoryPropertyFlagBits::eHostVisible /* | vk::MemoryPropertyFlagBits::eHostCoherent*/);
+        vk::MemoryPropertyFlagBits::eHostVisible /* | vk::MemoryPropertyFlagBits::eHostCoherent*/,
+        loc);
   }
 
-  ImageSampler VulkanContext::createSampler(const vk::SamplerCreateInfo& samplerCI) {
+  ImageSampler VulkanContext::createSampler(const vk::SamplerCreateInfo& samplerCI,
+                                            const source_location& loc) {
     ImageSampler ret{*this};
     ret.sampler = device.createSampler(samplerCI, nullptr, dispatcher);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eSampler;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkSampler)(*ret));
+    auto name = fmt::format("[[ zs::Sampler (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
     return ret;
   }
-  ImageSampler VulkanContext::createDefaultSampler() {
+  ImageSampler VulkanContext::createDefaultSampler(const source_location& loc) {
     return createSampler(vk::SamplerCreateInfo{}
                              .setMaxAnisotropy(1.f)
                              .setMagFilter(vk::Filter::eLinear)
@@ -841,11 +869,12 @@ namespace zs {
                              .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
                              .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
                              .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
-                             .setBorderColor(vk::BorderColor::eFloatOpaqueWhite));
+                             .setBorderColor(vk::BorderColor::eFloatOpaqueWhite),
+                         loc);
   }
 
   Image VulkanContext::createImage(vk::ImageCreateInfo imageCI, vk::MemoryPropertyFlags props,
-                                   bool createView) {
+                                   bool createView, const source_location& loc) {
     Image image{*this};
     image.usage = imageCI.usage;
     image.extent = imageCI.extent;
@@ -914,13 +943,35 @@ namespace zs {
                   0, 1 /*VK_REMAINING_MIP_LEVELS*/, 0, 1
                   /*VK_REMAINING_ARRAY_LAYERS*/}),
           nullptr, dispatcher);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+      vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+      objNameInfo.objectType = vk::ObjectType::eImageView;
+      objNameInfo.objectHandle = reinterpret_cast<u64>((VkImageView)image.view());
+      auto name = fmt::format("[[ zs::ImageView (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                              loc.file_name(), loc.line(), loc.column(), devid);
+      objNameInfo.pObjectName = name.c_str();
+      device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
     }
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eImage;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkImage)(*image));
+    auto name = fmt::format("[[ zs::Image (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
+
     return image;
   }
   Image VulkanContext::create2DImage(const vk::Extent2D& dim, vk::Format format,
                                      vk::ImageUsageFlags usage, vk::MemoryPropertyFlags props,
                                      bool mipmaps, bool createView, bool enableTransfer,
-                                     vk::SampleCountFlagBits sampleBits) {
+                                     vk::SampleCountFlagBits sampleBits,
+                                     const source_location& loc) {
     return createImage(vk::ImageCreateInfo{}
                            .setImageType(vk::ImageType::e2D)
                            .setFormat(format)
@@ -933,13 +984,14 @@ namespace zs {
                            .setSamples(sampleBits)
                            //.setTiling(vk::ImageTiling::eOptimal)
                            .setSharingMode(vk::SharingMode::eExclusive),
-                       props, createView);
+                       props, createView, loc);
   }
   Image VulkanContext::createOptimal2DImage(const vk::Extent2D& dim, vk::Format format,
                                             vk::ImageUsageFlags usage,
                                             vk::MemoryPropertyFlags props, bool mipmaps,
                                             bool createView, bool enableTransfer,
-                                            vk::SampleCountFlagBits sampleBits) {
+                                            vk::SampleCountFlagBits sampleBits,
+                                            const source_location& loc) {
     return createImage(vk::ImageCreateInfo{}
                            .setImageType(vk::ImageType::e2D)
                            .setFormat(format)
@@ -952,10 +1004,11 @@ namespace zs {
                            .setSamples(sampleBits)
                            .setTiling(vk::ImageTiling::eOptimal)
                            .setSharingMode(vk::SharingMode::eExclusive),
-                       props, createView);
+                       props, createView, loc);
   }
   Image VulkanContext::createInputAttachment(const vk::Extent2D& dim, vk::Format format,
-                                             vk::ImageUsageFlags usage, bool enableTransfer) {
+                                             vk::ImageUsageFlags usage, bool enableTransfer,
+                                             const source_location& loc) {
     usage |= vk::ImageUsageFlagBits::eInputAttachment;
     return createImage(vk::ImageCreateInfo{}
                            .setImageType(vk::ImageType::e2D)
@@ -969,11 +1022,12 @@ namespace zs {
                            .setSamples(vk::SampleCountFlagBits::e1)
                            // .setTiling(vk::ImageTiling::eOptimal)
                            .setSharingMode(vk::SharingMode::eExclusive),
-                       vk::MemoryPropertyFlagBits::eDeviceLocal, true);
+                       vk::MemoryPropertyFlagBits::eDeviceLocal, true, loc);
   }
   ImageView VulkanContext::create2DImageView(vk::Image image, vk::Format format,
                                              vk::ImageAspectFlags aspect, u32 levels,
-                                             const void* pNextImageView) {
+                                             const void* pNextImageView,
+                                             const source_location& loc) {
     ImageView imgv{*this};
     imgv.imgv = device.createImageView(
         vk::ImageViewCreateInfo{}
@@ -983,16 +1037,37 @@ namespace zs {
             .setFormat(format)
             .setSubresourceRange(vk::ImageSubresourceRange{aspect, 0, levels, 0, 1}),
         nullptr, dispatcher);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eImageView;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkImageView)(*imgv));
+    auto name = fmt::format("[[ zs::ImageView (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
     return imgv;
   }
 
   Framebuffer VulkanContext::createFramebuffer(const std::vector<vk::ImageView>& imageViews,
-                                               vk::Extent2D extent, vk::RenderPass renderPass) {
+                                               vk::Extent2D extent, vk::RenderPass renderPass,
+                                               const source_location& loc) {
     Framebuffer obj{*this};
     auto ci = vk::FramebufferCreateInfo{
         {},    renderPass, (u32)imageViews.size(), imageViews.data(), extent.width, extent.height,
         (u32)1};
     obj.framebuffer = device.createFramebuffer(ci, nullptr, dispatcher);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eFramebuffer;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkFramebuffer)(*obj));
+    auto name = fmt::format("[[ zs::Framebuffer (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
     return obj;
   }
 
@@ -1006,15 +1081,26 @@ namespace zs {
   }
 
   VkCommand VulkanContext::createCommandBuffer(vk_cmd_usage_e usage, vk_queue_e queueFamily,
-                                               bool begin) {
+                                               bool begin, const source_location& loc) {
     auto& pool = env().pools(queueFamily);
     auto cmd = pool.createCommandBuffer(vk::CommandBufferLevel::ePrimary, begin,
                                         /*inheritance info*/ nullptr, usage);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eCommandBuffer;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkCommandBuffer)cmd);
+    auto name = fmt::format("[[ zs::CommandBuffer (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
     return VkCommand{pool, cmd, usage};
   }
 
   DescriptorPool VulkanContext::createDescriptorPool(
-      const std::vector<vk::DescriptorPoolSize>& poolSizes, u32 maxSets) {
+      const std::vector<vk::DescriptorPoolSize>& poolSizes, u32 maxSets,
+      const source_location& loc) {
     /// @note DescriptorPoolSize: descriptorCount, vk::DescriptorType::eUniformBufferDynamic
     auto poolCreateInfo = vk::DescriptorPoolCreateInfo()
                               .setMaxSets(maxSets)
@@ -1023,6 +1109,16 @@ namespace zs {
                               .setPPoolSizes(poolSizes.data());
     DescriptorPool ret{*this};
     ret.descriptorPool = device.createDescriptorPool(poolCreateInfo, nullptr, dispatcher);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eDescriptorPool;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkDescriptorPool)(*ret));
+    auto name = fmt::format("[[ zs::DescriptorPool (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
     return ret;
   }
   void VulkanContext::writeDescriptorSet(const vk::DescriptorBufferInfo& bufferInfo,
@@ -1122,11 +1218,26 @@ namespace zs {
       ctx.device.destroyCommandPool(family.resetPool, nullptr, ctx.dispatcher);
     }
   }
-  VkCommand ExecutionContext::PoolFamily::createVkCommand(vk_cmd_usage_e usage, bool begin) {
+  VkCommand ExecutionContext::PoolFamily::createVkCommand(vk_cmd_usage_e usage, bool begin,
+                                                          const source_location& loc) {
     const auto& cmdPool = cmdpool(usage);
     std::vector<vk::CommandBuffer> cmd = pctx->device.allocateCommandBuffers(
         vk::CommandBufferAllocateInfo{cmdPool, vk::CommandBufferLevel::ePrimary, (u32)1},
         pctx->dispatcher);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    for (const auto& cmd_ : cmd) {
+      vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+      objNameInfo.objectType = vk::ObjectType::eCommandBuffer;
+      objNameInfo.objectHandle = reinterpret_cast<u64>((VkCommandBuffer)cmd_);
+      auto name = fmt::format(
+          "[[ zs::CommandBuffer (File: {}, Ln {}, Col {}, Device: {}, Thread: {}) ]]",
+          loc.file_name(), loc.line(), loc.column(), pctx->getDevId(), std::this_thread::get_id());
+      objNameInfo.pObjectName = name.c_str();
+      pctx->device.setDebugUtilsObjectNameEXT(objNameInfo, pctx->dispatcher);
+    }
+#endif
+
     VkCommand ret{*this, cmd[0], usage};
     if (begin) ret.begin();
     return ret;

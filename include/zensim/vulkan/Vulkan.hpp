@@ -32,6 +32,7 @@ namespace zs {
     Vulkan &operator=(Vulkan &&) = delete;
     Vulkan(const Vulkan &) = delete;
     Vulkan &operator=(const Vulkan &) = delete;
+
   public:
     static Vulkan &instance();
     ~Vulkan();
@@ -57,8 +58,8 @@ namespace zs {
 
     friend struct VulkanContext;
 
-    template <typename T> T &working_contexts() { return *static_cast<T*>(_workingContexts); }
-    template <typename T> T &mutex() { return *static_cast<T*>(_mutex); }
+    template <typename T> T &working_contexts() { return *static_cast<T *>(_workingContexts); }
+    template <typename T> T &mutex() { return *static_cast<T *>(_mutex); }
 
   private:
     vk::Instance _instance;

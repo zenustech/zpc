@@ -771,6 +771,16 @@ namespace zs {
     bufCI.setSharingMode(vk::SharingMode::eExclusive);
     auto buf = device.createBuffer(bufCI, nullptr, dispatcher);
 
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eBuffer;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkBuffer)buf);
+    auto name = fmt::format("[[ zs::Buffer (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
+
 #if ZS_VULKAN_USE_VMA
     auto bufferReqs = vk::BufferMemoryRequirementsInfo2{}.setBuffer(buf);
     auto dedicatedReqs = vk::MemoryDedicatedRequirements{};
@@ -825,15 +835,6 @@ namespace zs {
     buffer.pmem = std::make_shared<VkMemory>(std::move(memory));
 #endif
 
-#if ZS_ENABLE_VULKAN_VALIDATION
-    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
-    objNameInfo.objectType = vk::ObjectType::eBuffer;
-    objNameInfo.objectHandle = reinterpret_cast<u64>((VkBuffer)(*buffer));
-    auto name = fmt::format("[[ zs::Buffer (File: {}, Ln {}, Col {}, Device: {}) ]]",
-                            loc.file_name(), loc.line(), loc.column(), devid);
-    objNameInfo.pObjectName = name.c_str();
-    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
-#endif
     return buffer;
   }
   Buffer VulkanContext::createStagingBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage,
@@ -881,6 +882,16 @@ namespace zs {
     image.mipLevels = imageCI.mipLevels;
 
     auto img = device.createImage(imageCI, nullptr, dispatcher);
+
+#if ZS_ENABLE_VULKAN_VALIDATION
+    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
+    objNameInfo.objectType = vk::ObjectType::eImage;
+    objNameInfo.objectHandle = reinterpret_cast<u64>((VkImage)img);
+    auto name = fmt::format("[[ zs::Image (File: {}, Ln {}, Col {}, Device: {}) ]]",
+                            loc.file_name(), loc.line(), loc.column(), devid);
+    objNameInfo.pObjectName = name.c_str();
+    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
+#endif
 
 #if ZS_VULKAN_USE_VMA
     auto imageReqs = vk::ImageMemoryRequirementsInfo2{}.setImage(img);
@@ -954,16 +965,6 @@ namespace zs {
       device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
 #endif
     }
-
-#if ZS_ENABLE_VULKAN_VALIDATION
-    vk::DebugUtilsObjectNameInfoEXT objNameInfo{};
-    objNameInfo.objectType = vk::ObjectType::eImage;
-    objNameInfo.objectHandle = reinterpret_cast<u64>((VkImage)(*image));
-    auto name = fmt::format("[[ zs::Image (File: {}, Ln {}, Col {}, Device: {}) ]]",
-                            loc.file_name(), loc.line(), loc.column(), devid);
-    objNameInfo.pObjectName = name.c_str();
-    device.setDebugUtilsObjectNameEXT(objNameInfo, dispatcher);
-#endif
 
     return image;
   }

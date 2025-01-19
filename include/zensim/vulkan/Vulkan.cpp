@@ -38,8 +38,21 @@ namespace zs {
   zsvk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                       VkDebugUtilsMessageTypeFlagsEXT messageType,
                       const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
-    std::cerr << "[VALIDATION LAYER]: {" << pCallbackData->pMessageIdName << "}, "
-              << pCallbackData->pMessage << std::endl;
+    std::cerr << "[VALIDATION LAYER]: " << pCallbackData->pMessage << std::endl;
+    if (pCallbackData->pObjects && pCallbackData->objectCount > 0) {
+      std::vector<const char *> names;
+      names.reserve(pCallbackData->objectCount);
+      for (int i = 0; i < pCallbackData->objectCount; ++i)
+        if (pCallbackData->pObjects[i].pObjectName) {
+          names.push_back(pCallbackData->pObjects[i].pObjectName);
+        }
+      if (names.size()) {
+        std::cerr << "[VALIDATION LAYER OBJECT NAME(S)]: ";
+        for (int i = 0; i < names.size(); ++i)
+          std::cerr << "[" << i << "] \"" << names[i] << "\"; ";
+        std::cerr << std::endl;
+      }
+    }
     return VK_FALSE;
   }
 
@@ -120,7 +133,7 @@ namespace zs {
             {},
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
                 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-                | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+            // | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
             // | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
             ,
             vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral

@@ -8,7 +8,12 @@
 
 namespace zs {
 
-  template <typename T, int dim, typename Tn = int, int dimE = dim + 1> struct Mesh {
+  template <typename T, int dim_, typename Tn = int, int dimE = dim_ + 1> struct Mesh {
+    using value_type = T;
+    static constexpr int dim = dim_;
+    using index_type = Tn;
+    static constexpr int dim_elem = dimE;
+
     using Node = std::array<T, dim>;
     using Elem = std::array<Tn, dimE>;
     using UV = std::array<float, 2>;
@@ -17,6 +22,7 @@ namespace zs {
     using Color = std::array<float, 3>;
     using TexId = std::array<int, 2>;  // <type, element id>
     std::vector<Node> nodes;
+    std::vector<Tn> vids;  // splitted-point-id to vertex-id
     std::vector<Elem> elems;
     std::vector<UV> uvs;
     std::vector<Norm> norms;
@@ -27,6 +33,7 @@ namespace zs {
 
     inline void clear() {
       nodes.clear();
+      vids.clear();
       elems.clear();
       uvs.clear();
       norms.clear();

@@ -245,28 +245,23 @@ namespace zs {
     int rtPreds = 0;
     constexpr int rtRequiredPreds = 5;
     /// @note the first 5 extensions are required for rt support
-    std::vector<const char*> expectedExtensions{
-        "VK_KHR_ray_tracing_pipeline",
-        "VK_KHR_acceleration_structure",
-        "VK_EXT_descriptor_indexing",
-        "VK_KHR_buffer_device_address",
-        "VK_KHR_deferred_host_operations",
-        "VK_KHR_swapchain",
-        "VK_KHR_driver_properties",
+    std::vector<const char*> expectedExtensions {
+      "VK_KHR_ray_tracing_pipeline", "VK_KHR_acceleration_structure", "VK_EXT_descriptor_indexing",
+          "VK_KHR_buffer_device_address", "VK_KHR_deferred_host_operations", "VK_KHR_swapchain",
+          "VK_KHR_driver_properties",
 #ifdef ZS_PLATFORM_OSX
-        "VK_KHR_portability_subset",
+          "VK_KHR_portability_subset",
 #endif
 
 #if ZS_ENABLE_VULKAN_VALIDATION
-        VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
+          VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME,
 #endif
-        VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,  // "VK_EXT_extended_dynamic_state",
-        VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
-        VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-        VK_KHR_MULTIVIEW_EXTENSION_NAME,
-        VK_KHR_MAINTENANCE2_EXTENSION_NAME,
-        VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
-        VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME};
+          VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,  // "VK_EXT_extended_dynamic_state",
+          VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
+          VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME, VK_KHR_MULTIVIEW_EXTENSION_NAME,
+          VK_KHR_MAINTENANCE2_EXTENSION_NAME, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+          VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME
+    };
     std::vector<const char*> enabledExtensions(0);
     // pick up supported extensions
     for (int i = 0; i != expectedExtensions.size(); ++i) {
@@ -589,9 +584,9 @@ namespace zs {
         = vk::DescriptorSetLayoutBinding{}
               .setBinding(bindless_texture_binding)
               .setDescriptorType(vk::DescriptorType::eUniformBuffer)
-              .setDescriptorCount(
-                  std::min(num_max_bindless_resources,
-                           std::max(1u, maxPerStageDescriptorUpdateAfterBindUniformBuffers() - 2)))
+              .setDescriptorCount(std::min(
+                  num_max_bindless_resources,
+                  std::max(1u, maxPerStageDescriptorUpdateAfterBindUniformBuffers() / 2 - 2)))
               .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& imageSamplerBinding = bindings[vk_descriptor_e::image_sampler];
     imageSamplerBinding
@@ -609,8 +604,9 @@ namespace zs {
         = vk::DescriptorSetLayoutBinding{}
               .setBinding(bindless_texture_binding + 2)
               .setDescriptorType(vk::DescriptorType::eStorageBuffer)
-              .setDescriptorCount(std::min(num_max_bindless_resources,
-                                           maxPerStageDescriptorUpdateAfterBindStorageBuffers()))
+              .setDescriptorCount(std::min(
+                  num_max_bindless_resources,
+                  std::max(1u, maxPerStageDescriptorUpdateAfterBindStorageBuffers() / 2 - 2)))
               .setStageFlags(vk::ShaderStageFlagBits::eAll);
     auto& storageImageBinding = bindings[vk_descriptor_e::storage_image];
     storageImageBinding

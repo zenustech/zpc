@@ -90,7 +90,7 @@ namespace zs {
   struct ZPC_CORE_API VulkanContext {
     Vulkan &driver() const noexcept;
     VulkanContext(int devid, vk::Instance instance, vk::PhysicalDevice device,
-                  const vk::DispatchLoaderDynamic &instDispatcher);
+                  const ZS_VK_DISPATCH_LOADER_DYNAMIC &instDispatcher);
     ~VulkanContext() noexcept = default;
     VulkanContext(VulkanContext &&) = default;
     VulkanContext &operator=(VulkanContext &&) = default;
@@ -289,8 +289,8 @@ namespace zs {
 
     int devid;
     vk::PhysicalDevice physicalDevice;
-    vk::Device device;                     // currently dedicated for rendering
-    vk::DispatchLoaderDynamic dispatcher;  // store device-specific calls
+    vk::Device device;                         // currently dedicated for rendering
+    ZS_VK_DISPATCH_LOADER_DYNAMIC dispatcher;  // store device-specific calls
     // graphics queue family should also be used for presentation if swapchain required
 
     int queueFamilyIndices[num_queue_types];  // graphicsQueueFamilyIndex, computeQueueFamilyIndex,

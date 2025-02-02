@@ -64,7 +64,7 @@ namespace zs {
   Vulkan &Vulkan::driver() noexcept { return instance(); }
   size_t Vulkan::num_devices() noexcept { return instance()._contexts.size(); }
   vk::Instance Vulkan::vk_inst() noexcept { return instance()._instance; }
-  const vk::DispatchLoaderDynamic &Vulkan::vk_inst_dispatcher() noexcept {
+  const ZS_VK_DISPATCH_LOADER_DYNAMIC &Vulkan::vk_inst_dispatcher() noexcept {
     return instance()._dispatcher;
   }
   VulkanContext &Vulkan::context(int devid) { return driver()._contexts[devid]; }
@@ -74,7 +74,7 @@ namespace zs {
   /// https://github.com/KhronosGroup/Vulkan-Hpp/blob/main/README.md#extensions--per-device-function-pointers
   Vulkan::Vulkan() {
     /// @note instance
-    vk::DynamicLoader dl;
+    ZS_VK_DYNAMIC_LOADER dl;
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr
         = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     _dispatcher.init(vkGetInstanceProcAddr);
@@ -101,7 +101,7 @@ namespace zs {
 #endif
     std::vector<const char *> enabledLayers = {
 #if ZS_ENABLE_VULKAN_VALIDATION
-        "VK_LAYER_KHRONOS_validation"
+      "VK_LAYER_KHRONOS_validation"
 #endif
     };
     vk::InstanceCreateInfo instCI{{},
@@ -123,7 +123,7 @@ namespace zs {
     _instance = vk::createInstance(instCI);
 
 #if 0
-    _dispatcher = vk::DispatchLoaderDynamic(_instance, vkGetInstanceProcAddr);
+    _dispatcher = ZS_VK_DISPATCH_LOADER_DYNAMIC(_instance, vkGetInstanceProcAddr);
 #else
     _dispatcher.init(_instance);
 #endif

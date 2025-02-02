@@ -107,7 +107,7 @@ namespace zs {
   }
 
   VulkanContext::VulkanContext(int devId, vk::Instance instance, vk::PhysicalDevice phydev,
-                               const vk::DispatchLoaderDynamic& instDispatcher)
+                               const ZS_VK_DISPATCH_LOADER_DYNAMIC& instDispatcher)
       : devid{devId}, physicalDevice{phydev}, device{}, dispatcher{instDispatcher} {
     /// @note logical device
     std::vector<vk::ExtensionProperties> devExts

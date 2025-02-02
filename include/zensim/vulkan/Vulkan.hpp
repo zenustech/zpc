@@ -41,7 +41,7 @@ namespace zs {
     static Vulkan &driver() noexcept;
     static size_t num_devices() noexcept;
     static vk::Instance vk_inst() noexcept;
-    static const vk::DispatchLoaderDynamic &vk_inst_dispatcher() noexcept;
+    static const ZS_VK_DISPATCH_LOADER_DYNAMIC &vk_inst_dispatcher() noexcept;
     static VulkanContext &context(int devid);
     static VulkanContext &context();
 
@@ -63,7 +63,7 @@ namespace zs {
 
   private:
     vk::Instance _instance;
-    vk::DispatchLoaderDynamic _dispatcher;  // store vulkan-instance calls
+    ZS_VK_DISPATCH_LOADER_DYNAMIC _dispatcher;  // store vulkan-instance calls
     vk::DebugUtilsMessengerEXT _messenger;
     std::vector<VulkanContext> _contexts;  ///< generally one per device
     zs::callbacks<void()> _onDestroyCallback;

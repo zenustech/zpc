@@ -63,10 +63,11 @@ option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
 # JIT (llvm/clang)
 option(ZS_ENABLE_JIT "Enable JIT module" ON)
 # sycl, cl
-option(ZS_ENABLE_SYCL_DPCPP "Enable SYCL[Intel-DPC++] backend" ON)
-option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend" OFF)
+option(ZS_ENABLE_SYCL_ONEAPI "Enable SYCL[Intel-OneAPI] backend" ON)
+option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend (NOT RECOMMENDED)" OFF)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
 # python
+option(ZS_ENABLE_PYTHON "Enable python-related build" ON)
 set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR "" CACHE STRING "User overwriting of python include directory")
 set(ZS_OVERWRITE_PYTHON_LIBRARIES "" CACHE STRING "User overwriting of python libraries")
 set(ZS_OVERWRITE_PYTHON_EXECUTABLE "" CACHE STRING "User overwriting of python executable")
@@ -116,10 +117,10 @@ endif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 add_subdirectory(include/zensim/zpc_tpls) # build zsproj_deps target
 enable_sanitizers(zsproj_deps)
 
-if (${ZS_ENABLE_SYCL_DPCPP} OR ${ZS_ENABLE_SYCL})
+if (${ZS_ENABLE_SYCL_ONEAPI} OR ${ZS_ENABLE_SYCL})
   set(ZS_ENABLE_PCH OFF)
   message(STATUS "== When SYCL is enabled, precompile-headers are disabled. ==")
-endif(${ZS_ENABLE_SYCL_DPCPP} OR ${ZS_ENABLE_SYCL})
+endif(${ZS_ENABLE_SYCL_ONEAPI} OR ${ZS_ENABLE_SYCL})
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(ZS_ENABLE_VULKAN)
@@ -287,7 +288,7 @@ set(ZS_ENABLE_CUDA ${ZS_ENABLE_CUDA} PARENT_SCOPE)
 set(ZS_ENABLE_VULKAN ${ZS_ENABLE_VULKAN} PARENT_SCOPE)
 set(ZS_ENABLE_OPENMP ${ZS_ENABLE_OPENMP} PARENT_SCOPE)
 set(ZS_ENABLE_JIT ${ZS_ENABLE_JIT} PARENT_SCOPE)
-set(ZS_ENABLE_SYCL_DPCPP ${ZS_ENABLE_SYCL_DPCPP} PARENT_SCOPE)
+set(ZS_ENABLE_SYCL_ONEAPI ${ZS_ENABLE_SYCL_ONEAPI} PARENT_SCOPE)
 set(ZS_ENABLE_SYCL ${ZS_ENABLE_SYCL} PARENT_SCOPE)
 set(ZS_ENABLE_OPENCL ${ZS_ENABLE_OPENCL} PARENT_SCOPE)
 set(ZS_ENABLE_PTHREADS ${ZS_ENABLE_PTHREADS} PARENT_SCOPE)
@@ -318,7 +319,7 @@ endif()
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(dpcpp): ${ZS_ENABLE_SYCL_DPCPP}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
+message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(oneapi): ${ZS_ENABLE_SYCL_ONEAPI}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
 message("dependent library options: python: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
@@ -387,7 +388,7 @@ if(ZS_ENABLE_INSTALL)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpccuda zpc_cuda_deps)
   endif(ZS_ENABLE_CUDA)
 
-  if(ZS_ENABLE_SYCL_DPCPP OR ZS_ENABLE_SYCL)
+  if(ZS_ENABLE_SYCL_ONEAPI OR ZS_ENABLE_SYCL)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpcsycl zpc_sycl_deps)
   endif() # ZS_ENABLE_SYCL
 

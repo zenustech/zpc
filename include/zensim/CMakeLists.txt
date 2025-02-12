@@ -85,7 +85,7 @@ set(ZENSIM_LIBRARY_ZPC_VULKAN_SOURCE_FILES
 )
 #set(ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES
 
-  # cuda/math/matrix/Matrix.cpp
+# cuda/math/matrix/Matrix.cpp
 #  cuda/simulation/sparsity/SparsityCompute.cpp
 #)
 set(ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES
@@ -345,7 +345,7 @@ if(ZS_ENABLE_PCH)
     execution/Atomics.hpp
   )
 endif(ZS_ENABLE_PCH)
-target_sources(zpcbase 
+target_sources(zpcbase
   INTERFACE
 
   ZpcBuiltin.hpp
@@ -454,11 +454,17 @@ else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_ONEAPI=0)
 endif(ZS_ENABLE_SYCL_ONEAPI)
 
-if(ZS_ENABLE_SYCL)
+if(ZS_ENABLE_SYCL_ACPP)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_ACPP=1)
+else()
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL_ACPP=0)
+endif(ZS_ENABLE_SYCL_ACPP)
+
+if(ZS_ENABLE_SYCL_ONEAPI OR ZS_ENABLE_SYCL_ACPP)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL=1)
 else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_SYCL=0)
-endif(ZS_ENABLE_SYCL)
+endif()
 
 # ############
 # vulkan #
@@ -486,7 +492,7 @@ if(ZS_ENABLE_OPENMP)
 
   set_target_properties(zpcomp
     PROPERTIES POSITION_INDEPENDENT_CODE ON
-               WINDOWS_EXPORT_ALL_SYMBOLS ON  # otherwise fail at runtime(?)
+    WINDOWS_EXPORT_ALL_SYMBOLS ON # otherwise fail at runtime(?)
   )
 
   target_link_libraries(zpcomp PUBLIC zpc_omp_deps zpccore)
@@ -498,7 +504,7 @@ if(ZS_ENABLE_OPENMP)
     )
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag("/openmp:experimental" MSVC_SUPPORT_OPENMP_EXPERIMENTAL)
-    if (MSVC_SUPPORT_OPENMP_EXPERIMENTAL)
+    if(MSVC_SUPPORT_OPENMP_EXPERIMENTAL)
       target_compile_options(zpcomp
         PUBLIC $<$<COMPILE_LANGUAGE:CXX>: /openmp:experimental>
       )
@@ -511,7 +517,7 @@ if(ZS_ENABLE_OPENMP)
 
   if(WIN32 AND ZS_BUILD_SHARED_LIBS)
     add_custom_command(
-      TARGET zpcomp 
+      TARGET zpcomp
       POST_BUILD
       COMMAND ${CMAKE_COMMAND}
       -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpcomp>
@@ -520,7 +526,7 @@ if(ZS_ENABLE_OPENMP)
 
       VERBATIM
       # DEPENDS zpcomp 
-        COMMENT "copying zpc omp deps"
+      COMMENT "copying zpc omp deps"
     )
   endif(WIN32 AND ZS_BUILD_SHARED_LIBS)
 endif(ZS_ENABLE_OPENMP)
@@ -594,23 +600,32 @@ if(ZS_ENABLE_SYCL_ONEAPI)
     target_compile_definitions(zpcsycl PRIVATE ZPC_BACKEND_PRIVATE)
 
     # https://www.scivision.dev/cmake-shared-libs-visual-studio-windows/
-    target_link_options(zpc_cxx_deps INTERFACE 
+    target_link_options(zpc_cxx_deps INTERFACE
       $<HOST_LINK:
-        $<IF:$<CXX_COMPILER_ID:Intel>, --export-all-symbols, >
+      $<IF:$<CXX_COMPILER_ID:Intel>, --export-all-symbols, >
       >
     )
   else()
     add_library(zpcsycl STATIC)
   endif()
 
-  target_sources(zpcsycl 
+  target_sources(zpcsycl
     PRIVATE ${ZENSIM_LIBRARY_SYCL_SOURCE_FILES}
   )
   target_link_libraries(zpcsycl PUBLIC zpc_sycl_deps zpccore)
 
-elseif(ZS_ENABLE_SYCL)
-  add_library(zpcsycl INTERFACE)
-  target_link_libraries(zpcsycl INTERFACE zpc_sycl_deps zpc_cxx_deps)
+elseif(ZS_ENABLE_SYCL_ACPP)
+  if(ZS_BUILD_SHARED_LIBS)
+    add_library(zpcsycl SHARED)
+    target_compile_definitions(zpcsycl PRIVATE ZPC_BACKEND_PRIVATE)
+  else()
+    add_library(zpcsycl STATIC)
+  endif()
+
+  target_sources(zpcsycl
+    PRIVATE ${ZENSIM_LIBRARY_SYCL_SOURCE_FILES}
+  )
+  target_link_libraries(zpcsycl PUBLIC zpc_sycl_deps zpccore)
 endif(ZS_ENABLE_SYCL_ONEAPI)
 
 # ############
@@ -673,7 +688,7 @@ endif(ZS_ENABLE_CUDA)
 
 if(ZS_ENABLE_SYCL_ONEAPI)
   target_link_libraries(zpc PUBLIC zpcsycl)
-elseif(ZS_ENABLE_SYCL)
+elseif(ZS_ENABLE_SYCL_ACPP)
   target_link_libraries(zpc PUBLIC zpcsycl)
 endif(ZS_ENABLE_SYCL_ONEAPI)
 
@@ -682,8 +697,8 @@ if(ZS_ENABLE_OPENCL)
 endif(ZS_ENABLE_OPENCL)
 
 target_link_libraries(zensim INTERFACE zpc) # zpc -> zensim
-if (ZS_ENABLE_CUDA)
-  if (ZS_AUTO_DETECT_CUDA_ARCH)
+if(ZS_ENABLE_CUDA)
+  if(ZS_AUTO_DETECT_CUDA_ARCH)
     target_link_libraries(zensim INTERFACE zpc_cuda_arch_options)
   endif(ZS_AUTO_DETECT_CUDA_ARCH)
 endif(ZS_ENABLE_CUDA)
@@ -691,113 +706,113 @@ endif(ZS_ENABLE_CUDA)
 # ################
 # zpc_py_interop #
 # ################
-add_library(zpc_jit_py INTERFACE)  # cmake helper target for zpc JIT
+add_library(zpc_jit_py INTERFACE) # cmake helper target for zpc JIT
 set(ZS_PYTHON_FOUND OFF)
 
-if (ZS_ENABLE_PYTHON)
+if(ZS_ENABLE_PYTHON)
 
-message(STATUS "\n-- ------------------------------- Checking Python ------------------------------- ")
-if (NOT ZS_OVERWRITE_PYTHON_INCLUDE_DIR STREQUAL "" AND NOT ZS_OVERWRITE_PYTHON_LIBRARIES STREQUAL "" AND EXISTS "${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}/Python.h")
-  set(ZS_PYTHON_FOUND ON)
-  # set(Python3_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES})
-  # set(Python3_INCLUDE_DIRS ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
-  if (ZS_OVERWRITE_PYTHON_EXECUTABLE STREQUAL "")
-    cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH PYTHON_ENV_PATH)
-    if (WIN32)
-      set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${PYTHON_ENV_PATH}/python.exe)
-    else(WIN32)
-      cmake_path(GET PYTHON_ENV_PATH PARENT_PATH PYTHON_ENV_PATH)
-      set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${PYTHON_ENV_PATH}/bin/python)
-    endif(WIN32)
-  endif()
-
-  # ananconda python, vanilla python
-  if (WIN32)
-	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
-    set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}/libs)
-  else()
-	  cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
-	  cmake_path(GET ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
-    set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}/lib)
-    set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY})
-  endif()
-
-else()
-  find_package(Python3 COMPONENTS Interpreter Development)
-  if (Python3_FOUND)
+  message(STATUS "\n-- ------------------------------- Checking Python ------------------------------- ")
+  if(NOT ZS_OVERWRITE_PYTHON_INCLUDE_DIR STREQUAL "" AND NOT ZS_OVERWRITE_PYTHON_LIBRARIES STREQUAL "" AND EXISTS "${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}/Python.h")
     set(ZS_PYTHON_FOUND ON)
-    set(ZS_OVERWRITE_PYTHON_LIBRARIES ${Python3_LIBRARIES})
-    set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
-    set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
-    set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${Python3_LIBRARY_DIRS})
-    set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${Python3_RUNTIME_LIBRARY_DIRS})
-  endif(Python3_FOUND)
-endif()
+    # set(Python3_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES})
+    # set(Python3_INCLUDE_DIRS ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
+    if(ZS_OVERWRITE_PYTHON_EXECUTABLE STREQUAL "")
+      cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH PYTHON_ENV_PATH)
+      if(WIN32)
+        set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${PYTHON_ENV_PATH}/python.exe)
+      else(WIN32)
+        cmake_path(GET PYTHON_ENV_PATH PARENT_PATH PYTHON_ENV_PATH)
+        set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${PYTHON_ENV_PATH}/bin/python)
+      endif(WIN32)
+    endif()
 
-set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
+    # ananconda python, vanilla python
+    if(WIN32)
+      cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
+      set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}/libs)
+    else()
+      cmake_path(GET ZS_OVERWRITE_PYTHON_INCLUDE_DIR PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
+      cmake_path(GET ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS PARENT_PATH ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS)
+      set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}/lib)
+      set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY})
+    endif()
 
-if (ZS_PYTHON_FOUND)
-  message(STATUS "python3 link directory for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY}")
-  message(STATUS "python3 libraries for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LIBRARIES}")
-  message(STATUS "python3 include directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}")
-  message(STATUS "python3 executable for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}")
-  message(STATUS "python3 runtime library directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}")
+  else()
+    find_package(Python3 COMPONENTS Interpreter Development)
+    if(Python3_FOUND)
+      set(ZS_PYTHON_FOUND ON)
+      set(ZS_OVERWRITE_PYTHON_LIBRARIES ${Python3_LIBRARIES})
+      set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
+      set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+      set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${Python3_LIBRARY_DIRS})
+      set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${Python3_RUNTIME_LIBRARY_DIRS})
+    endif(Python3_FOUND)
+  endif()
 
-  set(ZS_PYTHON_DLLS "")
-  foreach(lib ${ZS_OVERWRITE_PYTHON_LIBRARIES})
-    cmake_path(GET lib EXTENSION LAST_ONLY lib_type)
-    if (WIN32)
-      if (lib_type STREQUAL ".lib")
-        cmake_path(GET lib STEM dll_name)
-        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-          if (dll_name MATCHES "_d$")
-            foreach(rtdir ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS})
-              if (EXISTS "${rtdir}/${dll_name}.dll")
-                list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
-              endif() # check existence
-            endforeach() # iterate runtime library directories
-          endif(dll_name MATCHES "_d$") # dll filename has _d suffix
-        else(CMAKE_BUILD_TYPE STREQUAL "Debug")
-          if (NOT dll_name MATCHES "_d$")
-            foreach(rtdir ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS})
-              if (EXISTS "${rtdir}/${dll_name}.dll")
-                list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
-              endif() # check existence
-            endforeach() # iterate runtime library directories
-          endif(NOT dll_name MATCHES "_d$") # dll filename has no _d suffix
-        endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-      endif(lib_type STREQUAL ".lib")
-    else(WIN32)
-      # assume only .a .so .dylib
-      set(VALID_LIB_SUFFIXES ".a" ".so" ".dylib")
-      set(SHARED_LIB_SUFFIXES ".so" ".dylib")
-      if (NOT ${lib_type} IN_LIST VALID_LIB_SUFFIXES)
-        message(FATAL_ERROR "Unknown lib suffix [${lib_type}]!")
-      endif(NOT ${lib_type} IN_LIST VALID_LIB_SUFFIXES)
-      if (${lib_type} IN_LIST SHARED_LIB_SUFFIXES)
-        list(APPEND ZS_PYTHON_DLLS ${lib})
-      endif(${lib_type} IN_LIST SHARED_LIB_SUFFIXES)
-    endif(WIN32)
-  endforeach()
-  message(STATUS "python3 runtime shared libs for zpc_jit_py: ${ZS_PYTHON_DLLS}")
+  set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
 
-  target_link_libraries(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LIBRARIES})
-  target_include_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
-  target_link_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY})
+  if(ZS_PYTHON_FOUND)
+    message(STATUS "python3 link directory for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY}")
+    message(STATUS "python3 libraries for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_LIBRARIES}")
+    message(STATUS "python3 include directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR}")
+    message(STATUS "python3 executable for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}")
+    message(STATUS "python3 runtime library directories for zpc_jit_py: ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS}")
 
-  set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
-  set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
-  set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${ZS_OVERWRITE_PYTHON_EXECUTABLE} PARENT_SCOPE)
-  set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY} PARENT_SCOPE)
-  # useful for windows
-  # set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS} PARENT_SCOPE)
-  set(ZS_PYTHON_DLLS ${ZS_PYTHON_DLLS} PARENT_SCOPE)
+    set(ZS_PYTHON_DLLS "")
+    foreach(lib ${ZS_OVERWRITE_PYTHON_LIBRARIES})
+      cmake_path(GET lib EXTENSION LAST_ONLY lib_type)
+      if(WIN32)
+        if(lib_type STREQUAL ".lib")
+          cmake_path(GET lib STEM dll_name)
+          if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            if(dll_name MATCHES "_d$")
+              foreach(rtdir ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS})
+                if(EXISTS "${rtdir}/${dll_name}.dll")
+                  list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
+                endif() # check existence
+              endforeach() # iterate runtime library directories
+            endif(dll_name MATCHES "_d$") # dll filename has _d suffix
+          else(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            if(NOT dll_name MATCHES "_d$")
+              foreach(rtdir ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS})
+                if(EXISTS "${rtdir}/${dll_name}.dll")
+                  list(APPEND ZS_PYTHON_DLLS "${rtdir}/${dll_name}.dll")
+                endif() # check existence
+              endforeach() # iterate runtime library directories
+            endif(NOT dll_name MATCHES "_d$") # dll filename has no _d suffix
+          endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        endif(lib_type STREQUAL ".lib")
+      else(WIN32)
+        # assume only .a .so .dylib
+        set(VALID_LIB_SUFFIXES ".a" ".so" ".dylib")
+        set(SHARED_LIB_SUFFIXES ".so" ".dylib")
+        if(NOT ${lib_type} IN_LIST VALID_LIB_SUFFIXES)
+          message(FATAL_ERROR "Unknown lib suffix [${lib_type}]!")
+        endif(NOT ${lib_type} IN_LIST VALID_LIB_SUFFIXES)
+        if(${lib_type} IN_LIST SHARED_LIB_SUFFIXES)
+          list(APPEND ZS_PYTHON_DLLS ${lib})
+        endif(${lib_type} IN_LIST SHARED_LIB_SUFFIXES)
+      endif(WIN32)
+    endforeach()
+    message(STATUS "python3 runtime shared libs for zpc_jit_py: ${ZS_PYTHON_DLLS}")
 
-else(ZS_PYTHON_FOUND)
-  set(ZS_ENABLE_PYTHON OFF)
-endif(ZS_PYTHON_FOUND)
+    target_link_libraries(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LIBRARIES})
+    target_include_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR})
+    target_link_directories(zpc_jit_py INTERFACE ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY})
 
-message(STATUS "############################### ZPC: Python (${ZS_PYTHON_FOUND}) ###############################")
+    set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
+    set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
+    set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${ZS_OVERWRITE_PYTHON_EXECUTABLE} PARENT_SCOPE)
+    set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY} PARENT_SCOPE)
+    # useful for windows
+    # set(ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS ${ZS_OVERWRITE_PYTHON_RUNTIME_LIBRARY_DIRS} PARENT_SCOPE)
+    set(ZS_PYTHON_DLLS ${ZS_PYTHON_DLLS} PARENT_SCOPE)
+
+  else(ZS_PYTHON_FOUND)
+    set(ZS_ENABLE_PYTHON OFF)
+  endif(ZS_PYTHON_FOUND)
+
+  message(STATUS "############################### ZPC: Python (${ZS_PYTHON_FOUND}) ###############################")
 
 endif(ZS_ENABLE_PYTHON)
 
@@ -817,9 +832,9 @@ target_link_libraries(zpc_jit_py INTERFACE ${Python3_LIBRARIES})
 target_include_directories(zpc_jit_py INTERFACE ${Python3_INCLUDE_DIRS})
 ]=]
 
-add_library(zpc_py_interop SHARED)  # 
-set_target_properties(zpc_py_interop 
-  PROPERTIES 
+add_library(zpc_py_interop SHARED) # 
+set_target_properties(zpc_py_interop
+  PROPERTIES
   POSITION_INDEPENDENT_CODE ON
   #
   # ref:https://stackoverflow.com/questions/32028667/are-cmake-source-dir-and-project-source-dir-the-same-in-cmake
@@ -834,7 +849,7 @@ set_target_properties(zpc_py_interop
   INSTALL_RPATH "\$ORIGIN"
   INSTALL_RPATH_USE_LINK_PATH TRUE
 )
-target_sources(zpc_py_interop 
+target_sources(zpc_py_interop
   PRIVATE
   ${ZENSIM_LIBRARY_PY_INTEROP_SOURCE_FILES}
   ${ZENSIM_LIBRARY_PY_INTEROP_INCLUDE_FILES}
@@ -856,38 +871,38 @@ target_link_libraries(zpc_py_interop PUBLIC zpc)
 # target_link_libraries(zpc_jit_py INTERFACE zpc_py_interop)
 
 if(ZS_ENABLE_JIT)
-add_library(zpc_jit_clang SHARED)
-set_target_properties(zpc_jit_clang 
-  PROPERTIES 
-  POSITION_INDEPENDENT_CODE ON
-  #
-  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-  #
-  SKIP_BUILD_RPATH OFF
-  BUILD_WITH_INSTALL_RPATH TRUE
-  INSTALL_RPATH "\$ORIGIN"
-  INSTALL_RPATH_USE_LINK_PATH TRUE
-)
-target_sources(zpc_jit_clang  
-  PRIVATE
-  # llvm/LLVM.cpp
+  add_library(zpc_jit_clang SHARED)
+  set_target_properties(zpc_jit_clang
+    PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    #
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    #
+    SKIP_BUILD_RPATH OFF
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "\$ORIGIN"
+    INSTALL_RPATH_USE_LINK_PATH TRUE
+  )
+  target_sources(zpc_jit_clang
+    PRIVATE
+    # llvm/LLVM.cpp
 
-  py_interop/Clang.cpp  # may include omp backend
-)
-target_compile_definitions(zpc_jit_clang PUBLIC -DZS_LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
-target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
-# target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
+    py_interop/Clang.cpp # may include omp backend
+  )
+  target_compile_definitions(zpc_jit_clang PUBLIC -DZS_LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
+  target_link_libraries(zpc_jit_clang PRIVATE zpc zpc_jit_deps)
+  # target_link_libraries(zpc_jit_py INTERFACE zpc_jit_clang)
 endif(ZS_ENABLE_JIT)
 
 if(ZS_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   add_library(zpc_jit_nvrtc SHARED)
-  set_target_properties(zpc_jit_nvrtc 
-    PROPERTIES 
+  set_target_properties(zpc_jit_nvrtc
+    PROPERTIES
     POSITION_INDEPENDENT_CODE ON
-    CUDA_SEPARABLE_COMPILATION OFF  # single file
+    CUDA_SEPARABLE_COMPILATION OFF # single file
     CUDA_RESOLVE_DEVICE_SYMBOLS ON
     #
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -914,7 +929,7 @@ if(ZS_ENABLE_CUDA)
     py_interop/cuda/BhtUtility.cpp
   )
   set_source_files_properties(
-    py_interop/cuda/ExecutionPolicy.cpp 
+    py_interop/cuda/ExecutionPolicy.cpp
     py_interop/cuda/TileVectorUtility.cpp
     py_interop/cuda/SpmatUtility.cpp
     py_interop/cuda/BhtUtility.cpp
@@ -932,9 +947,9 @@ add_dependencies(zensim zpc_py_interop)
 ### general JIT-dependent shared library installation upon build
 if(ZS_ENABLE_JIT)
   add_dependencies(
-      zpc_jit_py zpc_jit_clang
+    zpc_jit_py zpc_jit_clang
   )
-  if (ZS_PYTHON_FOUND)
+  if(ZS_PYTHON_FOUND)
     foreach(lib ${ZS_PYTHON_DLLS})
       add_custom_command(
         TARGET zpc_py_interop
@@ -942,12 +957,12 @@ if(ZS_ENABLE_JIT)
         COMMAND ${CMAKE_COMMAND} -E copy ${lib} $<TARGET_FILE_DIR:zpc_py_interop>
         VERBATIM
         # DEPENDS zpc_py_interop 
-          COMMENT "copying zpc_jit_py related python runtime shared library [${lib}]"
+        COMMENT "copying zpc_jit_py related python runtime shared library [${lib}]"
       )
     endforeach()
   endif(ZS_PYTHON_FOUND)
 
-  if (ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
+  if(ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
     add_custom_command(
       TARGET zpc_jit_clang
       POST_BUILD
@@ -956,15 +971,15 @@ if(ZS_ENABLE_JIT)
 
       VERBATIM
       # DEPENDS zpc_jit_clang 
-        COMMENT "copying JIT-dependent runtime shared library [$<TARGET_FILE:zswhereami>]"
+      COMMENT "copying JIT-dependent runtime shared library [$<TARGET_FILE:zswhereami>]"
     )
     find_package(LLVM CONFIG)
     find_package(Clang CONFIG HINTS "${LLVM_DIR}/../clang" "${LLVM_DIR}/../lib/cmake/clang")
     get_target_property(jit_dep_libs zpc_jit_deps INTERFACE_LINK_LIBRARIES)
     foreach(lib ${jit_dep_libs})
-      if (TARGET ${lib})
+      if(TARGET ${lib})
         get_target_property(lib_type ${lib} TYPE)
-        if (lib_type STREQUAL "SHARED_LIBRARY")
+        if(lib_type STREQUAL "SHARED_LIBRARY")
           # message(STATUS "########\t${lib}: ${lib_type}")
           add_custom_command(
             TARGET zpc_jit_clang
@@ -972,7 +987,7 @@ if(ZS_ENABLE_JIT)
             COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${lib}> $<TARGET_FILE_DIR:zpc_jit_clang>/$<TARGET_FILE_BASE_NAME:${lib}>$<TARGET_FILE_SUFFIX:${lib}>
             VERBATIM
             # DEPENDS zpc_jit_clang 
-              COMMENT "copying JIT-dependent llvm/clang runtime shared libraries [$<TARGET_FILE:${lib}>]"
+            COMMENT "copying JIT-dependent llvm/clang runtime shared libraries [$<TARGET_FILE:${lib}>]"
           )
         endif(lib_type STREQUAL "SHARED_LIBRARY")
       endif(TARGET ${lib})
@@ -980,7 +995,7 @@ if(ZS_ENABLE_JIT)
 
   endif(ZS_BUILD_SHARED_LIBS OR WHEREAMI_BUILD_SHARED_LIBS)
 
-  if (ZS_BUILD_SHARED_LIBS)
+  if(ZS_BUILD_SHARED_LIBS)
     add_custom_command(
       TARGET zpc_jit_clang
       POST_BUILD
@@ -988,51 +1003,51 @@ if(ZS_ENABLE_JIT)
       COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpc> $<TARGET_FILE_DIR:zpc_jit_clang>
 
       # DEPENDS zpc_jit_clang 
-        COMMENT "copying JIT-dependent zpc core runtime shared libraries"
-  )
-  if (ZS_ENABLE_OPENMP)
-    add_custom_command(
-      TARGET zpc_jit_clang
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpcomp> $<TARGET_FILE_DIR:zpc_jit_clang>
+      COMMENT "copying JIT-dependent zpc core runtime shared libraries"
+    )
+    if(ZS_ENABLE_OPENMP)
+      add_custom_command(
+        TARGET zpc_jit_clang
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpcomp> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-      # DEPENDS zpc_jit_clang 
+        # DEPENDS zpc_jit_clang 
         COMMENT "copying JIT-dependent zpc (omp) runtime shared libraries"
-    )
-  endif(ZS_ENABLE_OPENMP)
-  if (ZS_ENABLE_CUDA)
-    add_custom_command(
-      TARGET zpc_jit_clang
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccuda> $<TARGET_FILE_DIR:zpc_jit_clang>
+      )
+    endif(ZS_ENABLE_OPENMP)
+    if(ZS_ENABLE_CUDA)
+      add_custom_command(
+        TARGET zpc_jit_clang
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:zpccuda> $<TARGET_FILE_DIR:zpc_jit_clang>
 
-      # DEPENDS zpc_jit_clang 
+        # DEPENDS zpc_jit_clang 
         COMMENT "copying JIT-dependent zpc (cuda) runtime shared libraries"
-    )
-  endif(ZS_ENABLE_CUDA)
+      )
+    endif(ZS_ENABLE_CUDA)
   endif(ZS_BUILD_SHARED_LIBS)
 endif(ZS_ENABLE_JIT)
 
 ### nvrtc-specific shared library installation
-if (ZS_ENABLE_CUDA)
+if(ZS_ENABLE_CUDA)
   add_dependencies(
-      zpc_jit_py zpc_jit_nvrtc 
+    zpc_jit_py zpc_jit_nvrtc
   )
   get_target_property(nvrtc_target_type CUDA::nvrtc TYPE)
-  if (nvrtc_target_type STREQUAL "UNKNOWN_LIBRARY" OR nvrtc_target_type STREQUAL "SHARED_LIBRARY")
-  add_custom_command(
-    TARGET zpc_jit_nvrtc
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_nvrtc>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvrtc> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cuda_driver> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cudart> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+  if(nvrtc_target_type STREQUAL "UNKNOWN_LIBRARY" OR nvrtc_target_type STREQUAL "SHARED_LIBRARY")
+    add_custom_command(
+      TARGET zpc_jit_nvrtc
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::nvrtc> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cuda_driver> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
+      COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:CUDA::cudart> $<TARGET_FILE_DIR:zpc_jit_nvrtc>
 
-    VERBATIM
-    # DEPENDS zpc_jit_nvrtc 
+      VERBATIM
+      # DEPENDS zpc_jit_nvrtc 
       COMMENT "copying nvrtc related runtime shared libraries"
-  )
-#[=[
+    )
+    #[=[
 if (TARGET CUDA::nvJitLink)
   add_custom_command(
     TARGET zpc_jit_nvrtc
@@ -1045,7 +1060,7 @@ if (TARGET CUDA::nvJitLink)
   )
   endif()
 ]=]
-  endif (nvrtc_target_type STREQUAL "UNKNOWN_LIBRARY" OR nvrtc_target_type STREQUAL "SHARED_LIBRARY")
+  endif(nvrtc_target_type STREQUAL "UNKNOWN_LIBRARY" OR nvrtc_target_type STREQUAL "SHARED_LIBRARY")
 endif(ZS_ENABLE_CUDA)
 
 # openvdb, partio
@@ -1111,9 +1126,9 @@ if(ZS_ENABLE_OPENVDB)
   )
 endif(ZS_ENABLE_OPENVDB)
 
-if (WIN32 AND ZS_BUILD_SHARED_LIBS)
+if(WIN32 AND ZS_BUILD_SHARED_LIBS)
   add_custom_command(
-    TARGET zpctool 
+    TARGET zpctool
     POST_BUILD
     COMMAND ${CMAKE_COMMAND}
     -DOBJECTS=$<TARGET_RUNTIME_DLLS:zpctool>
@@ -1122,7 +1137,7 @@ if (WIN32 AND ZS_BUILD_SHARED_LIBS)
 
     VERBATIM
     # DEPENDS zpctool  
-      COMMENT "copying zpc tool deps"
+    COMMENT "copying zpc tool deps"
   )
 endif(WIN32 AND ZS_BUILD_SHARED_LIBS)
 
@@ -1158,7 +1173,7 @@ if(ZS_ENABLE_CUDA AND ZS_ENABLE_ZENO_CU_WRANGLE)
 
     # CUDA_VISIBILITY_PRESET default
   )
-#[=[
+  #[=[
   get_target_property(cuwrangler_compile_flags zs_cu_wrangler COMPILE_OPTIONS)
   separate_arguments(cuwrangler_compile_flags)
   foreach(flag ${cuwrangler_compile_flags})
@@ -1230,7 +1245,7 @@ add_custom_command(
 
   VERBATIM
   # DEPENDS zpc
-    COMMENT "copying resource file [particles-1000k.dat] for poisson disk sampling"
+  COMMENT "copying resource file [particles-1000k.dat] for poisson disk sampling"
 )
 
 # resource file
@@ -1250,14 +1265,14 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_directory
   ${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Textures
   ${RESOURCE_BASE_DIR}/resource/textures
-  
+
   COMMAND ${CMAKE_COMMAND} -E copy_directory
   ${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/TriMesh
   ${RESOURCE_BASE_DIR}/resource/models
 
   VERBATIM
   # DEPENDS zpc
-    COMMENT "copying resource files (fonts, icons, textures...) for gui"
+  COMMENT "copying resource files (fonts, icons, textures...) for gui"
 )
 
 # python helloworld script
@@ -1269,7 +1284,7 @@ add_custom_command(
 
   VERBATIM
   # DEPENDS zpc
-    COMMENT "copying script files [${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Scripts/]"
+  COMMENT "copying script files [${CMAKE_CURRENT_SOURCE_DIR}/../../zpc_assets/Scripts/]"
 )
 
 # for header installation

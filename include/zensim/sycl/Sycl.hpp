@@ -2,7 +2,8 @@
 
 #include "zensim/Platform.hpp"
 
-#if !defined(ZS_COMPILER_SYCL_VER)
+// #if !defined(ZS_COMPILER_SYCL_VER)
+#if !ZS_ENABLE_SYCL
 #  error "ZS_ENABLE_SYCL* was not enabled, but Sycl.hpp was included anyway."
 #endif
 
@@ -22,6 +23,8 @@ namespace zs {
 
     struct ZPC_BACKEND_API SyclContext {
     };
+
+    sycl::context _defaultCtx;
   };
 
 }  // namespace zs

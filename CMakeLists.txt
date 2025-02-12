@@ -64,7 +64,7 @@ option(ZS_ENABLE_OPENMP "Enable openmp backend" ON)
 option(ZS_ENABLE_JIT "Enable JIT module" ON)
 # sycl, cl
 option(ZS_ENABLE_SYCL_ONEAPI "Enable SYCL[Intel-OneAPI] backend" ON)
-option(ZS_ENABLE_SYCL "Enable SYCL[Clang-DPC++] backend (NOT RECOMMENDED)" OFF)
+option(ZS_ENABLE_SYCL_ACPP "Enable SYCL[AdaptiveCpp (originally hipSYCL)] backend" ON)
 option(ZS_ENABLE_OPENCL "Enable OpenCL backend" OFF)
 # python
 option(ZS_ENABLE_PYTHON "Enable python-related build" ON)
@@ -83,10 +83,10 @@ option(ZS_ENABLE_PACKAGE "Build package" OFF)
 # option(ZENSIM_CORE_SHARED "Build dynamically linked version of the core library." ON)
 # option(ZENSIM_CORE_STATIC "Build statically linked version of the core library." ON)
 
-if (CMAKE_VERSION VERSION_LESS "3.21")
-    # ref: VulkanMemoryAllocator repo
-    # https://cmake.org/cmake/help/latest/variable/PROJECT_IS_TOP_LEVEL.html
-    string(COMPARE EQUAL ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR} PROJECT_IS_TOP_LEVEL)
+if(CMAKE_VERSION VERSION_LESS "3.21")
+  # ref: VulkanMemoryAllocator repo
+  # https://cmake.org/cmake/help/latest/variable/PROJECT_IS_TOP_LEVEL.html
+  string(COMPARE EQUAL ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR} PROJECT_IS_TOP_LEVEL)
 endif()
 
 if(PROJECT_IS_TOP_LEVEL)
@@ -107,20 +107,20 @@ include(CMake/CompilerWarnings.cmake)
 
 # ---- dependencies ----
 # ======================
-if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-  if (ZS_ENABLE_CUDA)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+  if(ZS_ENABLE_CUDA)
     set(ZS_ENABLE_CUDA OFF)
     message(STATUS "== Intel compiler as host compiler is not supported by NVidia nvcc, thus turned off. ==")
-  endif (ZS_ENABLE_CUDA)
+  endif(ZS_ENABLE_CUDA)
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 
 add_subdirectory(include/zensim/zpc_tpls) # build zsproj_deps target
 enable_sanitizers(zsproj_deps)
 
-if (${ZS_ENABLE_SYCL_ONEAPI} OR ${ZS_ENABLE_SYCL})
+if(${ZS_ENABLE_SYCL_ONEAPI} OR ${ZS_ENABLE_SYCL_ACPP})
   set(ZS_ENABLE_PCH OFF)
   message(STATUS "== When SYCL is enabled, precompile-headers are disabled. ==")
-endif(${ZS_ENABLE_SYCL_ONEAPI} OR ${ZS_ENABLE_SYCL})
+endif(${ZS_ENABLE_SYCL_ONEAPI} OR ${ZS_ENABLE_SYCL_ACPP})
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(ZS_ENABLE_VULKAN)
@@ -169,9 +169,9 @@ target_compile_definitions(zsproj_deps INTERFACE
 # ------ cxx ------
 # =================
 add_library(zpc_cxx_deps INTERFACE)
-if (${CMAKE_CXX_COMPILER_ID} MATCHES "AppleClang")
+if(${CMAKE_CXX_COMPILER_ID} MATCHES "AppleClang")
   target_compile_options(zpc_cxx_deps INTERFACE
-      $<$<COMPILE_LANGUAGE:CXX>: -Wno-deprecated-builtins>
+    $<$<COMPILE_LANGUAGE:CXX>: -Wno-deprecated-builtins>
   )
 else()
   # target_compile_features(zpc_cxx_deps INTERFACE cxx_std_17)
@@ -211,53 +211,53 @@ if(ZS_ENABLE_SERIALIZATION)
     INTERFACE ZS_ENABLE_SERIALIZATION=1
   )
 
-if(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
-  target_compile_definitions(zpc_cxx_deps
-    INTERFACE ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=1
-  )
-else(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
-  target_compile_definitions(zpc_cxx_deps
-    INTERFACE ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=0
-  )
-endif(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
+  if(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
+    target_compile_definitions(zpc_cxx_deps
+      INTERFACE ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=1
+    )
+  else(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
+    target_compile_definitions(zpc_cxx_deps
+      INTERFACE ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=0
+    )
+  endif(ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL)
 
 else(ZS_ENABLE_SERIALIZATION)
   target_compile_definitions(zpc_cxx_deps
     INTERFACE ZS_ENABLE_SERIALIZATION=0
-              ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=0
+    ZS_SILENT_ABSENCE_OF_SERIALIZATION_IMPL=0
   )
 endif(ZS_ENABLE_SERIALIZATION)
 
-if (ZS_ENABLE_INSTALL)
-if (DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
-  set(RESOURCE_BASE_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-  set(RESOURCE_AT_RELATIVE_PATH 0)
-elseif (DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
-  set(RESOURCE_BASE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-  set(RESOURCE_AT_RELATIVE_PATH 1)
-else()
-  set(RESOURCE_BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
-  set(RESOURCE_AT_RELATIVE_PATH 0)
-endif()
+if(ZS_ENABLE_INSTALL)
+  if(DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+    set(RESOURCE_BASE_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(RESOURCE_AT_RELATIVE_PATH 0)
+  elseif(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(RESOURCE_BASE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+    set(RESOURCE_AT_RELATIVE_PATH 1)
+  else()
+    set(RESOURCE_BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(RESOURCE_AT_RELATIVE_PATH 0)
+  endif()
 
 else(ZS_ENABLE_INSTALL)
-if (DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
-  set(RESOURCE_BASE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-  set(RESOURCE_AT_RELATIVE_PATH 1)
-elseif (DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
-  set(RESOURCE_BASE_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-  set(RESOURCE_AT_RELATIVE_PATH 0)
-else()
-  set(RESOURCE_BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
-  set(RESOURCE_AT_RELATIVE_PATH 0)
-endif()
+  if(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(RESOURCE_BASE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+    set(RESOURCE_AT_RELATIVE_PATH 1)
+  elseif(DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+    set(RESOURCE_BASE_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+    set(RESOURCE_AT_RELATIVE_PATH 0)
+  else()
+    set(RESOURCE_BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(RESOURCE_AT_RELATIVE_PATH 0)
+  endif()
 
 endif(ZS_ENABLE_INSTALL)
 
 target_compile_definitions(zpc_cxx_deps
   # INTERFACE AssetDirPath="${PROJECT_SOURCE_DIR}/zpc_assets"
   INTERFACE AssetDirPath="${RESOURCE_BASE_DIR}"
-            RESOURCE_AT_RELATIVE_PATH=${RESOURCE_AT_RELATIVE_PATH}
+  RESOURCE_AT_RELATIVE_PATH=${RESOURCE_AT_RELATIVE_PATH}
 )
 message("[AssetDirPath] set to: [${RESOURCE_BASE_DIR}]")
 message("[RESOURCE_AT_RELATIVE_PATH] set to: ${RESOURCE_AT_RELATIVE_PATH}")
@@ -289,7 +289,7 @@ set(ZS_ENABLE_VULKAN ${ZS_ENABLE_VULKAN} PARENT_SCOPE)
 set(ZS_ENABLE_OPENMP ${ZS_ENABLE_OPENMP} PARENT_SCOPE)
 set(ZS_ENABLE_JIT ${ZS_ENABLE_JIT} PARENT_SCOPE)
 set(ZS_ENABLE_SYCL_ONEAPI ${ZS_ENABLE_SYCL_ONEAPI} PARENT_SCOPE)
-set(ZS_ENABLE_SYCL ${ZS_ENABLE_SYCL} PARENT_SCOPE)
+set(ZS_ENABLE_SYCL_ACPP ${ZS_ENABLE_SYCL_ACPP} PARENT_SCOPE)
 set(ZS_ENABLE_OPENCL ${ZS_ENABLE_OPENCL} PARENT_SCOPE)
 set(ZS_ENABLE_PTHREADS ${ZS_ENABLE_PTHREADS} PARENT_SCOPE)
 # 3rd party utils
@@ -305,21 +305,21 @@ if(ZS_ENABLE_CUDA)
   if(ZS_AUTO_DETECT_CUDA_ARCH)
     set(CMAKE_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES} PARENT_SCOPE)
   endif(ZS_AUTO_DETECT_CUDA_ARCH)
-endif(ZS_ENABLE_CUDA)  
+endif(ZS_ENABLE_CUDA)
 
 set(ZS_PYTHON_FOUND ${ZS_PYTHON_FOUND} PARENT_SCOPE)
 set(ZS_OVERWRITE_PYTHON_LIBRARIES ${ZS_OVERWRITE_PYTHON_LIBRARIES} PARENT_SCOPE)
 set(ZS_OVERWRITE_PYTHON_INCLUDE_DIR ${ZS_OVERWRITE_PYTHON_INCLUDE_DIR} PARENT_SCOPE)
 set(ZS_OVERWRITE_PYTHON_EXECUTABLE ${ZS_OVERWRITE_PYTHON_EXECUTABLE} PARENT_SCOPE)
 set(ZS_OVERWRITE_PYTHON_LINK_DIRECTORY ${ZS_OVERWRITE_PYTHON_LINK_DIRECTORY} PARENT_SCOPE)
-if (WIN32)
+if(WIN32)
   set(ZS_PYTHON_DLLS ${ZS_PYTHON_DLLS} PARENT_SCOPE)
 endif()
 
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl: ${ZS_ENABLE_SYCL}, sycl(oneapi): ${ZS_ENABLE_SYCL_ONEAPI}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
+message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl(adaptivecpp): ${ZS_ENABLE_SYCL_ACPP}, sycl(oneapi): ${ZS_ENABLE_SYCL_ONEAPI}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
 message("dependent library options: python: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----
@@ -388,9 +388,9 @@ if(ZS_ENABLE_INSTALL)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpccuda zpc_cuda_deps)
   endif(ZS_ENABLE_CUDA)
 
-  if(ZS_ENABLE_SYCL_ONEAPI OR ZS_ENABLE_SYCL)
+  if(ZS_ENABLE_SYCL_ONEAPI OR ZS_ENABLE_SYCL_ACPP)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpcsycl zpc_sycl_deps)
-  endif() # ZS_ENABLE_SYCL
+  endif()
 
   if(ZS_ENABLE_OPENCL)
     set(INSTALL_TARGETS ${INSTALL_TARGETS} zpccl zpc_cl_deps)

@@ -41,6 +41,17 @@ add_test(ZsBinarySearch binarysearchtest)
 add_dependencies(zensim binarysearchtest)
 
 # cuda backends
+if (ZS_ENABLE_SYCL_ONEAPI OR ZS_ENABLE_SYCL_ACPP)
+#
+add_executable(sycltests sycl/main.cpp)
+target_link_libraries(sycltests PRIVATE zpc zpc_sycl_deps)
+
+add_test(ZsSyclTests sycltests)
+add_dependencies(zensim sycltests)
+endif ()
+#
+
+# cuda backends
 if (ZS_ENABLE_CUDA)
 #
 add_executable(cutests cuda/main.cu)

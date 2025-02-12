@@ -12,12 +12,12 @@ namespace zs {
 
 #if ZS_ENABLE_OPENMP
 #  define DEF_POLICY                            \
-    constexpr auto space = execspace_e::openmp; \
-    auto pol = omp_exec();
+    constexpr auto space = zs::execspace_e::openmp; \
+    auto pol = zs::omp_exec();
 #else
 #  define DEF_POLICY                          \
-    constexpr auto space = execspace_e::host; \
-    auto pol = seq_exec();
+    constexpr auto space = zs::execspace_e::host; \
+    auto pol = zs::seq_exec();
 #endif
 
   auto preferred_host_policy() {

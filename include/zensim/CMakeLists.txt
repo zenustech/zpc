@@ -61,9 +61,10 @@ set(ZENSIM_LIBRARY_SYCL_SOURCE_FILES
   sycl/Sycl.cpp
 )
 set(ZENSIM_LIBRARY_MUSA_SOURCE_FILES
+  musa/Musa.mu
+  musa/profile/MusaTimers.mu
   musa/memory/MemOps.mu
   musa/memory/Allocator.mu
-  musa/Musa.mu
 )
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   # ref: https://stackoverflow.com/questions/2351148/explicit-template-instantiation-when-is-it-used
@@ -624,6 +625,7 @@ if(ZS_ENABLE_MUSA)
 
   message(STATUS "MUSA include directories: ${MUSA_INCLUDE_DIRECTORIES}")
 
+  #[=[
   #
   # grab link dirs (MUSA_LINK_DIRECTORIES)
   #
@@ -648,9 +650,19 @@ if(ZS_ENABLE_MUSA)
   list(APPEND MUSA_LINK_OPTIONS -lmusart)
   if(zsproj_deps_interface_link_libs)
     foreach(link_lib IN LISTS zsproj_deps_interface_link_libs)
-      list(APPEND MUSA_LINK_OPTIONS -l${link_lib})
+      cmake_path(IS_ABSOLUTE link_lib is_absolute_path)
+      if(TARGET link_lib)
+      elseif(is_absolute_path)
+        cmake_path(GET link_lib PARENT_PATH lib_dir)
+        cmake_path(GET link_lib FILENAME lib_name)
+        list(APPEND MUSA_LINK_OPTIONS -L${lib_dir})
+        list(APPEND MUSA_LINK_OPTIONS -l${lib_name})
+      else()
+        list(APPEND MUSA_LINK_OPTIONS -l${link_lib})
+      endif()
     endforeach()
   endif(zsproj_deps_interface_link_libs)
+  #]=]
 
   #
   # grab compile definitions (MUSA_COMPILE_DEFINITIONS)

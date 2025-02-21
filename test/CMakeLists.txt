@@ -40,29 +40,40 @@ target_link_libraries(binarysearchtest PRIVATE zpc)
 add_test(ZsBinarySearch binarysearchtest)
 add_dependencies(zensim binarysearchtest)
 
-# cuda backends
-if (ZS_ENABLE_SYCL_ONEAPI OR ZS_ENABLE_SYCL_ACPP)
-#
-add_executable(sycltests sycl/main.cpp)
-target_link_libraries(sycltests PRIVATE zpc zpc_sycl_deps)
+# sycl backend
+if(ZS_ENABLE_SYCL_ONEAPI OR ZS_ENABLE_SYCL_ACPP)
+    #
+    add_executable(sycltests sycl/main.cpp)
+    target_link_libraries(sycltests PRIVATE zpc zpc_sycl_deps)
 
-add_test(ZsSyclTests sycltests)
-add_dependencies(zensim sycltests)
-endif ()
+    add_test(ZsSyclTests sycltests)
+    add_dependencies(zensim sycltests)
+endif()
 #
 
-# cuda backends
-if (ZS_ENABLE_CUDA)
-#
-add_executable(cutests cuda/main.cu)
-target_link_libraries(cutests PRIVATE zpc)
+# cuda backend
+if(ZS_ENABLE_CUDA)
+    #
+    add_executable(cutests cuda/main.cu)
+    target_link_libraries(cutests PRIVATE zpc)
 
-add_test(ZsCudaTests cutests)
-add_dependencies(zensim cutests)
-#
-add_executable(cucontainer cuda/basic.cu)
-target_link_libraries(cucontainer PRIVATE zpc)
+    add_test(ZsCudaTests cutests)
+    add_dependencies(zensim cutests)
+    #
+    add_executable(cucontainer cuda/basic.cu)
+    target_link_libraries(cucontainer PRIVATE zpc)
 
-add_test(ZsCudaBasic cucontainer)
-add_dependencies(zensim cucontainer)
-endif (ZS_ENABLE_CUDA)
+    add_test(ZsCudaBasic cucontainer)
+    add_dependencies(zensim cucontainer)
+endif(ZS_ENABLE_CUDA)
+
+# musa backend
+if(ZS_ENABLE_MUSA)
+    #
+    zs_add_musa_executable(mutests HOST_SOURCES musa/basic.cpp)
+    # add_executable(mutests musa/basic.cpp)
+    target_link_libraries(mutests PRIVATE zpc)
+
+    add_test(ZsMusaBasic mutests)
+    add_dependencies(zensim mutests)
+endif(ZS_ENABLE_MUSA)

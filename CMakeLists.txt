@@ -54,9 +54,11 @@ option(ZS_PROPAGATE_DEPS "Pass on dependencies (TBD)" ON)
 option(ZS_ENABLE_OFB_ACCESS_CHECK "Enable out-of-bound access check" OFF)
 # cuda
 option(ZS_ENABLE_CUDA "Enable cuda backend" ON)
-option(ZS_ENABLE_MUSA "Enable musa backend" ON)
 option(ZS_ENABLE_ZENO_CU_WRANGLE "Enable cuda wrangles for zeno" OFF)
 option(ZS_AUTO_DETECT_CUDA_ARCH "Let cmake automatically determine target cuda architecture" ON)
+# musa
+option(ZS_ENABLE_MUSA "Enable musa backend" ON)
+option(ZS_AUTO_DETECT_MUSA_ARCH "Let cmake automatically determine target musa architecture" ON)
 # vulkan
 option(ZS_ENABLE_VULKAN "Enable vulkan backend" ON)
 # openmp
@@ -322,7 +324,7 @@ endif(NOT PROJECT_IS_TOP_LEVEL)
 message("cmake configure summary")
 message("project name: ${project_name}")
 message("package version: ${project_version}")
-message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl(adaptivecpp): ${ZS_ENABLE_SYCL_ACPP}, sycl(oneapi): ${ZS_ENABLE_SYCL_ONEAPI}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
+message("backend build options: pthreads: ${ZS_ENABLE_PTHREADS}, sycl(adaptivecpp): ${ZS_ENABLE_SYCL_ACPP}, sycl(oneapi): ${ZS_ENABLE_SYCL_ONEAPI}, cuda: ${ZS_ENABLE_CUDA}(${CUDAToolkit_VERSION}), musa: ${ZS_ENABLE_MUSA}(${MUSA_VERSION}), omp: ${ZS_ENABLE_OPENMP}, vulkan: ${ZS_ENABLE_VULKAN}, cl: ${ZS_ENABLE_OPENCL}, jit(llvm): ${ZS_ENABLE_JIT}.")
 message("dependent library options: python: ${ZS_OVERWRITE_PYTHON_EXECUTABLE}, openvdb ${ZS_ENABLE_OPENVDB}, opengl ${ZS_ENABLE_OPENGL}, partio ${ZS_ENABLE_PARTIO}, mshio ${ZS_ENABLE_MSHIO}")
 
 # ----  Docs   ----

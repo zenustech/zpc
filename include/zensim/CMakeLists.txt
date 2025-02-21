@@ -60,6 +60,11 @@ set(ZENSIM_LIBRARY_OMP_SOURCE_FILES
 set(ZENSIM_LIBRARY_SYCL_SOURCE_FILES
   sycl/Sycl.cpp
 )
+set(ZENSIM_LIBRARY_MUSA_SOURCE_FILES
+  musa/memory/MemOps.mu
+  musa/memory/Allocator.mu
+  musa/Musa.mu
+)
 set(ZENSIM_LIBRARY_ZPC_SOURCE_FILES
   # ref: https://stackoverflow.com/questions/2351148/explicit-template-instantiation-when-is-it-used
   container/HashTable.cpp
@@ -403,7 +408,7 @@ if(ZS_ENABLE_PCH)
   )
 endif(ZS_ENABLE_PCH)
 
-target_link_libraries(zpccore PUBLIC zpc_cxx_deps zpcbase)
+target_link_libraries(zpccore PUBLIC zpcbase)
 target_link_libraries(zpccore PRIVATE zswhereami)
 # if (WIN32)
 #   target_link_libraries(zpccore PUBLIC synchronization)
@@ -435,6 +440,12 @@ if(ZS_ENABLE_CUDA)
 else()
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_CUDA=0)
 endif(ZS_ENABLE_CUDA)
+
+if(ZS_ENABLE_MUSA)
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_MUSA=1)
+else()
+  target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_MUSA=0)
+endif(ZS_ENABLE_MUSA)
 
 if(ZS_ENABLE_JIT)
   target_compile_definitions(zpc_cxx_deps INTERFACE ZS_ENABLE_JIT=1)
@@ -590,6 +601,176 @@ if(ZS_ENABLE_CUDA)
   )
   target_compile_definitions(zpc_cuda_deps INTERFACE CMAKE_GENERATOR_PLATFORM=x64)
 endif(ZS_ENABLE_CUDA)
+
+# ############
+# zpc: musa #
+# ############
+if(ZS_ENABLE_MUSA)
+  find_package(MUSAToolkit REQUIRED)
+  find_package(MUSA REQUIRED)
+
+  set(MUSA_COMPILE_OPTIONS -std=c++17 -fPIC -Werror)
+  set(MUSA_LINK_OPTIONS)
+
+  get_property(MUSA_ARCH_COMPILE_OPTIONS GLOBAL PROPERTY ZS_MUSA_ARCH_COMPILE_OPTIONS)
+  list(APPEND MUSA_COMPILE_OPTIONS ${MUSA_ARCH_COMPILE_OPTIONS})
+
+  #
+  # grab include dirs (MUSA_INCLUDE_DIRECTORIES)
+  #
+  get_target_property(zpcbase_interface_inc_dirs zpcbase INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(zsproj_deps_interface_inc_dirs zsproj_deps INTERFACE_INCLUDE_DIRECTORIES)
+  set(MUSA_INCLUDE_DIRECTORIES ${MUSAToolkit_INCLUDE_DIRS} ${zpcbase_interface_inc_dirs} ${zpc_cxx_deps_interface_inc_dirs} ${zsproj_deps_interface_inc_dirs})
+
+  message(STATUS "MUSA include directories: ${MUSA_INCLUDE_DIRECTORIES}")
+
+  #
+  # grab link dirs (MUSA_LINK_DIRECTORIES)
+  #
+  get_target_property(zsproj_deps_interface_link_dirs zsproj_deps INTERFACE_LINK_DIRECTORIES)
+  set(MUSA_LINK_DIRECTORIES ${MUSAToolkit_LIBRARY_DIR})
+  if(zsproj_deps_interface_link_dirs)
+    list(APPEND MUSA_LINK_DIRECTORIES ${zsproj_deps_interface_link_dirs})
+  endif(zsproj_deps_interface_link_dirs)
+
+  if(MUSA_LINK_DIRECTORIES)
+    foreach(link_dir IN LISTS MUSA_LINK_DIRECTORIES)
+      list(APPEND MUSA_LINK_OPTIONS -L${link_dir})
+    endforeach()
+  endif(MUSA_LINK_DIRECTORIES)
+
+  message(STATUS "MUSA link directories: ${MUSA_LINK_DIRECTORIES}")
+
+  #
+  # grab link libs (MUSA_LINK_LIBRARIES)
+  #
+  get_target_property(zsproj_deps_interface_link_libs zsproj_deps INTERFACE_LINK_LIBRARIES)
+  list(APPEND MUSA_LINK_OPTIONS -lmusart)
+  if(zsproj_deps_interface_link_libs)
+    foreach(link_lib IN LISTS zsproj_deps_interface_link_libs)
+      list(APPEND MUSA_LINK_OPTIONS -l${link_lib})
+    endforeach()
+  endif(zsproj_deps_interface_link_libs)
+
+  #
+  # grab compile definitions (MUSA_COMPILE_DEFINITIONS)
+  #
+  #get_target_property(zpcbase_interface_compile_defs zpcbase INTERFACE_COMPILE_DEFINITIONS)
+  get_target_property(zpc_cxx_deps_interface_compile_defs zpc_cxx_deps INTERFACE_COMPILE_DEFINITIONS)
+  get_target_property(zsproj_deps_interface_compile_defs zsproj_deps INTERFACE_COMPILE_DEFINITIONS)
+  set(MUSA_COMPILE_DEFINITIONS ${zpc_cxx_deps_interface_compile_defs} ${zsproj_deps_interface_compile_defs})
+  ## not supported so far in MUSA ##
+  # list(APPEND MUSA_COMPILE_DEFINITIONS "MUSA_API_PER_THREAD_DEFAULT_STREAM=1")
+  string(GENEX_STRIP "${MUSA_COMPILE_DEFINITIONS}" MUSA_COMPILE_DEFINITIONS)
+  if(MUSA_COMPILE_DEFINITIONS)
+    foreach(def IN LISTS MUSA_COMPILE_DEFINITIONS)
+      list(APPEND MUSA_COMPILE_OPTIONS -D${def})
+    endforeach()
+  endif(MUSA_COMPILE_DEFINITIONS)
+
+  message(STATUS "MUSA compile definitions: ${MUSA_COMPILE_DEFINITIONS}")
+
+  list(JOIN MUSA_COMPILE_OPTIONS " " MUSA_COMPILE_OPTIONS)
+  message(STATUS "MUSA compile options: ${MUSA_COMPILE_OPTIONS}")
+
+  # store compile options
+  set_property(GLOBAL APPEND PROPERTY ZS_MUSA_COMPILE_OPTIONS ${MUSA_COMPILE_OPTIONS})
+
+  #
+  # zs_add_musa_library 
+  #
+  function(zs_add_musa_library targetName libType)
+    set(_OPTION_KEYWORDS)
+    set(_SINGLE_VAL_KEYWORDS)
+    set(_MULTI_VAL_KEYWORDS PRIVATE_DEFINITIONS SOURCES)
+    cmake_parse_arguments(ARG
+      "${_OPTION_KEYWORDS}" # no value
+      "${_SINGLE_VAL_KEYWORDS}" # single value
+      "${_MULTI_VAL_KEYWORDS}" # multi value 
+      ${ARGN})
+
+    # compile options (definitions, link directory, flags)
+    get_property(flags GLOBAL PROPERTY ZS_MUSA_COMPILE_OPTIONS)
+    if(${ARG_PRIVATE_DEFINITIONS})
+      list(JOIN ARG_PRIVATE_DEFINITIONS " " ARG_PRIVATE_DEFINITIONS)
+      set(MUSA_MCC_FLAGS "${flags} ${ARG_PRIVATE_DEFINITIONS} ${ARG_UNPARSED_ARGUMENTS}")
+    else()
+      set(MUSA_MCC_FLAGS "${flags} ${ARG_UNPARSED_ARGUMENTS}")
+    endif()
+
+    # get_property(inc_dirs GLOBAL PROPERTY MUSA_INCLUDE_DIRECTORIES)
+    musa_include_directories(${MUSA_INCLUDE_DIRECTORIES})
+
+    # device
+    set_source_files_properties(${ARG_SOURCES} MUSA_SOURCE_PROPERTY_FORMAT LANGUAGE OBJ)
+    musa_compile(MUSA_OBJS ${ARG_SOURCES})
+    # host
+    add_library(${targetName} ${libType} ${MUSA_OBJS})
+    target_link_libraries(${targetName} PUBLIC zpc_musa_deps zpccore)
+    target_link_options(${targetName} PUBLIC $<HOST_LINK: ${MUSA_LINK_OPTIONS}>)
+    set_target_properties(${targetName} PROPERTIES LINKER_LANGUAGE CXX)
+    # musa_add_library(${targetName} ${libType} ${ARGN})
+  endfunction(zs_add_musa_library)
+
+
+  if(ZS_BUILD_SHARED_LIBS)
+    zs_add_musa_library(zpcmusa SHARED
+      SOURCES ${ZENSIM_LIBRARY_MUSA_SOURCE_FILES}
+      PRIVATE_DEFINITIONS -DZPC_BACKEND_PRIVATE
+    )
+  else()
+    zs_add_musa_library(zpcmusa STATIC
+      SOURCES ${ZENSIM_LIBRARY_MUSA_SOURCE_FILES})
+  endif()
+
+  # precompiling cuda header files not viable (it seems)
+  if(ZS_ENABLE_PCH)
+    # target_precompile_headers(zpcmusa INTERFACE musa/memory/MemOps.hpp)
+    # ${ZENSIM_LIBRARY_CUDA_INCLUDE_FILES}
+  endif(ZS_ENABLE_PCH)
+
+  # target_link_libraries(zpcmusa PRIVATE zpc_musa_arch_options zpc_musa_deps zpccore MUSA::musart)
+
+  #
+  # zs_add_musa_executable
+  #
+  function(zs_add_musa_executable targetName)
+    set(_OPTION_KEYWORDS)
+    set(_SINGLE_VAL_KEYWORDS)
+    set(_MULTI_VAL_KEYWORDS PRIVATE_DEFINITIONS HOST_SOURCES DEVICE_SOURCES)
+    cmake_parse_arguments(ARG
+      "${_OPTION_KEYWORDS}" # no value
+      "${_SINGLE_VAL_KEYWORDS}" # single value
+      "${_MULTI_VAL_KEYWORDS}" # multi value 
+      ${ARGN})
+
+    # compile options (definitions, link directory, flags)
+    get_property(flags GLOBAL PROPERTY ZS_MUSA_COMPILE_OPTIONS)
+    if(${ARG_PRIVATE_DEFINITIONS})
+      list(JOIN ARG_PRIVATE_DEFINITIONS " " ARG_PRIVATE_DEFINITIONS)
+      set(MUSA_MCC_FLAGS "${flags} ${ARG_PRIVATE_DEFINITIONS} ${ARG_UNPARSED_ARGUMENTS}")
+    else()
+      set(MUSA_MCC_FLAGS "${flags} ${ARG_UNPARSED_ARGUMENTS}")
+    endif()
+
+    # get_property(inc_dirs GLOBAL PROPERTY MUSA_INCLUDE_DIRECTORIES)
+    musa_include_directories(${MUSA_INCLUDE_DIRECTORIES})
+
+    # device
+    if(${ARG_DEVICE_SOURCES})
+      set_source_files_properties(${ARG_DEVICE_SOURCES} MUSA_SOURCE_PROPERTY_FORMAT LANGUAGE OBJ)
+      musa_compile(MUSA_OBJS ${ARG_DEVICE_SOURCES})
+    else()
+      set(MUSA_OBJS)
+    endif()
+    # host
+    add_executable(${targetName} ${ARG_HOST_SOURCES} ${MUSA_OBJS})
+    target_link_libraries(${targetName} PUBLIC zpcmusa)
+    target_link_options(${targetName} PUBLIC $<HOST_LINK: ${MUSA_LINK_OPTIONS}>)
+    set_target_properties(${targetName} PROPERTIES LINKER_LANGUAGE CXX)
+    # musa_add_executable(${targetName} ${ARGN})
+  endfunction(zs_add_musa_executable)
+endif(ZS_ENABLE_MUSA)
 
 # ###########
 # zpc: sycl #

@@ -688,6 +688,10 @@ if(ZS_ENABLE_MUSA)
   # store compile options
   set_property(GLOBAL APPEND PROPERTY ZS_MUSA_COMPILE_OPTIONS ${MUSA_COMPILE_OPTIONS})
 
+  # 
+  set(_TRANSFORMED_MUSA_SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/_transformed_musa_srcs/MUSAComputeCapabilityWorkdir)
+  file(MAKE_DIRECTORY ${_TRANSFORMED_MUSA_SOURCE_DIR})
+  set_property(GLOBAL APPEND PROPERTY ZS_TRANSFORMED_MUSA_SOURCE_DIR ${_TRANSFORMED_MUSA_SOURCE_DIR})
   #
   # zs_add_musa_library 
   #
@@ -719,7 +723,7 @@ if(ZS_ENABLE_MUSA)
     # host
     add_library(${targetName} ${libType} ${MUSA_OBJS})
     target_link_libraries(${targetName} PUBLIC zpc_musa_deps zpccore)
-    target_link_options(${targetName} PUBLIC $<HOST_LINK: ${MUSA_LINK_OPTIONS}>)
+    # target_link_options(${targetName} PUBLIC $<HOST_LINK: ${MUSA_LINK_OPTIONS}>)
     set_target_properties(${targetName} PROPERTIES LINKER_LANGUAGE CXX)
     # musa_add_library(${targetName} ${libType} ${ARGN})
   endfunction(zs_add_musa_library)
@@ -749,7 +753,7 @@ if(ZS_ENABLE_MUSA)
   function(zs_add_musa_executable targetName)
     set(_OPTION_KEYWORDS)
     set(_SINGLE_VAL_KEYWORDS)
-    set(_MULTI_VAL_KEYWORDS PRIVATE_DEFINITIONS HOST_SOURCES DEVICE_SOURCES)
+    set(_MULTI_VAL_KEYWORDS PRIVATE_DEFINITIONS SOURCES DEVICE_SOURCES)
     cmake_parse_arguments(ARG
       "${_OPTION_KEYWORDS}" # no value
       "${_SINGLE_VAL_KEYWORDS}" # single value
@@ -768,17 +772,57 @@ if(ZS_ENABLE_MUSA)
     # get_property(inc_dirs GLOBAL PROPERTY MUSA_INCLUDE_DIRECTORIES)
     musa_include_directories(${MUSA_INCLUDE_DIRECTORIES})
 
-    # device
+    # NOT WORKING AS EXPECTED!
+    #[=[
     if(${ARG_DEVICE_SOURCES})
       set_source_files_properties(${ARG_DEVICE_SOURCES} MUSA_SOURCE_PROPERTY_FORMAT LANGUAGE OBJ)
-      musa_compile(MUSA_OBJS ${ARG_DEVICE_SOURCES})
-    else()
-      set(MUSA_OBJS)
     endif()
+    #]=]
+    # ALTERNATIVE APPROACH:
+    set(srcs)
+    get_property(TRANSFORMED_MUSA_SOURCE_DIR GLOBAL PROPERTY ZS_TRANSFORMED_MUSA_SOURCE_DIR)
+    add_custom_target(${targetName}_device_sources)
+    foreach(file IN LISTS ARG_SOURCES)
+      set(_added FALSE)
+      list(FIND ARG_DEVICE_SOURCES ${file} _index)
+      if(${_index} GREATER -1)
+        # message(FATAL_ERROR "${file} in ${ARG_DEVICE_SOURCES}")
+        cmake_path(GET file EXTENSION fileExt)
+        if(NOT (fileExt STREQUAL ".mu"))
+          set(_prevPath ${file})
+          cmake_path(GET file STEM fileStem)
+          cmake_path(REMOVE_FILENAME file)
+          # cmake_path(APPEND file "${fileStem}.mu")
+
+          file(REMOVE "${TRANSFORMED_MUSA_SOURCE_DIR}/${fileStem}.mu")
+          configure_file(${_prevPath} ${TRANSFORMED_MUSA_SOURCE_DIR}/${fileStem}.mu COPYONLY)
+
+          # message(FATAL_ERROR "MUSA: ${_prevPath} -> ${TRANSFORMED_MUSA_SOURCE_DIR}/${fileStem}.mu")
+          list(APPEND srcs "${TRANSFORMED_MUSA_SOURCE_DIR}/${fileStem}.mu")
+          set(_added TRUE)
+          #[=[
+          add_custom_command(TARGET ${targetName}_device_sources PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${_prevPath}
+            ${TRANSFORMED_MUSA_SOURCE_DIR}/${fileStem}.mu
+            COMMENT "Copying '${_prevPath}' library to '${TRANSFORMED_MUSA_SOURCE_DIR}/${fileStem}.mu'")
+          # message(FATAL_ERROR "MUSA: ${_prevPath} -> ${TRANSFORMED_MUSA_SOURCE_DIR}/${fileStem}.mu")
+          #]=]
+        endif()
+        # else()
+        # message(FATAL_ERROR "${file} not in ${ARG_DEVICE_SOURCES}")
+      endif()
+
+      if(NOT _added)
+        list(APPEND srcs ${file})
+      endif()
+    endforeach(file IN LISTS ARG_SOURCES)
+
     # host
-    add_executable(${targetName} ${ARG_HOST_SOURCES} ${MUSA_OBJS})
+    musa_add_executable(${targetName} ${srcs})
+    # add_dependencies(${targetName} ${targetName}_device_sources)
     target_link_libraries(${targetName} PUBLIC zpcmusa)
-    target_link_options(${targetName} PUBLIC $<HOST_LINK: ${MUSA_LINK_OPTIONS}>)
+    # target_link_options(${targetName} PUBLIC $<HOST_LINK: ${MUSA_LINK_OPTIONS}>)
     set_target_properties(${targetName} PROPERTIES LINKER_LANGUAGE CXX)
     # musa_add_executable(${targetName} ${ARGN})
   endfunction(zs_add_musa_executable)

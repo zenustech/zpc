@@ -70,7 +70,7 @@ endif(ZS_ENABLE_CUDA)
 # musa backend
 if(ZS_ENABLE_MUSA)
     #
-    zs_add_musa_executable(mutests HOST_SOURCES musa/basic.cpp)
+    zs_add_musa_executable(mutests SOURCES musa/basic.cpp DEVICE_SOURCES musa/basic.cpp)
     # add_executable(mutests musa/basic.cpp)
     target_link_libraries(mutests PRIVATE zpc)
 

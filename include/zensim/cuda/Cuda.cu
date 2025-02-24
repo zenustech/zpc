@@ -233,7 +233,7 @@ namespace zs {
             checkCuApiError((u32)ec, errString);
           } else
             defaultDevice = devid;  // record for restore later
-        }                           // otherwise, no context has been initialized yet.
+        }  // otherwise, no context has been initialized yet.
       }
     }
     for (int i = 0; i < numTotalDevice; i++) {
@@ -330,7 +330,7 @@ namespace zs {
         context.supportConcurrentUmAccess = supportConcurrentUmAccess;
 
         fmt::print(
-            "\t[InitInfo -- Dev Property] GPU device {} ({}-th group on "
+            "\t[InitInfo -- Dev Property] CUDA device {} ({}-th group on "
             "board)\n\t\tshared memory per block: {} bytes,\n\t\tregisters per SM: "
             "{},\n\t\tMulti-Processor count: {},\n\t\tSM compute capabilities: "
             "{}.{}.\n\t\tTexture alignment: {} bytes\n\t\tUVM support: allocation({}), unified "

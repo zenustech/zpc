@@ -13,17 +13,17 @@ namespace zs {
         : dg{static_cast<unsigned int>(gs)},
           db{static_cast<unsigned int>(bs)},
           shmem{0},
-          sid{cudaStreamDefault},
+          sid{musaStreamDefault},
           autoConfig{false} {}
     template <typename IndexType0, typename IndexType1, typename IndexType2>
     LaunchConfig(IndexType0 gs, IndexType1 bs, IndexType2 mem)
         : dg{static_cast<unsigned int>(gs)},
           db{static_cast<unsigned int>(bs)},
           shmem{static_cast<unsigned int>(mem)},
-          sid{cudaStreamDefault},
+          sid{musaStreamDefault},
           autoConfig{false} {}
     template <typename IndexType0, typename IndexType1, typename IndexType2>
-    LaunchConfig(IndexType0 gs, IndexType1 bs, IndexType2 mem, cudaStream_t stream)
+    LaunchConfig(IndexType0 gs, IndexType1 bs, IndexType2 mem, musaStream_t stream)
         : dg{static_cast<unsigned int>(gs)},
           db{static_cast<unsigned int>(bs)},
           shmem{static_cast<unsigned int>(mem)},
@@ -34,17 +34,17 @@ namespace zs {
         : dg{},
           db{static_cast<unsigned int>(nwork)},
           shmem{0},
-          sid{cudaStreamDefault},
+          sid{musaStreamDefault},
           autoConfig{true} {}
     template <typename IndexType0, typename IndexType1>
     LaunchConfig(true_type, IndexType0 nwork, IndexType1 mem)
         : dg{},
           db{static_cast<unsigned int>(nwork)},
           shmem{static_cast<unsigned int>(mem)},
-          sid{cudaStreamDefault},
+          sid{musaStreamDefault},
           autoConfig{true} {}
     template <typename IndexType0, typename IndexType1>
-    LaunchConfig(true_type, IndexType0 nwork, IndexType1 mem, cudaStream_t stream)
+    LaunchConfig(true_type, IndexType0 nwork, IndexType1 mem, musaStream_t stream)
         : dg{},
           db{static_cast<unsigned int>(nwork)},
           shmem{static_cast<unsigned int>(mem)},
@@ -61,7 +61,7 @@ namespace zs {
     dim3 dg{};
     dim3 db{};
     unsigned int shmem{0};
-    cudaStream_t sid{cudaStreamDefault};
+    musaStream_t sid{musaStreamDefault};
     bool autoConfig{false};
   };
 

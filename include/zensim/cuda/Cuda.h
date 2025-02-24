@@ -313,7 +313,7 @@ namespace zs {
   template <typename... Args> struct cuda_safe_launch {
     operator u32() const { return errorCode; }
 #define CHECK_LAUNCH_CONFIG                                                                 \
-  if (lc.enableAutoConfig()) {                                                              \
+  if (lc.autoConfigEnabled()) {                                                              \
     auto nwork = lc.db.x;                                                                   \
     lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                  \
                                       [shmem = lc.shmem](int) -> size_t { return shmem; }); \

@@ -33,6 +33,8 @@ int main() {
   } else {
     std::cout << "failed" << std::endl;
   }
+  using namespace zs;
+  (void)Musa::instance();
   MUresult result = muInit(0);
   if (result != MUSA_SUCCESS) {
     std::cout << "[muInit] MUSA error: " << result << '\n';

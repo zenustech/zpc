@@ -15,6 +15,10 @@
 #include "zensim/types/Tuple.h"
 #if ZS_ENABLE_CUDA
 #  include "zensim/cuda/memory/Allocator.h"
+#elif ZS_ENABLE_MUSA
+#  include "zensim/musa/memory/Allocator.h"
+#elif ZS_ENABLE_HIP
+#elif ZS_ENABLE_SYCL
 #endif
 #if ZS_ENABLE_OPENMP
 #endif
@@ -148,6 +152,18 @@ namespace zs {
     if constexpr (space == execspace_e::cuda)
       return allocator.location.memspace() == memsrc_e::device
              || allocator.location.memspace() == memsrc_e::um;
+#elif ZS_ENABLE_MUSA
+    if constexpr (space == execspace_e::musa)
+      return allocator.location.memspace() == memsrc_e::device
+             || allocator.location.memspace() == memsrc_e::um;
+#elif ZS_ENABLE_HIP
+    if constexpr (space == execspace_e::hip)
+      return allocator.location.memspace() == memsrc_e::device
+             || allocator.location.memspace() == memsrc_e::um;
+#elif ZS_ENABLE_SYCL
+    if constexpr (space == execspace_e::sycl)
+      return allocator.location.memspace() == memsrc_e::device
+             || allocator.location.memspace() == memsrc_e::um;
 #endif
 #if ZS_ENABLE_OPENMP
     if constexpr (space == execspace_e::openmp)
@@ -166,9 +182,9 @@ namespace zs {
 
   template <typename MemTag> constexpr bool is_memory_source_available(MemTag) noexcept {
     if constexpr (is_same_v<MemTag, device_mem_tag>)
-      return ZS_ENABLE_CUDA;
+      return ZS_ENABLE_DEVICE;
     else if constexpr (is_same_v<MemTag, um_mem_tag>)
-      return ZS_ENABLE_CUDA;
+      return ZS_ENABLE_DEVICE;
     else if constexpr (is_same_v<MemTag, host_mem_tag>)
       return true;
     return false;

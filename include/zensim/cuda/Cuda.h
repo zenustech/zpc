@@ -288,9 +288,9 @@ namespace zs {
     return checkCuApiError(error, loc, msg);
   }
 
-  inline void checkKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,
-                                     std::string_view streamInfo,
-                                     const source_location &loc) noexcept {
+  inline void checkCuKernelLaunchError(u32 error, const Cuda::CudaContext &ctx,
+                                       std::string_view streamInfo,
+                                       const source_location &loc) noexcept {
     if (error != 0) {
       const auto fileInfo = fmt::format("# File: \"{:<50}\"", loc.file_name());
       const auto locInfo = fmt::format("# Ln {}, Col {}", loc.line(), loc.column());
@@ -313,7 +313,7 @@ namespace zs {
   template <typename... Args> struct cuda_safe_launch {
     operator u32() const { return errorCode; }
 #define CHECK_LAUNCH_CONFIG                                                                 \
-  if (lc.autoConfigEnabled()) {                                                              \
+  if (lc.autoConfigEnabled()) {                                                             \
     auto nwork = lc.db.x;                                                                   \
     lc.db.x = Cuda::deduce_block_size(loc, ctx, (void *)f,                                  \
                                       [shmem = lc.shmem](int) -> size_t { return shmem; }); \
@@ -329,7 +329,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         errorCode = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                        lc.db.z, kernelArgs, lc.shmem, ctx.streamCompute());
-        // checkKernelLaunchError(error, ctx, "Compute", loc);
+        // checkCuKernelLaunchError(error, ctx, "Compute", loc);
       }
     }
     explicit cuda_safe_launch(const Cuda::CudaContext &ctx, LaunchConfig &&lc,
@@ -340,7 +340,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         errorCode = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                        lc.db.z, kernelArgs, lc.shmem, ctx.streamCompute());
-        // checkKernelLaunchError(error, ctx, "Compute", loc);
+        // checkCuKernelLaunchError(error, ctx, "Compute", loc);
       }
     }
 
@@ -352,7 +352,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         errorCode = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                        lc.db.z, kernelArgs, lc.shmem, ctx.streamSpare(sid));
-        // checkKernelLaunchError(error, ctx, fmt::format("Spare [{}]", sid), loc);
+        // checkCuKernelLaunchError(error, ctx, fmt::format("Spare [{}]", sid), loc);
       }
     }
     explicit cuda_safe_launch(const Cuda::CudaContext &ctx, StreamID sid, LaunchConfig &&lc,
@@ -363,7 +363,7 @@ namespace zs {
         CHECK_LAUNCH_CONFIG
         errorCode = Cuda::launchKernel((void *)f, lc.dg.x, lc.dg.y, lc.dg.z, lc.db.x, lc.db.y,
                                        lc.db.z, kernelArgs, lc.shmem, ctx.streamSpare(sid));
-        // checkKernelLaunchError(error, ctx, fmt::format("Spare [{}]", sid), loc);
+        // checkCuKernelLaunchError(error, ctx, fmt::format("Spare [{}]", sid), loc);
       }
     }
     u32 errorCode{0};

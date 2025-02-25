@@ -17,20 +17,27 @@ namespace zs {
             || is_same_v<Tag, um_mem_tag>);
   }
 
-  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, hip };
+  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, musa, hip, sycl };
   using host_exec_tag = wrapv<execspace_e::host>;
   using omp_exec_tag = wrapv<execspace_e::openmp>;
   using cuda_exec_tag = wrapv<execspace_e::cuda>;
+  using musa_exec_tag = wrapv<execspace_e::musa>;
   using hip_exec_tag = wrapv<execspace_e::hip>;
+  using sycl_exec_tag = wrapv<execspace_e::sycl>;
   constexpr auto exec_seq = host_exec_tag{};
   constexpr auto exec_omp = omp_exec_tag{};
   constexpr auto exec_cuda = cuda_exec_tag{};
+  constexpr auto exec_musa = musa_exec_tag{};
   constexpr auto exec_hip = hip_exec_tag{};
+  constexpr auto exec_sycl = sycl_exec_tag{};
 
   template <typename Tag> constexpr bool is_execution_tag(Tag = {}) noexcept {
     return (is_same_v<Tag, host_exec_tag> || is_same_v<Tag, omp_exec_tag>
-            || is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, hip_exec_tag>);
+            || is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, musa_exec_tag>
+            || is_same_v<Tag, hip_exec_tag> || is_same_v<Tag, sycl_exec_tag>);
   }
+
+#define ZS_ENABLE_DEVICE (ZS_ENABLE_CUDA || ZS_ENABLE_MUSA /*|| ZS_ENABLE_HIP*/ || ZS_ENABLE_SYCL)
 
   ///
   /// execution space deduction

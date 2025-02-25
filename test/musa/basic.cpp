@@ -14,6 +14,7 @@ int main() {
 #  include <iostream>
 
 #  include "zensim/musa/Musa.h"
+#  include "zensim/musa/execution/ExecutionPolicy.muh"
 
 template <size_t... Is> void tttt(std::index_sequence<Is...>) {
   ((void)(std::cout << Is << ','), ...);
@@ -26,6 +27,11 @@ template <typename Fn> __global__ void test(Fn fn) {
   printf("[%d]: %f, %f\n", idx, add((float)idx, ::sqrt(idx * 1.2f)), fn(idx));
 }
 
+template <typename Vn> __global__ void test_access(Vn vn) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  printf("[%d]: %d\n", idx, vn[idx]);
+}
+
 int main() {
   if constexpr (true) {
     tttt(std::make_index_sequence<5>{});
@@ -35,6 +41,7 @@ int main() {
   }
   using namespace zs;
   (void)Musa::instance();
+#  if 0
   MUresult result = muInit(0);
   if (result != MUSA_SUCCESS) {
     std::cout << "[muInit] MUSA error: " << result << '\n';
@@ -70,9 +77,25 @@ int main() {
     unsigned int const compute_capability = major * 10 + minor;
     std::cout << compute_capability << ' ';
   }
+#  endif
 
-  test<<<1, 32>>>([a = 1] __device__(int x) -> float { return x * x; });
+  // test<<<1, 32>>>([a = 1] __device__(int x) -> float { return x * x; });
+  // musaDeviceSynchronize();
+
+  auto pol = zs::MusaExecutionPolicy{};
+  constexpr auto space = zs::execspace_e::musa;
+  auto vs = zs::Vector<int>{10, zs::memsrc_e::um, 0};
+  for (int i = 0; i < vs.size(); ++i) vs[i] = i * i;
+  puts("access on device");
+  test_access<<<1, vs.size()>>>(view<space>(vs));
   musaDeviceSynchronize();
+
+  puts("access on host");
+  // vs = vs.clone({memsrc_e::host, -1});
+  for (int i = 0; i < vs.size(); ++i) printf("on host: %d: %d\n", i, vs[i]);
+  pol(range(100), [] __device__(int i) {});
+  pol(range(100), [vs = view<space>(vs)] __device__(int i) mutable { vs[i] = i * i; });
+  pol(enumerate(vs), [] __device__(int i, int n) { printf("on device (through policy): [%d]: %d\n", i, n); });
 
   return 0;
 }

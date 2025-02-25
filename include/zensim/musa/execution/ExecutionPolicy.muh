@@ -1,37 +1,20 @@
 #pragma once
 
-#include <cooperative_groups.h>
-#include <cuda.h>
-#include <thrust/device_ptr.h>
-#include <thrust/reduce.h>
-#include <thrust/scan.h>
-#include <thrust/sort.h>
+#include <musa.h>
 
-#include <cub/device/device_histogram.cuh>
-#include <cub/device/device_merge_sort.cuh>
-#include <cub/device/device_radix_sort.cuh>
-#include <cub/device/device_reduce.cuh>
-#include <cub/device/device_scan.cuh>
-
-#include "zensim/cuda/Cuda.h"
 #include "zensim/execution/ExecutionPolicy.hpp"
+#include "zensim/musa/Musa.h"
 #include "zensim/types/Tuple.h"
 // #include <device_types.h>
 #include <iterator>
-#include <nvfunctional>
 #include <type_traits>
 
 #include "zensim/ZpcFunction.hpp"
 
-#if ZS_ENABLE_CUDA && !defined(__CUDACC__)
-#  error "ZS_ENABLE_CUDA defined but the compiler is not defining the __CUDACC__ macro as expected"
-// Some tooling environments will still function better if we do this here.
-#  define __CUDACC__
+#if ZS_ENABLE_MUSA && !defined(__MUSACC__)
+#  error "ZS_ENABLE_MUSA defined but the compiler is not defining the __MUSACC__ macro as expected"
+#  define __MUSACC__
 #endif
-
-/// extracted from compiler error message...
-template <class Tag, class... CapturedVarTypePack> struct __nv_dl_wrapper_t;
-template <class U, U func, unsigned int> struct __nv_dl_tag;
 
 namespace zs {
 
@@ -320,6 +303,8 @@ namespace zs {
       }
     }
   }
+
+#if 0
   namespace cg = cooperative_groups;
   template <typename Tn, typename F> __global__ void block_tile_lane_launch(Tn tileSize, F f) {
     extern __shared__ std::max_align_t shmem[];
@@ -341,60 +326,38 @@ namespace zs {
         block.thread_rank() / tileSize, tile.thread_rank());
     }
   }
+#endif
 
-  namespace detail {
-    template <typename, typename> struct function_traits_impl;
+  struct MusaExecutionPolicy;
+  ZPC_API extern ZSPmrAllocator<> get_temporary_memory_source(const MusaExecutionPolicy &pol);
 
-    template <auto F, unsigned int I, typename R, typename... Args>
-    struct function_traits_impl<__nv_dl_tag<R (*)(Args...), F, I>> {
-      static constexpr size_t arity = sizeof...(Args);
-      using return_t = R;
-      using arguments_t = zs::tuple<Args...>;
-    };
-    template <class Tag, class... CapturedVarTypePack>
-    struct function_traits_impl<__nv_dl_wrapper_t<Tag, CapturedVarTypePack...>>
-        : function_traits_impl<Tag> {};
-  }  // namespace detail
-
-  struct CudaExecutionPolicy;
-  ZPC_API extern ZSPmrAllocator<> get_temporary_memory_source(const CudaExecutionPolicy &pol);
-
-  struct CudaExecutionPolicy : ExecutionPolicyInterface<CudaExecutionPolicy> {
-    using exec_tag = cuda_exec_tag;
-    CudaExecutionPolicy &listen(ProcID incProc, StreamID incStream) {
+  struct MusaExecutionPolicy : ExecutionPolicyInterface<MusaExecutionPolicy> {
+    using exec_tag = musa_exec_tag;
+    MusaExecutionPolicy &listen(ProcID incProc, StreamID incStream) {
       this->_wait = true;
       incomingProc = incProc;
       incomingStreamid = incStream;
       return *this;
     }
-    CudaExecutionPolicy &stream(StreamID streamid_) {
+    MusaExecutionPolicy &stream(StreamID streamid_) {
       streamid = streamid_;
       return *this;
     }
-    CudaExecutionPolicy &device(ProcID pid) {
+    MusaExecutionPolicy &device(ProcID pid) {
       procid = pid;
       return *this;
     }
-    CudaExecutionPolicy &shmem(size_t bytes) {
+    MusaExecutionPolicy &shmem(size_t bytes) {
       shmemBytes = bytes;
       return *this;
     }
-    CudaExecutionPolicy &block(size_t tpb) {
+    MusaExecutionPolicy &block(size_t tpb) {
       blockSize = tpb;
       return *this;
     }
-#if 0
-    template <typename FTraits> static constexpr unsigned computeArity() noexcept {
-      unsigned res{0};
-      if constexpr (FTraits::arity != 0)
-        res = FTraits::arity
-              - (std::is_pointer_v<zs::tuple_element_t<0, typename FTraits::arguments_t>> ? 1 : 0);
-      return res;
-    }
-#endif
 
     void syncCtx(const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(getProcid());
+      auto &context = Musa::context(getProcid());
       context.syncStreamSpare(streamid, loc);
     }
 
@@ -403,12 +366,12 @@ namespace zs {
                     const source_location &loc = source_location::current()) const {
       using namespace index_literals;
       constexpr auto dim = Collapse<Ts, Is>::dim;
-      auto &context = Cuda::context(getProcid());
+      auto &context = Musa::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
+                                        Musa::context(incomingProc).eventSpare(incomingStreamid));
+      Musa::MusaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
 
       // need to work on __device__ func as well
@@ -419,40 +382,42 @@ namespace zs {
           lc = LaunchConfig{true_c, dims.get(0_th), shmemBytes};
         else
           lc = LaunchConfig{(dims.get(0_th) + blockSize - 1) / blockSize, blockSize, shmemBytes};
-        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), thread_launch, dims.get(0_th),
+        ec = musa_safe_launch(loc, context, streamid, std::move(lc), thread_launch, dims.get(0_th),
                               f);
       }
       // else if constexpr (arity == 2)
       else if constexpr (dim == 2) {
-        ec = cuda_safe_launch(loc, context, streamid, {dims.get(0_th), dims.get(1_th), shmemBytes},
+        ec = musa_safe_launch(loc, context, streamid, {dims.get(0_th), dims.get(1_th), shmemBytes},
                               block_thread_launch, f);
       }
+      static_assert(dim >= 1 && dim <= 2,
+                    "launch dimensions other than 1, 2 are not supported yet");
+#if 0
       // else if constexpr (arity == 3)
       else if constexpr (dim == 3) {
-        ec = cuda_safe_launch(loc, context, streamid,
+        ec = musa_safe_launch(loc, context, streamid,
                               {dims.get(0_th), dims.get(1_th) * dims.get(2_th), shmemBytes},
                               block_tile_lane_launch, dims.get(2_th), f);
       }
-      static_assert(dim >= 1 && dim <= 3,
-                    "launch dimensions other than 1, 2, 3 are not supported yet");
+#endif
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) {
         context.syncStreamSpare(streamid, loc);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (ec == 0) ec = Cuda::get_last_cuda_rt_error();
+        if (ec == 0) ec = Musa::get_last_musa_rt_error();
 #endif
       }
-      checkCuKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
+      checkMuKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
       context.recordEventSpare(streamid, loc);
     }
     template <typename Range, typename F>
     auto operator()(Range &&range, F &&f,
                     const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(getProcid());
+      auto &context = Musa::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
+                                        Musa::context(incomingProc).eventSpare(incomingStreamid));
 
       // need to work on __device__ func as well
       auto iter = std::begin(range);
@@ -467,15 +432,15 @@ namespace zs {
       else
         lc = LaunchConfig{(dist + blockSize - 1) / blockSize, blockSize, shmemBytes};
 
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      Musa::MusaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
 
       u32 ec = 0;
       if constexpr (is_zip_iterator_v<IterT>) {
-        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
+        ec = musa_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
                               std::begin(FWD(range)));
       } else {  // wrap the non-zip range in a zip range
-        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
+        ec = musa_safe_launch(loc, context, streamid, std::move(lc), range_launch, dist, f,
                               std::begin(zip(FWD(range))));
       }
 
@@ -483,20 +448,20 @@ namespace zs {
       if (this->shouldSync()) {
         context.syncStreamSpare(streamid, loc);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (ec == 0) ec = Cuda::get_last_cuda_rt_error();
+        if (ec == 0) ec = Musa::get_last_musa_rt_error();
 #endif
       }
-      checkCuKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
+      checkMuKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
       context.recordEventSpare(streamid, loc);
     }
     template <typename Range, typename... Args, typename F>
     auto operator()(Range &&range, const zs::tuple<Args...> &params, F &&f,
                     const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(getProcid());
+      auto &context = Musa::context(getProcid());
       context.setContext();
       if (this->shouldWait())
         context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
+                                        Musa::context(incomingProc).eventSpare(incomingStreamid));
 
       // need to work on __device__ func as well
       auto iter = std::begin(range);
@@ -511,15 +476,15 @@ namespace zs {
       else
         lc = LaunchConfig{(dist + blockSize - 1) / blockSize, blockSize, shmemBytes};
 
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
+      Musa::MusaContext::StreamExecutionTimer *timer{};
       if (this->shouldProfile()) timer = context.tick(context.streamSpare(streamid), loc);
 
       u32 ec = 0;
       if constexpr (is_zip_iterator_v<IterT>) {
-        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
+        ec = musa_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
                               f, std::begin(FWD(range)), params);
       } else {  // wrap the non-zip range in a zip range
-        ec = cuda_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
+        ec = musa_safe_launch(loc, context, streamid, std::move(lc), range_launch_with_params, dist,
                               f, std::begin(zip(FWD(range))), params);
       }
 
@@ -527,10 +492,10 @@ namespace zs {
       if (this->shouldSync()) {
         context.syncStreamSpare(streamid, loc);
 #if ZS_ENABLE_OFB_ACCESS_CHECK
-        if (ec == 0) ec = Cuda::get_last_cuda_rt_error();
+        if (ec == 0) ec = Musa::get_last_musa_rt_error();
 #endif
       }
-      checkCuKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
+      checkMuKernelLaunchError(ec, context, fmt::format("Spare [{}]", streamid), loc);
       context.recordEventSpare(streamid, loc);
     }
 
@@ -555,341 +520,17 @@ namespace zs {
                     "Iterator should be a random access iterator");
       for_each_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(f), loc);
     }
-    /// inclusive scan
-    template <class InputIt, class OutputIt, class BinaryOperation>
-    void inclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                             OutputIt &&d_first, BinaryOperation &&binary_op,
-                             const source_location &loc) const {
-      auto &context = Cuda::context(getProcid());
-      context.setContext();
-      if (this->shouldWait())
-        context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      using IterT = remove_cvref_t<InputIt>;
-      const auto dist = last - first;
-      size_t temp_bytes = 0;
-      auto stream = (cudaStream_t)context.streamSpare(streamid);
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
-      if (this->shouldProfile()) timer = context.tick(stream, loc);
-#if 0
-      thrust::inclusive_scan(thrust::cuda::par.on(stream),
-                             thrust::device_pointer_cast(first.operator->()),
-                             thrust::device_pointer_cast(first.operator->() + dist),
-                             thrust::device_pointer_cast(d_first.operator->()), FWD(binary_op));
-#else
-      cub::DeviceScan::InclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, dist, stream);
-
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceScan::InclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, dist, stream);
-      context.streamMemFree(d_tmp, stream, loc);
-#endif
-      if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
-      context.recordEventSpare(streamid, loc);
-    }
-    template <class InputIt, class OutputIt,
-              class BinaryOperation = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
-    void inclusive_scan(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                        BinaryOperation &&binary_op = {},
-                        const source_location &loc = source_location::current()) const {
-      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
-                    "Input Iterator and Output Iterator should both be random access iterators");
-      inclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
-                          FWD(binary_op), loc);
-    }
-    /// exclusive scan
-    template <class InputIt, class OutputIt, class T, class BinaryOperation>
-    void exclusive_scan_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                             OutputIt &&d_first, T init, BinaryOperation &&binary_op,
-                             const source_location &loc) const {
-      auto &context = Cuda::context(getProcid());
-      context.setContext();
-      if (this->shouldWait())
-        context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      using IterT = remove_cvref_t<InputIt>;
-      const auto dist = last - first;
-      auto stream = (cudaStream_t)context.streamSpare(streamid);
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
-      if (this->shouldProfile()) timer = context.tick(stream, loc);
-#if 0
-      thrust::exclusive_scan(
-          thrust::cuda::par.on(stream), thrust::device_pointer_cast(first.operator->()),
-          thrust::device_pointer_cast(first.operator->() + dist),
-          thrust::device_pointer_cast(d_first.operator->()), init, FWD(binary_op));
-#else
-      size_t temp_bytes = 0;
-      cub::DeviceScan::ExclusiveScan(nullptr, temp_bytes, first, d_first, binary_op, init, dist,
-                                     stream);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceScan::ExclusiveScan(d_tmp, temp_bytes, first, d_first, binary_op, init, dist,
-                                     stream);
-      context.streamMemFree(d_tmp, stream, loc);
-#endif
-      if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
-      context.recordEventSpare(streamid, loc);
-    }
-    template <class InputIt, class OutputIt,
-              class BinaryOperation
-              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
-    void exclusive_scan(
-        InputIt &&first, InputIt &&last, OutputIt &&d_first,
-        typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
-        = deduce_identity<BinaryOperation,
-                          typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
-        BinaryOperation &&binary_op = {},
-        const source_location &loc = source_location::current()) const {
-      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
-                    "Input Iterator and Output Iterator should both be random access iterators");
-      exclusive_scan_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first),
-                          init, FWD(binary_op), loc);
-    }
-    /// reduce
-    template <class InputIt, class OutputIt, class T, class BinaryOperation>
-    void reduce_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                     OutputIt &&d_first, T init, BinaryOperation &&binary_op,
-                     const source_location &loc) const {
-      auto &context = Cuda::context(getProcid());
-      context.setContext();
-      if (this->shouldWait())
-        context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      using IterT = remove_cvref_t<InputIt>;
-      using ValueT = typename std::iterator_traits<IterT>::value_type;
-      const auto dist = last - first;
-      size_t temp_bytes = 0;
-      auto stream = (cudaStream_t)context.streamSpare(streamid);
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
-      if (this->shouldProfile()) timer = context.tick(stream, loc);
-#if 0
-      ValueT res
-          = thrust::reduce(thrust::device, thrust::device_pointer_cast(first.operator->()),
-                           thrust::device_pointer_cast(last.operator->()), (ValueT)init, binary_op);
-      (*this)(
-          Collapse{1}, [d_first = FWD(d_first), res] __device__(int) mutable { *d_first = res; },
-          loc);
-#else
-      cub::DeviceReduce::Reduce(nullptr, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceReduce::Reduce(d_tmp, temp_bytes, first, d_first, dist, binary_op, init, stream);
-      context.streamMemFree(d_tmp, stream, loc);
-#endif
-      if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
-      context.recordEventSpare(streamid, loc);
-    }
-    template <class InputIt, class OutputIt,
-              // class T = remove_cvref_t<decltype(*declval<InputIt>())>,
-              class BinaryOp
-              = plus<typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>>
-    void reduce(InputIt &&first, InputIt &&last, OutputIt &&d_first,
-                typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type init
-                = deduce_identity<
-                    BinaryOp, typename std::iterator_traits<remove_cvref_t<InputIt>>::value_type>(),
-                BinaryOp &&binary_op = {},
-                const source_location &loc = source_location::current()) const {
-      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
-                    "Input Iterator and Output Iterator should both be random access iterators");
-      reduce_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), init,
-                  FWD(binary_op), loc);
-    }
-    /// merge sort
-    template <class KeyIter, class ValueIter, typename CompareOpT>
-    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>
-                   && is_ra_iter_v<remove_reference_t<ValueIter>>>
-    merge_sort_pair(
-        KeyIter &&keys, ValueIter &&vals,
-        typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type count,
-        CompareOpT &&compOp, const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(getProcid());
-      context.setContext();
-      if (this->shouldWait())
-        context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      if (count) {
-        size_t temp_bytes = 0;
-        auto stream = (cudaStream_t)context.streamSpare(streamid);
-        Cuda::CudaContext::StreamExecutionTimer *timer{};
-        if (this->shouldProfile()) timer = context.tick(stream, loc);
-        cub::DeviceMergeSort::StableSortPairs(nullptr, temp_bytes, keys, vals, count, compOp,
-                                              stream);
-        // context.syncStreamSpare(streamid, loc);
-        void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-        // cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
-        cub::DeviceMergeSort::StableSortPairs(d_tmp, temp_bytes, keys, vals, count, compOp, stream);
-        // context.syncStreamSpare(streamid, loc);
-        // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
-        context.streamMemFree(d_tmp, stream, loc);
-        if (this->shouldProfile()) context.tock(timer, loc);
-      }
-      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
-      context.recordEventSpare(streamid, loc);
-    }
-    template <class KeyIter, typename CompareOpT>
-    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>> merge_sort(
-        KeyIter &&first, KeyIter &&last, CompareOpT &&compOp,
-        const source_location &loc = source_location::current()) const {
-      auto &context = Cuda::context(getProcid());
-      context.setContext();
-      if (this->shouldWait())
-        context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      const auto dist = last - first;
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
-      auto stream = (cudaStream_t)context.streamSpare(streamid);
-      if (this->shouldProfile()) timer = context.tick(stream, loc);
-
-      size_t temp_bytes = 0;
-      cub::DeviceMergeSort::StableSortKeys(nullptr, temp_bytes, first, dist, compOp, stream);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceMergeSort::StableSortKeys(d_tmp, temp_bytes, first, dist, compOp, stream);
-      context.streamMemFree(d_tmp, stream, loc);
-
-      if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
-      context.recordEventSpare(streamid, loc);
-    }
-    /// histogram sort
-    /// radix sort pair
-    template <class KeyIter, class ValueIter,
-              typename Tn
-              = typename std::iterator_traits<remove_reference_t<KeyIter>>::difference_type>
-    enable_if_type<is_ra_iter_v<remove_reference_t<KeyIter>>
-                   && is_ra_iter_v<remove_reference_t<ValueIter>>>
-    radix_sort_pair(KeyIter &&keysIn, ValueIter &&valsIn, KeyIter &&keysOut, ValueIter &&valsOut,
-                    Tn count = 0, int sbit = 0,
-                    int ebit
-                    = sizeof(typename std::iterator_traits<remove_reference_t<KeyIter>>::value_type)
-                      * 8,
-                    const source_location &loc = source_location::current()) const {
-      using KeyIterT = remove_cvref_t<KeyIter>;
-      using ValueIterT = remove_cvref_t<ValueIter>;
-      using DiffT = typename std::iterator_traits<KeyIterT>::difference_type;
-      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
-      using ValueT = typename std::iterator_traits<ValueIterT>::value_type;
-      auto &context = Cuda::context(getProcid());
-      context.setContext();
-      if (this->shouldWait())
-        context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      if (count) {
-        size_t temp_bytes = 0;
-        auto stream = (cudaStream_t)context.streamSpare(streamid);
-        Cuda::CudaContext::StreamExecutionTimer *timer{};
-        if (this->shouldProfile()) timer = context.tick(stream, loc);
-#if 0
-        (*this)(
-            Collapse{count},
-            [keysIn, keysOut, valsIn, valsOut] __device__(Tn i) mutable {
-              *(keysOut + i) = *(keysIn + i);
-              *(valsOut + i) = *(valsIn + i);
-            },
-            loc);
-        thrust::sort_by_key(thrust::cuda::par.on(stream),
-                            thrust::device_pointer_cast(keysOut.operator->()),
-                            thrust::device_pointer_cast(keysOut.operator->() + count),
-                            thrust::device_pointer_cast(valsOut.operator->()));
-#else
-        auto allocator = get_temporary_memory_source(*this);
-        Vector<KeyT> ksIn{allocator, (size_t)count}, ksOut{allocator, (size_t)count};
-        Vector<ValueT> vsIn{allocator, (size_t)count}, vsOut{allocator, (size_t)count};
-
-        (*this)(zip(range(keysIn, keysIn + count), ksIn), zs::make_tuple(),
-                _zs_policy_assign_operator{}, loc);
-        (*this)(zip(range(valsIn, valsIn + count), vsIn), zs::make_tuple(),
-                _zs_policy_assign_operator{}, loc);
-
-        cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, ksIn.data(), ksOut.data(), vsIn.data(),
-                                        vsOut.data(), count, sbit, ebit, stream);
-        // context.syncStreamSpare(streamid, loc);
-        void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-#  if 0
-        void *d_tmp;
-        cuMemAllocAsync((CUdeviceptr *)&d_tmp, temp_bytes, stream);
-#  endif
-        cub::DeviceRadixSort::SortPairs(d_tmp, temp_bytes, ksIn.data(), ksOut.data(), vsIn.data(),
-                                        vsOut.data(), count, sbit, ebit, stream);
-        // context.syncStreamSpare(streamid, loc);
-        // cuMemFreeAsync((CUdeviceptr)d_tmp, stream);
-        context.streamMemFree(d_tmp, stream, loc);
-
-        (*this)(zip(ksOut, range(keysOut, keysOut + count)), zs::make_tuple(),
-                _zs_policy_assign_operator{}, loc);
-        (*this)(zip(vsOut, range(valsOut, valsOut + count)), zs::make_tuple(),
-                _zs_policy_assign_operator{}, loc);
-#endif
-        if (this->shouldProfile()) context.tock(timer, loc);
-      }
-      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
-      context.recordEventSpare(streamid, loc);
-    }
-    /// radix sort
-    template <class InputIt, class OutputIt>
-    void radix_sort_impl(std::random_access_iterator_tag, InputIt &&first, InputIt &&last,
-                         OutputIt &&d_first, int sbit, int ebit, const source_location &loc) const {
-      using KeyIterT = remove_cvref_t<InputIt>;
-      using KeyT = typename std::iterator_traits<KeyIterT>::value_type;
-      auto &context = Cuda::context(getProcid());
-      context.setContext();
-      if (this->shouldWait())
-        context.spareStreamWaitForEvent(streamid,
-                                        Cuda::context(incomingProc).eventSpare(incomingStreamid));
-      const auto dist = last - first;
-      Cuda::CudaContext::StreamExecutionTimer *timer{};
-      auto stream = (cudaStream_t)context.streamSpare(streamid);
-      if (this->shouldProfile()) timer = context.tick(stream, loc);
-#if 0
-      (*this)(
-          Collapse{dist},
-          [first, d_first] __device__(auto i) mutable { *(d_first + i) = *(first + i); }, loc);
-      thrust::sort(thrust::cuda::par.on(stream), thrust::device_pointer_cast(d_first.operator->()),
-                   thrust::device_pointer_cast(d_first.operator->() + dist));
-#else
-      auto allocator = get_temporary_memory_source(*this);
-      Vector<KeyT> ksIn{allocator, (size_t)dist}, ksOut{allocator, (size_t)dist};
-      (*this)(zip(range(first, last), ksIn), zs::make_tuple(), _zs_policy_assign_operator{}, loc);
-
-      size_t temp_bytes = 0;
-      cub::DeviceRadixSort::SortKeys(nullptr, temp_bytes, ksIn.data(), ksOut.data(), dist, sbit,
-                                     ebit, stream);
-      void *d_tmp = context.streamMemAlloc(temp_bytes, stream, loc);
-      cub::DeviceRadixSort::SortKeys(d_tmp, temp_bytes, ksIn.data(), ksOut.data(), dist, sbit, ebit,
-                                     stream);
-      context.streamMemFree(d_tmp, stream, loc);
-
-      (*this)(zip(ksOut, range(d_first, d_first + dist)), zs::make_tuple(),
-              _zs_policy_assign_operator{}, loc);
-#endif
-      if (this->shouldProfile()) context.tock(timer, loc);
-      if (this->shouldSync()) context.syncStreamSpare(streamid, loc);
-      context.recordEventSpare(streamid, loc);
-    }
-    template <class InputIt, class OutputIt>
-    void radix_sort(InputIt &&first, InputIt &&last, OutputIt &&d_first, int sbit = 0,
-                    int ebit
-                    = sizeof(typename std::iterator_traits<remove_reference_t<InputIt>>::value_type)
-                      * 8,
-                    const source_location &loc = source_location::current()) const {
-      static_assert(is_ra_iter_v<remove_cvref_t<InputIt>> && is_ra_iter_v<remove_cvref_t<OutputIt>>,
-                    "Input Iterator and Output Iterator should both be random access iterators");
-      static_assert(is_same_v<typename std::iterator_traits<remove_reference_t<InputIt>>::pointer,
-                              typename std::iterator_traits<remove_reference_t<OutputIt>>::pointer>,
-                    "Input iterator pointer different from output iterator\'s");
-      radix_sort_impl(std::random_access_iterator_tag{}, FWD(first), FWD(last), FWD(d_first), sbit,
-                      ebit, loc);
-    }
 
     constexpr ProcID getProcid() const noexcept {
-      if (procid < 0) return Cuda::get_default_device();
+      if (procid < 0) return Musa::get_default_device();
       return procid;
     }
     constexpr StreamID getStreamid() const noexcept { return streamid; }
     void *getStream() const noexcept {
-      return Cuda::context(getProcid()).streamSpare(getStreamid());
+      return Musa::context(getProcid()).streamSpare(getStreamid());
     }
-    decltype(auto) context() { return Cuda::context(getProcid()); }
-    decltype(auto) context() const { return Cuda::context(getProcid()); }
+    decltype(auto) context() { return Musa::context(getProcid()); }
+    decltype(auto) context() const { return Musa::context(getProcid()); }
     void *getContext() const { return context().getContext(); }
 
     constexpr ProcID getIncomingProcid() const noexcept { return incomingProc; }
@@ -899,7 +540,7 @@ namespace zs {
 
   protected:
     // bool do_launch(const ParallelTask &) const noexcept;
-    friend struct ExecutionPolicyInterface<CudaExecutionPolicy>;
+    friend struct ExecutionPolicyInterface<MusaExecutionPolicy>;
     // template <auto flagbit> friend struct CudaLibHandle<flagbit>;
 
     // size_t blockGranularity{128};
@@ -910,11 +551,5 @@ namespace zs {
     ProcID incomingProc{0};
     ProcID procid{-1};  ///< use current default CUDA device
   };
-
-  constexpr bool is_backend_available(CudaExecutionPolicy) noexcept { return true; }
-  constexpr bool is_backend_available(cuda_exec_tag) noexcept { return true; }
-
-  constexpr CudaExecutionPolicy cuda_exec() noexcept { return CudaExecutionPolicy{}; }
-  constexpr CudaExecutionPolicy par_exec(cuda_exec_tag) noexcept { return CudaExecutionPolicy{}; }
 
 }  // namespace zs

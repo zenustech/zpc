@@ -385,7 +385,7 @@ namespace zs {
     auto cuda_max_active_blocks_per_sm = [&](int block_size, int dynamic_shmem) {
       // Limits due do registers/SM
       int const regs_per_sm = ctx.regsPerMultiprocessor;
-      int const regs_per_thread = funcAttribs.numRegs;
+      int const regs_per_thread = std::max(funcAttribs.numRegs, 1);
       int const max_blocks_regs = regs_per_sm / (regs_per_thread * block_size);
 
       // Limits due to shared memory/SM

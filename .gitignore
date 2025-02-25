@@ -13,3 +13,5 @@
 **/*.vdb
 **/*.so
 **/*.a
+cmake-build-**
+.idea

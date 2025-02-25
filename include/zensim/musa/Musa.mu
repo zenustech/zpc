@@ -37,8 +37,14 @@ namespace zs {
   u32 Musa::launchKernel(const void *f, unsigned int gx, unsigned int gy, unsigned int gz,
                          unsigned int bx, unsigned int by, unsigned int bz, void **args,
                          size_t shmem, void *stream) {
+#if 0
+    // NOT working!
     return muLaunchKernel((MUfunction)f, gx, gy, gz, bx, by, bz, shmem, (MUstream)stream, args,
                           nullptr);
+#else
+    return musaLaunchKernel(f, dim3{gx, gy, gz}, dim3{bx, by, bz}, args, shmem,
+                            (musaStream_t)stream);
+#endif
   }
   u32 Musa::launchCallback(void *stream, void *f, void *data) {
     return (u32)muLaunchHostFunc((MUstream)stream, (MUhostFn)f, data);
@@ -326,10 +332,16 @@ namespace zs {
     ctx.checkError(musaFuncGetAttributes(&funcAttribs, kernelFunc), loc);
     int optBlockSize{0};
 
-    auto cuda_max_active_blocks_per_sm = [&](int block_size, int dynamic_shmem) {
+    // printf("numregs: %d, numregs sm: %d, sharedSizeBytes: %d, maxDynamicSharedSizeBytes: %d,
+    // threads: %d\n",
+    //        (int)funcAttribs.numRegs, (int)ctx.regsPerMultiprocessor,
+    //        (int)funcAttribs.sharedSizeBytes, (int)funcAttribs.maxDynamicSharedSizeBytes,
+    //        (int)funcAttribs.maxThreadsPerBlock);
+
+    auto musa_max_active_blocks_per_sm = [&](int block_size, int dynamic_shmem) {
       // Limits due do registers/SM
       int const regs_per_sm = ctx.regsPerMultiprocessor;
-      int const regs_per_thread = funcAttribs.numRegs;
+      int const regs_per_thread = std::max(funcAttribs.numRegs, 1);
       int const max_blocks_regs = regs_per_sm / (regs_per_thread * block_size);
 
       // Limits due to shared memory/SM
@@ -366,7 +378,7 @@ namespace zs {
       for (int block_size = max_threads_per_block; block_size > 0; block_size -= 32) {
         size_t const dynamic_shmem = block_size_to_dynamic_shmem(block_size);
 
-        int blocks_per_sm = cuda_max_active_blocks_per_sm(block_size, dynamic_shmem);
+        int blocks_per_sm = musa_max_active_blocks_per_sm(block_size, dynamic_shmem);
 
         int threads_per_sm = blocks_per_sm * block_size;
 

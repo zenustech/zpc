@@ -923,6 +923,15 @@ if(ZS_ENABLE_CUDA)
   # target_link_libraries(zpc PUBLIC zpc_cuda_deps)
 endif(ZS_ENABLE_CUDA)
 
+if(ZS_ENABLE_MUSA)
+  # set_source_files_properties(${ZENSIM_LIBRARY_ZPC_CUDA_SOURCE_FILES} PROPERTIES LANGUAGE CUDA)
+  target_link_libraries(zpc PUBLIC zpcmusa)
+
+  target_sources(zpc
+    PRIVATE resource/musa/ExecutionPolicy.mu
+  )
+endif(ZS_ENABLE_MUSA)
+
 if(ZS_ENABLE_SYCL_ONEAPI)
   target_link_libraries(zpc PUBLIC zpcsycl)
 elseif(ZS_ENABLE_SYCL_ACPP)

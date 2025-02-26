@@ -31,10 +31,17 @@ namespace zs {
   constexpr auto exec_hip = hip_exec_tag{};
   constexpr auto exec_sycl = sycl_exec_tag{};
 
-  template <typename Tag> constexpr bool is_execution_tag(Tag = {}) noexcept {
-    return (is_same_v<Tag, host_exec_tag> || is_same_v<Tag, omp_exec_tag>
-            || is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, musa_exec_tag>
+  template <typename Tag> constexpr bool is_host_execution_tag(Tag = {}) noexcept {
+    return (is_same_v<Tag, host_exec_tag> || is_same_v<Tag, omp_exec_tag>);
+  }
+
+  template <typename Tag> constexpr bool is_device_execution_tag(Tag = {}) noexcept {
+    return (is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, musa_exec_tag>
             || is_same_v<Tag, hip_exec_tag> || is_same_v<Tag, sycl_exec_tag>);
+  }
+
+  template <typename Tag> constexpr bool is_execution_tag(Tag tag = {}) noexcept {
+    return is_host_execution_tag(tag) || is_device_execution_tag(tag);
   }
 
 #define ZS_ENABLE_DEVICE (ZS_ENABLE_CUDA || ZS_ENABLE_MUSA /*|| ZS_ENABLE_HIP*/ || ZS_ENABLE_SYCL)

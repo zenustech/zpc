@@ -6,7 +6,7 @@
 
 #include "zensim/Platform.hpp"
 
-#if !ZS_ENABLE_MUSA
+#if !defined(ZS_ENABLE_MUSA) || (defined(ZS_ENABLE_MUSA) && !ZS_ENABLE_MUSA)
 #  error "ZS_ENABLE_MUSA* was not enabled, but Musa.hpp was included anyway."
 #endif
 

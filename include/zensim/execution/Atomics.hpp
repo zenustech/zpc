@@ -58,31 +58,36 @@ namespace zs {
   }
 #endif
 
+#if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
-  atomic_add_impl(ExecTag, T *dest, const T val) {
-    static_assert(is_same_v<ExecTag, omp_exec_tag>);
-    if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
-      using TT = conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, u64>>;
-      static_assert(sizeof(T) == sizeof(TT));
-      TT oldVal{reinterpret_bits<TT>(*const_cast<volatile T *>(dest))};
-      TT newVal{reinterpret_bits<TT>(reinterpret_bits<T>(oldVal) + val)}, readVal{};
-      while ((readVal = atomic_cas(ExecTag{}, (TT *)dest, oldVal, newVal)) != oldVal) {
-        oldVal = readVal;
-        newVal = reinterpret_bits<TT>(reinterpret_bits<T>(readVal) + val);
-      }
-      return reinterpret_bits<T>(oldVal);
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  atomic_add(ExecTag, T *dest, const T val) {
+    return atomicAdd(dest, val);
+  }
+#endif
+
+  template <typename ExecTag, typename T>
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_add_impl(ExecTag, T *dest,
+                                                                             const T val) {
+    using TT = conditional_t<sizeof(T) == 2, u16, conditional_t<sizeof(T) == 4, u32, u64>>;
+    static_assert(sizeof(T) == sizeof(TT));
+    TT oldVal{reinterpret_bits<TT>(*const_cast<volatile T *>(dest))};
+    TT newVal{reinterpret_bits<TT>(reinterpret_bits<T>(oldVal) + val)}, readVal{};
+    while ((readVal = atomic_cas(ExecTag{}, (TT *)dest, oldVal, newVal)) != oldVal) {
+      oldVal = readVal;
+      newVal = reinterpret_bits<TT>(reinterpret_bits<T>(readVal) + val);
     }
+    return reinterpret_bits<T>(oldVal);
   }
 
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
-  atomic_add(ExecTag, T *dest, const T val) {
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_add(ExecTag, T *dest,
+                                                                        const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest += val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (is_integral_v<T>) {
@@ -109,10 +114,7 @@ namespace zs {
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_add(val, std::memory_order_seq_cst);
 #endif
-    } else {
-      static_assert(always_false<ExecTag>, "invalid execution space for atomic_add.");
     }
-    return (T)0;
   }
 
   // https://developer.nvidia.com/blog/cuda-pro-tip-optimized-filtering-warp-aggregated-atomics/
@@ -133,16 +135,35 @@ namespace zs {
       return warp_res + rank;
 #  else
       static_assert(always_false<ExecTag>,
-                    "error in compiling cuda implementation of [atomic_add]!");
+                    "error in compiling cuda implementation of [atomic_inc]!");
       return 0;
 #  endif
-    }
-    return atomic_add(ExecTag{}, dest, (T)1);
+    } else
+      return atomic_add(ExecTag{}, dest, (T)1);
   }
 #endif
+
+#if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
   atomic_inc(ExecTag, T *dest) {
+    if constexpr (is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
+      unsigned int active = __activemask();
+      int leader = __ffs(active) - 1;
+      int change = __popc(active);
+      // https://stackoverflow.com/questions/44337309/whats-the-most-efficient-way-to-calculate-the-warp-id-lane-id-in-a-1-d-grid
+      unsigned int rank = __popc(active & ((1 << (threadIdx.x & 31)) - 1));
+      T warp_res;
+      if (rank == 0) warp_res = atomicAdd(dest, (T)change);
+      warp_res = __shfl_sync(active, warp_res, leader);
+      return warp_res + rank;
+    } else
+      return atomic_add(ExecTag{}, dest, (T)1);
+  }
+#endif
+
+  template <typename ExecTag, typename T>
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_inc(ExecTag, T *dest) {
     return atomic_add(ExecTag{}, dest, (T)1);
   }
 
@@ -162,14 +183,21 @@ namespace zs {
 #  endif
   }
 #endif
+#if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
   atomic_exch(ExecTag, T *dest, const T val) {
+    return atomicExch(dest, val);
+  }
+#endif
+  template <typename ExecTag, typename T>
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_exch(ExecTag, T *dest,
+                                                                         const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest = val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
@@ -180,6 +208,8 @@ namespace zs {
         return InterlockedExchange(const_cast<long volatile *>((long *)dest), (long)val);
       else if constexpr (sizeof(T) == sizeof(__int64))
         return InterlockedExchange64(const_cast<__int64 volatile *>((__int64 *)dest), (__int64)val);
+      else
+        static_assert(always_false<ExecTag>, "no corresponding parallel atomic_exch (win) impl!");
 #  else
       return __atomic_exchange_n(dest, val, __ATOMIC_SEQ_CST);
 #  endif
@@ -187,10 +217,7 @@ namespace zs {
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.exchange(val, std::memory_order_seq_cst);
 #endif
-    } else {
-      static_assert(always_false<ExecTag>, "no backend corresponding atomic_exch impl!");
     }
-    return (T)0;
   }
 
 #if defined(__CUDACC__)
@@ -209,16 +236,31 @@ namespace zs {
       return atomicCAS(dest, expected, desired);
   }
 #endif
+#if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
   atomic_cas(ExecTag, T *dest, T expected, T desired) {
+    if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T))
+      return reinterpret_bits<float>(atomicCAS((unsigned int *)dest,
+                                               reinterpret_bits<unsigned int>(expected),
+                                               reinterpret_bits<unsigned int>(desired)));
+    else if constexpr (is_same_v<T, double> && sizeof(unsigned long long int) == sizeof(T))
+      return reinterpret_bits<double>(atomicCAS((unsigned long long int *)dest,
+                                                reinterpret_bits<unsigned long long int>(expected),
+                                                reinterpret_bits<unsigned long long int>(desired)));
+    else
+      return atomicCAS(dest, expected, desired);
+  }
+#endif
+  template <typename ExecTag, typename T>
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_cas(ExecTag, T *dest,
+                                                                        T expected, T desired) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old == expected) *dest = desired;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
 #if 1
-
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char)) {  // 8-bit
         return reinterpret_bits<T>(_InterlockedCompareExchange8(
@@ -237,7 +279,7 @@ namespace zs {
             const_cast<volatile __int64 *>((__int64 *)dest), reinterpret_bits<__int64>(desired),
             reinterpret_bits<__int64>(expected)));
       } else {
-        static_assert(always_false<ExecTag>, "no corresponding openmp atomic_cas (win) impl!");
+        static_assert(always_false<ExecTag>, "no corresponding parallel atomic_cas (win) impl!");
       }
 #  else
       if constexpr (is_same_v<T, float> && sizeof(int) == sizeof(T)) {
@@ -263,10 +305,7 @@ namespace zs {
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.compare_exchange_strong(expected, desired, std::memory_order_seq_cst);
 #endif
-    } else {
-      static_assert(always_false<ExecTag>, "no backend corresponding atomic_cas impl!");
     }
-    return (T)0;
   }
 
   ///
@@ -284,30 +323,41 @@ namespace zs {
       T old = *dest;
       for (T assumed = old;
            assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
-           assumed = old)
-        ;
+           assumed = old);
+      return old;
+    }
+  }
+#endif
+#if defined(__MUSACC__)
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  atomic_max(ExecTag execTag, T *const dest, const T val) {
+    if constexpr (is_integral_v<T>) {
+      return atomicMax(dest, val);
+    } else {
+      T old = *dest;
+      for (T assumed = old;
+           assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+           assumed = old);
       return old;
     }
   }
 #endif
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
-  atomic_max(ExecTag execTag, T *const dest, const T val) {
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_max(ExecTag execTag,
+                                                                        T *const dest,
+                                                                        const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old < val) *dest = val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
       T old = *dest;
       for (T assumed = old;
            assumed < val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
-           assumed = old)
-        ;
+           assumed = old);
       return old;
-    } else {
-      static_assert(always_false<ExecTag>, "no backend corresponding atomic_max impl!");
     }
-    return (T)0;
   }
 
 #if defined(__CUDACC__)
@@ -320,30 +370,41 @@ namespace zs {
       T old = *dest;
       for (T assumed = old;
            assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
-           assumed = old)
-        ;
+           assumed = old);
+      return old;
+    }
+  }
+#endif
+#if defined(__MUSACC__)
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  atomic_min(ExecTag execTag, T *const dest, const T val) {
+    if constexpr (is_integral_v<T>) {
+      return atomicMin(dest, val);
+    } else {
+      T old = *dest;
+      for (T assumed = old;
+           assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
+           assumed = old);
       return old;
     }
   }
 #endif
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
-  atomic_min(ExecTag execTag, T *const dest, const T val) {
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_min(ExecTag execTag,
+                                                                        T *const dest,
+                                                                        const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       if (old > val) *dest = val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
       T old = *dest;
       for (T assumed = old;
            assumed > val && (old = atomic_cas(execTag, dest, assumed, val)) != assumed;
-           assumed = old)
-        ;
+           assumed = old);
       return old;
-    } else {
-      static_assert(always_false<ExecTag>, "no backend corresponding atomic_min impl!");
     }
-    return (T)0;
   }
 
   ///
@@ -353,17 +414,26 @@ namespace zs {
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_or(ExecTag, T *dest, const T val) {
+    static_assert(ZS_ENABLE_CUDA, "ZS_ENABLE_CUDA must be set to enable cuda-backend atomic_or!");
+    return atomicOr(dest, val);
+  }
+#endif
+#if defined(__MUSACC__)
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  atomic_or(ExecTag, T *dest, const T val) {
+    static_assert(ZS_ENABLE_MUSA, "ZS_ENABLE_MUSA must be set to enable musa-backend atomic_or!");
     return atomicOr(dest, val);
   }
 #endif
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
-  atomic_or(ExecTag, T *dest, const T val) {
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_or(ExecTag, T *dest,
+                                                                       const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest |= val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
 #if 1
 
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
@@ -383,29 +453,33 @@ namespace zs {
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_or(val, std::memory_order_seq_cst);
 #endif
-    } else {
-      static_assert(always_false<ExecTag>, "no backend corresponding atomic_or impl!");
     }
-    return (T)0;
   }
 
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_and(ExecTag, T *dest, const T val) {
-    if constexpr (ZS_ENABLE_CUDA && is_same_v<ExecTag, cuda_exec_tag>) {
-      return atomicAnd(dest, val);
-    }
+    static_assert(ZS_ENABLE_CUDA, "ZS_ENABLE_CUDA must be set to enable cuda-backend atomic_and!");
+    return atomicAnd(dest, val);
+  }
+#endif
+#if defined(__MUSACC__)
+  template <typename ExecTag, typename T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  atomic_and(ExecTag, T *dest, const T val) {
+    static_assert(ZS_ENABLE_MUSA, "ZS_ENABLE_MUSA must be set to enable musa-backend atomic_and!");
+    return atomicAnd(dest, val);
   }
 #endif
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
-  atomic_and(ExecTag, T *dest, const T val) {
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_and(ExecTag, T *dest,
+                                                                        const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest &= val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
@@ -423,27 +497,35 @@ namespace zs {
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_and(val, std::memory_order_seq_cst);
 #endif
-    } else {
-      static_assert(always_false<ExecTag>, "no backend corresponding atomic_and impl!");
     }
-    return (T)0;
   }
 
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_xor(ExecTag, T *dest, const T val) {
+    static_assert(ZS_ENABLE_CUDA, "ZS_ENABLE_CUDA must be set to enable cuda-backend atomic_xor!");
     return atomicXor(dest, val);
   }
 #endif
+
+#if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  inline enable_if_type<!is_same_v<ExecTag, cuda_exec_tag> && is_execution_tag<ExecTag>(), T>
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
   atomic_xor(ExecTag, T *dest, const T val) {
+    static_assert(ZS_ENABLE_MUSA, "ZS_ENABLE_MUSA must be set to enable musa-backend atomic_xor!");
+    return atomicXor(dest, val);
+  }
+#endif
+
+  template <typename ExecTag, typename T>
+  inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_xor(ExecTag, T *dest,
+                                                                        const T val) {
     if constexpr (is_same_v<ExecTag, host_exec_tag>) {
       const T old = *dest;
       *dest ^= val;
       return old;
-    } else if constexpr (is_same_v<ExecTag, omp_exec_tag>) {
+    } else {
 #if 1
 #  if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
       if constexpr (sizeof(T) == sizeof(char))
@@ -461,10 +543,7 @@ namespace zs {
       std::atomic_ref<T> target{const_cast<T &>(*dest)};
       return target.fetch_xor(val, std::memory_order_seq_cst);
 #endif
-    } else {
-      static_assert(always_false<ExecTag>, "no backend corresponding atomic_xor impl!");
     }
-    return (T)0;
   }
 
 }  // namespace zs

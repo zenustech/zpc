@@ -28,12 +28,10 @@ namespace zs {
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_add(ExecTag, T *dest, const T val) {
     if constexpr (is_same_v<T, double>) {
-#  ifdef __CUDA_ARCH__
-
-#    if __CUDA_ARCH__ >= 600
+#  if __CUDA_ARCH__ >= 600
       /// @note use native implementation if available
       return atomicAdd(dest, val);
-#    else
+#  else
       /// @note fallback to manual implementation
       unsigned long long int *address_as_ull = (unsigned long long int *)dest;
       unsigned long long int old = *address_as_ull, assumed;
@@ -46,12 +44,6 @@ namespace zs {
         // Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
       } while (assumed != old);
       return __longlong_as_double(old);
-#    endif
-
-#  else
-      static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
-                    "error in compiling cuda implementation of [atomic_add]!");
-      return 0;
 #  endif
     } else
       return atomicAdd(dest, val);
@@ -123,7 +115,6 @@ namespace zs {
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_inc(ExecTag, T *dest) {
     if constexpr (is_integral_v<T> && (sizeof(T) == 4 || sizeof(T) == 8)) {
-#  ifdef __CUDA_ARCH__
       unsigned int active = __activemask();
       int leader = __ffs(active) - 1;
       int change = __popc(active);
@@ -133,11 +124,6 @@ namespace zs {
       if (rank == 0) warp_res = atomicAdd(dest, (T)change);
       warp_res = __shfl_sync(active, warp_res, leader);
       return warp_res + rank;
-#  else
-      static_assert(always_false<ExecTag>,
-                    "error in compiling cuda implementation of [atomic_inc]!");
-      return 0;
-#  endif
     } else
       return atomic_add(ExecTag{}, dest, (T)1);
   }
@@ -174,13 +160,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
   atomic_exch(ExecTag, T *dest, const T val) {
-#  ifdef __CUDA_ARCH__
     return atomicExch(dest, val);
-#  else
-    static_assert(!is_same_v<ExecTag, cuda_exec_tag>,
-                  "error in compiling cuda implementation of [atomic_exch]!");
-    return 0;
-#  endif
   }
 #endif
 #if defined(__MUSACC__)

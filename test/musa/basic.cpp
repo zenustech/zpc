@@ -14,6 +14,7 @@ int main() {
 #  include <iostream>
 
 #  include "zensim/execution/Atomics.hpp"
+#  include "zensim/execution/Intrinsics.hpp"
 #  include "zensim/musa/Musa.h"
 #  include "zensim/musa/execution/ExecutionPolicy.muh"
 

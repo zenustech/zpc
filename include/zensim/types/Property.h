@@ -17,34 +17,39 @@ namespace zs {
             || is_same_v<Tag, um_mem_tag>);
   }
 
-  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, musa, hip, sycl };
+  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, musa, rocm, sycl };
   using host_exec_tag = wrapv<execspace_e::host>;
   using omp_exec_tag = wrapv<execspace_e::openmp>;
   using cuda_exec_tag = wrapv<execspace_e::cuda>;
   using musa_exec_tag = wrapv<execspace_e::musa>;
-  using hip_exec_tag = wrapv<execspace_e::hip>;
+  using rocm_exec_tag = wrapv<execspace_e::rocm>;
   using sycl_exec_tag = wrapv<execspace_e::sycl>;
   constexpr auto exec_seq = host_exec_tag{};
   constexpr auto exec_omp = omp_exec_tag{};
   constexpr auto exec_cuda = cuda_exec_tag{};
   constexpr auto exec_musa = musa_exec_tag{};
-  constexpr auto exec_hip = hip_exec_tag{};
+  constexpr auto exec_rocm = rocm_exec_tag{};
   constexpr auto exec_sycl = sycl_exec_tag{};
+
+  template <execspace_e space> constexpr bool is_host_execution() noexcept {
+    return space <= execspace_e::openmp;
+  }
+  template <execspace_e space> constexpr bool is_device_execution_space() noexcept {
+    return space >= execspace_e::cuda && space <= execspace_e::sycl;
+  }
 
   template <typename Tag> constexpr bool is_host_execution_tag(Tag = {}) noexcept {
     return (is_same_v<Tag, host_exec_tag> || is_same_v<Tag, omp_exec_tag>);
   }
-
   template <typename Tag> constexpr bool is_device_execution_tag(Tag = {}) noexcept {
     return (is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, musa_exec_tag>
-            || is_same_v<Tag, hip_exec_tag> || is_same_v<Tag, sycl_exec_tag>);
+            || is_same_v<Tag, rocm_exec_tag> || is_same_v<Tag, sycl_exec_tag>);
   }
-
   template <typename Tag> constexpr bool is_execution_tag(Tag tag = {}) noexcept {
     return is_host_execution_tag(tag) || is_device_execution_tag(tag);
   }
 
-#define ZS_ENABLE_DEVICE (ZS_ENABLE_CUDA || ZS_ENABLE_MUSA /*|| ZS_ENABLE_HIP*/ || ZS_ENABLE_SYCL)
+#define ZS_ENABLE_DEVICE (ZS_ENABLE_CUDA || ZS_ENABLE_MUSA /*|| ZS_ENABLE_ROCM*/ || ZS_ENABLE_SYCL)
 
   ///
   /// execution space deduction
@@ -52,6 +57,12 @@ namespace zs {
   constexpr execspace_e deduce_execution_space() noexcept {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
     return execspace_e::cuda;
+#elif ZS_ENABLE_MUSA && defined(__MUSACC__)
+    return execspace_e::musa;
+#elif ZS_ENABLE_ROCM && defined(__HIPCC__)
+    return execspace_e::rocm;  // __HIP_PLATFORM_AMD__
+#elif ZS_ENABLE_SYCL && defined(SYCL_LANGUAGE_VERSION)
+    return execspace_e::sycl;
 #elif ZS_ENABLE_OPENMP && defined(_OPENMP)
     return execspace_e::openmp;
 #else

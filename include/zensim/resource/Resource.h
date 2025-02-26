@@ -17,8 +17,10 @@
 #  include "zensim/cuda/memory/Allocator.h"
 #elif ZS_ENABLE_MUSA
 #  include "zensim/musa/memory/Allocator.h"
-#elif ZS_ENABLE_HIP
+#elif ZS_ENABLE_ROCM
+#  include "zensim/rocm/memory/Allocator.h"
 #elif ZS_ENABLE_SYCL
+#  include "zensim/sycl/memory/Allocator.h"
 #endif
 #if ZS_ENABLE_OPENMP
 #endif
@@ -156,8 +158,8 @@ namespace zs {
     if constexpr (space == execspace_e::musa)
       return allocator.location.memspace() == memsrc_e::device
              || allocator.location.memspace() == memsrc_e::um;
-#elif ZS_ENABLE_HIP
-    if constexpr (space == execspace_e::hip)
+#elif ZS_ENABLE_ROCM
+    if constexpr (space == execspace_e::rocm)
       return allocator.location.memspace() == memsrc_e::device
              || allocator.location.memspace() == memsrc_e::um;
 #elif ZS_ENABLE_SYCL

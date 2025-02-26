@@ -18,9 +18,10 @@
 #include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 namespace zs {
 
-  using exec_tags = variant<host_exec_tag, omp_exec_tag, cuda_exec_tag, hip_exec_tag>;
+  using exec_tags = variant<host_exec_tag, omp_exec_tag, cuda_exec_tag, musa_exec_tag,
+                            rocm_exec_tag, sycl_exec_tag>;
 
-  constexpr const char *execution_space_tag[] = {"HOST", "OPENMP", "CUDA", "HIP"};
+  constexpr const char *execution_space_tag[] = {"HOST", "OPENMP", "CUDA", "MUSA", "ROCm", "SYCL"};
   constexpr const char *get_execution_tag_name(execspace_e execpol) {
     return execution_space_tag[magic_enum::enum_integer(execpol)];
   }
@@ -35,12 +36,21 @@ namespace zs {
 #endif
       case memsrc_e::device:
       case memsrc_e::um:
+#if ZS_ENABLE_CUDA && defined(__CUDACC__)
         return exec_cuda;
+#elif ZS_ENABLE_MUSA && defined(__MUSACC__)
+        return exec_musa;
+#elif ZS_ENABLE_ROCM && defined(__HIPCC__)
+        return exec_rocm;  // __HIP_PLATFORM_AMD__
+#elif ZS_ENABLE_SYCL && defined(SYCL_LANGUAGE_VERSION)
+        return exec_sycl;
+#endif
+      default:
+        throw std::runtime_error(
+            fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n",
+                        get_memory_tag_name(mloc.memspace()), (int)mloc.devid()));
+        return exec_seq;
     }
-    throw std::runtime_error(
-        fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n",
-                    get_memory_tag_name(mloc.memspace()), (int)mloc.devid()));
-    return exec_seq;
   }
 
   struct DeviceHandle {
@@ -250,8 +260,7 @@ namespace zs {
                                   const source_location &loc = source_location::current()) const {
       if (first == last) return;
       *(d_first++) = init;
-      while (first + 1 != last) 
-        *(d_first++) = init = binary_op(init, *(first++));
+      while (first + 1 != last) *(d_first++) = init = binary_op(init, *(first++));
     }
     template <class InputIt, class OutputIt,
               class BinaryOp = plus<remove_cvref_t<decltype(*declval<InputIt>())>>>
@@ -640,7 +649,7 @@ namespace zs {
   constexpr void par_exec(zs::tuple<Ranges...> ranges, Bodies &&...bodies) {
     using SeqPolicies =
         typename build_seq<sizeof...(Ranges)>::template uniform_types_t<zs::tuple,
-                                                                      SequentialExecutionPolicy>;
+                                                                        SequentialExecutionPolicy>;
     par_exec<Is...>(SeqPolicies{}, std::move(ranges), FWD(bodies)...);
   }
 

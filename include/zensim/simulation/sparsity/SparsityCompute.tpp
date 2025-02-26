@@ -15,8 +15,7 @@ namespace zs {
       // exec_tags execTag = suggest_exec_space(mh);
       auto execTag = wrapv<space>{};
       auto execPol = par_exec(execTag);
-      if constexpr (space == execspace_e::cuda || space == execspace_e::hip)
-        execPol.device(mloc.devid());
+      if constexpr (is_device_execution_space<space>()) execPol.device(mloc.devid());
 
       execPol(range(ret._tableSize), CleanSparsity{execTag, ret});
       execPol(range(p.size()), ComputeSparsity{execTag, dx, blocklen, ret, p.attrVector("x")});

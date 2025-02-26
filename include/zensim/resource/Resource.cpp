@@ -24,16 +24,24 @@ namespace zs {
 
   Resource::Resource() {
 #if 0
-    initialize_backend(exec_seq);
-#  if ZS_ENABLE_CUDA
-    puts("cuda initialized");
-    initialize_backend(exec_cuda);
-#  endif
+    initialize_backend(seq_c);
 #  if ZS_ENABLE_OPENMP
     puts("openmp initialized");
-    initialize_backend(exec_omp);
+    initialize_backend(omp_c);
 #  endif
-    // sycl...
+#  if ZS_ENABLE_CUDA
+    puts("cuda initialized");
+    initialize_backend(cuda_c);
+#  elif ZS_ENABLE_MUSA
+    puts("musa initialized");
+    initialize_backend(musa_c);
+#  elif ZS_ENABLE_ROCM
+    puts("rocm initialized");
+    initialize_backend(rocm_c);
+#  elif ZS_ENABLE_SYCL
+    puts("sycl initialized");
+    initialize_backend(sycl_c);
+#  endif
 #endif
   }
   Resource::~Resource() {
@@ -46,12 +54,18 @@ namespace zs {
     }
 #if 0
 #  if ZS_ENABLE_CUDA
-    deinitialize_backend(exec_cuda);
+    deinitialize_backend(cuda_c);
+#  elif ZS_ENABLE_MUSA
+    deinitialize_backend(musa_c);
+#  elif ZS_ENABLE_ROCM
+    deinitialize_backend(rocm_c);
+#  elif ZS_ENABLE_SYCL
+    deinitialize_backend(sycl_c);
 #  endif
 #  if ZS_ENABLE_OPENMP
-    deinitialize_backend(exec_omp);
+    deinitialize_backend(omp_c);
 #  endif
-    deinitialize_backend(exec_seq);
+    deinitialize_backend(seq_c);
 #endif
   }
   void Resource::record(mem_tags tag, void *ptr, std::string_view name, size_t size,

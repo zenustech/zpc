@@ -83,7 +83,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_add(ExecTag, T *dest,
                                                                         const T val) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       *dest += val;
       return old;
@@ -193,7 +193,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_exch(ExecTag, T *dest,
                                                                          const T val) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       *dest = val;
       return old;
@@ -255,7 +255,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_cas(ExecTag, T *dest,
                                                                         T expected, T desired) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       if (old == expected) *dest = desired;
       return old;
@@ -347,7 +347,7 @@ namespace zs {
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_max(ExecTag execTag,
                                                                         T *const dest,
                                                                         const T val) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       if (old < val) *dest = val;
       return old;
@@ -394,7 +394,7 @@ namespace zs {
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_min(ExecTag execTag,
                                                                         T *const dest,
                                                                         const T val) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       if (old > val) *dest = val;
       return old;
@@ -429,7 +429,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_or(ExecTag, T *dest,
                                                                        const T val) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       *dest |= val;
       return old;
@@ -475,7 +475,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_and(ExecTag, T *dest,
                                                                         const T val) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       *dest &= val;
       return old;
@@ -521,7 +521,7 @@ namespace zs {
   template <typename ExecTag, typename T>
   inline enable_if_type<is_host_execution_tag<ExecTag>(), T> atomic_xor(ExecTag, T *dest,
                                                                         const T val) {
-    if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       const T old = *dest;
       *dest ^= val;
       return old;

@@ -4,32 +4,48 @@
 namespace zs {
 
   // HOST, DEVICE, UM
-  enum struct memsrc_e : unsigned char { host = 0, device, um };
+  enum struct memsrc_e : unsigned char { host = 0, device, um, shared = um };
   using host_mem_tag = wrapv<memsrc_e::host>;
   using device_mem_tag = wrapv<memsrc_e::device>;
   using um_mem_tag = wrapv<memsrc_e::um>;
-  constexpr auto mem_host = host_mem_tag{};
-  constexpr auto mem_device = device_mem_tag{};
-  constexpr auto mem_um = um_mem_tag{};
+  using shared_mem_tag = wrapv<memsrc_e::shared>;
+  /// suggested
+  constexpr auto mem_host_c = host_mem_tag{};
+  constexpr auto mem_device_c = device_mem_tag{};
+  constexpr auto mem_um_c = um_mem_tag{};
+  constexpr auto mem_shared_c = shared_mem_tag{};
+  /// deprecated
+  constexpr auto mem_host = mem_host_c;
+  constexpr auto mem_device = mem_device_c;
+  constexpr auto mem_um = mem_um_c;
+  constexpr auto mem_shared = mem_shared_c;
 
   template <typename Tag> constexpr bool is_memory_tag(Tag = {}) noexcept {
     return (is_same_v<Tag, host_mem_tag> || is_same_v<Tag, device_mem_tag>
             || is_same_v<Tag, um_mem_tag>);
   }
 
-  enum struct execspace_e : unsigned char { host = 0, openmp, cuda, musa, rocm, sycl };
-  using host_exec_tag = wrapv<execspace_e::host>;
+  enum struct execspace_e : unsigned char { host = 0, seq = 0, openmp, cuda, musa, rocm, sycl };
+  using seq_exec_tag = wrapv<execspace_e::seq>;
   using omp_exec_tag = wrapv<execspace_e::openmp>;
   using cuda_exec_tag = wrapv<execspace_e::cuda>;
   using musa_exec_tag = wrapv<execspace_e::musa>;
   using rocm_exec_tag = wrapv<execspace_e::rocm>;
   using sycl_exec_tag = wrapv<execspace_e::sycl>;
-  constexpr auto exec_seq = host_exec_tag{};
-  constexpr auto exec_omp = omp_exec_tag{};
-  constexpr auto exec_cuda = cuda_exec_tag{};
-  constexpr auto exec_musa = musa_exec_tag{};
-  constexpr auto exec_rocm = rocm_exec_tag{};
-  constexpr auto exec_sycl = sycl_exec_tag{};
+  /// suggested
+  constexpr auto seq_c = seq_exec_tag{};
+  constexpr auto omp_c = omp_exec_tag{};
+  constexpr auto cuda_c = cuda_exec_tag{};
+  constexpr auto musa_c = musa_exec_tag{};
+  constexpr auto rocm_c = rocm_exec_tag{};
+  constexpr auto sycl_c = sycl_exec_tag{};
+  /// deprecated
+  constexpr auto exec_seq = seq_c;
+  constexpr auto exec_omp = omp_c;
+  constexpr auto exec_cuda = cuda_c;
+  constexpr auto exec_musa = musa_c;
+  constexpr auto exec_rocm = rocm_c;
+  constexpr auto exec_sycl = sycl_c;
 
   template <execspace_e space> constexpr bool is_host_execution() noexcept {
     return space <= execspace_e::openmp;
@@ -39,7 +55,7 @@ namespace zs {
   }
 
   template <typename Tag> constexpr bool is_host_execution_tag(Tag = {}) noexcept {
-    return (is_same_v<Tag, host_exec_tag> || is_same_v<Tag, omp_exec_tag>);
+    return (is_same_v<Tag, seq_exec_tag> || is_same_v<Tag, omp_exec_tag>);
   }
   template <typename Tag> constexpr bool is_device_execution_tag(Tag = {}) noexcept {
     return (is_same_v<Tag, cuda_exec_tag> || is_same_v<Tag, musa_exec_tag>
@@ -66,7 +82,7 @@ namespace zs {
 #elif ZS_ENABLE_OPENMP && defined(_OPENMP)
     return execspace_e::openmp;
 #else
-    return execspace_e::host;
+    return execspace_e::seq;
 #endif
   }
 

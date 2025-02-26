@@ -47,7 +47,7 @@ namespace zs {
 #endif
 
   template <typename ExecTag>
-  inline enable_if_type<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>>
+  inline enable_if_type<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, seq_exec_tag>>
   thread_fence(ExecTag) noexcept {
 #if ZS_ENABLE_OPENMP
     /// a thread is guaranteed to see a consistent view of memory with respect to the variables in “
@@ -76,11 +76,11 @@ namespace zs {
   }
 #endif
 
-  inline void sync_threads(host_exec_tag) noexcept {}
+  inline void sync_threads(seq_exec_tag) noexcept {}
 
   // pause
-  template <typename ExecTag = host_exec_tag,
-            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+  template <typename ExecTag = seq_exec_tag,
+            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, seq_exec_tag>> = 0>
   inline void pause_cpu(ExecTag = {}) {
 #if defined(_MSC_VER) || (defined(_WIN32) && defined(__INTEL_COMPILER))
     YieldProcessor();
@@ -304,7 +304,7 @@ namespace zs {
 #endif
 
   template <typename ExecTag, typename T,
-            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, seq_exec_tag>> = 0>
   inline int count_lz(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return nbytes * 8;
@@ -351,7 +351,7 @@ namespace zs {
 #endif
 
   template <typename ExecTag, typename T,
-            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, host_exec_tag>> = 0>
+            enable_if_t<is_same_v<ExecTag, omp_exec_tag> || is_same_v<ExecTag, seq_exec_tag>> = 0>
   inline T reverse_bits(ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if (x == (T)0) return 0;

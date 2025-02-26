@@ -663,14 +663,14 @@ namespace zs {
           // then only the elected lane is atomically inserting
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
             // check again
             continue;
           }
-          thread_fence(exec_cuda);
+          thread_fence(cuda_c);
 #  if 1
           exist = 0;
           for (int i = lane_id; i < bucket_size; i += cap)
@@ -685,7 +685,7 @@ namespace zs {
           exist = tile.shfl(exist, 0);  // implicit tile sync here
           if (exist) {
             if (lane_id == 0)  // release lock
-              atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
+              atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;
           }
 #  else
@@ -693,7 +693,7 @@ namespace zs {
           lane_key = _table.keys[bucket_offset + lane_id];
           if (tile.any(equal_to{}(lane_key, insertion_key))) {  // implicit tile sync here
             if (lane_id == 0)                                   // release lock
-              atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
+              atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;  // although key found, return sentinel to suggest doing nothing
           }
 #  endif
@@ -715,25 +715,25 @@ namespace zs {
                 casSuccess = true;
               }
             } else {
-              casSuccess = atomic_cas(exec_cuda, &_table.keys[bucket_offset + load],
+              casSuccess = atomic_cas(cuda_c, &_table.keys[bucket_offset + load],
                                       compare_key_sentinel_v, insertion_key)
                            == compare_key_sentinel_v;
             }
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_cuda, _cnt, (size_type)1);
+                no = atomic_add(cuda_c, _cnt, (size_type)1);
                 insertion_index = no;
               }
 #  if 1
               *const_cast<volatile index_type *>(&_table.indices[bucket_offset + load])
                   = insertion_index;
 #  else
-              atomic_exch(exec_cuda, &_table.indices[bucket_offset + load], insertion_index);
+              atomic_exch(cuda_c, &_table.indices[bucket_offset + load], insertion_index);
 #  endif
             }
-            thread_fence(exec_cuda);
-            atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
+            thread_fence(cuda_c);
+            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
           }
 
           // may fail due to the slot taken by another insertion
@@ -747,7 +747,7 @@ namespace zs {
         } else {
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
@@ -756,7 +756,7 @@ namespace zs {
           }
           if (lane_id == 0) {
             auto random_location = rng() % bucket_size;
-            thread_fence(exec_cuda);
+            thread_fence(cuda_c);
             volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
                 &_table.keys[bucket_offset + random_location]);
             auto old_key = *const_cast<storage_key_type *>(key_dst);
@@ -769,20 +769,20 @@ namespace zs {
             // _table.keys[bucket_offset + random_location] = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(exec_cuda, _cnt, (size_type)1);
+              no = atomic_add(cuda_c, _cnt, (size_type)1);
               insertion_index = no;
               // casSuccess = true; //not finished yet, evicted key reinsertion is success
             }
-            auto old_index = atomic_exch(
-                exec_cuda, &_table.indices[bucket_offset + random_location], insertion_index);
+            auto old_index = atomic_exch(cuda_c, &_table.indices[bucket_offset + random_location],
+                                         insertion_index);
             // volatile index_type *index_dst = const_cast<volatile index_type *>(
             //    &_table.indices[bucket_offset + random_location]);
             // auto old_index = *const_cast<index_type *>(index_dst);
             //*index_dst = insertion_index;
             // _table.indices[bucket_offset + random_location] = insertion_index;
 
-            thread_fence(exec_cuda);
-            atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
+            thread_fence(cuda_c);
+            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
@@ -866,7 +866,7 @@ namespace zs {
           // then only the elected lane is atomically inserting
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
@@ -888,7 +888,7 @@ namespace zs {
           exist = tile.shfl(exist, 0);  // implicit tile sync here
           if (exist) {
             if (lane_id == 0)  // release lock
-              atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
+              atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;
           }
 
@@ -909,25 +909,25 @@ namespace zs {
                 casSuccess = true;
               }
             } else {
-              casSuccess = atomic_cas(exec_cuda, &_table.keys[bucket_offset + load],
+              casSuccess = atomic_cas(cuda_c, &_table.keys[bucket_offset + load],
                                       compare_key_sentinel_v, insertion_key)
                            == compare_key_sentinel_v;
             }
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_cuda, _cnt, (size_type)1);
+                no = atomic_add(cuda_c, _cnt, (size_type)1);
                 insertion_index = no;
               }
 #  if 1
               *const_cast<volatile index_type *>(&_table.indices[bucket_offset + (u32)load])
                   = insertion_index;
 #  else
-              atomic_exch(exec_cuda, &_table.indices[bucket_offset + load], insertion_index);
+              atomic_exch(cuda_c, &_table.indices[bucket_offset + load], insertion_index);
 #  endif
             }
             tile.thread_fence();
-            atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
+            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
           }
 
           // may fail due to the slot taken by another insertion
@@ -941,7 +941,7 @@ namespace zs {
         } else {
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(exec_cuda, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
@@ -963,12 +963,12 @@ namespace zs {
             // _table.keys[bucket_offset + random_location] = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(exec_cuda, _cnt, (size_type)1);
+              no = atomic_add(cuda_c, _cnt, (size_type)1);
               insertion_index = no;
               // casSuccess = true; //not finished yet, evicted key reinsertion is success
             }
-            auto old_index = atomic_exch(
-                exec_cuda, &_table.indices[bucket_offset + random_location], insertion_index);
+            auto old_index = atomic_exch(cuda_c, &_table.indices[bucket_offset + random_location],
+                                         insertion_index);
             // volatile index_type *index_dst = const_cast<volatile index_type *>(
             //    &_table.indices[bucket_offset + random_location]);
             // auto old_index = *const_cast<index_type *>(index_dst);
@@ -976,7 +976,7 @@ namespace zs {
             // _table.indices[bucket_offset + random_location] = insertion_index;
 
             tile.thread_fence();
-            atomic_exch(exec_cuda, &_table.status[bucket_offset / bucket_size], -1);
+            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
@@ -1349,7 +1349,7 @@ namespace zs {
 
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
-        auto cur_rank = ffs(exec_cuda, work_queue) - 1;
+        auto cur_rank = ffs(cuda_c, work_queue) - 1;
         auto cur_work = tile_shfl(tile, find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work);
 
@@ -1378,7 +1378,7 @@ namespace zs {
 
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
-        auto cur_rank = ffs(exec_cuda, work_queue) - 1;
+        auto cur_rank = ffs(cuda_c, work_queue) - 1;
         auto cur_work = tile.shfl(find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work, wrapv<false>{});
 
@@ -1440,14 +1440,14 @@ namespace zs {
                 casSuccess = true;
               }
             } else {
-              casSuccess = atomic_cas(exec_seq, &_table.keys[bucket_offset + load],
+              casSuccess = atomic_cas(seq_c, &_table.keys[bucket_offset + load],
                                       compare_key_sentinel_v, insertion_key)
                            == compare_key_sentinel_v;
             }
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_seq, _cnt, (size_type)1);
+                no = atomic_add(seq_c, _cnt, (size_type)1);
                 insertion_index = no;
               }
               _table.indices[bucket_offset + load] = insertion_index;
@@ -1461,7 +1461,7 @@ namespace zs {
         } else {
           {
             auto random_location = rng() % bucket_size;
-            // thread_fence(exec_cuda);
+            // thread_fence(cuda_c);
             volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
                 &_table.keys[bucket_offset + random_location]);
             auto old_key = *const_cast<storage_key_type *>(key_dst);
@@ -1473,13 +1473,13 @@ namespace zs {
               *key_dst = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(exec_seq, _cnt, (size_type)1);
+              no = atomic_add(seq_c, _cnt, (size_type)1);
               insertion_index = no;
             }
-            auto old_index = atomic_exch(exec_seq, &_table.indices[bucket_offset + random_location],
+            auto old_index = atomic_exch(seq_c, &_table.indices[bucket_offset + random_location],
                                          insertion_index);
 
-            // thread_fence(exec_seq);
+            // thread_fence(seq_c);
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
@@ -1596,16 +1596,16 @@ namespace zs {
           bool casSuccess = false;
 
           spin_iter = 0;
-          while (atomic_cas(exec_omp, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+          while (atomic_cas(omp_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                  && ++spin_iter != spin_iter_cap);
           if (spin_iter == spin_iter_cap) continue;
-          thread_fence(exec_omp);
+          thread_fence(omp_c);
 
           exist = false;
           for (int i = 0; i != bucket_size; ++i)
             if (equal_to{}(insertion_key, load_key(i))) exist = true;
           if (exist) {
-            atomic_exch(exec_omp, &_table.status[bucket_offset / bucket_size], -1);
+            atomic_exch(omp_c, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;
           }
 
@@ -1626,21 +1626,21 @@ namespace zs {
                 casSuccess = true;
               }
             } else {
-              casSuccess = atomic_cas(exec_omp, &_table.keys[bucket_offset + load],
+              casSuccess = atomic_cas(omp_c, &_table.keys[bucket_offset + load],
                                       compare_key_sentinel_v, insertion_key)
                            == compare_key_sentinel_v;
             }
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(exec_omp, _cnt, (size_type)1);
+                no = atomic_add(omp_c, _cnt, (size_type)1);
                 insertion_index = no;
               }
               *const_cast<volatile index_type *>(&_table.indices[bucket_offset + load])
                   = insertion_index;
             }
-            thread_fence(exec_omp);
-            atomic_exch(exec_omp, &_table.status[bucket_offset / bucket_size], -1);
+            thread_fence(omp_c);
+            atomic_exch(omp_c, &_table.status[bucket_offset / bucket_size], -1);
           }
 
           if (casSuccess) {
@@ -1650,12 +1650,12 @@ namespace zs {
         } else {
           {
             spin_iter = 0;
-            while (atomic_cas(exec_omp, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(omp_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);
             if (spin_iter == spin_iter_cap) continue;
 
             auto random_location = rng() % bucket_size;
-            thread_fence(exec_omp);
+            thread_fence(omp_c);
             volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
                 &_table.keys[bucket_offset + random_location]);
             storage_key_type old_key = *const_cast<storage_key_type *>(key_dst);
@@ -1667,14 +1667,14 @@ namespace zs {
               *key_dst = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(exec_omp, _cnt, (size_type)1);
+              no = atomic_add(omp_c, _cnt, (size_type)1);
               insertion_index = no;
             }
-            auto old_index = atomic_exch(exec_omp, &_table.indices[bucket_offset + random_location],
+            auto old_index = atomic_exch(omp_c, &_table.indices[bucket_offset + random_location],
                                          insertion_index);
 
-            thread_fence(exec_omp);
-            atomic_exch(exec_omp, &_table.status[bucket_offset / bucket_size], -1);
+            thread_fence(omp_c);
+            atomic_exch(omp_c, &_table.status[bucket_offset / bucket_size], -1);
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;

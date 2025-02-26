@@ -445,7 +445,7 @@ namespace zs {
     // https://www.cnblogs.com/bbqzsl/p/6808176.html
     if (m != &mut) {
       if (m != nullptr) return false;  // invalid argument
-      atomic_cas(exec_seq, (void **)&m, (void *)nullptr, (void *)&mut);
+      atomic_cas(seq_c, (void **)&m, (void *)nullptr, (void *)&mut);
       if (m != &mut) return false;  // invalid argument
     }
     m->unlock();

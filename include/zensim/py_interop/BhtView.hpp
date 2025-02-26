@@ -83,8 +83,8 @@ namespace zs {
       return key_type::constant(v);
     }
     static constexpr key_type key_sentinel_v = deduce_key_sentinel();
-    // static constexpr index_type key_scalar_sentinel_v = detail::deduce_numeric_max<index_type>(); //
-    // detail::deduce_numeric_max<index_type>();
+    // static constexpr index_type key_scalar_sentinel_v = detail::deduce_numeric_max<index_type>();
+    // // detail::deduce_numeric_max<index_type>();
     static constexpr value_type sentinel_v{-1};  // this requires key_type to be signed type
     static constexpr status_type status_sentinel_v{-1};
     static constexpr value_type failure_token_v = detail::deduce_numeric_lowest<value_type>();
@@ -278,7 +278,7 @@ namespace zs {
           const u64 *const ptr64;
         } desired = {&val};
 
-        return (atomic_cas(exec_cuda, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
+        return (atomic_cas(cuda_c, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
@@ -297,13 +297,13 @@ namespace zs {
           const u32 *const ptr32;
         } desired = {&val};
 
-        return (atomic_cas(exec_cuda, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
+        return (atomic_cas(cuda_c, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_cuda, lock, 0) == 0);
-      thread_fence(exec_cuda);
+      while (atomic_exch(cuda_c, lock, 0) == 0);
+      thread_fence(cuda_c);
       /// cas
       storage_key_type temp;
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
@@ -311,9 +311,9 @@ namespace zs {
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
-      thread_fence(exec_cuda);
+      thread_fence(cuda_c);
       /// unlock
-      atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
+      atomic_exch(cuda_c, lock, HashTableT::status_sentinel_v);
       return eqn;
     }
     /// @ref https://stackoverflow.com/questions/32341081/how-to-have-atomic-load-in-cuda
@@ -321,7 +321,7 @@ namespace zs {
     atomicLoad(status_type *lock, const volatile storage_key_type *const dest) noexcept {
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
@@ -336,12 +336,12 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr64 = atomic_or(exec_cuda, const_cast<u64 *>(src.ptr64), (u64)0);
+        // *dst.ptr64 = atomic_or(cuda_c, const_cast<u64 *>(src.ptr64), (u64)0);
         *dst.ptr64 = *src.ptr64;
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
@@ -356,20 +356,20 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr32 = atomic_or(exec_cuda, const_cast<u32 *>(src.ptr32), (u32)0);
+        // *dst.ptr32 = atomic_or(cuda_c, const_cast<u32 *>(src.ptr32), (u32)0);
         *dst.ptr32 = *src.ptr32;
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_cuda, lock, 0) == 0);
-      thread_fence(exec_cuda);
+      while (atomic_exch(cuda_c, lock, 0) == 0);
+      thread_fence(cuda_c);
       ///
       key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
-      thread_fence(exec_cuda);
+      thread_fence(cuda_c);
       /// unlock
-      atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
+      atomic_exch(cuda_c, lock, HashTableT::status_sentinel_v);
       return return_val;
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
@@ -378,7 +378,7 @@ namespace zs {
         status_type *lock, const volatile storage_key_type *const dest) noexcept {
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
@@ -393,12 +393,12 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr64 = atomic_or(exec_cuda, const_cast<u64 *>(src.ptr64), (u64)0);
+        // *dst.ptr64 = atomic_or(cuda_c, const_cast<u64 *>(src.ptr64), (u64)0);
         *dst.ptr64 = *src.ptr64;
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
@@ -413,22 +413,22 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr32 = atomic_or(exec_cuda, const_cast<u32 *>(src.ptr32), (u32)0);
+        // *dst.ptr32 = atomic_or(cuda_c, const_cast<u32 *>(src.ptr32), (u32)0);
         *dst.ptr32 = *src.ptr32;
-        thread_fence(exec_cuda);
+        thread_fence(cuda_c);
         return *dst.ptr;
       }
       /// lock
       if (tile.thread_rank() == 0)
-        while (atomic_exch(exec_cuda, lock, 0) == 0);
+        while (atomic_exch(cuda_c, lock, 0) == 0);
       tile.sync();
-      thread_fence(exec_cuda);
+      thread_fence(cuda_c);
       ///
       key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
-      thread_fence(exec_cuda);
+      thread_fence(cuda_c);
       /// unlock
-      if (tile.thread_rank() == 0) atomic_exch(exec_cuda, lock, HashTableT::status_sentinel_v);
+      if (tile.thread_rank() == 0) atomic_exch(cuda_c, lock, HashTableT::status_sentinel_v);
       tile.sync();
       return return_val;
     }
@@ -470,7 +470,7 @@ namespace zs {
             auto localno = insertion_index;
             if (insertion_index == sentinel_v)
               localno
-                  = (value_type)atomic_add(exec_omp, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+                  = (value_type)atomic_add(omp_c, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
             _table.indices[bucketOffset + load] = localno;
             if (enqueueKey) _activeKeys[localno] = key;
             if (localno >= _tableSize - 20)
@@ -552,7 +552,7 @@ namespace zs {
           const u64 *const ptr64;
         } desired = {&val};
 
-        return (atomic_cas(exec_omp, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
+        return (atomic_cas(omp_c, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
@@ -571,13 +571,13 @@ namespace zs {
           const u32 *const ptr32;
         } desired = {&val};
 
-        return (atomic_cas(exec_omp, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
+        return (atomic_cas(omp_c, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_omp, lock, 0) == 0);
-      thread_fence(exec_omp);
+      while (atomic_exch(omp_c, lock, 0) == 0);
+      thread_fence(omp_c);
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
@@ -585,9 +585,9 @@ namespace zs {
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
-      thread_fence(exec_omp);
+      thread_fence(omp_c);
       /// unlock
-      atomic_exch(exec_omp, lock, status_sentinel_v);
+      atomic_exch(omp_c, lock, status_sentinel_v);
       return eqn;
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
@@ -628,14 +628,14 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_omp, lock, 0) == 0);
-      thread_fence(exec_omp);
+      while (atomic_exch(omp_c, lock, 0) == 0);
+      thread_fence(omp_c);
       ///
       key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
-      thread_fence(exec_omp);
+      thread_fence(omp_c);
       /// unlock
-      atomic_exch(exec_omp, lock, status_sentinel_v);
+      atomic_exch(omp_c, lock, status_sentinel_v);
       return return_val;
     }
 #else
@@ -672,7 +672,7 @@ namespace zs {
             auto localno = insertion_index;
             if (insertion_index == sentinel_v)
               localno
-                  = (value_type)atomic_add(exec_seq, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+                  = (value_type)atomic_add(seq_c, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
             _table.indices[bucketOffset + load] = localno;
             if (enqueueKey) _activeKeys[localno] = key;
             if (localno >= _tableSize - 20)
@@ -754,7 +754,7 @@ namespace zs {
           const u64 *const ptr64;
         } desired = {&val};
 
-        return (atomic_cas(exec_seq, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
+        return (atomic_cas(seq_c, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
@@ -773,13 +773,13 @@ namespace zs {
           const u32 *const ptr32;
         } desired = {&val};
 
-        return (atomic_cas(exec_seq, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
+        return (atomic_cas(seq_c, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0);
-      thread_fence(exec_seq);
+      while (atomic_exch(seq_c, lock, 0) == 0);
+      thread_fence(seq_c);
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
@@ -787,9 +787,9 @@ namespace zs {
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
-      thread_fence(exec_seq);
+      thread_fence(seq_c);
       /// unlock
-      atomic_exch(exec_seq, lock, status_sentinel_v);
+      atomic_exch(seq_c, lock, status_sentinel_v);
       return eqn;
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
@@ -830,14 +830,14 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0);
-      thread_fence(exec_seq);
+      while (atomic_exch(seq_c, lock, 0) == 0);
+      thread_fence(seq_c);
       ///
       key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
-      thread_fence(exec_seq);
+      thread_fence(seq_c);
       /// unlock
-      atomic_exch(exec_seq, lock, status_sentinel_v);
+      atomic_exch(seq_c, lock, status_sentinel_v);
       return return_val;
     }
 #endif
@@ -876,7 +876,7 @@ namespace zs {
             auto localno = insertion_index;
             if (insertion_index == sentinel_v)
               localno
-                  = (value_type)atomic_add(exec_seq, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
+                  = (value_type)atomic_add(seq_c, (unsigned_value_t *)_cnt, (unsigned_value_t)1);
             _table.indices[bucketOffset + load] = localno;
             if (enqueueKey) _activeKeys[localno] = key;
             if (localno >= _tableSize - 20)
@@ -958,7 +958,7 @@ namespace zs {
           const u64 *const ptr64;
         } desired = {&val};
 
-        return (atomic_cas(exec_seq, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
+        return (atomic_cas(seq_c, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
@@ -977,13 +977,13 @@ namespace zs {
           const u32 *const ptr32;
         } desired = {&val};
 
-        return (atomic_cas(exec_seq, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
+        return (atomic_cas(seq_c, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0);
-      thread_fence(exec_seq);
+      while (atomic_exch(seq_c, lock, 0) == 0);
+      thread_fence(seq_c);
       /// cas
       storage_key_type temp;  //= volatile_load(dest);
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
@@ -991,9 +991,9 @@ namespace zs {
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
-      thread_fence(exec_seq);
+      thread_fence(seq_c);
       /// unlock
-      atomic_exch(exec_seq, lock, status_sentinel_v);
+      atomic_exch(seq_c, lock, status_sentinel_v);
       return eqn;
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
@@ -1034,14 +1034,14 @@ namespace zs {
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(exec_seq, lock, 0) == 0);
-      thread_fence(exec_seq);
+      while (atomic_exch(seq_c, lock, 0) == 0);
+      thread_fence(seq_c);
       ///
       key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
-      thread_fence(exec_seq);
+      thread_fence(seq_c);
       /// unlock
-      atomic_exch(exec_seq, lock, status_sentinel_v);
+      atomic_exch(seq_c, lock, status_sentinel_v);
       return return_val;
     }
 #endif

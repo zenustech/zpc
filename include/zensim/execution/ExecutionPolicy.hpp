@@ -18,8 +18,8 @@
 #include "zensim/zpc_tpls/magic_enum/magic_enum.hpp"
 namespace zs {
 
-  using exec_tags = variant<host_exec_tag, omp_exec_tag, cuda_exec_tag, musa_exec_tag,
-                            rocm_exec_tag, sycl_exec_tag>;
+  using exec_tags = variant<seq_exec_tag, omp_exec_tag, cuda_exec_tag, musa_exec_tag, rocm_exec_tag,
+                            sycl_exec_tag>;
 
   constexpr const char *execution_space_tag[] = {"HOST", "OPENMP", "CUDA", "MUSA", "ROCm", "SYCL"};
   constexpr const char *get_execution_tag_name(execspace_e execpol) {
@@ -30,26 +30,26 @@ namespace zs {
     switch (mloc.memspace()) {
       case memsrc_e::host:
 #ifdef _OPENMP
-        return exec_omp;
+        return omp_c;
 #else
-        return exec_seq;
+        return seq_c;
 #endif
       case memsrc_e::device:
       case memsrc_e::um:
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
-        return exec_cuda;
+        return cuda_c;
 #elif ZS_ENABLE_MUSA && defined(__MUSACC__)
-        return exec_musa;
+        return musa_c;
 #elif ZS_ENABLE_ROCM && defined(__HIPCC__)
-        return exec_rocm;  // __HIP_PLATFORM_AMD__
+        return rocm_c;  // __HIP_PLATFORM_AMD__
 #elif ZS_ENABLE_SYCL && defined(SYCL_LANGUAGE_VERSION)
-        return exec_sycl;
+        return sycl_c;
 #endif
       default:
         throw std::runtime_error(
             fmt::format("no valid execution space suggestions for the memory handle [{}, {}]\n",
                         get_memory_tag_name(mloc.memspace()), (int)mloc.devid()));
-        return exec_seq;
+        return seq_c;
     }
   }
 
@@ -137,7 +137,7 @@ namespace zs {
   ZPC_API extern ZSPmrAllocator<> get_temporary_memory_source(const SequentialExecutionPolicy &pol);
 
   struct SequentialExecutionPolicy : ExecutionPolicyInterface<SequentialExecutionPolicy> {
-    using exec_tag = host_exec_tag;
+    using exec_tag = seq_exec_tag;
     template <typename Range, typename F>
     constexpr void operator()(Range &&range, F &&f,
                               const source_location &loc = source_location::current()) const {
@@ -616,7 +616,7 @@ namespace zs {
   struct CudaExecutionPolicy;
   struct OmpExecutionPolicy;
 
-  constexpr SequentialExecutionPolicy par_exec(host_exec_tag) noexcept {
+  constexpr SequentialExecutionPolicy par_exec(seq_exec_tag) noexcept {
     return SequentialExecutionPolicy{};
   }
   constexpr SequentialExecutionPolicy seq_exec() noexcept { return SequentialExecutionPolicy{}; }
@@ -671,7 +671,7 @@ namespace zs {
 #else
       static_assert(!is_same_v<ExecTag, cuda_exec_tag>, "cuda compiler not activated here");
 #endif
-    } else if constexpr (is_same_v<ExecTag, host_exec_tag>) {
+    } else if constexpr (is_same_v<ExecTag, seq_exec_tag>) {
       // always present
     }
   }

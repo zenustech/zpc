@@ -78,9 +78,9 @@ namespace zs {
     args.push_back("-std=c++17");
 #if defined(ZS_ENABLE_OPENMP) && ZS_ENABLE_OPENMP
     args.push_back("-DZS_ENABLE_OPENMP=1");
-    args.push_back("-DPYZPC_EXEC_TAG=::zs::exec_omp");
+    args.push_back("-DPYZPC_EXEC_TAG=::zs::omp_c");
 #else
-    args.push_back("-DPYZPC_EXEC_TAG=::zs::exec_seq");
+    args.push_back("-DPYZPC_EXEC_TAG=::zs::seq_c");
 #endif
     args.push_back("-DZPC_JIT_MODE");
 

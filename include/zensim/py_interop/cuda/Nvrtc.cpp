@@ -57,7 +57,7 @@ ZENSIM_EXPORT size_t cuda_compile_program(const char *cuda_src, int arch, const 
   opts.push_back("--device-as-default-execution-space");
   opts.push_back("--std=c++17");
   opts.push_back("--define-macro=ZS_ENABLE_CUDA=1");
-  opts.push_back("-DPYZPC_EXEC_TAG=zs::zs::exec_cuda");
+  opts.push_back("-DPYZPC_EXEC_TAG=zs::zs::cuda_c");
   opts.push_back("-DZPC_JIT_MODE");
 
   if (debug) {

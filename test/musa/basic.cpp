@@ -13,6 +13,7 @@ int main() {
 
 #  include <iostream>
 
+#  include "zensim/execution/Atomics.hpp"
 #  include "zensim/musa/Musa.h"
 #  include "zensim/musa/execution/ExecutionPolicy.muh"
 
@@ -40,7 +41,6 @@ int main() {
     std::cout << "failed" << std::endl;
   }
   using namespace zs;
-  (void)Musa::instance();
 #  if 0
   MUresult result = muInit(0);
   if (result != MUSA_SUCCESS) {
@@ -95,7 +95,22 @@ int main() {
   for (int i = 0; i < vs.size(); ++i) printf("on host: %d: %d\n", i, vs[i]);
   pol(range(100), [] __device__(int i) {});
   pol(range(100), [vs = view<space>(vs)] __device__(int i) mutable { vs[i] = i * i; });
-  pol(enumerate(vs), [] __device__(int i, int n) { printf("on device (through policy): [%d]: %d\n", i, n); });
+  pol(enumerate(vs),
+      [] __device__(int i, int n) { printf("on device (through policy): [%d]: %d\n", i, n); });
+
+  {
+    zs::Vector<int> vs{1, zs::memsrc_e::device, -1};
+    vs.reset(0);
+    pol(range(1), [vs = view<space>(vs)] __device__(int i) mutable {
+      // printf("musa arch: %d\n", (int)__MUSA_ARCH__);
+      // atomic_add(exec_musa, &vs[i], 1.);
+      // atomic_inc(exec_musa, &vs[i]);
+      atomic_xor(exec_musa, &vs[i], 0x33);
+      // atomicAdd(&vs[i], 1.);
+    });
+    vs = vs.clone({memsrc_e::host, -1});
+    fmt::print("result: {}\n", vs[0]);
+  }
 
   return 0;
 }

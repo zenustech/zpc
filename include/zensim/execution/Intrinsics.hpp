@@ -37,20 +37,20 @@ namespace zs {
 // __threadfence
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
-  thread_fence(ExecTag) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>> thread_fence(
+      ExecTag) {
     __threadfence();
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>>
-  thread_fence(ExecTag) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>> thread_fence(
+      ExecTag) {
     __threadfence();
   }
 #endif
 
-#if defined(_OPENMP)
+#if ZS_ENABLE_OPENMP
   inline void thread_fence(omp_exec_tag) noexcept {
 #  pragma omp flush
   }
@@ -61,20 +61,20 @@ namespace zs {
   // __syncthreads
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>>
-  sync_threads(ExecTag) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>> sync_threads(
+      ExecTag) {
     __syncthreads();
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>>
-  sync_threads(ExecTag) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>> sync_threads(
+      ExecTag) {
     __syncthreads();
   }
 #endif
 
-#if defined(_OPENMP)
+#if ZS_ENABLE_OPENMP
   inline void sync_threads(omp_exec_tag) noexcept {
 #  pragma omp barrier
   }
@@ -103,15 +103,15 @@ namespace zs {
 // __shfl_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
-  shfl_sync(ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_sync(
+      ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
     return __shfl_sync(mask, var, srcLane, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
-  shfl_sync(ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_sync(
+      ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
     return __shfl_sync(mask, var, srcLane, width);
   }
 #endif
@@ -119,15 +119,15 @@ namespace zs {
 // __shfl_up_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
-  shfl_up_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_up_sync(
+      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_up_sync(mask, var, delta, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
-  shfl_up_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_up_sync(
+      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_up_sync(mask, var, delta, width);
   }
 #endif
@@ -135,15 +135,15 @@ namespace zs {
 // __shfl_down_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
-  shfl_down_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_down_sync(
+      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_down_sync(mask, var, delta, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
-  shfl_down_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_down_sync(
+      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_down_sync(mask, var, delta, width);
   }
 #endif
@@ -151,15 +151,15 @@ namespace zs {
 // __shfl_xor_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
-  shfl_xor_sync(ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_xor_sync(
+      ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
     return __shfl_xor_sync(mask, var, laneMask, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
-  shfl_xor_sync(ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_xor_sync(
+      ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
     return __shfl_xor_sync(mask, var, laneMask, width);
   }
 #endif
@@ -168,14 +168,14 @@ namespace zs {
 // __activemask
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
   active_mask(ExecTag) {
     return __activemask();
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, unsigned>
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, unsigned>
   active_mask(ExecTag) {
     return __activemask();
   }
@@ -184,14 +184,14 @@ namespace zs {
 // __ballot_sync
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, unsigned>
   ballot_sync(ExecTag, unsigned mask, int predicate) {
     return __ballot_sync(mask, predicate);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, unsigned>
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, unsigned>
   ballot_sync(ExecTag, unsigned mask, int predicate) {
     return __ballot_sync(mask, predicate);
   }
@@ -200,15 +200,15 @@ namespace zs {
 // __all_sync
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
-  all_sync(ExecTag, unsigned mask, int predicate) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> all_sync(
+      ExecTag, unsigned mask, int predicate) {
     return __all_sync(mask, predicate);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int>
-  all_sync(ExecTag, unsigned mask, int predicate) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> all_sync(
+      ExecTag, unsigned mask, int predicate) {
     return __all_sync(mask, predicate);
   }
 #endif
@@ -216,15 +216,15 @@ namespace zs {
 // __any_sync
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
-  any_sync(ExecTag, unsigned mask, int predicate) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> any_sync(
+      ExecTag, unsigned mask, int predicate) {
     return __any_sync(mask, predicate);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int>
-  any_sync(ExecTag, unsigned mask, int predicate) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> any_sync(
+      ExecTag, unsigned mask, int predicate) {
     return __any_sync(mask, predicate);
   }
 #endif
@@ -233,15 +233,15 @@ namespace zs {
 // ffs
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> ffs(
-      ExecTag, int x) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> ffs(ExecTag,
+                                                                                        int x) {
     return __ffs(x);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> ffs(
-      ExecTag, int x) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> ffs(ExecTag,
+                                                                                        int x) {
     return __ffs(x);
   }
 #endif
@@ -249,14 +249,14 @@ namespace zs {
 // ffsll
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> ffsll(
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> ffsll(
       ExecTag, long long int x) {
     return __ffsll(x);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> ffsll(
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> ffsll(
       ExecTag, long long int x) {
     return __ffsll(x);
   }
@@ -265,14 +265,14 @@ namespace zs {
   // popc
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> popc(
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> popc(
       ExecTag, unsigned int x) {
     return __popc(x);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> popc(
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> popc(
       ExecTag, unsigned int x) {
     return __popc(x);
   }
@@ -281,14 +281,14 @@ namespace zs {
   // popcll
 #if defined(__CUDACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> popcll(
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> popcll(
       ExecTag, unsigned long long int x) {
     return __popcll(x);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> popcll(
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> popcll(
       ExecTag, unsigned long long int x) {
     return __popcll(x);
   }
@@ -298,8 +298,8 @@ namespace zs {
 // count leading zeros
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int>
-  count_lz(ExecTag, T x) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, int> count_lz(
+      ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
       return __clz((int)x);
@@ -313,8 +313,8 @@ namespace zs {
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int>
-  count_lz(ExecTag, T x) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, int> count_lz(
+      ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes)
       return __clz((int)x);
@@ -353,8 +353,8 @@ namespace zs {
   /// reverse bits
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
-  reverse_bits(ExecTag, T x) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> reverse_bits(
+      ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)
       return __brev((unsigned int)x);
@@ -367,8 +367,8 @@ namespace zs {
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
-  reverse_bits(ExecTag, T x) {
+  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> reverse_bits(
+      ExecTag, T x) {
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(unsigned int) == nbytes)
       return __brev((unsigned int)x);
@@ -416,8 +416,9 @@ namespace zs {
 
 #if defined(__CUDACC__)
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __host__ __device__ enable_if_type<space == execspace_e::cuda, int> count_ones(
-      T x, wrapv<space> = {}) {
+  __forceinline__ __device__ enable_if_type<space == execspace_e::cuda, int> count_ones(T x,
+                                                                                        wrapv<space>
+                                                                                        = {}) {
     /// @note signed integers being sign-extended should be avoided
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
@@ -432,8 +433,8 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __host__ __device__ enable_if_type<(space == execspace_e::cuda), int>
-  count_tailing_zeros(T x, wrapv<space> = {}) {
+  __forceinline__ __device__ enable_if_type<(space == execspace_e::cuda), int> count_tailing_zeros(
+      T x, wrapv<space> = {}) {
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes) {
@@ -449,8 +450,9 @@ namespace zs {
 #endif
 #if defined(__MUSACC__)
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __host__ __device__ enable_if_type<space == execspace_e::musa, int> count_ones(
-      T x, wrapv<space> = {}) {
+  __forceinline__ __device__ enable_if_type<space == execspace_e::musa, int> count_ones(T x,
+                                                                                        wrapv<space>
+                                                                                        = {}) {
     /// @note signed integers being sign-extended should be avoided
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
@@ -465,8 +467,8 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __host__ __device__ enable_if_type<(space == execspace_e::musa), int>
-  count_tailing_zeros(T x, wrapv<space> = {}) {
+  __forceinline__ __device__ enable_if_type<(space == execspace_e::musa), int> count_tailing_zeros(
+      T x, wrapv<space> = {}) {
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes) {

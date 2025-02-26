@@ -763,9 +763,9 @@ namespace zs {
 #if defined(__CUDACC__)
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
-    __forceinline__ __host__ __device__ bool atomicSwitchIfEqual(
-        status_type *lock, volatile storage_key_type *const dest,
-        const storage_key_type &val) noexcept {
+    __forceinline__ __device__ bool atomicSwitchIfEqual(status_type *lock,
+                                                        volatile storage_key_type *const dest,
+                                                        const storage_key_type &val) noexcept {
       using namespace placeholders;
       constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       if constexpr (sizeof(storage_key_type) == 8) {
@@ -827,7 +827,7 @@ namespace zs {
     /// @ref https://stackoverflow.com/questions/32341081/how-to-have-atomic-load-in-cuda
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
-    __forceinline__ __host__ __device__ key_type
+    __forceinline__ __device__ key_type
     atomicLoad(status_type *lock, const volatile storage_key_type *const dest) noexcept {
       using namespace placeholders;
       if constexpr (sizeof(storage_key_type) == 8) {
@@ -884,7 +884,7 @@ namespace zs {
     }
     template <execspace_e S = space, bool V = is_const_structure,
               enable_if_all<S == execspace_e::cuda, !V> = 0>
-    __forceinline__ __host__ __device__ key_type atomicTileLoad(
+    __forceinline__ __device__ key_type atomicTileLoad(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         status_type *lock, const volatile storage_key_type *const dest) noexcept {
       constexpr auto execTag = wrapv<S>{};

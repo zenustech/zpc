@@ -17,6 +17,7 @@ int main() {
 #  include "zensim/execution/Intrinsics.hpp"
 #  include "zensim/musa/Musa.h"
 #  include "zensim/musa/execution/ExecutionPolicy.muh"
+#  include "zensim/types/Mask.hpp"
 
 template <size_t... Is> void tttt(std::index_sequence<Is...>) {
   ((void)(std::cout << Is << ','), ...);
@@ -99,10 +100,26 @@ int main() {
   pol(enumerate(vs),
       [] __device__(int i, int n) { printf("on device (through policy): [%d]: %d\n", i, n); });
 
+  bit_mask<66> bm;
+  bm.setOn(16);
+  bm.setOn(2);
+  bm.setOn(1);
+  bm.setOn(0);
+  bm.setOn(32);
+  bm.setOn(64);
+  fmt::print("num ones: {}\n", bm.countOn(seq_c));
   {
     zs::Vector<int> vs{1, zs::memsrc_e::device, -1};
     vs.reset(0);
     pol(range(1), [vs = view<space>(vs)] __device__(int i) mutable {
+      bit_mask<66> bm;
+      bm.setOn(16);
+      bm.setOn(2);
+      bm.setOn(1);
+      bm.setOn(0);
+      bm.setOn(32);
+      bm.setOn(64);
+      printf("%d-th bit num ons: %d\n", 10, bm.countOffset(16));
       // printf("musa arch: %d\n", (int)__MUSA_ARCH__);
       // atomic_add(exec_musa, &vs[i], 1.);
       // atomic_inc(exec_musa, &vs[i]);

@@ -103,15 +103,15 @@ namespace zs {
 // __shfl_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_sync(
-      ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_sync(ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
     return __shfl_sync(mask, var, srcLane, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_sync(
-      ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  shfl_sync(ExecTag, unsigned mask, T var, int srcLane, int width = 32) {
     return __shfl_sync(mask, var, srcLane, width);
   }
 #endif
@@ -119,15 +119,15 @@ namespace zs {
 // __shfl_up_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_up_sync(
-      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_up_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_up_sync(mask, var, delta, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_up_sync(
-      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  shfl_up_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_up_sync(mask, var, delta, width);
   }
 #endif
@@ -135,15 +135,15 @@ namespace zs {
 // __shfl_down_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_down_sync(
-      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_down_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_down_sync(mask, var, delta, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_down_sync(
-      ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  shfl_down_sync(ExecTag, unsigned mask, T var, unsigned int delta, int width = 32) {
     return __shfl_down_sync(mask, var, delta, width);
   }
 #endif
@@ -151,15 +151,15 @@ namespace zs {
 // __shfl_xor_sync
 #if defined(__CUDACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T> shfl_xor_sync(
-      ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, cuda_exec_tag>, T>
+  shfl_xor_sync(ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
     return __shfl_xor_sync(mask, var, laneMask, width);
   }
 #endif
 #if defined(__MUSACC__)
   template <typename ExecTag, typename T>
-  __forceinline__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T> shfl_xor_sync(
-      ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
+  __forceinline__ __host__ __device__ enable_if_type<is_same_v<ExecTag, musa_exec_tag>, T>
+  shfl_xor_sync(ExecTag, unsigned mask, T var, int laneMask, int width = 32) {
     return __shfl_xor_sync(mask, var, laneMask, width);
   }
 #endif
@@ -416,9 +416,8 @@ namespace zs {
 
 #if defined(__CUDACC__)
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __device__ enable_if_type<space == execspace_e::cuda, int> count_ones(T x,
-                                                                                        wrapv<space>
-                                                                                        = {}) {
+  __forceinline__ __host__ __device__ enable_if_type<space == execspace_e::cuda, int> count_ones(
+      T x, wrapv<space> = {}) {
     /// @note signed integers being sign-extended should be avoided
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
@@ -433,8 +432,8 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __device__ enable_if_type<(space == execspace_e::cuda), int> count_tailing_zeros(
-      T x, wrapv<space> = {}) {
+  __forceinline__ __host__ __device__ enable_if_type<(space == execspace_e::cuda), int>
+  count_tailing_zeros(T x, wrapv<space> = {}) {
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes) {
@@ -450,9 +449,8 @@ namespace zs {
 #endif
 #if defined(__MUSACC__)
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __device__ enable_if_type<space == execspace_e::musa, int> count_ones(T x,
-                                                                                        wrapv<space>
-                                                                                        = {}) {
+  __forceinline__ __host__ __device__ enable_if_type<space == execspace_e::musa, int> count_ones(
+      T x, wrapv<space> = {}) {
     /// @note signed integers being sign-extended should be avoided
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
@@ -467,8 +465,8 @@ namespace zs {
   }
 
   template <typename T, execspace_e space = deduce_execution_space()>
-  __forceinline__ __device__ enable_if_type<(space == execspace_e::musa), int> count_tailing_zeros(
-      T x, wrapv<space> = {}) {
+  __forceinline__ __host__ __device__ enable_if_type<(space == execspace_e::musa), int>
+  count_tailing_zeros(T x, wrapv<space> = {}) {
     static_assert(is_integral_v<remove_cvref_t<T>>, "T should be an integral type");
     constexpr auto nbytes = sizeof(T);
     if constexpr (sizeof(int) == nbytes) {

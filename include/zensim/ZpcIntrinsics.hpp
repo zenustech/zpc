@@ -69,7 +69,31 @@ namespace zs {
     if constexpr (is_same_v<Src, Dst>) return FWD(val);
 
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDA_ARCH__)
+#if __CUDA_ARCH__
+      if constexpr (is_same_v<Dst, float> && is_same_v<Src, int>) {
+        return __int_as_float(FWD(val));
+      } else if constexpr (is_same_v<Dst, int> && is_same_v<Src, float>) {
+        return __float_as_int(FWD(val));
+      } else if constexpr (is_same_v<Dst, double> && is_same_v<Src, long long>) {
+        return __longlong_as_double(FWD(val));
+      } else if constexpr (is_same_v<Dst, long long> && is_same_v<Src, double>) {
+        return __double_as_longlong(FWD(val));
+      }
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSA_ARCH__
+      if constexpr (is_same_v<Dst, float> && is_same_v<Src, int>) {
+        return __int_as_float(FWD(val));
+      } else if constexpr (is_same_v<Dst, int> && is_same_v<Src, float>) {
+        return __float_as_int(FWD(val));
+      } else if constexpr (is_same_v<Dst, double> && is_same_v<Src, long long>) {
+        return __longlong_as_double(FWD(val));
+      } else if constexpr (is_same_v<Dst, long long> && is_same_v<Src, double>) {
+        return __double_as_longlong(FWD(val));
+      }
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIP_ARCH__
       if constexpr (is_same_v<Dst, float> && is_same_v<Src, int>) {
         return __int_as_float(FWD(val));
       } else if constexpr (is_same_v<Dst, int> && is_same_v<Src, float>) {
@@ -81,7 +105,6 @@ namespace zs {
       }
 #endif
     }
-
     // safe measure
     Dst dst{};
     memcpy(&dst, const_cast<const Src *>(&val), sizeof(Dst));

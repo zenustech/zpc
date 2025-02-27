@@ -525,21 +525,21 @@ namespace zs {
       ~CoalescedGroup() = default;
 
       __forceinline__ __host__ __device__ unsigned long long num_threads() const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
         return static_cast<const base_t *>(this)->num_threads();
 #  else
         return ~(unsigned long long)0;
 #  endif
       }
       __forceinline__ __host__ __device__ unsigned long long thread_rank() const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
         return static_cast<const base_t *>(this)->thread_rank();
 #  else
         return ~(unsigned long long)0;
 #  endif
       }
       __forceinline__ __host__ __device__ unsigned ballot(int pred) const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
         return static_cast<const base_t *>(this)->ballot(pred);
 #  else
         return ~(unsigned)0;
@@ -549,7 +549,7 @@ namespace zs {
       /// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#warp-shuffle-functions
       template <typename T, enable_if_t<std::is_fundamental_v<T>> = 0>
       __forceinline__ __host__ __device__ T shfl(T var, int srcLane) const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
         return static_cast<const base_t *>(this)->shfl(var, srcLane);
 #  else
         return 0;
@@ -557,7 +557,7 @@ namespace zs {
       }
       template <typename VecT, enable_if_t<is_vec<VecT>::value> = 0>
       __forceinline__ __host__ __device__ VecT shfl(const VecT &var, int srcLane) const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
         VecT ret{};
         for (typename VecT::index_type i = 0; i != VecT::extent; ++i)
           ret.val(i) = this->shfl(var.val(i), srcLane);
@@ -567,14 +567,14 @@ namespace zs {
 #  endif
       }
       __forceinline__ __host__ __device__ int ffs(int x) const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
         return ::__ffs(x);
 #  else
         return -1;
 #  endif
       }
       __forceinline__ __host__ __device__ void thread_fence() const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
         ::__threadfence();  // device-scope
 #  else
 #  endif
@@ -1053,7 +1053,7 @@ namespace zs {
     __forceinline__ __host__ __device__ T tile_shfl(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         T var, int srcLane) const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
       return tile.shfl(var, srcLane);
 #  else
       return 0;
@@ -1063,7 +1063,7 @@ namespace zs {
     __forceinline__ __host__ __device__ VecT tile_shfl(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const VecT &var, int srcLane) const {
-#  ifdef __CUDA_ARCH__
+#  if __CUDA_ARCH__
       VecT ret{};
       for (typename VecT::index_type i = 0; i != VecT::extent; ++i)
         ret.val(i) = tile_shfl(tile, var.val(i), srcLane);

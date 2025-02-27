@@ -112,39 +112,47 @@ namespace zs {
   };
 
   template <class T> struct printf_target<
-      T, enable_if_t<is_same_v<decay_t<T>, char*> || is_same_v<decay_t<T>, const char*>>> {
-    using type = const char*;
+      T, enable_if_t<is_same_v<decay_t<T>, char *> || is_same_v<decay_t<T>, const char *>>> {
+    using type = const char *;
     constexpr static char placeholder[] = "%s";
   };
 
-  ZS_FUNCTION SmallString join(const SmallString& joinStr) { return SmallString{}; }
+  ZS_FUNCTION SmallString join(const SmallString &joinStr) { return SmallString{}; }
 
-  template <class T> ZS_FUNCTION SmallString join(const SmallString& joinStr, T&& s0) { return s0; }
+  template <class T> ZS_FUNCTION SmallString join(const SmallString &joinStr, T &&s0) { return s0; }
 
   template <class T, class... Types>
-  ZS_FUNCTION SmallString join(const SmallString& joinStr, T&& s0, Types&&... args) {
+  ZS_FUNCTION SmallString join(const SmallString &joinStr, T &&s0, Types &&...args) {
     return s0 + joinStr + join(joinStr, FWD(args)...);
   }
 
-  template <class... Types> ZS_FUNCTION void print_internal(Types&&... args) {
+  template <class... Types> ZS_FUNCTION void print_internal(Types &&...args) {
     auto formatStr = join(" ", SmallString{printf_target<remove_cvref_t<Types>>::placeholder}...);
     printf(formatStr.asChars(),
            static_cast<typename printf_target<remove_cvref_t<Types>>::type>(args)...);
   }
 
-  template <class... Types> ZS_FUNCTION void print(Types&&... args) {
+  template <class... Types> ZS_FUNCTION void print(Types &&...args) {
     print_internal(FWD(args)..., "\n");
   }
 
-  ZS_FUNCTION auto tid() {
-#ifdef __CUDACC__
+#ifdef ZPC_JIT_MODE
+  constexpr auto tid = [
+#  if defined(SYCL_LANGUAGE_VERSION)
+                           &__item
+#  endif
+  ]() {
+#  if __CUDA_ARCH__ || __MUSA_ARCH__ || __HIP_ARCH__
     return blockIdx.x * blockDim.x + threadIdx.x;
-#elif defined(_OPENMP)
+#  elif defined(_OPENMP)
     return ::omp_get_thread_num();
-#else
+#  elif defined(SYCL_LANGUAGE_VERSION)
+    return __item.get_linear_id();
+#  else
     return 0;
+#  endif
+  };
 #endif
-  }
 
 }  // namespace zs
 using vec2i = zs::vec<int, 2>;

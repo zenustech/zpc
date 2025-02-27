@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cooperative_groups.h>
 #include <musa.h>
 
 #include "zensim/execution/ExecutionPolicy.hpp"
@@ -304,7 +305,6 @@ namespace zs {
     }
   }
 
-#if 0
   namespace cg = cooperative_groups;
   template <typename Tn, typename F> __global__ void block_tile_lane_launch(Tn tileSize, F f) {
     extern __shared__ std::max_align_t shmem[];
@@ -326,7 +326,6 @@ namespace zs {
         block.thread_rank() / tileSize, tile.thread_rank());
     }
   }
-#endif
 
   struct MusaExecutionPolicy;
   ZPC_API extern ZSPmrAllocator<> get_temporary_memory_source(const MusaExecutionPolicy &pol);
@@ -390,16 +389,14 @@ namespace zs {
         ec = musa_safe_launch(loc, context, streamid, {dims.get(0_th), dims.get(1_th), shmemBytes},
                               block_thread_launch, f);
       }
-      static_assert(dim >= 1 && dim <= 2,
-                    "launch dimensions other than 1, 2 are not supported yet");
-#if 0
       // else if constexpr (arity == 3)
       else if constexpr (dim == 3) {
         ec = musa_safe_launch(loc, context, streamid,
                               {dims.get(0_th), dims.get(1_th) * dims.get(2_th), shmemBytes},
                               block_tile_lane_launch, dims.get(2_th), f);
       }
-#endif
+      static_assert(dim >= 1 && dim <= 3,
+                    "launch dimensions other than 1, 2, 3 are not supported yet");
       if (this->shouldProfile()) context.tock(timer, loc);
       if (this->shouldSync()) {
         context.syncStreamSpare(streamid, loc);

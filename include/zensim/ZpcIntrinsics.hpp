@@ -4,6 +4,9 @@
 #include "zensim/types/Property.h"
 
 #if defined(__CUDACC__)
+#elif defined(__MUSACC__)
+#elif defined(__HIPCC__)
+#elif defined(SYCL_LANGUAGE_VERSION)
 
 #else
 extern "C" {

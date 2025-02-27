@@ -482,9 +482,11 @@ namespace zs {
           _hf1{table._hf1},
           _hf2{table._hf2} {}
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
     template <execspace_e S = space, bool V = is_const_structure,
-              enable_if_all<S == execspace_e::cuda, !V> = 0>
+              enable_if_all<
+                  S == execspace_e::cuda || S == execspace_e::musa || S == execspace_e::rocm, !V>
+              = 0>
     __forceinline__ __host__ __device__ value_type insert(const key_type &key,
                                                           value_type insertion_index = sentinel_v,
                                                           bool enqueueKey = true) noexcept {
@@ -692,9 +694,10 @@ namespace zs {
       else
         return detail::deduce_numeric_max<value_type>();
     }
-#if defined(__CUDACC__)
-    template <bool retrieve_index = true, execspace_e S = space,
-              enable_if_t<S == execspace_e::cuda> = 0>
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
+    template <
+        bool retrieve_index = true, execspace_e S = space,
+        enable_if_t<S == execspace_e::cuda || S == execspace_e::musa || S == execspace_e::rocm> = 0>
     __forceinline__ __host__ __device__ value_type tile_query(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const key_type &key, wrapv<retrieve_index> = {}) const noexcept {
@@ -760,9 +763,11 @@ namespace zs {
 
   protected:
     /// @brief helper methods: atomicSwitchIfEqual, atomicLoad
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
     template <execspace_e S = space, bool V = is_const_structure,
-              enable_if_all<S == execspace_e::cuda, !V> = 0>
+              enable_if_all<
+                  S == execspace_e::cuda || S == execspace_e::musa || S == execspace_e::rocm, !V>
+              = 0>
     __forceinline__ __device__ bool atomicSwitchIfEqual(status_type *lock,
                                                         volatile storage_key_type *const dest,
                                                         const storage_key_type &val) noexcept {

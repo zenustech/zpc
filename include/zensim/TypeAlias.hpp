@@ -114,6 +114,11 @@ namespace zs {
 #    undef ZS_LAMBDA
 #  endif
 #  define ZS_LAMBDA __device__
+#elif ZS_ENABLE_ROCM && defined(__HIPCC__)
+#  if defined(ZS_LAMBDA)
+#    undef ZS_LAMBDA
+#  endif
+#  define ZS_LAMBDA __device__
 #else
 #  if defined(ZS_LAMBDA)
 #    undef ZS_LAMBDA
@@ -127,6 +132,11 @@ namespace zs {
 #  endif
 #  define ZS_FUNCTION __forceinline__ __device__
 #elif ZS_ENABLE_MUSA && defined(__MUSACC__)
+#  if defined(ZS_FUNCTION)
+#    undef ZS_FUNCTION
+#  endif
+#  define ZS_FUNCTION __forceinline__ __device__
+#elif ZS_ENABLE_ROCM && defined(__HIPCC__)
 #  if defined(ZS_FUNCTION)
 #    undef ZS_FUNCTION
 #  endif

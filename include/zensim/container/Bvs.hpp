@@ -80,8 +80,15 @@ namespace zs {
 #if ZS_ENABLE_CUDA && defined(__CUDACC__)
       // ZS_LAMBDA -> __device__
       static_assert(space == execspace_e::cuda, "specialized policy and compiler not match");
+#elif ZS_ENABLE_MUSA && defined(__MUSACC__)
+      static_assert(space == execspace_e::musa, "specialized policy and compiler not match");
+#elif ZS_ENABLE_ROCM && defined(__HIPCC__)
+      static_assert(space == execspace_e::rocm, "specialized policy and compiler not match");
+#elif ZS_ENABLE_SYCL && defined(SYCL_LANGUAGE_VERSION)
+      static_assert(space == execspace_e::sycl, "specialized policy and compiler not match");
 #else
-      static_assert(space != execspace_e::cuda, "specialized policy and compiler not match");
+      static_assert(space == execspace_e::seq || space == execspace_e::openmp,
+                    "specialized policy and compiler not match");
 #endif
 
       // must call this in the beginning

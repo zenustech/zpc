@@ -1,10 +1,9 @@
 #pragma once
 
-#include <iostream>
-
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <stack>
 #include <utility>
@@ -22,8 +21,7 @@ namespace zs {
    * @tparam Value the type of mapped values
    * @tparam Compare the compare function
    */
-  template <typename Key, typename Value, typename Compare = std::less<Key> >
-  class RBTreeMap {
+  template <typename Key, typename Value, typename Compare = std::less<Key> > class RBTreeMap {
   private:
     Compare compare = Compare();
 
@@ -69,9 +67,7 @@ namespace zs {
     Node* root = nullptr;
     size_t cnt = 0;
 
-    inline bool isRoot(const Node* node) const noexcept {
-      return this->root == node;
-    }
+    inline bool isRoot(const Node* node) const noexcept { return this->root == node; }
 
     inline Direction getDirection(const Node* node) const noexcept {
       if (!isRoot(node)) {
@@ -97,47 +93,40 @@ namespace zs {
       return !isRoot(node) && getSibling(node) != nullptr;
     }
 
-    inline Node* getUncle(const Node* node) const noexcept {
-      return getSibling(node->parent);
-    }
+    inline Node* getUncle(const Node* node) const noexcept { return getSibling(node->parent); }
 
     inline bool hasUncle(const Node* node) const noexcept {
       return !isRoot(node) && hasSibling(node->parent);
     }
 
-    inline Node* getGrandParent(const Node* node) const noexcept {
-      return node->parent->parent;
-    }
+    inline Node* getGrandParent(const Node* node) const noexcept { return node->parent->parent; }
 
     inline bool hasGrandParent(const Node* node) const noexcept {
       return !isRoot(node) && !isRoot(node->parent);
     }
 
-    using K = const Key &;
-    using V = const Value &;
-    using reference = Node &;
-    using const_reference = const Node &;
+    using K = const Key&;
+    using V = const Value&;
+    using reference = Node&;
+    using const_reference = const Node&;
 
     struct iterator_impl : IteratorInterface<iterator_impl> {
       constexpr iterator_impl() = default;
-      constexpr iterator_impl(Node* base)
-          : _node{base} {}
+      constexpr iterator_impl(Node* base) : _node{base} {}
 
       constexpr reference dereference() { return *_node; }
       constexpr bool equal_to(iterator_impl it) const noexcept { return it._node == _node; }
       constexpr void increment() noexcept {
         if (_node->right != nullptr) {
           _node = _node->right;
-          while (_node->left != nullptr)
-            _node = _node->left;
+          while (_node->left != nullptr) _node = _node->left;
         } else {
           Node* _y = _node->parent;
           while (_node == _y->right) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->right != _y)
-            _node = _y;
+          if (_node->right != _y) _node = _y;
         }
       }
       constexpr void decrement() noexcept {
@@ -145,16 +134,14 @@ namespace zs {
           _node = _node->right;
         } else if (_node->left != nullptr) {
           _node = _node->left;
-          while (_node->right != nullptr)
-            _node = _node->right;
+          while (_node->right != nullptr) _node = _node->right;
         } else {
           Node* _y = _node->parent;
           while (_node == _y->left) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->left != _y)
-            _node = _y;
+          if (_node->left != _y) _node = _y;
         }
       }
 
@@ -163,24 +150,21 @@ namespace zs {
     };
     struct const_iterator_impl : IteratorInterface<const_iterator_impl> {
       constexpr const_iterator_impl() = default;
-      constexpr const_iterator_impl(const Node* base)
-          : _node{base} {}
+      constexpr const_iterator_impl(const Node* base) : _node{base} {}
 
       constexpr const_reference dereference() { return *_node; }
       constexpr bool equal_to(const_iterator_impl it) const noexcept { return it._node == _node; }
       constexpr void increment() noexcept {
         if (_node->right != nullptr) {
           _node = _node->right;
-          while (_node->left != nullptr)
-            _node = _node->left;
+          while (_node->left != nullptr) _node = _node->left;
         } else {
           const Node* _y = _node->parent;
           while (_node == _y->right) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->right != _y)
-            _node = _y;
+          if (_node->right != _y) _node = _y;
         }
       }
       constexpr void decrement() noexcept {
@@ -188,16 +172,14 @@ namespace zs {
           _node = _node->right;
         } else if (_node->left != nullptr) {
           _node = _node->left;
-          while (_node->right != nullptr)
-            _node = _node->right;
+          while (_node->right != nullptr) _node = _node->right;
         } else {
           const Node* _y = _node->parent;
           while (_node == _y->left) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->left != _y)
-            _node = _y;
+          if (_node->left != _y) _node = _y;
         }
       }
 
@@ -206,24 +188,21 @@ namespace zs {
     };
     struct reverse_iterator_impl : IteratorInterface<reverse_iterator_impl> {
       constexpr reverse_iterator_impl() = default;
-      constexpr reverse_iterator_impl(Node* base)
-          : _node{base} {}
+      constexpr reverse_iterator_impl(Node* base) : _node{base} {}
 
       constexpr reference dereference() { return *_node; }
       constexpr bool equal_to(reverse_iterator_impl it) const noexcept { return it._node == _node; }
       constexpr void increment() noexcept {
         if (_node->left != nullptr) {
           _node = _node->left;
-          while (_node->right != nullptr)
-            _node = _node->right;
+          while (_node->right != nullptr) _node = _node->right;
         } else {
           Node* _y = _node->parent;
           while (_node == _y->left) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->left != _y)
-            _node = _y;
+          if (_node->left != _y) _node = _y;
         }
       }
       constexpr void decrement() noexcept {
@@ -231,16 +210,14 @@ namespace zs {
           _node = _node->left;
         } else if (_node->right != nullptr) {
           _node = _node->right;
-          while (_node->left != nullptr)
-            _node = _node->left;
+          while (_node->left != nullptr) _node = _node->left;
         } else {
           Node* _y = _node->parent;
           while (_node == _y->right) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->right != _y)
-            _node = _y;
+          if (_node->right != _y) _node = _y;
         }
       }
 
@@ -249,24 +226,23 @@ namespace zs {
     };
     struct const_reverse_iterator_impl : IteratorInterface<const_reverse_iterator_impl> {
       constexpr const_reverse_iterator_impl() = default;
-      constexpr const_reverse_iterator_impl(const Node* base)
-          : _node{base} {}
+      constexpr const_reverse_iterator_impl(const Node* base) : _node{base} {}
 
       constexpr const_reference dereference() { return *_node; }
-      constexpr bool equal_to(const_reverse_iterator_impl it) const noexcept { return it._node == _node; }
+      constexpr bool equal_to(const_reverse_iterator_impl it) const noexcept {
+        return it._node == _node;
+      }
       constexpr void increment() noexcept {
         if (_node->left != nullptr) {
           _node = _node->left;
-          while (_node->right != nullptr)
-            _node = _node->right;
+          while (_node->right != nullptr) _node = _node->right;
         } else {
           const Node* _y = _node->parent;
           while (_node == _y->left) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->left != _y)
-            _node = _y;
+          if (_node->left != _y) _node = _y;
         }
       }
       constexpr void decrement() noexcept {
@@ -274,16 +250,14 @@ namespace zs {
           _node = _node->right;
         } else if (_node->right != nullptr) {
           _node = _node->right;
-          while (_node->left != nullptr)
-            _node = _node->left;
+          while (_node->left != nullptr) _node = _node->left;
         } else {
           const Node* _y = _node->parent;
           while (_node == _y->right) {
             _node = _y;
             _y = _y->parent;
           }
-          if (_node->right != _y)
-            _node = _y;
+          if (_node->right != _y) _node = _y;
         }
       }
 
@@ -302,12 +276,12 @@ namespace zs {
 
     class NoSuchMappingException : protected std::exception {
     private:
-      const char *message;
+      const char* message;
 
     public:
-      explicit NoSuchMappingException(const char *msg) : message(msg) {}
+      explicit NoSuchMappingException(const char* msg) : message(msg) {}
 
-      const char *what() const noexcept override { return message; }
+      const char* what() const noexcept override { return message; }
     };
 
     RBTreeMap() noexcept {
@@ -325,12 +299,22 @@ namespace zs {
 
     constexpr auto begin() noexcept { return make_iterator<iterator_impl>(this->header->left); }
     constexpr auto end() noexcept { return make_iterator<iterator_impl>(this->header); }
-    constexpr auto cbegin() const noexcept { return make_iterator<const_iterator_impl>(this->header->left); }
-    constexpr auto cend() const noexcept { return make_iterator<const_iterator_impl>(this->header); }
-    constexpr auto rbegin() noexcept { return make_iterator<reverse_iterator_impl>(this->header->right); }
+    constexpr auto cbegin() const noexcept {
+      return make_iterator<const_iterator_impl>(this->header->left);
+    }
+    constexpr auto cend() const noexcept {
+      return make_iterator<const_iterator_impl>(this->header);
+    }
+    constexpr auto rbegin() noexcept {
+      return make_iterator<reverse_iterator_impl>(this->header->right);
+    }
     constexpr auto rend() noexcept { return make_iterator<reverse_iterator_impl>(this->header); }
-    constexpr auto crbegin() const noexcept { return make_iterator<const_reverse_iterator_impl>(this->header->right); }
-    constexpr auto crend() const noexcept { return make_iterator<const_reverse_iterator_impl>(this->header); }
+    constexpr auto crbegin() const noexcept {
+      return make_iterator<const_reverse_iterator_impl>(this->header->right);
+    }
+    constexpr auto crend() const noexcept {
+      return make_iterator<const_reverse_iterator_impl>(this->header);
+    }
 
     /**
      * Returns the number of entries in this map.
@@ -386,7 +370,7 @@ namespace zs {
      * @param key
      * @return RBTreeMap<Key, Value>::Value &
      */
-    Value &getOrDefault(K key) {
+    Value& getOrDefault(K key) {
       if (this->root == nullptr) {
         this->root = new Node(key);
         this->root->parent = this->header;
@@ -396,10 +380,7 @@ namespace zs {
         this->cnt += 1;
         return this->root->second;
       } else {
-        return this
-            ->getNodeOrProvide(this->root, key,
-                              [&key]() { return new Node(key); })
-            ->second;
+        return this->getNodeOrProvide(this->root, key, [&key]() { return new Node(key); })->second;
       }
     }
 
@@ -408,9 +389,7 @@ namespace zs {
      * @param key
      * @return size_t
      */
-    size_t count(K key) const {
-      return this->getNode(this->root, key) ? 1 : 0;
-    }
+    size_t count(K key) const { return this->getNode(this->root, key) ? 1 : 0; }
 
     /**
      * Associates the specified value with the specified key in this map.
@@ -431,7 +410,7 @@ namespace zs {
     }
 
     Value at(K key) const { return this->get(key); }
-    Value &operator[](K key) { return this->getOrDefault(key); }
+    Value& operator[](K key) { return this->getOrDefault(key); }
 
     /**
      * Removes the element at position
@@ -615,15 +594,14 @@ namespace zs {
      * Remove all entries that satisfy the filter condition.
      * @param filter
      */
-    template <typename KeyValueFilterF>
-    void removeAll(KeyValueFilterF &&filter) {
+    template <typename KeyValueFilterF> void removeAll(KeyValueFilterF&& filter) {
       std::vector<Key> keys;
       this->inorderTraversal([&](const Node* node) {
         if (filter(node->first, node->second)) {
           keys.push_back(node->first);
         }
       });
-      for (const Key &key : keys) {
+      for (const Key& key : keys) {
         this->remove(key);
       }
     }
@@ -633,10 +611,8 @@ namespace zs {
      * The value is immutable for the action.
      * @param action
      */
-    template <typename KeyValueConsumerF>
-    void forEach(KeyValueConsumerF &&action) const {
-      this->inorderTraversal(
-          [&](const Node* node) { action(node->first, node->second); });
+    template <typename KeyValueConsumerF> void forEach(KeyValueConsumerF&& action) const {
+      this->inorderTraversal([&](const Node* node) { action(node->first, node->second); });
     }
 
     /**
@@ -644,10 +620,8 @@ namespace zs {
      * The value is mutable for the action.
      * @param action
      */
-    template <typename MutKeyValueConsumerF>
-    void forEachMut(MutKeyValueConsumerF &&action) {
-      this->inorderTraversal(
-          [&](const Node* node) { action(node->first, node->second); });
+    template <typename MutKeyValueConsumerF> void forEachMut(MutKeyValueConsumerF&& action) {
+      this->inorderTraversal([&](const Node* node) { action(node->first, node->second); });
     }
 
   private:
@@ -835,7 +809,7 @@ namespace zs {
     }
 
     template <typename NodeProviderF>
-    Node* getNodeOrProvide(Node* &node, K key, NodeProviderF&& provide) {
+    Node* getNodeOrProvide(Node*& node, K key, NodeProviderF&& provide) {
       assert(node != nullptr);
 
       if (key == node->first) {
@@ -850,8 +824,7 @@ namespace zs {
           result = provide();
           node->left = result;
           node->left->parent = node;
-          if (this->header->left == node)
-            this->header->left = node->left;
+          if (this->header->left == node) this->header->left = node->left;
           maintainAfterInsert(result);
           this->cnt += 1;
         } else {
@@ -863,8 +836,7 @@ namespace zs {
           result = provide();
           node->right = result;
           node->right->parent = node;
-          if (this->header->right == node)
-            this->header->right = node->right;
+          if (this->header->right == node) this->header->right = node->right;
           maintainAfterInsert(result);
           this->cnt += 1;
         } else {
@@ -891,7 +863,7 @@ namespace zs {
       }
     }
 
-    void insert(Node* &node, K key, V value, bool replace = true) {
+    void insert(Node*& node, K key, V value, bool replace = true) {
       assert(node != nullptr);
 
       if (key == node->first) {
@@ -906,8 +878,7 @@ namespace zs {
         if (node->left == nullptr) {
           node->left = new Node(key, value);
           node->left->parent = node;
-          if (this->header->left == node)
-            this->header->left = node->left;
+          if (this->header->left == node) this->header->left = node->left;
           maintainAfterInsert(node->left);
           this->cnt += 1;
         } else {
@@ -918,8 +889,7 @@ namespace zs {
         if (node->right == nullptr) {
           node->right = new Node(key, value);
           node->right->parent = node;
-          if (this->header->right == node)
-            this->header->right = node->right;
+          if (this->header->right == node) this->header->right = node->right;
           maintainAfterInsert(node->right);
           this->cnt += 1;
         } else {
@@ -961,10 +931,8 @@ namespace zs {
         sibling = getSibling(node);
       }
 
-      Node* closeNephew =
-          direction == Direction::LEFT ? sibling->left : sibling->right;
-      Node* distantNephew =
-          direction == Direction::LEFT ? sibling->right : sibling->left;
+      Node* closeNephew = direction == Direction::LEFT ? sibling->left : sibling->right;
+      Node* distantNephew = direction == Direction::LEFT ? sibling->right : sibling->left;
 
       bool closeNephewIsBlack = closeNephew == nullptr || closeNephew->isBlack();
       bool distantNephewIsBlack = distantNephew == nullptr || distantNephew->isBlack();
@@ -1018,10 +986,8 @@ namespace zs {
           sibling->color = Node::RED;
           // Update sibling and nephews after rotation
           sibling = getSibling(node);
-          closeNephew =
-              direction == Direction::LEFT ? sibling->left : sibling->right;
-          distantNephew =
-              direction == Direction::LEFT ? sibling->right : sibling->left;
+          closeNephew = direction == Direction::LEFT ? sibling->left : sibling->right;
+          distantNephew = direction == Direction::LEFT ? sibling->right : sibling->left;
         }
 
         // Case 5: Sibling is BLACK, close nephew is BLACK,
@@ -1045,14 +1011,13 @@ namespace zs {
       }
     }
 
-    template <typename NodeConsumerF>
-    bool remove(Node* node, K key, NodeConsumerF &&action) {
+    template <typename NodeConsumerF> bool remove(Node* node, K key, NodeConsumerF&& action) {
       assert(node != nullptr);
 
       if (key != node->first) {
         if (compare(key, node->first)) {
           /* key < node->first */
-          Node* &left = node->left;
+          Node*& left = node->left;
           if (left != nullptr && remove(left, key, action)) {
             maintainRelationship(node);
             return true;
@@ -1061,7 +1026,7 @@ namespace zs {
           }
         } else {
           /* key > node->first */
-          Node* &right = node->right;
+          Node*& right = node->right;
           if (right != nullptr && remove(right, key, action)) {
             maintainRelationship(node);
             return true;
@@ -1070,13 +1035,12 @@ namespace zs {
           }
         }
       }
-      
+
       assert(key == node->first);
       if (this->header->left == node) {
         if (node->right != nullptr) {
           Node* l = node->right;
-          while (l->left != nullptr)
-            l = l->left;
+          while (l->left != nullptr) l = l->left;
           this->header->left = l;
         } else {
           this->header->left = node->parent;
@@ -1085,8 +1049,7 @@ namespace zs {
       if (this->header->right == node) {
         if (node->left != nullptr) {
           Node* r = node->left;
-          while (r->right != nullptr)
-            r = r->right;
+          while (r->right != nullptr) r = r->right;
           this->header->right = r;
         } else {
           this->header->right = node->parent;
@@ -1104,7 +1067,7 @@ namespace zs {
         // Case 1: If the node is strictly internal
         //   Step 1. Find the successor S with the smallest key
         //           and its parent P on the right subtree.
-        //   Step 2. Swap S and N, S is the node that will be 
+        //   Step 2. Swap S and N, S is the node that will be
         //           deleted in place of N.
         //   Step 3. N = S, goto Case 2, 3
         //     |                    |
@@ -1208,8 +1171,7 @@ namespace zs {
       return true;
     }
 
-    template <typename NodeConsumerF>
-    void inorderTraversal(NodeConsumerF &&action) const {
+    template <typename NodeConsumerF> void inorderTraversal(NodeConsumerF&& action) const {
       if (this->root == nullptr) {
         return;
       }
@@ -1231,4 +1193,4 @@ namespace zs {
       }
     }
   };
-} // namespace zs
+}  // namespace zs

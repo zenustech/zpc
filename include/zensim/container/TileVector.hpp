@@ -903,13 +903,15 @@ namespace zs {
       if ((const TT *)_vector == nullptr) {
         /// @note TBD : insert type reflection info here
         printf("tilevector [%s] packing reinterpret_cast failed!\n", _nameTag.asChars());
-        return RetT::constant(*(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
+        return RetT::constant(
+            *(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
       }
       /// @brief check channel access overflow
       if (chn + RetT::extent > _dims._numChannels) {
         printf("tilevector [%s] ofb! accessing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
                (int)chn, (int)(chn + RetT::extent), (int)_dims._numChannels);
-        return RetT::constant(*(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
+        return RetT::constant(
+            *(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
       }
 #endif
       const TT *ptr = nullptr;
@@ -919,7 +921,8 @@ namespace zs {
         if (i >= lane_width) {
           printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)lane_width);
-          return RetT::constant(*(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
+          return RetT::constant(
+              *(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
         }
 #endif
       } else {
@@ -930,7 +933,8 @@ namespace zs {
         if (i >= _dims.size()) {
           printf("tilevector [%s] ofb! global accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)_dims.size());
-          return RetT::constant(*(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
+          return RetT::constant(
+              *(const TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) + 1));
         }
 #endif
       }
@@ -967,24 +971,28 @@ namespace zs {
       if ((TT *)_vector == nullptr) {
         /// @note TBD : insert type reflection info here
         printf("tilevector [%s] tieing reinterpret_cast failed!\n", _nameTag.asChars());
-        return zs::tie(*(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
+        return zs::tie(
+            *(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
       }
       if (chnOffset + d > _dims._numChannels) {
         printf("tilevector [%s] ofb! tieing chn [%d, %d) out of [0, %d)\n", _nameTag.asChars(),
                (int)chnOffset, (int)(chnOffset + d), (int)_dims._numChannels);
-        return zs::tie(*(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
+        return zs::tie(
+            *(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
       }
       if constexpr (WithinTile) {
         if (i >= lane_width) {
           printf("tilevector [%s] ofb! in-tile accessing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)lane_width);
-          return zs::tie(*(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
+          return zs::tie(
+              *(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
         }
       } else {
         if (i >= _dims.size()) {
           printf("tilevector [%s] ofb! global tieing ele [%lld] out of [0, %lld)\n",
                  _nameTag.asChars(), (long long)i, (long long)_dims.size());
-          return zs::tie(*(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
+          return zs::tie(
+              *(TT *)(detail::deduce_numeric_max<std::uintptr_t>() - sizeof(TT) * (Is + 1) + 1)...);
         }
       }
 #endif

@@ -110,8 +110,8 @@ namespace zs {
     ///
     /// @note cuda
     ///
-#if ZS_ENABLE_CUDA
-#  if defined(__CUDACC__)
+#if ZS_ENABLE_CUDA || ZS_ENABLE_MUSA || ZS_ENABLE_ROCM
+#  if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
     __forceinline__ __device__ value_type insert(const key_type &key,
                                                  value_type insertion_index = sentinel_v,
@@ -260,6 +260,7 @@ namespace zs {
                                                         volatile storage_key_type *const dest,
                                                         const storage_key_type &val) noexcept {
       using namespace placeholders;
+      constexpr auto space = deduce_execution_space();
       constexpr auto key_sentinel_v = hash_table_type::deduce_key_sentinel();
       const storage_key_type storage_key_sentinel_v = key_sentinel_v;
       if constexpr (sizeof(storage_key_type) == 8) {
@@ -278,7 +279,8 @@ namespace zs {
           const u64 *const ptr64;
         } desired = {&val};
 
-        return (atomic_cas(cuda_c, const_cast<u64 *>(dst.ptr64), *expected.ptr64, *desired.ptr64)
+        return (atomic_cas(wrapv<space>{}, const_cast<u64 *>(dst.ptr64), *expected.ptr64,
+                           *desired.ptr64)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr64 << (storage_key_type::num_padded_bytes * 8));
       } else if constexpr (sizeof(storage_key_type) == 4) {
@@ -297,13 +299,14 @@ namespace zs {
           const u32 *const ptr32;
         } desired = {&val};
 
-        return (atomic_cas(cuda_c, const_cast<u32 *>(dst.ptr32), *expected.ptr32, *desired.ptr32)
+        return (atomic_cas(wrapv<space>{}, const_cast<u32 *>(dst.ptr32), *expected.ptr32,
+                           *desired.ptr32)
                 << (storage_key_type::num_padded_bytes * 8))
                == (*expected.ptr32 << (storage_key_type::num_padded_bytes * 8));
       }
       /// lock
-      while (atomic_exch(cuda_c, lock, 0) == 0);
-      thread_fence(cuda_c);
+      while (atomic_exch(wrapv<space>{}, lock, 0) == 0);
+      thread_fence(wrapv<space>{});
       /// cas
       storage_key_type temp;
       for (int d = 0; d != dim; ++d) (void)(temp.val(d) = dest->val.data()[d]);
@@ -311,17 +314,18 @@ namespace zs {
       if (eqn) {
         for (int d = 0; d != dim; ++d) (void)(dest->val.data()[d] = val.val(d));
       }
-      thread_fence(cuda_c);
+      thread_fence(wrapv<space>{});
       /// unlock
-      atomic_exch(cuda_c, lock, HashTableT::status_sentinel_v);
+      atomic_exch(wrapv<space>{}, lock, HashTableT::status_sentinel_v);
       return eqn;
     }
     /// @ref https://stackoverflow.com/questions/32341081/how-to-have-atomic-load-in-cuda
     template <bool V = is_const_structure, enable_if_t<!V> = 0> __forceinline__ __device__ key_type
     atomicLoad(status_type *lock, const volatile storage_key_type *const dest) noexcept {
       using namespace placeholders;
+      constexpr auto space = deduce_execution_space();
       if constexpr (sizeof(storage_key_type) == 8) {
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
@@ -336,12 +340,12 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr64 = atomic_or(cuda_c, const_cast<u64 *>(src.ptr64), (u64)0);
+        // *dst.ptr64 = atomic_or(wrapv<space>{}, const_cast<u64 *>(src.ptr64), (u64)0);
         *dst.ptr64 = *src.ptr64;
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
@@ -356,20 +360,20 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr32 = atomic_or(cuda_c, const_cast<u32 *>(src.ptr32), (u32)0);
+        // *dst.ptr32 = atomic_or(wrapv<space>{}, const_cast<u32 *>(src.ptr32), (u32)0);
         *dst.ptr32 = *src.ptr32;
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         return *dst.ptr;
       }
       /// lock
-      while (atomic_exch(cuda_c, lock, 0) == 0);
-      thread_fence(cuda_c);
+      while (atomic_exch(wrapv<space>{}, lock, 0) == 0);
+      thread_fence(wrapv<space>{});
       ///
       key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
-      thread_fence(cuda_c);
+      thread_fence(wrapv<space>{});
       /// unlock
-      atomic_exch(cuda_c, lock, HashTableT::status_sentinel_v);
+      atomic_exch(wrapv<space>{}, lock, HashTableT::status_sentinel_v);
       return return_val;
     }
     template <bool V = is_const_structure, enable_if_t<!V> = 0>
@@ -377,8 +381,9 @@ namespace zs {
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         status_type *lock, const volatile storage_key_type *const dest) noexcept {
       using namespace placeholders;
+      constexpr auto space = deduce_execution_space();
       if constexpr (sizeof(storage_key_type) == 8) {
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         static_assert(alignof(storage_key_type) == alignof(u64),
                       "storage key type alignment is not the same as u64");
         union {
@@ -393,12 +398,12 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr64 = atomic_or(cuda_c, const_cast<u64 *>(src.ptr64), (u64)0);
+        // *dst.ptr64 = atomic_or(wrapv<space>{}, const_cast<u64 *>(src.ptr64), (u64)0);
         *dst.ptr64 = *src.ptr64;
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         return *dst.ptr;
       } else if constexpr (sizeof(storage_key_type) == 4) {
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         static_assert(alignof(storage_key_type) == alignof(u32),
                       "storage key type alignment is not the same as u32");
         union {
@@ -413,22 +418,22 @@ namespace zs {
         } dst = {&result};
 
         /// @note beware of the potential torn read issue
-        // *dst.ptr32 = atomic_or(cuda_c, const_cast<u32 *>(src.ptr32), (u32)0);
+        // *dst.ptr32 = atomic_or(wrapv<space>{}, const_cast<u32 *>(src.ptr32), (u32)0);
         *dst.ptr32 = *src.ptr32;
-        thread_fence(cuda_c);
+        thread_fence(wrapv<space>{});
         return *dst.ptr;
       }
       /// lock
       if (tile.thread_rank() == 0)
-        while (atomic_exch(cuda_c, lock, 0) == 0);
+        while (atomic_exch(wrapv<space>{}, lock, 0) == 0);
       tile.sync();
-      thread_fence(cuda_c);
+      thread_fence(wrapv<space>{});
       ///
       key_type return_val;
       for (int d = 0; d != dim; ++d) (void)(return_val.val(d) = dest->val.data()[d]);
-      thread_fence(cuda_c);
+      thread_fence(wrapv<space>{});
       /// unlock
-      if (tile.thread_rank() == 0) atomic_exch(cuda_c, lock, HashTableT::status_sentinel_v);
+      if (tile.thread_rank() == 0) atomic_exch(wrapv<space>{}, lock, HashTableT::status_sentinel_v);
       tile.sync();
       return return_val;
     }

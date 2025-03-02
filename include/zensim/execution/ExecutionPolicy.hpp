@@ -29,7 +29,7 @@ namespace zs {
   constexpr exec_tags suggest_exec_space(const MemoryLocation &mloc) {
     switch (mloc.memspace()) {
       case memsrc_e::host:
-#ifdef _OPENMP
+#if ZS_ENABLE_OPENMP
         return omp_c;
 #else
         return seq_c;

@@ -13,7 +13,7 @@
 #include "zensim/py_interop/HashUtils.hpp"
 #include "zensim/resource/Resource.h"
 #include "zensim/types/Iterator.h"
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
 #  include <cooperative_groups.h>
 #endif
 #if ZS_ENABLE_OPENMP
@@ -514,7 +514,7 @@ namespace zs {
         return reinterpret_bits<mapped_hashed_key_type>(_hf0(key));
     }
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
 
     /// helper construct
     struct CoalescedGroup : cooperative_groups::coalesced_group {
@@ -585,7 +585,9 @@ namespace zs {
     /// insertion
     // @enqueue_key: whether pushing inserted key-index pair into _activeKeys
     ///
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     __forceinline__ __device__ index_type tile_insert(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const original_key_type &key, index_type insertion_index = sentinel_v,
@@ -663,14 +665,14 @@ namespace zs {
           // then only the elected lane is atomically inserting
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
             // check again
             continue;
           }
-          thread_fence(cuda_c);
+          thread_fence(wrapv<S>{});
 #  if 1
           exist = 0;
           for (int i = lane_id; i < bucket_size; i += cap)
@@ -685,7 +687,7 @@ namespace zs {
           exist = tile.shfl(exist, 0);  // implicit tile sync here
           if (exist) {
             if (lane_id == 0)  // release lock
-              atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
+              atomic_exch(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;
           }
 #  else
@@ -693,7 +695,7 @@ namespace zs {
           lane_key = _table.keys[bucket_offset + lane_id];
           if (tile.any(equal_to{}(lane_key, insertion_key))) {  // implicit tile sync here
             if (lane_id == 0)                                   // release lock
-              atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
+              atomic_exch(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;  // although key found, return sentinel to suggest doing nothing
           }
 #  endif
@@ -715,25 +717,25 @@ namespace zs {
                 casSuccess = true;
               }
             } else {
-              casSuccess = atomic_cas(cuda_c, &_table.keys[bucket_offset + load],
+              casSuccess = atomic_cas(wrapv<S>{}, &_table.keys[bucket_offset + load],
                                       compare_key_sentinel_v, insertion_key)
                            == compare_key_sentinel_v;
             }
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(cuda_c, _cnt, (size_type)1);
+                no = atomic_add(wrapv<S>{}, _cnt, (size_type)1);
                 insertion_index = no;
               }
 #  if 1
               *const_cast<volatile index_type *>(&_table.indices[bucket_offset + load])
                   = insertion_index;
 #  else
-              atomic_exch(cuda_c, &_table.indices[bucket_offset + load], insertion_index);
+              atomic_exch(wrapv<S>{}, &_table.indices[bucket_offset + load], insertion_index);
 #  endif
             }
-            thread_fence(cuda_c);
-            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
+            thread_fence(wrapv<S>{});
+            atomic_exch(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1);
           }
 
           // may fail due to the slot taken by another insertion
@@ -747,7 +749,7 @@ namespace zs {
         } else {
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
@@ -756,7 +758,7 @@ namespace zs {
           }
           if (lane_id == 0) {
             auto random_location = rng() % bucket_size;
-            thread_fence(cuda_c);
+            thread_fence(wrapv<S>{});
             volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
                 &_table.keys[bucket_offset + random_location]);
             auto old_key = *const_cast<storage_key_type *>(key_dst);
@@ -769,20 +771,20 @@ namespace zs {
             // _table.keys[bucket_offset + random_location] = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(cuda_c, _cnt, (size_type)1);
+              no = atomic_add(wrapv<S>{}, _cnt, (size_type)1);
               insertion_index = no;
               // casSuccess = true; //not finished yet, evicted key reinsertion is success
             }
-            auto old_index = atomic_exch(cuda_c, &_table.indices[bucket_offset + random_location],
-                                         insertion_index);
+            auto old_index = atomic_exch(
+                wrapv<S>{}, &_table.indices[bucket_offset + random_location], insertion_index);
             // volatile index_type *index_dst = const_cast<volatile index_type *>(
             //    &_table.indices[bucket_offset + random_location]);
             // auto old_index = *const_cast<index_type *>(index_dst);
             //*index_dst = insertion_index;
             // _table.indices[bucket_offset + random_location] = insertion_index;
 
-            thread_fence(cuda_c);
-            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
+            thread_fence(wrapv<S>{});
+            atomic_exch(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1);
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
@@ -804,7 +806,9 @@ namespace zs {
       return failure_token_v;
     }
 
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     __forceinline__ __host__ __device__ index_type
     group_insert(CoalescedGroup &tile, const original_key_type &key,
                  index_type insertion_index = sentinel_v, bool enqueueKey = true) noexcept {
@@ -866,7 +870,7 @@ namespace zs {
           // then only the elected lane is atomically inserting
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
@@ -888,7 +892,7 @@ namespace zs {
           exist = tile.shfl(exist, 0);  // implicit tile sync here
           if (exist) {
             if (lane_id == 0)  // release lock
-              atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
+              atomic_exch(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1);
             return sentinel_v;
           }
 
@@ -909,25 +913,25 @@ namespace zs {
                 casSuccess = true;
               }
             } else {
-              casSuccess = atomic_cas(cuda_c, &_table.keys[bucket_offset + load],
+              casSuccess = atomic_cas(wrapv<S>{}, &_table.keys[bucket_offset + load],
                                       compare_key_sentinel_v, insertion_key)
                            == compare_key_sentinel_v;
             }
 
             if (casSuccess) {  // process index as well
               if (insertion_index == sentinel_v) {
-                no = atomic_add(cuda_c, _cnt, (size_type)1);
+                no = atomic_add(wrapv<S>{}, _cnt, (size_type)1);
                 insertion_index = no;
               }
 #  if 1
               *const_cast<volatile index_type *>(&_table.indices[bucket_offset + (u32)load])
                   = insertion_index;
 #  else
-              atomic_exch(cuda_c, &_table.indices[bucket_offset + load], insertion_index);
+              atomic_exch(wrapv<S>{}, &_table.indices[bucket_offset + load], insertion_index);
 #  endif
             }
             tile.thread_fence();
-            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
+            atomic_exch(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1);
           }
 
           // may fail due to the slot taken by another insertion
@@ -941,7 +945,7 @@ namespace zs {
         } else {
           if (lane_id == 0) {
             spin_iter = 0;
-            while (atomic_cas(cuda_c, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
+            while (atomic_cas(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1, 0) != -1
                    && ++spin_iter != spin_iter_cap);  // acquiring spin lock
           }
           if (spin_iter = tile.shfl(spin_iter, 0); spin_iter == spin_iter_cap) {
@@ -963,12 +967,12 @@ namespace zs {
             // _table.keys[bucket_offset + random_location] = insertion_key;
 
             if (insertion_index == sentinel_v) {
-              no = atomic_add(cuda_c, _cnt, (size_type)1);
+              no = atomic_add(wrapv<S>{}, _cnt, (size_type)1);
               insertion_index = no;
               // casSuccess = true; //not finished yet, evicted key reinsertion is success
             }
-            auto old_index = atomic_exch(cuda_c, &_table.indices[bucket_offset + random_location],
-                                         insertion_index);
+            auto old_index = atomic_exch(
+                wrapv<S>{}, &_table.indices[bucket_offset + random_location], insertion_index);
             // volatile index_type *index_dst = const_cast<volatile index_type *>(
             //    &_table.indices[bucket_offset + random_location]);
             // auto old_index = *const_cast<index_type *>(index_dst);
@@ -976,7 +980,7 @@ namespace zs {
             // _table.indices[bucket_offset + random_location] = insertion_index;
 
             tile.thread_fence();
-            atomic_exch(cuda_c, &_table.status[bucket_offset / bucket_size], -1);
+            atomic_exch(wrapv<S>{}, &_table.status[bucket_offset / bucket_size], -1);
             // should be old keys instead, not (h)ashed keys
             auto bucket0 = reinterpret_bits<mapped_hashed_key_type>(_hf0(old_key)) % _numBuckets;
             auto bucket1 = reinterpret_bits<mapped_hashed_key_type>(_hf1(old_key)) % _numBuckets;
@@ -999,7 +1003,9 @@ namespace zs {
     }
 
 #  if 1
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     [[maybe_unused]] __forceinline__ __host__ __device__ index_type
     insert(const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
            bool enqueueKey = true,
@@ -1030,7 +1036,9 @@ namespace zs {
     }
 #  else
     /// use this simplified hash insertion
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     [[maybe_unused]] __forceinline__ __host__ __device__ index_type
     insert(const original_key_type &insertion_key_, index_type insertion_index = sentinel_v,
            bool enqueueKey = true) noexcept {
@@ -1072,7 +1080,9 @@ namespace zs {
       return VecT::zeros();
 #  endif
     }
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     [[maybe_unused]] __forceinline__ __device__ index_type insertUnsafe(
         const original_key_type &insertion_key, index_type insertion_index = sentinel_v,
         bool enqueueKey = true,
@@ -1108,8 +1118,10 @@ namespace zs {
     /// query
     ///
     // https://developer.nvidia.com/blog/using-cuda-warp-level-primitives/
-    template <bool retrieve_index = true, execspace_e S = space,
-              enable_if_all<S == execspace_e::cuda> = 0>
+    template <
+        bool retrieve_index = true, execspace_e S = space,
+        enable_if_all<S == execspace_e::cuda || S == execspace_e::musa || S == execspace_e::rocm>
+        = 0>
     __forceinline__ __host__ __device__ index_type tile_query(
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> &tile,
         const original_key_type &key, wrapv<retrieve_index> = {}) const noexcept {
@@ -1198,8 +1210,10 @@ namespace zs {
         return detail::deduce_numeric_max<index_type>();
     }
 
-    template <bool retrieve_index = true, execspace_e S = space,
-              enable_if_all<S == execspace_e::cuda> = 0>
+    template <
+        bool retrieve_index = true, execspace_e S = space,
+        enable_if_all<S == execspace_e::cuda || S == execspace_e::musa || S == execspace_e::rocm>
+        = 0>
     __forceinline__ __host__ __device__ index_type group_query(CoalescedGroup &tile,
                                                                const original_key_type &key,
                                                                wrapv<retrieve_index>
@@ -1264,8 +1278,10 @@ namespace zs {
         return detail::deduce_numeric_max<index_type>();
     }
 
-    template <bool retrieve_index = true, execspace_e S = space,
-              enable_if_all<S == execspace_e::cuda> = 0>
+    template <
+        bool retrieve_index = true, execspace_e S = space,
+        enable_if_all<S == execspace_e::cuda || S == execspace_e::musa || S == execspace_e::rocm>
+        = 0>
     __forceinline__ __host__ __device__ index_type single_query(const original_key_type &key,
                                                                 wrapv<retrieve_index>
                                                                 = {}) const noexcept {
@@ -1316,7 +1332,9 @@ namespace zs {
         return detail::deduce_numeric_max<index_type>();
     }
 
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type
     query(const original_key_type &find_key,
           CoalescedGroup tile = cooperative_groups::coalesced_threads()) const noexcept {
@@ -1336,7 +1354,9 @@ namespace zs {
       return result;
     }
 
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type queryUnsafe(
         const original_key_type &find_key,
         cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
@@ -1349,7 +1369,7 @@ namespace zs {
 
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
-        auto cur_rank = ffs(cuda_c, work_queue) - 1;
+        auto cur_rank = ffs(wrapv<S>{}, work_queue) - 1;
         auto cur_work = tile_shfl(tile, find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work);
 
@@ -1365,7 +1385,9 @@ namespace zs {
     ///
     /// entry (return the location of the key)
     ///
-    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda> = 0>
+    template <execspace_e S = space, enable_if_all<S == execspace_e::cuda || S == execspace_e::musa
+                                                   || S == execspace_e::rocm>
+                                     = 0>
     [[nodiscard]] __forceinline__ __host__ __device__ index_type
     entry(const original_key_type &find_key,
           cooperative_groups::thread_block_tile<bucket_size, cooperative_groups::thread_block> tile
@@ -1378,7 +1400,7 @@ namespace zs {
 
       auto work_queue = tile.ballot(has_work);
       while (work_queue) {
-        auto cur_rank = ffs(cuda_c, work_queue) - 1;
+        auto cur_rank = ffs(wrapv<S>{}, work_queue) - 1;
         auto cur_work = tile.shfl(find_key, cur_rank);
         auto find_result = tile_query(tile, cur_work, wrapv<false>{});
 
@@ -1392,7 +1414,7 @@ namespace zs {
     }
 #endif
 
-    template <execspace_e S = space, enable_if_all<S == execspace_e::host> = 0>
+    template <execspace_e S = space, enable_if_all<is_host_execution<S>()> = 0>
     [[maybe_unused]] inline index_type insert(const original_key_type &key,
                                               index_type insertion_index = sentinel_v,
                                               const bool enqueueKey = true) noexcept {
@@ -1461,7 +1483,7 @@ namespace zs {
         } else {
           {
             auto random_location = rng() % bucket_size;
-            // thread_fence(cuda_c);
+            // thread_fence(wrapv<S>{});
             volatile storage_key_type *key_dst = const_cast<volatile storage_key_type *>(
                 &_table.keys[bucket_offset + random_location]);
             auto old_key = *const_cast<storage_key_type *>(key_dst);

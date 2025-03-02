@@ -3,7 +3,8 @@
 #include "zensim/ZpcIntrinsics.hpp"
 #include "zensim/ZpcIterator.hpp"
 #include "zensim/ZpcMeta.hpp"
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__) \
+    || defined(SYCL_LANGUAGE_VERSION)
 #  ifdef ZPC_JIT_MODE
 #  else
 #    include <stdio.h>
@@ -96,8 +97,8 @@ namespace zs {
   };
   using SmallString = BasicSmallString<>;
 
-  template <typename CharT, zs::size_t NBytes>
-  BasicSmallString(const CharT (&tmp)[NBytes]) -> BasicSmallString<CharT, NBytes>;
+  template <typename CharT, zs::size_t NBytes> BasicSmallString(const CharT (&tmp)[NBytes])
+      -> BasicSmallString<CharT, NBytes>;
 
   template <typename CharT, zs::size_t NB>
   const CharT *format_as(const BasicSmallString<CharT, NB> &str) {

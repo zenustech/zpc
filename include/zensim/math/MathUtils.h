@@ -6,8 +6,8 @@
 #include "zensim/ZpcFunctional.hpp"
 #include "zensim/ZpcMathUtils.hpp"
 #include "zensim/types/Property.h"
-#if defined(__CUDACC__)
-#  include "math.h"  // CUDA math library
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
+#  include "math.h"  // CUDA/MUSA/ROCm math library
 #endif
 #include <functional>
 #include <type_traits>

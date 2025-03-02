@@ -108,6 +108,7 @@ int main() {
   bm.setOn(32);
   bm.setOn(64);
   fmt::print("num ones: {}\n", bm.countOn(seq_c));
+  printf("abs of -1.3: %f\n", abs(-1.3f, seq_c));
   {
     zs::Vector<int> vs{1, zs::memsrc_e::device, -1};
     vs.reset(0);
@@ -120,7 +121,11 @@ int main() {
       bm.setOn(32);
       bm.setOn(64);
       printf("%d-th bit num ons: %d\n", 10, bm.countOffset(16));
-      // printf("musa arch: %d\n", (int)__MUSA_ARCH__);
+
+      printf("abs of -1.3: %f\n", abs(-1.3f));
+#  ifdef __MUSA_ARCH__
+      printf("musa arch: %d\n", (int)__MUSA_ARCH__);
+#  endif
       // atomic_add(exec_musa, &vs[i], 1.);
       // atomic_inc(exec_musa, &vs[i]);
       atomic_xor(exec_musa, &vs[i], 0x33);

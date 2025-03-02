@@ -5,6 +5,9 @@
 #include "zensim/types/Property.h"
 
 #if defined(__CUDACC__)
+#elif defined(__MUSACC__)
+#elif defined(__HIPCC__)
+#elif defined(SYCL_LANGUAGE_VERSION)
 
 #else
 extern "C" {
@@ -324,12 +327,11 @@ namespace zs {
     template <typename T0, typename T1> struct binary_op_result {
       template <typename A = T0, typename B = T1,
                 enable_if_all<is_integral_v<A>, is_integral_v<B>> = 0>
-      static auto determine_type()
-          -> conditional_t<
-              is_signed_v<A> && is_signed_v<B>, conditional_t<(sizeof(A) >= sizeof(B)), A, B>,
-              conditional_t<
-                  is_signed_v<A>, A,
-                  conditional_t<is_signed_v<B>, B, conditional_t<(sizeof(A) >= sizeof(B)), A, B>>>>;
+      static auto determine_type() -> conditional_t<
+          is_signed_v<A> && is_signed_v<B>, conditional_t<(sizeof(A) >= sizeof(B)), A, B>,
+          conditional_t<
+              is_signed_v<A>, A,
+              conditional_t<is_signed_v<B>, B, conditional_t<(sizeof(A) >= sizeof(B)), A, B>>>>;
       template <typename A = T0, typename B = T1,
                 enable_if_t<!is_integral_v<A> || !is_integral_v<B>> = 0>
       static auto determine_type() -> common_type_t<A, B>;
@@ -395,19 +397,19 @@ namespace zs {
     return ::copysign((double)mag, (double)sgn);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [copysign] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [copysign] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [copysign] is missing!");
@@ -441,19 +443,19 @@ namespace zs {
     return ::fabs((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [fabs] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [fabs] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [fabs] is missing!");
@@ -487,19 +489,19 @@ namespace zs {
     return ::fmax((double)x, (double)y);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [fmax] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [fmax] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [fmax] is missing!");
@@ -533,19 +535,19 @@ namespace zs {
     return ::fmin((double)x, (double)y);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [fmin] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [fmin] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [fmin] is missing!");
@@ -579,19 +581,19 @@ namespace zs {
     return ::fma((double)x, (double)y, (double)z);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [fma] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [fma] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [fma] is missing!");
@@ -625,19 +627,19 @@ namespace zs {
     return ::fmod((double)x, (double)y);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [fmod] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [fmod] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [fmod] is missing!");
@@ -671,19 +673,19 @@ namespace zs {
     return ::ceil((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [ceil] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [ceil] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [ceil] is missing!");
@@ -717,19 +719,19 @@ namespace zs {
     return ::floor((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [floor] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [floor] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [floor] is missing!");
@@ -768,19 +770,19 @@ namespace zs {
     return ::sqrt((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [sqrt] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [sqrt] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [sqrt] is missing!");
@@ -814,19 +816,19 @@ namespace zs {
     return ::rsqrt((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [rsqrt] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [rsqrt] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [rsqrt] is missing!");
@@ -863,19 +865,19 @@ namespace zs {
     return ::log((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [log] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [log] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [log] is missing!");
@@ -909,19 +911,19 @@ namespace zs {
     return ::log1p((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [log1p] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [log1p] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [log1p] is missing!");
@@ -955,19 +957,19 @@ namespace zs {
     return ::exp((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [exp] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [exp] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [exp] is missing!");
@@ -1001,19 +1003,19 @@ namespace zs {
     return ::pow((double)base, (double)exp);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [pow] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [pow] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [pow] is missing!");
@@ -1047,19 +1049,23 @@ namespace zs {
     return ::__dadd_ru((double)x, (double)y);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [add_ru] is missing!");
 #endif
-    } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+    }
+#if 0
+    else if constexpr (space == execspace_e::musa) {
+#  if defined(__MUSACC__)
       _ZS_IMPL
-#else
+#  else
       static_assert(always_false<T>, "musa implementation of [add_ru] is missing!");
+#  endif
+    }
 #endif
-    } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+    else if constexpr (space == execspace_e::rocm) {
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [add_ru] is missing!");
@@ -1096,19 +1102,23 @@ namespace zs {
     return ::__dsub_ru((double)x, (double)y);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [sub_ru] is missing!");
 #endif
-    } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+    }
+#if 0
+    else if constexpr (space == execspace_e::musa) {
+#  if defined(__MUSACC__)
       _ZS_IMPL
-#else
+#  else
       static_assert(always_false<T>, "musa implementation of [sub_ru] is missing!");
+#  endif
+    }
 #endif
-    } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+    else if constexpr (space == execspace_e::rocm) {
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [sub_ru] is missing!");
@@ -1145,19 +1155,19 @@ namespace zs {
     return ::sinh((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [sinh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [sinh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [sinh] is missing!");
@@ -1191,19 +1201,19 @@ namespace zs {
     return ::sin((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [sin] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [sin] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [sin] is missing!");
@@ -1237,19 +1247,19 @@ namespace zs {
     return ::asinh((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [asinh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [asinh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [asinh] is missing!");
@@ -1283,19 +1293,19 @@ namespace zs {
     return ::asin((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [asin] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [asin] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [asin] is missing!");
@@ -1329,19 +1339,19 @@ namespace zs {
     return ::cosh((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [cosh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [cosh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [cosh] is missing!");
@@ -1375,19 +1385,19 @@ namespace zs {
     return ::cos((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [cos] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [cos] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [cos] is missing!");
@@ -1421,19 +1431,19 @@ namespace zs {
     return ::acosh((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [acosh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [acosh] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [acosh] is missing!");
@@ -1467,19 +1477,19 @@ namespace zs {
     return ::acos((double)v);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [acos] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [acos] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [acos] is missing!");
@@ -1513,19 +1523,19 @@ namespace zs {
     return ::atan2((double)y, (double)x);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [atan2] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [atan2] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [atan2] is missing!");
@@ -1555,19 +1565,19 @@ namespace zs {
 #define _ZS_IMPL return ::isnan(v) != 0;  // due to msvc
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [isnan] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [isnan] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [isnan] is missing!");
@@ -1601,19 +1611,19 @@ namespace zs {
     return ::modf(x, iptr);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [modf] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [modf] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [modf] is missing!");
@@ -1647,19 +1657,19 @@ namespace zs {
     return ::frexp((double)x, exp);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [frexp] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [frexp] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [frexp] is missing!");
@@ -1693,19 +1703,19 @@ namespace zs {
     return ::ldexp((double)x, exp);
 
     if constexpr (space == execspace_e::cuda) {
-#if __CUDACC__
+#if defined(__CUDACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "cuda implementation of [ldexp] is missing!");
 #endif
     } else if constexpr (space == execspace_e::musa) {
-#if __MUSACC__
+#if defined(__MUSACC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "musa implementation of [ldexp] is missing!");
 #endif
     } else if constexpr (space == execspace_e::rocm) {
-#if __HIPCC__
+#if defined(__HIPCC__)
       _ZS_IMPL
 #else
       static_assert(always_false<T>, "rocm implementation of [ldexp] is missing!");

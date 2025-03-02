@@ -122,9 +122,11 @@ namespace zs {
           _numFrontNodes{
               (index_t)std::min(bvfront._primIds.capacity(), bvfront._nodeIds.capacity())} {}
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__MUSACC__) || defined(__HIPCC__)
     template <execspace_e S = space, bool V = is_const_structure,
-              enable_if_all<S == execspace_e::cuda, !V> = 0>
+              enable_if_all<
+                  S == execspace_e::cuda || S == execspace_e::musa || S == execspace_e::rocm, !V>
+              = 0>
     __forceinline__ __device__ void push_back(prim_id_t prim, node_id_t node) {
       const auto no = atomic_add(wrapv<space>{}, _cnt, (index_t)1);
       if (no < _numFrontNodes) {

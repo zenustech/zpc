@@ -5,9 +5,6 @@
 #include "zensim/execution/Atomics.hpp"
 #include "zensim/execution/Intrinsics.hpp"
 #include "zensim/geometry/AnalyticLevelSet.h"
-#if defined(__CUDACC__)
-#  include <cooperative_groups.h>
-#endif
 
 namespace zs {
 

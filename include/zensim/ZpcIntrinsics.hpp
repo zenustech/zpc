@@ -25,6 +25,7 @@ int printf(const char *, ...);
 
 #  elif defined(ZS_PLATFORM_WINDOWS)
 void *memcpy(void *__dest, const void *__src, zs::size_t __n);
+
 #    ifdef ZPC_JIT_MODE
 ZPC_ACRTIMP void *malloc(zs::size_t __size);
 struct _iobuf;
@@ -49,6 +50,7 @@ inline int printf(char const *const fmtstr, ...) {
   return _Result;
 }
 #    endif
+
 #  endif
 }
 #endif

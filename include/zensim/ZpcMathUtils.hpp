@@ -11,6 +11,9 @@ extern "C" {
 
 /// linux
 #  if defined(ZS_PLATFORM_LINUX)
+// fenv.h
+// int fegetround(void) noexcept;
+// int fesetround(int);
 // stdlib.h
 int abs(int) noexcept;
 long long llabs(long long) noexcept;
@@ -90,6 +93,9 @@ double tanh(double) noexcept;
 
 /// apple
 #  elif defined(ZS_PLATFORM_OSX)
+// fenv.h
+// int fegetround(void) noexcept;
+// int fesetround(int);
 // stdlib.h
 int abs(int);
 long long llabs(long long);
@@ -167,6 +173,9 @@ double tanh(double);
 
 /// windows
 #  elif defined(ZS_PLATFORM_WINDOWS)
+// fenv.h
+// ZPC_ACRTIMP int fegetround();
+// ZPC_ACRTIMP int fesetround(int);
 // stdlib.h
 int abs(int);
 long labs(long);
@@ -315,11 +324,12 @@ namespace zs {
     template <typename T0, typename T1> struct binary_op_result {
       template <typename A = T0, typename B = T1,
                 enable_if_all<is_integral_v<A>, is_integral_v<B>> = 0>
-      static auto determine_type() -> conditional_t<
-          is_signed_v<A> && is_signed_v<B>, conditional_t<(sizeof(A) >= sizeof(B)), A, B>,
-          conditional_t<
-              is_signed_v<A>, A,
-              conditional_t<is_signed_v<B>, B, conditional_t<(sizeof(A) >= sizeof(B)), A, B>>>>;
+      static auto determine_type()
+          -> conditional_t<
+              is_signed_v<A> && is_signed_v<B>, conditional_t<(sizeof(A) >= sizeof(B)), A, B>,
+              conditional_t<
+                  is_signed_v<A>, A,
+                  conditional_t<is_signed_v<B>, B, conditional_t<(sizeof(A) >= sizeof(B)), A, B>>>>;
       template <typename A = T0, typename B = T1,
                 enable_if_t<!is_integral_v<A> || !is_integral_v<B>> = 0>
       static auto determine_type() -> common_type_t<A, B>;
@@ -363,7 +373,7 @@ namespace zs {
                                                       // make signed to get rid of compiler warn
                                                       : (exp < 0 ? (R)0
                                                                  : detail::pow_integral_recursive(
-                                                                     (R)base, (R)1, (Tn)exp))))));
+                                                                       (R)base, (R)1, (Tn)exp))))));
     }
 
   }  // namespace math
@@ -371,615 +381,1348 @@ namespace zs {
   /**
    *  math intrinsics (not constexpr at all! just cheating the compiler)
    */
+  /// @brief copysign
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T copysign(T mag, T sgn, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::copysignf(mag, sgn);    \
+  else                               \
+    return ::copysign((double)mag, (double)sgn);
+
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::copysignf(mag, sgn);
-      else
-        return ::copysign((double)mag, (double)sgn);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [copysign] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [copysign] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [copysign] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [copysign] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [copysign] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::copysignf(mag, sgn);
-      else
-        return ::copysign((double)mag, (double)sgn);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [copysign] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief fabs
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T abs(T v, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::fabsf(v);               \
+  else                               \
+    return ::fabs((double)v);
+
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fabsf(v);
-      else
-        return ::fabs((double)v);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [abs] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [fabs] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [fabs] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [fabs] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [fabs] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fabsf(v);
-      else
-        return ::fabs((double)v);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [fabs] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief fmax
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T max(T x, T y, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::fmaxf(x, y);            \
+  else                               \
+    return ::fmax((double)x, (double)y);
+
     if constexpr (space == execspace_e::cuda) {
-#if ZS_ENABLE_CUDA && defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fmaxf(x, y);
-      else
-        return ::fmax((double)x, (double)y);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [max] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [fmax] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [fmax] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [fmax] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [fmax] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fmaxf(x, y);
-      else
-        return ::fmax((double)x, (double)y);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [fmax] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief fmin
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T min(T x, T y, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::fminf(x, y);            \
+  else                               \
+    return ::fmin((double)x, (double)y);
+
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fminf(x, y);
-      else
-        return ::fmin((double)x, (double)y);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [min] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [fmin] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [fmin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [fmin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [fmin] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fminf(x, y);
-      else
-        return ::fmin((double)x, (double)y);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [fmin] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief fma
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T fma(T x, T y, T z, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::fmaf(x, y, z);          \
+  else                               \
+    return ::fma((double)x, (double)y, (double)z);
+
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fmaf(x, y, z);
-      else
-        return ::fma((double)x, (double)y, (double)z);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [fma] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [fma] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [fma] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [fma] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [fma] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fmaf(x, y, z);
-      else
-        return ::fma((double)x, (double)y, (double)z);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [fma] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief fmod
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T fmod(T x, T y, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::fmodf(x, y);            \
+  else                               \
+    return ::fmod((double)x, (double)y);
+
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fmodf(x, y);
-      else
-        return ::fmod((double)x, (double)y);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [fmod] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [fmod] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [fmod] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [fmod] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [fmod] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::fmodf(x, y);
-      else
-        return ::fmod((double)x, (double)y);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [fmod] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief ceil
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T ceil(T v, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::ceilf(v);               \
+  else                               \
+    return ::ceil((double)v);
+
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::ceilf(v);
-      else
-        return ::ceil((double)v);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [ceil] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [ceil] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [ceil] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [ceil] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [ceil] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::ceilf(v);
-      else
-        return ::ceil((double)v);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [ceil] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief floor
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T floor(T v, wrapv<space> = {}) noexcept {
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
+#endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::floorf(v);              \
+  else                               \
+    return ::floor((double)v);
+
     if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::floorf(v);
-      else
-        return ::floor((double)v);
+#if __CUDACC__
+      _ZS_IMPL
 #else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [floor] is missing!");
-      return 0;
+      static_assert(always_false<T>, "cuda implementation of [floor] is missing!");
 #endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [floor] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [floor] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [floor] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-#if !defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::floorf(v);
-      else
-        return ::floor((double)v);
-#endif
+      static_assert(always_false<T>, "unsupported backend for [floor] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
 
   // different from math::sqrt
   template <typename T, enable_if_t<is_arithmetic_v<T>> = 0> constexpr T sqr(T v) noexcept {
     return v * v;
   }
+
+  /// @brief sqrt
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T sqrt(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::sqrtf(v);
-      else
-        return ::sqrt((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [sqrt] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::sqrtf(v);               \
+  else                               \
+    return ::sqrt((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [sqrt] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [sqrt] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [sqrt] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [sqrt] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::sqrtf(v);
-      else
-        return ::sqrt((double)v);
+      static_assert(always_false<T>, "unsupported backend for [sqrt] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief rsqrt
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T rsqrt(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::rsqrtf(v);
-      else
-        return ::rsqrt((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [rsqrt] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
-    } else {
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::rsqrtf(v);              \
+  else                               \
+    return ::rsqrt((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [rsqrt] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [rsqrt] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [rsqrt] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [rsqrt] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
       if constexpr (is_same_v<T, float>)
         return (T)1 / (T)::sqrtf(v);
       else
         return (T)1 / (T)::sqrt((double)v);
+    } else {
+      static_assert(always_false<T>, "unsupported backend for [rsqrt] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
 
+  /// @brief log
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T log(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::logf(v);
-      else
-        return ::log((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [log] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::logf(v);                \
+  else                               \
+    return ::log((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [log] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [log] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [log] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [log] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::logf(v);
-      else
-        return ::log((double)v);
+      static_assert(always_false<T>, "unsupported backend for [log] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief log1p
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T log1p(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::log1pf(v);
-      else
-        return ::log1p((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [log1p] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::log1pf(v);              \
+  else                               \
+    return ::log1p((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [log1p] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [log1p] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [log1p] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [log1p] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::log1pf(v);
-      else
-        return ::log1p((double)v);
+      static_assert(always_false<T>, "unsupported backend for [log1p] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief exp
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T exp(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::expf(v);
-      else
-        return ::exp((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [exp] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::expf(v);                \
+  else                               \
+    return ::exp((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [exp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [exp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [exp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [exp] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::expf(v);
-      else
-        return ::exp((double)v);
+      static_assert(always_false<T>, "unsupported backend for [exp] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief pow
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T pow(T base, T exp, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::powf(base, exp);
-      else
-        return ::pow((double)base, (double)exp);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [pow] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::powf(base, exp);        \
+  else                               \
+    return ::pow((double)base, (double)exp);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [pow] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [pow] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [pow] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [pow] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::powf(base, exp);
-      else
-        return ::pow((double)base, (double)exp);
+      static_assert(always_false<T>, "unsupported backend for [pow] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
 
+  /// @brief add_ru
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   ZS_FUNCTION T add_ru(T x, T y, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::__fadd_ru(x, y);
-      else
-        return ::__dadd_ru((double)x, (double)y);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [add_ru] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
-    } else
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::__fadd_ru(x, y);        \
+  else                               \
+    return ::__dadd_ru((double)x, (double)y);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [add_ru] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [add_ru] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [add_ru] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [add_ru] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
       /// @note refer to https://en.cppreference.com/w/cpp/numeric/fenv/FE_round
-      return (x + y);
+      // auto dir = fegetround();
+      // fesetround(0x00000200);  // FE_UPWARD from float.h
+      auto ret = x + y;
+      // fesetround(dir);
+      return ret;
+    } else
+      static_assert(always_false<T>, "unsupported backend for [add_ru] implementation!");
+#undef _ZS_IMPL
   }
+
+  /// @brief sub_ru
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   ZS_FUNCTION T sub_ru(T x, T y, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::__fsub_ru(x, y);
-      else
-        return ::__dsub_ru((double)x, (double)y);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [sub_ru] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
-    } else
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::__fsub_ru(x, y);        \
+  else                               \
+    return ::__dsub_ru((double)x, (double)y);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [sub_ru] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [sub_ru] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [sub_ru] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [sub_ru] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
       /// @note refer to https://en.cppreference.com/w/cpp/numeric/fenv/FE_round
-      return (x - y);
+      // auto dir = fegetround();
+      // fesetround(0x00000200);  // FE_UPWARD from float.h
+      auto ret = x - y;
+      // fesetround(dir);
+      return ret;
+    } else
+      static_assert(always_false<T>, "unsupported backend for [sub_ru] implementation!");
+#undef _ZS_IMPL
   }
 
+  /// @brief sinh
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T sinh(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::sinhf(v);
-      else
-        return ::sinh((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [sinh] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::sinhf(v);               \
+  else                               \
+    return ::sinh((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [sinh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [sinh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [sinh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [sinh] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::sinhf(v);
-      else
-        return ::sinh((double)v);
+      static_assert(always_false<T>, "unsupported backend for [sinh] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief sin
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T sin(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::sinf(v);
-      else
-        return ::sin((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [sin] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::sinf(v);                \
+  else                               \
+    return ::sin((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [sin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [sin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [sin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [sin] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::sinf(v);
-      else
-        return ::sin((double)v);
+      static_assert(always_false<T>, "unsupported backend for [sin] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief asinh
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T asinh(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::asinhf(v);
-      else
-        return ::asinh((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [asinh] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::asinhf(v);              \
+  else                               \
+    return ::asinh((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [asinh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [asinh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [asinh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [asinh] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::asinhf(v);
-      else
-        return ::asinh((double)v);
+      static_assert(always_false<T>, "unsupported backend for [asinh] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief asin
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T asin(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::asinf(v);
-      else
-        return ::asin((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [asin] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::asinf(v);               \
+  else                               \
+    return ::asin((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [asin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [asin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [asin] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [asin] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::asinf(v);
-      else
-        return ::asin((double)v);
+      static_assert(always_false<T>, "unsupported backend for [asin] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief cosh
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T cosh(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::coshf(v);
-      else
-        return ::cosh((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [cosh] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::coshf(v);               \
+  else                               \
+    return ::cosh((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [cosh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [cosh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [cosh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [cosh] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::coshf(v);
-      else
-        return ::cosh((double)v);
+      static_assert(always_false<T>, "unsupported backend for [cosh] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief cos
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T cos(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::cosf(v);
-      else
-        return ::cos((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [cos] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::cosf(v);                \
+  else                               \
+    return ::cos((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [cos] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [cos] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [cos] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [cos] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::cosf(v);
-      else
-        return ::cos((double)v);
+      static_assert(always_false<T>, "unsupported backend for [cos] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief acosh
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T acosh(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::acoshf(v);
-      else
-        return ::acosh((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [acosh] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::acoshf(v);              \
+  else                               \
+    return ::acosh((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [acosh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [acosh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [acosh] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [acosh] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::acoshf(v);
-      else
-        return ::acosh((double)v);
+      static_assert(always_false<T>, "unsupported backend for [acosh] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief acos
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T acos(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::acosf(v);
-      else
-        return ::acos((double)v);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [acos] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::acosf(v);               \
+  else                               \
+    return ::acos((double)v);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [acos] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [acos] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [acos] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [acos] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::acosf(v);
-      else
-        return ::acos((double)v);
+      static_assert(always_false<T>, "unsupported backend for [acos] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief atan2
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T atan2(T y, T x, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::atan2f(y, x);
-      else
-        return ::atan2((double)y, (double)x);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [atan2] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::atan2f(y, x);           \
+  else                               \
+    return ::atan2((double)y, (double)x);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [atan2] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [atan2] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [atan2] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [atan2] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::atan2f(y, x);
-      else
-        return ::atan2((double)y, (double)x);
+      static_assert(always_false<T>, "unsupported backend for [atan2] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief isnan
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr bool isnan(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      return ::isnan(v) != 0;  // due to msvc
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [isnan] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
-    } else
+#define _ZS_IMPL return ::isnan(v) != 0;  // due to msvc
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [isnan] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [isnan] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [isnan] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [isnan] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
       // https://en.cppreference.com/w/c/numeric/math/isnan
       return v != v;
-  }
-#if 0
-  template <typename T, execspace_e space = deduce_execution_space(),
-            enable_if_t<is_floating_point_v<T>> = 0>
-  constexpr bool isinf(T v, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#  if defined(__CUDACC__)
-      return ::isinf(v) != 0;  // due to msvc
-#  else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [isinf] is missing!");
-      return 0;
-#  endif
     } else
-      return std::isinf(v);
+      static_assert(always_false<T>, "unsupported backend for [isnan] implementation!");
+    return false;
+#undef _ZS_IMPL
   }
-#endif
 
+  /// @brief modf
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T modf(T x, T *iptr, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      static_assert(is_same_v<T, float> || is_same_v<T, double>, "modf only supports float/double");
-      if constexpr (is_same_v<T, float>)
-        return ::modff(x, iptr);
-      else if constexpr (is_same_v<T, double>)
-        return ::modf(x, iptr);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [modf] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::modff(x, iptr);         \
+  else                               \
+    return ::modf(x, iptr);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [modf] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [modf] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [modf] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [modf] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      static_assert(is_same_v<T, float> || is_same_v<T, double>, "modf only supports float/double");
-      if constexpr (is_same_v<T, float>)
-        return ::modff(x, iptr);
-      else if constexpr (is_same_v<T, double>)
-        return ::modf(x, iptr);
+      static_assert(always_false<T>, "unsupported backend for [modf] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief frexp
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T frexp(T x, int *exp, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::frexpf(x, exp);
-      else
-        return ::frexp((double)x, exp);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [frexp] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                     \
+  if constexpr (is_same_v<T, float>) \
+    return ::frexpf(x, exp);         \
+  else                               \
+    return ::frexp((double)x, exp);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [frexp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [frexp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [frexp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [frexp] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::frexpf(x, exp);
-      else
-        return ::frexp((double)x, exp);
+      static_assert(always_false<T>, "unsupported backend for [frexp] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
+
+  /// @brief ldexp
   template <typename T, execspace_e space = deduce_execution_space(),
             enable_if_t<is_floating_point_v<T>> = 0>
   constexpr T ldexp(T x, int exp, wrapv<space> = {}) noexcept {
-    if constexpr (space == execspace_e::cuda) {
-#if defined(__CUDACC__)
-      if constexpr (is_same_v<T, float>)
-        return ::ldexpf(x, exp);  // scalbnf(x, exp)
-      else
-        return ::ldexp((double)x, exp);
-#else
-      static_assert(space != execspace_e::cuda, "cuda implementation of [ldexp] is missing!");
-      return 0;
+#ifdef _ZS_IMPL
+#  undef _ZS_IMPL
 #endif
+#define _ZS_IMPL                                  \
+  if constexpr (is_same_v<T, float>)              \
+    return ::ldexpf(x, exp); /* scalbnf(x, exp)*/ \
+  else                                            \
+    return ::ldexp((double)x, exp);
+
+    if constexpr (space == execspace_e::cuda) {
+#if __CUDACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "cuda implementation of [ldexp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::musa) {
+#if __MUSACC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "musa implementation of [ldexp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::rocm) {
+#if __HIPCC__
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "rocm implementation of [ldexp] is missing!");
+#endif
+    } else if constexpr (space == execspace_e::sycl) {
+#if defined(SYCL_LANGUAGE_VERSION)
+      _ZS_IMPL
+#else
+      static_assert(always_false<T>, "sycl implementation of [ldexp] is missing!");
+#endif
+    } else if constexpr (is_host_execution<space>()) {
+      _ZS_IMPL
     } else {
-      if constexpr (is_same_v<T, float>)
-        return ::ldexpf(x, exp);  // scalbnf(x, exp)
-      else
-        return ::ldexp((double)x, exp);
+      static_assert(always_false<T>, "unsupported backend for [ldexp] implementation!");
     }
+    return 0;
+#undef _ZS_IMPL
   }
 
   namespace math {

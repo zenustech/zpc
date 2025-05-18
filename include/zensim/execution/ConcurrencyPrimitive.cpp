@@ -5,6 +5,7 @@
 #include <ctime>
 #include <mutex>
 #include <thread>
+#include <chrono>
 
 #include "zensim/execution/Atomics.hpp"
 #include "zensim/execution/Intrinsics.hpp"

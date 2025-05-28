@@ -421,9 +421,9 @@ namespace zs {
     }
 #endif
     template <typename VecT, execspace_e S = space, bool V = is_const_structure,
-              enable_if_all<is_host_execution<S>, !V, VecT::dim == 1, VecT::extent == dim,
-                            std::is_convertible_v<typename VecT::value_type, Tn>>
-              = 0>
+              bool Cond = is_host_execution<S> && !V && VecT::dim == 1 && VecT::extent == dim
+                          && std::is_convertible_v<typename VecT::value_type, Tn>,
+              enable_if_t<Cond> = 0>
     inline bool insert(const VecInterface<VecT> &key, value_t id) {
       using namespace placeholders;
       constexpr key_t key_sentinel_v = key_t::constant(HashTableT::key_scalar_sentinel_v);

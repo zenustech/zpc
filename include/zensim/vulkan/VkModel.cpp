@@ -535,14 +535,14 @@ namespace zs {
                                           verts.uv.get()};
         std::array<vk::DeviceSize, 4> offsets{0, 0, 0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::line: {
         std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
         std::array<vk::DeviceSize, 2> offsets{0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::point: {
@@ -629,14 +629,14 @@ namespace zs {
         std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
         std::array<vk::DeviceSize, 2> offsets{0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::line: {
         std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
         std::array<vk::DeviceSize, 2> offsets{0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::point: {
@@ -715,14 +715,14 @@ namespace zs {
         std::array<vk::Buffer, 3> buffers{verts.pos.get(), verts.nrm.get(), verts.clr.get()};
         std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::line: {
         std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
         std::array<vk::DeviceSize, 2> offsets{0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::point: {
@@ -806,14 +806,14 @@ namespace zs {
                                           verts.texid.get()};
         std::array<vk::DeviceSize, 4> offsets{0, 0, 0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::line: {
         std::array<vk::Buffer, 2> buffers{verts.pos.get(), verts.clr.get()};
         std::array<vk::DeviceSize, 2> offsets{0, 0};
         cmd.bindVertexBuffers(/*firstBinding*/ 0, buffers, offsets, verts.pos.get().ctx.dispatcher);
-        cmd.bindIndexBuffer({(vk::Buffer)indices.get()}, /*offset*/ (u32)0, vk::IndexType::eUint32,
+        cmd.bindIndexBuffer((vk::Buffer)indices.get(), /*offset*/ (u32)0, vk::IndexType::eUint32,
                             indices.get().ctx.dispatcher);
       } break;
       case draw_category_e::point: {

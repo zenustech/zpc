@@ -78,7 +78,7 @@ namespace zs {
     vk::Result acquireNextImage(u32 &imageId);
     vk::Result present(vk::Queue queue, u32 imageId);
     u32 getCurrentFrame() const noexcept { return frameIndex; }
-    u32 nextFrame() noexcept { return frameIndex = (frameIndex + 1) % num_buffered_frames; }
+    u32 nextFrame() noexcept { return (frameIndex = (frameIndex + 1) % num_buffered_frames); }
     void initFramebuffersFor(vk::RenderPass renderPass);
 
     RenderPass getRenderPass();

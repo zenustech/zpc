@@ -62,7 +62,7 @@ namespace zs {
   using image_handle_t = vk_handle_t;
   using buffer_handle_t = vk_handle_t;
 
-  static constexpr u32 num_buffered_frames = 3;  // generally 2 or 3
+  static constexpr u32 num_buffered_frames = 2;  // generally 2 or 3
   static constexpr u32 num_max_default_resources = 1000;
   static constexpr u32 num_max_bindless_resources = 1000;
   static constexpr u32 bindless_texture_binding = 0;

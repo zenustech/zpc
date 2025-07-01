@@ -43,12 +43,13 @@ namespace zs {
 #endif
   }
   vk::Result Swapchain::present(vk::Queue queue, u32 imageId) {
+    imageIndex = imageId;
     vk::SwapchainKHR swapChains[] = {swapchain};
     vk::Result presentResult = vk::Result::eSuccess;
     auto presentInfo = vk::PresentInfoKHR{}
                            .setSwapchainCount(1)
                            .setPSwapchains(swapChains)
-                           .setPImageIndices(&imageId)
+                           .setPImageIndices(&imageIndex)
                            .setPResults(&presentResult)
                            .setWaitSemaphoreCount(1)
                            .setPWaitSemaphores(&currentRenderCompleteSemaphore());
@@ -92,12 +93,13 @@ namespace zs {
   }
   /// @note default framebuffer setup
   void Swapchain::initFramebuffersFor(vk::RenderPass renderPass) {
-    frameBuffers.clear();
     auto cnt = imageCount();
+    frameBuffers.clear();
+    frameBuffers.reserve(cnt);
     const bool enableMS = multiSampleEnabled();
     const bool enableDepth = depthEnabled();
     std::vector<vk::ImageView> imgvs;
-    imgvs.reserve(3);
+    imgvs.reserve(cnt * (1 + (enableMS ? 1 : 0) + (enableDepth ? 1 : 0)));
     for (int i = 0; i != cnt; ++i) {
       imgvs.clear();
       if (enableMS) imgvs.push_back((vk::ImageView)msColorBuffers[i]);

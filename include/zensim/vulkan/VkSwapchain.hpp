@@ -76,6 +76,7 @@ namespace zs {
     }
 
     vk::Result acquireNextImage(u32 &imageId);
+    void resetCurrentFence() { ctx.device.resetFences({currentFence()}, ctx.dispatcher); }
     vk::Result present(vk::Queue queue, u32 imageId);
     u32 getCurrentFrame() const noexcept { return frameIndex; }
     u32 nextFrame() noexcept { return (frameIndex = (frameIndex + 1) % num_buffered_frames); }
@@ -146,6 +147,7 @@ namespace zs {
     std::vector<vk::Semaphore> renderCompleteSemaphores;  // ready to write
     std::vector<vk::Fence> fences;                        // ready to submit
     std::vector<vk::Fence> imageFences;                   // directed to the above 'fences' objects
+    u32 imageIndex;
     int frameIndex;
   };
 

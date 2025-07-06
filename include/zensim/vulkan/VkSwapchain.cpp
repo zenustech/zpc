@@ -9,18 +9,42 @@
 
 namespace zs {
 
+  /**
+    ref: 
+    CPU: ANI  ... QS   ... QP         ANI  ... QS   ... QP
+       S:S1     W:S1     W:S2       S:S3     W:S3     W:S4
+       S:F1     S:S2                S:F2     S:S4
+    GPU:          <------ R ------>            <------ R ------>
+    PE:                           <-- P -->                    <-- P -->
+  */
   ///
   ///
   /// swapchain builder
   ///
   ///
+  u32 Swapchain::newFrame() noexcept {
+    frameIndex = (frameIndex + 1) % num_buffered_frames;
+    if (currentFence()) {
+      if (vk::Result res = ctx.device.waitForFences(
+              1, &currentFence(), VK_TRUE, detail::deduce_numeric_max<u64>(), ctx.dispatcher);
+          res != vk::Result::eSuccess)
+        throw std::runtime_error(
+            fmt::format("[newFrame]: Failed to wait for fence at frame [{}] with result [{}]\n",
+                        frameIndex, magic_enum::enum_name(res)));
+      recycleFence(currentFence());
+      recycleSemaphore(currentImageAcquiredSemaphore());
+      // for (auto& garbage : currentSwapchainGarbage()) cleanupSwapchainObjects(garbage);
+      currentSwapchainGarbage().clear();
+      // submission have finished execution, but no guarantee rendercomplete semaphore is not in use
+      // present semaphore is set to VK_NULL_HANDLE after queue present op
+      assert(currentRenderCompleteSemaphore() == VK_NULL_HANDLE);
+    }
+    currentFence() = getFence();
+    currentImageAcquiredSemaphore() = getSemaphore();
+    currentRenderCompleteSemaphore() = getSemaphore();
+    return frameIndex;
+  }
   vk::Result Swapchain::acquireNextImage(u32& imageId) {
-    if (vk::Result res = ctx.device.waitForFences(
-            1, &currentFence(), VK_TRUE, detail::deduce_numeric_max<u64>(), ctx.dispatcher);
-        res != vk::Result::eSuccess)
-      throw std::runtime_error(fmt::format(
-          "[acquireNextImage]: Failed to wait for fence at frame [{}] with result [{}]\n",
-          frameIndex, magic_enum::enum_name(res)));
 #if 0
     auto res = ctx.device.acquireNextImageKHR(
         swapchain, detail::deduce_numeric_max<u64>(),
@@ -28,12 +52,34 @@ namespace zs {
         VK_NULL_HANDLE, ctx.dispatcher);
     imageId = res.value;
     return res.result;
-#else
+#endif
+    vk::Fence acquireFence = getFence();
     auto result = ctx.dispatcher.vkAcquireNextImageKHR(
         (vk::Device)ctx.device, (vk::SwapchainKHR)swapchain, detail::deduce_numeric_max<u64>(),
-        currentImageAcquiredSemaphore(), VK_NULL_HANDLE, &imageId);
+        currentImageAcquiredSemaphore(), acquireFence, &imageId);
+
+    if (result != VK_SUCCESS) {
+      recycleFence(acquireFence);
+    } else {
+      for (size_t i = 0; i < presentHistory.size(); ++i) {
+        auto& presentInfo = presentHistory[presentHistory.size() - 1 - i];
+        // the remaining marked for destruction upon swapchain recreation
+        if (presentInfo.imageIndex == s_invalid_image_index)
+          break;
+        if (presentInfo.imageIndex == imageId) {
+          assert(presentInfo.cleanupFence == VK_NULL_HANDLE
+                 && fmt::format("the present record with the matching image index should not "
+                                "already have an associated fence")
+                        .c_str());
+          // associate fence with the present operation matching the image index
+          presentInfo.cleanupFence = acquireFence;
+          return vk::Result{result};
+        }
+      }
+      // if none associated, add fence with present operation
+      presentHistory.push_back(PresentOperationInfo{acquireFence, VK_NULL_HANDLE, {}, imageId});
+    }
     return vk::Result{result};
-#endif
 #if 0
     if (res.result != vk::Result::eSuccess)
       throw std::runtime_error(fmt::format(
@@ -43,20 +89,126 @@ namespace zs {
 #endif
   }
   vk::Result Swapchain::present(vk::Queue queue, u32 imageId) {
-    imageIndex = imageId;
     vk::SwapchainKHR swapChains[] = {swapchain};
     vk::Result presentResult = vk::Result::eSuccess;
     auto presentInfo = vk::PresentInfoKHR{}
                            .setSwapchainCount(1)
                            .setPSwapchains(swapChains)
-                           .setPImageIndices(&imageIndex)
+                           .setPImageIndices(&imageId)
                            .setPResults(&presentResult)
                            .setWaitSemaphoreCount(1)
                            .setPWaitSemaphores(&currentRenderCompleteSemaphore());
 
     // https://github.com/KhronosGroup/Vulkan-Hpp/issues/599
-    return static_cast<vk::Result>(ctx.dispatcher.vkQueuePresentKHR(
+    vk::Result res = static_cast<vk::Result>(ctx.dispatcher.vkQueuePresentKHR(
         static_cast<VkQueue>(queue), reinterpret_cast<const VkPresentInfoKHR*>(&presentInfo)));
+    /// add present to history
+    presentHistory.push_back(PresentOperationInfo{VK_NULL_HANDLE, currentRenderCompleteSemaphore(),
+                                                  std::move(oldSwapchains), imageId});
+    currentRenderCompleteSemaphore() = VK_NULL_HANDLE;  // set to null after present
+    /// cleanup present history
+    cleanupPresentHistory();
+    return res;
+  }
+  void Swapchain::cleanupPresentHistory() {
+    while (!presentHistory.empty()) {
+      PresentOperationInfo& presentInfo = presentHistory.front();
+      // If there is no fence associated with the history, it can't be cleaned up yet.
+      if (presentInfo.cleanupFence == VK_NULL_HANDLE) {
+        // Can't have an old present operation without a fence that doesn't have an
+        // image index used to later associate a fence with it.
+        assert(presentInfo.imageIndex != s_invalid_image_index);
+        break;
+      }
+      // check if fence is signaled
+      auto result = ctx.device.getFenceStatus(presentInfo.cleanupFence, ctx.dispatcher);
+      if (result == vk::Result::eNotReady) break;
+
+      cleanupPresentInfo(presentInfo);
+      presentHistory.pop_front();
+    }
+    if (presentHistory.size() > images.size() * 2
+        && presentHistory.front().cleanupFence == VK_NULL_HANDLE) {
+      PresentOperationInfo presentInfo = std::move(presentHistory.front());
+      presentHistory.pop_front();
+      assert(presentInfo.imageIndex != s_invalid_image_index);
+      presentHistory.front().oldSwapchains
+          = std::move(presentInfo.oldSwapchains);        // transfer old swapchains
+      presentHistory.push_back(std::move(presentInfo)); // moved to tail
+    }
+  }
+  void Swapchain::cleanupPresentInfo(PresentOperationInfo& presentInfo) {
+    if (presentInfo.cleanupFence) recycleFence(presentInfo.cleanupFence);
+    if (presentInfo.presentSemaphore) recycleSemaphore(presentInfo.presentSemaphore);
+    for (auto& oldSwapchain : presentInfo.oldSwapchains) cleanupOldSwapchain(oldSwapchain);
+  }
+  void Swapchain::cleanupOldSwapchain(SwapchainCleanupData& oldSwapchain) {
+    if (oldSwapchain.swapchain)
+      ctx.device.destroySwapchainKHR(oldSwapchain.swapchain, nullptr, ctx.dispatcher);
+    for (auto semaphore : oldSwapchain.semaphores)
+      ctx.device.destroySemaphore(semaphore, nullptr, ctx.dispatcher);
+    oldSwapchain = {};
+  }
+
+  /**
+   * @brief When a swapchain is retired, the resources associated with its images are scheduled to
+   * be cleaned up as soon as the last submission using those images is complete. This function is
+   * called at such a moment.
+   * The swapchain itself is not destroyed until known safe.
+   */
+  void Swapchain::cleanupSwapchainObjects(SwapchainObjects& garbage) { garbage = {}; }
+
+  /**
+   * @brief The previous swapchain which needs to be scheduled for destruction when
+   * appropriate.  This will be done when the first image of the current swapchain is
+   * presented.  If there were older swapchains pending destruction when the swapchain is
+   * recreated, they will accumulate and be destroyed with the previous swapchain.
+   *
+   * Note that if the user resizes the window such that the swapchain is recreated every
+   * frame, this array can go grow indefinitely.
+   */
+  void Swapchain::scheduleOldSwapchainForDestruction(vk::SwapchainKHR oldSwapchain) {
+    if (!presentHistory.empty() && presentHistory.back().imageIndex == s_invalid_image_index) {
+      ctx.device.destroySwapchainKHR(oldSwapchain, nullptr, ctx.dispatcher);
+      return;
+    }
+    SwapchainCleanupData cleanup;
+    cleanup.swapchain = oldSwapchain;
+
+    // Place any present operation that's not associated with a fence into oldSwapchains.
+    // That gets scheduled for destruction when the semaphore of the first image of the next
+    // swapchain can be recycled.
+    std::vector<PresentOperationInfo> historyToKeep;
+    while (!presentHistory.empty()) {
+      PresentOperationInfo& presentInfo = presentHistory.back();
+
+      // If this is about an older swapchain, let it be.
+      if (presentInfo.imageIndex == s_invalid_image_index) {
+        assert(presentInfo.cleanupFence != VK_NULL_HANDLE);
+        break;
+      }
+
+      // Reset the index, so it's not processed in the future.
+      presentInfo.imageIndex = s_invalid_image_index;
+      if (presentInfo.cleanupFence != VK_NULL_HANDLE) {
+        // If there is already a fence associated, let it be cleaned up once the fence is signaled.
+        historyToKeep.push_back(std::move(presentInfo));
+      } else {
+        assert(presentInfo.presentSemaphore != VK_NULL_HANDLE);
+        // Otherwise accumulate it in cleanup data.
+        cleanup.semaphores.push_back(presentInfo.presentSemaphore);
+        // Accumulate any previous swapchains that are pending destruction too.
+        for (SwapchainCleanupData& swapchainCleanup : presentInfo.oldSwapchains)
+          oldSwapchains.emplace_back(swapchainCleanup);
+        presentInfo.oldSwapchains.clear();
+      }
+
+      presentHistory.pop_back();
+    }
+    std::move(historyToKeep.begin(), historyToKeep.end(), std::back_inserter(presentHistory));
+
+    if (cleanup.swapchain != VK_NULL_HANDLE || !cleanup.semaphores.empty())
+      oldSwapchains.emplace_back(std::move(cleanup));
   }
 
   RenderPass Swapchain::getRenderPass() {
@@ -91,22 +243,23 @@ namespace zs {
     }
     return rpBuilder.build();
   }
-  /// @note default framebuffer setup
+
   void Swapchain::initFramebuffersFor(vk::RenderPass renderPass) {
-    auto cnt = imageCount();
-    frameBuffers.clear();
-    frameBuffers.reserve(cnt);
+    const u32 cnt = imageCount();
+    swapchainObjects.frameBuffers.clear();
+    swapchainObjects.frameBuffers.reserve(cnt);
     const bool enableMS = multiSampleEnabled();
     const bool enableDepth = depthEnabled();
     std::vector<vk::ImageView> imgvs;
-    imgvs.reserve(cnt * (1 + (enableMS ? 1 : 0) + (enableDepth ? 1 : 0)));
-    for (int i = 0; i != cnt; ++i) {
+    const auto dim = (1 + (enableMS ? 1 : 0) + (enableDepth ? 1 : 0));
+    for (u32 i = 0; i != cnt; ++i) {
       imgvs.clear();
-      if (enableMS) imgvs.push_back((vk::ImageView)msColorBuffers[i]);
-      imgvs.push_back((vk::ImageView)imageViews[i]);
-      if (enableDepth) imgvs.push_back((vk::ImageView)depthBuffers[i]);
+      imgvs.reserve(dim);
+      if (enableMS) imgvs.push_back((vk::ImageView)swapchainObjects.msColorBuffers[i]);
+      imgvs.push_back((vk::ImageView)swapchainObjects.imageViews[i]);
+      if (enableDepth) imgvs.push_back((vk::ImageView)swapchainObjects.depthBuffers[i]);
 
-      frameBuffers.emplace_back(ctx.createFramebuffer(imgvs, ci.imageExtent, renderPass));
+      swapchainObjects.frameBuffers.emplace_back(ctx.createFramebuffer(imgvs, ci.imageExtent, renderPass));
     }
   }
 
@@ -164,7 +317,7 @@ namespace zs {
 
     ci.imageSharingMode = vk::SharingMode::eExclusive;
   }
-  void SwapchainBuilder::resize(Swapchain& obj, u32 width, u32 height) {
+  void SwapchainBuilder::resize(Swapchain& obj, u32 width, u32 height, vk::RenderPass renderPass) {
     /// @note credits
     /// https://www.reddit.com/r/vulkan/comments/cc3edr/swapchain_recreation_repeatedly_returns_vk_error/
     surfCapabilities = ctx.physicalDevice.getSurfaceCapabilitiesKHR(obj.ci.surface, ctx.dispatcher);
@@ -174,7 +327,7 @@ namespace zs {
                         surfCapabilities.maxImageExtent.height);
     obj.ci.imageExtent = vk::Extent2D{width, height};
 
-    build(obj);
+    build(obj, renderPass);
   }
   SwapchainBuilder& SwapchainBuilder::presentMode(vk::PresentModeKHR mode) {
     if (mode == ci.presentMode) return *this;
@@ -187,42 +340,33 @@ namespace zs {
                         magic_enum::enum_name(mode)));
     return *this;
   }
-  void SwapchainBuilder::build(Swapchain& obj) {
+  void SwapchainBuilder::build(Swapchain& obj, vk::RenderPass renderPass) {
     // kept the previously built swapchain for this
     const bool rebuild = obj.swapchain != VK_NULL_HANDLE;
     if (rebuild) ci = obj.ci;
     ci.oldSwapchain = obj.swapchain;
+    obj.ci = ci;
     obj.swapchain = ctx.device.createSwapchainKHR(ci, nullptr, ctx.dispatcher);
 
-    obj.frameIndex = 0;
-
-#if 0
-    obj.extent = ci.imageExtent;
-    obj.colorFormat = ci.imageFormat;
-    obj.imageColorSpace = ci.imageColorSpace;
-    obj.depthFormat = swapchainDepthFormat;
-    obj.presentMode = ci.presentMode;
-#else
-    if (!rebuild) {
+    if (rebuild) {
+      obj.scheduleOldSwapchainForDestruction(ci.oldSwapchain); 
+    } else {
       obj.depthFormat = swapchainDepthFormat;
       obj.sampleBits = sampleBits;
     }
-    obj.ci = ci;
-    // if (obj.swapchain == VK_NULL_HANDLE)
-    //   obj.ci = ci;
-    // else
-    //   obj.ci.oldSwapchain = ci.oldSwapchain;
-#endif
 
-    obj.resetAux();
+    // schedule destruction of the old swapchain resources once this frame's submission is finished.
+    auto& swapchainObjects = obj.swapchainObjects;
+    // to avoid initial access violation of frame index
+    if (obj.getCurrentFrame() >= 0)
+      obj.currentSwapchainGarbage().push_back(std::move(swapchainObjects));
+
     obj.images = ctx.device.getSwapchainImagesKHR(obj.swapchain, ctx.dispatcher);
     const auto numSwapchainImages = obj.images.size();
 
-    /// reset previous resources (if any)
-    ctx.device.destroySwapchainKHR(ci.oldSwapchain, nullptr, ctx.dispatcher);
-
-    /// construct current swapchain
-    obj.imageViews.resize(numSwapchainImages);
+    // construct current swapchain's objects (except framebuffers)
+    // swapchainObjects is now reset (moved from)
+    swapchainObjects.imageViews.reserve(numSwapchainImages);
     for (int i = 0; i != numSwapchainImages; ++i) {
       auto& img = obj.images[i];
       // image views
@@ -238,11 +382,13 @@ namespace zs {
                                           ci.imageFormat,
                                           vk::ComponentMapping(),
                                           subresourceRange};
-      obj.imageViews[i] = ctx.device.createImageView(ivCI, nullptr, ctx.dispatcher);
+      swapchainObjects.imageViews.emplace_back(
+          ctx, ctx.device.createImageView(ivCI, nullptr, ctx.dispatcher));
     }
     if (obj.sampleBits != vk::SampleCountFlagBits::e1) {
+      swapchainObjects.msColorBuffers.reserve(numSwapchainImages);
       for (int i = 0; i != numSwapchainImages; ++i) {
-        obj.msColorBuffers.emplace_back(ctx.create2DImage(
+        swapchainObjects.msColorBuffers.emplace_back(ctx.create2DImage(
             ci.imageExtent, ci.imageFormat,
             vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
             vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true,
@@ -250,31 +396,16 @@ namespace zs {
       }
     }
     if (buildDepthBuffer) {
+      swapchainObjects.depthBuffers.reserve(numSwapchainImages);
       for (int i = 0; i != numSwapchainImages; ++i) {
-        obj.depthBuffers.emplace_back(ctx.create2DImage(
+        swapchainObjects.depthBuffers.emplace_back(ctx.create2DImage(
             ci.imageExtent, obj.depthFormat, vk::ImageUsageFlagBits::eDepthStencilAttachment,
             vk::MemoryPropertyFlagBits::eDeviceLocal, /*mipmaps*/ false, /*createView*/ true,
             /*enable transfer*/ false, obj.sampleBits));
       }
     }
 
-    /// sync primitives
-    obj.imageFences.resize(numSwapchainImages, VK_NULL_HANDLE);
-    if (obj.imageAcquiredSemaphores.size() != num_buffered_frames) {
-      obj.imageAcquiredSemaphores.resize(num_buffered_frames);
-      obj.renderCompleteSemaphores.resize(num_buffered_frames);
-      obj.fences.resize(num_buffered_frames);
-      for (int i = 0; i != num_buffered_frames; ++i) {
-        // semaphores
-        obj.imageAcquiredSemaphores[i]
-            = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
-        obj.renderCompleteSemaphores[i]
-            = ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
-        obj.fences[i] = ctx.device.createFence(
-            vk::FenceCreateInfo{}.setFlags(vk::FenceCreateFlagBits::eSignaled), nullptr,
-            ctx.dispatcher);
-      }
-    }
+    if (renderPass != VK_NULL_HANDLE) obj.initFramebuffersFor(renderPass);
   }
 
 }  // namespace zs

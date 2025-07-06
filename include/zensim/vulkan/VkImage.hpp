@@ -7,9 +7,9 @@ namespace zs {
   struct VkTexture;
   struct ZPC_CORE_API Image {
     Image() = delete;
-    Image(VulkanContext &ctx)
+    Image(VulkanContext &ctx, vk::Image img = VK_NULL_HANDLE)
         : ctx{ctx},
-          image{VK_NULL_HANDLE},
+          image{img},
 #if ZS_VULKAN_USE_VMA
           allocation{0},
 #else
@@ -105,7 +105,7 @@ namespace zs {
   };
 
   struct ImageView {
-    ImageView(VulkanContext &ctx) : ctx{ctx}, imgv{VK_NULL_HANDLE} {}
+    ImageView(VulkanContext &ctx, vk::ImageView imgv = VK_NULL_HANDLE) : ctx{ctx}, imgv{imgv} {}
     ~ImageView() { ctx.device.destroyImageView(imgv, nullptr, ctx.dispatcher); }
     ImageView(ImageView &&o) noexcept : ctx{o.ctx}, imgv{o.imgv} { o.imgv = VK_NULL_HANDLE; }
 
@@ -120,7 +120,8 @@ namespace zs {
   };
 
   struct ImageSampler {
-    ImageSampler(VulkanContext &ctx) : ctx{ctx}, sampler{VK_NULL_HANDLE} {}
+    ImageSampler(VulkanContext &ctx, vk::Sampler sampler = VK_NULL_HANDLE)
+        : ctx{ctx}, sampler{sampler} {}
     ~ImageSampler() { ctx.device.destroySampler(sampler, nullptr, ctx.dispatcher); }
     ImageSampler(ImageSampler &&o) noexcept : ctx{o.ctx}, sampler{o.sampler} {
       o.sampler = VK_NULL_HANDLE;

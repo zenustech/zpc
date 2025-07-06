@@ -1,4 +1,5 @@
 #pragma once
+#include <deque>
 #include "zensim/vulkan/VkContext.hpp"
 #include "VkImage.hpp"
 
@@ -8,49 +9,65 @@ namespace zs {
     /// triple buffering
 
     Swapchain() = delete;
-    Swapchain(VulkanContext &ctx) : ctx{ctx}, swapchain{VK_NULL_HANDLE} {}
+    Swapchain(VulkanContext &ctx)
+        : ctx{ctx},
+          swapchain{VK_NULL_HANDLE} {}
     Swapchain(const Swapchain &) = delete;
     Swapchain(Swapchain &&o) noexcept
         : ctx{o.ctx},
-          swapchain{o.swapchain},
-#if 0
-          extent{o.extent},
-          colorFormat{o.colorFormat},
-          depthFormat{o.depthFormat},
-          imageColorSpace{o.imageColorSpace},
-          presentMode{o.presentMode},
-#else
+          swapchain{std::exchange(o.swapchain, VK_NULL_HANDLE)},
           depthFormat{o.depthFormat},
           sampleBits{o.sampleBits},
           ci{o.ci},
-#endif
           //
           images{std::move(o.images)},
-          imageViews{std::move(o.imageViews)},
-          msColorBuffers{std::move(o.msColorBuffers)},
-          depthBuffers{std::move(o.depthBuffers)},
-          frameBuffers{std::move(o.frameBuffers)},
+          swapchainObjects{std::move(o.swapchainObjects)},
           // sync prims
           imageAcquiredSemaphores{std::move(o.imageAcquiredSemaphores)},
           renderCompleteSemaphores{std::move(o.renderCompleteSemaphores)},
-          fences{std::move(o.fences)},
-          imageFences{std::move(o.imageFences)},
-          frameIndex(o.frameIndex) {
-      o.swapchain = VK_NULL_HANDLE;
-      o.frameIndex = 0;
+          submitFences{std::move(o.submitFences)},
+          //
+          fencePool{std::move(o.fencePool)},
+          semaphorePool{std::move(o.semaphorePool)},
+          presentHistory{std::move(o.presentHistory)},
+          swapchainGarbages{std::move(o.swapchainGarbages)},
+          oldSwapchains(std::move(o.oldSwapchains)),
+          //
+          frameIndex(std::exchange(o.frameIndex, -1)) {
     }
     ~Swapchain() {
-      resetAux();
+      ctx.device.waitIdle(ctx.dispatcher);
+      // cleanup buffers
+      for (const auto &f : submitFences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
+      for (const auto &s : imageAcquiredSemaphores)
+        ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
+      for (auto &garbages : swapchainGarbages) garbages.clear();
+      for (const auto &s : renderCompleteSemaphores) assert(s == VK_NULL_HANDLE);
+      // cleanup present history
+      for (PresentOperationInfo &presentInfo : presentHistory) {
+        if (presentInfo.cleanupFence != VK_NULL_HANDLE)
+          ctx.device.waitForFences(1, &presentInfo.cleanupFence, true, UINT64_MAX, ctx.dispatcher);
+        cleanupPresentInfo(presentInfo);
+      }
+      // cleanup old swapchains
+      for (SwapchainCleanupData &oldSwapchain : oldSwapchains) cleanupOldSwapchain(oldSwapchain);
+      // cleanup swapchain objects
+      cleanupSwapchainObjects(swapchainObjects);
+      // cleanup sync primitive pools
+      for (const auto &f : fencePool) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
+      for (const auto &s : semaphorePool) ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
       ctx.device.destroySwapchainKHR(swapchain, nullptr, ctx.dispatcher);
+      swapchain = VK_NULL_HANDLE;
+      frameIndex = -1;
     }
 
     std::vector<vk::Image> getImages() const { return images; }
     u32 imageCount() const { return images.size(); }
-    vk::ImageView getColorView(u32 i) const { return imageViews[i]; }
-    const Image &getMsColorView(u32 i) const { return msColorBuffers[i]; }
-    const Image &getDepthView(u32 i) const { return depthBuffers[i]; }
+    vk::ImageView getColorView(u32 i) const { return swapchainObjects.imageViews[i]; }
+    const Image &getMsColorView(u32 i) const { return swapchainObjects.msColorBuffers[i]; }
+    const Image &getDepthView(u32 i) const { return swapchainObjects.depthBuffers[i]; }
 
-    bool depthEnabled() const noexcept { return depthBuffers.size() > 0; }
+    bool depthEnabled() const noexcept { return swapchainObjects.depthBuffers.size() > 0; }
     bool multiSampleEnabled() const noexcept { return sampleBits != vk::SampleCountFlagBits::e1; }
     vk::Extent2D getExtent() const noexcept { return ci.imageExtent; }
     vk::Format getColorFormat() const noexcept { return ci.imageFormat; }
@@ -75,18 +92,12 @@ namespace zs {
       return vals;
     }
 
+    u32 newFrame() noexcept;
     vk::Result acquireNextImage(u32 &imageId);
-    void resetCurrentFence() { ctx.device.resetFences({currentFence()}, ctx.dispatcher); }
     vk::Result present(vk::Queue queue, u32 imageId);
-    u32 getCurrentFrame() const noexcept { return frameIndex; }
-    u32 nextFrame() noexcept { return (frameIndex = (frameIndex + 1) % num_buffered_frames); }
-    void initFramebuffersFor(vk::RenderPass renderPass);
+    auto getCurrentFrame() const noexcept { return frameIndex; }
 
-    RenderPass getRenderPass();
-    Framebuffer &frameBuffer(u32 imageIndex) { return frameBuffers[imageIndex]; }
-
-    vk::Fence &imageFence(u32 id) noexcept { return imageFences[id]; }
-    vk::Fence &currentFence() noexcept { return fences[frameIndex]; }
+    vk::Fence &currentFence() noexcept { return submitFences[frameIndex]; }
     vk::Semaphore &currentImageAcquiredSemaphore() noexcept {
       return imageAcquiredSemaphores[frameIndex];
     }
@@ -94,61 +105,102 @@ namespace zs {
       return renderCompleteSemaphores[frameIndex];
     }
 
+    /// @brief not expected to be called upon swpachain recreation
+    /// only valid use is when only the renderpass has changed
+    void initFramebuffersFor(vk::RenderPass renderPass);
+
+    RenderPass getRenderPass();
+    Framebuffer &frameBuffer(u32 imageIndex) { return swapchainObjects.frameBuffers[imageIndex]; }
+
     // update width, height
     vk::SwapchainKHR operator*() const { return swapchain; }
     operator vk::SwapchainKHR() const { return swapchain; }
 
   protected:
-    void resetAux() {
-      images.clear();
-
-      frameBuffers.clear();
-      for (auto &v : imageViews) ctx.device.destroyImageView(v, nullptr, ctx.dispatcher);
-      imageViews.clear();
-      msColorBuffers.clear();
-      depthBuffers.clear();
-      resetSyncPrimitives();
-    }
-    void resetSyncPrimitives() {
-      imageFences.clear();
-
-      for (auto &s : imageAcquiredSemaphores)
-        ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
-      imageAcquiredSemaphores.clear();
-      for (auto &s : renderCompleteSemaphores)
-        ctx.device.destroySemaphore(s, nullptr, ctx.dispatcher);
-      renderCompleteSemaphores.clear();
-      for (auto &f : fences) ctx.device.destroyFence(f, nullptr, ctx.dispatcher);
-      fences.clear();
-    }
     friend struct SwapchainBuilder;
 
     VulkanContext &ctx;
     vk::SwapchainKHR swapchain;
-#if 0
-    vk::Extent2D extent;
-    vk::Format colorFormat, depthFormat;
-    vk::ColorSpaceKHR imageColorSpace;
-    vk::PresentModeKHR presentMode;
-#else
     vk::Format depthFormat;
     vk::SampleCountFlagBits sampleBits;
     vk::SwapchainCreateInfoKHR ci;
-#endif
-    ///
+
+    /// per-image data
+    struct SwapchainObjects {
+      std::vector<ImageView> imageViews;      // corresponds to [images] from swapchain
+      std::vector<Image> msColorBuffers;      // optional
+      std::vector<Image> depthBuffers;        // optional
+      std::vector<Framebuffer> frameBuffers;  // initialized later
+    };
+    struct SwapchainCleanupData {
+      vk::SwapchainKHR swapchain{VK_NULL_HANDLE};
+      std::vector<vk::Semaphore> semaphores;
+    };
+
     std::vector<vk::Image> images;
-    std::vector<vk::ImageView> imageViews;  // corresponds to [images] from swapchain
-    std::vector<Image> msColorBuffers;      // optional
-    std::vector<Image> depthBuffers;        // optional
-    std::vector<Framebuffer> frameBuffers;  // initialized later
-    ///
-    // littleVulkanEngine-alike setup
-    std::vector<vk::Semaphore> imageAcquiredSemaphores;   // ready to read
-    std::vector<vk::Semaphore> renderCompleteSemaphores;  // ready to write
-    std::vector<vk::Fence> fences;                        // ready to submit
-    std::vector<vk::Fence> imageFences;                   // directed to the above 'fences' objects
-    u32 imageIndex;
-    int frameIndex;
+    SwapchainObjects swapchainObjects;  // swapchain objects
+
+    /// per-frame data
+    std::array<vk::Semaphore, num_buffered_frames> imageAcquiredSemaphores;   // ready to read
+    std::array<vk::Semaphore, num_buffered_frames> renderCompleteSemaphores;  // ready to write
+    std::array<vk::Fence, num_buffered_frames> submitFences;                  // ready to submit
+
+    /// fence pool used during acquireNextImage and present operations.
+    std::vector<vk::Fence> fencePool;
+    void recycleFence(vk::Fence fence) {
+      fencePool.push_back(fence);
+      ctx.device.resetFences(1, &fence, ctx.dispatcher);
+    }
+    vk::Fence getFence() {
+      if (!fencePool.empty()) {
+        auto ret = fencePool.back();
+        fencePool.pop_back();
+        return ret;
+      }
+      return ctx.device.createFence(vk::FenceCreateInfo{}, nullptr, ctx.dispatcher);
+    }
+
+    /// semaphore pool
+    std::vector<vk::Semaphore> semaphorePool;
+    void recycleSemaphore(vk::Semaphore semaphore) { semaphorePool.push_back(semaphore); }
+    vk::Semaphore getSemaphore() {
+      if (!semaphorePool.empty()) {
+        auto ret = semaphorePool.back();
+        semaphorePool.pop_back();
+        return ret;
+      }
+      return ctx.device.createSemaphore(vk::SemaphoreCreateInfo{}, nullptr, ctx.dispatcher);
+    }
+
+    /// history info
+    static constexpr u32 s_invalid_image_index = ~static_cast<u32>(0);
+    struct PresentOperationInfo {
+      vk::Fence cleanupFence{VK_NULL_HANDLE};
+      vk::Semaphore presentSemaphore{VK_NULL_HANDLE};
+      std::vector<SwapchainCleanupData> oldSwapchains;
+      u32 imageIndex{s_invalid_image_index};
+    };
+    // entries for old swapchains, imageIndex = s_invalid_image_index
+    // otherwise for current valid swapchain
+    std::deque<PresentOperationInfo> presentHistory;
+    void cleanupPresentHistory();
+    void cleanupPresentInfo(PresentOperationInfo &presentInfo);
+    void cleanupOldSwapchain(SwapchainCleanupData &oldSwapchain);
+
+    /// cleanup data (image-related, swapchain + semaphore)
+    std::array<std::vector<SwapchainObjects>, num_buffered_frames> swapchainGarbages;  // indexed by frameIndex
+    std::vector<SwapchainObjects> &currentSwapchainGarbage() noexcept {
+      return swapchainGarbages[frameIndex];
+    }
+    void cleanupSwapchainObjects(
+        SwapchainObjects &garbage);  // swapchainObjects -> swapchainGarbages -> cleanup
+
+    // 1. presentHistory -> oldSwapchains -> cleanup (swapchain recreation)
+    // 2. presentHistory (associated with signaled fence) -> cleanup (upon queue present)
+    std::vector<SwapchainCleanupData> oldSwapchains;
+    void scheduleOldSwapchainForDestruction(vk::SwapchainKHR oldSwapchain);
+
+    int frameIndex{-1};
   };
 
   // ref: LegitEngine (https://github.com/Raikiri/LegitEngine), nvpro_core
@@ -183,15 +235,15 @@ namespace zs {
       return *this;
     }
 
-    Swapchain build() {
+    Swapchain build(vk::RenderPass renderPass = VK_NULL_HANDLE) {
       Swapchain obj(ctx);
-      build(obj);
+      build(obj, renderPass);
       return obj;
     }
-    void resize(Swapchain &obj, u32 width, u32 height);
+    void resize(Swapchain &obj, u32 width, u32 height, vk::RenderPass renderPass = VK_NULL_HANDLE);
 
   private:
-    void build(Swapchain &obj);
+    void build(Swapchain &obj, vk::RenderPass renderPass = VK_NULL_HANDLE);
 
     VulkanContext &ctx;
     vk::SurfaceKHR surface;
